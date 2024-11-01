@@ -39,8 +39,8 @@ export const io = new Server(server);
  */
 export const browserPool = new BrowserPool();
 
-app.use(bodyParser.json({ limit: '10mb' }))
-app.use(bodyParser.urlencoded({ extended: true, limit: '10mb', parameterLimit: 9000 }));
+// app.use(bodyParser.json({ limit: '10mb' }))
+// app.use(bodyParser.urlencoded({ extended: true, limit: '10mb', parameterLimit: 9000 }));
 // parse cookies - "cookie" is true in csrfProtection
 app.use(cookieParser())
 
@@ -62,42 +62,60 @@ readdirSync(path.join(__dirname, 'api')).forEach((r) => {
   }
 });
 
-// Check if we're running in production or development
 const isProduction = process.env.NODE_ENV === 'production';
-const workerPath = path.resolve(__dirname, isProduction ? './worker.js' : '/worker.ts');
+const workerPath = path.resolve(__dirname, isProduction ? './worker.js' : './worker.ts');
 
-// Fork the worker process
-const workerProcess = fork(workerPath, [], {
-  execArgv: isProduction ? ['--inspect=8081'] : ['--inspect=5859'],
-});
-
-workerProcess.on('message', (message) => {
-  console.log(`Message from worker: ${message}`);
-});
-workerProcess.on('error', (error) => {
-  console.error(`Error in worker: ${error}`);
-});
-workerProcess.on('exit', (code) => {
-  console.log(`Worker exited with code: ${code}`);
-});
+let workerProcess: any;
+if (!isProduction) {
+  workerProcess = fork(workerPath, [], {
+    execArgv: ['--inspect=5859'],
+  });
+  workerProcess.on('message', (message: any) => {
+    console.log(`Message from worker: ${message}`);
+  });
+  workerProcess.on('error', (error: any) => {
+    console.error(`Error in worker: ${error}`);
+  });
+  workerProcess.on('exit', (code: any) => {
+    console.log(`Worker exited with code: ${code}`);
+  });
+}
 
 app.get('/', function (req, res) {
   capture(
     'maxun-oss-server-run', {
-      event: 'server_started',
-    }
+    event: 'server_started',
+  }
   );
   return res.send('Maxun server started 🚀');
 });
 
-server.listen(SERVER_PORT, async () => {
-  await connectDB();
-  await syncDB();
-  logger.log('info', `Server listening on port ${SERVER_PORT}`);
+// Add CORS headers
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
+server.listen(SERVER_PORT, '0.0.0.0', async () => {
+  try {
+    await connectDB();
+    await syncDB();
+    logger.log('info', `Server listening on port ${SERVER_PORT}`);
+  } catch (error: any) {
+    logger.log('error', `Failed to connect to the database: ${error.message}`);
+    process.exit(1); // Exit the process if DB connection fails
+  }
 });
 
 process.on('SIGINT', () => {
   console.log('Main app shutting down...');
-  workerProcess.kill();
+  if (!isProduction) {
+    workerProcess.kill();
+  }
   process.exit();
 });

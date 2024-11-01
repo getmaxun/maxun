@@ -18,6 +18,7 @@ import { ContentCopy, Visibility, Delete } from '@mui/icons-material';
 import styled from 'styled-components';
 import axios from 'axios';
 import { useGlobalInfoStore } from '../../context/globalInfo';
+import { apiUrl } from '../../apiConfig';
 
 const Container = styled(Box)`
   display: flex;
@@ -38,7 +39,7 @@ const ApiKeyManager = () => {
   useEffect(() => {
     const fetchApiKey = async () => {
       try {
-        const { data } = await axios.get('http://localhost:8080/auth/api-key');
+        const { data } = await axios.get(`${apiUrl}/auth/api-key`);
         setApiKey(data.api_key);
       } catch (error: any) {
         notify('error', `Failed to fetch API Key - ${error.message}`);
@@ -53,7 +54,7 @@ const ApiKeyManager = () => {
   const generateApiKey = async () => {
     setLoading(true);
     try {
-      const { data } = await axios.post('http://localhost:8080/auth/generate-api-key');
+      const { data } = await axios.post(`${apiUrl}/auth/generate-api-key`);
       setApiKey(data.api_key);
       notify('success', `Generated API Key successfully`);
     } catch (error: any) {
@@ -66,7 +67,7 @@ const ApiKeyManager = () => {
   const deleteApiKey = async () => {
     setLoading(true);
     try {
-      await axios.delete('http://localhost:8080/auth/delete-api-key');
+      await axios.delete(`${apiUrl}/auth/delete-api-key`);
       setApiKey(null);
       notify('success', 'API Key deleted successfully');
     } catch (error: any) {

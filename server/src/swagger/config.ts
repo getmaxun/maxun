@@ -25,7 +25,7 @@ const options = {
       },
     ],
   },
-  apis: [path.join(__dirname, '../api/*.ts')],
+  apis: process.env.NODE_ENV === 'production' ? [path.join(__dirname, '../api/*.js')] : [path.join(__dirname, '../api/*.ts')]
 };
 
 const swaggerSpec = swaggerJSDoc(options);

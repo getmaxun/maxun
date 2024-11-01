@@ -1,8 +1,9 @@
 import { default as axios } from "axios";
+import { apiUrl } from "../apiConfig"
 
 export const getUserById = async (userId: string) => {
     try {
-        const response = await axios.get(`http://localhost:8080/auth/user/${userId}`);
+        const response = await axios.get(`${apiUrl}/auth/user/${userId}`);
         if (response.status === 200) {
             return response.data;
         } else {

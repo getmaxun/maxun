@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useSocketStore } from '../../context/socket';
 import { Button } from '@mui/material';
 import Canvas from "../atoms/canvas";
-import { useBrowserDimensionsStore } from "../../context/browserDimensions";
 import { Highlighter } from "../atoms/Highlighter";
 import { GenericModal } from '../atoms/GenericModal';
 import { useActionContext } from '../../context/browserActions';
@@ -66,7 +65,6 @@ export const BrowserWindow = () => {
 
     const { socket } = useSocketStore();
     const { notify } = useGlobalInfoStore();
-    //const { width, height } = useBrowserDimensionsStore();
     const { getText, getList, paginationMode, paginationType, limitMode } = useActionContext();
     const { addTextStep, addListStep } = useBrowserSteps();
 

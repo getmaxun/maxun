@@ -36,7 +36,7 @@ export const encrypt = (text: string): string => {
 
 export const decrypt = (encryptedText: string): string => {
     const [iv, encrypted] = encryptedText.split(':');
-    const algorithm = getEnvVariable('ALGORITHM');
+    const algorithm = "aes-256-cbc";
     const key = Buffer.from(getEnvVariable('ENCRYPTION_KEY'), 'hex');
     const decipher = crypto.createDecipheriv(algorithm, key, Buffer.from(iv, 'hex'));
     let decrypted = decipher.update(encrypted, 'hex', 'utf8');

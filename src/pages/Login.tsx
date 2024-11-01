@@ -10,6 +10,7 @@ import {
     CircularProgress,
 } from '@mui/material';
 import { useGlobalInfoStore } from "../context/globalInfo";
+import { apiUrl } from "../apiConfig";
 
 const Login = () => {
     const [form, setForm] = useState({
@@ -40,7 +41,7 @@ const Login = () => {
         e.preventDefault();
         setLoading(true);
         try {
-            const { data } = await axios.post(`http://localhost:8080/auth/login`, { email, password });
+            const { data } = await axios.post(`${apiUrl}/auth/login`, { email, password });
             dispatch({ type: 'LOGIN', payload: data });
             notify('success', 'Welcome to Maxun!');
             window.localStorage.setItem('user', JSON.stringify(data));

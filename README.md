@@ -25,13 +25,15 @@ Maxun lets you train a robot in 2 minutes and scrape the web on auto-pilot. Web 
 
 <img src="https://static.scarf.sh/a.png?x-pxid=c12a77cc-855e-4602-8a0f-614b2d0da56a" />
 
-# Installation
+# Local Setup
 ### Docker
-⚠️ Work In Progress. Will be available by EOD.
+```
+docker-compose up -d --build
+```
 
-### Local Setup
+### Without Docker
 1. Ensure you have Node.js, PostgreSQL, MinIO and Redis installed on your system.
-2. Run the commands below:
+2. Run the commands below
 ```
 git clone https://github.com/getmaxun/maxun
 

@@ -4,6 +4,7 @@ import axios from 'axios';
 import { AuthContext } from '../context/auth';
 import { TextField, Button, CircularProgress, Typography, Box, Container } from '@mui/material';
 import { useGlobalInfoStore } from "../context/globalInfo";
+import { apiUrl } from "../apiConfig";
 
 const Register = () => {
     const [form, setForm] = useState({
@@ -31,7 +32,7 @@ const Register = () => {
         e.preventDefault();
         setLoading(true);
         try {
-            const { data } = await axios.post('http://localhost:8080/auth/register', {
+            const { data } = await axios.post(`${apiUrl}/auth/register`, {
                 email,
                 password,
             });

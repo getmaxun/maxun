@@ -1,8 +1,9 @@
 import { default as axios, AxiosResponse } from "axios";
+import { apiUrl } from "../apiConfig";
 
 export const startRecording = async() : Promise<string> => {
   try {
-    const response = await axios.get('http://localhost:8080/record/start')
+    const response = await axios.get(`${apiUrl}/record/start`)
     if (response.status === 200) {
         return response.data;
     } else {
@@ -14,7 +15,7 @@ export const startRecording = async() : Promise<string> => {
 };
 
 export const stopRecording = async (id: string): Promise<void> => {
-    await axios.get(`http://localhost:8080/record/stop/${id}`)
+    await axios.get(`${apiUrl}/record/stop/${id}`)
         .then((response : AxiosResponse<boolean>)  => {
         })
         .catch((error: any) => {
@@ -23,7 +24,7 @@ export const stopRecording = async (id: string): Promise<void> => {
 
 export const getActiveBrowserId = async(): Promise<string> => {
     try {
-        const response = await axios.get('http://localhost:8080/record/active');
+        const response = await axios.get(`${apiUrl}/record/active`);
         if (response.status === 200) {
             return response.data;
         } else {
@@ -36,7 +37,7 @@ export const getActiveBrowserId = async(): Promise<string> => {
 
 export const interpretCurrentRecording = async(): Promise<boolean> => {
     try {
-        const response = await axios.get('http://localhost:8080/record/interpret');
+        const response = await axios.get(`${apiUrl}/record/interpret`);
         if (response.status === 200) {
             return true;
         } else {
@@ -50,7 +51,7 @@ export const interpretCurrentRecording = async(): Promise<boolean> => {
 
 export const stopCurrentInterpretation = async(): Promise<void> => {
   try {
-    const response = await axios.get('http://localhost:8080/record/interpret/stop');
+    const response = await axios.get(`${apiUrl}/record/interpret/stop`);
     if (response.status === 200) {
       return;
     } else {
@@ -63,7 +64,7 @@ export const stopCurrentInterpretation = async(): Promise<void> => {
 
 export const getCurrentUrl = async (): Promise<string | null> => {
   try {
-    const response = await axios.get('http://localhost:8080/record/active/url');
+    const response = await axios.get(`${apiUrl}/record/active/url`);
     if (response.status === 200) {
       return response.data;
     } else {
@@ -77,7 +78,7 @@ export const getCurrentUrl = async (): Promise<string | null> => {
 
 export const getCurrentTabs = async (): Promise<string[] | null> => {
   try {
-    const response = await axios.get('http://localhost:8080/record/active/tabs');
+    const response = await axios.get(`${apiUrl}/record/active/tabs`);
     if (response.status === 200) {
       return response.data;
     } else {

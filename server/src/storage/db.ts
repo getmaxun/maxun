@@ -3,10 +3,15 @@ import dotenv from 'dotenv';
 import setupAssociations from '../models/associations';
 
 dotenv.config();
-const sequelize = new Sequelize(
-    `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`,
+
+const databaseUrl = `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
+
+// Extract the hostname using the URL constructor
+const host = new URL(databaseUrl).hostname;
+
+const sequelize = new Sequelize(databaseUrl,
     {
-        host: process.env.DB_HOST,
+        host,
         dialect: 'postgres',
         logging: false,
     }

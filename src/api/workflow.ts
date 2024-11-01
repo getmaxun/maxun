@@ -1,10 +1,11 @@
 import { WhereWhatPair, WorkflowFile } from "maxun-core";
 import { emptyWorkflow } from "../shared/constants";
 import { default as axios, AxiosResponse } from "axios";
+import { apiUrl } from "../apiConfig";
 
 export const getActiveWorkflow = async(id: string) : Promise<WorkflowFile> => {
   try {
-    const response = await axios.get(`http://localhost:8080/workflow/${id}`)
+    const response = await axios.get(`${apiUrl}/workflow/${id}`)
     if (response.status === 200) {
       return response.data;
     } else {
@@ -18,7 +19,7 @@ export const getActiveWorkflow = async(id: string) : Promise<WorkflowFile> => {
 
 export const getParamsOfActiveWorkflow = async(id: string) : Promise<string[]|null> => {
   try {
-    const response = await axios.get(`http://localhost:8080/workflow/params/${id}`)
+    const response = await axios.get(`${apiUrl}/workflow/params/${id}`)
     if (response.status === 200) {
       return response.data;
     } else {
@@ -32,7 +33,7 @@ export const getParamsOfActiveWorkflow = async(id: string) : Promise<string[]|nu
 
 export const deletePair = async(index: number): Promise<WorkflowFile> => {
   try {
-   const response = await axios.delete(`http://localhost:8080/workflow/pair/${index}`);
+   const response = await axios.delete(`${apiUrl}/workflow/pair/${index}`);
     if (response.status === 200) {
       return response.data;
     } else {
@@ -46,7 +47,7 @@ export const deletePair = async(index: number): Promise<WorkflowFile> => {
 
 export const AddPair = async(index: number, pair: WhereWhatPair): Promise<WorkflowFile> => {
   try {
-    const response = await axios.post(`http://localhost:8080/workflow/pair/${index}`, {
+    const response = await axios.post(`${apiUrl}/workflow/pair/${index}`, {
       pair,
     }, {headers: {'Content-Type': 'application/json'}});
     if (response.status === 200) {
@@ -62,7 +63,7 @@ export const AddPair = async(index: number, pair: WhereWhatPair): Promise<Workfl
 
 export const UpdatePair = async(index: number, pair: WhereWhatPair): Promise<WorkflowFile> => {
   try {
-    const response = await axios.put(`http://localhost:8080/workflow/pair/${index}`, {
+    const response = await axios.put(`${apiUrl}/workflow/pair/${index}`, {
       pair,
     }, {headers: {'Content-Type': 'application/json'}});
     if (response.status === 200) {

@@ -1,7 +1,8 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { apiUrl } from "../apiConfig";
 
-const SERVER_ENDPOINT = 'http://localhost:8080';
+const SERVER_ENDPOINT = apiUrl;
 
 interface SocketState {
   socket: Socket | null;

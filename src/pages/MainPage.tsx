@@ -13,6 +13,7 @@ import { RunSettings } from "../components/molecules/RunSettings";
 import { ScheduleSettings } from "../components/molecules/ScheduleSettings";
 import { IntegrationSettings } from "../components/molecules/IntegrationSettings";
 import { RobotSettings } from "../components/molecules/RobotSettings";
+import { apiUrl } from "../apiConfig";
 
 interface MainPageProps {
   handleEditRecording: (id: string, fileName: string) => void;
@@ -88,7 +89,7 @@ export const MainPage = ({ handleEditRecording }: MainPageProps) => {
     createRunForStoredRecording(runningRecordingId, settings).then(({ browserId, runId }: CreateRunResponse) => {
       setIds({ browserId, runId });
       const socket =
-        io(`http://localhost:8080/${browserId}`, {
+        io(`${apiUrl}/${browserId}`, {
           transports: ["websocket"],
           rejectUnauthorized: false
         });

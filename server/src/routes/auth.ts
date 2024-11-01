@@ -14,6 +14,8 @@ interface AuthenticatedRequest extends Request {
 }
 
 router.post('/register', async (req, res) => {
+    console.log('Received request at /auth/register');
+    console.log('Received body:', req.body);
     try {
         const { email, password } = req.body
 
@@ -25,7 +27,21 @@ router.post('/register', async (req, res) => {
 
         const hashedPassword = await hashPassword(password)
 
-        const user = await User.create({ email, password: hashedPassword });
+        let user: any;
+
+        try {
+            user = await User.create({ email, password: hashedPassword });
+        } catch (
+            error: any
+        ) {
+            console.log(`Could not create user - ${error}`)
+            return res.status(500).send(`Could not create user - ${error.message}`)
+        }
+
+        if (!process.env.JWT_SECRET) {
+            console.log('JWT_SECRET is not defined in the environment');
+            return res.status(500).send('Internal Server Error');
+        }
 
         const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET as string, { expiresIn: '12h' });
         user.password = undefined as unknown as string
@@ -40,8 +56,10 @@ router.post('/register', async (req, res) => {
                 registeredAt: new Date().toISOString()
             }
         )
+        console.log(`User registered - ${user.email}`)
         res.json(user)
     } catch (error: any) {
+        console.log(`Could not register user - ${error}`)
         res.status(500).send(`Could not register user - ${error.message}`)
     }
 })

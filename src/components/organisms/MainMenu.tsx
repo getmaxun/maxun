@@ -4,6 +4,7 @@ import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
 import { Paper, Button } from "@mui/material";
 import { AutoAwesome, FormatListBulleted, VpnKey, Usb, Article, Link, CloudQueue } from "@mui/icons-material";
+import { apiUrl } from "../../apiConfig";
 
 interface MainMenuProps {
   value: string;
@@ -86,7 +87,7 @@ export const MainMenu = ({ value = 'recordings', handleChangeContent }: MainMenu
         </Tabs>
         <hr />
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: '1rem', textAlign: 'left' }}>
-          <Button href="http://localhost:8080/api-docs/" target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<Article />}>
+          <Button href={`${apiUrl}/api-docs/`} target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<Article />}>
             API Docs
           </Button>
           <Button href="https://forms.gle/hXjgqDvkEhPcaBW76" target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<CloudQueue />}>

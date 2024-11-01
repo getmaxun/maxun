@@ -1,70 +1,22 @@
-# --- Base Stage ---
-FROM node:18 AS base
+FROM node:18-alpine
+
 WORKDIR /app
 
-# Copy shared package.json and install dependencies
-COPY package.json package-lock.json ./
-COPY maxun-core/package.json ./maxun-core/package.json
-RUN npm install
-
-# --- Backend Build Stage ---
-FROM base AS backend-build
-WORKDIR /app
-
-# Copy TypeScript configs
-COPY tsconfig*.json ./
-COPY server/tsconfig.json ./server/
-
-# Copy ALL source code (both frontend and backend)
-COPY src ./src
-# Copy backend code and maxun-core
-COPY server/src ./server/src
+# Copy package files
+COPY package*.json ./
 COPY maxun-core ./maxun-core
 
-# Install TypeScript globally and build
-RUN npm install -g typescript
-RUN npm run build:server
+# Install dependencies
+RUN npm install
 
-# --- Frontend Build Stage ---
-FROM base AS frontend-build
-WORKDIR /app
-
-# Copy frontend code and configs
+# Copy frontend source code and config
 COPY src ./src
-COPY index.html ./index.html
-COPY public ./public
+COPY index.html ./
 COPY vite.config.js ./
 COPY tsconfig.json ./
 
-# Build frontend
-RUN npm run build
+# Expose the frontend port
+EXPOSE 5173
 
-# --- Production Stage ---
-FROM nginx:alpine AS production
-
-# Install Node.js in the production image
-RUN apk add --update nodejs npm
-
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Copy built frontend
-COPY --from=frontend-build /app/build /usr/share/nginx/html
-COPY --from=frontend-build /app/public/img /usr/share/nginx/html/img
-
-# Copy built backend and its dependencies
-WORKDIR /app
-COPY --from=backend-build /app/package*.json ./
-COPY --from=backend-build /app/server/dist ./server/dist
-COPY --from=backend-build /app/maxun-core ./maxun-core
-COPY --from=backend-build /app/node_modules ./node_modules
-
-# Copy start script
-COPY docker-entrypoint.sh /
-RUN chmod +x /docker-entrypoint.sh
-
-EXPOSE 80 8080
-
-# Start both nginx and node server
-ENTRYPOINT ["/docker-entrypoint.sh"]
-    
+# Start the frontend using the client script
+CMD ["npm", "run", "client", "--", "--host"]

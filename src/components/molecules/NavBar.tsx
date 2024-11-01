@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/auth';
 import { SaveRecording } from '../molecules/SaveRecording';
 import DiscordIcon from '../atoms/DiscordIcon';
+import { apiUrl } from '../../apiConfig';
 
 interface NavBarProps {
   recordingName: string;
@@ -34,7 +35,7 @@ export const NavBar: React.FC<NavBarProps> = ({ recordingName, isRecording }) =>
   const logout = async () => {
     dispatch({ type: 'LOGOUT' });
     window.localStorage.removeItem('user');
-    const { data } = await axios.get('http://localhost:8080/auth/logout');
+    const { data } = await axios.get(`${apiUrl}/auth/logout`);
     notify('success', data.message);
     navigate('/login');
   };

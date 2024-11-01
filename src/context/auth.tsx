@@ -1,6 +1,7 @@
 import { useReducer, createContext, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { apiUrl } from "../apiConfig";
 
 interface AuthProviderProps {
     children: React.ReactNode;
@@ -65,7 +66,7 @@ const AuthProvider = ({ children }: AuthProviderProps) => {
             if (res.status === 401 && res.config && !res.config.__isRetryRequest) {
                 return new Promise((resolve, reject) => {
                     axios
-                        .get('http://localhost:8080/auth/logout')
+                        .get(`${apiUrl}/auth/logout`)
                         .then(() => {
                             console.log('/401 error > logout');
                             dispatch({ type: 'LOGOUT' });

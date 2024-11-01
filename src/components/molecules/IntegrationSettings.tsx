@@ -6,6 +6,7 @@ import TextField from "@mui/material/TextField";
 import axios from 'axios';
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { getStoredRecording } from '../../api/storage';
+import { apiUrl } from '../../apiConfig.js';
 interface IntegrationProps {
     isOpen: boolean;
     handleStart: (data: IntegrationSettings) => void;
@@ -32,12 +33,12 @@ export const IntegrationSettingsModal = ({ isOpen, handleStart, handleClose }: I
     const [recording, setRecording] = useState<any>(null);
 
     const authenticateWithGoogle = () => {
-        window.location.href = `http://localhost:8080/auth/google?robotId=${recordingId}`;
+        window.location.href = `${apiUrl}/auth/google?robotId=${recordingId}`;
     };
 
     const handleOAuthCallback = async () => {
         try {
-            const response = await axios.get(`http://localhost:8080/auth/google/callback`);
+            const response = await axios.get(`${apiUrl}/auth/google/callback`);
             const { google_sheet_email, files } = response.data;
         } catch (error) {
             setError('Error authenticating with Google');
@@ -46,7 +47,7 @@ export const IntegrationSettingsModal = ({ isOpen, handleStart, handleClose }: I
 
     const fetchSpreadsheetFiles = async () => {
         try {
-            const response = await axios.get(`http://localhost:8080/auth/gsheets/files?robotId=${recordingId}`, {
+            const response = await axios.get(`${apiUrl}/auth/gsheets/files?robotId=${recordingId}`, {
                 withCredentials: true,
             });
             setSpreadsheets(response.data);
@@ -66,7 +67,7 @@ export const IntegrationSettingsModal = ({ isOpen, handleStart, handleClose }: I
     const updateGoogleSheetId = async () => {
         try {
             const response = await axios.post(
-                `http://localhost:8080/auth/gsheets/update`,
+                `${apiUrl}/auth/gsheets/update`,
                 { spreadsheetId: settings.spreadsheetId, spreadsheetName: settings.spreadsheetName, robotId: recordingId },
                 { withCredentials: true }
             );
@@ -79,7 +80,7 @@ export const IntegrationSettingsModal = ({ isOpen, handleStart, handleClose }: I
     const removeIntegration = async () => {
         try {
             await axios.post(
-                `http://localhost:8080/auth/gsheets/remove`,
+                `${apiUrl}/auth/gsheets/remove`,
                 { robotId: recordingId },
                 { withCredentials: true }
             );

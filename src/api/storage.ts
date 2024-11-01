@@ -3,10 +3,11 @@ import { WorkflowFile } from "maxun-core";
 import { RunSettings } from "../components/molecules/RunSettings";
 import { ScheduleSettings } from "../components/molecules/ScheduleSettings";
 import { CreateRunResponse, ScheduleRunResponse } from "../pages/MainPage";
+import { apiUrl } from "../apiConfig";
 
 export const getStoredRecordings = async (): Promise<string[] | null> => {
   try {
-    const response = await axios.get('http://localhost:8080/storage/recordings');
+    const response = await axios.get(`${apiUrl}/storage/recordings`);
     if (response.status === 200) {
       return response.data;
     } else {
@@ -20,7 +21,7 @@ export const getStoredRecordings = async (): Promise<string[] | null> => {
 
 export const getStoredRuns = async (): Promise<string[] | null> => {
   try {
-    const response = await axios.get('http://localhost:8080/storage/runs');
+    const response = await axios.get(`${apiUrl}/storage/runs`);
     if (response.status === 200) {
       return response.data;
     } else {
@@ -34,7 +35,7 @@ export const getStoredRuns = async (): Promise<string[] | null> => {
 
 export const getStoredRecording = async (id: string) => {
   try {
-    const response = await axios.get(`http://localhost:8080/storage/recordings/${id}`);
+    const response = await axios.get(`${apiUrl}/storage/recordings/${id}`);
     if (response.status === 200) {
       return response.data;
     } else {
@@ -48,7 +49,7 @@ export const getStoredRecording = async (id: string) => {
 
 export const deleteRecordingFromStorage = async (id: string): Promise<boolean> => {
   try {
-    const response = await axios.delete(`http://localhost:8080/storage/recordings/${id}`);
+    const response = await axios.delete(`${apiUrl}/storage/recordings/${id}`);
     if (response.status === 200) {
       return response.data;
     } else {
@@ -62,7 +63,7 @@ export const deleteRecordingFromStorage = async (id: string): Promise<boolean> =
 
 export const deleteRunFromStorage = async (id: string): Promise<boolean> => {
   try {
-    const response = await axios.delete(`http://localhost:8080/storage/runs/${id}`);
+    const response = await axios.delete(`${apiUrl}/storage/runs/${id}`);
     if (response.status === 200) {
       return response.data;
     } else {
@@ -76,7 +77,7 @@ export const deleteRunFromStorage = async (id: string): Promise<boolean> => {
 
 export const editRecordingFromStorage = async (browserId: string, id: string): Promise<WorkflowFile | null> => {
   try {
-    const response = await axios.put(`http://localhost:8080/workflow/${browserId}/${id}`);
+    const response = await axios.put(`${apiUrl}/workflow/${browserId}/${id}`);
     if (response.status === 200) {
       return response.data;
     } else {
@@ -91,7 +92,7 @@ export const editRecordingFromStorage = async (browserId: string, id: string): P
 export const createRunForStoredRecording = async (id: string, settings: RunSettings): Promise<CreateRunResponse> => {
   try {
     const response = await axios.put(
-      `http://localhost:8080/storage/runs/${id}`,
+      `${apiUrl}/storage/runs/${id}`,
       { ...settings });
     if (response.status === 200) {
       return response.data;
@@ -106,7 +107,7 @@ export const createRunForStoredRecording = async (id: string, settings: RunSetti
 
 export const interpretStoredRecording = async (id: string): Promise<boolean> => {
   try {
-    const response = await axios.post(`http://localhost:8080/storage/runs/run/${id}`);
+    const response = await axios.post(`${apiUrl}/storage/runs/run/${id}`);
     if (response.status === 200) {
       return response.data;
     } else {
@@ -120,7 +121,7 @@ export const interpretStoredRecording = async (id: string): Promise<boolean> => 
 
 export const notifyAboutAbort = async (id: string): Promise<boolean> => {
   try {
-    const response = await axios.post(`http://localhost:8080/storage/runs/abort/${id}`);
+    const response = await axios.post(`${apiUrl}/storage/runs/abort/${id}`);
     if (response.status === 200) {
       return response.data;
     } else {
@@ -135,7 +136,7 @@ export const notifyAboutAbort = async (id: string): Promise<boolean> => {
 export const scheduleStoredRecording = async (id: string, settings: ScheduleSettings): Promise<ScheduleRunResponse> => {
   try {
     const response = await axios.put(
-      `http://localhost:8080/storage/schedule/${id}`,
+      `${apiUrl}/storage/schedule/${id}`,
       { ...settings });
     if (response.status === 200) {
       return response.data;
@@ -150,7 +151,7 @@ export const scheduleStoredRecording = async (id: string, settings: ScheduleSett
 
 export const getSchedule = async (id: string) => {
   try {
-    const response = await axios.get(`http://localhost:8080/storage/schedule/${id}`);
+    const response = await axios.get(`${apiUrl}/storage/schedule/${id}`);
     if (response.status === 200) {
       return response.data.schedule;
     } else {
@@ -164,7 +165,7 @@ export const getSchedule = async (id: string) => {
 
 export const deleteSchedule = async (id: string): Promise<boolean> => {
   try {
-    const response = await axios.delete(`http://localhost:8080/storage/schedule/${id}`);
+    const response = await axios.delete(`${apiUrl}/storage/schedule/${id}`);
     if (response.status === 200) {
       return response.data;
     } else {
