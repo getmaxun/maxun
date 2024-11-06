@@ -96,7 +96,10 @@ minioadminDocumentation: https://docs.min.io
 - You will be welcomed with a login page, copy the RootUser and RootPass as mentioned above, here i.e `minioadmin`
 ![MinIO Login Page](./images/minio-1.png)
 - After entering dashboard, select "buckets" on left navbar, select "create bucket", and create a bucket named "maxundb"
+- After the creation of bucket, make sure to visit the bucket page and change the access policy to "Public"
 ![MinIO Select Bucket](./images/minio-2.png)
+![MinIO Select Bucket](./images/minio-7.png)
+
 - Once the bucket is created, Go to "identities" section from navbar and under "user" subsection click "create user" and create a user with name and password "minio-maxun" with below settings
 ![MinIO Create User](./images/minio-3.png)
 - After the user is created, go to the newly created user page, go into Service account section and click "Create Access key"
