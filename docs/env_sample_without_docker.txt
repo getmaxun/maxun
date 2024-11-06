@@ -1,0 +1,22 @@
+# App Setup
+NODE_ENV=development                     # Set to 'development' or 'production' as required
+JWT_SECRET=your_jwt_secret_key          # Replace with a secure JWT secret key
+DB_NAME=maxundb                           # Your PostgreSQL database name
+DB_USER=maxun                        # PostgreSQL username
+DB_PASSWORD=maxun                    # PostgreSQL password
+DB_HOST=localhost                        # Host for PostgreSQL in Docker
+DB_PORT=5432                            # Port for PostgreSQL (default: 5432)
+ENCRYPTION_KEY=your_encryption_key      # Key for encrypting sensitive data (passwords and proxies)
+MINIO_ENDPOINT=localhost                    # MinIO endpoint in Docker
+MINIO_PORT=9000                         # Port for MinIO (default: 9000)
+MINIO_ACCESS_KEY= <paste key here>       # MinIO access key
+MINIO_SECRET_KEY= <paste key here>       # MinIO secret key
+REDIS_HOST=localhost                        # Redis host in Docker
+REDIS_PORT=6379                         # Redis port (default: 6379)
+
+# Backend URLs
+BACKEND_URL=http://localhost:8080       # Internal URL for backend service
+VITE_BACKEND_URL=http://localhost:8080  # URL used by frontend to connect to backend
+
+# Telemetry Settings - Please keep it enabled. Keeping it enabled helps us understand how the product is used and assess the impact of any new changes. 
+MAXUN_TELEMETRY=true
