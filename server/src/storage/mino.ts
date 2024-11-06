@@ -9,7 +9,7 @@ const minioClient = new Client({
   secretKey: process.env.MINIO_SECRET_KEY || 'minio-secret-key',
 });
 
-minioClient.bucketExists('maxun-test')
+minioClient.bucketExists(process.env.MINIO_BUCKET || 'maxun-test')
   .then((exists) => {
     if (exists) {
       console.log('MinIO was connected successfully.');
@@ -19,7 +19,8 @@ minioClient.bucketExists('maxun-test')
   })
   .catch((err) => {
     console.error('Error connecting to MinIO:', err);
-  })
+  });
+
 
 async function createBucketWithPolicy(bucketName: string, policy?: 'public-read' | 'private') {
   try {
