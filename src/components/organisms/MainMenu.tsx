@@ -17,6 +17,10 @@ export const MainMenu = ({ value = 'recordings', handleChangeContent }: MainMenu
     handleChangeContent(newValue);
   };
 
+  // Define colors based on theme mode
+  const defaultcolor = theme.palette.mode === 'light' ? 'black' : 'white';
+  const selectedPink = '#FF00C3';
+
   return (
     <Paper
       sx={{
@@ -24,7 +28,7 @@ export const MainMenu = ({ value = 'recordings', handleChangeContent }: MainMenu
         width: '250px',
         backgroundColor: theme.palette.background.paper,
         paddingTop: '0.5rem',
-        color: theme.palette.text.primary,
+        color: defaultcolor,
       }}
       variant="outlined"
       square
@@ -33,34 +37,40 @@ export const MainMenu = ({ value = 'recordings', handleChangeContent }: MainMenu
         <Tabs
           value={value}
           onChange={handleChange}
-          textColor="primary"
-          indicatorColor="primary"
           orientation="vertical"
-          sx={{ alignItems: 'flex-start' }}
+          sx={{
+            alignItems: 'flex-start',
+            '& .MuiTab-root': {
+              color: defaultcolor, 
+              textTransform: 'none', // Non-capitalized text
+              fontSize: 'medium',
+              justifyContent: 'flex-start',
+              textAlign: 'left',
+              '&.Mui-selected': {
+                color: selectedPink, // Darker pink for selected tab
+              },
+            },
+          }}
         >
           <Tab
-            sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium', color: theme.palette.text.primary }}
             value="recordings"
             label="Robots"
             icon={<AutoAwesome />}
             iconPosition="start"
           />
           <Tab
-            sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium', color: theme.palette.text.primary }}
             value="runs"
             label="Runs"
             icon={<FormatListBulleted />}
             iconPosition="start"
           />
           <Tab
-            sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium', color: theme.palette.text.primary }}
             value="proxy"
             label="Proxy"
             icon={<Usb />}
             iconPosition="start"
           />
           <Tab
-            sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium', color: theme.palette.text.primary }}
             value="apikey"
             label="API Key"
             icon={<VpnKey />}
