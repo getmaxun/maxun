@@ -64,12 +64,13 @@ readdirSync(path.join(__dirname, 'api')).forEach((r) => {
 
 const isProduction = process.env.NODE_ENV === 'production';
 const workerPath = path.resolve(__dirname, isProduction ? './worker.js' : './worker.ts');
+const tsNodePath = path.resolve(__dirname, '../../node_modules/.bin/ts-node');
 
 let workerProcess: any;
 if (!isProduction) {
   workerProcess = fork(workerPath, [], {
     execArgv: ['--inspect=5859'],
-    execPath: 'ts-node'
+    execPath: tsNodePath
   });
   workerProcess.on('message', (message: any) => {
     console.log(`Message from worker: ${message}`);
