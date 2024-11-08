@@ -11,6 +11,7 @@ body {
   padding: 0;
   scrollbar-gutter: stable;
   overflow-y: auto;
+  
 }
 
 html {
@@ -42,6 +43,7 @@ code {
   align-items: center;
   overflow: hidden;
   position: relative;
+  
 }
 
 #browser-content {
@@ -54,6 +56,9 @@ code {
 }
 
 #browser {
+ 
+
+  
 }
 
 #browser-window {

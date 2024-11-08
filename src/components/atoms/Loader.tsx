@@ -20,10 +20,12 @@ export const Loader: React.FC<LoaderProps> = ({ text }) => {
 };
 
 const StyledParagraph = styled.p`
-  font-size: large;
+  font-size: medium;
+  font-weight: 700;
   font-family: inherit;
   color: #333;
   margin-top: 20px;
+  flex:wrap;
 `;
 
 const DotsContainer = styled.div`
