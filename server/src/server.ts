@@ -66,8 +66,7 @@ const workerPath = path.resolve(__dirname, isProduction ? './worker.js' : './wor
 let workerProcess: any;
 if (!isProduction) {
   workerProcess = fork(workerPath, [], {
-    execArgv: ['--inspect=5859'],
-    execPath: 'ts-node'
+    execArgv: ['-r', 'ts-node/register'],
   });
   workerProcess.on('message', (message: any) => {
     console.log(`Message from worker: ${message}`);
