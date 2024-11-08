@@ -19,6 +19,7 @@ interface NavBarProps {
 }
 
 export const NavBar: React.FC<NavBarProps> = ({ recordingName, isRecording }) => {
+  
   const { notify, browserId, setBrowserId } = useGlobalInfoStore();
   const { state, dispatch } = useContext(AuthContext);
   const { user } = state;
@@ -86,7 +87,7 @@ export const NavBar: React.FC<NavBarProps> = ({ recordingName, isRecording }) =>
                 borderRadius: '5px',
                 padding: '8px',
                 marginRight: '10px',
-                '&:hover': { backgroundColor: 'white', color: '#ff00c3' }
+                '&:hover': { backgroundColor: darkMode ? '#333':'#F5F5F5', color: '#ff00c3' }
               }}>
                 <AccountCircle sx={{ marginRight: '5px' }} />
                 <Typography variant="body1">{user.email}</Typography>
