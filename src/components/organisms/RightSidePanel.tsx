@@ -22,6 +22,7 @@ import { emptyWorkflow } from "../../shared/constants";
 import { getActiveWorkflow } from "../../api/workflow";
 import DeleteIcon from '@mui/icons-material/Delete';
 import ActionDescriptionBox from '../molecules/ActionDescriptionBox';
+import { useThemeMode } from '../../context/theme-provider';
 
 const fetchWorkflow = (id: string, callback: (response: WorkflowFile) => void) => {
   getActiveWorkflow(id).then(
@@ -386,9 +387,11 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
      // Disable the button if there are no valid list selectors or if there are unconfirmed list text fields
     return !hasValidListSelector || hasUnconfirmedListTextFields;
   }, [captureStage, browserSteps, hasUnconfirmedListTextFields]);
-
+  
+  const theme = useThemeMode();
+  const isDarkMode = theme.darkMode;
   return (
-    <Paper sx={{ height: '520px', width: 'auto', alignItems: "center", background: 'inherit' }} id="browser-actions" elevation={0}>
+    <Paper sx={{ height: '520px', width: 'auto', alignItems: "center", background: isDarkMode?'#1E2124': 'inherit',color: isDarkMode ? 'black' : 'inherit' }} id="browser-actions" elevation={0}>
       {/* <SimpleBox height={60} width='100%' background='lightGray' radius='0%'>
         <Typography sx={{ padding: '10px' }}>Last action: {` ${lastAction}`}</Typography>
       </SimpleBox> */}
