@@ -395,8 +395,8 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
       {/* <SimpleBox height={60} width='100%' background='lightGray' radius='0%'>
         <Typography sx={{ padding: '10px' }}>Last action: {` ${lastAction}`}</Typography>
       </SimpleBox> */}
-      <ActionDescriptionBox />
-      <Box display="flex" flexDirection="column" gap={2} style={{ margin: '13px' }}>
+      <ActionDescriptionBox  isDarkMode={isDarkMode} />
+      <Box display="flex" flexDirection="column" gap={2} style={{ margin: '13px',background: isDarkMode?'#1E2124': 'inherit',color: isDarkMode ? 'white' : 'inherit' }}>
         {!getText && !getScreenshot && !getList && showCaptureList && <Button variant="contained" onClick={startGetList}>Capture List</Button>}
         {getList && (
           <>
@@ -426,7 +426,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         )}
         {showLimitOptions && (
           <FormControl>
-            <FormLabel>
+            <FormLabel style={{ marginBottom: '10px', background: isDarkMode ? "#1E2124" : 'white', color: isDarkMode ? "white" : 'black' }}>
               <h4>What is the maximum number of rows you want to extract?</h4>
             </FormLabel>
             <RadioGroup
@@ -452,9 +452,11 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                     marginLeft: '10px',
                     '& input': {
                     padding: '10px',
-                    background: 'white',
+                    
                     },
-                    width: '150px', // Ensure the text field does not go outside the panel
+                    width: '150px',
+                    background: isDarkMode ? "#1E2124" : 'white',
+                    color: isDarkMode ? "white" : 'black', // Ensure the text field does not go outside the panel
                   }}
                   />
                 )}
@@ -503,6 +505,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                         </InputAdornment>
                       )
                     }}
+                    sx={{ background: isDarkMode ? "#1E2124" : 'white', color: isDarkMode ? "white" : 'black' }}
                   />
                   <TextField
                     label="Data"
@@ -517,6 +520,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                         </InputAdornment>
                       )
                     }}
+                    sx={{ background: isDarkMode ? "#1E2124" : 'white', color: isDarkMode ? "white" : 'black' }}
                   />
                   {!confirmedTextSteps[step.id] && (
                     <Box display="flex" justifyContent="space-between" gap={2}>
@@ -553,6 +557,8 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                           </InputAdornment>
                         )
                       }}
+
+                      style={{ background: isDarkMode ? "#1E2124" : 'white' }}
                     />
                     <TextField
                       label="Field Data"
@@ -567,6 +573,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                           </InputAdornment>
                         )
                       }}
+                      style={{ background: isDarkMode ? "#1E2124" : 'white' }}
                     />
                     {!confirmedListTextFields[step.id]?.[key] && (
                       <Box display="flex" justifyContent="space-between" gap={2}>
