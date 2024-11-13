@@ -250,51 +250,53 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
     ));
   }
 
-  /**
+ /**
  * Scrapes multiple lists of similar items based on a template item.
  * @param {Object} config - Configuration object
  * @param {string} config.listSelector - Selector for the list container(s)
  * @param {Object.<string, {selector: string, attribute?: string}>} config.fields - Fields to scrape
  * @param {number} [config.limit] - Maximum number of items to scrape per list (optional)
- * @param {boolean} [config.flexible=false] - Whether to use flexible matching for field selectors
+ * @param {boolean} [config.includeHidden=true] - Whether to include hidden elements in scraping
  * @returns {Array.<Array.<Object>>} Array of arrays of scraped items, one sub-array per list
  */
-  window.scrapeList = async function ({ listSelector, fields, limit = 10 }) {
-    const scrapedData = [];
+window.scrapeList = async function ({ listSelector, fields, limit = 10, includeHidden = true }) {
+  const scrapedData = [];
 
-    while (scrapedData.length < limit) {
+  while (scrapedData.length < limit) {
       // Get all parent elements matching the listSelector
       const parentElements = Array.from(document.querySelectorAll(listSelector));
 
       // Iterate through each parent element
       for (const parent of parentElements) {
-        if (scrapedData.length >= limit) break;
-        const record = {};
+          if (scrapedData.length >= limit) break;
+          const record = {};
 
-        // For each field, select the corresponding element within the parent
-        for (const [label, { selector, attribute }] of Object.entries(fields)) {
-          const fieldElement = parent.querySelector(selector);
+          // For each field, select the corresponding element within the parent
+          for (const [label, { selector, attribute }] of Object.entries(fields)) {
+              let fieldElement = parent.querySelector(selector);
 
-          if (fieldElement) {
-            if (attribute === 'innerText') {
-              record[label] = fieldElement.innerText.trim();
-            } else if (attribute === 'innerHTML') {
-              record[label] = fieldElement.innerHTML.trim();
-            } else if (attribute === 'src') {
-              record[label] = fieldElement.src;
-            } else if (attribute === 'href') {
-              record[label] = fieldElement.href;
-            } else {
-              record[label] = fieldElement.getAttribute(attribute);
-            }
+              // If includeHidden is false, only include visible elements
+              if (fieldElement && (!includeHidden && fieldElement.offsetParent === null)) continue;
+
+              if (fieldElement) {
+                  if (attribute === 'innerText') {
+                      record[label] = fieldElement.innerText.trim();
+                  } else if (attribute === 'innerHTML') {
+                      record[label] = fieldElement.innerHTML.trim();
+                  } else if (attribute === 'src') {
+                      record[label] = fieldElement.src;
+                  } else if (attribute === 'href') {
+                      record[label] = fieldElement.href;
+                  } else {
+                      record[label] = fieldElement.getAttribute(attribute);
+                  }
+              }
           }
-        }
-        scrapedData.push(record);
+          scrapedData.push(record);
       }
-    }
-    return scrapedData
-  };
-
+  }
+  return scrapedData;
+};
 
   /**
  * Gets all children of the elements matching the listSelector,
