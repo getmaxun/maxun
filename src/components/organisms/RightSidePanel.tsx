@@ -126,8 +126,6 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     setHoverStates(prev => ({ ...prev, [id]: false }));
   };
 
-  const handlePairDelete = () => { }
-
   const handleTextLabelChange = (id: number, label: string, listId?: number, fieldKey?: string) => {
     if (listId !== undefined && fieldKey !== undefined) {
       // Prevent editing if the field is confirmed
