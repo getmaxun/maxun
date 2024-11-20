@@ -217,6 +217,32 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     onFinishCapture();
   }, [stopGetText, getTextSettingsObject, socket, browserSteps, confirmedTextSteps]);
 
+  const getListAutoSettingsObject = useCallback(() => {
+    let settings: {
+      listSelector?: string;
+    } = {};
+
+    browserSteps.forEach(step => {
+      if (step.type === 'list' && step.listSelector && Object.keys(step.fields).length > 0) {
+        const fields: Record<string, { selector: string; tag?: string;[key: string]: any }> = {};
+
+        Object.entries(step.fields).forEach(([id, field]) => {
+          if (field.selectorObj?.selector) {
+            fields[field.label] = {
+              selector: field.selectorObj.selector,
+            };
+          }
+        });
+
+        settings = {
+          listSelector: step.listSelector,
+        };
+      }
+    });
+
+    return settings;
+  }, [browserSteps]);
+
   const getListSettingsObject = useCallback(() => {
     let settings: {
       listSelector?: string;
@@ -264,6 +290,11 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     resetListState();
   }, [stopGetList, resetListState]);
 
+  const handleStopGetListAuto = useCallback(() => {
+    stopGetListAuto();
+    resetListState();
+  }, [stopGetListAuto, resetListState]);
+
   const stopCaptureAndEmitGetListSettings = useCallback(() => {
     const settings = getListSettingsObject();
     if (settings) {
@@ -274,6 +305,17 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     handleStopGetList();
     onFinishCapture();
   }, [stopGetList, getListSettingsObject, socket, notify, handleStopGetList]);
+
+  const captureAndEmitGetListAutoSettings = useCallback(() => {
+    const settings = getListAutoSettingsObject();
+    if (settings) {
+      socket?.emit('action', { action: 'scrapeListAuto', settings });
+    } else {
+      notify('error', 'Unable to create list settings. Make sure you have defined a field for the list.');
+    }
+    handleStopGetListAuto();
+    onFinishCapture();
+  }, [getListAutoSettingsObject, socket, notify]);
 
   const hasUnconfirmedListTextFields = browserSteps.some(step => step.type === 'list' && Object.values(step.fields).some(field => !confirmedListTextFields[step.id]?.[field.id]));
 
