@@ -10,20 +10,12 @@ import TableRow from '@mui/material/TableRow';
 import { useEffect } from "react";
 import { WorkflowFile } from "maxun-core";
 import { IconButton, Button, Box, Typography, TextField } from "@mui/material";
-import { Schedule, DeleteForever, Edit, PlayCircle, Settings, Power } from "@mui/icons-material";
-import LinkIcon from '@mui/icons-material/Link';
+import { Schedule, DeleteForever, PlayCircle, Settings, Power, Add } from "@mui/icons-material";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { deleteRecordingFromStorage, getStoredRecordings } from "../../api/storage";
-import { Add } from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
 import { stopRecording } from "../../api/recording";
 import { GenericModal } from '../atoms/GenericModal';
-
-
-/** TODO:
- *  1. allow editing existing robot after persisting browser steps
- *  2. show robot settings: id, url, etc. 
-*/
 
 interface Column {
   id: 'interpret' | 'name' | 'delete' | 'schedule' | 'integrate' | 'settings';
@@ -36,17 +28,6 @@ interface Column {
 const columns: readonly Column[] = [
   { id: 'interpret', label: 'Run', minWidth: 80 },
   { id: 'name', label: 'Name', minWidth: 80 },
-  // {
-  //   id: 'createdAt',
-  //   label: 'Created at',
-  //   minWidth: 80,
-  //   //format: (value: string) => value.toLocaleString('en-US'),
-  // },
-  // {
-  //   id: 'edit',
-  //   label: 'Edit',
-  //   minWidth: 80,
-  // },
   {
     id: 'schedule',
     label: 'Schedule',
@@ -57,12 +38,6 @@ const columns: readonly Column[] = [
     label: 'Integrate',
     minWidth: 80,
   },
-  // {
-  //   id: 'updatedAt',
-  //   label: 'Updated at',
-  //   minWidth: 80,
-  //   //format: (value: string) => value.toLocaleString('en-US'),
-  // },
   {
     id: 'settings',
     label: 'Settings',
@@ -97,8 +72,7 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
   const [rows, setRows] = React.useState<Data[]>([]);
   const [isModalOpen, setModalOpen] = React.useState(false);
-
-  console.log('rows', rows);
+  const [searchQuery, setSearchQuery] = React.useState(''); // State for search query
 
   const { notify, setRecordings, browserId, setBrowserId, recordingUrl, setRecordingUrl, recordingName, setRecordingName, recordingId, setRecordingId } = useGlobalInfoStore();
   const navigate = useNavigate();
@@ -150,7 +124,6 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
   const startRecording = () => {
     setModalOpen(false);
     handleStartRecording();
-    // notify('info', 'New Recording started for ' + recordingUrl);
   };
 
   useEffect(() => {
@@ -159,15 +132,29 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
     }
   }, []);
 
+  // Filtered rows based on search query
+  const filteredRows = rows.filter((row) =>
+    row.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <React.Fragment>
-      <Box display="flex" justifyContent="space-between" alignItems="center">
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Typography variant="h6" gutterBottom>
           My Robots
         </Typography>
+        <TextField
+            label="Search Robots"
+            variant="outlined"
+            size="small"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            
+          />
+        
         <IconButton
           aria-label="new"
-          size={"small"}
+          size="small"
           onClick={handleNewRecording}
           sx={{
             width: '140px',
@@ -175,15 +162,13 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
             padding: '8px',
             background: '#ff00c3',
             color: 'white',
-            marginRight: '10px',
             fontFamily: '"Roboto","Helvetica","Arial",sans-serif',
             fontWeight: '500',
             fontSize: '0.875rem',
             lineHeight: '1.75',
             letterSpacing: '0.02857em',
             '&:hover': { color: 'white', backgroundColor: '#ff00c3' }
-          }
-          }
+          }}
         >
           <Add sx={{ marginRight: '5px' }} /> Create Robot
         </IconButton>
@@ -204,13 +189,12 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
             </TableRow>
           </TableHead>
           <TableBody>
-            {rows.length !== 0 ? rows
+            {filteredRows.length !== 0 ? filteredRows
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
               .map((row) => {
                 return (
                   <TableRow hover role="checkbox" tabIndex={-1} key={row.id}>
                     {columns.map((column) => {
-                      // @ts-ignore
                       const value: any = row[column.id];
                       if (value !== undefined) {
                         return (
@@ -226,16 +210,6 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
                                 <InterpretButton handleInterpret={() => handleRunRecording(row.id, row.name, row.params || [])} />
                               </TableCell>
                             );
-                          // case 'edit':
-                          //   return (
-                          //     <TableCell key={column.id} align={column.align}>
-                          //       <IconButton aria-label="add" size="small" onClick={() => {
-                          //         handleEditRecording(row.id, row.name);
-                          //       }} sx={{ '&:hover': { color: '#1976d2', backgroundColor: 'transparent' } }}>
-                          //         <Edit />
-                          //       </IconButton>
-                          //     </TableCell>
-                          //   );
                           case 'schedule':
                             return (
                               <TableCell key={column.id} align={column.align}>
@@ -251,7 +225,7 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
                           case 'delete':
                             return (
                               <TableCell key={column.id} align={column.align}>
-                                <IconButton aria-label="add" size="small" onClick={() => {
+                                <IconButton aria-label="delete" size="small" onClick={() => {
                                   deleteRecordingFromStorage(row.id).then((result: boolean) => {
                                     if (result) {
                                       setRows([]);
@@ -278,104 +252,86 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
                   </TableRow>
                 );
               })
-              : null}
+              : (
+                <TableRow>
+                  <TableCell colSpan={6} align="center">
+                    No robots found.
+                  </TableCell>
+                </TableRow>
+              )}
           </TableBody>
         </Table>
       </TableContainer>
       <TablePagination
-        rowsPerPageOptions={[10, 25, 50]}
+        rowsPerPageOptions={[10, 25, 100]}
         component="div"
-        count={rows ? rows.length : 0}
+        count={filteredRows.length}
         rowsPerPage={rowsPerPage}
         page={page}
         onPageChange={handleChangePage}
         onRowsPerPageChange={handleChangeRowsPerPage}
       />
-      <GenericModal isOpen={isModalOpen} onClose={() => setModalOpen(false)} modalStyle={modalStyle}>
-        <div style={{ padding: '20px' }}>
-          <Typography variant="h6" gutterBottom>Enter URL To Extract Data</Typography>
-          <TextField
-            label="URL"
-            variant="outlined"
-            fullWidth
-            value={recordingUrl}
-            onChange={(e: any) => setRecordingUrl(e.target.value)}
-            style={{ marginBottom: '20px', marginTop: '20px' }}
-          />
+      <GenericModal
+        isOpen={isModalOpen}
+        onClose={() => setModalOpen(false)}
+        onSave={startRecording}
+        title='New Recording'
+        saveLabel='Start'
+      >
+        <Box display='flex' justifyContent='center'>
           <Button
-            variant="contained"
-            color="primary"
             onClick={startRecording}
-            disabled={!recordingUrl}
+            sx={{
+              backgroundColor: '#ff00c3',
+              color: '#fff',
+              '&:hover': {
+                backgroundColor: '#ff00c3',
+                color: '#fff'
+              },
+              borderRadius: '5px',
+              padding: '10px 20px'
+            }}
           >
-            Start Training Robot
+            Start New Recording
           </Button>
-        </div>
+        </Box>
       </GenericModal>
     </React.Fragment>
   );
 }
 
-interface InterpretButtonProps {
-  handleInterpret: () => void;
-}
-
-const InterpretButton = ({ handleInterpret }: InterpretButtonProps) => {
+const InterpretButton = ({ handleInterpret }: { handleInterpret: () => void }) => {
   return (
-    <IconButton aria-label="add" size="small" onClick={() => {
-      handleInterpret();
-    }}
-    >
+    <IconButton aria-label="interpret" size="small" onClick={handleInterpret}>
       <PlayCircle />
     </IconButton>
-  )
-}
+  );
+};
 
-
-interface ScheduleButtonProps {
-  handleSchedule: () => void;
-}
-
-const ScheduleButton = ({ handleSchedule }: ScheduleButtonProps) => {
+const ScheduleButton = ({ handleSchedule }: { handleSchedule: () => void }) => {
   return (
-    <IconButton aria-label="add" size="small" onClick={() => {
-      handleSchedule();
-    }}
-    >
+    <IconButton aria-label="schedule" size="small" onClick={handleSchedule}>
       <Schedule />
     </IconButton>
-  )
-}
+  );
+};
 
-interface IntegrateButtonProps {
-  handleIntegrate: () => void;
-}
-
-const IntegrateButton = ({ handleIntegrate }: IntegrateButtonProps) => {
+const IntegrateButton = ({ handleIntegrate }: { handleIntegrate: () => void }) => {
   return (
-    <IconButton aria-label="add" size="small" onClick={() => {
-      handleIntegrate();
-    }}
-    >
+    <IconButton aria-label="integrate" size="small" onClick={handleIntegrate}>
       <Power />
     </IconButton>
-  )
-}
+  );
+};
 
-interface SettingsButtonProps {
-  handleSettings: () => void;
-}
-
-const SettingsButton = ({ handleSettings }: SettingsButtonProps) => {
+const SettingsButton = ({ handleSettings }: { handleSettings: () => void }) => {
   return (
-    <IconButton aria-label="add" size="small" onClick={() => {
-      handleSettings();
-    }}
-    >
+    <IconButton aria-label="settings" size="small" onClick={handleSettings}>
       <Settings />
     </IconButton>
-  )
-}
+  );
+};
+
 
 const modalStyle = {
   top: '50%',

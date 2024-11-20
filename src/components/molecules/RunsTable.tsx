@@ -12,7 +12,7 @@ import { useGlobalInfoStore } from "../../context/globalInfo";
 import { getStoredRuns } from "../../api/storage";
 import { RunSettings } from "./RunSettings";
 import { CollapsibleRow } from "./ColapsibleRow";
-import { Accordion, AccordionSummary, AccordionDetails, Typography } from '@mui/material';
+import { Accordion, AccordionSummary, AccordionDetails, Typography, TextField, Box } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 interface Column {
@@ -28,7 +28,6 @@ export const columns: readonly Column[] = [
   { id: 'name', label: 'Robot Name', minWidth: 80 },
   { id: 'startedAt', label: 'Started at', minWidth: 80 },
   { id: 'finishedAt', label: 'Finished at', minWidth: 80 },
-  // { id: 'task', label: 'Task', minWidth: 80 },
   { id: 'settings', label: 'Settings', minWidth: 80 },
   { id: 'delete', label: 'Delete', minWidth: 80 },
 ];
@@ -42,7 +41,6 @@ export interface Data {
   runByUserId?: string;
   runByScheduleId?: string;
   runByAPI?: boolean;
-  // task: string;
   log: string;
   runId: string;
   interpreterSettings: RunSettings;
@@ -62,8 +60,7 @@ export const RunsTable = (
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [rows, setRows] = useState<Data[]>([]);
-
-  console.log(`rows runs: ${JSON.stringify(rows)}`);
+  const [searchQuery, setSearchQuery] = useState<string>(''); // State for search query
 
   const { notify, rerenderRuns, setRerenderRuns } = useGlobalInfoStore();
 
@@ -74,6 +71,10 @@ export const RunsTable = (
   const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
     setRowsPerPage(+event.target.value);
     setPage(0);
+  };
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(event.target.value);
   };
 
   const fetchRuns = async () => {
@@ -88,7 +89,7 @@ export const RunsTable = (
       });
       setRows(parsedRows);
     } else {
-      notify('error', 'No runs found. Please try again.')
+      notify('error', 'No runs found. Please try again.');
     }
   };
 
@@ -105,8 +106,14 @@ export const RunsTable = (
     fetchRuns();
   };
 
-  // Group runs by recording name
-  const groupedRows = rows.reduce((acc, row) => {
+  // Filter runs based on the search query
+  const filteredRows = rows.filter((row) =>
+    row.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    row.status.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Group the filtered runs by robot name
+  const groupedRows = filteredRows.reduce((acc, row) => {
     if (!acc[row.name]) {
       acc[row.name] = [];
     }
@@ -116,9 +123,23 @@ export const RunsTable = (
 
   return (
     <React.Fragment>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>  
       <Typography variant="h6" gutterBottom>
         All Runs
       </Typography>
+      {/* Search Input Field */}
+      <TextField
+        label="Search by Robot Name or Status"
+        variant="outlined"
+        fullWidth
+        margin="normal"
+        value={searchQuery}
+        onChange={handleSearchChange}
+        style={{ maxWidth: '300px' }}
+        size='small'
+      />
+      </Box>
+      
       <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden' }}>
         {Object.entries(groupedRows).map(([name, group]) => (
           <Accordion key={name}>
@@ -142,17 +163,19 @@ export const RunsTable = (
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {group.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row) => (
-                    <CollapsibleRow
-                      row={row}
-                      handleDelete={handleDelete}
-                      key={`row-${row.id}`}
-                      isOpen={runId === row.runId && runningRecordingName === row.name}
-                      currentLog={currentInterpretationLog}
-                      abortRunHandler={abortRunHandler}
-                      runningRecordingName={runningRecordingName}
-                    />
-                  ))}
+                  {group
+                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                    .map((row) => (
+                      <CollapsibleRow
+                        row={row}
+                        handleDelete={handleDelete}
+                        key={`row-${row.id}`}
+                        isOpen={runId === row.runId && runningRecordingName === row.name}
+                        currentLog={currentInterpretationLog}
+                        abortRunHandler={abortRunHandler}
+                        runningRecordingName={runningRecordingName}
+                      />
+                    ))}
                 </TableBody>
               </Table>
             </AccordionDetails>
@@ -162,7 +185,7 @@ export const RunsTable = (
       <TablePagination
         rowsPerPageOptions={[10, 25, 50]}
         component="div"
-        count={rows.length}
+        count={filteredRows.length}
         rowsPerPage={rowsPerPage}
         page={page}
         onPageChange={handleChangePage}
