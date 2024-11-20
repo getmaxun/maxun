@@ -10,7 +10,8 @@ import {
   getChildSelectors,
   getNonUniqueSelectors,
   isRuleOvershadowing,
-  selectorAlreadyInWorkflow
+  selectorAlreadyInWorkflow,
+  extractChildData
 } from "../selector";
 import { CustomActions } from "../../../../src/shared/types";
 import { workflow } from "../../routes";
@@ -60,6 +61,8 @@ export class WorkflowGenerator {
    * Used to provide appropriate selectors for the getList action.
    */
   private getList: boolean = false;
+
+  private getListAuto: boolean = false;
 
   private listSelector: string = '';
 
@@ -115,6 +118,9 @@ export class WorkflowGenerator {
   private initializeSocketListeners() {
     this.socket.on('setGetList', (data: { getList: boolean }) => {
       this.getList = data.getList;
+    });
+    this.socket.on('setGetListAuto', (data: { getListAuto: boolean }) => {
+      this.getListAuto = data.getListAuto;
     });
     this.socket.on('listSelector', (data: { selector: string }) => {
       this.listSelector = data.selector;
@@ -524,7 +530,7 @@ export class WorkflowGenerator {
   private generateSelector = async (page: Page, coordinates: Coordinates, action: ActionType) => {
     const elementInfo = await getElementInformation(page, coordinates);
 
-    const selectorBasedOnCustomAction = (this.getList === true)
+    const selectorBasedOnCustomAction = (this.getList === true || this.getListAuto === true)
       ? await getNonUniqueSelectors(page, coordinates)
       : await getSelectors(page, coordinates);
 
@@ -562,7 +568,13 @@ export class WorkflowGenerator {
         } else {
           this.socket.emit('highlighter', { rect, selector: displaySelector, elementInfo });
         }
-      } else {
+      } else if ( this.getListAuto === true) {
+        //const childSelectors = await getChildSelectors(page, this.listSelector || '');
+        const childData = await extractChildData(page, this.listSelector || '');
+        console.log(`child data is: ${JSON.stringify(childData)}`)
+        this.socket.emit('highlighter', { rect, selector: displaySelector, elementInfo, childData });
+      }
+      else {
         this.socket.emit('highlighter', { rect, selector: displaySelector, elementInfo });
       }
     }
