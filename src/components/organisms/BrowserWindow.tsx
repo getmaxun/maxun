@@ -66,7 +66,7 @@ export const BrowserWindow = () => {
 
     const { socket } = useSocketStore();
     const { notify } = useGlobalInfoStore();
-    const { getText, getList, paginationMode, paginationType, limitMode } = useActionContext();
+    const { getText, getList, getListAuto, paginationMode, paginationType, limitMode } = useActionContext();
     const { addTextStep, addListStep } = useBrowserSteps();
 
     const onMouseMove = (e: MouseEvent) => {
@@ -115,7 +115,7 @@ export const BrowserWindow = () => {
     }, [screenShot, canvasRef, socket, screencastHandler]);
 
     const highlighterHandler = useCallback((data: { rect: DOMRect, selector: string, elementInfo: ElementInfo | null, childSelectors?: string[] }) => {
-        if (getList === true) {
+        if (getList === true || getListAuto === true) {
             if (listSelector) {
                 socket?.emit('listSelector', { selector: listSelector });
                 if (limitMode) {
@@ -142,7 +142,7 @@ export const BrowserWindow = () => {
             // for non-list steps
             setHighlighterData(data);
         }
-    }, [highlighterData, getList, socket, listSelector, paginationMode, paginationType]);
+    }, [highlighterData, getList, getListAuto, socket, listSelector, paginationMode, paginationType]);
 
 
     useEffect(() => {
@@ -196,7 +196,7 @@ export const BrowserWindow = () => {
                     }
                 }
 
-                if (paginationMode && getList) {
+                if (paginationMode && (getList || getListAuto)) {
                     // Only allow selection in pagination mode if type is not empty, 'scrollDown', or 'scrollUp'
                     if (paginationType !== '' && paginationType !== 'scrollDown' && paginationType !== 'scrollUp' && paginationType !== 'none') {
                         setPaginationSelector(highlighterData.selector);
@@ -206,12 +206,12 @@ export const BrowserWindow = () => {
                     return;
                 }
 
-                if (getList === true && !listSelector) {
+                if ((getList === true || getListAuto === true) && !listSelector) {
                     setListSelector(highlighterData.selector);
                     notify(`info`, `List selected succesfully. Select the text data for extraction.`)
                     setCurrentListId(Date.now());
                     setFields({});
-                } else if (getList === true && listSelector && currentListId) {
+                } else if ((getList === true || getListAuto === true) && listSelector && currentListId) {
                     const attribute = options[0].value;
                     const data = attribute === 'href' ? highlighterData.elementInfo?.url || '' :
                         attribute === 'src' ? highlighterData.elementInfo?.imageUrl || '' :
@@ -277,7 +277,7 @@ export const BrowserWindow = () => {
                         attribute: attribute
                     });
                 }
-                if (getList === true && listSelector && currentListId) {
+                if ((getList === true || getListAuto === true) && listSelector && currentListId) {
                     const newField: TextStep = {
                         id: Date.now(),
                         type: 'text',
@@ -321,7 +321,7 @@ export const BrowserWindow = () => {
     return (
         <div onClick={handleClick} style={{ width: '900px' }} id="browser-window">
             {
-                getText === true || getList === true ? (
+                getText === true || getList === true || getListAuto === true ? (
                     <GenericModal
                         isOpen={showAttributeModal}
                         onClose={() => { }}
@@ -361,7 +361,7 @@ export const BrowserWindow = () => {
                 ) : null
             }
             <div style={{ height: '400px', overflow: 'hidden' }}>
-                {((getText === true || getList === true) && !showAttributeModal && highlighterData?.rect != null && highlighterData?.rect.top != null) && canvasRef?.current ?
+                {((getText === true || getList === true || getListAuto === true) && !showAttributeModal && highlighterData?.rect != null && highlighterData?.rect.top != null) && canvasRef?.current ?
                     <Highlighter
                         unmodifiedRect={highlighterData?.rect}
                         displayedSelector={highlighterData?.selector}
