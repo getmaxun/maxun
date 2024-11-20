@@ -86,8 +86,20 @@ export const ActionProvider = ({ children }: { children: ReactNode }) => {
         setCaptureStage('complete');
     };
 
-    const startGetListAuto = () => setGetListAuto(true);
-    const stopGetListAuto = () => setGetListAuto(false);
+    const startGetListAuto = () => {
+        setGetListAuto(true);
+        socket?.emit('setGetList', { getList: true });
+        setCaptureStage('initial');
+    };
+    
+    const stopGetListAuto = () => {
+        setGetListAuto(false);
+        socket?.emit('setGetList', { getList: false });
+        setPaginationType('');
+        setLimitType('');
+        setCustomLimit('');
+        setCaptureStage('complete');
+    };
 
     const startGetScreenshot = () => setGetScreenshot(true);
     const stopGetScreenshot = () => setGetScreenshot(false);
