@@ -8,6 +8,7 @@ export type CaptureStage = 'initial' | 'pagination' | 'limit' | 'complete' | '';
 interface ActionContextProps {
     getText: boolean;
     getList: boolean;
+    getListAuto: boolean;
     getScreenshot: boolean;
     paginationMode: boolean;
     limitMode: boolean;
@@ -21,6 +22,8 @@ interface ActionContextProps {
     stopGetText: () => void;
     startGetList: () => void;
     stopGetList: () => void;
+    startGetListAuto: () => void;
+    stopGetListAuto: () => void;
     startGetScreenshot: () => void;
     stopGetScreenshot: () => void;
     stopPaginationMode: () => void;
@@ -36,6 +39,7 @@ const ActionContext = createContext<ActionContextProps | undefined>(undefined);
 export const ActionProvider = ({ children }: { children: ReactNode }) => {
     const [getText, setGetText] = useState<boolean>(false);
     const [getList, setGetList] = useState<boolean>(false);
+    const [getListAuto, setGetListAuto] = useState<boolean>(false);
     const [getScreenshot, setGetScreenshot] = useState<boolean>(false);
     const [paginationMode, setPaginationMode] = useState<boolean>(false);
     const [limitMode, setLimitMode] = useState<boolean>(false);
@@ -82,6 +86,9 @@ export const ActionProvider = ({ children }: { children: ReactNode }) => {
         setCaptureStage('complete');
     };
 
+    const startGetListAuto = () => setGetListAuto(true);
+    const stopGetListAuto = () => setGetListAuto(false);
+
     const startGetScreenshot = () => setGetScreenshot(true);
     const stopGetScreenshot = () => setGetScreenshot(false);
 
@@ -89,6 +96,7 @@ export const ActionProvider = ({ children }: { children: ReactNode }) => {
         <ActionContext.Provider value={{
             getText,
             getList,
+            getListAuto,
             getScreenshot,
             paginationMode,
             limitMode,
@@ -101,6 +109,8 @@ export const ActionProvider = ({ children }: { children: ReactNode }) => {
             stopGetText,
             startGetList,
             stopGetList,
+            startGetListAuto,
+            stopGetListAuto,
             startGetScreenshot,
             stopGetScreenshot,
             startPaginationMode,
