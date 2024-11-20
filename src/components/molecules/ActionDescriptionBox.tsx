@@ -44,10 +44,11 @@ const Content = styled.div`
 `;
 
 const ActionDescriptionBox = () => {
-  const { getText, getScreenshot, getList, captureStage } = useActionContext() as {
+  const { getText, getScreenshot, getList, captureStage, getListAuto } = useActionContext() as {
     getText: boolean;
     getScreenshot: boolean;
     getList: boolean;
+    getListAuto: boolean;
     captureStage: 'initial' | 'pagination' | 'limit' | 'complete';
   };
 
@@ -99,7 +100,32 @@ const ActionDescriptionBox = () => {
           </Box>
         </>
       );
-    } else {
+    } else if (getListAuto) {
+      return (
+        <>
+          <Typography variant="subtitle2" gutterBottom>Capture List</Typography>
+          <Typography variant="body2" gutterBottom>
+            Hover over the list you want to extract
+          </Typography>
+          <Box>
+            {messages.map(({ stage, text }, index) => (
+              <FormControlLabel
+                key={stage}
+                control={
+                  <Checkbox
+                    checked={index < currentStageIndex} // Check the box if we are past this stage
+                    disabled
+                  />
+                }
+                label={<Typography variant="body2" gutterBottom>{text}</Typography>}
+              />
+            ))}
+          </Box>
+        </>
+      );
+    }
+    
+    else {
       return (
         <>
           <Typography variant="subtitle2" gutterBottom>What data do you want to extract?</Typography>
