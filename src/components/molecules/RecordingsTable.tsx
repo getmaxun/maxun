@@ -272,30 +272,40 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
         onRowsPerPageChange={handleChangeRowsPerPage}
       />
       <GenericModal
-        isOpen={isModalOpen}
-        onClose={() => setModalOpen(false)}
-        onSave={startRecording}
-        title='New Recording'
-        saveLabel='Start'
-      >
-        <Box display='flex' justifyContent='center'>
-          <Button
-            onClick={startRecording}
-            sx={{
-              backgroundColor: '#ff00c3',
-              color: '#fff',
-              '&:hover': {
-                backgroundColor: '#ff00c3',
-                color: '#fff'
-              },
-              borderRadius: '5px',
-              padding: '10px 20px'
-            }}
-          >
-            Start New Recording
-          </Button>
-        </Box>
-      </GenericModal>
+  isOpen={isModalOpen} onClose={() => setModalOpen(false)} modalStyle={modalStyle}
+  
+>
+  <Box display="flex" flexDirection="column" alignItems="center">
+    {/* URL Input Field */}
+    <TextField
+      label="Enter Robot URL"
+      variant="outlined"
+      value={recordingUrl}
+      onChange={(e) => setRecordingUrl(e.target.value)}
+      fullWidth
+      sx={{ marginBottom: '20px' }}
+      autoFocus
+    />
+    
+    {/* Start Recording Button */}
+    <Button
+      onClick={startRecording}
+      sx={{
+        backgroundColor: '#ff00c3',
+        color: '#fff',
+        '&:hover': {
+          backgroundColor: '#ff00c3',
+          color: '#fff',
+        },
+        borderRadius: '5px',
+        padding: '10px 20px',
+      }}
+    >
+      Start New Recording
+    </Button>
+  </Box>
+</GenericModal>
+
     </React.Fragment>
   );
 }
