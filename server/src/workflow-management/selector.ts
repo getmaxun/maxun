@@ -790,6 +790,136 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
   }
 };
 
+export const extractChildData = async (
+  page: Page,
+  parentSelector: string
+): Promise<{ data: string; selector: string }[]> => {
+  try {
+    const baseURL = new URL(page.url());
+
+    const childData = await page.evaluate(({ parentSelector, baseHref }: { parentSelector: string, baseHref: string }) => {
+      interface ElementData {
+        data: string;
+        selector: string;
+      }
+
+      function getNonUniqueSelector(element: HTMLElement): string {
+        let selector = element.tagName.toLowerCase();
+
+        const className = typeof element.className === 'string' ? element.className : '';
+        if (className) {
+          const classes = className.split(/\s+/).filter(cls => cls);
+          if (classes.length > 0) {
+            selector += '.' + classes.map(cls => CSS.escape(cls)).join('.');
+          }
+        }
+
+        return selector;
+      }
+
+      function getSelectorPath(element: HTMLElement | null): string {
+        if (!element || !element.parentElement) return '';
+
+        const parentSelector = getNonUniqueSelector(element.parentElement);
+        const elementSelector = getNonUniqueSelector(element);
+
+        return `${parentSelector} > ${elementSelector}`;
+      }
+
+      function resolveURL(url: string | null): string | null {
+        if (!url) return null;
+        try {
+          return new URL(url, baseHref).href;
+        } catch {
+          return url;
+        }
+      }
+
+      function cleanText(text: string): string {
+        return text.replace(/\s+/g, ' ').trim();
+      }
+
+      function extractElementData(element: HTMLElement): ElementData[] {
+        const selector = getSelectorPath(element);
+        const results: ElementData[] = [];
+
+        // Clean text content (if present)
+        const textContent = cleanText(element.textContent || '');
+        if (textContent) {
+          results.push({ data: textContent, selector });
+        }
+
+        // Links (if <a>)
+        if (element.tagName.toLowerCase() === 'a') {
+          const href = resolveURL(element.getAttribute('href'));
+          if (href) {
+            results.push({ data: href, selector });
+          }
+        }
+
+        // Images (if <img>)
+        if (element.tagName.toLowerCase() === 'img') {
+          const src = resolveURL(element.getAttribute('src'));
+          if (src) {
+            results.push({ data: src, selector });
+          }
+          const alt = cleanText(element.getAttribute('alt') || '');
+          if (alt) {
+            results.push({ data: alt, selector });
+          }
+        }
+
+        // Additional attributes (e.g., title, data-*)
+        const title = cleanText(element.getAttribute('title') || '');
+        if (title) {
+          results.push({ data: title, selector });
+        }
+
+        const dataAttributes = Array.from(element.attributes)
+          .filter(attr => attr.name.startsWith('data-'))
+          .map(attr => ({
+            data: cleanText(attr.value),
+            selector
+          }));
+        results.push(...dataAttributes);
+
+        return results;
+      }
+
+      function getAllDescendantData(element: HTMLElement): ElementData[] {
+        let data: ElementData[] = [];
+        const children = Array.from(element.children) as HTMLElement[];
+
+        for (const child of children) {
+          data = data.concat(extractElementData(child));
+          data = data.concat(getAllDescendantData(child));
+        }
+
+        return data;
+      }
+
+      const parentElement = document.querySelector(parentSelector) as HTMLElement;
+      if (!parentElement) return [];
+
+      const allData = getAllDescendantData(parentElement);
+
+      // Deduplicate results based on data and selector
+      const uniqueData = Array.from(
+        new Map(allData.map(item => [`${item.data}-${item.selector}`, item])).values()
+      );
+
+      return uniqueData;
+    }, { parentSelector, baseHref: baseURL.href });
+
+    return childData || [];
+  } catch (error) {
+    console.error('Error in extractChildData:', error);
+    return [];
+  }
+};
+
+
+
 
 export const getChildSelectors = async (page: Page, parentSelector: string): Promise<string[]> => {
   try {
