@@ -54,6 +54,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const [showCaptureScreenshot, setShowCaptureScreenshot] = useState(true);
   const [showCaptureText, setShowCaptureText] = useState(true);
   const [hoverStates, setHoverStates] = useState<{ [id: string]: boolean }>({});
+  const [showCaptureListOptions, setShowCaptureListOptions] = useState(false);
 
   const { lastAction, notify, currentWorkflowActionsState, setCurrentWorkflowActionsState } = useGlobalInfoStore();
   const { getText, startGetText, stopGetText, getScreenshot, startGetScreenshot, stopGetScreenshot, getList, startGetList, stopGetList, startPaginationMode, stopPaginationMode, paginationType, updatePaginationType, limitType, customLimit, updateLimitType, updateCustomLimit, stopLimitMode, startLimitMode, captureStage, setCaptureStage } = useActionContext();
@@ -387,6 +388,22 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     return !hasValidListSelector || hasUnconfirmedListTextFields;
   }, [captureStage, browserSteps, hasUnconfirmedListTextFields]);
 
+  const handleCaptureListClick = () => {
+    setShowCaptureListOptions(true);
+    setShowCaptureText(false);
+    setShowCaptureScreenshot(false);
+  };
+
+  const handleManualCapture = () => {
+    startGetList(); 
+    setShowCaptureListOptions(false); 
+  };
+
+  const handleAutoCapture = () => {
+    console.log('Auto Capture clicked');
+    setShowCaptureListOptions(false); 
+  };
+
   return (
     <Paper sx={{ height: '520px', width: 'auto', alignItems: "center", background: 'inherit' }} id="browser-actions" elevation={0}>
       {/* <SimpleBox height={60} width='100%' background='lightGray' radius='0%'>
@@ -394,7 +411,29 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
       </SimpleBox> */}
       <ActionDescriptionBox />
       <Box display="flex" flexDirection="column" gap={2} style={{ margin: '13px' }}>
-        {!getText && !getScreenshot && !getList && showCaptureList && <Button variant="contained" onClick={startGetList}>Capture List</Button>}
+        {!getText && !getScreenshot && !getList && showCaptureList && !showCaptureListOptions && (
+          <Button variant="contained" onClick={handleCaptureListClick}>
+            Capture List
+          </Button>
+        )}
+        {/* Show Manual and Auto Capture options when "Capture List" is clicked */}
+        {!getText && !getScreenshot && !getList && showCaptureList && showCaptureListOptions && (
+          <Box display="flex" flexDirection="column" gap={2} >
+            <Button variant="contained" onClick={handleManualCapture} >
+              Manual Capture
+            </Button>
+            <Button variant="contained" onClick={handleAutoCapture}>
+              Auto Capture
+            </Button>
+            <Button variant="outlined" onClick={() => {
+              setShowCaptureListOptions(false);
+              setShowCaptureText(true);
+              setShowCaptureScreenshot(true);
+            }}>
+              Back
+            </Button>
+          </Box>
+        )}
         {getList && (
           <>
             <Box display="flex" justifyContent="space-between" gap={2} style={{ margin: '15px' }}>
@@ -459,7 +498,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
             </RadioGroup>
           </FormControl>
         )}
-        {!getText && !getScreenshot && !getList && showCaptureText && <Button variant="contained" onClick={startGetText}>Capture Text</Button>}
+        {!getText && !getScreenshot && !getList && showCaptureText && !showCaptureListOptions && <Button variant="contained" onClick={startGetText}>Capture Text</Button>}
         {getText &&
           <>
             <Box display="flex" justifyContent="space-between" gap={2} style={{ margin: '15px' }}>
@@ -468,7 +507,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
             </Box>
           </>
         }
-        {!getText && !getScreenshot && !getList && showCaptureScreenshot && <Button variant="contained" onClick={startGetScreenshot}>Capture Screenshot</Button>}
+        {!getText && !getScreenshot && !getList && showCaptureScreenshot && !showCaptureListOptions && <Button variant="contained" onClick={startGetScreenshot}>Capture Screenshot</Button>}
         {getScreenshot && (
           <Box display="flex" flexDirection="column" gap={2}>
             <Button variant="contained" onClick={() => captureScreenshot(true)}>Capture Fullpage</Button>
