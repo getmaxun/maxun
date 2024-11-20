@@ -342,7 +342,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     notify('error', 'Capture Text Discarded');
   }, [browserSteps, stopGetText, deleteBrowserStep]);
 
-  const discardGetList = useCallback(() => {
+  const discardGetListManual = useCallback(() => {
     stopGetList();
     browserSteps.forEach(step => {
       if (step.type === 'list') {
@@ -356,6 +356,21 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     setConfirmedListTextFields({});
     notify('error', 'Capture List Discarded');
   }, [browserSteps, stopGetList, deleteBrowserStep, resetListState]);
+
+  const discardGetListAuto = useCallback(() => {
+    stopGetListAuto();
+    browserSteps.forEach(step => {
+      if (step.type === 'list') {
+        deleteBrowserStep(step.id);
+      }
+    });
+    resetListState();
+    setShowPaginationOptions(false);
+    setShowLimitOptions(false);
+    setCaptureStage('initial');
+    setConfirmedListTextFields({});
+    notify('error', 'Capture List Discarded');
+  }, [browserSteps, stopGetListAuto, deleteBrowserStep, resetListState]);
 
 
   const captureScreenshot = (fullPage: boolean) => {
@@ -399,7 +414,6 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
 
   const handleAutoCapture = () => {
     startGetListAuto();
-    console.log('Auto Capture clicked');
     setShowCaptureListOptions(false); 
   };
 
@@ -410,13 +424,13 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
       </SimpleBox> */}
       <ActionDescriptionBox />
       <Box display="flex" flexDirection="column" gap={2} style={{ margin: '13px' }}>
-        {!getText && !getScreenshot && !getList && showCaptureList && !showCaptureListOptions && (
+        {!getText && !getScreenshot && !getList && !getListAuto && showCaptureList && !showCaptureListOptions && (
           <Button variant="contained" onClick={handleCaptureListClick}>
             Capture List
           </Button>
         )}
         {/* Show Manual and Auto Capture options when "Capture List" is clicked */}
-        {!getText && !getScreenshot && !getList && showCaptureList && showCaptureListOptions && (
+        {!getText && !getScreenshot && !getList && !getListAuto && showCaptureList && showCaptureListOptions && (
           <Box display="flex" flexDirection="column" gap={2} >
             <Button variant="contained" onClick={handleManualCapture} >
               Manual Capture
@@ -433,6 +447,22 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
             </Button>
           </Box>
         )}
+        {getListAuto && (
+          <>
+            <Box display="flex" justifyContent="space-between" gap={2} style={{ margin: '15px' }}>
+              <Button
+                variant="outlined"
+                onClick={handleConfirmListCapture}
+                disabled={captureStage === 'initial' ? isConfirmCaptureDisabled : hasUnconfirmedListTextFields}
+              >
+                {captureStage === 'initial' ? 'Confirm Capture' :
+                  captureStage === 'pagination' ? 'Confirm Pagination' :
+                    captureStage === 'limit' ? 'Confirm Limit' : 'Finish Capture'}
+              </Button>
+              <Button variant="outlined" color="error" onClick={discardGetListAuto}>Discard</Button>
+            </Box>
+          </>
+        )}
         {getList && (
           <>
             <Box display="flex" justifyContent="space-between" gap={2} style={{ margin: '15px' }}>
@@ -445,7 +475,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                   captureStage === 'pagination' ? 'Confirm Pagination' :
                     captureStage === 'limit' ? 'Confirm Limit' : 'Finish Capture'}
               </Button>
-              <Button variant="outlined" color="error" onClick={discardGetList}>Discard</Button>
+              <Button variant="outlined" color="error" onClick={discardGetListManual}>Discard</Button>
             </Box>
           </>
         )}
@@ -497,7 +527,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
             </RadioGroup>
           </FormControl>
         )}
-        {!getText && !getScreenshot && !getList && showCaptureText && !showCaptureListOptions && <Button variant="contained" onClick={startGetText}>Capture Text</Button>}
+        {!getText && !getScreenshot && !getList && !getListAuto && showCaptureText && !showCaptureListOptions && <Button variant="contained" onClick={startGetText}>Capture Text</Button>}
         {getText &&
           <>
             <Box display="flex" justifyContent="space-between" gap={2} style={{ margin: '15px' }}>
@@ -506,7 +536,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
             </Box>
           </>
         }
-        {!getText && !getScreenshot && !getList && showCaptureScreenshot && !showCaptureListOptions && <Button variant="contained" onClick={startGetScreenshot}>Capture Screenshot</Button>}
+        {!getText && !getScreenshot && !getList && !getListAuto && showCaptureScreenshot && !showCaptureListOptions && <Button variant="contained" onClick={startGetScreenshot}>Capture Screenshot</Button>}
         {getScreenshot && (
           <Box display="flex" flexDirection="column" gap={2}>
             <Button variant="contained" onClick={() => captureScreenshot(true)}>Capture Fullpage</Button>
