@@ -44,7 +44,7 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
         getTextRef.current = getText;
         getListRef.current = getList;
         getListAutoRef.current = getListAuto;
-    }, [getText, getList]);
+    }, [getText, getList, getListAuto]);
 
     const onMouseEvent = useCallback((event: MouseEvent) => {
         if (socket && canvasRef.current) {
