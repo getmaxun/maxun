@@ -25,6 +25,12 @@ interface AttributeOption {
     value: string;
 }
 
+interface ChildData {
+    data: string;
+    selector: string;
+    importance?: number; // Add other properties if needed
+}
+
 const getAttributeOptions = (tagName: string, elementInfo: ElementInfo | null): AttributeOption[] => {
     if (!elementInfo) return [];
     switch (tagName.toLowerCase()) {
@@ -54,7 +60,7 @@ const getAttributeOptions = (tagName: string, elementInfo: ElementInfo | null): 
 export const BrowserWindow = () => {
     const [canvasRef, setCanvasReference] = useState<React.RefObject<HTMLCanvasElement> | undefined>(undefined);
     const [screenShot, setScreenShot] = useState<string>("");
-    const [highlighterData, setHighlighterData] = useState<{ rect: DOMRect, selector: string, elementInfo: ElementInfo | null, childSelectors?: string[], childData?: string[] } | null>(null);
+    const [highlighterData, setHighlighterData] = useState<{ rect: DOMRect, selector: string, elementInfo: ElementInfo | null, childSelectors?: string[], childData?: ChildData[] } | null>(null);
     const [showAttributeModal, setShowAttributeModal] = useState(false);
     const [attributeOptions, setAttributeOptions] = useState<AttributeOption[]>([]);
     const [selectedElement, setSelectedElement] = useState<{ selector: string, info: ElementInfo | null } | null>(null);
@@ -114,7 +120,7 @@ export const BrowserWindow = () => {
         }
     }, [screenShot, canvasRef, socket, screencastHandler]);
 
-    const highlighterHandler = useCallback((data: { rect: DOMRect, selector: string, elementInfo: ElementInfo | null, childSelectors?: string[], childData?: string[]}) => {
+    const highlighterHandler = useCallback((data: { rect: DOMRect, selector: string, elementInfo: ElementInfo | null, childSelectors?: string[], childData?: ChildData[] }) => {
         if (getList === true || getListAuto === true) {
             if (listSelector) {
                 socket?.emit('listSelector', { selector: listSelector });
@@ -211,46 +217,82 @@ export const BrowserWindow = () => {
                     setCurrentListId(Date.now());
                     setFields({});
                 } else if ((getList === true || getListAuto === true) && listSelector && currentListId) {
-                    const attribute = options[0].value;
-                    const data = attribute === 'href' ? highlighterData.elementInfo?.url || '' :
-                        attribute === 'src' ? highlighterData.elementInfo?.imageUrl || '' :
-                            highlighterData.elementInfo?.innerText || '';
-                    // Add fields to the list
-                    if (options.length === 1) {
-                        const attribute = options[0].value;
-                        const newField: TextStep = {
-                            id: Date.now(),
-                            type: 'text',
-                            label: `Label ${Object.keys(fields).length + 1}`,
-                            data: data,
-                            selectorObj: {
-                                selector: highlighterData.selector,
-                                tag: highlighterData.elementInfo?.tagName,
-                                attribute
-                            }
-                        };
+                    if (getListAuto && highlighterData.childData) {
+                        // Automatically populate fields with childData
+                        const newFields: Record<number, TextStep> = {}; // To hold all the new fields
+                        highlighterData.childData.forEach(child => {
+                            const newField: TextStep = {
+                                id: Date.now() + Math.random(), // Unique ID for each field
+                                type: 'text',
+                                label: `Label ${Object.keys(fields).length + 1}`,
+                                data: child.data, // Populate with child data
+                                selectorObj: {
+                                    selector: child.selector, // Child selector
+                                    tag: '', // Empty tag
+                                    attribute: '' // Empty attribute
+                                }
+                            };
 
-                        setFields(prevFields => {
-                            const updatedFields = {
+                            console.log(`New field: ${newField}`)
+                
+                            // Add newField to the newFields object
+                            newFields[newField.id] = newField;
+                        });
+                
+                        // Update the fields state
+                        setFields(prevFields => ({
+                            ...prevFields,
+                            ...newFields
+                        }));
+
+                        console.log('Fields:', fields);
+                
+                        if (listSelector) {
+                            // Add the fields to the list step
+                            addListStep(listSelector, { ...fields, ...newFields }, currentListId, { type: '', selector: paginationSelector });
+                        }
+                    } else {
+                        const attribute = options[0].value;
+                        const data =
+                            attribute === 'href'
+                                ? highlighterData.elementInfo?.url || ''
+                                : attribute === 'src'
+                                ? highlighterData.elementInfo?.imageUrl || ''
+                                : highlighterData.elementInfo?.innerText || '';
+                        
+                        // Add single field to the list
+                        if (options.length === 1) {
+                            const newField: TextStep = {
+                                id: Date.now(),
+                                type: 'text',
+                                label: `Label ${Object.keys(fields).length + 1}`,
+                                data: data,
+                                selectorObj: {
+                                    selector: highlighterData.selector,
+                                    tag: highlighterData.elementInfo?.tagName,
+                                    attribute
+                                }
+                            };
+                
+                            setFields(prevFields => ({
                                 ...prevFields,
                                 [newField.id]: newField
-                            };
-                            return updatedFields;
-                        });
-
-                        if (listSelector) {
-                            addListStep(listSelector, { ...fields, [newField.id]: newField }, currentListId, { type: '', selector: paginationSelector });
+                            }));
+                
+                            if (listSelector) {
+                                addListStep(listSelector, { ...fields, [newField.id]: newField }, currentListId, { type: '', selector: paginationSelector });
+                            }
+                        } else {
+                            setAttributeOptions(options);
+                            setSelectedElement({
+                                selector: highlighterData.selector,
+                                info: highlighterData.elementInfo
+                            });
+                            setShowAttributeModal(true);
                         }
-
-                    } else {
-                        setAttributeOptions(options);
-                        setSelectedElement({
-                            selector: highlighterData.selector,
-                            info: highlighterData.elementInfo
-                        });
-                        setShowAttributeModal(true);
                     }
                 }
+                
             }
         }
     };
