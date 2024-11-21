@@ -48,6 +48,8 @@ export const ActionProvider = ({ children }: { children: ReactNode }) => {
     const [customLimit, setCustomLimit] = useState<string>('');
     const [captureStage, setCaptureStage] = useState<CaptureStage>('initial');
 
+    console.log(`get list auto value: ${getListAuto}`)
+
     const { socket } = useSocketStore();
 
     const updatePaginationType = (type: PaginationType) => setPaginationType(type);
@@ -89,12 +91,14 @@ export const ActionProvider = ({ children }: { children: ReactNode }) => {
     const startGetListAuto = () => {
         setGetListAuto(true);
         // socket?.emit('setGetListAuto', { getListAuto: true });
+        socket?.emit('setGetList', { getList: true });
         setCaptureStage('initial');
     };
     
     const stopGetListAuto = () => {
         setGetListAuto(false);
         // socket?.emit('setGetListAuto', { getListAuto: false });
+        socket?.emit('setGetList', { getList: true });
         setPaginationType('');
         setLimitType('');
         setCustomLimit('');
