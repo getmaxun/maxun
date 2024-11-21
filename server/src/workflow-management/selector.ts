@@ -807,21 +807,16 @@ export const extractChildData = async (
       // Utility function to get a unique selector
       function getNonUniqueSelector(element: HTMLElement): string {
         let selector = element.tagName.toLowerCase();
-        const id = element.id ? `#${element.id}` : '';
 
-        const className = element.classList instanceof DOMTokenList
-          ? Array.from(element.classList).join(' ')  // Join classes into a string if it's a DOMTokenList
-          : element.className;  // Else, use className directly (it should already be a string)
-        const classSelector = className ? `.${className.replace(/\s+/g, '.')}` : '';
-
-        selector += id + classSelector;
-
-        // Handle other attributes (e.g., name, type)
-        if (element.hasAttribute('name')) {
-          selector += `[name=${CSS.escape(element.getAttribute('name') || '')}]`;
-        }
-        if (element.hasAttribute('type')) {
-          selector += `[type=${CSS.escape(element.getAttribute('type') || '')}]`;
+        const className = typeof element.className === 'string' ? element.className : '';
+        if (className) {
+          const classes = className.split(/\s+/).filter((cls: string) => Boolean(cls));
+          if (classes.length > 0) {
+            const validClasses = classes.filter((cls: string) => !cls.startsWith('!') && !cls.includes(':'));
+            if (validClasses.length > 0) {
+              selector += '.' + validClasses.map(cls => CSS.escape(cls)).join('.');
+            }
+          }
         }
 
         return selector;
