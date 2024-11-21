@@ -216,42 +216,44 @@ export const BrowserWindow = () => {
                     notify(`info`, `List selected succesfully. Select the text data for extraction.`)
                     setCurrentListId(Date.now());
                     setFields({});
-                } else if ((getList === true || getListAuto === true) && listSelector && currentListId) {
-                    if (getListAuto && highlighterData.childData) {
-                        // Automatically populate fields with childData
-                        const newFields: Record<number, TextStep> = {}; // To hold all the new fields
-                        highlighterData.childData.forEach(child => {
-                            const newField: TextStep = {
-                                id: Date.now() + Math.random(), // Unique ID for each field
-                                type: 'text',
-                                label: `Label ${Object.keys(fields).length + 1}`,
-                                data: child.data, // Populate with child data
-                                selectorObj: {
-                                    selector: child.selector, // Child selector
-                                    tag: '', // Empty tag
-                                    attribute: '' // Empty attribute
-                                }
-                            };
+                } else if ((getList === true) && listSelector && currentListId) {
+                    // if (getListAuto && highlighterData.childData) {
+                    //     // Automatically populate fields with childData
+                    //     const newFields: Record<number, TextStep> = {}; // To hold all the new fields
+                    //     highlighterData.childData.forEach(child => {
+                    //         const newField: TextStep = {
+                    //             id: Date.now() + Math.random(), // Unique ID for each field
+                    //             type: 'text',
+                    //             label: `Label ${Object.keys(fields).length + 1}`,
+                    //             data: child.data, // Populate with child data
+                    //             selectorObj: {
+                    //                 selector: child.selector, // Child selector
+                    //                 tag: '', // Empty tag
+                    //                 attribute: '' // Empty attribute
+                    //             }
+                    //         };
 
-                            console.log(`New field: ${newField}`)
+                    //         console.log(`New field: ${newField}`)
                 
-                            // Add newField to the newFields object
-                            newFields[newField.id] = newField;
-                        });
+                    //         // Add newField to the newFields object
+                    //         newFields[newField.id] = newField;
+                    //     });
                 
-                        // Update the fields state
-                        setFields(prevFields => ({
-                            ...prevFields,
-                            ...newFields
-                        }));
+                    //     // Update the fields state
+                    //     setFields(prevFields => ({
+                    //         ...prevFields,
+                    //         ...newFields
+                    //     }));
 
-                        console.log('Fields:', fields);
+                    //     console.log('Fields:', fields);
                 
-                        if (listSelector) {
-                            // Add the fields to the list step
-                            addListStep(listSelector, { ...fields, ...newFields }, currentListId, { type: '', selector: paginationSelector });
-                        }
-                    } else {
+                    //     if (listSelector) {
+                    //         // Add the fields to the list step
+                    //         addListStep(listSelector, { ...fields, ...newFields }, currentListId, { type: '', selector: paginationSelector });
+                    //     }
+                    // } 
+                    
+                    // else {
                         const attribute = options[0].value;
                         const data =
                             attribute === 'href'
@@ -290,7 +292,7 @@ export const BrowserWindow = () => {
                             });
                             setShowAttributeModal(true);
                         }
-                    }
+                    // }
                 }
                 
             }
@@ -357,6 +359,34 @@ export const BrowserWindow = () => {
             resetPaginationSelector();
         }
     }, [paginationMode, resetPaginationSelector]);
+
+    useEffect(() => {
+        // Automatically populate fields when listSelector is set
+        if (listSelector && getListAuto && highlighterData?.childData && currentListId) {
+            const newFields: Record<number, TextStep> = {};
+            highlighterData.childData.forEach(child => {
+                const newField: TextStep = {
+                    id: Date.now(),
+                    type: 'text',
+                    label: `Label ${Object.keys(fields).length + 1}`,
+                    data: child.data,
+                    selectorObj: {
+                        selector: child.selector,
+                        tag: '',
+                        attribute: ''
+                    }
+                };
+
+                newFields[newField.id] = newField;
+            });
+
+            setFields(prevFields => ({ ...prevFields, ...newFields }));
+
+                if (listSelector) {
+                    addListStep(listSelector, { ...fields, ...newFields }, currentListId, { type: '', selector: paginationSelector });
+                }
+        }
+    }, [listSelector, highlighterData?.childData, getListAuto]);
 
   
     return (
