@@ -43,6 +43,7 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
     useEffect(() => {
         getTextRef.current = getText;
         getListRef.current = getList;
+        getListAutoRef.current = getListAuto;
     }, [getText, getList]);
 
     const onMouseEvent = useCallback((event: MouseEvent) => {
