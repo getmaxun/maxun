@@ -88,13 +88,13 @@ export const ActionProvider = ({ children }: { children: ReactNode }) => {
 
     const startGetListAuto = () => {
         setGetListAuto(true);
-        socket?.emit('setGetListAuto', { getListAuto: true });
+        // socket?.emit('setGetListAuto', { getListAuto: true });
         setCaptureStage('initial');
     };
     
     const stopGetListAuto = () => {
         setGetListAuto(false);
-        socket?.emit('setGetListAuto', { getListAuto: false });
+        // socket?.emit('setGetListAuto', { getListAuto: false });
         setPaginationType('');
         setLimitType('');
         setCustomLimit('');
