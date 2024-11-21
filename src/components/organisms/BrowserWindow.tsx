@@ -320,7 +320,7 @@ export const BrowserWindow = () => {
     return (
         <div onClick={handleClick} style={{ width: '900px' }} id="browser-window">
             {
-                getText === true || getList === true || getListAuto === true ? (
+                getText === true || getList === true ? (
                     <GenericModal
                         isOpen={showAttributeModal}
                         onClose={() => { }}
