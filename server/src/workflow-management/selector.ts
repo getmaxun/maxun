@@ -833,16 +833,12 @@ export const extractChildData = async (
       function determineImportance(element: HTMLElement): number {
         let importance = 0;
 
-        // Increase importance based on tag type (e.g., headers, main content)
-        if (['h1', 'h2', 'h3'].includes(element.tagName.toLowerCase())) {
-          importance += 3;  // High relevance for headings
-        } else if (element.tagName.toLowerCase() === 'p') {
-          importance += 2;  // Moderate relevance for paragraphs
-        } else if (element.tagName.toLowerCase() === 'a') {
-          importance += 1;  // Low relevance for links (if it's a primary link)
+        // Assign importance based on tag type
+        if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(element.tagName.toLowerCase())) {
+          importance = 2;  // Importance 2 for all headings
+        } else if (['p', 'span', 'a'].includes(element.tagName.toLowerCase())) {
+          importance = 1;  // Importance 1 for p, span, a
         }
-
-        // Further logic can be added to assign importance based on class or other attributes
 
         return importance;
       }
@@ -866,32 +862,35 @@ export const extractChildData = async (
         const importance = determineImportance(element);
         const results: ElementData[] = [];
 
-        const textContent = cleanText(element.textContent || '');
-        if (textContent) {
-          results.push({ data: textContent, selector, importance });
-        }
-
-        if (element.tagName.toLowerCase() === 'a') {
-          const href = resolveURL(element.getAttribute('href'));
-          if (href) {
-            results.push({ data: href, selector, importance: importance + 1 });
+        // Only process elements with importance >= 1
+        if (importance >= 1) {
+          const textContent = cleanText(element.textContent || '');
+          if (textContent) {
+            results.push({ data: textContent, selector, importance });
           }
-        }
 
-        if (element.tagName.toLowerCase() === 'img') {
-          const src = resolveURL(element.getAttribute('src'));
-          if (src) {
-            results.push({ data: src, selector, importance });
+          if (element.tagName.toLowerCase() === 'a') {
+            const href = resolveURL(element.getAttribute('href'));
+            if (href) {
+              results.push({ data: href, selector, importance: importance + 1 });
+            }
           }
-          const alt = cleanText(element.getAttribute('alt') || '');
-          if (alt) {
-            results.push({ data: alt, selector, importance });
-          }
-        }
 
-        const title = cleanText(element.getAttribute('title') || '');
-        if (title) {
-          results.push({ data: title, selector, importance });
+          if (element.tagName.toLowerCase() === 'img') {
+            const src = resolveURL(element.getAttribute('src'));
+            if (src) {
+              results.push({ data: src, selector, importance });
+            }
+            const alt = cleanText(element.getAttribute('alt') || '');
+            if (alt) {
+              results.push({ data: alt, selector, importance });
+            }
+          }
+
+          const title = cleanText(element.getAttribute('title') || '');
+          if (title) {
+            results.push({ data: title, selector, importance });
+          }
         }
 
         return results;
@@ -929,6 +928,7 @@ export const extractChildData = async (
     return [];
   }
 };
+
 
 
 
