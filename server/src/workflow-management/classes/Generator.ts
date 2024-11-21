@@ -569,11 +569,14 @@ export class WorkflowGenerator {
           this.socket.emit('highlighter', { rect, selector: displaySelector, elementInfo });
         }
       } else if ( this.getListAuto === true) {
-        console.log(`LisT Selector:`,this.listSelector)
-        //const childSelectors = await getChildSelectors(page, this.listSelector || '');
+        if (this.listSelector !== '') {
+          console.log(`list selector is: ${this.listSelector}`)
         const childData = await extractChildData(page, this.listSelector);
         console.log(`child data is: ${JSON.stringify(childData)}`)
         this.socket.emit('highlighter', { rect, selector: displaySelector, elementInfo, childData });
+        } else {
+          this.socket.emit('highlighter', { rect, selector: displaySelector, elementInfo });
+        }
       }
       else {
         this.socket.emit('highlighter', { rect, selector: displaySelector, elementInfo });
