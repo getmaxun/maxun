@@ -58,7 +58,6 @@ interface RobotSettingsProps {
 }
 
 export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettings }: RobotSettingsProps) => {
-    console.log("robot edit");
     const [robot, setRobot] = useState<RobotSettings | null>(null);
     const { recordingId, notify } = useGlobalInfoStore();
 
