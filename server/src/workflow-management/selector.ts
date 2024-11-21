@@ -804,7 +804,6 @@ export const extractChildData = async (
         importance: number;
       }
 
-      // Utility function to get a unique selector
       function getNonUniqueSelector(element: HTMLElement): string {
         let selector = element.tagName.toLowerCase();
 
@@ -828,14 +827,13 @@ export const extractChildData = async (
         return selector.split(/[#.:\[\]]/).length;
       }
 
-      // Assign importance
       function determineImportance(element: HTMLElement): number {
         if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(element.tagName.toLowerCase())) {
-          return 2; // Importance for headings
+          return 2;
         } else if (['p', 'span', 'a', 'img'].includes(element.tagName.toLowerCase())) {
-          return 1; // Importance for p, span, a
+          return 1;
         }
-        return 0; // Importance for all others
+        return 0; // Importance for all other tags
       }
 
       function cleanText(text: string): string {
@@ -847,7 +845,6 @@ export const extractChildData = async (
         const importance = determineImportance(element);
         const results: ElementData[] = [];
       
-        // Utility to resolve URLs
         function resolveURL(url: string | null): string | null {
           if (!url) return null;
           try {
@@ -889,8 +886,6 @@ export const extractChildData = async (
       
         return results;
       }
-      
-      
 
       function getAllDescendantData(element: HTMLElement): ElementData[] {
         let data: ElementData[] = [];
@@ -937,9 +932,6 @@ export const extractChildData = async (
     return [];
   }
 };
-
-
-
 
 export const getChildSelectors = async (page: Page, parentSelector: string): Promise<string[]> => {
   try {

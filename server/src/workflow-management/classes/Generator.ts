@@ -569,7 +569,7 @@ export class WorkflowGenerator {
           this.socket.emit('highlighter', { rect, selector: displaySelector, elementInfo });
         }
       } else if ( this.getListAuto === true) {
-        console.log(this.listSelector)
+        console.log(`LisT Selector:`,this.listSelector)
         //const childSelectors = await getChildSelectors(page, this.listSelector || '');
         const childData = await extractChildData(page, this.listSelector);
         console.log(`child data is: ${JSON.stringify(childData)}`)
