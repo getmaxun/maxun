@@ -91,10 +91,10 @@ export const BrowserWindow = () => {
     }, []);
 
     useEffect(() => {
-        if (!getList) {
+        if (!getList || !getListAuto) {
             resetListState();
         }
-    }, [getList, resetListState]);
+    }, [getList, getListAuto, resetListState]);
 
     const screencastHandler = useCallback((data: string) => {
         setScreenShot(data);
@@ -114,7 +114,7 @@ export const BrowserWindow = () => {
         }
     }, [screenShot, canvasRef, socket, screencastHandler]);
 
-    const highlighterHandler = useCallback((data: { rect: DOMRect, selector: string, elementInfo: ElementInfo | null, childSelectors?: string[], childData?: string[] }) => {
+    const highlighterHandler = useCallback((data: { rect: DOMRect, selector: string, elementInfo: ElementInfo | null, childSelectors?: string[], childData?: string[]}) => {
         if (getList === true || getListAuto === true) {
             if (listSelector) {
                 socket?.emit('listSelector', { selector: listSelector });
@@ -143,7 +143,6 @@ export const BrowserWindow = () => {
             setHighlighterData(data);
         }
     }, [highlighterData, getList, getListAuto, socket, listSelector, paginationMode, paginationType]);
-
 
     useEffect(() => {
         document.addEventListener('mousemove', onMouseMove, false);
