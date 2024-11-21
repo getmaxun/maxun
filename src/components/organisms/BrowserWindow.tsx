@@ -276,7 +276,7 @@ export const BrowserWindow = () => {
                         attribute: attribute
                     });
                 }
-                if ((getList === true || getListAuto === true) && listSelector && currentListId) {
+                if ((getList === true) && listSelector && currentListId) {
                     const newField: TextStep = {
                         id: Date.now(),
                         type: 'text',
