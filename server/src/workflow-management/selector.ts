@@ -797,33 +797,54 @@ export const extractChildData = async (
   try {
     const baseURL = new URL(page.url());
 
-    const childData = await page.evaluate(({ parentSelector, baseHref }: { parentSelector: string, baseHref: string }) => {
+    const relevantData = await page.evaluate(({ parentSelector, baseHref }: { parentSelector: string, baseHref: string }) => {
       interface ElementData {
         data: string;
         selector: string;
+        importance: number;  // To assign relevance to the data
       }
 
+      // Utility function to get a more unique selector
       function getNonUniqueSelector(element: HTMLElement): string {
         let selector = element.tagName.toLowerCase();
-
-        const className = typeof element.className === 'string' ? element.className : '';
-        if (className) {
-          const classes = className.split(/\s+/).filter(cls => cls);
-          if (classes.length > 0) {
-            selector += '.' + classes.map(cls => CSS.escape(cls)).join('.');
-          }
+        const id = element.id ? `#${element.id}` : '';
+      
+        // Ensure className is always a string before using replace
+        const className = element.classList instanceof DOMTokenList
+          ? Array.from(element.classList).join(' ')  // Join classes into a string if it's a DOMTokenList
+          : element.className;  // Else, use className directly (it should already be a string)
+        const classSelector = className ? `.${className.replace(/\s+/g, '.')}` : '';
+      
+        selector += id + classSelector;
+      
+        // Handle other attributes (e.g., name, type)
+        if (element.hasAttribute('name')) {
+          selector += `[name=${CSS.escape(element.getAttribute('name') || '')}]`;
         }
-
+        if (element.hasAttribute('type')) {
+          selector += `[type=${CSS.escape(element.getAttribute('type') || '')}]`;
+        }
+      
         return selector;
       }
+      
 
-      function getSelectorPath(element: HTMLElement | null): string {
-        if (!element || !element.parentElement) return '';
+      // Function to prioritize elements based on relevance
+      function determineImportance(element: HTMLElement): number {
+        let importance = 0;
 
-        const parentSelector = getNonUniqueSelector(element.parentElement);
-        const elementSelector = getNonUniqueSelector(element);
+        // Increase importance based on tag type (e.g., headers, main content)
+        if (['h1', 'h2', 'h3'].includes(element.tagName.toLowerCase())) {
+          importance += 3;  // High relevance for headings
+        } else if (element.tagName.toLowerCase() === 'p') {
+          importance += 2;  // Moderate relevance for paragraphs
+        } else if (element.tagName.toLowerCase() === 'a') {
+          importance += 1;  // Low relevance for links (if it's a primary link)
+        }
 
-        return `${parentSelector} > ${elementSelector}`;
+        // Further logic can be added to assign importance based on class or other attributes
+
+        return importance;
       }
 
       function resolveURL(url: string | null): string | null {
@@ -839,53 +860,44 @@ export const extractChildData = async (
         return text.replace(/\s+/g, ' ').trim();
       }
 
+      // Extract relevant data from elements
       function extractElementData(element: HTMLElement): ElementData[] {
-        const selector = getSelectorPath(element);
+        const selector = getNonUniqueSelector(element);
+        const importance = determineImportance(element);
         const results: ElementData[] = [];
 
-        // Clean text content (if present)
         const textContent = cleanText(element.textContent || '');
         if (textContent) {
-          results.push({ data: textContent, selector });
+          results.push({ data: textContent, selector, importance });
         }
 
-        // Links (if <a>)
         if (element.tagName.toLowerCase() === 'a') {
           const href = resolveURL(element.getAttribute('href'));
           if (href) {
-            results.push({ data: href, selector });
+            results.push({ data: href, selector, importance: importance + 1 });
           }
         }
 
-        // Images (if <img>)
         if (element.tagName.toLowerCase() === 'img') {
           const src = resolveURL(element.getAttribute('src'));
           if (src) {
-            results.push({ data: src, selector });
+            results.push({ data: src, selector, importance });
           }
           const alt = cleanText(element.getAttribute('alt') || '');
           if (alt) {
-            results.push({ data: alt, selector });
+            results.push({ data: alt, selector, importance });
           }
         }
 
-        // Additional attributes (e.g., title, data-*)
         const title = cleanText(element.getAttribute('title') || '');
         if (title) {
-          results.push({ data: title, selector });
+          results.push({ data: title, selector, importance });
         }
-
-        const dataAttributes = Array.from(element.attributes)
-          .filter(attr => attr.name.startsWith('data-'))
-          .map(attr => ({
-            data: cleanText(attr.value),
-            selector
-          }));
-        results.push(...dataAttributes);
 
         return results;
       }
 
+      // Collect descendant elements data with their importance
       function getAllDescendantData(element: HTMLElement): ElementData[] {
         let data: ElementData[] = [];
         const children = Array.from(element.children) as HTMLElement[];
@@ -903,21 +915,20 @@ export const extractChildData = async (
 
       const allData = getAllDescendantData(parentElement);
 
-      // Deduplicate results based on data and selector
+      // Deduplicate and prioritize the most important data
       const uniqueData = Array.from(
         new Map(allData.map(item => [`${item.data}-${item.selector}`, item])).values()
-      );
+      ).sort((a, b) => b.importance - a.importance);  // Sort by importance
 
       return uniqueData;
     }, { parentSelector, baseHref: baseURL.href });
 
-    return childData || [];
+    return relevantData || [];
   } catch (error) {
-    console.error('Error in extractChildData:', error);
+    console.error('Error in extractRelevantData:', error);
     return [];
   }
 };
-
 
 
 
