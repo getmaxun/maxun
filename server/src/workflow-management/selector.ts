@@ -797,26 +797,25 @@ export const extractChildData = async (
   try {
     const baseURL = new URL(page.url());
 
-    const relevantData = await page.evaluate(({ parentSelector, baseHref }: { parentSelector: string, baseHref: string }) => {
+    const uniqueData = await page.evaluate(({ parentSelector, baseHref }: { parentSelector: string, baseHref: string }) => {
       interface ElementData {
         data: string;
         selector: string;
-        importance: number;  // To assign relevance to the data
+        importance: number;
       }
 
-      // Utility function to get a more unique selector
+      // Utility function to get a unique selector
       function getNonUniqueSelector(element: HTMLElement): string {
         let selector = element.tagName.toLowerCase();
         const id = element.id ? `#${element.id}` : '';
-      
-        // Ensure className is always a string before using replace
+
         const className = element.classList instanceof DOMTokenList
           ? Array.from(element.classList).join(' ')  // Join classes into a string if it's a DOMTokenList
           : element.className;  // Else, use className directly (it should already be a string)
         const classSelector = className ? `.${className.replace(/\s+/g, '.')}` : '';
-      
+
         selector += id + classSelector;
-      
+
         // Handle other attributes (e.g., name, type)
         if (element.hasAttribute('name')) {
           selector += `[name=${CSS.escape(element.getAttribute('name') || '')}]`;
@@ -824,85 +823,86 @@ export const extractChildData = async (
         if (element.hasAttribute('type')) {
           selector += `[type=${CSS.escape(element.getAttribute('type') || '')}]`;
         }
-      
+
         return selector;
       }
-      
 
-      // Function to prioritize elements based on relevance
-      function determineImportance(element: HTMLElement): number {
-        let importance = 0;
-
-        // Assign importance based on tag type
-        if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(element.tagName.toLowerCase())) {
-          importance = 2;  // Importance 2 for all headings
-        } else if (['p', 'span', 'a'].includes(element.tagName.toLowerCase())) {
-          importance = 1;  // Importance 1 for p, span, a
-        }
-
-        return importance;
+      // Function to determine robustness of a selector
+      function selectorRobustness(selector: string): number {
+        // A simple metric: robustness is based on the number of parts in the selector
+        return selector.split(/[#.:\[\]]/).length;
       }
 
-      function resolveURL(url: string | null): string | null {
-        if (!url) return null;
-        try {
-          return new URL(url, baseHref).href;
-        } catch {
-          return url;
+      // Assign importance
+      function determineImportance(element: HTMLElement): number {
+        if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(element.tagName.toLowerCase())) {
+          return 2; // Importance for headings
+        } else if (['p', 'span', 'a', 'img'].includes(element.tagName.toLowerCase())) {
+          return 1; // Importance for p, span, a
         }
+        return 0; // Importance for all others
       }
 
       function cleanText(text: string): string {
         return text.replace(/\s+/g, ' ').trim();
       }
 
-      // Extract relevant data from elements
-      function extractElementData(element: HTMLElement): ElementData[] {
+      function extractElementData(element: HTMLElement, baseHref: string): ElementData[] {
         const selector = getNonUniqueSelector(element);
         const importance = determineImportance(element);
         const results: ElementData[] = [];
-
-        // Only process elements with importance >= 1
+      
+        // Utility to resolve URLs
+        function resolveURL(url: string | null): string | null {
+          if (!url) return null;
+          try {
+            return new URL(url, baseHref).href;
+          } catch {
+            return url;
+          }
+        }
+      
+        // Include text content if importance is sufficient
         if (importance >= 1) {
           const textContent = cleanText(element.textContent || '');
           if (textContent) {
             results.push({ data: textContent, selector, importance });
           }
-
-          if (element.tagName.toLowerCase() === 'a') {
-            const href = resolveURL(element.getAttribute('href'));
-            if (href) {
-              results.push({ data: href, selector, importance: importance + 1 });
+        }
+      
+        // Handle links (a tags)
+        if (element.tagName.toLowerCase() === 'a') {
+          const href = element.getAttribute('href');
+          if (href) {
+            const resolvedHref = resolveURL(href);
+            if (resolvedHref) {
+              results.push({ data: resolvedHref, selector, importance });
             }
-          }
-
-          if (element.tagName.toLowerCase() === 'img') {
-            const src = resolveURL(element.getAttribute('src'));
-            if (src) {
-              results.push({ data: src, selector, importance });
-            }
-            const alt = cleanText(element.getAttribute('alt') || '');
-            if (alt) {
-              results.push({ data: alt, selector, importance });
-            }
-          }
-
-          const title = cleanText(element.getAttribute('title') || '');
-          if (title) {
-            results.push({ data: title, selector, importance });
           }
         }
-
+      
+        // Handle images (img tags)
+        if (element.tagName.toLowerCase() === 'img') {
+          const src = element.getAttribute('src');
+          if (src) {
+            const resolvedSrc = resolveURL(src);
+            if (resolvedSrc) {
+              results.push({ data: resolvedSrc, selector, importance });
+            }
+          }
+        }
+      
         return results;
       }
+      
+      
 
-      // Collect descendant elements data with their importance
       function getAllDescendantData(element: HTMLElement): ElementData[] {
         let data: ElementData[] = [];
         const children = Array.from(element.children) as HTMLElement[];
 
         for (const child of children) {
-          data = data.concat(extractElementData(child));
+          data = data.concat(extractElementData(child, baseHref));
           data = data.concat(getAllDescendantData(child));
         }
 
@@ -914,15 +914,29 @@ export const extractChildData = async (
 
       const allData = getAllDescendantData(parentElement);
 
-      // Deduplicate and prioritize the most important data
+      // Deduplicate and prioritize by importance and robustness
       const uniqueData = Array.from(
-        new Map(allData.map(item => [`${item.data}-${item.selector}`, item])).values()
-      ).sort((a, b) => b.importance - a.importance);  // Sort by importance
+        allData.reduce((map, item) => {
+          if (!map.has(item.data)) {
+            map.set(item.data, item); // Add new data
+          } else {
+            const existing = map.get(item.data);
+            if (
+              existing && item.importance > existing.importance || // Prefer higher importance
+              (existing && item.importance === existing.importance &&
+                selectorRobustness(item.selector) > selectorRobustness(existing.selector)) // If equal importance, prefer robust selector
+            ) {
+              map.set(item.data, item); // Replace with better element
+            }
+          }
+          return map;
+        }, new Map<string, ElementData>())
+      );
 
       return uniqueData;
     }, { parentSelector, baseHref: baseURL.href });
 
-    return relevantData || [];
+    return uniqueData.map(([_, item]) => item) || [];
   } catch (error) {
     console.error('Error in extractRelevantData:', error);
     return [];
