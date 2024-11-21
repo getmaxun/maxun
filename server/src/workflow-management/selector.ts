@@ -793,7 +793,7 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
 export const extractChildData = async (
   page: Page,
   parentSelector: string
-): Promise<{ data: string; selector: string }[]> => {
+): Promise<{ data: string; selector: string; attribute: string; tag: string }[]> => {
   try {
     const baseURL = new URL(page.url());
 
@@ -801,7 +801,9 @@ export const extractChildData = async (
       interface ElementData {
         data: string;
         selector: string;
-        importance: number;
+        attribute: string; // New field for the attribute
+        tag: string; // New field for the tag name
+        importance: number; // Used internally but excluded in the return
       }
 
       function getNonUniqueSelector(element: HTMLElement): string {
@@ -821,69 +823,64 @@ export const extractChildData = async (
         return selector;
       }
 
-      // Function to determine robustness of a selector
-      function selectorRobustness(selector: string): number {
-        // A simple metric: robustness is based on the number of parts in the selector
-        return selector.split(/[#.:\[\]]/).length;
-      }
-
       function determineImportance(element: HTMLElement): number {
         if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(element.tagName.toLowerCase())) {
           return 2;
         } else if (['p', 'span', 'a', 'img'].includes(element.tagName.toLowerCase())) {
           return 1;
         }
-        return 0; // Importance for all other tags
+        return 0;
       }
 
       function cleanText(text: string): string {
         return text.replace(/\s+/g, ' ').trim();
       }
 
+      function resolveURL(url: string | null, baseHref: string): string | null {
+        if (!url) return null;
+        try {
+          return new URL(url, baseHref).href;
+        } catch {
+          return url;
+        }
+      }
+
       function extractElementData(element: HTMLElement, baseHref: string): ElementData[] {
         const selector = getNonUniqueSelector(element);
         const importance = determineImportance(element);
+        const tag = element.tagName.toLowerCase();
         const results: ElementData[] = [];
-      
-        function resolveURL(url: string | null): string | null {
-          if (!url) return null;
-          try {
-            return new URL(url, baseHref).href;
-          } catch {
-            return url;
-          }
-        }
-      
+
         // Include text content if importance is sufficient
         if (importance >= 1) {
           const textContent = cleanText(element.textContent || '');
           if (textContent) {
-            results.push({ data: textContent, selector, importance });
+            results.push({ data: textContent, selector, attribute: 'innerText', tag, importance });
           }
         }
-      
+
         // Handle links (a tags)
-        if (element.tagName.toLowerCase() === 'a') {
+        if (tag === 'a') {
           const href = element.getAttribute('href');
           if (href) {
-            const resolvedHref = resolveURL(href);
+            const resolvedHref = resolveURL(href, baseHref);
             if (resolvedHref) {
-              results.push({ data: resolvedHref, selector, importance });
+              results.push({ data: resolvedHref, selector, attribute: 'href', tag, importance });
             }
           }
         }
-      
+
         // Handle images (img tags)
-        if (element.tagName.toLowerCase() === 'img') {
+        if (tag === 'img') {
           const src = element.getAttribute('src');
           if (src) {
-            const resolvedSrc = resolveURL(src);
+            const resolvedSrc = resolveURL(src, baseHref);
             if (resolvedSrc) {
-              results.push({ data: resolvedSrc, selector, importance });
+              results.push({ data: resolvedSrc, selector, attribute: 'src', tag, importance });
             }
           }
         }
-      
+
         return results;
       }
 
@@ -904,31 +901,33 @@ export const extractChildData = async (
 
       const allData = getAllDescendantData(parentElement);
 
-      // Deduplicate and prioritize by importance and robustness
+      // Deduplicate and prioritize by importance
       const uniqueData = Array.from(
         allData.reduce((map, item) => {
           if (!map.has(item.data)) {
             map.set(item.data, item); // Add new data
           } else {
             const existing = map.get(item.data);
-            if (
-              existing && item.importance > existing.importance || // Prefer higher importance
-              (existing && item.importance === existing.importance &&
-                selectorRobustness(item.selector) > selectorRobustness(existing.selector)) // If equal importance, prefer robust selector
-            ) {
-              map.set(item.data, item); // Replace with better element
+            if (existing && item.importance > existing.importance) {
+              map.set(item.data, item); // Replace with higher importance
             }
           }
           return map;
         }, new Map<string, ElementData>())
       );
 
-      return uniqueData;
+      // Remove importance field before returning
+      return uniqueData.map(([_, item]) => ({
+        data: item.data,
+        selector: item.selector,
+        attribute: item.attribute,
+        tag: item.tag,
+      }));
     }, { parentSelector, baseHref: baseURL.href });
 
-    return uniqueData.map(([_, item]) => item) || [];
+    return uniqueData;
   } catch (error) {
-    console.error('Error in extractRelevantData:', error);
+    console.error('Error in extractChildData:', error);
     return [];
   }
 };
