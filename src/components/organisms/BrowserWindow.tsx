@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { useSocketStore } from '../../context/socket';
 import { Button } from '@mui/material';
 import Canvas from "../atoms/canvas";
@@ -62,6 +62,7 @@ export const BrowserWindow = () => {
     const [screenShot, setScreenShot] = useState<string>("");
     const [highlighterData, setHighlighterData] = useState<{ rect: DOMRect, selector: string, elementInfo: ElementInfo | null, childSelectors?: string[], childData?: ChildData[] } | null>(null);
     const [showAttributeModal, setShowAttributeModal] = useState(false);
+    const [showAutoExtractModal, setShowAutoExtractModal] = useState(false);
     const [attributeOptions, setAttributeOptions] = useState<AttributeOption[]>([]);
     const [selectedElement, setSelectedElement] = useState<{ selector: string, info: ElementInfo | null } | null>(null);
     const [currentListId, setCurrentListId] = useState<number | null>(null);
@@ -69,6 +70,8 @@ export const BrowserWindow = () => {
     const [listSelector, setListSelector] = useState<string | null>(null);
     const [fields, setFields] = useState<Record<string, TextStep>>({});
     const [paginationSelector, setPaginationSelector] = useState<string>('');
+
+    const listSelectorRef = useRef<string | null>(null);
 
     const { socket } = useSocketStore();
     const { notify } = useGlobalInfoStore();
@@ -92,6 +95,7 @@ export const BrowserWindow = () => {
 
     const resetListState = useCallback(() => {
         setListSelector(null);
+        listSelectorRef.current = null;
         setFields({});
         setCurrentListId(null);
     }, []);
@@ -122,33 +126,40 @@ export const BrowserWindow = () => {
 
     const highlighterHandler = useCallback((data: { rect: DOMRect, selector: string, elementInfo: ElementInfo | null, childSelectors?: string[], childData?: ChildData[] }) => {
         if (getList === true || getListAuto === true) {
-            if (listSelector) {
-                socket?.emit('listSelector', { selector: listSelector });
+            if (listSelectorRef.current) {
+                socket?.emit('listSelector', { selector: listSelectorRef.current });
+    
                 if (limitMode) {
                     setHighlighterData(null);
                 } else if (paginationMode) {
-                    // only set highlighterData if type is not empty, 'none', 'scrollDown', or 'scrollUp'
+                    // Only set highlighterData if type is valid for pagination
                     if (paginationType !== '' && !['none', 'scrollDown', 'scrollUp'].includes(paginationType)) {
                         setHighlighterData(data);
                     } else {
                         setHighlighterData(null);
                     }
-                } else if (data.childSelectors && data.childSelectors.includes(data.selector)) {
-                    // highlight only valid child elements within the listSelector
+                } else if (getList && data.childSelectors && data.childSelectors.includes(data.selector)) {
+                    // For `getList`, highlight only valid child elements within the listSelector
+                    setHighlighterData(data);
+                } else if (getListAuto && data.childData) {
+                    // For `getListAuto`, set highlighterData if childData is present
+                    //onst { childSelectors, ...rest } = data;
                     setHighlighterData(data);
                 } else {
-                    // if !valid child in normal mode, clear the highlighter
+                    // Clear the highlighter if not valid
                     setHighlighterData(null);
                 }
             } else {
-                // set highlighterData for the initial listSelector selection
+                // Set highlighterData for the initial listSelector selection
                 setHighlighterData(data);
             }
         } else {
-            // for non-list steps
+            // For non-list steps
             setHighlighterData(data);
         }
     }, [highlighterData, getList, getListAuto, socket, listSelector, paginationMode, paginationType]);
+    
+    
 
     useEffect(() => {
         document.addEventListener('mousemove', onMouseMove, false);
@@ -211,93 +222,108 @@ export const BrowserWindow = () => {
                     return;
                 }
 
-                if ((getList === true || getListAuto === true) && !listSelector) {
-                    setListSelector(highlighterData.selector);
-                    notify(`info`, `List selected succesfully. Select the text data for extraction.`)
+                if ((getList === true || getListAuto === true) && !listSelectorRef.current) {
+                    // Set listSelectorRef and state
+                    const newSelector = highlighterData.selector;
+                    listSelectorRef.current = newSelector;
+                    setListSelector(newSelector);
+                    notify(`info`, `List selected successfully. Proceed to extract data.`);
+                    
                     setCurrentListId(Date.now());
                     setFields({});
-                } else if ((getList === true) && listSelector && currentListId) {
-                    // if (getListAuto && highlighterData.childData) {
-                    //     // Automatically populate fields with childData
-                    //     const newFields: Record<number, TextStep> = {}; // To hold all the new fields
-                    //     highlighterData.childData.forEach(child => {
-                    //         const newField: TextStep = {
-                    //             id: Date.now() + Math.random(), // Unique ID for each field
-                    //             type: 'text',
-                    //             label: `Label ${Object.keys(fields).length + 1}`,
-                    //             data: child.data, // Populate with child data
-                    //             selectorObj: {
-                    //                 selector: child.selector, // Child selector
-                    //                 tag: '', // Empty tag
-                    //                 attribute: '' // Empty attribute
-                    //             }
-                    //         };
-
-                    //         console.log(`New field: ${newField}`)
                 
-                    //         // Add newField to the newFields object
-                    //         newFields[newField.id] = newField;
-                    //     });
-                
-                    //     // Update the fields state
-                    //     setFields(prevFields => ({
-                    //         ...prevFields,
-                    //         ...newFields
-                    //     }));
-
-                    //     console.log('Fields:', fields);
-                
-                    //     if (listSelector) {
-                    //         // Add the fields to the list step
-                    //         addListStep(listSelector, { ...fields, ...newFields }, currentListId, { type: '', selector: paginationSelector });
-                    //     }
-                    // } 
-                    
-                    // else {
-                        const attribute = options[0].value;
-                        const data =
-                            attribute === 'href'
-                                ? highlighterData.elementInfo?.url || ''
-                                : attribute === 'src'
-                                ? highlighterData.elementInfo?.imageUrl || ''
-                                : highlighterData.elementInfo?.innerText || '';
-                        
-                        // Add single field to the list
-                        if (options.length === 1) {
-                            const newField: TextStep = {
-                                id: Date.now(),
-                                type: 'text',
-                                label: `Label ${Object.keys(fields).length + 1}`,
-                                data: data,
-                                selectorObj: {
-                                    selector: highlighterData.selector,
-                                    tag: highlighterData.elementInfo?.tagName,
-                                    attribute
-                                }
-                            };
-                
-                            setFields(prevFields => ({
-                                ...prevFields,
-                                [newField.id]: newField
-                            }));
-                
-                            if (listSelector) {
-                                addListStep(listSelector, { ...fields, [newField.id]: newField }, currentListId, { type: '', selector: paginationSelector });
-                            }
-                        } else {
-                            setAttributeOptions(options);
-                            setSelectedElement({
-                                selector: highlighterData.selector,
-                                info: highlighterData.elementInfo
-                            });
-                            setShowAttributeModal(true);
-                        }
+                    // Automatically handle field population for getListAuto mode
+                    // if (getListAuto === true && highlighterData.childData) {
+                    //     handleAutoFieldPopulation(highlighterData.childData, newSelector);
                     // }
+                } else if ((getList === true || getListAuto === true) && listSelectorRef.current && currentListId) {
+                    if (getListAuto === true && highlighterData.childData) {
+                        handleAutoFieldPopulation(highlighterData.childData, listSelectorRef.current);
+                    } else {
+                        handleManualFieldPopulation(options, highlighterData, listSelectorRef.current);
+                    }
                 }
+                
                 
             }
         }
     };
+
+    const handleAutoFieldPopulation = (childData: Array<any>, listSelector: string) => {
+        setShowAutoExtractModal(true);
+        setTimeout(() => {
+            setShowAutoExtractModal(false);
+        }, 3000);
+    
+        const newFields: Record<number, TextStep> = {};
+        childData.forEach((child, index) => {
+            const newField: TextStep = {
+                id: Date.now() + index,
+                type: 'text',
+                label: `Label ${index + 1}`,
+                data: child.data,
+                selectorObj: {
+                    selector: child.selector,
+                    tag: '', // Can be updated if necessary
+                    attribute: '', // Can be updated if necessary
+                },
+            };
+    
+            newFields[newField.id] = newField;
+        });
+    
+        setFields(prevFields => ({
+            ...prevFields,
+            ...newFields,
+        }));
+    
+        if (listSelectorRef.current) {
+            addListStep(listSelectorRef.current, newFields, currentListId || Date.now(), { type: '', selector: paginationSelector });
+        }
+    };
+
+    const handleManualFieldPopulation = (
+        options: AttributeOption[],
+        highlighterData: any,
+        listSelector: string
+    ) => {
+        const attribute = options[0].value;
+        const data =
+            attribute === 'href'
+                ? highlighterData.elementInfo?.url || ''
+                : attribute === 'src'
+                ? highlighterData.elementInfo?.imageUrl || ''
+                : highlighterData.elementInfo?.innerText || '';
+    
+        if (options.length === 1) {
+            const newField: TextStep = {
+                id: Date.now(),
+                type: 'text',
+                label: `Label ${Object.keys(fields).length + 1}`,
+                data: data,
+                selectorObj: {
+                    selector: highlighterData.selector,
+                    tag: highlighterData.elementInfo?.tagName,
+                    attribute,
+                },
+            };
+    
+            setFields(prevFields => ({
+                ...prevFields,
+                [newField.id]: newField,
+            }));
+    
+            addListStep(listSelector, { ...fields, [newField.id]: newField }, currentListId || Date.now(), { type: '', selector: paginationSelector });
+        } else {
+            setAttributeOptions(options);
+            setSelectedElement({
+                selector: highlighterData.selector,
+                info: highlighterData.elementInfo,
+            });
+            setShowAttributeModal(true);
+        }
+    };
+    
 
     const handleAttributeSelection = (attribute: string) => {
         if (selectedElement) {
@@ -360,37 +386,54 @@ export const BrowserWindow = () => {
         }
     }, [paginationMode, resetPaginationSelector]);
 
-    useEffect(() => {
-        // Automatically populate fields when listSelector is set
-        if (listSelector && getListAuto && highlighterData?.childData && currentListId) {
-            const newFields: Record<number, TextStep> = {};
-            highlighterData.childData.forEach(child => {
-                const newField: TextStep = {
-                    id: Date.now(),
-                    type: 'text',
-                    label: `Label ${Object.keys(fields).length + 1}`,
-                    data: child.data,
-                    selectorObj: {
-                        selector: child.selector,
-                        tag: '',
-                        attribute: ''
-                    }
-                };
-
-                newFields[newField.id] = newField;
-            });
-
-            setFields(prevFields => ({ ...prevFields, ...newFields }));
-
-                if (listSelector) {
-                    addListStep(listSelector, { ...fields, ...newFields }, currentListId, { type: '', selector: paginationSelector });
-                }
-        }
-    }, [listSelector, highlighterData?.childData, getListAuto]);
+    // useEffect(() => {
+    //     // Automatically populate fields when listSelector and childData are available
+    //     if (listSelector && getListAuto && highlighterData?.childData && currentListId) {
+    //         notify(`info`, `Auto extracting data...`);
+    
+    //         const newFields: Record<number, TextStep> = {};
+    //         highlighterData.childData.forEach(child => {
+    //             const newField: TextStep = {
+    //                 id: Date.now(),
+    //                 type: 'text',
+    //                 label: `Label ${Object.keys(fields).length + 1}`,
+    //                 data: child.data,
+    //                 selectorObj: {
+    //                     selector: child.selector,
+    //                     tag: '',
+    //                     attribute: ''
+    //                 }
+    //             };
+    
+    //             newFields[newField.id] = newField;
+    //         });
+    
+    //         setFields(prevFields => ({ ...prevFields, ...newFields }));
+    
+    //         if (listSelector) {
+    //             addListStep(listSelector, { ...fields, ...newFields }, currentListId, { type: '', selector: paginationSelector });
+    //         }
+    //     }
+    // }, [listSelector, getListAuto, highlighterData?.childData, currentListId, fields]);
+    
 
   
     return (
         <div onClick={handleClick} style={{ width: '900px' }} id="browser-window">
+            {getListAuto === true ? ( 
+                <GenericModal
+                    isOpen={showAutoExtractModal}
+                    onClose={() => { }}
+                    canBeClosed={false}
+                    modalStyle={modalStyle}
+                >
+                    <div>
+                        <h2>Auto Extracting</h2>
+                        <p>Most useful data, please wait for a few seconds...</p>
+                        <p>Found {highlighterData?.childData?.length} items...</p>
+                    </div>
+                </GenericModal>
+            ): null} 
             {
                 getText === true || getList === true ? (
                     <GenericModal
