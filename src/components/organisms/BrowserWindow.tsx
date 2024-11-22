@@ -66,6 +66,7 @@ export const BrowserWindow = () => {
     const [attributeOptions, setAttributeOptions] = useState<AttributeOption[]>([]);
     const [selectedElement, setSelectedElement] = useState<{ selector: string, info: ElementInfo | null } | null>(null);
     const [currentListId, setCurrentListId] = useState<number | null>(null);
+    const [isChildDataAvailable, setIsChildDataAvailable] = useState(false);
 
     const [listSelector, setListSelector] = useState<string | null>(null);
     const [fields, setFields] = useState<Record<string, TextStep>>({});
@@ -144,7 +145,8 @@ export const BrowserWindow = () => {
                 } else if (getListAuto && data.childData) {
                     // For `getListAuto`, set highlighterData if childData is present
                     //onst { childSelectors, ...rest } = data;
-                    setHighlighterData(data);
+                    setHighlighterData({ rect: data.rect, selector: data.selector, elementInfo: data.elementInfo, childData: data.childData });
+                    setIsChildDataAvailable(true);
                 } else {
                     // Clear the highlighter if not valid
                     setHighlighterData(null);
@@ -159,7 +161,8 @@ export const BrowserWindow = () => {
         }
     }, [highlighterData, getList, getListAuto, socket, listSelector, paginationMode, paginationType]);
     
-    
+    // console.log('highlighterData', highlighterData);
+    console.log('is child data available', isChildDataAvailable);
 
     useEffect(() => {
         document.addEventListener('mousemove', onMouseMove, false);
@@ -217,7 +220,7 @@ export const BrowserWindow = () => {
                     if (paginationType !== '' && paginationType !== 'scrollDown' && paginationType !== 'scrollUp' && paginationType !== 'none') {
                         setPaginationSelector(highlighterData.selector);
                         notify(`info`, `Pagination element selected successfully.`);
-                        addListStep(listSelector!, fields, currentListId || 0, { type: paginationType, selector: highlighterData.selector });
+                        addListStep(listSelectorRef.current!, fields, currentListId || 0, { type: paginationType, selector: highlighterData.selector });
                     }
                     return;
                 }
@@ -231,6 +234,15 @@ export const BrowserWindow = () => {
                     
                     setCurrentListId(Date.now());
                     setFields({});
+
+                    if (getListAuto) {
+                        notify(`info`, `List container selected! Now click on any item inside the list to auto-extract all similar items.`); 
+                        if (highlighterData.childData) {
+                            handleAutoFieldPopulation(highlighterData.childData, newSelector);
+                        } else {
+                            notify(`error`, `No child data found for auto-extraction.`);
+                        }
+                    }
                 
                     // Automatically handle field population for getListAuto mode
                     // if (getListAuto === true && highlighterData.childData) {
@@ -277,9 +289,7 @@ export const BrowserWindow = () => {
             ...newFields,
         }));
     
-        if (listSelectorRef.current) {
-            addListStep(listSelectorRef.current, newFields, currentListId || Date.now(), { type: '', selector: paginationSelector });
-        }
+            addListStep(listSelector, newFields, currentListId || Date.now(), { type: '', selector: paginationSelector });
     };
 
     const handleManualFieldPopulation = (
