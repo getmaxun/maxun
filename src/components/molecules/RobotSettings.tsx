@@ -120,6 +120,17 @@ export const RobotSettingsModal = ({ isOpen, handleStart, handleClose, initialSe
                                     }}
                                     style={{ marginBottom: '20px' }}
                                 />
+                                {robot.recording.workflow?.[0]?.what?.[0]?.args?.[0]?.limit !== undefined && (
+                                    <TextField
+                                        label="Robot Limit"
+                                        type="number"
+                                        value={robot.recording.workflow[0].what[0].args[0].limit || ''}
+                                        InputProps={{
+                                        readOnly: true,
+                                    }}
+                                        style={{ marginBottom: '20px' }}
+                                    />
+                                )}
                                 <TextField
                                     label="Created By User"
                                     key="Created By User"
