@@ -36,13 +36,18 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
       const firstKey = Object.keys(row.serializableOutput)[0];
       const data = row.serializableOutput[firstKey];
       if (Array.isArray(data)) {
-        setTableData(data);
-        if (data.length > 0) {
-          setColumns(Object.keys(data[0]));
+        // Filter out completely empty rows
+        const filteredData = data.filter(row =>
+          Object.values(row).some(value => value !== undefined && value !== "")
+        );
+        setTableData(filteredData);
+        if (filteredData.length > 0) {
+          setColumns(Object.keys(filteredData[0]));
         }
       }
     }
   }, [row.serializableOutput]);
+
 
   // Function to convert table data to CSV format
   const convertToCSV = (data: any[], columns: string[]): string => {
@@ -53,7 +58,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     return [header, ...rows].join('\n');
   };
 
-  // Function to download CSV file when called
   const downloadCSV = () => {
     const csvContent = convertToCSV(tableData, columns);
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -140,7 +144,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                       {tableData.map((row, index) => (
                         <TableRow key={index}>
                           {columns.map((column) => (
-                            <TableCell key={column}>{row[column]}</TableCell>
+                            <TableCell key={column}>
+                              {row[column] === undefined || row[column] === "" ? "-" : row[column]}
+                            </TableCell>
                           ))}
                         </TableRow>
                       ))}
