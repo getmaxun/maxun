@@ -48,8 +48,6 @@ export const ActionProvider = ({ children }: { children: ReactNode }) => {
     const [customLimit, setCustomLimit] = useState<string>('');
     const [captureStage, setCaptureStage] = useState<CaptureStage>('initial');
 
-    console.log(`get list auto value: ${getListAuto}`)
-
     const { socket } = useSocketStore();
 
     const updatePaginationType = (type: PaginationType) => setPaginationType(type);
