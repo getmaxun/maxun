@@ -276,8 +276,8 @@ export const BrowserWindow = () => {
                 data: child.data,
                 selectorObj: {
                     selector: child.selector,
-                    tag: '', // Can be updated if necessary
-                    attribute: '', // Can be updated if necessary
+                    tag: child.tag,
+                    attribute: child.attribute
                 },
             };
     
