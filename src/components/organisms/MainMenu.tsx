@@ -43,6 +43,13 @@ export const MainMenu = ({ value = 'recordings', handleChangeContent }: MainMenu
           value={value}
           onChange={handleChange}
           orientation="vertical"
+          TabIndicatorProps={{
+            style: {
+              backgroundColor: '#ff00c3', // Set the custom color for the indicator here
+              width: '2px',               // Ensure the indicator width is 2px as per your requirement
+              right: 0,                   // Position it on the right if needed
+            },
+          }}
           sx={{
             alignItems: 'flex-start',
             '& .MuiTab-root': {
@@ -54,6 +61,10 @@ export const MainMenu = ({ value = 'recordings', handleChangeContent }: MainMenu
               '&.Mui-selected': {
                 color: selectedPink, // Darker pink for selected tab
               },
+              '& .MuiTabs-indicator': {
+                backgroundColor: '#ff00c3', // Custom color for the indicator
+              },
+
             },
           }}
         >
@@ -62,24 +73,28 @@ export const MainMenu = ({ value = 'recordings', handleChangeContent }: MainMenu
             label="Robots"
             icon={<AutoAwesome />}
             iconPosition="start"
+            
           />
           <Tab
             value="runs"
             label="Runs"
             icon={<FormatListBulleted />}
             iconPosition="start"
+           
           />
           <Tab
             value="proxy"
             label="Proxy"
             icon={<Usb />}
             iconPosition="start"
+            
           />
           <Tab
             value="apikey"
             label="API Key"
             icon={<VpnKey />}
             iconPosition="start"
+            
           />
         </Tabs>
         <hr />
