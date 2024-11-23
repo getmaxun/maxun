@@ -3,8 +3,12 @@ import axios from 'axios';
 import styled from "styled-components";
 import { stopRecording } from "../../api/recording";
 import { useGlobalInfoStore } from "../../context/globalInfo";
-import { IconButton, Menu, MenuItem, Typography, Avatar, Tooltip } from "@mui/material";
+
+import { IconButton, Menu, MenuItem, Typography, Avatar, Tooltip,Chip } from "@mui/material";
 import { AccountCircle, Logout, Clear, Brightness4, Brightness7 } from "@mui/icons-material";
+
+import { AccountCircle, Logout, Clear } from "@mui/icons-material";
+
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/auth';
 import { SaveRecording } from '../molecules/SaveRecording';
@@ -57,25 +61,38 @@ export const NavBar: React.FC<NavBarProps> = ({ recordingName, isRecording }) =>
     <NavBarWrapper mode={darkMode ? 'dark' : 'light'}>
       <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
         <img src={MaxunLogo} width={45} height={40} style={{ borderRadius: '5px', margin: '5px 0px 5px 15px' }} />
-        <div style={{ padding: '11px' }}>
-          <ProjectName mode={darkMode ? 'dark' : 'light'}>Maxun</ProjectName>
-        </div>
+
+        <div style={{ padding: '11px' }}><ProjectName>Maxun</ProjectName></div>
+        <Chip label="beta" color="primary" variant="outlined" sx={{ marginTop: '10px' }} />
       </div>
-      {user ? (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-          {!isRecording ? (
-            <>
-              <IconButton
-                component="a"
-                href="https://discord.gg/NFhWDCdb"
-                target="_blank"
-                rel="noopener noreferrer"
-                sx={{
+      {
+        user ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+            {!isRecording ? (
+              <>
+                <IconButton
+                  component="a"
+                  href="https://discord.gg/5GbPjBUkws"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    borderRadius: '5px',
+                    padding: '8px',
+                    marginRight: '30px',
+                  }}
+                >
+                  <DiscordIcon sx={{ marginRight: '5px' }} />
+                </IconButton>
+                <iframe src="https://ghbtns.com/github-btn.html?user=getmaxun&repo=maxun&type=star&count=true&size=large" frameBorder="0" scrolling="0" width="170" height="30" title="GitHub"></iframe>
+                <IconButton onClick={handleMenuOpen} sx={{
+
                   display: 'flex',
                   alignItems: 'center',
                   borderRadius: '5px',
                   padding: '8px',
-                  marginRight: '10px',
+
                 }}
               >
                 <DiscordIcon sx={{ marginRight: '5px' }} />
@@ -107,6 +124,7 @@ export const NavBar: React.FC<NavBarProps> = ({ recordingName, isRecording }) =>
               <Tooltip title="Toggle light/dark theme">
                 <IconButton onClick={toggleTheme} color="inherit">
                   {darkMode ? <Brightness7 /> : <Brightness4 />}
+
                 </IconButton>
               </Tooltip>
             </>

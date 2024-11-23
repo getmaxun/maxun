@@ -128,7 +128,6 @@ export class WorkflowGenerator {
    */
   private registerEventHandlers = (socket: Socket) => {
     socket.on('save', (data) => {
-      console.log('Received data:', data);
       const { fileName, userId } = data;
       logger.log('debug', `Saving workflow ${fileName} for user ID ${userId}`);
       this.saveNewWorkflow(fileName, userId);
@@ -560,6 +559,8 @@ export class WorkflowGenerator {
         if (this.listSelector !== '') {
           const childSelectors = await getChildSelectors(page, this.listSelector || '');
           this.socket.emit('highlighter', { rect, selector: displaySelector, elementInfo, childSelectors })
+          console.log(`Child Selectors: ${childSelectors}`)
+          console.log(`Parent Selector: ${this.listSelector}`)
         } else {
           this.socket.emit('highlighter', { rect, selector: displaySelector, elementInfo });
         }

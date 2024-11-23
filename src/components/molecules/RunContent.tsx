@@ -1,14 +1,11 @@
-import { Box, Tabs, Typography, Tab, Paper } from "@mui/material";
+import { Box, Tabs, Typography, Tab, Paper, Button } from "@mui/material";
 import Highlight from "react-highlight";
-import Button from "@mui/material/Button";
 import * as React from "react";
 import { Data } from "./RunsTable";
 import { TabPanel, TabContext } from "@mui/lab";
-import SettingsIcon from '@mui/icons-material/Settings';
-import ImageIcon from '@mui/icons-material/Image';
 import ArticleIcon from '@mui/icons-material/Article';
+import ImageIcon from '@mui/icons-material/Image';
 import { useEffect, useState } from "react";
-import AssignmentIcon from '@mui/icons-material/Assignment';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -32,20 +29,47 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
   useEffect(() => {
     setTab(tab);
-  }, [interpretationInProgress])
+  }, [interpretationInProgress]);
 
   useEffect(() => {
     if (row.serializableOutput && Object.keys(row.serializableOutput).length > 0) {
       const firstKey = Object.keys(row.serializableOutput)[0];
       const data = row.serializableOutput[firstKey];
       if (Array.isArray(data)) {
-        setTableData(data);
-        if (data.length > 0) {
-          setColumns(Object.keys(data[0]));
+        // Filter out completely empty rows
+        const filteredData = data.filter(row =>
+          Object.values(row).some(value => value !== undefined && value !== "")
+        );
+        setTableData(filteredData);
+        if (filteredData.length > 0) {
+          setColumns(Object.keys(filteredData[0]));
         }
       }
     }
   }, [row.serializableOutput]);
+
+
+  // Function to convert table data to CSV format
+  const convertToCSV = (data: any[], columns: string[]): string => {
+    const header = columns.join(',');
+    const rows = data.map(row =>
+      columns.map(col => JSON.stringify(row[col], null, 2)).join(',')
+    );
+    return [header, ...rows].join('\n');
+  };
+
+  const downloadCSV = () => {
+    const csvContent = convertToCSV(tableData, columns);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "data.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -54,7 +78,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
           <Tabs value={tab} onChange={(e, newTab) => setTab(newTab)} aria-label="run-content-tabs">
             <Tab label="Output Data" value='output' />
             <Tab label="Log" value='log' />
-            {/* <Tab label="Input" value='input' /> */}
           </Tabs>
         </Box>
         <TabPanel value='log'>
@@ -94,16 +117,19 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 <ArticleIcon sx={{ marginRight: '15px' }} />
                 Captured Data
               </Typography>
-              {Object.keys(row.serializableOutput).map((key) => {
-                return (
-                  <div key={`number-of-serializable-output-${key}`}>
-                    <Typography sx={{ margin: '20px 0px 20px 0px' }}>
-                      <a style={{ textDecoration: 'none' }} href={`data:application/json;utf8,${JSON.stringify(row.serializableOutput[key], null, 2)}`}
-                        download={key}>Download as JSON</a>
-                    </Typography>
-                  </div>
-                )
-              })}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 2 }}>
+                <Typography>
+                  <a style={{ textDecoration: 'none' }} href={`data:application/json;utf8,${JSON.stringify(row.serializableOutput, null, 2)}`}
+                    download="data.json">
+                    Download as JSON
+                  </a>
+                </Typography>
+                <Typography
+                  onClick={downloadCSV}
+                >
+                  <a style={{ textDecoration: 'none', cursor: 'pointer' }}>Download as CSV</a>
+                </Typography>
+              </Box>
               {tableData.length > 0 ? (
                 <TableContainer component={Paper} sx={{ maxHeight: 440, marginTop: 2 }}>
                   <Table stickyHeader aria-label="sticky table">
@@ -118,7 +144,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                       {tableData.map((row, index) => (
                         <TableRow key={index}>
                           {columns.map((column) => (
-                            <TableCell key={column}>{row[column]}</TableCell>
+                            <TableCell key={column}>
+                              {row[column] === undefined || row[column] === "" ? "-" : row[column]}
+                            </TableCell>
                           ))}
                         </TableRow>
                       ))}
@@ -139,12 +167,12 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
             </div>
           }
-          {row.binaryOutput
-            && Object.keys(row.binaryOutput).length !== 0 &&
+          {row.binaryOutput && Object.keys(row.binaryOutput).length !== 0 &&
             <div>
               <Typography variant='h6' sx={{ display: 'flex', alignItems: 'center' }}>
                 <ImageIcon sx={{ marginRight: '15px' }} />
-                Captured Screenshot</Typography>
+                Captured Screenshot
+              </Typography>
               {Object.keys(row.binaryOutput).map((key) => {
                 try {
                   const imageUrl = row.binaryOutput[key];
@@ -152,10 +180,10 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                     <Box key={`number-of-binary-output-${key}`} sx={{
                       width: 'max-content',
                     }}>
-                      <Typography key={`binary-output-key-${key}`} sx={{ margin: '20px 0px 20px 0px' }}>
+                      <Typography sx={{ margin: '20px 0px' }}>
                         <a href={imageUrl} download={key} style={{ textDecoration: 'none' }}>Download Screenshot</a>
                       </Typography>
-                      <img key={`image-${key}`} src={imageUrl} alt={key} height='auto' width='700px' />
+                      <img src={imageUrl} alt={key} height='auto' width='700px' />
                     </Box>
                   )
                 } catch (e) {
@@ -171,4 +199,4 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
       </TabContext>
     </Box>
   );
-}
+};

@@ -104,6 +104,7 @@ export const RobotSettingsModal = ({ isOpen, handleStart, handleClose, initialSe
                             <>
                                 <TextField
                                     label="Robot Target URL"
+                                    key="Robot Target URL"
                                     value={targetUrl}
                                     InputProps={{
                                         readOnly: true,
@@ -112,15 +113,28 @@ export const RobotSettingsModal = ({ isOpen, handleStart, handleClose, initialSe
                                 />
                                 <TextField
                                     label="Robot ID"
+                                    key="Robot ID"
                                     value={robot.recording_meta.id}
                                     InputProps={{
                                         readOnly: true,
                                     }}
                                     style={{ marginBottom: '20px' }}
                                 />
+                                {robot.recording.workflow?.[0]?.what?.[0]?.args?.[0]?.limit !== undefined && (
+                                    <TextField
+                                        label="Robot Limit"
+                                        type="number"
+                                        value={robot.recording.workflow[0].what[0].args[0].limit || ''}
+                                        InputProps={{
+                                        readOnly: true,
+                                    }}
+                                        style={{ marginBottom: '20px' }}
+                                    />
+                                )}
                                 <TextField
                                     label="Created By User"
-                                    value={userEmail}
+                                    key="Created By User"
+                                    value={userEmail ? userEmail : ''}
                                     InputProps={{
                                         readOnly: true,
                                     }}
@@ -128,6 +142,7 @@ export const RobotSettingsModal = ({ isOpen, handleStart, handleClose, initialSe
                                 />
                                 <TextField
                                     label="Robot Created At"
+                                    key="Robot Created At"
                                     value={robot.recording_meta.createdAt}
                                     InputProps={{
                                         readOnly: true,

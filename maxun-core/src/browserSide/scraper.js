@@ -235,9 +235,11 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
 
         switch (attribute) {
           case 'href':
-            return elem.getAttribute('href');
+            const relativeHref = elem.getAttribute('href');
+            return relativeHref ? new URL(relativeHref, window.location.origin).href : null;
           case 'src':
-            return elem.getAttribute('src');
+            const relativeSrc = elem.getAttribute('src');
+            return relativeSrc ? new URL(relativeSrc, window.location.origin).href : null;
           case 'innerText':
             return elem.innerText;
           case 'textContent':
@@ -281,9 +283,13 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
             } else if (attribute === 'innerHTML') {
               record[label] = fieldElement.innerHTML.trim();
             } else if (attribute === 'src') {
-              record[label] = fieldElement.src;
+               // Handle relative 'src' URLs
+               const src = fieldElement.getAttribute('src');
+               record[label] = src ? new URL(src, baseUrl).href : null;
             } else if (attribute === 'href') {
-              record[label] = fieldElement.href;
+              // Handle relative 'href' URLs
+              const href = fieldElement.getAttribute('href');
+              record[label] = href ? new URL(href, baseUrl).href : null;
             } else {
               record[label] = fieldElement.getAttribute(attribute);
             }

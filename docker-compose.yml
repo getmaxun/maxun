@@ -32,16 +32,18 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
-    command: server /data
+    command: server /data --console-address :9001
     ports:
-      - "9000:9000"
+      - "9000:9000"  # API port
+      - "9001:9001"  # WebUI port
     volumes:
       - minio_data:/data
 
   backend:
-    build:
-      context: .
-      dockerfile: server/Dockerfile
+    #build:
+      #context: .
+      #dockerfile: server/Dockerfile
+    image: getmaxun/maxun-backend:v0.0.2
     ports:
       - "8080:8080"
     env_file: .env
@@ -56,6 +58,7 @@ services:
     - seccomp=unconfined  # This might help with browser sandbox issues
     # Increase shared memory size for Chromium
     shm_size: '2gb'
+    mem_limit: 2g  # Set a 2GB memory limit
     depends_on:
       - postgres
       - redis
@@ -66,9 +69,10 @@ services:
       - /var/run/dbus:/var/run/dbus
 
   frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile
+      #build:
+      #context: .
+      #dockerfile: Dockerfile
+    image: getmaxun/maxun-frontend:v0.0.1
     ports:
       - "5173:5173"
     env_file: .env

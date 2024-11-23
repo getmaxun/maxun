@@ -1,6 +1,6 @@
 {
   "name": "maxun-core",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Core package for Maxun, responsible for data extraction",
   "main": "build/index.js",
   "typings": "build/index.d.ts",
@@ -20,7 +20,12 @@
     "automation",
     "workflow",
     "data extraction",
-    "scraping"
+    "scraping",
+    "web scraper",
+    "web scraping",
+    "data scraping",
+    "no-code web scraper",
+    "no-code web scraping"
   ],
   "author": "Maxun",
   "license": "AGPL-3.0-or-later",

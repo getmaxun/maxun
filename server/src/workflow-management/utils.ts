@@ -17,7 +17,7 @@ export const getBestSelectorForAction = (action: Action) => {
         selectors?.text?.length != null &&
           selectors?.text?.length < 25 &&
           action.hasOnlyText
-          ? `text=${selectors.text}`
+          ? selectors.generalSelector
           : null;
 
       if (action.tagName === TagName.Input) {

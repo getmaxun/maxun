@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { styled } from '@mui/system';
-import { TextField, Button, Switch, FormControlLabel, Box, Typography, Tabs, Tab, Table, TableContainer, TableHead, TableRow, TableBody, TableCell, Paper } from '@mui/material';
+import { Alert, AlertTitle, TextField, Button, Switch, FormControlLabel, Box, Typography, Tabs, Tab, Table, TableContainer, TableHead, TableRow, TableBody, TableCell, Paper } from '@mui/material';
 import { sendProxyConfig, getProxyConfig, testProxyConfig, deleteProxyConfig } from '../../api/proxy';
 import { useGlobalInfoStore } from '../../context/globalInfo';
 
@@ -145,22 +145,22 @@ const ProxyForm: React.FC = () => {
                 {tabIndex === 0 && (
                     isProxyConfigured ? (
                         <Box sx={{ maxWidth: 600, width: '100%', marginTop: '5px' }}>
-                                <TableContainer component={Paper} sx={{ marginBottom: '20px' }}>
-                                    <Table>
-                                        <TableHead>
-                                            <TableRow>
-                                                <TableCell><strong>Proxy URL</strong></TableCell>
-                                                <TableCell><strong>Requires Authentication</strong></TableCell>
-                                            </TableRow>
-                                        </TableHead>
-                                        <TableBody>
-                                            <TableRow>
-                                                <TableCell>{proxy.proxy_url}</TableCell>
-                                                <TableCell>{proxy.auth ? 'Yes' : 'No'}</TableCell>
-                                            </TableRow>
-                                        </TableBody>
-                                    </Table>
-                                </TableContainer>
+                            <TableContainer component={Paper} sx={{ marginBottom: '20px' }}>
+                                <Table>
+                                    <TableHead>
+                                        <TableRow>
+                                            <TableCell><strong>Proxy URL</strong></TableCell>
+                                            <TableCell><strong>Requires Authentication</strong></TableCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        <TableRow>
+                                            <TableCell>{proxy.proxy_url}</TableCell>
+                                            <TableCell>{proxy.auth ? 'Yes' : 'No'}</TableCell>
+                                        </TableRow>
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
                             <Button variant="outlined" color="primary" onClick={testProxy}>
                                 Test Proxy
                             </Button>
@@ -231,18 +231,34 @@ const ProxyForm: React.FC = () => {
                         </Box>
                     ))}
                 {tabIndex === 1 && (
-                    <Box sx={{ maxWidth: 600, width: '100%', textAlign: 'center', marginTop: '20px' }}>
+                    <Box sx={{ maxWidth: 400, width: '100%', textAlign: 'center', marginTop: '20px' }}>
                         <>
                             <Typography variant="body1" gutterBottom component="div">
                                 Coming Soon - In Open Source (Basic Rotation) & Cloud (Advanced Rotation). If you don't want to manage the infrastructure, join our cloud waitlist to get early access.
                             </Typography>
                             <Button variant="contained" color="primary" sx={{ marginTop: '20px' }}>
-                                <a style={{color: 'white', textDecoration: 'none'}} href="https://forms.gle/hXjgqDvkEhPcaBW76">Join Maxun Cloud Waitlist</a>
+                                <a style={{ color: 'white', textDecoration: 'none' }} href="https://forms.gle/hXjgqDvkEhPcaBW76">Join Maxun Cloud Waitlist</a>
                             </Button>
                         </>
                     </Box>
                 )}
             </FormContainer>
+            <Alert severity="info" sx={{ marginTop: '80px', marginLeft: '50px', height: '230px', width: '450px', border: '1px solid #ff00c3' }}>
+            <AlertTitle>If your proxy requires a username and password, always provide them separately from the proxy URL. </AlertTitle>
+                <br />
+                <b>The right way</b>
+                <br />
+                Proxy URL: http://proxy.com:1337
+                <br />
+                Username: myusername
+                <br />
+                Password: mypassword
+                <br />
+                <br />
+                <b>The wrong way</b>
+                <br />
+                Proxy URL: http://myusername:mypassword@proxy.com:1337
+            </Alert>
         </>
     );
 };

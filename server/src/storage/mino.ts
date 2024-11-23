@@ -12,45 +12,46 @@ const minioClient = new Client({
 minioClient.bucketExists('maxun-test')
   .then((exists) => {
     if (exists) {
-      console.log('MinIO was connected successfully.');
+      console.log('MinIO connected successfully.');
     } else {
-      console.log('Bucket does not exist, but MinIO was connected.');
+      console.log('MinIO connected successfully.');
     }
   })
   .catch((err) => {
     console.error('Error connecting to MinIO:', err);
   })
 
-async function createBucketWithPolicy(bucketName: string, policy?: 'public-read' | 'private') {
+async function createBucketWithPolicy(bucketName: string, policy = 'public-read') {
   try {
     const bucketExists = await minioClient.bucketExists(bucketName);
     if (!bucketExists) {
       await minioClient.makeBucket(bucketName);
       console.log(`Bucket ${bucketName} created successfully.`);
-      
-      if (policy === 'public-read') {
-        // Define a public-read policy
-        const policyJSON = {
-          Version: "2012-10-17",
-          Statement: [
-            {
-              Effect: "Allow",
-              Principal: "",
-              Action: ["s3:GetObject"],
-              Resource: [`arn:aws:s3:::${bucketName}/*`]
-            }
-          ]
-        };
-        await minioClient.setBucketPolicy(bucketName, JSON.stringify(policyJSON));
-        console.log(`Public-read policy applied to bucket ${bucketName}.`);
-      }
     } else {
       console.log(`Bucket ${bucketName} already exists.`);
+    }
+
+    if (policy === 'public-read') {
+      // Apply public-read policy after confirming the bucket exists
+      const policyJSON = {
+        Version: "2012-10-17",
+        Statement: [
+          {
+            Effect: "Allow",
+            Principal: "*",
+            Action: ["s3:GetObject"],
+            Resource: [`arn:aws:s3:::${bucketName}/*`]
+          }
+        ]
+      };
+      await minioClient.setBucketPolicy(bucketName, JSON.stringify(policyJSON));
+      console.log(`Public-read policy applied to bucket ${bucketName}.`);
     }
   } catch (error) {
     console.error('Error in bucket creation or policy application:', error);
   }
 }
+
 
 
 class BinaryOutputService {

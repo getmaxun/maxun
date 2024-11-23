@@ -1,6 +1,7 @@
 import { readFile, readFiles } from "../workflow-management/storage";
 import { Router, Request, Response } from 'express';
-import { chromium } from "playwright";
+import { chromium } from "playwright-extra";
+import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { requireAPIKey } from "../middlewares/api";
 import Robot from "../models/Robot";
 import Run from "../models/Run";
@@ -14,6 +15,7 @@ import { io, Socket } from "socket.io-client";
 import { BinaryOutputService } from "../storage/mino";
 import { AuthenticatedRequest } from "../routes/record"
 import {capture} from "../utils/analytics";
+chromium.use(stealthPlugin());
 
 const formatRecording = (recordingData: any) => {
     const recordingMeta = recordingData.recording_meta;
@@ -289,7 +291,7 @@ router.get("/robots/:id", requireAPIKey, async (req: Request, res: Response) => 
  *                   type: string
  *                   example: "Failed to retrieve runs"
  */
-router.get("/robots/:id/runs", requireAPIKey, async (req: Request, res: Response) => {
+router.get("/robots/:id/runs",requireAPIKey, async (req: Request, res: Response) => {
     try {
         const runs = await Run.findAll({
             where: {
@@ -320,6 +322,7 @@ router.get("/robots/:id/runs", requireAPIKey, async (req: Request, res: Response
     }
 }
 );
+
 
 function formatRunResponse(run: any) {
     const formattedRun = {
@@ -494,7 +497,7 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string) {
     } catch (e) {
         const { message } = e as Error;
         logger.log('info', `Error while scheduling a run with id: ${id}`);
-        console.log(message);
+        console.log(`Error scheduling run:`, message);
         return {
             success: false,
             error: message,
@@ -766,7 +769,6 @@ router.post("/robots/:id/runs", requireAPIKey, async (req: AuthenticatedRequest,
             return res.status(401).json({ ok: false, error: 'Unauthorized' });
         }
         const runId = await handleRunRecording(req.params.id, req.user.dataValues.id);
-        console.log(`Result`, runId);
 
         if (!runId) {
             throw new Error('Run ID is undefined');

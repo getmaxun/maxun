@@ -5,6 +5,8 @@ import { RunSettings, RunSettingsModal } from "../molecules/RunSettings";
 import { ScheduleSettings, ScheduleSettingsModal } from "../molecules/ScheduleSettings";
 import { IntegrationSettings, IntegrationSettingsModal } from "../molecules/IntegrationSettings";
 import { RobotSettings, RobotSettingsModal } from "../molecules/RobotSettings";
+import { RobotEditModal } from '../molecules/RobotEdit';
+import { RobotDuplicationModal } from '../molecules/RobotDuplicate';
 
 interface RecordingsProps {
   handleEditRecording: (id: string, fileName: string) => void;
@@ -18,10 +20,14 @@ export const Recordings = ({ handleEditRecording, handleRunRecording, setRecordi
   const [scheduleSettingsAreOpen, setScheduleSettingsAreOpen] = useState(false);
   const [integrateSettingsAreOpen, setIntegrateSettingsAreOpen] = useState(false);
   const [robotSettingsAreOpen, setRobotSettingsAreOpen] = useState(false);
+  const [robotEditAreOpen, setRobotEditAreOpen] = useState(false);
+  const [robotDuplicateAreOpen, setRobotDuplicateAreOpen] = useState(false);
   const [params, setParams] = useState<string[]>([]);
   const [selectedRecordingId, setSelectedRecordingId] = useState<string>('');
   const handleIntegrateRecording = (id: string, settings: IntegrationSettings) => {};
   const handleSettingsRecording = (id: string, settings: RobotSettings) => {};
+  const handleEditRobot = (id: string, settings: RobotSettings) => {};
+  const handleDuplicateRobot = (id: string, settings: RobotSettings) => {};
 
   const handleSettingsAndIntegrate = (id: string, name: string, params: string[]) => {
     if (params.length === 0) {
@@ -75,6 +81,32 @@ export const Recordings = ({ handleEditRecording, handleRunRecording, setRecordi
     }
   }
 
+  const handleEditRobotOption = (id: string, name: string, params: string[]) => {
+    if (params.length === 0) {
+      setRobotEditAreOpen(true);
+      setRecordingInfo(id, name);
+      setSelectedRecordingId(id);
+    } else {
+      setParams(params);
+      setRobotEditAreOpen(true);
+      setRecordingInfo(id, name);
+      setSelectedRecordingId(id);
+    }
+  }
+
+  const handleDuplicateRobotOption = (id: string, name: string, params: string[]) => {
+    if (params.length === 0) {
+      setRobotDuplicateAreOpen(true);
+      setRecordingInfo(id, name);
+      setSelectedRecordingId(id);
+    } else {
+      setParams(params);
+      setRobotDuplicateAreOpen(true);
+      setRecordingInfo(id, name);
+      setSelectedRecordingId(id);
+    }
+  }
+
   const handleClose = () => {
     setParams([]);
     setRunSettingsAreOpen(false);
@@ -103,6 +135,20 @@ export const Recordings = ({ handleEditRecording, handleRunRecording, setRecordi
     setSelectedRecordingId('');
   }
 
+  const handleRobotEditClose = () => {
+    setParams([]);
+    setRobotEditAreOpen(false);
+    setRecordingInfo('', '');
+    setSelectedRecordingId('');
+  }
+
+  const handleRobotDuplicateClose = () => {
+    setParams([]);
+    setRobotDuplicateAreOpen(false);
+    setRecordingInfo('', '');
+    setSelectedRecordingId('');
+  }
+
   return (
     <React.Fragment>
       <RunSettingsModal isOpen={runSettingsAreOpen}
@@ -123,6 +169,14 @@ export const Recordings = ({ handleEditRecording, handleRunRecording, setRecordi
         handleClose={handleRobotSettingsClose}
         handleStart={(settings) => handleSettingsRecording(selectedRecordingId, settings)}
       />
+      <RobotEditModal isOpen={robotEditAreOpen} 
+        handleClose={handleRobotEditClose}
+        handleStart={(settings) => handleEditRobot(selectedRecordingId,settings)} 
+      />
+      <RobotDuplicationModal isOpen={robotDuplicateAreOpen}
+        handleClose={handleRobotDuplicateClose}
+        handleStart={(settings) => handleDuplicateRobot(selectedRecordingId, settings)}
+      />
       <Grid container direction="column" sx={{ padding: '30px' }}>
         <Grid item xs>
           <RecordingsTable
@@ -131,6 +185,8 @@ export const Recordings = ({ handleEditRecording, handleRunRecording, setRecordi
             handleScheduleRecording={handleSettingsAndSchedule}
             handleIntegrateRecording={handleSettingsAndIntegrate}
             handleSettingsRecording={handleRobotSettings}
+            handleEditRobot={handleEditRobotOption}
+            handleDuplicateRobot={handleDuplicateRobotOption}
           />
         </Grid>
       </Grid>

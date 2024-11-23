@@ -12,8 +12,9 @@ import { useGlobalInfoStore } from "../../context/globalInfo";
 import { getStoredRuns } from "../../api/storage";
 import { RunSettings } from "./RunSettings";
 import { CollapsibleRow } from "./ColapsibleRow";
-import { Accordion, AccordionSummary, AccordionDetails, Typography } from '@mui/material';
+import { Accordion, AccordionSummary, AccordionDetails, Typography, Box, TextField } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import SearchIcon from '@mui/icons-material/Search';
 
 interface Column {
   id: 'runStatus' | 'name' | 'startedAt' | 'finishedAt' | 'delete' | 'settings';
@@ -28,7 +29,6 @@ export const columns: readonly Column[] = [
   { id: 'name', label: 'Robot Name', minWidth: 80 },
   { id: 'startedAt', label: 'Started at', minWidth: 80 },
   { id: 'finishedAt', label: 'Finished at', minWidth: 80 },
-  // { id: 'task', label: 'Task', minWidth: 80 },
   { id: 'settings', label: 'Settings', minWidth: 80 },
   { id: 'delete', label: 'Delete', minWidth: 80 },
 ];
@@ -42,9 +42,10 @@ export interface Data {
   runByUserId?: string;
   runByScheduleId?: string;
   runByAPI?: boolean;
-  // task: string;
   log: string;
   runId: string;
+  robotId: string;
+  robotMetaId: string;
   interpreterSettings: RunSettings;
   serializableOutput: any;
   binaryOutput: any;
@@ -63,7 +64,8 @@ export const RunsTable = (
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [rows, setRows] = useState<Data[]>([]);
 
-  console.log(`rows runs: ${JSON.stringify(rows)}`);
+  const [searchTerm, setSearchTerm] = useState('');
+
 
   const { notify, rerenderRuns, setRerenderRuns } = useGlobalInfoStore();
 
@@ -73,6 +75,11 @@ export const RunsTable = (
 
   const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
     setRowsPerPage(+event.target.value);
+    setPage(0);
+  };
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(event.target.value);
     setPage(0);
   };
 
@@ -105,25 +112,46 @@ export const RunsTable = (
     fetchRuns();
   };
 
-  // Group runs by recording name
-  const groupedRows = rows.reduce((acc, row) => {
-    if (!acc[row.name]) {
-      acc[row.name] = [];
+
+  // Filter rows based on search term
+  const filteredRows = rows.filter((row) =>
+    row.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Group filtered rows by robot meta id
+  const groupedRows = filteredRows.reduce((acc, row) => {
+
+    if (!acc[row.robotMetaId]) {
+      acc[row.robotMetaId] = [];
     }
-    acc[row.name].push(row);
+    acc[row.robotMetaId].push(row);
     return acc;
   }, {} as Record<string, Data[]>);
 
   return (
     <React.Fragment>
-      <Typography variant="h6" gutterBottom>
-        All Runs
-      </Typography>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <Typography variant="h6" gutterBottom>
+          All Runs
+        </Typography>
+        <TextField
+          size="small"
+          placeholder="Search runs..."
+          value={searchTerm}
+          onChange={handleSearchChange}
+          InputProps={{
+            startAdornment: <SearchIcon sx={{ color: 'action.active', mr: 1 }} />
+          }}
+          sx={{ width: '250px' }}
+        />
+      </Box>
       <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden' }}>
-        {Object.entries(groupedRows).map(([name, group]) => (
-          <Accordion key={name}>
+        {Object.entries(groupedRows).map(([id, data]) => (
+          <Accordion key={id}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography variant="h6">{name}</Typography>
+
+              <Typography variant="h6">{data[data.length - 1].name}</Typography>
+
             </AccordionSummary>
             <AccordionDetails>
               <Table stickyHeader aria-label="sticky table">
@@ -142,17 +170,19 @@ export const RunsTable = (
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {group.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row) => (
-                    <CollapsibleRow
-                      row={row}
-                      handleDelete={handleDelete}
-                      key={`row-${row.id}`}
-                      isOpen={runId === row.runId && runningRecordingName === row.name}
-                      currentLog={currentInterpretationLog}
-                      abortRunHandler={abortRunHandler}
-                      runningRecordingName={runningRecordingName}
-                    />
-                  ))}
+                  {data
+                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                    .map((row) => (
+                      <CollapsibleRow
+                        row={row}
+                        handleDelete={handleDelete}
+                        key={`row-${row.id}`}
+                        isOpen={runId === row.runId && runningRecordingName === row.name}
+                        currentLog={currentInterpretationLog}
+                        abortRunHandler={abortRunHandler}
+                        runningRecordingName={runningRecordingName}
+                      />
+                    ))}
                 </TableBody>
               </Table>
             </AccordionDetails>
@@ -162,7 +192,7 @@ export const RunsTable = (
       <TablePagination
         rowsPerPageOptions={[10, 25, 50]}
         component="div"
-        count={rows.length}
+        count={filteredRows.length}
         rowsPerPage={rowsPerPage}
         page={page}
         onPageChange={handleChangePage}

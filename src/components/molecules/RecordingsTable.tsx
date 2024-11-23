@@ -9,24 +9,22 @@ import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
 import { useEffect } from "react";
 import { WorkflowFile } from "maxun-core";
-import { IconButton, Button, Box, Typography, TextField } from "@mui/material";
-import { Schedule, DeleteForever, Edit, PlayCircle, Settings, Power } from "@mui/icons-material";
-import LinkIcon from '@mui/icons-material/Link';
+import SearchIcon from '@mui/icons-material/Search';
+import { IconButton, Button, Box, Typography, TextField, MenuItem, Menu, ListItemIcon, ListItemText } from "@mui/material";
+import { Schedule, DeleteForever, Edit, PlayCircle, Settings, Power, ContentCopy, MoreHoriz } from "@mui/icons-material";
 import { useGlobalInfoStore } from "../../context/globalInfo";
-import { deleteRecordingFromStorage, getStoredRecordings } from "../../api/storage";
+import { checkRunsForRecording, deleteRecordingFromStorage, getStoredRecordings } from "../../api/storage";
 import { Add } from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
 import { stopRecording } from "../../api/recording";
 import { GenericModal } from '../atoms/GenericModal';
 
-
 /** TODO:
  *  1. allow editing existing robot after persisting browser steps
- *  2. show robot settings: id, url, etc. 
 */
 
 interface Column {
-  id: 'interpret' | 'name' | 'delete' | 'schedule' | 'integrate' | 'settings';
+  id: 'interpret' | 'name' | 'options' | 'schedule' | 'integrate' | 'settings';
   label: string;
   minWidth?: number;
   align?: 'right';
@@ -36,17 +34,6 @@ interface Column {
 const columns: readonly Column[] = [
   { id: 'interpret', label: 'Run', minWidth: 80 },
   { id: 'name', label: 'Name', minWidth: 80 },
-  // {
-  //   id: 'createdAt',
-  //   label: 'Created at',
-  //   minWidth: 80,
-  //   //format: (value: string) => value.toLocaleString('en-US'),
-  // },
-  // {
-  //   id: 'edit',
-  //   label: 'Edit',
-  //   minWidth: 80,
-  // },
   {
     id: 'schedule',
     label: 'Schedule',
@@ -57,20 +44,14 @@ const columns: readonly Column[] = [
     label: 'Integrate',
     minWidth: 80,
   },
-  // {
-  //   id: 'updatedAt',
-  //   label: 'Updated at',
-  //   minWidth: 80,
-  //   //format: (value: string) => value.toLocaleString('en-US'),
-  // },
   {
     id: 'settings',
     label: 'Settings',
     minWidth: 80,
   },
   {
-    id: 'delete',
-    label: 'Delete',
+    id: 'options',
+    label: 'Options',
     minWidth: 80,
   },
 ];
@@ -90,15 +71,16 @@ interface RecordingsTableProps {
   handleScheduleRecording: (id: string, fileName: string, params: string[]) => void;
   handleIntegrateRecording: (id: string, fileName: string, params: string[]) => void;
   handleSettingsRecording: (id: string, fileName: string, params: string[]) => void;
+  handleEditRobot: (id: string, name: string, params: string[]) => void;
+  handleDuplicateRobot: (id: string, name: string, params: string[]) => void;
 }
 
-export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handleScheduleRecording, handleIntegrateRecording, handleSettingsRecording }: RecordingsTableProps) => {
+export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handleScheduleRecording, handleIntegrateRecording, handleSettingsRecording, handleEditRobot, handleDuplicateRobot }: RecordingsTableProps) => {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
   const [rows, setRows] = React.useState<Data[]>([]);
   const [isModalOpen, setModalOpen] = React.useState(false);
-
-  console.log('rows', rows);
+  const [searchTerm, setSearchTerm] = React.useState('');
 
   const { notify, setRecordings, browserId, setBrowserId, recordingUrl, setRecordingUrl, recordingName, setRecordingName, recordingId, setRecordingId } = useGlobalInfoStore();
   const navigate = useNavigate();
@@ -109,6 +91,11 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
 
   const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
     setRowsPerPage(+event.target.value);
+    setPage(0);
+  };
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(event.target.value);
     setPage(0);
   };
 
@@ -150,7 +137,6 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
   const startRecording = () => {
     setModalOpen(false);
     handleStartRecording();
-    // notify('info', 'New Recording started for ' + recordingUrl);
   };
 
   useEffect(() => {
@@ -159,34 +145,54 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
     }
   }, []);
 
+
+  // Filter rows based on search term
+  const filteredRows = rows.filter((row) =>
+    row.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+
+
+
   return (
     <React.Fragment>
       <Box display="flex" justifyContent="space-between" alignItems="center">
         <Typography variant="h6" gutterBottom>
           My Robots
         </Typography>
-        <IconButton
-          aria-label="new"
-          size={"small"}
-          onClick={handleNewRecording}
-          sx={{
-            width: '140px',
-            borderRadius: '5px',
-            padding: '8px',
-            background: '#ff00c3',
-            color: 'white',
-            marginRight: '10px',
-            fontFamily: '"Roboto","Helvetica","Arial",sans-serif',
-            fontWeight: '500',
-            fontSize: '0.875rem',
-            lineHeight: '1.75',
-            letterSpacing: '0.02857em',
-            '&:hover': { color: 'white', backgroundColor: '#ff00c3' }
-          }
-          }
-        >
-          <Add sx={{ marginRight: '5px' }} /> Create Robot
-        </IconButton>
+        <Box display="flex" alignItems="center" gap={2}>
+          <TextField
+            size="small"
+            placeholder="Search robots..."
+            value={searchTerm}
+            onChange={handleSearchChange}
+            InputProps={{
+              startAdornment: <SearchIcon sx={{ color: 'action.active', mr: 1 }} />
+            }}
+            sx={{ width: '250px' }}
+          />
+          <IconButton
+            aria-label="new"
+            size={"small"}
+            onClick={handleNewRecording}
+            sx={{
+              width: '140px',
+              borderRadius: '5px',
+              padding: '8px',
+              background: '#ff00c3',
+              color: 'white',
+              marginRight: '10px',
+              fontFamily: '"Roboto","Helvetica","Arial",sans-serif',
+              fontWeight: '500',
+              fontSize: '0.875rem',
+              lineHeight: '1.75',
+              letterSpacing: '0.02857em',
+              '&:hover': { color: 'white', backgroundColor: '#ff00c3' }
+            }}
+          >
+            <Add sx={{ marginRight: '5px' }} /> Create Robot
+          </IconButton>
+        </Box>
       </Box>
       <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden', marginTop: '15px' }}>
         <Table stickyHeader aria-label="sticky table">
@@ -204,7 +210,7 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
             </TableRow>
           </TableHead>
           <TableBody>
-            {rows.length !== 0 ? rows
+            {filteredRows.length !== 0 ? filteredRows
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
               .map((row) => {
                 return (
@@ -226,16 +232,6 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
                                 <InterpretButton handleInterpret={() => handleRunRecording(row.id, row.name, row.params || [])} />
                               </TableCell>
                             );
-                          // case 'edit':
-                          //   return (
-                          //     <TableCell key={column.id} align={column.align}>
-                          //       <IconButton aria-label="add" size="small" onClick={() => {
-                          //         handleEditRecording(row.id, row.name);
-                          //       }} sx={{ '&:hover': { color: '#1976d2', backgroundColor: 'transparent' } }}>
-                          //         <Edit />
-                          //       </IconButton>
-                          //     </TableCell>
-                          //   );
                           case 'schedule':
                             return (
                               <TableCell key={column.id} align={column.align}>
@@ -248,20 +244,31 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
                                 <IntegrateButton handleIntegrate={() => handleIntegrateRecording(row.id, row.name, row.params || [])} />
                               </TableCell>
                             );
-                          case 'delete':
+                          case 'options':
                             return (
                               <TableCell key={column.id} align={column.align}>
-                                <IconButton aria-label="add" size="small" onClick={() => {
-                                  deleteRecordingFromStorage(row.id).then((result: boolean) => {
-                                    if (result) {
-                                      setRows([]);
-                                      notify('success', 'Recording deleted successfully');
-                                      fetchRecordings();
-                                    }
-                                  })
-                                }}>
-                                  <DeleteForever />
-                                </IconButton>
+                                <OptionsButton
+                                  handleEdit={() => handleEditRobot(row.id, row.name, row.params || [])}
+                                  handleDelete={() => {
+
+                                    checkRunsForRecording(row.id).then((result: boolean) => {
+                                      if (result) {
+                                        notify('warning', 'Cannot delete recording as it has active runs');
+                                      }
+                                    })
+
+                                    deleteRecordingFromStorage(row.id).then((result: boolean) => {
+                                      if (result) {
+                                        setRows([]);
+                                        notify('success', 'Recording deleted successfully');
+                                        fetchRecordings();
+                                      }
+                                    })
+                                  }}
+                                  handleDuplicate={() => {
+                                    handleDuplicateRobot(row.id, row.name, row.params || []);
+                                  }}
+                                />
                               </TableCell>
                             );
                           case 'settings':
@@ -285,7 +292,7 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
       <TablePagination
         rowsPerPageOptions={[10, 25, 50]}
         component="div"
-        count={rows ? rows.length : 0}
+        count={filteredRows.length}
         rowsPerPage={rowsPerPage}
         page={page}
         onPageChange={handleChangePage}
@@ -331,7 +338,6 @@ const InterpretButton = ({ handleInterpret }: InterpretButtonProps) => {
   )
 }
 
-
 interface ScheduleButtonProps {
   handleSchedule: () => void;
 }
@@ -376,6 +382,60 @@ const SettingsButton = ({ handleSettings }: SettingsButtonProps) => {
     </IconButton>
   )
 }
+
+interface OptionsButtonProps {
+  handleEdit: () => void;
+  handleDelete: () => void;
+  handleDuplicate: () => void;
+}
+
+const OptionsButton = ({ handleEdit, handleDelete, handleDuplicate }: OptionsButtonProps) => {
+  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+
+  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  return (
+    <>
+      <IconButton
+        aria-label="options"
+        size="small"
+        onClick={handleClick}
+      >
+        <MoreHoriz />
+      </IconButton>
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleClose}
+      >
+        <MenuItem onClick={() => { handleEdit(); handleClose(); }}>
+          <ListItemIcon>
+            <Edit fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Edit</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => { handleDelete(); handleClose(); }}>
+          <ListItemIcon>
+            <DeleteForever fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Delete</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => { handleDuplicate(); handleClose(); }}>
+          <ListItemIcon>
+            <ContentCopy fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Duplicate</ListItemText>
+        </MenuItem>
+      </Menu>
+    </>
+  );
+};
 
 const modalStyle = {
   top: '50%',

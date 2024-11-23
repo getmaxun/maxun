@@ -794,6 +794,7 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
 export const getChildSelectors = async (page: Page, parentSelector: string): Promise<string[]> => {
   try {
     const childSelectors = await page.evaluate((parentSelector: string) => {
+      // Function to get a non-unique selector based on tag and class (if present)
       function getNonUniqueSelector(element: HTMLElement): string {
         let selector = element.tagName.toLowerCase();
 
@@ -811,6 +812,7 @@ export const getChildSelectors = async (page: Page, parentSelector: string): Pro
         return selector;
       }
 
+      // Function to generate selector path from an element to its parent
       function getSelectorPath(element: HTMLElement | null): string {
         if (!element || !element.parentElement) return '';
 
@@ -820,22 +822,33 @@ export const getChildSelectors = async (page: Page, parentSelector: string): Pro
         return `${parentSelector} > ${elementSelector}`;
       }
 
-      function getAllDescendantSelectors(element: HTMLElement, stopAtParent: HTMLElement | null): string[] {
+      // Function to recursively get all descendant selectors
+      function getAllDescendantSelectors(element: HTMLElement): string[] {
         let selectors: string[] = [];
         const children = Array.from(element.children) as HTMLElement[];
 
         for (const child of children) {
-          selectors.push(getSelectorPath(child));
-          selectors = selectors.concat(getAllDescendantSelectors(child, stopAtParent));
+          const childPath = getSelectorPath(child);
+          if (childPath) {
+            selectors.push(childPath);  // Add direct child path
+            selectors = selectors.concat(getAllDescendantSelectors(child));  // Recursively process descendants
+          }
         }
 
         return selectors;
       }
 
-      const parentElement = document.querySelector(parentSelector) as HTMLElement;
-      if (!parentElement) return [];
+      // Find all occurrences of the parent selector in the DOM
+      const parentElements = Array.from(document.querySelectorAll(parentSelector)) as HTMLElement[];
+      const allChildSelectors = new Set<string>();  // Use a set to ensure uniqueness
 
-      return getAllDescendantSelectors(parentElement, parentElement);
+      // Process each parent element and its descendants
+      parentElements.forEach((parentElement) => {
+        const descendantSelectors = getAllDescendantSelectors(parentElement);
+        descendantSelectors.forEach((selector) => allChildSelectors.add(selector));  // Add selectors to the set
+      });
+
+      return Array.from(allChildSelectors);  // Convert the set back to an array
     }, parentSelector);
 
     return childSelectors || [];
@@ -844,6 +857,7 @@ export const getChildSelectors = async (page: Page, parentSelector: string): Pro
     return [];
   }
 };
+
 
 /**
  * Returns the first pair from the given workflow that contains the given selector

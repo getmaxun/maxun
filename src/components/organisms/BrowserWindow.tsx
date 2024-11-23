@@ -8,6 +8,7 @@ import { useActionContext } from '../../context/browserActions';
 import { useBrowserSteps, TextStep } from '../../context/browserSteps';
 import { useGlobalInfoStore } from '../../context/globalInfo';
 
+
 interface ElementInfo {
     tagName: string;
     hasOnlyText?: boolean;
@@ -316,7 +317,7 @@ export const BrowserWindow = () => {
         }
     }, [paginationMode, resetPaginationSelector]);
 
-
+  
     return (
         <div onClick={handleClick} style={{ width: '900px' }} id="browser-window">
             {

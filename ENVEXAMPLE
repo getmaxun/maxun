@@ -1,12 +1,12 @@
 # App Setup
 NODE_ENV=production                     # Set to 'development' or 'production' as required
-JWT_SECRET=your_jwt_secret_key          # Replace with a secure JWT secret key
+JWT_SECRET=a9Z$kLq7^f03GzNw!bP9dH4xV6sT2yXl3O8vR@uYq3          # Replace with a secure JWT secret key
 DB_NAME=maxun                           # Your PostgreSQL database name
 DB_USER=postgres                        # PostgreSQL username
 DB_PASSWORD=postgres                    # PostgreSQL password
 DB_HOST=postgres                        # Host for PostgreSQL in Docker
 DB_PORT=5432                            # Port for PostgreSQL (default: 5432)
-ENCRYPTION_KEY=your_encryption_key      # Key for encrypting sensitive data (passwords and proxies)
+ENCRYPTION_KEY=f4d5e6a7b8c9d0e1f23456789abcdef01234567890abcdef123456789abcdef0      # Key for encrypting sensitive data (passwords and proxies)
 MINIO_ENDPOINT=minio                    # MinIO endpoint in Docker
 MINIO_PORT=9000                         # Port for MinIO (default: 9000)
 MINIO_ACCESS_KEY=minio_access_key       # MinIO access key

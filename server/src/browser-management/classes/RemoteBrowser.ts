@@ -3,9 +3,10 @@ import {
     Browser,
     CDPSession,
     BrowserContext,
-    chromium,
 } from 'playwright';
 import { Socket } from "socket.io";
+import { chromium } from 'playwright-extra';
+import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { PlaywrightBlocker } from '@cliqz/adblocker-playwright';
 import fetch from 'cross-fetch';
 
@@ -14,7 +15,7 @@ import { InterpreterSettings, RemoteBrowserOptions } from "../../types";
 import { WorkflowGenerator } from "../../workflow-management/classes/Generator";
 import { WorkflowInterpreter } from "../../workflow-management/classes/Interpreter";
 import { getDecryptedProxyConfig } from '../../routes/proxy';
-
+chromium.use(stealthPlugin());
 
 
 /**
@@ -163,9 +164,7 @@ export class RemoteBrowser {
 
         contextOptions.userAgent = browserUserAgent;
         this.context = await this.browser.newContext(contextOptions);
-        console.log(`Context from initialize: ${JSON.stringify(this.context)}`)
         this.currentPage = await this.context.newPage();
-        console.log(`CPage from initialize: ${JSON.stringify(this.currentPage)}`)
         // await this.currentPage.setExtraHTTPHeaders({
         //     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
         // });
@@ -307,6 +306,7 @@ export class RemoteBrowser {
             const workflow = this.generator.AddGeneratedFlags(this.generator.getWorkflowFile());
             await this.initializeNewPage();
             if (this.currentPage) {
+                this.currentPage.setViewportSize({ height: 400, width: 900 });
                 const params = this.generator.getParams();
                 if (params) {
                     this.interpreterSettings.params = params.reduce((acc, param) => {

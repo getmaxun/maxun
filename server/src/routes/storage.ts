@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import logger from "../logger";
 import { createRemoteBrowserForRun, destroyRemoteBrowser } from "../browser-management/controller";
-import { chromium } from "playwright";
+import { chromium } from 'playwright-extra';
+import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { browserPool } from "../server";
 import { uuid } from "uuidv4";
 import moment from 'moment-timezone';
@@ -16,6 +17,8 @@ import { workflowQueue } from '../worker';
 import { AuthenticatedRequest } from './record';
 import { computeNextRun } from '../utils/schedule';
 import { capture } from "../utils/analytics";
+import { tryCatch } from 'bullmq';
+chromium.use(stealthPlugin());
 
 export const router = Router();
 
@@ -56,6 +59,217 @@ router.get('/recordings/:id', requireSignIn, async (req, res) => {
     return res.send(null);
   }
 })
+
+router.get(('/recordings/:id/runs'), requireSignIn, async (req, res) => {
+  try {
+    const runs = await Run.findAll({
+        where: {
+            robotMetaId: req.params.id
+        },
+        raw: true
+    });
+    const formattedRuns = runs.map(formatRunResponse);
+    const response = {
+        statusCode: 200,
+        messageCode: "success",
+        runs: {
+        totalCount: formattedRuns.length,
+        items: formattedRuns,
+        },
+    };
+
+    res.status(200).json(response);
+} catch (error) {
+    console.error("Error fetching runs:", error);
+    res.status(500).json({
+        statusCode: 500,
+        messageCode: "error",
+        message: "Failed to retrieve runs",
+    });
+}
+})
+
+function formatRunResponse(run: any) {
+  const formattedRun = {
+      id: run.id,
+      status: run.status,
+      name: run.name,
+      robotId: run.robotMetaId, // Renaming robotMetaId to robotId
+      startedAt: run.startedAt,
+      finishedAt: run.finishedAt,
+      runId: run.runId,
+      runByUserId: run.runByUserId,
+      runByScheduleId: run.runByScheduleId,
+      runByAPI: run.runByAPI,
+      data: {},
+      screenshot: null,
+  };
+
+  if (run.serializableOutput && run.serializableOutput['item-0']) {
+      formattedRun.data = run.serializableOutput['item-0'];
+  } else if (run.binaryOutput && run.binaryOutput['item-0']) {
+      formattedRun.screenshot = run.binaryOutput['item-0']; 
+  }
+
+  return formattedRun;
+}
+
+/**
+ * PUT endpoint to update the name and limit of a robot.
+ */
+router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { name, limit } = req.body;
+
+    // Validate input
+    if (!name && limit === undefined) {
+      return res.status(400).json({ error: 'Either "name" or "limit" must be provided.' });
+    }
+
+    // Fetch the robot by ID
+    const robot = await Robot.findOne({ where: { 'recording_meta.id': id } });
+
+    if (!robot) {
+      return res.status(404).json({ error: 'Robot not found.' });
+    }
+
+    // Update fields if provided
+    if (name) {
+      robot.set('recording_meta', { ...robot.recording_meta, name });
+    }
+
+    // Update the limit
+    if (limit !== undefined) {
+      const workflow = [...robot.recording.workflow]; // Create a copy of the workflow
+
+      // Ensure the workflow structure is valid before updating
+      if (
+        workflow.length > 0 &&
+        workflow[0]?.what?.[0]
+      ) {
+        // Create a new workflow object with the updated limit
+        const updatedWorkflow = workflow.map((step, index) => {
+          if (index === 0) { // Assuming you want to update the first step
+            return {
+              ...step,
+              what: step.what.map((action, actionIndex) => {
+                if (actionIndex === 0) { // Assuming the first action needs updating
+                  return {
+                    ...action,
+                    args: (action.args ?? []).map((arg, argIndex) => {
+                      if (argIndex === 0) { // Assuming the first argument needs updating
+                        return { ...arg, limit };
+                      }
+                      return arg;
+                    }),
+                  };
+                }
+                return action;
+              }),
+            };
+          }
+          return step;
+        });
+
+        // Replace the workflow in the recording object
+        robot.set('recording', { ...robot.recording, workflow: updatedWorkflow });
+      } else {
+        return res.status(400).json({ error: 'Invalid workflow structure for updating limit.' });
+      }
+    }
+
+    await robot.save();
+
+    const updatedRobot = await Robot.findOne({ where: { 'recording_meta.id': id } });
+
+    logger.log('info', `Robot with ID ${id} was updated successfully.`);
+
+    return res.status(200).json({ message: 'Robot updated successfully', robot });
+  } catch (error) {
+    // Safely handle the error type
+    if (error instanceof Error) {
+      logger.log('error', `Error updating robot with ID ${req.params.id}: ${error.message}`);
+      return res.status(500).json({ error: error.message });
+    } else {
+      logger.log('error', `Unknown error updating robot with ID ${req.params.id}`);
+      return res.status(500).json({ error: 'An unknown error occurred.' });
+    }
+  }
+});
+
+
+/**
+ * POST endpoint to duplicate a robot and update its target URL.
+ */
+router.post('/recordings/:id/duplicate', requireSignIn, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { targetUrl } = req.body;
+
+    if (!targetUrl) {
+      return res.status(400).json({ error: 'The "targetUrl" field is required.' });
+    }
+
+    const originalRobot = await Robot.findOne({ where: { 'recording_meta.id': id } });
+
+    if (!originalRobot) {
+      return res.status(404).json({ error: 'Original robot not found.' });
+    }
+
+    const lastWord = targetUrl.split('/').filter(Boolean).pop() || 'Unnamed';
+
+    const workflow = originalRobot.recording.workflow.map((step) => {
+      if (step.where?.url && step.where.url !== "about:blank") {
+        step.where.url = targetUrl;
+      }
+
+      step.what.forEach((action) => {
+        if (action.action === "goto" && action.args?.length) {
+          action.args[0] = targetUrl; 
+        }
+      });
+
+      return step;
+    });
+
+    const currentTimestamp = new Date().toISOString();
+
+    const newRobot = await Robot.create({
+      id: uuid(), 
+      userId: originalRobot.userId, 
+      recording_meta: {
+        ...originalRobot.recording_meta,
+        id: uuid(),
+        name: `${originalRobot.recording_meta.name} (${lastWord})`,
+        createdAt: currentTimestamp, 
+        updatedAt: currentTimestamp, 
+      }, 
+      recording: { ...originalRobot.recording, workflow }, 
+      google_sheet_email: null, 
+      google_sheet_name: null,
+      google_sheet_id: null,
+      google_access_token: null,
+      google_refresh_token: null,
+      schedule: null, 
+    });
+
+    logger.log('info', `Robot with ID ${id} duplicated successfully as ${newRobot.id}.`);
+
+    return res.status(201).json({
+      message: 'Robot duplicated and target URL updated successfully.',
+      robot: newRobot,
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      logger.log('error', `Error duplicating robot with ID ${req.params.id}: ${error.message}`);
+      return res.status(500).json({ error: error.message });
+    } else {
+      logger.log('error', `Unknown error duplicating robot with ID ${req.params.id}`);
+      return res.status(500).json({ error: 'An unknown error occurred.' });
+    }
+  }
+});
 
 /**
  * DELETE endpoint for deleting a recording from the storage.
