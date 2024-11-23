@@ -17,6 +17,7 @@ import StorageIcon from '@mui/icons-material/Storage';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import { SidePanelHeader } from './SidePanelHeader';
 import { useGlobalInfoStore } from '../../context/globalInfo';
+import { useThemeMode } from '../../context/theme-provider';
 
 interface InterpretationLogProps {
   isOpen: boolean;
@@ -113,6 +114,8 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     }
   }, [hasScrapeListAction, hasScrapeSchemaAction, hasScreenshotAction, setIsOpen]);
 
+  const isDarkMode = useThemeMode();
+
   return (
     <Grid container>
       <Grid item xs={12} md={9} lg={9}>
@@ -121,7 +124,9 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
           variant="contained"
           color="primary"
           sx={{
-            marginTop: '10px',
+
+            borderRadius: ' 0 0 10px 10px',
+           
             color: 'white',
             position: 'absolute',
             background: '#ff00c3',
@@ -145,8 +150,8 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
           onOpen={toggleDrawer(true)}
           PaperProps={{
             sx: {
-              background: 'white',
-              color: 'black',
+              background: `${isDarkMode ? '#1e2124' : 'white'}`,
+              color: `${isDarkMode ? 'white' : 'black'}`,
               padding: '10px',
               height: 500,
               width: width - 10,

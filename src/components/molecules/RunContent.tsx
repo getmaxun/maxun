@@ -75,10 +75,50 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     <Box sx={{ width: '100%' }}>
       <TabContext value={tab}>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={tab} onChange={(e, newTab) => setTab(newTab)} aria-label="run-content-tabs">
-            <Tab label="Output Data" value='output' />
-            <Tab label="Log" value='log' />
-          </Tabs>
+        <Tabs 
+  value={tab} 
+  onChange={(e, newTab) => setTab(newTab)} 
+  aria-label="run-content-tabs"
+  sx={{
+    // Remove the default blue indicator
+    '& .MuiTabs-indicator': {
+      backgroundColor: '#FF00C3',  // Change to pink
+    },
+    // Remove default transition effects
+    '& .MuiTab-root': {
+      '&.Mui-selected': {
+        color: '#FF00C3',
+      },
+    }
+  }}
+>
+  <Tab 
+    label="Output Data" 
+    value='output' 
+    sx={{
+      color: (theme) => theme.palette.mode === 'dark' ? '#fff' : '#000',
+      '&:hover': {
+        color: '#FF00C3'
+      },
+      '&.Mui-selected': {
+        color: '#FF00C3',
+      }
+    }} 
+  />
+  <Tab 
+    label="Log" 
+    value='log' 
+    sx={{
+      color: (theme) => theme.palette.mode === 'dark' ? '#fff' : '#000',
+      '&:hover': {
+        color: '#FF00C3'
+      },
+      '&.Mui-selected': {
+        color: '#FF00C3',
+      }
+    }} 
+  />
+</Tabs>
         </Box>
         <TabPanel value='log'>
           <Box sx={{
@@ -159,6 +199,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   background: 'rgba(0,0,0,0.06)',
                   maxHeight: '300px',
                   overflow: 'scroll',
+                  backgroundColor: '#19171c'
                 }}>
                   <pre>
                     {JSON.stringify(row.serializableOutput, null, 2)}

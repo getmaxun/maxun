@@ -24,18 +24,19 @@ const BrowserRecordingSave = () => {
     <Grid container>
       <Grid item xs={12} md={3} lg={3}>
         <div style={{
-          marginTop: '12px',
+          
           //  marginLeft: '10px',
           color: 'white',
           position: 'absolute',
           background: '#ff00c3',
           border: 'none',
-          borderRadius: '5px',
+          borderRadius: '0px 0px 8px 8px',
           padding: '7.5px',
-          width: 'calc(100% - 20px)',  // Ensure it takes full width but with padding
+          width: '100%',  // Ensure it takes full width but with padding
           overflow: 'hidden',
           display: 'flex',
           justifyContent: 'space-between',
+          height:"48px"
         }}>
           <Button onClick={() => setOpenModal(true)} variant="outlined" style={{ marginLeft: "25px" }} size="small" color="error">
             Discard

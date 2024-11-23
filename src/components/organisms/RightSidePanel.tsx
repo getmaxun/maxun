@@ -391,7 +391,22 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const theme = useThemeMode();
   const isDarkMode = theme.darkMode;
   return (
-    <Paper sx={{ height: '520px', width: 'auto', alignItems: "center", background: isDarkMode?'#1E2124': 'inherit',color: isDarkMode ? 'black' : 'inherit' }} id="browser-actions" elevation={0}>
+    <Paper
+      sx={{
+        borderRadius: '8px 8px 0px 0px', // Slightly more rounded corners for a smoother look
+        height: '520px',
+        width: 'auto',
+        alignItems: "center",
+        padding: '16px', // Add padding for spacing inside the component
+        background: isDarkMode
+          ? 'linear-gradient(135deg, #1E2124 0%, #292C2F 100%)'  // Subtle gradient for dark mode
+          : 'linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%)', // Subtle gradient for light mode
+        color: isDarkMode ? '#E0E0E0' : '#333333', // Adjusted color for better contrast
+        // Smooth transition for shadows and background changes
+      }}
+      id="browser-actions"
+      elevation={0}
+    >
       {/* <SimpleBox height={60} width='100%' background='lightGray' radius='0%'>
         <Typography sx={{ padding: '10px' }}>Last action: {` ${lastAction}`}</Typography>
       </SimpleBox> */}
@@ -484,7 +499,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
       </Box>
       <Box>
         {browserSteps.map(step => (
-          <Box key={step.id} onMouseEnter={() => handleMouseEnter(step.id)} onMouseLeave={() => handleMouseLeave(step.id)} sx={{ padding: '10px', margin: '11px', borderRadius: '5px', position: 'relative', background: 'white' }}>
+          <Box key={step.id} onMouseEnter={() => handleMouseEnter(step.id)} onMouseLeave={() => handleMouseLeave(step.id)} sx={{ padding: '10px', margin: '11px', borderRadius: '5px', position: 'relative', background: isDarkMode ? "#1E2124" : 'white', color: isDarkMode ? "white" : 'black' }}>
             {
               step.type === 'text' && (
                 <>
@@ -520,7 +535,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                         </InputAdornment>
                       )
                     }}
-                    sx={{ background: isDarkMode ? "#1E2124" : 'white', color: isDarkMode ? "white" : 'black' }}
+                    
                   />
                   {!confirmedTextSteps[step.id] && (
                     <Box display="flex" justifyContent="space-between" gap={2}>
@@ -542,7 +557,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
               <>
                 <Typography>List Selected Successfully</Typography>
                 {Object.entries(step.fields).map(([key, field]) => (
-                  <Box key={key}>
+                  <Box key={key} sx={{ padding: '10px', margin: '11px', borderRadius: '5px', position: 'relative', background: `${isDarkMode ? "#1E2124" : 'white'}` }}>
                     <TextField
                       label="Field Label"
                       value={field.label || ''}
@@ -558,7 +573,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                         )
                       }}
 
-                      style={{ background: isDarkMode ? "#1E2124" : 'white' }}
+                      
                     />
                     <TextField
                       label="Field Data"
@@ -573,7 +588,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                           </InputAdornment>
                         )
                       }}
-                      style={{ background: isDarkMode ? "#1E2124" : 'white' }}
+                      
                     />
                     {!confirmedListTextFields[step.id]?.[key] && (
                       <Box display="flex" justifyContent="space-between" gap={2}>

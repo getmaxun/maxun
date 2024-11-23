@@ -1,6 +1,4 @@
-import type {
-  FC,
-} from 'react';
+import type { FC } from 'react';
 import styled from 'styled-components';
 
 import ReplayIcon from '@mui/icons-material/Replay';
@@ -13,13 +11,39 @@ import { useCallback, useEffect, useState } from "react";
 import { useSocketStore } from "../../context/socket";
 import { getCurrentUrl } from "../../api/recording";
 import { useGlobalInfoStore } from '../../context/globalInfo';
+import { useThemeMode } from '../../context/theme-provider';
 
-const StyledNavBar = styled.div<{ browserWidth: number }>`
-    display: flex;
-    padding: 12px 0px;
-    background-color: theme.palette.background.paper;
-    width: ${({ browserWidth }) => browserWidth}px;
-    border-radius: 0px 5px 0px 0px;
+const StyledNavBar = styled.div<{ browserWidth: number; isDarkMode: boolean }>`
+  display: flex;
+  align-items: center;
+  padding: 10px 20px;
+  background-color: ${({ isDarkMode }) => (isDarkMode ? '#2C2F33' : '#F5F5F5')};
+  width: ${({ browserWidth }) => `${browserWidth}px`};
+  border-radius: 0px 0px 8px 8px;
+  box-shadow: ${({ isDarkMode }) => (isDarkMode ? '0px 2px 10px rgba(0, 0, 0, 0.2)' : '0px 2px 10px rgba(0, 0, 0, 0.1)')};
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  margin-bottom: 15px;
+`;
+
+const IconButton = styled(NavBarButton)<{ mode: string }>`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  margin-right: 12px;
+  background-color: ${({ mode }) => (mode === 'dark' ? '#40444B' : '#E0E0E0')};
+  border-radius: 50%;
+  transition: background-color 0.3s ease, transform 0.1s ease;
+  color: ${({ mode }) => (mode === 'dark' ? '#FFFFFF' : '#333')};
+  cursor: pointer;
+
+  &:hover {
+    background-color: ${({ mode }) => (mode === 'dark' ? '#586069' : '#D0D0D0')};
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
 `;
 
 interface NavBarProps {
@@ -31,6 +55,7 @@ const BrowserNavBar: FC<NavBarProps> = ({
   browserWidth,
   handleUrlChanged,
 }) => {
+  const isDarkMode = useThemeMode().darkMode;
 
   const { socket } = useSocketStore();
   const { recordingUrl, setRecordingUrl } = useGlobalInfoStore();
@@ -67,7 +92,7 @@ const BrowserNavBar: FC<NavBarProps> = ({
         socket.off('urlChanged', handleCurrentUrlChange);
       }
     }
-  }, [socket, handleCurrentUrlChange])
+  }, [socket, handleCurrentUrlChange]);
 
   const addAddress = (address: string) => {
     if (socket) {
@@ -78,38 +103,41 @@ const BrowserNavBar: FC<NavBarProps> = ({
   };
 
   return (
-    <StyledNavBar browserWidth={900}>
-      <NavBarButton
+    <StyledNavBar browserWidth={browserWidth} isDarkMode={isDarkMode}>
+      <IconButton
         type="button"
         onClick={() => {
           socket?.emit('input:back');
         }}
         disabled={false}
+        mode={isDarkMode ? 'dark' : 'light'}
       >
         <ArrowBackIcon />
-      </NavBarButton>
+      </IconButton>
 
-      <NavBarButton
+      <IconButton
         type="button"
         onClick={() => {
           socket?.emit('input:forward');
         }}
         disabled={false}
+        mode={isDarkMode ? 'dark' : 'light'}
       >
         <ArrowForwardIcon />
-      </NavBarButton>
+      </IconButton>
 
-      <NavBarButton
+      <IconButton
         type="button"
         onClick={() => {
           if (socket) {
-            handleRefresh()
+            handleRefresh();
           }
         }}
         disabled={false}
+        mode={isDarkMode ? 'dark' : 'light'}
       >
         <ReplayIcon />
-      </NavBarButton>
+      </IconButton>
 
       <UrlForm
         currentAddress={recordingUrl}

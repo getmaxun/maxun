@@ -319,7 +319,7 @@ export const BrowserWindow = () => {
 
   
     return (
-        <div onClick={handleClick} style={{ width: '900px' }} id="browser-window">
+        <div onClick={handleClick} style={{ width: '900px', height: "400px" , borderRadius: '8px 8px 0px 0px '}} id="browser-window">
             {
                 getText === true || getList === true ? (
                     <GenericModal

@@ -12,6 +12,7 @@ import {
 } from "../../api/recording";
 import { Box } from "@mui/material";
 import { InterpretationLog } from "../molecules/InterpretationLog";
+import { Height } from "@mui/icons-material";
 
 // TODO: Tab !show currentUrl after recordingUrl global state
 export const BrowserContent = () => {
@@ -139,7 +140,7 @@ export const BrowserContent = () => {
   }, [handleUrlChanged]);
 
   return (
-    <div id="browser">
+    <div id="browser" style={{ display: "flex", flexDirection: "column"}}  >
       <BrowserTabs
         tabs={tabs}
         handleTabChange={handleTabChange}
@@ -152,10 +153,15 @@ export const BrowserContent = () => {
         // todo: use width from browser dimension once fixed
         browserWidth={900}
         handleUrlChanged={handleUrlChanged}
+       
       />
-      <BrowserWindow />
+      <BrowserWindow  />
     </div>
   );
 };
 
-const BrowserContentWrapper = styled.div``;
+const BrowserContentWrapper = styled.div`
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;`;

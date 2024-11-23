@@ -1,26 +1,23 @@
 import styled from 'styled-components';
+import { useThemeMode } from '../../../context/theme-provider';
 
-export const NavBarButton = styled.button<{ disabled: boolean }>`
+
+
+export const NavBarButton = styled.button<{ disabled: boolean, mode: 'light' | 'dark' }>`
     margin-left: 10px;
     margin-right: 5px;
     padding: 0;
     border: none;
-    background-color: transparent;
+    background-color: ${mode => mode ? '#333' : '#ffffff'};
     cursor: ${({ disabled }) => disabled ? 'default' : 'pointer'};
     width: 24px;
     height: 24px;
     border-radius: 12px;
     outline: none;
-    color: ${({ disabled }) => disabled ? '#999' : '#333'};
+    color: ${mode => mode ? '#ffffff' : '#333333'};
 
-    ${({ disabled }) => disabled ? null : `
-        &:hover {
-            background-color: #ddd;
-        }
-       &:active {
-           background-color: #d0d0d0;
-       }
-    `};
+    
+
 `;
 
 export const UrlFormButton = styled.button`

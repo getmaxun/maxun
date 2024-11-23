@@ -18,6 +18,7 @@ const CustomBoxContainer = styled.div<CustomBoxContainerProps>`
   background-color: ${({ isDarkMode }) => (isDarkMode ? '#313438' : 'white')};
   color: ${({ isDarkMode }) => (isDarkMode ? 'white' : 'black')};
   margin: 80px 13px 25px 13px;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
 `;
 
 const Triangle = styled.div<CustomBoxContainerProps>`
