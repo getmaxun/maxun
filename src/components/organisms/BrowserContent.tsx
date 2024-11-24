@@ -140,7 +140,7 @@ export const BrowserContent = () => {
   }, [handleUrlChanged]);
 
   return (
-    <div id="browser" style={{ display: "flex", flexDirection: "column"}}  >
+    <div id="browser" style={{ display: "flex", flexDirection: "column" }}  >
       <BrowserTabs
         tabs={tabs}
         handleTabChange={handleTabChange}
