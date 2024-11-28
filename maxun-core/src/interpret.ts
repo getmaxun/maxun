@@ -17,6 +17,22 @@ import Preprocessor from './preprocessor';
 import log, { Level } from './utils/logger';
 
 /**
+ * Extending the Window interface for custom scraping functions.
+ */
+declare global {
+  interface Window {
+    scrape: (selector: string | null) => Record<string, string>[];
+    scrapeSchema: (
+      schema: Record<string, { selector: string; tag: string; attribute: string }>
+    ) => Record<string, any>;
+    scrapeList: (config: { listSelector: string; fields: any; limit?: number; pagination: any }) => Record<string, any>[];
+    scrapeListAuto: (listSelector: string) => { selector: string; innerText: string }[];
+    scrollDown: (pages?: number) => void;
+    scrollUp: (pages?: number) => void;
+  }
+}
+
+/**
  * Defines optional intepreter options (passed in constructor)
  */
 interface InterpreterOptions {
@@ -214,11 +230,11 @@ export default class Interpreter extends EventEmitter {
           // every condition is treated as a single context
 
           switch (key as keyof typeof operators) {
-            case '$and':
+            case '$and' as keyof typeof operators:
               return array?.every((x) => this.applicable(x, context));
-            case '$or':
+            case '$or' as keyof typeof operators:
               return array?.some((x) => this.applicable(x, context));
-            case '$not':
+            case '$not' as keyof typeof operators:
               return !this.applicable(<Where>value, context); // $not should be a unary operator
             default:
               throw new Error('Undefined logic operator.');
@@ -233,9 +249,9 @@ export default class Interpreter extends EventEmitter {
           };
 
           switch (key as keyof typeof meta) {
-            case '$before':
+            case '$before' as keyof typeof meta:
               return !usedActions.find(testRegexString);
-            case '$after':
+            case '$after' as keyof typeof meta:
               return !!usedActions.find(testRegexString);
             default:
               throw new Error('Undefined meta operator.');
@@ -357,7 +373,7 @@ export default class Interpreter extends EventEmitter {
     };
 
     for (const step of steps) {
-      this.log(`Launching ${step.action}`, Level.LOG);
+      this.log(`Launching ${String(step.action)}`, Level.LOG);
 
       if (step.action in wawActions) {
         // "Arrayifying" here should not be needed (TS + syntax checker - only arrays; but why not)
@@ -365,7 +381,7 @@ export default class Interpreter extends EventEmitter {
         await wawActions[step.action as CustomFunctions](...(params ?? []));
       } else {
         // Implements the dot notation for the "method name" in the workflow
-        const levels = step.action.split('.');
+        const levels = String(step.action).split('.');
         const methodName = levels[levels.length - 1];
 
         let invokee: any = page;
