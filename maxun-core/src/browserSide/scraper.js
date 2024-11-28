@@ -266,12 +266,47 @@ window.scrapeList = async function ({ listSelector, fields, limit = 10, includeH
       // Get all parent elements matching the listSelector
       const parentElements = Array.from(document.querySelectorAll(listSelector));
 
-      // Iterate through each parent element
       for (const parent of parentElements) {
-          if (scrapedData.length >= limit) break;
+        if (scrapedData.length >= limit) break;
+
+        if (parent.tagName.toLowerCase() === 'table') {
+          let headers = [];
+          const headerRow = parent.querySelector('thead tr') || table.querySelector('tr');
+
+          if (headerRow) {
+            headers = Array.from(headerRow.querySelectorAll('th, td')).map(th => th.innerText.trim());
+          }
+
+          const tableRows = table.querySelectorAll('tbody tr');
+          const rowsToProcess = tableRows.length > 0 ? tableRows : parent.querySelectorAll('tr');
+
+          rowsToProcess.forEach((row, rowIndex) => {
+            // Skip the header row if headers are derived from the first row outside <thead>
+            if (
+              rowIndex === 0 &&
+              headers.length > 0 &&
+              headerRow.parentElement.tagName.toLowerCase() !== 'thead'
+            ) {
+              return;
+            }
+    
+            const cells = Array.from(row.querySelectorAll('td'));
+            const rowData = {};
+    
+            cells.forEach((cell, cellIndex) => {
+              const header = headers[cellIndex] || `Column${cellIndex + 1}`;
+              rowData[header] = cell.innerText.trim();
+            });
+    
+            scrapedData.push(rowData);
+    
+            if (scrapedData.length >= limit) {
+              return;
+            }
+          });
+        } else {
           const record = {};
 
-          // For each field, select the corresponding element within the parent
           for (const [label, { selector, attribute }] of Object.entries(fields)) {
               let fieldElement = parent.querySelector(selector);
 
@@ -293,6 +328,7 @@ window.scrapeList = async function ({ listSelector, fields, limit = 10, includeH
               }
           }
           scrapedData.push(record);
+        }
       }
   }
   return scrapedData;
