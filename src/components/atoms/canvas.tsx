@@ -27,9 +27,10 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const { socket } = useSocketStore();
     const { setLastAction, lastAction } = useGlobalInfoStore();
-    const { getText, getList } = useActionContext();
+    const { getText, getList, getListAuto } = useActionContext();
     const getTextRef = useRef(getText);
     const getListRef = useRef(getList);
+    const getListAutoRef = useRef(getListAuto);
 
     const notifyLastAction = (action: string) => {
         if (lastAction !== action) {
@@ -42,7 +43,8 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
     useEffect(() => {
         getTextRef.current = getText;
         getListRef.current = getList;
-    }, [getText, getList]);
+        getListAutoRef.current = getListAuto;
+    }, [getText, getList, getListAuto]);
 
     const onMouseEvent = useCallback((event: MouseEvent) => {
         if (socket && canvasRef.current) {
@@ -59,7 +61,10 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
                         console.log('Capturing Text...');
                     } else if (getListRef.current === true) {
                         console.log('Capturing List...');
-                    } else {
+                    } else if (getListAutoRef.current === true) {
+                        console.log('Capturing List Automatically...');
+                    } 
+                    else {
                         socket.emit('input:mousedown', clickCoordinates);
                     }
                     notifyLastAction('click');

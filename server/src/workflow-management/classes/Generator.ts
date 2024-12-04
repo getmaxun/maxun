@@ -10,7 +10,8 @@ import {
   getChildSelectors,
   getNonUniqueSelectors,
   isRuleOvershadowing,
-  selectorAlreadyInWorkflow
+  selectorAlreadyInWorkflow,
+  extractChildData
 } from "../selector";
 import { CustomActions } from "../../../../src/shared/types";
 import { workflow } from "../../routes";
@@ -60,6 +61,8 @@ export class WorkflowGenerator {
    * Used to provide appropriate selectors for the getList action.
    */
   private getList: boolean = false;
+
+  // private getListAuto: boolean = false;
 
   private listSelector: string = '';
 
@@ -116,6 +119,9 @@ export class WorkflowGenerator {
     this.socket.on('setGetList', (data: { getList: boolean }) => {
       this.getList = data.getList;
     });
+    // this.socket.on('setGetListAuto', (data: { getListAuto: boolean }) => {
+    //   this.getListAuto = data.getListAuto;
+    // });
     this.socket.on('listSelector', (data: { selector: string }) => {
       this.listSelector = data.selector;
     })
@@ -559,12 +565,22 @@ export class WorkflowGenerator {
         if (this.listSelector !== '') {
           const childSelectors = await getChildSelectors(page, this.listSelector || '');
           this.socket.emit('highlighter', { rect, selector: displaySelector, elementInfo, childSelectors })
-          console.log(`Child Selectors: ${childSelectors}`)
-          console.log(`Parent Selector: ${this.listSelector}`)
         } else {
           this.socket.emit('highlighter', { rect, selector: displaySelector, elementInfo });
         }
-      } else {
+      } 
+      // else if (this.getListAuto === true) {
+      //   if (this.listSelector !== '') {
+      //   console.log(`list selector is: ${this.listSelector}`)
+      //   const childData = await extractChildData(page, this.listSelector || '');
+      //   console.log(`Data From Backend: ${JSON.stringify({ rect, selector: displaySelector, elementInfo, childData })}`)
+      //   this.socket.emit('highlighter', { rect, selector: displaySelector, elementInfo, childData });
+      //   } 
+      //   else {
+      //     this.socket.emit('highlighter', { ayo:'ayo', rect, selector: displaySelector, elementInfo });
+      //   }
+      // }
+      else {
         this.socket.emit('highlighter', { rect, selector: displaySelector, elementInfo });
       }
     }

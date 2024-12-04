@@ -54,9 +54,10 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const [showCaptureScreenshot, setShowCaptureScreenshot] = useState(true);
   const [showCaptureText, setShowCaptureText] = useState(true);
   const [hoverStates, setHoverStates] = useState<{ [id: string]: boolean }>({});
+  const [showCaptureListOptions, setShowCaptureListOptions] = useState(false);
 
   const { lastAction, notify, currentWorkflowActionsState, setCurrentWorkflowActionsState } = useGlobalInfoStore();
-  const { getText, startGetText, stopGetText, getScreenshot, startGetScreenshot, stopGetScreenshot, getList, startGetList, stopGetList, startPaginationMode, stopPaginationMode, paginationType, updatePaginationType, limitType, customLimit, updateLimitType, updateCustomLimit, stopLimitMode, startLimitMode, captureStage, setCaptureStage } = useActionContext();
+  const { getText, startGetText, stopGetText, getScreenshot, startGetScreenshot, stopGetScreenshot, getList, startGetList, stopGetList, getListAuto, startGetListAuto, stopGetListAuto, startPaginationMode, stopPaginationMode, paginationType, updatePaginationType, limitType, customLimit, updateLimitType, updateCustomLimit, stopLimitMode, startLimitMode, captureStage, setCaptureStage } = useActionContext();
   const { browserSteps, updateBrowserTextStepLabel, deleteBrowserStep, addScreenshotStep, updateListTextFieldLabel, removeListTextField } = useBrowserSteps();
   const { id, socket } = useSocketStore();
 
@@ -124,8 +125,6 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const handleMouseLeave = (id: number) => {
     setHoverStates(prev => ({ ...prev, [id]: false }));
   };
-
-  const handlePairDelete = () => { }
 
   const handleTextLabelChange = (id: number, label: string, listId?: number, fieldKey?: string) => {
     if (listId !== undefined && fieldKey !== undefined) {
@@ -218,6 +217,32 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     onFinishCapture();
   }, [stopGetText, getTextSettingsObject, socket, browserSteps, confirmedTextSteps]);
 
+  const getListAutoSettingsObject = useCallback(() => {
+    let settings: {
+      listSelector?: string;
+    } = {};
+
+    browserSteps.forEach(step => {
+      if (step.type === 'list' && step.listSelector && Object.keys(step.fields).length > 0) {
+        const fields: Record<string, { selector: string; tag?: string;[key: string]: any }> = {};
+
+        Object.entries(step.fields).forEach(([id, field]) => {
+          if (field.selectorObj?.selector) {
+            fields[field.label] = {
+              selector: field.selectorObj.selector,
+            };
+          }
+        });
+
+        settings = {
+          listSelector: step.listSelector,
+        };
+      }
+    });
+
+    return settings;
+  }, [browserSteps]);
+
   const getListSettingsObject = useCallback(() => {
     let settings: {
       listSelector?: string;
@@ -265,6 +290,11 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     resetListState();
   }, [stopGetList, resetListState]);
 
+  const handleStopGetListAuto = useCallback(() => {
+    stopGetListAuto();
+    resetListState();
+  }, [stopGetListAuto, resetListState]);
+
   const stopCaptureAndEmitGetListSettings = useCallback(() => {
     const settings = getListSettingsObject();
     if (settings) {
@@ -275,6 +305,17 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     handleStopGetList();
     onFinishCapture();
   }, [stopGetList, getListSettingsObject, socket, notify, handleStopGetList]);
+
+  const captureAndEmitGetListAutoSettings = useCallback(() => {
+    const settings = getListAutoSettingsObject();
+    if (settings) {
+      socket?.emit('action', { action: 'scrapeListAuto', settings });
+    } else {
+      notify('error', 'Unable to create list settings. Make sure you have defined a field for the list.');
+    }
+    handleStopGetListAuto();
+    onFinishCapture();
+  }, [getListAutoSettingsObject, socket, notify]);
 
   const hasUnconfirmedListTextFields = browserSteps.some(step => step.type === 'list' && Object.values(step.fields).some(field => !confirmedListTextFields[step.id]?.[field.id]));
 
@@ -343,7 +384,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     notify('error', 'Capture Text Discarded');
   }, [browserSteps, stopGetText, deleteBrowserStep]);
 
-  const discardGetList = useCallback(() => {
+  const discardGetListManual = useCallback(() => {
     stopGetList();
     browserSteps.forEach(step => {
       if (step.type === 'list') {
@@ -357,6 +398,21 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     setConfirmedListTextFields({});
     notify('error', 'Capture List Discarded');
   }, [browserSteps, stopGetList, deleteBrowserStep, resetListState]);
+
+  const discardGetListAuto = useCallback(() => {
+    stopGetListAuto();
+    browserSteps.forEach(step => {
+      if (step.type === 'list') {
+        deleteBrowserStep(step.id);
+      }
+    });
+    resetListState();
+    setShowPaginationOptions(false);
+    setShowLimitOptions(false);
+    setCaptureStage('initial');
+    setConfirmedListTextFields({});
+    notify('error', 'Capture List Discarded');
+  }, [browserSteps, stopGetListAuto, deleteBrowserStep, resetListState]);
 
 
   const captureScreenshot = (fullPage: boolean) => {
@@ -387,6 +443,22 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     return !hasValidListSelector || hasUnconfirmedListTextFields;
   }, [captureStage, browserSteps, hasUnconfirmedListTextFields]);
 
+  const handleCaptureListClick = () => {
+    setShowCaptureListOptions(true);
+    setShowCaptureText(false);
+    setShowCaptureScreenshot(false);
+  };
+
+  const handleManualCapture = () => {
+    startGetList(); 
+    setShowCaptureListOptions(false); 
+  };
+
+  const handleAutoCapture = () => {
+    startGetListAuto();
+    setShowCaptureListOptions(false); 
+  };
+
   return (
     <Paper sx={{ height: '520px', width: 'auto', alignItems: "center", background: 'inherit' }} id="browser-actions" elevation={0}>
       {/* <SimpleBox height={60} width='100%' background='lightGray' radius='0%'>
@@ -394,7 +466,45 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
       </SimpleBox> */}
       <ActionDescriptionBox />
       <Box display="flex" flexDirection="column" gap={2} style={{ margin: '13px' }}>
-        {!getText && !getScreenshot && !getList && showCaptureList && <Button variant="contained" onClick={startGetList}>Capture List</Button>}
+        {!getText && !getScreenshot && !getList && !getListAuto && showCaptureList && !showCaptureListOptions && (
+          <Button variant="contained" onClick={handleCaptureListClick}>
+            Capture List
+          </Button>
+        )}
+        {/* Show Manual and Auto Capture options when "Capture List" is clicked */}
+        {!getText && !getScreenshot && !getList && !getListAuto && showCaptureList && showCaptureListOptions && (
+          <Box display="flex" flexDirection="column" gap={2} >
+            <Button variant="contained" onClick={handleManualCapture} >
+              Manual Capture
+            </Button>
+            <Button variant="contained" onClick={handleAutoCapture}>
+              Auto Capture
+            </Button>
+            <Button variant="outlined" onClick={() => {
+              setShowCaptureListOptions(false);
+              setShowCaptureText(true);
+              setShowCaptureScreenshot(true);
+            }}>
+              Back
+            </Button>
+          </Box>
+        )}
+        {getListAuto && (
+          <>
+            <Box display="flex" justifyContent="space-between" gap={2} style={{ margin: '15px' }}>
+              <Button
+                variant="outlined"
+                onClick={handleConfirmListCapture}
+                disabled={captureStage === 'initial' ? isConfirmCaptureDisabled : hasUnconfirmedListTextFields}
+              >
+                {captureStage === 'initial' ? 'Confirm Capture' :
+                  captureStage === 'pagination' ? 'Confirm Pagination' :
+                    captureStage === 'limit' ? 'Confirm Limit' : 'Finish Capture'}
+              </Button>
+              <Button variant="outlined" color="error" onClick={discardGetListAuto}>Discard</Button>
+            </Box>
+          </>
+        )}
         {getList && (
           <>
             <Box display="flex" justifyContent="space-between" gap={2} style={{ margin: '15px' }}>
@@ -407,7 +517,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                   captureStage === 'pagination' ? 'Confirm Pagination' :
                     captureStage === 'limit' ? 'Confirm Limit' : 'Finish Capture'}
               </Button>
-              <Button variant="outlined" color="error" onClick={discardGetList}>Discard</Button>
+              <Button variant="outlined" color="error" onClick={discardGetListManual}>Discard</Button>
             </Box>
           </>
         )}
@@ -459,7 +569,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
             </RadioGroup>
           </FormControl>
         )}
-        {!getText && !getScreenshot && !getList && showCaptureText && <Button variant="contained" onClick={startGetText}>Capture Text</Button>}
+        {!getText && !getScreenshot && !getList && !getListAuto && showCaptureText && !showCaptureListOptions && <Button variant="contained" onClick={startGetText}>Capture Text</Button>}
         {getText &&
           <>
             <Box display="flex" justifyContent="space-between" gap={2} style={{ margin: '15px' }}>
@@ -468,7 +578,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
             </Box>
           </>
         }
-        {!getText && !getScreenshot && !getList && showCaptureScreenshot && <Button variant="contained" onClick={startGetScreenshot}>Capture Screenshot</Button>}
+        {!getText && !getScreenshot && !getList && !getListAuto && showCaptureScreenshot && !showCaptureListOptions && <Button variant="contained" onClick={startGetScreenshot}>Capture Screenshot</Button>}
         {getScreenshot && (
           <Box display="flex" flexDirection="column" gap={2}>
             <Button variant="contained" onClick={() => captureScreenshot(true)}>Capture Fullpage</Button>
