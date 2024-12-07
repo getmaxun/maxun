@@ -6,7 +6,7 @@ const lightTheme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#1e88e5',
+      main: '#ff00c3', // Pink as the primary color
     },
     background: {
       default: '#ffffff',
@@ -16,13 +16,33 @@ const lightTheme = createTheme({
       primary: '#000000',
     },
   },
+  components: {
+    MuiTabs: {
+      styleOverrides: {
+        indicator: {
+          backgroundColor: '#ff00c3', // Pink for tab indicators
+        },
+      },
+    },
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          backgroundColor: '#ff00c3', // Pink button background
+          color: '#ffffff',
+          '&:hover': {
+            backgroundColor: '#e600b3', // Slightly darker pink on hover
+          },
+        },
+      },
+    },
+  },
 });
 
 const darkTheme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main: '#90caf9',
+      main: '#ff00c3', // Pink as the primary color
     },
     background: {
       default: '#121212',
@@ -30,6 +50,26 @@ const darkTheme = createTheme({
     },
     text: {
       primary: '#ffffff',
+    },
+  },
+  components: {
+    MuiTabs: {
+      styleOverrides: {
+        indicator: {
+          backgroundColor: '#ff00c3', // Pink for tab indicators
+        },
+      },
+    },
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          backgroundColor: '#ff00c3', // Pink button background
+          color: '#ffffff',
+          '&:hover': {
+            backgroundColor: '#e600b3', // Slightly darker pink on hover
+          },
+        },
+      },
     },
   },
 });

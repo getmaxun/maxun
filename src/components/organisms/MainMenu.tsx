@@ -124,4 +124,9 @@ const buttonStyles = {
   alignItems: 'center',
   textTransform: 'none',
   color: 'inherit',
+  backgroundColor: 'transparent',
+  '&:hover': {
+    backgroundColor: 'rgba(255, 0, 195, 0.1)',
+    color: '#ff00c3',
+  },
 };

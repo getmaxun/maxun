@@ -39,6 +39,8 @@ const Register = () => {
         email,
         password,
       });
+
+      console.log(data)
       dispatch({ type: "LOGIN", payload: data });
       notify("success", "Registration Successful!");
       window.localStorage.setItem("user", JSON.stringify(data));

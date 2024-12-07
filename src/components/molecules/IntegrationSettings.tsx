@@ -14,17 +14,32 @@ import axios from "axios";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { getStoredRecording } from "../../api/storage";
 import { apiUrl } from "../../apiConfig.js";
-import Cookies from 'js-cookie';
+
 interface IntegrationProps {
   isOpen: boolean;
   handleStart: (data: IntegrationSettings) => void;
   handleClose: () => void;
 }
+
 export interface IntegrationSettings {
   spreadsheetId: string;
   spreadsheetName: string;
   data: string;
 }
+
+// Helper functions to replace js-cookie functionality
+const getCookie = (name: string): string | null => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) {
+    return parts.pop()?.split(';').shift() || null;
+  }
+  return null;
+};
+
+const removeCookie = (name: string): void => {
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+};
 
 export const IntegrationSettingsModal = ({
   isOpen,
@@ -106,7 +121,7 @@ export const IntegrationSettingsModal = ({
         },
         { withCredentials: true }
       );
-      notify(`success`, `Google Sheet selected successfully`)
+      notify(`success`, `Google Sheet selected successfully`);
       console.log("Google Sheet ID updated:", response.data);
     } catch (error: any) {
       console.error(
@@ -137,14 +152,14 @@ export const IntegrationSettingsModal = ({
 
   useEffect(() => {
     // Check if there is a success message in cookies
-    const status = Cookies.get("robot_auth_status");
-    const message = Cookies.get("robot_auth_message");
+    const status = getCookie("robot_auth_status");
+    const message = getCookie("robot_auth_message");
 
     if (status === "success" && message) {
       notify("success", message);
       // Clear the cookies after reading
-      Cookies.remove("robot_auth_status");
-      Cookies.remove("robot_auth_message");
+      removeCookie("robot_auth_status");
+      removeCookie("robot_auth_message");
     }
 
     // Check if we're on the callback URL
@@ -177,7 +192,6 @@ export const IntegrationSettingsModal = ({
       >
         <Typography variant="h6">
           Integrate with Google Sheet{" "}
-          {/* <Chip label="beta" color="primary" variant="outlined" /> */}
         </Typography>
 
         {recording && recording.google_sheet_id ? (

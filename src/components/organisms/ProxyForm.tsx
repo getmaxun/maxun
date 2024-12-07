@@ -1,8 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import { styled } from '@mui/system';
-import { Alert, AlertTitle, TextField, Button, Switch, FormControlLabel, Box, Typography, Tabs, Tab, Table, TableContainer, TableHead, TableRow, TableBody, TableCell, Paper } from '@mui/material';
+import { 
+    Alert, 
+    AlertTitle, 
+    TextField, 
+    Button, 
+    Switch, 
+    FormControlLabel, 
+    Box, 
+    Typography, 
+    Tabs, 
+    Tab, 
+    Table, 
+    TableContainer, 
+    TableHead, 
+    TableRow, 
+    TableBody, 
+    TableCell, 
+    Paper 
+} from '@mui/material';
 import { sendProxyConfig, getProxyConfig, testProxyConfig, deleteProxyConfig } from '../../api/proxy';
 import { useGlobalInfoStore } from '../../context/globalInfo';
+import { useThemeMode } from '../../context/theme-provider';
+
+// Custom styled Tabs component
+const CustomTabs = styled(Tabs)(({ theme }) => ({
+    '& .MuiTabs-indicator': {
+        backgroundColor: '#ff00c3', // Pink indicator
+    },
+}));
+
+// Custom styled Tab component
+const CustomTab = styled(Tab)(({ theme }) => ({
+    '&.Mui-selected': {
+        color: '#ff00c3', // Pink for selected tab
+    },
+    '&:hover': {
+        color: '#ff00c3', // Pink on hover
+         // Subtle hover effect
+    },
+    '&.MuiTab-root': {
+        textTransform: 'none', // Removes uppercase transformation
+    },
+}));
 
 const FormContainer = styled(Box)({
     display: 'flex',
@@ -132,16 +172,37 @@ const ProxyForm: React.FC = () => {
         fetchProxyConfig();
     }, []);
 
+    const theme = useThemeMode();
+    const isDarkMode = theme.darkMode;
+
     return (
         <>
             <FormContainer>
                 <Typography variant="h6" gutterBottom component="div" style={{ marginTop: '20px' }}>
                     Proxy Configuration
                 </Typography>
-                <Tabs value={tabIndex} onChange={handleTabChange}>
-                    <Tab label="Standard Proxy" />
-                    <Tab label="Automatic Proxy Rotation" />
-                </Tabs>
+                <CustomTabs 
+                    value={tabIndex} 
+                    onChange={handleTabChange}
+                    TabIndicatorProps={{
+                        style: {
+                            backgroundColor: '#FF69B4' // Ensures pink indicator
+                        }
+                    }}
+                >
+                    <CustomTab 
+                        label="Standard Proxy" 
+                        style={{ 
+                            color: tabIndex === 0 ? '#FF69B4' : (isDarkMode ? 'white' : 'black')
+                        }} 
+                    />
+                    <CustomTab 
+                        label="Automatic Proxy Rotation" 
+                        style={{ 
+                            color: tabIndex === 1 ? '#FF69B4' : (isDarkMode ? 'white' : 'black')
+                        }} 
+                    />
+                </CustomTabs>
                 {tabIndex === 0 && (
                     isProxyConfigured ? (
                         <Box sx={{ maxWidth: 600, width: '100%', marginTop: '5px' }}>
@@ -236,15 +297,15 @@ const ProxyForm: React.FC = () => {
                             <Typography variant="body1" gutterBottom component="div">
                                 Coming Soon - In Open Source (Basic Rotation) & Cloud (Advanced Rotation). If you don't want to manage the infrastructure, join our cloud waitlist to get early access.
                             </Typography>
-                            <Button variant="contained" color="primary" sx={{ marginTop: '20px' }}>
+                            <Button variant="contained" color="primary" sx={{ marginTop: '20px',backgroundColor: '#ff00c3' }}>
                                 <a style={{ color: 'white', textDecoration: 'none' }} href="https://forms.gle/hXjgqDvkEhPcaBW76">Join Maxun Cloud Waitlist</a>
                             </Button>
                         </>
                     </Box>
                 )}
             </FormContainer>
-            <Alert severity="info" sx={{ marginTop: '80px', marginLeft: '50px', height: '230px', width: '450px', border: '1px solid #ff00c3' }}>
-            <AlertTitle>If your proxy requires a username and password, always provide them separately from the proxy URL. </AlertTitle>
+            <Alert severity="info" sx={{ marginTop: '80px', marginLeft: '50px', height: '230px', width: '450px', border: '1px solid #ff00c3', bgcolor: isDarkMode ? '#3b002d' : '#ffc4f1', color: isDarkMode ? 'white' : 'black' }}>
+                <AlertTitle>If your proxy requires a username and password, always provide them separately from the proxy URL. </AlertTitle>
                 <br />
                 <b>The right way</b>
                 <br />
@@ -258,6 +319,7 @@ const ProxyForm: React.FC = () => {
                 <b>The wrong way</b>
                 <br />
                 Proxy URL: http://myusername:mypassword@proxy.com:1337
+                <br />
             </Alert>
         </>
     );
