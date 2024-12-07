@@ -1,0 +1,13 @@
+{
+    "login": {
+      "title": "Welcome Back!",
+      "email": "Email",
+      "password": "Password",
+      "button": "Login",
+      "loading": "Loading",
+      "register_prompt": "Don't have an account?",
+      "register_link": "Register",
+      "welcome_notification": "Welcome to Maxun!",
+      "error_notification": "Login Failed. Please try again."
+    }
+  } 

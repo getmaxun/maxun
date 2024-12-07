@@ -1,0 +1,13 @@
+{
+    "app": {
+      "name": "Maxun",
+      "version": "beta"
+    },
+    "login": {
+      "title": "おかえりなさい！",
+      "email": "メールアドレス",
+      "password": "パスワード",
+      "button": "ログイン",
+      "register_prompt": "アカウントをお持ちでない方は、新規登録"
+    }
+  }
