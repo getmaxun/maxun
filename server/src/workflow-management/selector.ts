@@ -20,17 +20,101 @@ type Workflow = WorkflowFile["workflow"];
  * @category WorkflowManagement-Selectors
  * @returns {Promise<Rectangle|undefined|null>}
  */
+export const getElementInformation = async (
+  page: Page,
+  coordinates: Coordinates
+) => {
+  try {
+    const elementInfo = await page.evaluate(
+      async ({ x, y }) => {
+        // Find the initial element at the point
+        const initialElement = document.elementFromPoint(x, y) as HTMLElement;
+        
+        if (initialElement) {
+          // Simply use the direct parent, no complex logic
+          const parentElement = initialElement.parentElement;
+
+          // Use the parent if it exists, otherwise use the initial element
+          const element = parentElement || initialElement;
+
+          let info: {
+            tagName: string;
+            hasOnlyText?: boolean;
+            innerText?: string;
+            url?: string;
+            imageUrl?: string;
+            attributes?: Record<string, string>;
+            innerHTML?: string;
+            outerHTML?: string;
+            parentTagName?: string;
+            parentClasses?: string[];
+          } = {
+            tagName: element.tagName,
+            parentTagName: element.parentElement?.tagName,
+            parentClasses: element.parentElement 
+              ? Array.from(element.parentElement.classList) 
+              : []
+          };
+
+          // Collect attributes
+          info.attributes = Array.from(element.attributes).reduce(
+            (acc, attr) => {
+              acc[attr.name] = attr.value;
+              return acc;
+            },
+            {} as Record<string, string>
+          );
+
+          // Specific handling for different element types
+          if (element.tagName === 'A') {
+            const anchorElement = element as HTMLAnchorElement;
+            info.url = anchorElement.href;
+            info.innerText = anchorElement.innerText ?? '';
+          } else if (element.tagName === 'IMG') {
+            const imgElement = element as HTMLImageElement;
+            info.imageUrl = imgElement.src;
+          } else {
+            // Check if element contains only text
+            info.hasOnlyText = element.children.length === 0 &&
+              (element.innerText?.length ?? 0) > 0;
+            info.innerText = element.innerText ?? '';
+          }
+
+          // HTML content
+          info.innerHTML = element.innerHTML;
+          info.outerHTML = element.outerHTML;
+
+          return info;
+        }
+        return null;
+      },
+      { x: coordinates.x, y: coordinates.y },
+    );
+    return elementInfo;
+  } catch (error) {
+    const { message, stack } = error as Error;
+    console.error('Error while retrieving selector:', message);
+    console.error('Stack:', stack);
+  }
+};
+
 export const getRect = async (page: Page, coordinates: Coordinates) => {
   try {
     const rect = await page.evaluate(
       async ({ x, y }) => {
-        const el = document.elementFromPoint(x, y) as HTMLElement;
-        if (el) {
-          const { parentElement } = el;
-          // Match the logic in recorder.ts for link clicks
-          const element = parentElement?.tagName === 'A' ? parentElement : el;
+        // Find the initial element at the point
+        const initialElement = document.elementFromPoint(x, y) as HTMLElement;
+        
+        if (initialElement) {
+          // Simply use the direct parent, no complex logic
+          const parentElement = initialElement.parentElement;
+
+          // Use the parent if it exists, otherwise use the initial element
+          const element = parentElement || initialElement;
+
+          // Get bounding rectangle
           const rectangle = element?.getBoundingClientRect();
-          // @ts-ignore
+          
           if (rectangle) {
             return {
               x: rectangle.x,
@@ -50,83 +134,10 @@ export const getRect = async (page: Page, coordinates: Coordinates) => {
     return rect;
   } catch (error) {
     const { message, stack } = error as Error;
-    logger.log('error', `Error while retrieving selector: ${message}`);
-    logger.log('error', `Stack: ${stack}`);
-  }
-}
-
-/**
- * Checks the basic info about an element and returns a {@link BaseActionInfo} object.
- * If the element is not found, returns undefined.
- * @param page The page instance.
- * @param coordinates Coordinates of an element.
- * @category WorkflowManagement-Selectors
- * @returns {Promise<BaseActionInfo|undefined>}
- */
-export const getElementInformation = async (
-  page: Page,
-  coordinates: Coordinates
-) => {
-  try {
-    const elementInfo = await page.evaluate(
-      async ({ x, y }) => {
-        const el = document.elementFromPoint(x, y) as HTMLElement;
-        if (el) {
-          const { parentElement } = el;
-          const element = parentElement?.tagName === 'A' ? parentElement : el;
-
-          let info: {
-            tagName: string;
-            hasOnlyText?: boolean;
-            innerText?: string;
-            url?: string;
-            imageUrl?: string;
-            attributes?: Record<string, string>;
-            innerHTML?: string;
-            outerHTML?: string;
-          } = {
-            tagName: element?.tagName ?? '',
-          };
-
-          if (element) {
-            info.attributes = Array.from(element.attributes).reduce(
-              (acc, attr) => {
-                acc[attr.name] = attr.value;
-                return acc;
-              },
-              {} as Record<string, string>
-            );
-          }
-
-          // Gather specific information based on the tag
-          if (element?.tagName === 'A') {
-            info.url = (element as HTMLAnchorElement).href;
-            info.innerText = element.innerText ?? '';
-          } else if (element?.tagName === 'IMG') {
-            info.imageUrl = (element as HTMLImageElement).src;
-          } else {
-            info.hasOnlyText = element?.children?.length === 0 &&
-              element?.innerText?.length > 0;
-            info.innerText = element?.innerText ?? '';
-          }
-
-          info.innerHTML = element.innerHTML;
-          info.outerHTML = element.outerHTML;
-
-          return info;
-        }
-        return null;
-      },
-      { x: coordinates.x, y: coordinates.y },
-    );
-    return elementInfo;
-  } catch (error) {
-    const { message, stack } = error as Error;
     console.error('Error while retrieving selector:', message);
     console.error('Stack:', stack);
   }
 };
-
 
 /**
  * Returns the best and unique css {@link Selectors} for the element on the page.
@@ -742,7 +753,6 @@ interface SelectorResult {
 export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates): Promise<SelectorResult> => {
   try {
     const selectors = await page.evaluate(({ x, y }: { x: number, y: number }) => {
-
       function getNonUniqueSelector(element: HTMLElement): string {
         let selector = element.tagName.toLowerCase();
 
@@ -764,18 +774,25 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
         let depth = 0;
         const maxDepth = 2;
 
-        while (element && element !== document.body && depth < maxDepth) {
-          const selector = getNonUniqueSelector(element);
+        // Ensure we start with a valid element
+        let currentElement = element;
+        while (currentElement && currentElement !== document.body && depth < maxDepth) {
+          const selector = getNonUniqueSelector(currentElement);
           path.unshift(selector);
-          element = element.parentElement;
+          currentElement = currentElement.parentElement;
           depth++;
         }
 
         return path.join(' > ');
       }
 
-      const element = document.elementFromPoint(x, y) as HTMLElement | null;
-      if (!element) return null;
+      // Find the initial element at the point
+      const initialElement = document.elementFromPoint(x, y) as HTMLElement;
+      
+      if (!initialElement) return null;
+
+      // Prefer parent if exists, otherwise use initial element
+      const element = initialElement.parentElement || initialElement;
 
       const generalSelector = getSelectorPath(element);
       return {
