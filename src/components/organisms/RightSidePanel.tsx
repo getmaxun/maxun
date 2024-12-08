@@ -55,6 +55,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const [showCaptureScreenshot, setShowCaptureScreenshot] = useState(true);
   const [showCaptureText, setShowCaptureText] = useState(true);
   const [hoverStates, setHoverStates] = useState<{ [id: string]: boolean }>({});
+  const [browserStepIdList, setBrowserStepIdList] = useState<number[]>([]);
 
   const { lastAction, notify, currentWorkflowActionsState, setCurrentWorkflowActionsState } = useGlobalInfoStore();
   const { getText, startGetText, stopGetText, getScreenshot, startGetScreenshot, stopGetScreenshot, getList, startGetList, stopGetList, startPaginationMode, stopPaginationMode, paginationType, updatePaginationType, limitType, customLimit, updateLimitType, updateCustomLimit, stopLimitMode, startLimitMode, captureStage, setCaptureStage } = useActionContext();
@@ -196,12 +197,18 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const getTextSettingsObject = useCallback(() => {
     const settings: Record<string, { selector: string; tag?: string;[key: string]: any }> = {};
     browserSteps.forEach(step => {
+      if (browserStepIdList.includes(step.id)) {
+        return; 
+      }
+      
       if (step.type === 'text' && step.label && step.selectorObj?.selector) {
         settings[step.label] = step.selectorObj;
       }
+      setBrowserStepIdList(prevList => [...prevList, step.id]);
     });
+
     return settings;
-  }, [browserSteps]);
+  }, [browserSteps, browserStepIdList]);
 
 
   const stopCaptureAndEmitGetTextSettings = useCallback(() => {
@@ -212,6 +219,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     }
     stopGetText();
     const settings = getTextSettingsObject();
+    console.log("SETTINGS", settings);
     const hasTextSteps = browserSteps.some(step => step.type === 'text');
     if (hasTextSteps) {
       socket?.emit('action', { action: 'scrapeSchema', settings });

@@ -36,9 +36,9 @@ const ApiKeyManager = () => {
   const [copySuccess, setCopySuccess] = useState<boolean>(false);
   const { notify } = useGlobalInfoStore();
 
-  
 
-  
+
+
 
   useEffect(() => {
     const fetchApiKey = async () => {
@@ -53,7 +53,7 @@ const ApiKeyManager = () => {
     };
 
     fetchApiKey();
-    
+
   }, []);
 
   const generateApiKey = async () => {
@@ -61,7 +61,7 @@ const ApiKeyManager = () => {
     try {
       const { data } = await axios.post(`${apiUrl}/auth/generate-api-key`);
       setApiKey(data.api_key);
-     
+
       notify('success', `Generated API Key successfully`);
     } catch (error: any) {
       notify('error', `Failed to generate API Key - ${error.message}`);
@@ -88,11 +88,25 @@ const ApiKeyManager = () => {
       navigator.clipboard.writeText(apiKey);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
-      notify('info', 'Copied to clipboard');
+      notify('info', 'Copied API Key successfully');
     }
   };
 
-  if (loading) return <CircularProgress />;
+  if (loading) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+          width: '100vw',
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Container sx={{ alignSelf: 'flex-start' }}>

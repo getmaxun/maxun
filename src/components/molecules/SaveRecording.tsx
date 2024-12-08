@@ -46,7 +46,7 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
   };
 
   const exitRecording = useCallback(async () => {
-    notify('success', 'Recording saved successfully');
+    notify('success', 'Robot saved successfully');
     if (browserId) {
       await stopRecording(browserId);
     }

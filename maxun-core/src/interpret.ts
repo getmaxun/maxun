@@ -17,6 +17,23 @@ import Preprocessor from './preprocessor';
 import log, { Level } from './utils/logger';
 
 /**
+ * Extending the Window interface for custom scraping functions.
+ */
+declare global {
+  interface Window {
+    scrape: (selector: string | null) => Record<string, string>[];
+    scrapeSchema: (
+      schema: Record<string, { selector: string; tag: string; attribute: string }>
+    ) => Record<string, any>;
+    scrapeList: (config: { listSelector: string; fields: any; limit?: number; pagination: any }) => Record<string, any>[];
+    scrapeListAuto: (listSelector: string) => { selector: string; innerText: string }[];
+    scrollDown: (pages?: number) => void;
+    scrollUp: (pages?: number) => void;
+  }
+}
+
+
+/**
  * Defines optional intepreter options (passed in constructor)
  */
 interface InterpreterOptions {
@@ -30,7 +47,6 @@ interface InterpreterOptions {
     debugMessage: Function,
   }>
 }
-
 
 /**
  * Class for running the Smart Workflows.
@@ -50,6 +66,8 @@ export default class Interpreter extends EventEmitter {
 
   private blocker: PlaywrightBlocker | null = null;
 
+  private cumulativeResults: Record<string, any>[] = [];
+
   constructor(workflow: WorkflowFile, options?: Partial<InterpreterOptions>) {
     super();
     this.workflow = workflow.workflow;
@@ -57,7 +75,9 @@ export default class Interpreter extends EventEmitter {
     this.options = {
       maxRepeats: 5,
       maxConcurrency: 5,
-      serializableCallback: (data) => { log(JSON.stringify(data), Level.WARN); },
+      serializableCallback: (data) => { 
+        log(JSON.stringify(data), Level.WARN);
+      },
       binaryCallback: () => { log('Received binary data, thrashing them.', Level.WARN); },
       debug: false,
       debugChannel: {},
@@ -214,11 +234,11 @@ export default class Interpreter extends EventEmitter {
           // every condition is treated as a single context
 
           switch (key as keyof typeof operators) {
-            case '$and':
+            case '$and' as keyof typeof operators:
               return array?.every((x) => this.applicable(x, context));
-            case '$or':
+            case '$or' as keyof typeof operators:
               return array?.some((x) => this.applicable(x, context));
-            case '$not':
+            case '$not' as keyof typeof operators:
               return !this.applicable(<Where>value, context); // $not should be a unary operator
             default:
               throw new Error('Undefined logic operator.');
@@ -233,9 +253,9 @@ export default class Interpreter extends EventEmitter {
           };
 
           switch (key as keyof typeof meta) {
-            case '$before':
+            case '$before' as keyof typeof meta:
               return !usedActions.find(testRegexString);
-            case '$after':
+            case '$after' as keyof typeof meta:
               return !!usedActions.find(testRegexString);
             default:
               throw new Error('Undefined meta operator.');
@@ -308,9 +328,43 @@ export default class Interpreter extends EventEmitter {
 
       scrapeSchema: async (schema: Record<string, { selector: string; tag: string, attribute: string; }>) => {
         await this.ensureScriptsLoaded(page);
-
+      
         const scrapeResult = await page.evaluate((schemaObj) => window.scrapeSchema(schemaObj), schema);
-        await this.options.serializableCallback(scrapeResult);
+      
+        const newResults = Array.isArray(scrapeResult) ? scrapeResult : [scrapeResult];
+        newResults.forEach((result) => {
+          Object.entries(result).forEach(([key, value]) => {
+              const keyExists = this.cumulativeResults.some(
+                  (item) => key in item && item[key] !== undefined
+              );
+  
+              if (!keyExists) {
+                  this.cumulativeResults.push({ [key]: value });
+              }
+          });
+        });
+
+        const mergedResult: Record<string, string>[] = [
+          Object.fromEntries( 
+            Object.entries(
+              this.cumulativeResults.reduce((acc, curr) => {
+                Object.entries(curr).forEach(([key, value]) => {
+                  // If the key doesn't exist or the current value is not undefined, add/update it
+                  if (value !== undefined) {
+                    acc[key] = value;
+                  }
+                });
+                return acc;
+              }, {})
+            )
+          )
+        ];
+
+        // Log cumulative results after each action
+        console.log("CUMULATIVE results:", this.cumulativeResults);
+        console.log("MERGED results:", mergedResult);
+
+        await this.options.serializableCallback(mergedResult);
       },
 
       scrapeList: async (config: { listSelector: string, fields: any, limit?: number, pagination: any }) => {
@@ -357,7 +411,7 @@ export default class Interpreter extends EventEmitter {
     };
 
     for (const step of steps) {
-      this.log(`Launching ${step.action}`, Level.LOG);
+      this.log(`Launching ${String(step.action)}`, Level.LOG);
 
       if (step.action in wawActions) {
         // "Arrayifying" here should not be needed (TS + syntax checker - only arrays; but why not)
@@ -365,7 +419,7 @@ export default class Interpreter extends EventEmitter {
         await wawActions[step.action as CustomFunctions](...(params ?? []));
       } else {
         // Implements the dot notation for the "method name" in the workflow
-        const levels = step.action.split('.');
+        const levels = String(step.action).split('.');
         const methodName = levels[levels.length - 1];
 
         let invokee: any = page;
@@ -534,9 +588,14 @@ export default class Interpreter extends EventEmitter {
       if (this.options.debug) {
         this.log(`Current state is: \n${JSON.stringify(pageState, null, 2)}`, Level.WARN);
       }
-      const actionId = workflow.findIndex(
-        (step) => this.applicable(step.where, pageState, usedActions),
-      );
+
+      const actionId = workflow.findIndex((step) => {
+        const isApplicable = this.applicable(step.where, pageState, usedActions);
+        console.log(`Where:`, step.where);
+        console.log(`Page state:`, pageState);
+        console.log(`Match result: ${isApplicable}`);
+        return isApplicable;
+      });
 
       const action = workflow[actionId];
 

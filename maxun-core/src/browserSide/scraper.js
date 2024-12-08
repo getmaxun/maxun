@@ -249,7 +249,7 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
         }
       },
       (key) => key // Use the original key in the output
-    ));
+    )) || [];
   }
 
   /**

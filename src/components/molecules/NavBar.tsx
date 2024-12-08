@@ -168,6 +168,7 @@ export const NavBar: React.FC<NavBarProps> = ({ recordingName, isRecording }) =>
   );
 
   return (
+
     <NavBarWrapper mode={darkMode ? 'dark' : 'light'}>
       {renderBrandSection()}
       {user && (
@@ -183,6 +184,8 @@ export const NavBar: React.FC<NavBarProps> = ({ recordingName, isRecording }) =>
           )}
         </ControlsContainer>
       )}
+
+   
     </NavBarWrapper>
   );
 };

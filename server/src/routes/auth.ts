@@ -384,7 +384,7 @@ router.get(
         httpOnly: false,
         maxAge: 60000,
       });
-      res.redirect(`http://localhost:5173`);
+      res.redirect(process.env.PUBLIC_URL as string || "http://localhost:5173");
     } catch (error: any) {
       res.status(500).json({ message: `Google OAuth error: ${error.message}` });
     }

@@ -38,7 +38,7 @@ router.get('/recordings', requireSignIn, async (req, res) => {
     const data = await Robot.findAll();
     return res.send(data);
   } catch (e) {
-    logger.log('info', 'Error while reading recordings');
+    logger.log('info', 'Error while reading robots');
     return res.send(null);
   }
 });
@@ -55,7 +55,7 @@ router.get('/recordings/:id', requireSignIn, async (req, res) => {
     );
     return res.send(data);
   } catch (e) {
-    logger.log('info', 'Error while reading recordings');
+    logger.log('info', 'Error while reading robots');
     return res.send(null);
   }
 })
@@ -400,7 +400,7 @@ router.put('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res) =>
     });
   } catch (e) {
     const { message } = e as Error;
-    logger.log('info', `Error while creating a run with recording id: ${req.params.id} - ${message}`);
+    logger.log('info', `Error while creating a run with robot id: ${req.params.id} - ${message}`);
     return res.send('');
   }
 });
@@ -518,7 +518,7 @@ router.post('/runs/run/:id', requireSignIn, async (req: AuthenticatedRequest, re
         finishedAt: new Date().toLocaleString(),
       });
     }
-    logger.log('info', `Error while running a recording with id: ${req.params.id} - ${message}`);
+    logger.log('info', `Error while running a robot with id: ${req.params.id} - ${message}`);
     capture(
       'maxun-oss-run-created-manual',
       {
@@ -757,7 +757,7 @@ router.post('/runs/abort/:id', requireSignIn, async (req, res) => {
     return res.send(true);
   } catch (e) {
     const { message } = e as Error;
-    logger.log('info', `Error while running a recording with name: ${req.params.fileName}_${req.params.runId}.json`);
+    logger.log('info', `Error while running a robot with name: ${req.params.fileName}_${req.params.runId}.json`);
     return res.send(false);
   }
 });

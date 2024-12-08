@@ -40,8 +40,10 @@ const Register = () => {
       notify("success", "Registration Successful!");
       window.localStorage.setItem("user", JSON.stringify(data));
       navigate("/");
+
     } catch (error: any) {
       notify("error", error.response?.data || "Registration Failed. Please try again.");
+    } 
       setLoading(false);
     }
   };
