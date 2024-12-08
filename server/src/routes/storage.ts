@@ -18,6 +18,8 @@ import { AuthenticatedRequest } from './record';
 import { computeNextRun } from '../utils/schedule';
 import { capture } from "../utils/analytics";
 import { tryCatch } from 'bullmq';
+import { WorkflowFile } from 'maxun-core';
+import { Page } from 'playwright';
 chromium.use(stealthPlugin());
 
 export const router = Router();
@@ -422,6 +424,17 @@ router.get('/runs/run/:id', requireSignIn, async (req, res) => {
   }
 });
 
+function AddGeneratedFlags(workflow: WorkflowFile) {
+  const copy = JSON.parse(JSON.stringify(workflow));
+  for (let i = 0; i < workflow.workflow.length; i++) {
+    copy.workflow[i].what.unshift({
+      action: 'flag',
+      args: ['generated'],
+    });
+  }
+  return copy;
+};
+
 /**
  * PUT endpoint for finishing a run and saving it to the storage.
  */
@@ -443,10 +456,11 @@ router.post('/runs/run/:id', requireSignIn, async (req: AuthenticatedRequest, re
 
     // interpret the run in active browser
     const browser = browserPool.getRemoteBrowser(plainRun.browserId);
-    const currentPage = browser?.getCurrentPage();
+    let currentPage = browser?.getCurrentPage();
     if (browser && currentPage) {
+      const workflow = AddGeneratedFlags(recording.recording);
       const interpretationInfo = await browser.interpreter.InterpretRecording(
-        recording.recording, currentPage, plainRun.interpreterSettings);
+        workflow, currentPage, (newPage: Page) => currentPage = newPage, plainRun.interpreterSettings);
       const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
       const uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, interpretationInfo.binaryOutput);
       await destroyRemoteBrowser(plainRun.browserId);

@@ -370,11 +370,11 @@ export class RemoteBrowser {
             await this.stopScreencast();
             this.currentPage = page;
 
-            this.currentPage.on('framenavigated', (frame) => {
-                if (frame === this.currentPage?.mainFrame()) {
-                    this.socket.emit('urlChanged', this.currentPage.url());
-                }
-            });
+            // this.currentPage.on('framenavigated', (frame) => {
+            //     if (frame === this.currentPage?.mainFrame()) {
+            //         this.socket.emit('urlChanged', this.currentPage.url());
+            //     }
+            // });
 
             //await this.currentPage.setViewportSize({ height: 400, width: 900 })
             this.client = await this.currentPage.context().newCDPSession(this.currentPage);
