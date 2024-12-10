@@ -20,49 +20,6 @@ type Workflow = WorkflowFile["workflow"];
  * @category WorkflowManagement-Selectors
  * @returns {Promise<Rectangle|undefined|null>}
  */
-export const getRect = async (page: Page, coordinates: Coordinates) => {
-  try {
-    const rect = await page.evaluate(
-      async ({ x, y }) => {
-        const el = document.elementFromPoint(x, y) as HTMLElement;
-        if (el) {
-          const { parentElement } = el;
-          // Match the logic in recorder.ts for link clicks
-          const element = parentElement?.tagName === 'A' ? parentElement : el;
-          const rectangle = element?.getBoundingClientRect();
-          // @ts-ignore
-          if (rectangle) {
-            return {
-              x: rectangle.x,
-              y: rectangle.y,
-              width: rectangle.width,
-              height: rectangle.height,
-              top: rectangle.top,
-              right: rectangle.right,
-              bottom: rectangle.bottom,
-              left: rectangle.left,
-            };
-          }
-        }
-      },
-      { x: coordinates.x, y: coordinates.y },
-    );
-    return rect;
-  } catch (error) {
-    const { message, stack } = error as Error;
-    logger.log('error', `Error while retrieving selector: ${message}`);
-    logger.log('error', `Stack: ${stack}`);
-  }
-}
-
-/**
- * Checks the basic info about an element and returns a {@link BaseActionInfo} object.
- * If the element is not found, returns undefined.
- * @param page The page instance.
- * @param coordinates Coordinates of an element.
- * @category WorkflowManagement-Selectors
- * @returns {Promise<BaseActionInfo|undefined>}
- */
 export const getElementInformation = async (
   page: Page,
   coordinates: Coordinates
@@ -70,10 +27,50 @@ export const getElementInformation = async (
   try {
     const elementInfo = await page.evaluate(
       async ({ x, y }) => {
-        const el = document.elementFromPoint(x, y) as HTMLElement;
-        if (el) {
-          const { parentElement } = el;
-          const element = parentElement?.tagName === 'A' ? parentElement : el;
+        const originalEl = document.elementFromPoint(x, y) as HTMLElement;
+        if (originalEl) {
+          let element = originalEl;
+          
+          // if (originalEl.tagName === 'A') {
+          //   element = originalEl;
+          // } else if (originalEl.parentElement?.tagName === 'A') {
+          //   element = originalEl.parentElement;
+          // } else {
+          // Generic parent finding logic based on visual containment
+          const containerTags = ['DIV', 'SECTION', 'ARTICLE', 'MAIN', 'HEADER', 'FOOTER', 'NAV', 'ASIDE', 
+            'ADDRESS', 'BLOCKQUOTE', 'DETAILS', 'DIALOG', 'FIGURE', 'FIGCAPTION', 'MAIN', 'MARK', 'SUMMARY', 'TIME',
+            'TABLE', 'THEAD', 'TBODY', 'TFOOT', 'TR', 'TH', 'TD', 'CAPTION', 'COLGROUP', 'COL', 'FORM', 'FIELDSET',
+            'LEGEND', 'LABEL', 'INPUT', 'BUTTON', 'SELECT', 'DATALIST', 'OPTGROUP', 'OPTION', 'TEXTAREA', 'OUTPUT',
+            'PROGRESS', 'METER', 'DETAILS', 'SUMMARY', 'MENU', 'MENUITEM', 'MENUITEM', 'APPLET', 'EMBED', 'OBJECT',
+            'PARAM', 'VIDEO', 'AUDIO', 'SOURCE', 'TRACK', 'CANVAS', 'MAP', 'AREA', 'SVG', 'IFRAME', 'FRAME', 'FRAMESET',
+            'LI', 'UL', 'OL', 'DL', 'DT', 'DD', 'HR', 'P', 'PRE', 'LISTING', 'PLAINTEXT', 'A'
+          ];
+          while (element.parentElement) {
+            const parentRect = element.parentElement.getBoundingClientRect();
+            const childRect = element.getBoundingClientRect();
+
+            if (!containerTags.includes(element.parentElement.tagName)) {
+              break;
+            }
+
+            // Check if parent visually contains the child
+            const fullyContained = 
+              parentRect.left <= childRect.left &&
+              parentRect.right >= childRect.right &&
+              parentRect.top <= childRect.top &&
+              parentRect.bottom >= childRect.bottom;
+
+            // Additional checks for more comprehensive containment
+            const significantOverlap = 
+              (childRect.width * childRect.height) / 
+              (parentRect.width * parentRect.height) > 0.5;
+
+            if (fullyContained && significantOverlap) {
+              element = element.parentElement;
+            } else {
+              break;
+            // }
+          } }
 
           let info: {
             tagName: string;
@@ -98,7 +95,7 @@ export const getElementInformation = async (
             );
           }
 
-          // Gather specific information based on the tag
+          // Existing tag-specific logic
           if (element?.tagName === 'A') {
             info.url = (element as HTMLAnchorElement).href;
             info.innerText = element.innerText ?? '';
@@ -112,7 +109,6 @@ export const getElementInformation = async (
 
           info.innerHTML = element.innerHTML;
           info.outerHTML = element.outerHTML;
-
           return info;
         }
         return null;
@@ -126,6 +122,80 @@ export const getElementInformation = async (
     console.error('Stack:', stack);
   }
 };
+
+export const getRect = async (page: Page, coordinates: Coordinates) => {
+  try {
+    const rect = await page.evaluate(
+      async ({ x, y }) => {
+        const originalEl = document.elementFromPoint(x, y) as HTMLElement;
+        if (originalEl) {
+          let element = originalEl;
+          
+          // if (originalEl.tagName === 'A') {
+          //   element = originalEl;
+          // } else if (originalEl.parentElement?.tagName === 'A') {
+          //   element = originalEl.parentElement;
+          // } else {
+          const containerTags = ['DIV', 'SECTION', 'ARTICLE', 'MAIN', 'HEADER', 'FOOTER', 'NAV', 'ASIDE', 
+            'ADDRESS', 'BLOCKQUOTE', 'DETAILS', 'DIALOG', 'FIGURE', 'FIGCAPTION', 'MAIN', 'MARK', 'SUMMARY', 'TIME',
+            'TABLE', 'THEAD', 'TBODY', 'TFOOT', 'TR', 'TH', 'TD', 'CAPTION', 'COLGROUP', 'COL', 'FORM', 'FIELDSET',
+            'LEGEND', 'LABEL', 'INPUT', 'BUTTON', 'SELECT', 'DATALIST', 'OPTGROUP', 'OPTION', 'TEXTAREA', 'OUTPUT',
+            'PROGRESS', 'METER', 'DETAILS', 'SUMMARY', 'MENU', 'MENUITEM', 'MENUITEM', 'APPLET', 'EMBED', 'OBJECT',
+            'PARAM', 'VIDEO', 'AUDIO', 'SOURCE', 'TRACK', 'CANVAS', 'MAP', 'AREA', 'SVG', 'IFRAME', 'FRAME', 'FRAMESET',
+            'LI', 'UL', 'OL', 'DL', 'DT', 'DD', 'HR', 'P', 'PRE', 'LISTING', 'PLAINTEXT', 'A'
+          ];
+          while (element.parentElement) {
+            const parentRect = element.parentElement.getBoundingClientRect();
+            const childRect = element.getBoundingClientRect();
+
+            if (!containerTags.includes(element.parentElement.tagName)) {
+              break;
+            }
+          
+
+            const fullyContained = 
+              parentRect.left <= childRect.left &&
+              parentRect.right >= childRect.right &&
+              parentRect.top <= childRect.top &&
+              parentRect.bottom >= childRect.bottom;
+
+            const significantOverlap = 
+              (childRect.width * childRect.height) / 
+              (parentRect.width * parentRect.height) > 0.5;
+
+            if (fullyContained && significantOverlap) {
+              element = element.parentElement;
+            } else {
+              break;
+            // }
+          }}
+
+          //element = element?.parentElement?.tagName === 'A' ? element?.parentElement : element;
+          const rectangle = element?.getBoundingClientRect();
+          
+          if (rectangle) {
+            return {
+              x: rectangle.x,
+              y: rectangle.y,
+              width: rectangle.width,
+              height: rectangle.height,
+              top: rectangle.top,
+              right: rectangle.right,
+              bottom: rectangle.bottom,
+              left: rectangle.left,
+            };
+          }
+        }
+      },
+      { x: coordinates.x, y: coordinates.y },
+    );
+    return rect;
+  } catch (error) {
+    const { message, stack } = error as Error;
+    logger.log('error', `Error while retrieving selector: ${message}`);
+    logger.log('error', `Stack: ${stack}`);
+  }
+}
 
 
 /**
@@ -742,7 +812,6 @@ interface SelectorResult {
 export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates): Promise<SelectorResult> => {
   try {
     const selectors = await page.evaluate(({ x, y }: { x: number, y: number }) => {
-
       function getNonUniqueSelector(element: HTMLElement): string {
         let selector = element.tagName.toLowerCase();
 
@@ -774,8 +843,44 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
         return path.join(' > ');
       }
 
-      const element = document.elementFromPoint(x, y) as HTMLElement | null;
-      if (!element) return null;
+      const originalEl = document.elementFromPoint(x, y) as HTMLElement;
+      if (!originalEl) return null;
+
+      let element = originalEl;
+
+      const containerTags = ['DIV', 'SECTION', 'ARTICLE', 'MAIN', 'HEADER', 'FOOTER', 'NAV', 'ASIDE', 
+        'ADDRESS', 'BLOCKQUOTE', 'DETAILS', 'DIALOG', 'FIGURE', 'FIGCAPTION', 'MAIN', 'MARK', 'SUMMARY', 'TIME',
+        'TABLE', 'THEAD', 'TBODY', 'TFOOT', 'TR', 'TH', 'TD', 'CAPTION', 'COLGROUP', 'COL', 'FORM', 'FIELDSET',
+        'LEGEND', 'LABEL', 'INPUT', 'BUTTON', 'SELECT', 'DATALIST', 'OPTGROUP', 'OPTION', 'TEXTAREA', 'OUTPUT',
+        'PROGRESS', 'METER', 'DETAILS', 'SUMMARY', 'MENU', 'MENUITEM', 'MENUITEM', 'APPLET', 'EMBED', 'OBJECT',
+        'PARAM', 'VIDEO', 'AUDIO', 'SOURCE', 'TRACK', 'CANVAS', 'MAP', 'AREA', 'SVG', 'IFRAME', 'FRAME', 'FRAMESET',
+        'LI', 'UL', 'OL', 'DL', 'DT', 'DD', 'HR', 'P', 'PRE', 'LISTING', 'PLAINTEXT', 'A'
+      ];
+      
+      while (element.parentElement) {
+        const parentRect = element.parentElement.getBoundingClientRect();
+        const childRect = element.getBoundingClientRect();
+
+        if (!containerTags.includes(element.parentElement.tagName)) {
+          break;
+        }
+
+        const fullyContained = 
+          parentRect.left <= childRect.left &&
+          parentRect.right >= childRect.right &&
+          parentRect.top <= childRect.top &&
+          parentRect.bottom >= childRect.bottom;
+
+        const significantOverlap = 
+          (childRect.width * childRect.height) / 
+          (parentRect.width * parentRect.height) > 0.5;
+
+        if (fullyContained && significantOverlap) {
+          element = element.parentElement;
+        } else {
+          break;
+      }
+    }
 
       const generalSelector = getSelectorPath(element);
       return {
@@ -789,7 +894,6 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
     return { generalSelector: '' };
   }
 };
-
 
 export const getChildSelectors = async (page: Page, parentSelector: string): Promise<string[]> => {
   try {

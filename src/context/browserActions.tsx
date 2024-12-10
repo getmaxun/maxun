@@ -53,6 +53,7 @@ export const ActionProvider = ({ children }: { children: ReactNode }) => {
     const startPaginationMode = () => {
         setPaginationMode(true);
         setCaptureStage('pagination');
+        socket?.emit('setGetList', { getList: false });
     };
 
     const stopPaginationMode = () => setPaginationMode(false);
@@ -75,7 +76,6 @@ export const ActionProvider = ({ children }: { children: ReactNode }) => {
 
     const stopGetList = () => {
         setGetList(false);
-        socket?.emit('setGetList', { getList: false });
         setPaginationType('');
         setLimitType('');
         setCustomLimit('');
