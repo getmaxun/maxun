@@ -49,5 +49,18 @@
       "feedback":"Join Maxun Cloud",
       "apidocs":"API Docs"
 
+    },
+    "runstable":{
+      "runs":"All Runs",
+      "runStatus":"Status",
+      "runName":"Name",
+      "startedAt":"Started At",
+      "finishedAt":"Finished At",
+      "delete":"Delete",
+      "settings":"Settings",
+      "search":"Search Runs..."
+
+
+
     }
   } 

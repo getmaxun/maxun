@@ -83,7 +83,7 @@ const Register = () => {
       >
         <img src="../src/assets/maxunlogo.png" alt="logo" height={55} width={60} style={{ marginBottom: 20, borderRadius: "20%", alignItems: "center" }} />
         <Typography variant="h4" gutterBottom>
-          Create an Account
+          {t('register.title')}
         </Typography>
         <TextField
           fullWidth

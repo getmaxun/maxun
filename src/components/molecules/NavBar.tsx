@@ -4,7 +4,7 @@ import styled from "styled-components";
 import { stopRecording } from "../../api/recording";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { IconButton, Menu, MenuItem, Typography, Chip } from "@mui/material";
-import { AccountCircle, Logout, Clear } from "@mui/icons-material";
+import { AccountCircle, Logout, Clear, Language } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/auth";
 import { SaveRecording } from "../molecules/SaveRecording";
@@ -159,7 +159,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                   <Logout sx={{ marginRight: "5px" }} /> {t("logout")}
                 </MenuItem>
               </Menu>
-              {/* Language dropdown */}
+              
             </>
           ) : (
             <>
@@ -190,7 +190,9 @@ export const NavBar: React.FC<NavBarProps> = ({
               marginRight: "10px",
             }}
           >
-            <Typography variant="body1">{t("language")}</Typography>
+            <Typography variant="body1">
+              <Language />
+              </Typography>
           </IconButton>
           <Menu
             anchorEl={langAnchorEl}

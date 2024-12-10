@@ -37,7 +37,8 @@
       },
       "edit": "編集",
       "delete": "削除",
-      "duplicate": "複製"
+      "duplicate": "複製",
+      "search": "ロボットを検索..."
   },
   "mainmenu": {
       "recordings": "ロボット",
@@ -46,5 +47,15 @@
       "apikey": "APIキー",
       "feedback": "Maxunクラウドに参加する",
       "apidocs": "APIドキュメント"
+  },
+  "runstable": {
+      "runs": "すべての実行",
+      "runStatus": "ステータス",
+      "runName": "名前",
+      "startedAt": "開始日時",
+      "finishedAt": "終了日時",
+      "delete": "削除",
+      "settings": "設定",
+      "search": "実行を検索..."
   }
 }
