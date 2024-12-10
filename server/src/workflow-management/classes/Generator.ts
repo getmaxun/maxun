@@ -541,8 +541,7 @@ export class WorkflowGenerator {
    * @returns {Promise<string|null>}
    */
   private generateSelector = async (page: Page, coordinates: Coordinates, action: ActionType) => {
-    const elementInfo = await getElementInformation(page, coordinates);
-
+    const elementInfo = await getElementInformation(page, coordinates, this.listSelector);
     const selectorBasedOnCustomAction = (this.getList === true)
       ? await getNonUniqueSelectors(page, coordinates)
       : await getSelectors(page, coordinates);
@@ -570,16 +569,14 @@ export class WorkflowGenerator {
    * @returns {Promise<void>}
    */
   public generateDataForHighlighter = async (page: Page, coordinates: Coordinates) => {
-    const rect = await getRect(page, coordinates);
+    const rect = await getRect(page, coordinates, this.listSelector);
     const displaySelector = await this.generateSelector(page, coordinates, ActionType.Click);
-    const elementInfo = await getElementInformation(page, coordinates);
+    const elementInfo = await getElementInformation(page, coordinates, this.listSelector);
     if (rect) {
       if (this.getList === true) {
         if (this.listSelector !== '') {
           const childSelectors = await getChildSelectors(page, this.listSelector || '');
           this.socket.emit('highlighter', { rect, selector: displaySelector, elementInfo, childSelectors })
-          console.log(`Child Selectors: ${childSelectors}`)
-          console.log(`Parent Selector: ${this.listSelector}`)
         } else {
           this.socket.emit('highlighter', { rect, selector: displaySelector, elementInfo });
         }
