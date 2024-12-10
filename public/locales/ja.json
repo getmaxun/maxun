@@ -1,0 +1,61 @@
+{
+  "login": {
+      "title": "お帰りなさい！",
+      "email": "メールアドレス",
+      "password": "パスワード",
+      "button": "ログイン",
+      "loading": "読み込み中",
+      "register_prompt": "アカウントをお持ちでないですか？",
+      "register_link": "登録する",
+      "welcome_notification": "Maxunへようこそ！",
+      "error_notification": "ログインに失敗しました。もう一度お試しください。"
+  },
+  "register": {
+      "title": "アカウントを登録する",
+      "email": "メールアドレス",
+      "password": "パスワード",
+      "button": "登録する",
+      "loading": "読み込み中",
+      "register_prompt": "既にアカウントをお持ちですか？",
+      "login_link": "ログイン",
+      "welcome_notification": "Maxunへようこそ！",
+      "error_notification": "登録に失敗しました。もう一度お試しください。"
+  },
+  "recordingtable": {
+      "run": "実行",
+      "name": "名前",
+      "schedule": "スケジュール",
+      "integrate": "統合",
+      "settings": "設定",
+      "options": "オプション",
+      "heading": "私のロボット",
+      "new": "ロボットを作成",
+      "modal": {
+          "title": "URLを入力してください",
+          "label": "URL",
+          "button": "録画を開始"
+      },
+      "edit": "編集",
+      "delete": "削除",
+      "duplicate": "複製",
+      "search": "ロボットを検索..."
+  },
+  "mainmenu": {
+      "recordings": "ロボット",
+      "runs": "実行",
+      "proxy": "プロキシ",
+      "apikey": "APIキー",
+      "feedback": "Maxunクラウドに参加する",
+      "apidocs": "APIドキュメント"
+  },
+  "runstable": {
+      "runs": "すべての実行",
+      "runStatus": "ステータス",
+      "runName": "名前",
+      "startedAt": "開始日時",
+      "finishedAt": "終了日時",
+      "delete": "削除",
+      "settings": "設定",
+      "search": "実行を検索..."
+  }
+}
