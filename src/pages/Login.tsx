@@ -6,11 +6,11 @@ import { Box, Typography, TextField, Button, CircularProgress, Grid } from "@mui
 import { useGlobalInfoStore } from "../context/globalInfo"; 
 import { apiUrl } from "../apiConfig";
 import { useTranslation } from 'react-i18next';
-import i18n from '../i18n'; // Add this import
+import i18n from '../i18n'; 
 
 const Login = () => {
    const { t } = useTranslation();
-   console.log(i18n) // Add translation hook
+   console.log(i18n) 
    console.log(t)
    const [form, setForm] = useState({
      email: "",
@@ -55,9 +55,7 @@ const Login = () => {
    };
 
    // Language switcher function
-   const changeLanguage = (lng: string) => {
-     i18n.changeLanguage(lng);
-   };
+   
 
    return (
      <Box

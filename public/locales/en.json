@@ -9,5 +9,45 @@
       "register_link": "Register",
       "welcome_notification": "Welcome to Maxun!",
       "error_notification": "Login Failed. Please try again."
+    },
+    "register": {
+      "title": "Register Account",
+      "email": "Email",
+      "password": "Password",
+      "button": "Register",
+      "loading": "Loading",
+      "register_prompt": "Already have an account?",
+      "login_link": "Login",
+      "welcome_notification": "Welcome to Maxun!",
+      "error_notification": "Registeration Failed. Please try again."
+    },
+    "recordingtable":{
+      "run": "Run",
+      "name": "Name",
+      "schedule": "Schedule",
+      "integrate": "Integrate",
+      "settings": "Settings",
+      "options": "Options",
+      "heading":"My Robots",
+      "new":"Create Robot",
+      "modal":{
+        "title":"Enter the URL",
+        "label":"URL",
+        "button":"Start Recording"
+      },
+      "edit":"Edit",
+      "delete":"Delete",
+      "duplicate":"Duplicate",
+      "search":"Search Robots..."
+      
+    },
+    "mainmenu":{
+      "recordings": "Robots",
+      "runs": "Runs",
+      "proxy": "Proxy",
+      "apikey": "API Key",
+      "feedback":"Join Maxun Cloud",
+      "apidocs":"API Docs"
+
     }
   } 

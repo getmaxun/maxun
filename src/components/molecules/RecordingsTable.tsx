@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useTranslation } from 'react-i18next';
 import Paper from '@mui/material/Paper';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -19,6 +20,7 @@ import { useNavigate } from 'react-router-dom';
 import { stopRecording } from "../../api/recording";
 import { GenericModal } from '../atoms/GenericModal';
 
+
 /** TODO:
  *  1. allow editing existing robot after persisting browser steps
 */
@@ -31,30 +33,9 @@ interface Column {
   format?: (value: string) => string;
 }
 
-const columns: readonly Column[] = [
-  { id: 'interpret', label: 'Run', minWidth: 80 },
-  { id: 'name', label: 'Name', minWidth: 80 },
-  {
-    id: 'schedule',
-    label: 'Schedule',
-    minWidth: 80,
-  },
-  {
-    id: 'integrate',
-    label: 'Integrate',
-    minWidth: 80,
-  },
-  {
-    id: 'settings',
-    label: 'Settings',
-    minWidth: 80,
-  },
-  {
-    id: 'options',
-    label: 'Options',
-    minWidth: 80,
-  },
-];
+
+
+
 
 interface Data {
   id: string;
@@ -76,11 +57,37 @@ interface RecordingsTableProps {
 }
 
 export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handleScheduleRecording, handleIntegrateRecording, handleSettingsRecording, handleEditRobot, handleDuplicateRobot }: RecordingsTableProps) => {
+  const {t} = useTranslation();
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
   const [rows, setRows] = React.useState<Data[]>([]);
   const [isModalOpen, setModalOpen] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState('');
+
+  const columns: readonly Column[] = [
+    { id: 'interpret', label: t('recordingtable.run'), minWidth: 80 },
+    { id: 'name', label: t('recordingtable.name'), minWidth: 80 },
+    {
+      id: 'schedule',
+      label: t('recordingtable.schedule'),
+      minWidth: 80,
+    },
+    {
+      id: 'integrate',
+      label: t('recordingtable.integrate'),
+      minWidth: 80,
+    },
+    {
+      id: 'settings',
+      label: t('recordingtable.settings'),
+      minWidth: 80,
+    },
+    {
+      id: 'options',
+      label: t('recordingtable.options'),
+      minWidth: 80,
+    },
+  ];
 
   const { notify, setRecordings, browserId, setBrowserId, recordingUrl, setRecordingUrl, recordingName, setRecordingName, recordingId, setRecordingId } = useGlobalInfoStore();
   const navigate = useNavigate();
@@ -154,16 +161,17 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
 
 
 
+
   return (
     <React.Fragment>
       <Box display="flex" justifyContent="space-between" alignItems="center">
         <Typography variant="h6" gutterBottom>
-          My Robots
+          {t('recordingtable.heading')}
         </Typography>
         <Box display="flex" alignItems="center" gap={2}>
           <TextField
             size="small"
-            placeholder="Search robots..."
+            placeholder={t('recordingtable.search')}
             value={searchTerm}
             onChange={handleSearchChange}
             InputProps={{
@@ -190,7 +198,7 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
               '&:hover': { color: 'white', backgroundColor: '#ff00c3' }
             }}
           >
-            <Add sx={{ marginRight: '5px' }} /> Create Robot
+            <Add sx={{ marginRight: '5px' }} /> {t('recordingtable.new')}
           </IconButton>
         </Box>
       </Box>
@@ -300,9 +308,9 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
       />
       <GenericModal isOpen={isModalOpen} onClose={() => setModalOpen(false)} modalStyle={modalStyle}>
         <div style={{ padding: '20px' }}>
-          <Typography variant="h6" gutterBottom>Enter URL To Extract Data</Typography>
+          <Typography variant="h6" gutterBottom>{t('recordingtable.modal.title')}</Typography>
           <TextField
-            label="URL"
+            label={t('recordingtable.modal.label')}
             variant="outlined"
             fullWidth
             value={recordingUrl}
@@ -315,7 +323,7 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
             onClick={startRecording}
             disabled={!recordingUrl}
           >
-            Start Training Robot
+            {t('recordingtable.modal.button')}
           </Button>
         </div>
       </GenericModal>
@@ -400,6 +408,8 @@ const OptionsButton = ({ handleEdit, handleDelete, handleDuplicate }: OptionsBut
     setAnchorEl(null);
   };
 
+  const {t} = useTranslation();
+
   return (
     <>
       <IconButton
@@ -418,19 +428,19 @@ const OptionsButton = ({ handleEdit, handleDelete, handleDuplicate }: OptionsBut
           <ListItemIcon>
             <Edit fontSize="small" />
           </ListItemIcon>
-          <ListItemText>Edit</ListItemText>
+          <ListItemText>{t('recordingtable.edit')}</ListItemText>
         </MenuItem>
         <MenuItem onClick={() => { handleDelete(); handleClose(); }}>
           <ListItemIcon>
             <DeleteForever fontSize="small" />
           </ListItemIcon>
-          <ListItemText>Delete</ListItemText>
+          <ListItemText>{t('recordingtable.delete')}</ListItemText>
         </MenuItem>
         <MenuItem onClick={() => { handleDuplicate(); handleClose(); }}>
           <ListItemIcon>
             <ContentCopy fontSize="small" />
           </ListItemIcon>
-          <ListItemText>Duplicate</ListItemText>
+          <ListItemText>{t('recordingtable.duplicate')}</ListItemText>
         </MenuItem>
       </Menu>
     </>
