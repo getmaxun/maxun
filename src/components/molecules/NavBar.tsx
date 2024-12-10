@@ -1,17 +1,32 @@
-import React, { useState, useContext } from "react";
-import axios from "axios";
+
+
+
+
+
+
+
+
+
+
+
+
+import { useTranslation } from "react-i18next"; // Import useTranslation hook
+
+import React, { useState, useContext, useEffect } from 'react';
+import axios from 'axios';
 import styled from "styled-components";
 import { stopRecording } from "../../api/recording";
 import { useGlobalInfoStore } from "../../context/globalInfo";
-import { IconButton, Menu, MenuItem, Typography, Chip } from "@mui/material";
-import { AccountCircle, Logout, Clear, Language } from "@mui/icons-material";
-import { useNavigate } from "react-router-dom";
-import { AuthContext } from "../../context/auth";
-import { SaveRecording } from "../molecules/SaveRecording";
-import DiscordIcon from "../atoms/DiscordIcon";
-import { apiUrl } from "../../apiConfig";
+import { IconButton, Menu, MenuItem, Typography, Chip, Button, Modal, Tabs, Tab, Box, Snackbar } from "@mui/material";
+import { AccountCircle, Logout, Clear, YouTube, X, Update, Close,Language } from "@mui/icons-material";
+import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../../context/auth';
+import { SaveRecording } from '../molecules/SaveRecording';
+import DiscordIcon from '../atoms/DiscordIcon';
+import { apiUrl } from '../../apiConfig';
 import MaxunLogo from "../../assets/maxunlogo.png";
-import { useTranslation } from "react-i18next"; // Import useTranslation hook
+import packageJson from "../../../package.json"
+
 
 interface NavBarProps {
   recordingName: string;
@@ -29,7 +44,42 @@ export const NavBar: React.FC<NavBarProps> = ({
   const { t, i18n } = useTranslation(); // Get translation function and i18n methods
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
   const [langAnchorEl, setLangAnchorEl] = useState<null | HTMLElement>(null);
+
+  const currentVersion = packageJson.version;
+
+  const [open, setOpen] = useState(false);
+  const [latestVersion, setLatestVersion] = useState<string | null>(null);
+  const [tab, setTab] = useState(0);
+  const [isUpdateAvailable, setIsUpdateAvailable] = useState(false);
+
+  const fetchLatestVersion = async (): Promise<string | null> => {
+    try {
+      const response = await fetch("https://api.github.com/repos/getmaxun/maxun/releases/latest");
+      const data = await response.json();
+      const version = data.tag_name.replace(/^v/, ""); // Remove 'v' prefix
+      return version;
+    } catch (error) {
+      console.error("Failed to fetch latest version:", error);
+      return null; // Handle errors gracefully
+    }
+  };
+
+  const handleUpdateOpen = () => {
+    setOpen(true);
+    fetchLatestVersion();
+  };
+
+  const handleUpdateClose = () => {
+    setOpen(false);
+    setTab(0); // Reset tab to the first tab
+  };
+
+  const handleUpdateTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTab(newValue);
+  };
+
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -66,7 +116,19 @@ export const NavBar: React.FC<NavBarProps> = ({
     localStorage.setItem("language", lang); // Persist language to localStorage
   };
 
+  useEffect(() => {
+    const checkForUpdates = async () => {
+      const latestVersion = await fetchLatestVersion();
+      setLatestVersion(latestVersion); // Set the latest version state
+      if (latestVersion && latestVersion !== currentVersion) {
+        setIsUpdateAvailable(true); // Show a notification or highlight the "Upgrade" button
+      }
+    };
+    checkForUpdates();
+  }, []);
+
   return (
+
     <NavBarWrapper>
 
       <div
@@ -332,6 +394,8 @@ export const NavBar: React.FC<NavBarProps> = ({
 
 
     </NavBarWrapper>
+
+  
   );
 };
 

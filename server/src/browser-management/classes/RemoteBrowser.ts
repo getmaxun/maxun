@@ -15,6 +15,7 @@ import { InterpreterSettings, RemoteBrowserOptions } from "../../types";
 import { WorkflowGenerator } from "../../workflow-management/classes/Generator";
 import { WorkflowInterpreter } from "../../workflow-management/classes/Interpreter";
 import { getDecryptedProxyConfig } from '../../routes/proxy';
+import { getInjectableScript } from 'idcac-playwright';
 chromium.use(stealthPlugin());
 
 
@@ -65,6 +66,8 @@ export class RemoteBrowser {
         maxRepeats: 1,
     };
 
+    private lastEmittedUrl: string | null = null;
+
     /**
      * {@link WorkflowGenerator} instance specific to the remote browser.
      */
@@ -85,6 +88,64 @@ export class RemoteBrowser {
         this.socket = socket;
         this.interpreter = new WorkflowInterpreter(socket);
         this.generator = new WorkflowGenerator(socket);
+    }
+
+    /**
+     * Normalizes URLs to prevent navigation loops while maintaining consistent format
+     */
+    private normalizeUrl(url: string): string {
+        try {
+            const parsedUrl = new URL(url);
+            // Remove trailing slashes except for root path
+            parsedUrl.pathname = parsedUrl.pathname.replace(/\/+$/, '') || '/';
+            // Ensure consistent protocol handling
+            parsedUrl.protocol = parsedUrl.protocol.toLowerCase();
+            return parsedUrl.toString();
+        } catch {
+            return url;
+        }
+    }   
+
+    /**
+     * Determines if a URL change is significant enough to emit
+     */
+    private shouldEmitUrlChange(newUrl: string): boolean {
+        if (!this.lastEmittedUrl) {
+            return true;
+        }
+        const normalizedNew = this.normalizeUrl(newUrl);
+        const normalizedLast = this.normalizeUrl(this.lastEmittedUrl);
+        return normalizedNew !== normalizedLast;
+    }
+
+    private async setupPageEventListeners(page: Page) {
+        page.on('framenavigated', async (frame) => {
+            if (frame === page.mainFrame()) {
+                const currentUrl = page.url();
+                if (this.shouldEmitUrlChange(currentUrl)) {
+                    this.lastEmittedUrl = currentUrl;
+                    this.socket.emit('urlChanged', currentUrl);
+                }
+            }
+        });
+
+        // Handle page load events with retry mechanism
+        page.on('load', async () => { 
+            const injectScript = async (): Promise<boolean> => {
+                try {
+                    await page.waitForLoadState('networkidle', { timeout: 5000 });
+                    
+                    await page.evaluate(getInjectableScript());
+                    return true;
+                } catch (error: any) {
+                    logger.log('warn', `Script injection attempt failed: ${error.message}`);
+                    return false;
+                }
+            };
+
+            const success = await injectScript();
+            console.log("Script injection result:", success);
+        });
     }
 
     /**
@@ -166,11 +227,7 @@ export class RemoteBrowser {
         this.context = await this.browser.newContext(contextOptions);
         this.currentPage = await this.context.newPage();
 
-        this.currentPage.on('framenavigated', (frame) => {
-            if (frame === this.currentPage?.mainFrame()) {
-                this.socket.emit('urlChanged', this.currentPage.url());
-            }
-        });
+        await this.setupPageEventListeners(this.currentPage);
 
         // await this.currentPage.setExtraHTTPHeaders({
         //     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
@@ -370,11 +427,7 @@ export class RemoteBrowser {
             await this.stopScreencast();
             this.currentPage = page;
 
-            this.currentPage.on('framenavigated', (frame) => {
-                if (frame === this.currentPage?.mainFrame()) {
-                    this.socket.emit('urlChanged', this.currentPage.url());
-                }
-            });
+            await this.setupPageEventListeners(this.currentPage);
 
             //await this.currentPage.setViewportSize({ height: 400, width: 900 })
             this.client = await this.currentPage.context().newCDPSession(this.currentPage);
@@ -402,14 +455,8 @@ export class RemoteBrowser {
         await this.currentPage?.close();
         this.currentPage = newPage;
         if (this.currentPage) {
-            this.currentPage.on('framenavigated', (frame) => {
-                if (frame === this.currentPage?.mainFrame()) {
-                    this.socket.emit('urlChanged', this.currentPage.url());
-                }
-            });
-            // this.currentPage.on('load', (page) => {
-            //     this.socket.emit('urlChanged', page.url());
-            // })
+            await this.setupPageEventListeners(this.currentPage);
+            
             this.client = await this.currentPage.context().newCDPSession(this.currentPage);
             await this.subscribeToScreencast();
         } else {

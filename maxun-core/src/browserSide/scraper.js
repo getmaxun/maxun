@@ -283,13 +283,13 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
             } else if (attribute === 'innerHTML') {
               record[label] = fieldElement.innerHTML.trim();
             } else if (attribute === 'src') {
-               // Handle relative 'src' URLs
-               const src = fieldElement.getAttribute('src');
-               record[label] = src ? new URL(src, baseUrl).href : null;
+              // Handle relative 'src' URLs
+              const src = fieldElement.getAttribute('src');
+              record[label] = src ? new URL(src, window.location.origin).href : null;
             } else if (attribute === 'href') {
               // Handle relative 'href' URLs
               const href = fieldElement.getAttribute('href');
-              record[label] = href ? new URL(href, baseUrl).href : null;
+              record[label] = href ? new URL(href, window.location.origin).href : null;
             } else {
               record[label] = fieldElement.getAttribute(attribute);
             }
@@ -346,5 +346,5 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
 
     return results;
   };
-  
+
 })(window);

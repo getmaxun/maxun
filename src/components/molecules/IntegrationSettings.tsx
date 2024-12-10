@@ -15,11 +15,13 @@ import { useGlobalInfoStore } from "../../context/globalInfo";
 import { getStoredRecording } from "../../api/storage";
 import { apiUrl } from "../../apiConfig.js";
 import Cookies from 'js-cookie';
+
 interface IntegrationProps {
   isOpen: boolean;
   handleStart: (data: IntegrationSettings) => void;
   handleClose: () => void;
 }
+
 export interface IntegrationSettings {
   spreadsheetId: string;
   spreadsheetName: string;
@@ -75,8 +77,7 @@ export const IntegrationSettingsModal = ({
       );
       notify(
         "error",
-        `Error fetching spreadsheet files: ${
-          error.response?.data?.message || error.message
+        `Error fetching spreadsheet files: ${error.response?.data?.message || error.message
         }`
       );
     }

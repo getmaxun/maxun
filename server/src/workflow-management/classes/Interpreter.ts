@@ -244,7 +244,12 @@ export class WorkflowInterpreter {
    * @param page The page instance used to interact with the browser.
    * @param settings The settings to use for the interpretation.
    */
-  public InterpretRecording = async (workflow: WorkflowFile, page: Page, settings: InterpreterSettings) => {
+  public InterpretRecording = async (
+    workflow: WorkflowFile, 
+    page: Page, 
+    updatePageOnPause: (page: Page) => void,
+    settings: InterpreterSettings
+  ) => {
     const params = settings.params ? settings.params : null;
     delete settings.params;
 
@@ -262,7 +267,7 @@ export class WorkflowInterpreter {
           this.socket.emit('debugMessage', msg)
         },
       },
-      serializableCallback: (data: string) => {
+      serializableCallback: (data: any) => {
         this.serializableData.push(data);
         this.socket.emit('serializableCallback', data);
       },
@@ -274,6 +279,23 @@ export class WorkflowInterpreter {
 
     const interpreter = new Interpreter(decryptedWorkflow, options);
     this.interpreter = interpreter;
+
+    interpreter.on('flag', async (page, resume) => {
+      if (this.activeId !== null && this.breakpoints[this.activeId]) {
+        logger.log('debug', `breakpoint hit id: ${this.activeId}`);
+        this.socket.emit('breakpointHit');
+        this.interpretationIsPaused = true;
+      }
+
+      if (this.interpretationIsPaused) {
+        this.interpretationResume = resume;
+        logger.log('debug', `Paused inside of flag: ${page.url()}`);
+        updatePageOnPause(page);
+        this.socket.emit('log', '----- The interpretation has been paused -----', false);
+      } else {
+        resume();
+      }
+    });
 
     const status = await interpreter.run(page, params);
 
