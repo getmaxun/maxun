@@ -621,7 +621,7 @@ async function executeRun(id: string) {
         };
 
     } catch (error: any) {
-        logger.log('info', `Error while running a recording with id: ${id} - ${error.message}`);
+        logger.log('info', `Error while running a robot with id: ${id} - ${error.message}`);
         const run = await Run.findOne({ where: { runId: id } });
         if (run) {
             await run.update({
@@ -660,7 +660,7 @@ export async function handleRunRecording(id: string, userId: string) {
 
         socket.on('ready-for-run', () => readyForRunHandler(browserId, newRunId));
 
-        logger.log('info', `Running recording: ${id}`);
+        logger.log('info', `Running Robot: ${id}`);
 
         socket.on('disconnect', () => {
             cleanupSocketListeners(socket, browserId, newRunId);
@@ -670,7 +670,7 @@ export async function handleRunRecording(id: string, userId: string) {
         return newRunId;
 
     } catch (error: any) {
-        logger.error('Error running recording:', error);
+        logger.error('Error running robot:', error);
     }
 }
 

@@ -9,14 +9,19 @@ DB_PORT=5432                            # Port for PostgreSQL (default: 5432)
 ENCRYPTION_KEY=f4d5e6a7b8c9d0e1f23456789abcdef01234567890abcdef123456789abcdef0      # Key for encrypting sensitive data (passwords and proxies)
 MINIO_ENDPOINT=minio                    # MinIO endpoint in Docker
 MINIO_PORT=9000                         # Port for MinIO (default: 9000)
+MINIO_CONSOLE_PORT=9001                 # Web UI Port for MinIO (default: 9001)
 MINIO_ACCESS_KEY=minio_access_key       # MinIO access key
 MINIO_SECRET_KEY=minio_secret_key       # MinIO secret key
 REDIS_HOST=redis                        # Redis host in Docker
 REDIS_PORT=6379                         # Redis port (default: 6379)
 
-# Backend URLs
-BACKEND_URL=http://localhost:8080       # Internal URL for backend service
-VITE_BACKEND_URL=http://localhost:8080  # URL used by frontend to connect to backend
+# Backend and Frontend URLs and Ports
+BACKEND_PORT=8080 # Port to run backend on. Needed for Docker setup 
+FRONTEND_PORT=5173 # Port to run frontend on. Needed for Docker setup 
+BACKEND_URL=http://localhost:8080       # URL on which the backend runs. You can change it based on your needs. 
+PUBLIC_URL=http://localhost:5173        # URL on which the frontend runs. You can change it based on your needs. 
+VITE_BACKEND_URL=http://localhost:8080  # URL used by frontend to connect to backend. It should always have the same value as BACKEND_URL
+VITE_PUBLIC_URL=http://localhost:5173   # URL used by backend to connect to frontend. It should always have the same value as PUBLIC_URL
 
 # Optional Google OAuth settings for Google Sheet Integration
 GOOGLE_CLIENT_ID=your_google_client_id

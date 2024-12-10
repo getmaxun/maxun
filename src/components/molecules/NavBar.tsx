@@ -68,6 +68,7 @@ export const NavBar: React.FC<NavBarProps> = ({
 
   return (
     <NavBarWrapper>
+
       <div
         style={{
           display: "flex",
@@ -89,6 +90,8 @@ export const NavBar: React.FC<NavBarProps> = ({
           variant="outlined"
           sx={{ marginTop: "10px" }}
         />
+
+     
       </div>
       {user ? (
         <div

@@ -49,10 +49,10 @@ export const MainPage = ({ handleEditRecording }: MainPageProps) => {
     aborted = true;
     notifyAboutAbort(runId).then(async (response) => {
       if (response) {
-        notify('success', `Interpretation of ${runningRecordingName} aborted successfully`);
+        notify('success', `Interpretation of robot ${runningRecordingName} aborted successfully`);
         await stopRecording(ids.browserId);
       } else {
-        notify('error', `Failed to abort the interpretation ${runningRecordingName} recording`);
+        notify('error', `Failed to abort the interpretation of ${runningRecordingName} robot`);
       }
     })
   }
@@ -67,9 +67,9 @@ export const MainPage = ({ handleEditRecording }: MainPageProps) => {
     interpretStoredRecording(runId).then(async (interpretation: boolean) => {
       if (!aborted) {
         if (interpretation) {
-          notify('success', `Interpretation of ${runningRecordingName} succeeded`);
+          notify('success', `Interpretation of robot ${runningRecordingName} succeeded`);
         } else {
-          notify('success', `Failed to interpret ${runningRecordingName} recording`);
+          notify('success', `Failed to interpret ${runningRecordingName} robot`);
           // destroy the created browser
           await stopRecording(browserId);
         }
@@ -98,9 +98,9 @@ export const MainPage = ({ handleEditRecording }: MainPageProps) => {
       socket.on('debugMessage', debugMessageHandler);
       setContent('runs');
       if (browserId) {
-        notify('info', `Running recording: ${runningRecordingName}`);
+        notify('info', `Running robot: ${runningRecordingName}`);
       } else {
-        notify('error', `Failed to run recording: ${runningRecordingName}`);
+        notify('error', `Failed to run robot: ${runningRecordingName}`);
       }
     })
     return (socket: Socket, browserId: string, runId: string) => {
@@ -113,9 +113,9 @@ export const MainPage = ({ handleEditRecording }: MainPageProps) => {
     scheduleStoredRecording(runningRecordingId, settings)
       .then(({ message, runId }: ScheduleRunResponse) => {
         if (message === 'success') {
-          notify('success', `Recording ${runningRecordingName} scheduled successfully`);
+          notify('success', `Robot ${runningRecordingName} scheduled successfully`);
         } else {
-          notify('error', `Failed to schedule recording ${runningRecordingName}`);
+          notify('error', `Failed to schedule robot ${runningRecordingName}`);
         }
       });
   }

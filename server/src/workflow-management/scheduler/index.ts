@@ -171,7 +171,7 @@ async function executeRun(id: string) {
     processGoogleSheetUpdates();
     return true;
   } catch (error: any) {
-    logger.log('info', `Error while running a recording with id: ${id} - ${error.message}`);
+    logger.log('info', `Error while running a robot with id: ${id} - ${error.message}`);
     console.log(error.message);
     const run = await Run.findOne({ where: { runId: id } });
     if (run) {
@@ -232,7 +232,7 @@ export async function handleRunRecording(id: string, userId: string) {
 
     socket.on('ready-for-run', () => readyForRunHandler(browserId, newRunId));
 
-    logger.log('info', `Running recording: ${id}`);
+    logger.log('info', `Running robot: ${id}`);
 
     socket.on('disconnect', () => {
       cleanupSocketListeners(socket, browserId, newRunId);

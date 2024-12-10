@@ -1,4 +1,4 @@
-import { Box, Button, Stack, Typography } from "@mui/material";
+import { Box, Button, Stack, Typography, CircularProgress } from "@mui/material";
 import { PlayCircle } from "@mui/icons-material";
 import React, { useCallback, useEffect, useState } from "react";
 import { interpretCurrentRecording, stopCurrentInterpretation } from "../../api/recording";
@@ -105,9 +105,9 @@ export const InterpretationButtons = ({ enableStepping }: InterpretationButtonsP
       const finished = await interpretCurrentRecording();
       setInfo({ ...info, running: false });
       if (finished) {
-        notify('info', 'Interpretation finished');
+        notify('info', 'Run finished');
       } else {
-        notify('error', 'Interpretation failed to start');
+        notify('error', 'Run failed to start');
       }
     }
   };
@@ -139,7 +139,9 @@ export const InterpretationButtons = ({ enableStepping }: InterpretationButtonsP
         disabled={info.running}
         sx={{ display: 'grid' }}
       >
-        {info.running ? 'Extracting data...please wait' : 'Get Preview of Output Data'}
+        {info.running ? <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <CircularProgress size={22} color="inherit" sx={{ marginRight: '10px' }} /> Extracting data...please wait for 10secs to 1min
+        </Box> : 'Get Preview of Output Data'}
       </Button>
       <GenericModal
         onClose={() => { }}

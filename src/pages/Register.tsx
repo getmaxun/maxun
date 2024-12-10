@@ -49,7 +49,9 @@ const Register = () => {
       window.localStorage.setItem("user", JSON.stringify(data));
       navigate("/");
     } catch (error:any) {
+
       notify("error", error.response.data || t('register.error_notification'));
+
       setLoading(false);
     }
   };

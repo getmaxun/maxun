@@ -155,9 +155,13 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                                         label="Robot Limit"
                                         type="number"
                                         value={robot.recording.workflow[0].what[0].args[0].limit || ''}
-                                        onChange={(e) =>
-                                            handleLimitChange(parseInt(e.target.value, 10) || 0)
-                                        }
+                                        onChange={(e) =>{
+                                            const value = parseInt(e.target.value, 10);
+                                            if (value >= 1) {
+                                                handleLimitChange(value);
+                                            }   
+                                        }}
+                                        inputProps={{ min: 1 }}
                                         style={{ marginBottom: '20px' }}
                                     />
                                 )}

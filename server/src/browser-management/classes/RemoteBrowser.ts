@@ -165,6 +165,13 @@ export class RemoteBrowser {
         contextOptions.userAgent = browserUserAgent;
         this.context = await this.browser.newContext(contextOptions);
         this.currentPage = await this.context.newPage();
+
+        this.currentPage.on('framenavigated', (frame) => {
+            if (frame === this.currentPage?.mainFrame()) {
+                this.socket.emit('urlChanged', this.currentPage.url());
+            }
+        });
+
         // await this.currentPage.setExtraHTTPHeaders({
         //     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
         // });
@@ -243,8 +250,8 @@ export class RemoteBrowser {
                         return;
                     }
                     await this.client.send('Page.screencastFrameAck', { sessionId: sessionId });
-                } catch (e) {
-                    logger.log('error', e);
+                } catch (e: any) {
+                    logger.log('error', `Screencast error: ${e}`);
                 }
             }, 100);
         });
@@ -278,7 +285,7 @@ export class RemoteBrowser {
             }
         } catch (e) {
             const { message } = e as Error;
-            logger.log('error', message);
+            logger.log('error', `Screenshot error: ${message}`);
         }
     };
 
@@ -362,6 +369,13 @@ export class RemoteBrowser {
         if (page) {
             await this.stopScreencast();
             this.currentPage = page;
+
+            this.currentPage.on('framenavigated', (frame) => {
+                if (frame === this.currentPage?.mainFrame()) {
+                    this.socket.emit('urlChanged', this.currentPage.url());
+                }
+            });
+
             //await this.currentPage.setViewportSize({ height: 400, width: 900 })
             this.client = await this.currentPage.context().newCDPSession(this.currentPage);
             this.socket.emit('urlChanged', this.currentPage.url());
@@ -388,9 +402,14 @@ export class RemoteBrowser {
         await this.currentPage?.close();
         this.currentPage = newPage;
         if (this.currentPage) {
-            this.currentPage.on('load', (page) => {
-                this.socket.emit('urlChanged', page.url());
-            })
+            this.currentPage.on('framenavigated', (frame) => {
+                if (frame === this.currentPage?.mainFrame()) {
+                    this.socket.emit('urlChanged', this.currentPage.url());
+                }
+            });
+            // this.currentPage.on('load', (page) => {
+            //     this.socket.emit('urlChanged', page.url());
+            // })
             this.client = await this.currentPage.context().newCDPSession(this.currentPage);
             await this.subscribeToScreencast();
         } else {

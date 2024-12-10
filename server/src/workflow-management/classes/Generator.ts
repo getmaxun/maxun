@@ -22,6 +22,7 @@ import { getBestSelectorForAction } from "../utils";
 import { browserPool } from "../../server";
 import { uuid } from "uuidv4";
 import { capture } from "../../utils/analytics"
+import { encrypt } from "../../utils/auth";
 
 interface PersistedGeneratedData {
   lastUsedSelector: string;
@@ -159,6 +160,20 @@ export class WorkflowGenerator {
     })
   };
 
+  private async getSelectorsForSchema(page: Page, schema: Record<string, { selector: string }>): Promise<string[]> {
+    const selectors = Object.values(schema).map((field) => field.selector);
+    
+    // Verify if the selectors are present and actionable on the current page
+    const actionableSelectors: string[] = [];
+    for (const selector of selectors) {
+      const isActionable = await page.isVisible(selector).catch(() => false);
+      if (isActionable) {
+        actionableSelectors.push(selector);
+      }
+    }
+    return actionableSelectors;
+  }
+
   /**
    * Adds a newly generated pair to the workflow and notifies the client about it by
    * sending the updated workflow through socket.
@@ -184,55 +199,59 @@ export class WorkflowGenerator {
    */
   private addPairToWorkflowAndNotifyClient = async (pair: WhereWhatPair, page: Page) => {
     let matched = false;
-    // validate if a pair with the same where conditions is already present in the workflow
+  
+    // Check for scrapeSchema actions and enhance the where condition
+    if (pair.what[0].action === 'scrapeSchema') {
+      const schema = pair.what[0]?.args?.[0];
+      if (schema) {
+        const additionalSelectors = await this.getSelectorsForSchema(page, schema);
+        pair.where.selectors = [...(pair.where.selectors || []), ...additionalSelectors];
+      }
+    }
+  
+    // Validate if the pair is already in the workflow
     if (pair.where.selectors && pair.where.selectors[0]) {
       const match = selectorAlreadyInWorkflow(pair.where.selectors[0], this.workflowRecord.workflow);
       if (match) {
-        // if a match of where conditions is found, the new action is added into the matched rule
         const matchedIndex = this.workflowRecord.workflow.indexOf(match);
         if (pair.what[0].action !== 'waitForLoadState' && pair.what[0].action !== 'press') {
           pair.what.push({
             action: 'waitForLoadState',
             args: ['networkidle'],
-          })
+          });
         }
         this.workflowRecord.workflow[matchedIndex].what = this.workflowRecord.workflow[matchedIndex].what.concat(pair.what);
-        logger.log('info', `Pushed ${JSON.stringify(this.workflowRecord.workflow[matchedIndex])} to workflow pair`);
         matched = true;
       }
     }
-    // is the where conditions of the pair are not already in the workflow, we need to validate the where conditions
-    // for possible overshadowing of different rules and handle cases according to the recording logic
+  
+    // Handle cases where the where condition isn't already present
     if (!matched) {
       const handled = await this.handleOverShadowing(pair, page, this.generatedData.lastIndex || 0);
       if (!handled) {
-        //adding waitForLoadState with networkidle, for better success rate of automatically recorded workflows
         if (pair.what[0].action !== 'waitForLoadState' && pair.what[0].action !== 'press') {
           pair.what.push({
             action: 'waitForLoadState',
             args: ['networkidle'],
-          })
+          });
         }
         if (this.generatedData.lastIndex === 0) {
           this.generatedData.lastIndex = null;
-          // we want to have the most specific selectors at the beginning of the workflow
           this.workflowRecord.workflow.unshift(pair);
         } else {
           this.workflowRecord.workflow.splice(this.generatedData.lastIndex || 0, 0, pair);
           if (this.generatedData.lastIndex) {
-            this.generatedData.lastIndex = this.generatedData.lastIndex - 1;
+            this.generatedData.lastIndex -= 1;
           }
         }
-        logger.log('info',
-          `${JSON.stringify(pair)}: Added to workflow file on index: ${this.generatedData.lastIndex || 0}`);
-      } else {
-        logger.log('debug',
-          ` ${JSON.stringify(this.workflowRecord.workflow[this.generatedData.lastIndex || 0])} added action to workflow pair`);
       }
     }
+  
+    // Emit the updated workflow to the client
     this.socket.emit('workflow', this.workflowRecord);
     logger.log('info', `Workflow emitted`);
   };
+  
 
   /**
    * Generates a pair for the click event.
@@ -300,7 +319,7 @@ export class WorkflowGenerator {
       where,
       what: [{
         action: 'press',
-        args: [selector, key],
+        args: [selector, encrypt(key)],
       }],
     }
     if (selector) {
@@ -797,7 +816,7 @@ export class WorkflowGenerator {
         // when more than one press action is present, add a type action
         pair.what.splice(index - input.actionCounter, input.actionCounter, {
           action: 'type',
-          args: [input.selector, input.value],
+          args: [input.selector, encrypt(input.value)],
         }, {
           action: 'waitForLoadState',
           args: ['networkidle'],

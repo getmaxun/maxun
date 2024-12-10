@@ -159,9 +159,6 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
   );
 
 
-
-
-
   return (
     <React.Fragment>
       <Box display="flex" justifyContent="space-between" alignItems="center">
@@ -257,24 +254,24 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
                               <TableCell key={column.id} align={column.align}>
                                 <OptionsButton
                                   handleEdit={() => handleEditRobot(row.id, row.name, row.params || [])}
+                                  handleDuplicate={() => {
+                                    handleDuplicateRobot(row.id, row.name, row.params || []);
+                                  }}
                                   handleDelete={() => {
 
                                     checkRunsForRecording(row.id).then((result: boolean) => {
                                       if (result) {
-                                        notify('warning', 'Cannot delete recording as it has active runs');
+                                        notify('warning', 'Cannot delete robot as it has associated runs');
                                       }
                                     })
 
                                     deleteRecordingFromStorage(row.id).then((result: boolean) => {
                                       if (result) {
                                         setRows([]);
-                                        notify('success', 'Recording deleted successfully');
+                                        notify('success', 'Robot deleted successfully');
                                         fetchRecordings();
                                       }
                                     })
-                                  }}
-                                  handleDuplicate={() => {
-                                    handleDuplicateRobot(row.id, row.name, row.params || []);
                                   }}
                                 />
                               </TableCell>
@@ -430,18 +427,21 @@ const OptionsButton = ({ handleEdit, handleDelete, handleDuplicate }: OptionsBut
           </ListItemIcon>
           <ListItemText>{t('recordingtable.edit')}</ListItemText>
         </MenuItem>
+
         <MenuItem onClick={() => { handleDelete(); handleClose(); }}>
           <ListItemIcon>
             <DeleteForever fontSize="small" />
           </ListItemIcon>
           <ListItemText>{t('recordingtable.delete')}</ListItemText>
         </MenuItem>
+
         <MenuItem onClick={() => { handleDuplicate(); handleClose(); }}>
           <ListItemIcon>
             <ContentCopy fontSize="small" />
           </ListItemIcon>
           <ListItemText>{t('recordingtable.duplicate')}</ListItemText>
         </MenuItem>
+        
       </Menu>
     </>
   );

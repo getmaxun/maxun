@@ -3,6 +3,38 @@ import logger from "../../logger";
 import { Socket } from "socket.io";
 import { Page } from "playwright";
 import { InterpreterSettings } from "../../types";
+import { decrypt } from "../../utils/auth";
+
+/**
+ * Decrypts any encrypted inputs in the workflow.
+ * @param workflow The workflow to decrypt.
+ */
+function decryptWorkflow(workflow: WorkflowFile): WorkflowFile {
+  const decryptedWorkflow = JSON.parse(JSON.stringify(workflow)) as WorkflowFile;
+
+  decryptedWorkflow.workflow.forEach((pair) => {
+    pair.what.forEach((action) => {
+      if ((action.action === 'type' || action.action === 'press') && Array.isArray(action.args) && action.args.length > 1) {
+        try {
+          const encryptedValue = action.args[1];
+          if (typeof encryptedValue === 'string') {
+            const decryptedValue = decrypt(encryptedValue);
+            action.args[1] = decryptedValue;
+          } else {
+            logger.log('error', 'Encrypted value is not a string');
+            action.args[1] = '';
+          }
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          logger.log('error', `Failed to decrypt input value: ${errorMessage}`);
+          action.args[1] = '';
+        }
+      }
+    });
+  });
+
+  return decryptedWorkflow;
+}
 
 /**
  * This class implements the main interpretation functions.
@@ -123,6 +155,9 @@ export class WorkflowInterpreter {
   ) => {
     const params = settings.params ? settings.params : null;
     delete settings.params;
+
+    const decryptedWorkflow = decryptWorkflow(workflow);
+
     const options = {
       ...settings,
       debugChannel: {
@@ -143,7 +178,7 @@ export class WorkflowInterpreter {
       }
     }
 
-    const interpreter = new Interpreter(workflow, options);
+    const interpreter = new Interpreter(decryptedWorkflow, options);
     this.interpreter = interpreter;
 
     interpreter.on('flag', async (page, resume) => {
@@ -212,6 +247,9 @@ export class WorkflowInterpreter {
   public InterpretRecording = async (workflow: WorkflowFile, page: Page, settings: InterpreterSettings) => {
     const params = settings.params ? settings.params : null;
     delete settings.params;
+
+    const decryptedWorkflow = decryptWorkflow(workflow);
+
     const options = {
       ...settings,
       debugChannel: {
@@ -234,15 +272,19 @@ export class WorkflowInterpreter {
       }
     }
 
-    const interpreter = new Interpreter(workflow, options);
+    const interpreter = new Interpreter(decryptedWorkflow, options);
     this.interpreter = interpreter;
 
     const status = await interpreter.run(page, params);
 
+    const lastArray = this.serializableData.length > 1
+    ? [this.serializableData[this.serializableData.length - 1]]
+    : this.serializableData;
+
     const result = {
       log: this.debugMessages,
       result: status,
-      serializableOutput: this.serializableData.reduce((reducedObject, item, index) => {
+      serializableOutput: lastArray.reduce((reducedObject, item, index) => {
         return {
           [`item-${index}`]: item,
           ...reducedObject,
