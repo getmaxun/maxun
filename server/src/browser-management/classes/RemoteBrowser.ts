@@ -225,6 +225,31 @@ export class RemoteBrowser {
 
         contextOptions.userAgent = browserUserAgent;
         this.context = await this.browser.newContext(contextOptions);
+        await this.context.addInitScript(
+            `const defaultGetter = Object.getOwnPropertyDescriptor(
+              Navigator.prototype,
+              "webdriver"
+            ).get;
+            defaultGetter.apply(navigator);
+            defaultGetter.toString();
+            Object.defineProperty(Navigator.prototype, "webdriver", {
+              set: undefined,
+              enumerable: true,
+              configurable: true,
+              get: new Proxy(defaultGetter, {
+                apply: (target, thisArg, args) => {
+                  Reflect.apply(target, thisArg, args);
+                  return false;
+                },
+              }),
+            });
+            const patchedGetter = Object.getOwnPropertyDescriptor(
+              Navigator.prototype,
+              "webdriver"
+            ).get;
+            patchedGetter.apply(navigator);
+            patchedGetter.toString();`
+          );
         this.currentPage = await this.context.newPage();
 
         await this.setupPageEventListeners(this.currentPage);
