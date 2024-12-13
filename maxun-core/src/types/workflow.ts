@@ -11,7 +11,7 @@ export type Meta = typeof meta[number];
 
 export type SelectorArray = string[];
 
-type RegexableString = string | { '$regex': string };
+export type RegexableString = string | { '$regex': string };
 
 type BaseConditions = {
   'url': RegexableString,
