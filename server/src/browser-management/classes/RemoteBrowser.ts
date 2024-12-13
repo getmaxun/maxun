@@ -104,7 +104,7 @@ export class RemoteBrowser {
         } catch {
             return url;
         }
-    }   
+    }
 
     /**
      * Determines if a URL change is significant enough to emit
@@ -130,11 +130,11 @@ export class RemoteBrowser {
         });
 
         // Handle page load events with retry mechanism
-        page.on('load', async () => { 
+        page.on('load', async () => {
             const injectScript = async (): Promise<boolean> => {
                 try {
                     await page.waitForLoadState('networkidle', { timeout: 5000 });
-                    
+
                     await page.evaluate(getInjectableScript());
                     return true;
                 } catch (error: any) {
@@ -201,7 +201,7 @@ export class RemoteBrowser {
         const contextOptions: any = {
             viewport: { height: 400, width: 900 },
             // recordVideo: { dir: 'videos/' }
-             // Force reduced motion to prevent animation issues
+            // Force reduced motion to prevent animation issues
             reducedMotion: 'reduce',
             // Force JavaScript to be enabled
             javaScriptEnabled: true,
@@ -249,7 +249,7 @@ export class RemoteBrowser {
             ).get;
             patchedGetter.apply(navigator);
             patchedGetter.toString();`
-          );
+        );
         this.currentPage = await this.context.newPage();
 
         await this.setupPageEventListeners(this.currentPage);
@@ -481,7 +481,7 @@ export class RemoteBrowser {
         this.currentPage = newPage;
         if (this.currentPage) {
             await this.setupPageEventListeners(this.currentPage);
-            
+
             this.client = await this.currentPage.context().newCDPSession(this.currentPage);
             await this.subscribeToScreencast();
         } else {
