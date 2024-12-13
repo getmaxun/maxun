@@ -15,6 +15,22 @@ interface RobotWorkflow {
   workflow: WhereWhatPair[];
 }
 
+interface StoredCookie {
+  name: string;
+  value: string;
+  domain: string;
+  path: string;
+  expires: number;
+  secure?: boolean;
+  sameSite?: "Strict" | "Lax" | "None";
+  httpOnly?: boolean;
+}
+
+interface CookieStorage {
+  cookies: StoredCookie[];
+  lastUpdated: number;  
+}
+
 interface RobotAttributes {
   id: string;
   userId?: number;
@@ -26,6 +42,7 @@ interface RobotAttributes {
   google_access_token?: string | null;
   google_refresh_token?: string | null;
   schedule?: ScheduleConfig | null;
+  cookie_storage?: CookieStorage | null;
 }
 
 interface ScheduleConfig {
@@ -54,6 +71,7 @@ class Robot extends Model<RobotAttributes, RobotCreationAttributes> implements R
   public google_access_token!: string | null;
   public google_refresh_token!: string | null;
   public schedule!: ScheduleConfig | null;
+  public cookie_storage!: CookieStorage | null;
 }
 
 Robot.init(
@@ -99,6 +117,10 @@ Robot.init(
       type: DataTypes.JSONB,
       allowNull: true,
     },
+    cookie_storage: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+    }
   },
   {
     sequelize,
