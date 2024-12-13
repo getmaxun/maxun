@@ -155,35 +155,6 @@ export class RemoteBrowser {
      * @returns {Promise<void>}
      */
     public initialize = async (userId: string): Promise<void> => {
-        // const launchOptions = {
-        //     headless: true,
-        //     proxy: options.launchOptions?.proxy,
-        //     chromiumSandbox: false,
-        //     args: [
-        //         '--no-sandbox',
-        //         '--disable-setuid-sandbox',
-        //         '--headless=new',
-        //         '--disable-gpu',
-        //         '--disable-dev-shm-usage',
-        //         '--disable-software-rasterizer',
-        //         '--in-process-gpu',
-        //         '--disable-infobars',
-        //         '--single-process', 
-        //         '--no-zygote',
-        //         '--disable-notifications',
-        //         '--disable-extensions',
-        //         '--disable-background-timer-throttling',
-        //         ...(options.launchOptions?.args || [])
-        //     ],
-        //     env: {
-        //         ...process.env,
-        //         CHROMIUM_FLAGS: '--disable-gpu --no-sandbox --headless=new'
-        //     }
-        // };
-        // console.log('Launch options before:', options.launchOptions);
-        // this.browser = <Browser>(await options.browser.launch(launchOptions));
-
-        // console.log('Launch options after:', options.launchOptions)
         this.browser = <Browser>(await chromium.launch({
             headless: true,
         }));
@@ -253,9 +224,6 @@ export class RemoteBrowser {
 
         await this.setupPageEventListeners(this.currentPage);
 
-        // await this.currentPage.setExtraHTTPHeaders({
-        //     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
-        // });
         const blocker = await PlaywrightBlocker.fromLists(fetch, ['https://easylist.to/easylist/easylist.txt']);
         await blocker.enableBlockingInPage(this.currentPage);
         this.client = await this.currentPage.context().newCDPSession(this.currentPage);
