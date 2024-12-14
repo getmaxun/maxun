@@ -35,7 +35,7 @@ Maxun lets you train a robot in 2 minutes and scrape the web on auto-pilot. Web 
 3. Choose your installation method below
 
 ### Docker Compose
-1. Copy the `docker-compose.yml` file from the codebase
+1. Copy paste the [docker-compose.yml file](https://github.com/getmaxun/maxun/blob/master/docker-compose.yml)
 2. Ensure you have setup the `.env` file
 3. Run the command below
 ```
