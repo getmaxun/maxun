@@ -30,7 +30,14 @@ Maxun lets you train a robot in 2 minutes and scrape the web on auto-pilot. Web 
 <img src="https://static.scarf.sh/a.png?x-pxid=c12a77cc-855e-4602-8a0f-614b2d0da56a" />
 
 # Installation
+1. First, create a file named `.env` in the root folder of the project
+2. Example env file can be viewed [here](https://github.com/getmaxun/maxun/blob/master/ENVEXAMPLE). Copy all content of example env to your `.env` file.
+3. Choose your installation method below
+
 ### Docker Compose
+1. Copy the `docker-compose.yml` file from the codebase
+2. Ensure you have setup the `.env` file
+3. Run the command below
 ```
 docker-compose up -d
 ```
