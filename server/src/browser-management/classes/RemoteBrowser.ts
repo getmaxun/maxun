@@ -157,6 +157,13 @@ export class RemoteBrowser {
     public initialize = async (userId: string): Promise<void> => {
         this.browser = <Browser>(await chromium.launch({
             headless: true,
+            args: [
+                "--disable-blink-features=AutomationControlled",
+                "--disable-web-security",
+                "--disable-features=IsolateOrigins,site-per-process",
+                "--disable-site-isolation-trials",
+                "--disable-extensions"
+            ], 
         }));
         const proxyConfig = await getDecryptedProxyConfig(userId);
         let proxyOptions: { server: string, username?: string, password?: string } = { server: '' };
