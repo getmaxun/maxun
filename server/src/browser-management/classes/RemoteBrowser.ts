@@ -175,7 +175,9 @@ export class RemoteBrowser {
                 "--disable-web-security",
                 "--disable-features=IsolateOrigins,site-per-process",
                 "--disable-site-isolation-trials",
-                "--disable-extensions"
+                "--disable-extensions",
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
             ], 
         }));
         const proxyConfig = await getDecryptedProxyConfig(userId);
@@ -201,7 +203,7 @@ export class RemoteBrowser {
             // Disable hardware acceleration
             forcedColors: 'none',
             isMobile: false,
-            hasTouch: false
+            hasTouch: false,
         };
 
         if (proxyOptions.server) {
@@ -212,7 +214,6 @@ export class RemoteBrowser {
             };
         }
 
-        contextOptions.userAgent = this.getUserAgent();
         this.context = await this.browser.newContext(contextOptions);
         await this.context.addInitScript(
             `const defaultGetter = Object.getOwnPropertyDescriptor(
