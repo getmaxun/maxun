@@ -17,6 +17,7 @@ export const getElementInformation = async (
   page: Page,
   coordinates: Coordinates,
   listSelector: string,
+  getList: boolean
 ) => {
   try {
     if (listSelector !== '') {
@@ -155,7 +156,7 @@ export const getElementInformation = async (
  * @category WorkflowManagement-Selectors
  * @returns {Promise<Rectangle|undefined|null>}
  */
-export const getRect = async (page: Page, coordinates: Coordinates, listSelector: string) => {
+export const getRect = async (page: Page, coordinates: Coordinates, listSelector: string, getList: boolean) => {
   try {
     if (listSelector !== '') {
       const rect = await page.evaluate(
