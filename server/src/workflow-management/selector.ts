@@ -20,7 +20,7 @@ export const getElementInformation = async (
   getList: boolean
 ) => {
   try {
-    if (!getList) {
+    if (!getList || (getList && listSelector !== '')) {
       const elementInfo = await page.evaluate(
         async ({ x, y }) => {
           const el = document.elementFromPoint(x, y) as HTMLElement;
@@ -158,7 +158,7 @@ export const getElementInformation = async (
  */
 export const getRect = async (page: Page, coordinates: Coordinates, listSelector: string, getList: boolean) => {
   try {
-    if (!getList) {
+    if (!getList || (getList && listSelector !== '')) {
       const rect = await page.evaluate(
         async ({ x, y }) => {
           const el = document.elementFromPoint(x, y) as HTMLElement;
