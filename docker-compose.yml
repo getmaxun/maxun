@@ -64,8 +64,6 @@ services:
       - redis
       - minio
     volumes:
-      - ./server:/app/server      # Mount server source code for hot reloading
-      - ./maxun-core:/app/maxun-core  # Mount maxun-core for any shared code updates
       - /var/run/dbus:/var/run/dbus
 
   frontend:
@@ -79,9 +77,6 @@ services:
     environment:
       PUBLIC_URL: ${PUBLIC_URL}
       BACKEND_URL: ${BACKEND_URL}
-    volumes:
-      - ./:/app             # Mount entire frontend app directory for hot reloading
-      - /app/node_modules   # Anonymous volume to prevent overwriting node_modules
     depends_on:
       - backend
 
