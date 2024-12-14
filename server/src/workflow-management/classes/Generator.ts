@@ -189,7 +189,7 @@ export class WorkflowGenerator {
    *
    * This function also makes sure to add a waitForLoadState and a generated flag
    * action after every new action or pair added. The [waitForLoadState](https://playwright.dev/docs/api/class-frame#frame-wait-for-load-state)
-   * action waits for the networkidle event to be fired,
+   * action waits for the domcontentloaded event to be fired,
    * and the generated flag action is used for making pausing the interpretation possible.
    *
    * @param pair The pair to add to the workflow.
@@ -217,7 +217,7 @@ export class WorkflowGenerator {
         if (pair.what[0].action !== 'waitForLoadState' && pair.what[0].action !== 'press') {
           pair.what.push({
             action: 'waitForLoadState',
-            args: ['networkidle'],
+            args: ['domcontentloaded'],
           });
         }
         this.workflowRecord.workflow[matchedIndex].what = this.workflowRecord.workflow[matchedIndex].what.concat(pair.what);
@@ -232,7 +232,7 @@ export class WorkflowGenerator {
         if (pair.what[0].action !== 'waitForLoadState' && pair.what[0].action !== 'press') {
           pair.what.push({
             action: 'waitForLoadState',
-            args: ['networkidle'],
+            args: ['domcontentloaded'],
           });
         }
         if (this.generatedData.lastIndex === 0) {
