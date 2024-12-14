@@ -852,7 +852,7 @@ interface SelectorResult {
  * @returns {Promise<Selectors|null|undefined>}
  */
 
-export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates): Promise<SelectorResult> => {
+export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates, listSelector: string): Promise<SelectorResult> => {
   try {
     const selectors = await page.evaluate(({ x, y }: { x: number, y: number }) => {
       function getNonUniqueSelector(element: HTMLElement): string {
@@ -891,24 +891,26 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
 
       let element = originalEl;
 
-      while (element.parentElement) {
-        const parentRect = element.parentElement.getBoundingClientRect();
-        const childRect = element.getBoundingClientRect();
-
-        const fullyContained =
-          parentRect.left <= childRect.left &&
-          parentRect.right >= childRect.right &&
-          parentRect.top <= childRect.top &&
-          parentRect.bottom >= childRect.bottom;
-
-        const significantOverlap =
-          (childRect.width * childRect.height) /
-          (parentRect.width * parentRect.height) > 0.5;
-
-        if (fullyContained && significantOverlap) {
-          element = element.parentElement;
-        } else {
-          break;
+      if (listSelector === '') {
+        while (element.parentElement) {
+          const parentRect = element.parentElement.getBoundingClientRect();
+          const childRect = element.getBoundingClientRect();
+  
+          const fullyContained =
+            parentRect.left <= childRect.left &&
+            parentRect.right >= childRect.right &&
+            parentRect.top <= childRect.top &&
+            parentRect.bottom >= childRect.bottom;
+  
+          const significantOverlap =
+            (childRect.width * childRect.height) /
+            (parentRect.width * parentRect.height) > 0.5;
+  
+          if (fullyContained && significantOverlap) {
+            element = element.parentElement;
+          } else {
+            break;
+          }
         }
       }
 
