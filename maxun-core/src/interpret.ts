@@ -365,7 +365,7 @@ export default class Interpreter extends EventEmitter {
             try {
               const newPage = await context.newPage();
               await newPage.goto(link);
-              await newPage.waitForLoadState('networkidle');
+              await newPage.waitForLoadState('domcontentloaded');
               await this.runLoop(newPage, this.initializedWorkflow!);
             } catch (e) {
               // `runLoop` uses soft mode, so it recovers from it's own exceptions
@@ -576,7 +576,7 @@ export default class Interpreter extends EventEmitter {
           }
           await Promise.all([
             nextButton.dispatchEvent('click'),
-            page.waitForNavigation({ waitUntil: 'networkidle' })
+            page.waitForNavigation({ waitUntil: 'domcontentloaded' })
           ]);
 
           await page.waitForTimeout(1000);
@@ -767,6 +767,8 @@ export default class Interpreter extends EventEmitter {
   public async run(page: Page, params?: ParamType): Promise<void> {
     this.log('Starting the workflow.', Level.LOG);
     const context = page.context();
+
+    page.setDefaultNavigationTimeout(100000);
     
     // Check proxy settings from context options
     const contextOptions = (context as any)._options;
