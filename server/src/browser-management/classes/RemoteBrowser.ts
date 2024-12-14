@@ -204,6 +204,7 @@ export class RemoteBrowser {
             forcedColors: 'none',
             isMobile: false,
             hasTouch: false,
+            userAgent: this.getUserAgent(),
         };
 
         if (proxyOptions.server) {
