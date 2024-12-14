@@ -148,6 +148,19 @@ export class RemoteBrowser {
         });
     }
 
+    private getUserAgent() {
+        const userAgents = [
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.5845.140 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) Gecko/20100101 Firefox/117.0',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.1938.81 Safari/537.36 Edg/116.0.1938.81',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.5845.96 Safari/537.36 OPR/101.0.4843.25',
+            'Mozilla/5.0 (Windows NT 11.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.5938.62 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:118.0) Gecko/20100101 Firefox/118.0',
+        ];
+    
+        return userAgents[Math.floor(Math.random() * userAgents.length)];
+    }
+
     /**
      * An asynchronous constructor for asynchronously initialized properties.
      * Must be called right after creating an instance of RemoteBrowser class.
@@ -198,9 +211,8 @@ export class RemoteBrowser {
                 password: proxyOptions.password ? proxyOptions.password : undefined,
             };
         }
-        const browserUserAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.6778.140 Chromium/131.0.6778.140 Safari/537.36";
 
-        contextOptions.userAgent = browserUserAgent;
+        contextOptions.userAgent = this.getUserAgent();
         this.context = await this.browser.newContext(contextOptions);
         await this.context.addInitScript(
             `const defaultGetter = Object.getOwnPropertyDescriptor(
