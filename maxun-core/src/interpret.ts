@@ -192,8 +192,8 @@ export default class Interpreter extends EventEmitter {
     // const actionable = async (selector: string): Promise<boolean> => {
     //   try {
     //     const proms = [
-    //       page.isEnabled(selector, { timeout: 5000 }),
-    //       page.isVisible(selector, { timeout: 5000 }),
+    //       page.isEnabled(selector, { timeout: 10000 }),
+    //       page.isVisible(selector, { timeout: 10000 }),
     //     ];
 
     //     return await Promise.all(proms).then((bools) => bools.every((x) => x));
@@ -214,6 +214,17 @@ export default class Interpreter extends EventEmitter {
     //     return [];
     //   }),
     // ).then((x) => x.flat());
+
+    const presentSelectors: SelectorArray = await Promise.all(
+        selectors.map(async (selector) => {
+            try {
+                await page.waitForSelector(selector, { state: 'attached' });
+                return [selector];
+            } catch (e) {
+                return [];
+            }
+        }),
+    ).then((x) => x.flat());
     
     const action = workflowCopy[workflowCopy.length - 1];
 
@@ -233,7 +244,7 @@ export default class Interpreter extends EventEmitter {
             ...p,
             [cookie.name]: cookie.value,
           }), {}),
-      selectors,
+      selectors: presentSelectors,
     };
   }
 
@@ -365,7 +376,7 @@ export default class Interpreter extends EventEmitter {
             try {
               const newPage = await context.newPage();
               await newPage.goto(link);
-              await newPage.waitForLoadState('domcontentloaded');
+              await newPage.waitForLoadState('networkidle');
               await this.runLoop(newPage, this.initializedWorkflow!);
             } catch (e) {
               // `runLoop` uses soft mode, so it recovers from it's own exceptions
@@ -576,7 +587,7 @@ export default class Interpreter extends EventEmitter {
           }
           await Promise.all([
             nextButton.dispatchEvent('click'),
-            page.waitForNavigation({ waitUntil: 'domcontentloaded' })
+            page.waitForNavigation({ waitUntil: 'networkidle' })
           ]);
 
           await page.waitForTimeout(1000);
