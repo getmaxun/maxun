@@ -1015,7 +1015,6 @@ export const getChildSelectors = async (page: Page, parentSelector: string): Pro
           const childPath = getSelectorPath(child);
           if (childPath) {
             selectors.push(childPath);  // Add direct child path
-            selectors.push(parentSelector) 
             selectors = selectors.concat(getAllDescendantSelectors(child));  // Recursively process descendants
           }
         }
