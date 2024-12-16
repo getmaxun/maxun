@@ -20,7 +20,8 @@ export const getElementInformation = async (
   getList: boolean
 ) => {
   try {
-    if (!getList || (getList && listSelector !== '')) {
+    console.log(`List Selector Value From EL INFO: ->> ${listSelector !== '' ? listSelector: 'It is empty'}`);
+    if (!getList ||listSelector !== '') {
       const elementInfo = await page.evaluate(
         async ({ x, y }) => {
           const el = document.elementFromPoint(x, y) as HTMLElement;
@@ -158,7 +159,7 @@ export const getElementInformation = async (
  */
 export const getRect = async (page: Page, coordinates: Coordinates, listSelector: string, getList: boolean) => {
   try {
-    if (!getList || (getList && listSelector !== '')) {
+    if (!getList || listSelector !== '') {
       const rect = await page.evaluate(
         async ({ x, y }) => {
           const el = document.elementFromPoint(x, y) as HTMLElement;
@@ -852,7 +853,7 @@ interface SelectorResult {
  * @returns {Promise<Selectors|null|undefined>}
  */
 
-export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates, listSelector: string): Promise<SelectorResult> => {
+export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates): Promise<SelectorResult> => {
   try {
     const selectors = await page.evaluate(({ x, y }: { x: number, y: number }) => {
       function getNonUniqueSelector(element: HTMLElement): string {
@@ -891,7 +892,7 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
 
       let element = originalEl;
 
-      if (listSelector === '') {
+      // if (listSelector === '') {
         while (element.parentElement) {
           const parentRect = element.parentElement.getBoundingClientRect();
           const childRect = element.getBoundingClientRect();
@@ -912,7 +913,7 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
             break;
           }
         }
-      }
+      // }
 
       const generalSelector = getSelectorPath(element);
       return {
