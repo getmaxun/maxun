@@ -20,8 +20,7 @@ export const getElementInformation = async (
   getList: boolean
 ) => {
   try {
-    console.log(`List Selector Value From EL INFO: ->> ${listSelector !== '' ? listSelector: 'It is empty'}`);
-    if (!getList ||listSelector !== '') {
+    if (!getList || listSelector !== '') {
       const elementInfo = await page.evaluate(
         async ({ x, y }) => {
           const el = document.elementFromPoint(x, y) as HTMLElement;
@@ -853,8 +852,10 @@ interface SelectorResult {
  * @returns {Promise<Selectors|null|undefined>}
  */
 
-export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates): Promise<SelectorResult> => {
+export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates, listSelector: string): Promise<SelectorResult> => {
   try {
+    if (!listSelector) {
+      console.log(`NON UNIQUE: MODE 1`)
     const selectors = await page.evaluate(({ x, y }: { x: number, y: number }) => {
       function getNonUniqueSelector(element: HTMLElement): string {
         let selector = element.tagName.toLowerCase();
@@ -920,8 +921,54 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
         generalSelector,
       };
     }, coordinates);
-
     return selectors || { generalSelector: '' };
+  } else {
+    console.log(`NON UNIQUE: MODE 2`)
+    const selectors = await page.evaluate(({ x, y }: { x: number, y: number }) => {
+      function getNonUniqueSelector(element: HTMLElement): string {
+        let selector = element.tagName.toLowerCase();
+
+        if (element.className) {
+          const classes = element.className.split(/\s+/).filter((cls: string) => Boolean(cls));
+          if (classes.length > 0) {
+            const validClasses = classes.filter((cls: string) => !cls.startsWith('!') && !cls.includes(':'));
+            if (validClasses.length > 0) {
+              selector += '.' + validClasses.map(cls => CSS.escape(cls)).join('.');
+            }
+          }
+        }
+
+        return selector;
+      }
+
+      function getSelectorPath(element: HTMLElement | null): string {
+        const path: string[] = [];
+        let depth = 0;
+        const maxDepth = 2;
+
+        while (element && element !== document.body && depth < maxDepth) {
+          const selector = getNonUniqueSelector(element);
+          path.unshift(selector);
+          element = element.parentElement;
+          depth++;
+        }
+
+        return path.join(' > ');
+      }
+
+      const originalEl = document.elementFromPoint(x, y) as HTMLElement;
+      if (!originalEl) return null;
+
+      let element = originalEl;
+
+      const generalSelector = getSelectorPath(element);
+      return {
+        generalSelector,
+      };
+    }, coordinates);
+    return selectors || { generalSelector: '' };
+  }
+
   } catch (error) {
     console.error('Error in getNonUniqueSelectors:', error);
     return { generalSelector: '' };
