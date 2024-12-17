@@ -17,9 +17,10 @@ export const getElementInformation = async (
   page: Page,
   coordinates: Coordinates,
   listSelector: string,
+  getList: boolean
 ) => {
   try {
-    if (listSelector !== '') {
+    if (!getList || listSelector !== '') {
       const elementInfo = await page.evaluate(
         async ({ x, y }) => {
           const el = document.elementFromPoint(x, y) as HTMLElement;
@@ -74,21 +75,9 @@ export const getElementInformation = async (
           if (originalEl) {
             let element = originalEl;
 
-            const containerTags = ['DIV', 'SECTION', 'ARTICLE', 'MAIN', 'HEADER', 'FOOTER', 'NAV', 'ASIDE',
-              'ADDRESS', 'BLOCKQUOTE', 'DETAILS', 'DIALOG', 'FIGURE', 'FIGCAPTION', 'MAIN', 'MARK', 'SUMMARY', 'TIME',
-              'TABLE', 'THEAD', 'TBODY', 'TFOOT', 'TR', 'TH', 'TD', 'CAPTION', 'COLGROUP', 'COL', 'FORM', 'FIELDSET',
-              'LEGEND', 'LABEL', 'INPUT', 'BUTTON', 'SELECT', 'DATALIST', 'OPTGROUP', 'OPTION', 'TEXTAREA', 'OUTPUT',
-              'PROGRESS', 'METER', 'DETAILS', 'SUMMARY', 'MENU', 'MENUITEM', 'MENUITEM', 'APPLET', 'EMBED', 'OBJECT',
-              'PARAM', 'VIDEO', 'AUDIO', 'SOURCE', 'TRACK', 'CANVAS', 'MAP', 'AREA', 'SVG', 'IFRAME', 'FRAME', 'FRAMESET',
-              'LI', 'UL', 'OL', 'DL', 'DT', 'DD', 'HR', 'P', 'PRE', 'LISTING', 'PLAINTEXT', 'A'
-            ];
             while (element.parentElement) {
               const parentRect = element.parentElement.getBoundingClientRect();
               const childRect = element.getBoundingClientRect();
-
-              if (!containerTags.includes(element.parentElement.tagName)) {
-                break;
-              }
 
               const fullyContained =
                 parentRect.left <= childRect.left &&
@@ -167,9 +156,9 @@ export const getElementInformation = async (
  * @category WorkflowManagement-Selectors
  * @returns {Promise<Rectangle|undefined|null>}
  */
-export const getRect = async (page: Page, coordinates: Coordinates, listSelector: string) => {
+export const getRect = async (page: Page, coordinates: Coordinates, listSelector: string, getList: boolean) => {
   try {
-    if (listSelector !== '') {
+    if (!getList || listSelector !== '') {
       const rect = await page.evaluate(
         async ({ x, y }) => {
           const el = document.elementFromPoint(x, y) as HTMLElement;
@@ -202,21 +191,9 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
           if (originalEl) {
             let element = originalEl;
 
-            const containerTags = ['DIV', 'SECTION', 'ARTICLE', 'MAIN', 'HEADER', 'FOOTER', 'NAV', 'ASIDE',
-              'ADDRESS', 'BLOCKQUOTE', 'DETAILS', 'DIALOG', 'FIGURE', 'FIGCAPTION', 'MAIN', 'MARK', 'SUMMARY', 'TIME',
-              'TABLE', 'THEAD', 'TBODY', 'TFOOT', 'TR', 'TH', 'TD', 'CAPTION', 'COLGROUP', 'COL', 'FORM', 'FIELDSET',
-              'LEGEND', 'LABEL', 'INPUT', 'BUTTON', 'SELECT', 'DATALIST', 'OPTGROUP', 'OPTION', 'TEXTAREA', 'OUTPUT',
-              'PROGRESS', 'METER', 'DETAILS', 'SUMMARY', 'MENU', 'MENUITEM', 'MENUITEM', 'APPLET', 'EMBED', 'OBJECT',
-              'PARAM', 'VIDEO', 'AUDIO', 'SOURCE', 'TRACK', 'CANVAS', 'MAP', 'AREA', 'SVG', 'IFRAME', 'FRAME', 'FRAMESET',
-              'LI', 'UL', 'OL', 'DL', 'DT', 'DD', 'HR', 'P', 'PRE', 'LISTING', 'PLAINTEXT', 'A'
-            ];
             while (element.parentElement) {
               const parentRect = element.parentElement.getBoundingClientRect();
               const childRect = element.getBoundingClientRect();
-
-              if (!containerTags.includes(element.parentElement.tagName)) {
-                break;
-              }
 
               const fullyContained =
                 parentRect.left <= childRect.left &&
@@ -875,8 +852,10 @@ interface SelectorResult {
  * @returns {Promise<Selectors|null|undefined>}
  */
 
-export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates): Promise<SelectorResult> => {
+export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates, listSelector: string): Promise<SelectorResult> => {
   try {
+    if (!listSelector) {
+      console.log(`NON UNIQUE: MODE 1`)
     const selectors = await page.evaluate(({ x, y }: { x: number, y: number }) => {
       function getNonUniqueSelector(element: HTMLElement): string {
         let selector = element.tagName.toLowerCase();
@@ -914,47 +893,82 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
 
       let element = originalEl;
 
-      const containerTags = ['DIV', 'SECTION', 'ARTICLE', 'MAIN', 'HEADER', 'FOOTER', 'NAV', 'ASIDE',
-        'ADDRESS', 'BLOCKQUOTE', 'DETAILS', 'DIALOG', 'FIGURE', 'FIGCAPTION', 'MAIN', 'MARK', 'SUMMARY', 'TIME',
-        'TABLE', 'THEAD', 'TBODY', 'TFOOT', 'TR', 'TH', 'TD', 'CAPTION', 'COLGROUP', 'COL', 'FORM', 'FIELDSET',
-        'LEGEND', 'LABEL', 'INPUT', 'BUTTON', 'SELECT', 'DATALIST', 'OPTGROUP', 'OPTION', 'TEXTAREA', 'OUTPUT',
-        'PROGRESS', 'METER', 'DETAILS', 'SUMMARY', 'MENU', 'MENUITEM', 'MENUITEM', 'APPLET', 'EMBED', 'OBJECT',
-        'PARAM', 'VIDEO', 'AUDIO', 'SOURCE', 'TRACK', 'CANVAS', 'MAP', 'AREA', 'SVG', 'IFRAME', 'FRAME', 'FRAMESET',
-        'LI', 'UL', 'OL', 'DL', 'DT', 'DD', 'HR', 'P', 'PRE', 'LISTING', 'PLAINTEXT', 'A'
-      ];
-
-      while (element.parentElement) {
-        const parentRect = element.parentElement.getBoundingClientRect();
-        const childRect = element.getBoundingClientRect();
-
-        if (!containerTags.includes(element.parentElement.tagName)) {
-          break;
+      // if (listSelector === '') {
+        while (element.parentElement) {
+          const parentRect = element.parentElement.getBoundingClientRect();
+          const childRect = element.getBoundingClientRect();
+  
+          const fullyContained =
+            parentRect.left <= childRect.left &&
+            parentRect.right >= childRect.right &&
+            parentRect.top <= childRect.top &&
+            parentRect.bottom >= childRect.bottom;
+  
+          const significantOverlap =
+            (childRect.width * childRect.height) /
+            (parentRect.width * parentRect.height) > 0.5;
+  
+          if (fullyContained && significantOverlap) {
+            element = element.parentElement;
+          } else {
+            break;
+          }
         }
-
-        const fullyContained =
-          parentRect.left <= childRect.left &&
-          parentRect.right >= childRect.right &&
-          parentRect.top <= childRect.top &&
-          parentRect.bottom >= childRect.bottom;
-
-        const significantOverlap =
-          (childRect.width * childRect.height) /
-          (parentRect.width * parentRect.height) > 0.5;
-
-        if (fullyContained && significantOverlap) {
-          element = element.parentElement;
-        } else {
-          break;
-        }
-      }
+      // }
 
       const generalSelector = getSelectorPath(element);
       return {
         generalSelector,
       };
     }, coordinates);
-
     return selectors || { generalSelector: '' };
+  } else {
+    console.log(`NON UNIQUE: MODE 2`)
+    const selectors = await page.evaluate(({ x, y }: { x: number, y: number }) => {
+      function getNonUniqueSelector(element: HTMLElement): string {
+        let selector = element.tagName.toLowerCase();
+
+        if (element.className) {
+          const classes = element.className.split(/\s+/).filter((cls: string) => Boolean(cls));
+          if (classes.length > 0) {
+            const validClasses = classes.filter((cls: string) => !cls.startsWith('!') && !cls.includes(':'));
+            if (validClasses.length > 0) {
+              selector += '.' + validClasses.map(cls => CSS.escape(cls)).join('.');
+            }
+          }
+        }
+
+        return selector;
+      }
+
+      function getSelectorPath(element: HTMLElement | null): string {
+        const path: string[] = [];
+        let depth = 0;
+        const maxDepth = 2;
+
+        while (element && element !== document.body && depth < maxDepth) {
+          const selector = getNonUniqueSelector(element);
+          path.unshift(selector);
+          element = element.parentElement;
+          depth++;
+        }
+
+        return path.join(' > ');
+      }
+
+      const originalEl = document.elementFromPoint(x, y) as HTMLElement;
+      if (!originalEl) return null;
+
+      let element = originalEl;
+
+      const generalSelector = getSelectorPath(element);
+      return {
+        generalSelector,
+      };
+    }, coordinates);
+    return selectors || { generalSelector: '' };
+  }
+
   } catch (error) {
     console.error('Error in getNonUniqueSelectors:', error);
     return { generalSelector: '' };
