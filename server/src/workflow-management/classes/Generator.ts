@@ -140,19 +140,22 @@ export class WorkflowGenerator {
     socket.on('decision', async ({ pair, actionType, decision }) => {
       const id = browserPool.getActiveBrowserId();
       if (id) {
-        const activeBrowser = browserPool.getRemoteBrowser(id);
-        const currentPage = activeBrowser?.getCurrentPage();
-        if (decision) {
+        // const activeBrowser = browserPool.getRemoteBrowser(id);
+        // const currentPage = activeBrowser?.getCurrentPage();
+        if (!decision) {
           switch (actionType) {
             case 'customAction':
-              pair.where.selectors = [this.generatedData.lastUsedSelector];
+              // pair.where.selectors = [this.generatedData.lastUsedSelector];
+              pair.where.selectors = pair.where.selectors.filter(
+                (selector: string) => selector !== this.generatedData.lastUsedSelector
+              );
               break;
             default: break;
           }
         }
-        if (currentPage) {
-          await this.addPairToWorkflowAndNotifyClient(pair, currentPage);
-        }
+        // if (currentPage) {
+        //   await this.addPairToWorkflowAndNotifyClient(pair, currentPage);
+        // }
       }
     })
     socket.on('updatePair', (data) => {
@@ -360,6 +363,8 @@ export class WorkflowGenerator {
       }],
     }
 
+    await this.addPairToWorkflowAndNotifyClient(pair, page);
+
     if (this.generatedData.lastUsedSelector) {
       const elementInfo = await this.getLastUsedSelectorInfo(page, this.generatedData.lastUsedSelector);
 
@@ -372,9 +377,7 @@ export class WorkflowGenerator {
           innerText: elementInfo.innerText,
         }
       });
-    } else {
-      await this.addPairToWorkflowAndNotifyClient(pair, page);
-    }
+    } 
   };
 
   /**
