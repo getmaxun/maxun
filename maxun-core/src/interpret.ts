@@ -506,7 +506,11 @@ export default class Interpreter extends EventEmitter {
           try {
             await executeAction(invokee, methodName, step.args);
           } catch (error) {
-            await executeAction(invokee, methodName, [step.args[0], { force: true }]);
+            try{
+              await executeAction(invokee, methodName, [step.args[0], { force: true }]);
+            } catch (error) {
+              continue
+            }
           }
         } else {
           await executeAction(invokee, methodName, step.args);
