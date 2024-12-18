@@ -3,6 +3,7 @@ import { useSocketStore } from '../../context/socket';
 import { getMappedCoordinates } from "../../helpers/inputHelpers";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { useActionContext } from '../../context/browserActions';
+import DatePicker from './DatePicker';
 
 interface CreateRefCallback {
     (ref: React.RefObject<HTMLCanvasElement>): void;
@@ -31,6 +32,11 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
     const getTextRef = useRef(getText);
     const getListRef = useRef(getList);
 
+    const [datePickerInfo, setDatePickerInfo] = React.useState<{
+        coordinates: Coordinates;
+        selector: string;
+    } | null>(null);
+
     const notifyLastAction = (action: string) => {
         if (lastAction !== action) {
             setLastAction(action);
@@ -43,6 +49,28 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
         getTextRef.current = getText;
         getListRef.current = getList;
     }, [getText, getList]);
+
+    useEffect(() => {
+        if (socket) {
+            socket.on('showDatePicker', (info: {coordinates: Coordinates, selector: string}) => {
+                setDatePickerInfo(info);
+            });
+
+            return () => {
+                socket.off('showDatePicker');
+            };
+        }
+    }, [socket]);
+
+    const handleDateSelect = (value: string) => {
+        if (socket && datePickerInfo) {
+            socket.emit('input:date', {
+                selector: datePickerInfo.selector,
+                value
+            });
+            setDatePickerInfo(null); 
+        }
+    };
 
     const onMouseEvent = useCallback((event: MouseEvent) => {
         if (socket && canvasRef.current) {
@@ -146,6 +174,13 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
                 width={900}
                 style={{ display: 'block' }}
             />
+            {datePickerInfo && (
+                <DatePicker
+                    coordinates={datePickerInfo.coordinates}
+                    selector={datePickerInfo.selector}
+                    onClose={() => setDatePickerInfo(null)}
+                />
+            )}
         </div>
     );
 
