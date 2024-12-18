@@ -1,4 +1,4 @@
-import { Action, ActionType, Coordinates, TagName } from "../../types";
+import { Action, ActionType, Coordinates, TagName, DatePickerEventData } from "../../types";
 import { WhereWhatPair, WorkflowFile } from 'maxun-core';
 import logger from "../../logger";
 import { Socket } from "socket.io";
@@ -255,6 +255,25 @@ export class WorkflowGenerator {
     logger.log('info', `Workflow emitted`);
   };
   
+  public onDateSelection = async (page: Page, data: DatePickerEventData) => {
+    const { selector, value } = data;
+
+    try {
+      await page.fill(selector, value);
+    } catch (error) {
+        console.error("Failed to fill date value:", error);
+    }
+    
+    const pair: WhereWhatPair = {
+        where: { url: this.getBestUrl(page.url()) },
+        what: [{
+            action: 'fill',
+            args: [selector, value],
+        }],
+    };
+
+    await this.addPairToWorkflowAndNotifyClient(pair, page);
+  };
 
   /**
    * Generates a pair for the click event.
@@ -266,6 +285,22 @@ export class WorkflowGenerator {
     let where: WhereWhatPair["where"] = { url: this.getBestUrl(page.url()) };
     const selector = await this.generateSelector(page, coordinates, ActionType.Click);
     logger.log('debug', `Element's selector: ${selector}`);
+
+    // Check if clicked element is a date input
+    const isDateInput = await page.evaluate(({x, y}) => {
+      const element = document.elementFromPoint(x, y);
+      return element instanceof HTMLInputElement && element.type === 'date';
+    }, coordinates);
+
+    if (isDateInput) {
+      // Notify client to show datepicker overlay
+      this.socket.emit('showDatePicker', {
+          coordinates,
+          selector
+      });
+      return; 
+    }
+
     //const element = await getElementMouseIsOver(page, coordinates);
     //logger.log('debug', `Element: ${JSON.stringify(element, null, 2)}`);
     if (selector) {
