@@ -140,19 +140,22 @@ export class WorkflowGenerator {
     socket.on('decision', async ({ pair, actionType, decision }) => {
       const id = browserPool.getActiveBrowserId();
       if (id) {
-        const activeBrowser = browserPool.getRemoteBrowser(id);
-        const currentPage = activeBrowser?.getCurrentPage();
-        if (decision) {
+        // const activeBrowser = browserPool.getRemoteBrowser(id);
+        // const currentPage = activeBrowser?.getCurrentPage();
+        if (!decision) {
           switch (actionType) {
             case 'customAction':
-              pair.where.selectors = [this.generatedData.lastUsedSelector];
+              // pair.where.selectors = [this.generatedData.lastUsedSelector];
+              pair.where.selectors = pair.where.selectors.filter(
+                (selector: string) => selector !== this.generatedData.lastUsedSelector
+              );
               break;
             default: break;
           }
         }
-        if (currentPage) {
-          await this.addPairToWorkflowAndNotifyClient(pair, currentPage);
-        }
+        // if (currentPage) {
+        //   await this.addPairToWorkflowAndNotifyClient(pair, currentPage);
+        // }
       }
     })
     socket.on('updatePair', (data) => {
@@ -360,6 +363,8 @@ export class WorkflowGenerator {
       }],
     }
 
+    await this.addPairToWorkflowAndNotifyClient(pair, page);
+
     if (this.generatedData.lastUsedSelector) {
       const elementInfo = await this.getLastUsedSelectorInfo(page, this.generatedData.lastUsedSelector);
 
@@ -372,9 +377,7 @@ export class WorkflowGenerator {
           innerText: elementInfo.innerText,
         }
       });
-    } else {
-      await this.addPairToWorkflowAndNotifyClient(pair, page);
-    }
+    } 
   };
 
   /**
@@ -541,9 +544,9 @@ export class WorkflowGenerator {
    * @returns {Promise<string|null>}
    */
   private generateSelector = async (page: Page, coordinates: Coordinates, action: ActionType) => {
-    const elementInfo = await getElementInformation(page, coordinates, this.listSelector);
+    const elementInfo = await getElementInformation(page, coordinates, this.listSelector, this.getList);
     const selectorBasedOnCustomAction = (this.getList === true)
-      ? await getNonUniqueSelectors(page, coordinates)
+      ? await getNonUniqueSelectors(page, coordinates, this.listSelector)
       : await getSelectors(page, coordinates);
 
     const bestSelector = getBestSelectorForAction(
@@ -569,9 +572,9 @@ export class WorkflowGenerator {
    * @returns {Promise<void>}
    */
   public generateDataForHighlighter = async (page: Page, coordinates: Coordinates) => {
-    const rect = await getRect(page, coordinates, this.listSelector);
+    const rect = await getRect(page, coordinates, this.listSelector, this.getList);
     const displaySelector = await this.generateSelector(page, coordinates, ActionType.Click);
-    const elementInfo = await getElementInformation(page, coordinates, this.listSelector);
+    const elementInfo = await getElementInformation(page, coordinates, this.listSelector, this.getList);
     if (rect) {
       if (this.getList === true) {
         if (this.listSelector !== '') {
