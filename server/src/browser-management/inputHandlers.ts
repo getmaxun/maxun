@@ -6,7 +6,7 @@
 import { Socket } from 'socket.io';
 
 import logger from "../logger";
-import { Coordinates, ScrollDeltas, KeyboardInput } from '../types';
+import { Coordinates, ScrollDeltas, KeyboardInput, DatePickerEventData } from '../types';
 import { browserPool } from "../server";
 import { WorkflowGenerator } from "../workflow-management/classes/Generator";
 import { Page } from "playwright";
@@ -224,6 +224,23 @@ const handleKeydown = async (generator: WorkflowGenerator, page: Page, { key, co
 };
 
 /**
+ * Handles the date selection event.
+ * @param generator - the workflow generator {@link Generator}
+ * @param page - the active page of the remote browser
+ * @param data - the data of the date selection event {@link DatePickerEventData}
+ * @category BrowserManagement
+ */
+const handleDateSelection = async (generator: WorkflowGenerator, page: Page, data: DatePickerEventData) => {
+    await generator.onDateSelection(page, data);
+    logger.log('debug', `Date ${data.value} selected`);
+}
+
+const onDateSelection = async (data: DatePickerEventData) => {
+    logger.log('debug', 'Handling date selection event emitted from client');
+    await handleWrapper(handleDateSelection, data);
+}
+
+/**
  * A wrapper function for handling the keyup event.
  * @param keyboardInput - the keyboard input of the keyup event
  * @category HelperFunctions
@@ -378,6 +395,7 @@ const registerInputHandlers = (socket: Socket) => {
     socket.on("input:refresh", onRefresh);
     socket.on("input:back", onGoBack);
     socket.on("input:forward", onGoForward);
+    socket.on("input:date", onDateSelection);
     socket.on("action", onGenerateAction);
 };
 
