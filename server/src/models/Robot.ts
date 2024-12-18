@@ -42,6 +42,7 @@ interface RobotAttributes {
   google_access_token?: string | null;
   google_refresh_token?: string | null;
   schedule?: ScheduleConfig | null;
+  isLogin: boolean;
   cookie_storage?: CookieStorage | null;
 }
 
@@ -71,6 +72,7 @@ class Robot extends Model<RobotAttributes, RobotCreationAttributes> implements R
   public google_access_token!: string | null;
   public google_refresh_token!: string | null;
   public schedule!: ScheduleConfig | null;
+  public isLogin!: boolean;
   public cookie_storage!: CookieStorage | null;
 }
 
@@ -116,6 +118,11 @@ Robot.init(
     schedule: {
       type: DataTypes.JSONB,
       allowNull: true,
+    },
+    isLogin: {              
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
     cookie_storage: {
       type: DataTypes.JSONB,
