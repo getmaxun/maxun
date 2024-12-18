@@ -315,6 +315,7 @@ router.post('/recordings/:id/duplicate', requireSignIn, async (req: Authenticate
       google_sheet_id: null,
       google_access_token: null,
       google_refresh_token: null,
+      isLogin: false,
       schedule: null, 
     });
 
