@@ -62,16 +62,6 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
         }
     }, [socket]);
 
-    const handleDateSelect = (value: string) => {
-        if (socket && datePickerInfo) {
-            socket.emit('input:date', {
-                selector: datePickerInfo.selector,
-                value
-            });
-            setDatePickerInfo(null); 
-        }
-    };
-
     const onMouseEvent = useCallback((event: MouseEvent) => {
         if (socket && canvasRef.current) {
             // Get the canvas bounding rectangle
