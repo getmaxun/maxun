@@ -1,0 +1,13 @@
+{
+    "app": {
+      "name": "Maxun",
+      "version": "beta"
+    },
+    "login": {
+      "title": "欢迎回来！",
+      "email": "电子邮件",
+      "password": "密码",
+      "button": "登录",
+      "register_prompt": "没有账号？注册"
+    }
+  }
