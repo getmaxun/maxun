@@ -1,0 +1,50 @@
+{
+    "login": {
+        "title": "Willkommen zurück!",
+        "email": "E-Mail",
+        "password": "Passwort",
+        "button": "Einloggen",
+        "loading": "Lädt",
+        "register_prompt": "Noch keinen Account?",
+        "register_link": "Registrieren",
+        "welcome_notification": "Willkommen bei Maxun!",
+        "error_notification": "Anmeldung fehlgeschlagen. Bitte versuchen Sie es erneut."
+    },
+    "register": {
+        "title": "Konto registrieren",
+        "email": "E-Mail",
+        "password": "Passwort",
+        "button": "Registrieren",
+        "loading": "Lädt",
+        "register_prompt": "Bereits ein Konto?",
+        "login_link": "Einloggen",
+        "welcome_notification": "Willkommen bei Maxun!",
+        "error_notification": "Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut."
+    },
+    "recordingtable": {
+        "run": "Ausführen",
+        "name": "Name",
+        "schedule": "Zeitplan",
+        "integrate": "Integrieren",
+        "settings": "Einstellungen",
+        "options": "Optionen",
+        "heading": "Meine Roboter",
+        "new": "Roboter erstellen",
+        "modal": {
+            "title": "Geben Sie die URL ein",
+            "label": "URL",
+            "button": "Aufnahme starten"
+        },
+        "edit": "Bearbeiten",
+        "delete": "Löschen",
+        "duplicate": "Duplizieren"
+    },
+    "mainmenu": {
+        "recordings": "Roboter",
+        "runs": "Ausführungen",
+        "proxy": "Proxy",
+        "apikey": "API-Schlüssel",
+        "feedback": "Maxun Cloud beitreten",
+        "apidocs": "API-Dokumentation"
+    }
+}

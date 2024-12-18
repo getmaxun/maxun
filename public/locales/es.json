@@ -1,0 +1,13 @@
+{
+    "app": {
+      "name": "Maxun",
+      "version": "beta"
+    },
+    "login": {
+      "title": "¡Bienvenido de nuevo!",
+      "email": "Correo electrónico",
+      "password": "Contraseña",
+      "button": "Iniciar sesión",
+      "register_prompt": "¿No tienes una cuenta? Regístrate"
+    }
+  }

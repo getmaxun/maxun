@@ -1,4 +1,6 @@
 import * as React from 'react';
+import { useEffect, useState } from "react";
+import { useTranslation } from 'react-i18next';
 import Paper from '@mui/material/Paper';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -7,14 +9,24 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
-import { useEffect, useState } from "react";
+import { Accordion, AccordionSummary, AccordionDetails, Typography, Box, TextField } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import SearchIcon from '@mui/icons-material/Search';
+
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { getStoredRuns } from "../../api/storage";
 import { RunSettings } from "./RunSettings";
 import { CollapsibleRow } from "./ColapsibleRow";
-import { Accordion, AccordionSummary, AccordionDetails, Typography, Box, TextField } from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import SearchIcon from '@mui/icons-material/Search';
+
+// Export columns before the component
+export const columns: readonly Column[] = [
+  { id: 'runStatus', label: 'Status', minWidth: 80 },
+  { id: 'name', label: 'Name', minWidth: 80 },
+  { id: 'startedAt', label: 'Started At', minWidth: 80 },
+  { id: 'finishedAt', label: 'Finished At', minWidth: 80 },
+  { id: 'settings', label: 'Settings', minWidth: 80 },
+  { id: 'delete', label: 'Delete', minWidth: 80 },
+];
 
 interface Column {
   id: 'runStatus' | 'name' | 'startedAt' | 'finishedAt' | 'delete' | 'settings';
@@ -24,16 +36,7 @@ interface Column {
   format?: (value: string) => string;
 }
 
-export const columns: readonly Column[] = [
-  { id: 'runStatus', label: 'Status', minWidth: 80 },
-  { id: 'name', label: 'Robot Name', minWidth: 80 },
-  { id: 'startedAt', label: 'Started at', minWidth: 80 },
-  { id: 'finishedAt', label: 'Finished at', minWidth: 80 },
-  { id: 'settings', label: 'Settings', minWidth: 80 },
-  { id: 'delete', label: 'Delete', minWidth: 80 },
-];
-
-export interface Data {
+interface Data {
   id: number;
   status: string;
   name: string;
@@ -58,14 +61,24 @@ interface RunsTableProps {
   runningRecordingName: string;
 }
 
-export const RunsTable = (
-  { currentInterpretationLog, abortRunHandler, runId, runningRecordingName }: RunsTableProps) => {
+export const RunsTable: React.FC<RunsTableProps> = ({ 
+  currentInterpretationLog, 
+  abortRunHandler, 
+  runId, 
+  runningRecordingName 
+}) => {
+  const { t } = useTranslation();
+
+  // Update column labels using translation if needed
+  const translatedColumns = columns.map(column => ({
+    ...column,
+    label: t(`runstable.${column.id}`, column.label)
+  }));
+
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [rows, setRows] = useState<Data[]>([]);
-
   const [searchTerm, setSearchTerm] = useState('');
-
 
   const { notify, rerenderRuns, setRerenderRuns } = useGlobalInfoStore();
 
@@ -86,16 +99,13 @@ export const RunsTable = (
   const fetchRuns = async () => {
     const runs = await getStoredRuns();
     if (runs) {
-      const parsedRows: Data[] = [];
-      runs.map((run: any, index) => {
-        parsedRows.push({
-          id: index,
-          ...run,
-        });
-      });
+      const parsedRows: Data[] = runs.map((run: any, index: number) => ({
+        id: index,
+        ...run,
+      }));
       setRows(parsedRows);
     } else {
-      notify('error', 'No runs found. Please try again.')
+      notify('error', 'No runs found. Please try again.');
     }
   };
 
@@ -104,14 +114,13 @@ export const RunsTable = (
       fetchRuns();
       setRerenderRuns(false);
     }
-  }, [rerenderRuns]);
+  }, [rerenderRuns, rows.length, setRerenderRuns]);
 
   const handleDelete = () => {
     setRows([]);
     notify('success', 'Run deleted successfully');
     fetchRuns();
   };
-
 
   // Filter rows based on search term
   const filteredRows = rows.filter((row) =>
@@ -120,7 +129,6 @@ export const RunsTable = (
 
   // Group filtered rows by robot meta id
   const groupedRows = filteredRows.reduce((acc, row) => {
-
     if (!acc[row.robotMetaId]) {
       acc[row.robotMetaId] = [];
     }
@@ -132,11 +140,11 @@ export const RunsTable = (
     <React.Fragment>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Typography variant="h6" gutterBottom>
-          All Runs
+          {t('runstable.runs', 'Runs')}
         </Typography>
         <TextField
           size="small"
-          placeholder="Search runs..."
+          placeholder={t('runstable.search', 'Search runs...')}
           value={searchTerm}
           onChange={handleSearchChange}
           InputProps={{
@@ -149,16 +157,14 @@ export const RunsTable = (
         {Object.entries(groupedRows).map(([id, data]) => (
           <Accordion key={id}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-
               <Typography variant="h6">{data[data.length - 1].name}</Typography>
-
             </AccordionSummary>
             <AccordionDetails>
               <Table stickyHeader aria-label="sticky table">
                 <TableHead>
                   <TableRow>
                     <TableCell />
-                    {columns.map((column) => (
+                    {translatedColumns.map((column) => (
                       <TableCell
                         key={column.id}
                         align={column.align}
