@@ -286,11 +286,11 @@ export class WorkflowGenerator {
     const selector = await this.generateSelector(page, coordinates, ActionType.Click);
     logger.log('debug', `Element's selector: ${selector}`);
 
+    const elementInfo = await getElementInformation(page, coordinates, '', false);
+    console.log("Element info: ", elementInfo);
+
     // Check if clicked element is a date input
-    const isDateInput = await page.evaluate(({x, y}) => {
-      const element = document.elementFromPoint(x, y);
-      return element instanceof HTMLInputElement && element.type === 'date';
-    }, coordinates);
+    const isDateInput = elementInfo?.tagName === 'INPUT' && elementInfo?.attributes?.type === 'date';
 
     if (isDateInput) {
       // Notify client to show datepicker overlay
