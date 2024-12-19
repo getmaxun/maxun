@@ -265,41 +265,72 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
     const scrapedData = [];
 
     while (scrapedData.length < limit) {
-      // Get all parent elements matching the listSelector
-      const parentElements = Array.from(document.querySelectorAll(listSelector));
+        let parentElements = Array.from(document.querySelectorAll(listSelector));
+        
+        // If we only got one element or none, try a more generic approach
+        if (limit > 1 && parentElements.length <= 1) {
+            const [containerSelector, _] = listSelector.split('>').map(s => s.trim());
+            const container = document.querySelector(containerSelector);
+            
+            if (container) {
+                const allChildren = Array.from(container.children);
+                
+                const firstMatch = document.querySelector(listSelector);
+                if (firstMatch) {
+                    // Get classes from the first matching element
+                    const firstMatchClasses = Array.from(firstMatch.classList);
+                    
+                    // Find similar elements by matching most of their classes
+                    parentElements = allChildren.filter(element => {
+                        const elementClasses = Array.from(element.classList);
 
-      // Iterate through each parent element
-      for (const parent of parentElements) {
-        if (scrapedData.length >= limit) break;
-        const record = {};
-
-        // For each field, select the corresponding element within the parent
-        for (const [label, { selector, attribute }] of Object.entries(fields)) {
-          const fieldElement = parent.querySelector(selector);
-
-          if (fieldElement) {
-            if (attribute === 'innerText') {
-              record[label] = fieldElement.innerText.trim();
-            } else if (attribute === 'innerHTML') {
-              record[label] = fieldElement.innerHTML.trim();
-            } else if (attribute === 'src') {
-              // Handle relative 'src' URLs
-              const src = fieldElement.getAttribute('src');
-              record[label] = src ? new URL(src, window.location.origin).href : null;
-            } else if (attribute === 'href') {
-              // Handle relative 'href' URLs
-              const href = fieldElement.getAttribute('href');
-              record[label] = href ? new URL(href, window.location.origin).href : null;
-            } else {
-              record[label] = fieldElement.getAttribute(attribute);
+                        // Element should share at least 70% of classes with the first match
+                        const commonClasses = firstMatchClasses.filter(cls => 
+                            elementClasses.includes(cls));
+                        return commonClasses.length >= Math.floor(firstMatchClasses.length * 0.7);
+                    });
+                }
             }
-          }
         }
-        scrapedData.push(record);
-      }
+
+        // Iterate through each parent element
+        for (const parent of parentElements) {
+            if (scrapedData.length >= limit) break;
+            const record = {};
+
+            // For each field, select the corresponding element within the parent
+            for (const [label, { selector, attribute }] of Object.entries(fields)) {
+                const fieldElement = parent.querySelector(selector);
+
+                if (fieldElement) {
+                    if (attribute === 'innerText') {
+                        record[label] = fieldElement.innerText.trim();
+                    } else if (attribute === 'innerHTML') {
+                        record[label] = fieldElement.innerHTML.trim();
+                    } else if (attribute === 'src') {
+                        // Handle relative 'src' URLs
+                        const src = fieldElement.getAttribute('src');
+                        record[label] = src ? new URL(src, window.location.origin).href : null;
+                    } else if (attribute === 'href') {
+                        // Handle relative 'href' URLs
+                        const href = fieldElement.getAttribute('href');
+                        record[label] = href ? new URL(href, window.location.origin).href : null;
+                    } else {
+                        record[label] = fieldElement.getAttribute(attribute);
+                    }
+                }
+            }
+            scrapedData.push(record);
+        }
+
+        // If we've processed all available elements and still haven't reached the limit,
+        // break to avoid infinite loop
+        if (parentElements.length === 0 || scrapedData.length >= parentElements.length) {
+            break;
+        }
     }
-    return scrapedData
-  };
+    return scrapedData;
+};
 
 
   /**
