@@ -295,6 +295,26 @@ export class WorkflowGenerator {
     await this.addPairToWorkflowAndNotifyClient(pair, page);
   };
 
+  public onTimeSelection = async (page: Page, data: { selector: string, value: string }) => {
+    const { selector, value } = data;
+
+    try {
+        await page.fill(selector, value);
+    } catch (error) {
+        console.error("Failed to set time value:", error);
+    }
+    
+    const pair: WhereWhatPair = {
+        where: { url: this.getBestUrl(page.url()) },
+        what: [{
+            action: 'fill',
+            args: [selector, value],
+        }],
+    };
+
+    await this.addPairToWorkflowAndNotifyClient(pair, page);
+  };
+
   /**
    * Generates a pair for the click event.
    * @param coordinates The coordinates of the click event.
@@ -358,6 +378,16 @@ export class WorkflowGenerator {
           selector
       });
       return; 
+    }
+
+    const isTimeInput = elementInfo?.tagName === 'INPUT' && elementInfo?.attributes?.type === 'time';
+
+    if (isTimeInput) {
+      this.socket.emit('showTimePicker', {
+          coordinates,
+          selector
+      });
+      return;
     }
 
     //const element = await getElementMouseIsOver(page, coordinates);
