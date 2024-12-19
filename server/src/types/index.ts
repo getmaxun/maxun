@@ -21,6 +21,16 @@ export interface Coordinates {
 }
 
 /**
+ * interface to handle date picker events.
+ * @category Types
+ */
+export interface DatePickerEventData {
+    coordinates: Coordinates;
+    selector: string;
+    value: string;
+}
+
+/**
  * Holds the deltas of a wheel/scroll event.
  * @category Types
  */
