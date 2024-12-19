@@ -22,6 +22,8 @@ interface GlobalInfo {
   setRecordingName: (recordingName: string) => void;
   recordingUrl: string;
   setRecordingUrl: (recordingUrl: string) => void;
+  isLogin: boolean;
+  setIsLogin: (isLogin: boolean) => void;
   currentWorkflowActionsState: {
     hasScrapeListAction: boolean;
     hasScreenshotAction: boolean;
@@ -48,6 +50,7 @@ class GlobalInfoStore implements Partial<GlobalInfo> {
   rerenderRuns = false;
   recordingName = '';
   recordingUrl = 'https://';
+  isLogin = false;
   currentWorkflowActionsState = {
     hasScrapeListAction: false,
     hasScreenshotAction: false,
@@ -70,6 +73,7 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
   const [recordingId, setRecordingId] = useState<string | null>(globalInfoStore.recordingId);
   const [recordingName, setRecordingName] = useState<string>(globalInfoStore.recordingName);
   const [recordingUrl, setRecordingUrl] = useState<string>(globalInfoStore.recordingUrl);
+  const [isLogin, setIsLogin] = useState<boolean>(globalInfoStore.isLogin);
   const [currentWorkflowActionsState, setCurrentWorkflowActionsState] = useState(globalInfoStore.currentWorkflowActionsState);
 
   const notify = (severity: 'error' | 'warning' | 'info' | 'success', message: string) => {
@@ -109,6 +113,8 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
         setRecordingName,
         recordingUrl,
         setRecordingUrl,
+        isLogin,
+        setIsLogin,
         currentWorkflowActionsState,
         setCurrentWorkflowActionsState,
       }}

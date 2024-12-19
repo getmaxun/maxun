@@ -10,7 +10,7 @@ import TableRow from '@mui/material/TableRow';
 import { useEffect } from "react";
 import { WorkflowFile } from "maxun-core";
 import SearchIcon from '@mui/icons-material/Search';
-import { IconButton, Button, Box, Typography, TextField, MenuItem, Menu, ListItemIcon, ListItemText } from "@mui/material";
+import { IconButton, Button, Box, Typography, TextField, MenuItem, Menu, ListItemIcon, ListItemText, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio } from "@mui/material";
 import { Schedule, DeleteForever, Edit, PlayCircle, Settings, Power, ContentCopy, MoreHoriz } from "@mui/icons-material";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { checkRunsForRecording, deleteRecordingFromStorage, getStoredRecordings } from "../../api/storage";
@@ -82,7 +82,7 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
   const [isModalOpen, setModalOpen] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState('');
 
-  const { notify, setRecordings, browserId, setBrowserId, recordingUrl, setRecordingUrl, recordingName, setRecordingName, recordingId, setRecordingId } = useGlobalInfoStore();
+  const { notify, setRecordings, browserId, setBrowserId, recordingUrl, setRecordingUrl, isLogin, setIsLogin, recordingName, setRecordingName, recordingId, setRecordingId } = useGlobalInfoStore();
   const navigate = useNavigate();
 
   const handleChangePage = (event: unknown, newPage: number) => {
@@ -306,14 +306,30 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
             onChange={(e: any) => setRecordingUrl(e.target.value)}
             style={{ marginBottom: '20px', marginTop: '20px' }}
           />
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={startRecording}
-            disabled={!recordingUrl}
-          >
-            Start Training Robot
-          </Button>
+
+          <Typography variant="h6" gutterBottom>Does this site require login?</Typography>
+          <FormControl style={{ marginBottom: '20px' }} required>
+            <RadioGroup
+              aria-labelledby="login-requirement-radio-group"
+              name="login-requirement"
+              value={isLogin ? 'yes' : 'no'}
+              onChange={(e) => setIsLogin(e.target.value === 'yes')}
+            >
+              <FormControlLabel value="yes" control={<Radio />} label="Yes" />
+              <FormControlLabel value="no" control={<Radio />} label="No" />
+            </RadioGroup>
+          </FormControl>
+
+          <div style={{ display: 'flex', width: '100%' }}>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={startRecording}
+              disabled={!recordingUrl}
+            >
+              Start Training Robot
+            </Button>
+          </div>
         </div>
       </GenericModal>
     </React.Fragment>

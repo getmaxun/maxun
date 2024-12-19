@@ -15,6 +15,23 @@ import { arrayToObject } from './utils/utils';
 import Concurrency from './utils/concurrency';
 import Preprocessor from './preprocessor';
 import log, { Level } from './utils/logger';
+import { RegexableString } from './types/workflow';
+
+interface Cookie {
+  name: string;
+  path: string;
+  value: string;
+  domain: string;
+  secure: boolean;
+  expires: number;
+  httpOnly: boolean;
+  sameSite: "Strict" | "Lax" | "None";
+}
+
+interface CookieData {
+  cookies: Cookie[];
+  lastUpdated: number;
+}
 
 /**
  * Extending the Window interface for custom scraping functions.
@@ -68,8 +85,16 @@ export default class Interpreter extends EventEmitter {
 
   private cumulativeResults: Record<string, any>[] = [];
 
-  constructor(workflow: WorkflowFile, options?: Partial<InterpreterOptions>) {
+  private cookies: CookieData = {
+    cookies: [],
+    lastUpdated: 0
+  };
+
+  private loginSuccessful: boolean = false;
+
+  constructor(workflow: WorkflowFile, options?: Partial<InterpreterOptions>, cookies?: CookieData) {
     super();
+    this.cookies = cookies || { cookies: [], lastUpdated: 0 };
     this.workflow = workflow.workflow;
     this.initializedWorkflow = null;
     this.options = {
@@ -109,6 +134,45 @@ export default class Interpreter extends EventEmitter {
     })
   }
 
+  private checkCookieExpiry(cookie: Cookie): boolean {
+    if (cookie.expires === -1) {
+      return true;
+    }
+  
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    
+    const expiryTimestamp = cookie.expires > 1e10 ? 
+      Math.floor(cookie.expires / 1000) : 
+      cookie.expires;
+  
+    return expiryTimestamp > currentTimestamp;
+  }
+
+  private filterValidCookies(): void {
+    if (!this.cookies?.cookies) return;
+
+    const originalCookies = [...this.cookies.cookies];
+    this.cookies.cookies = this.cookies.cookies.filter(cookie => this.checkCookieExpiry(cookie));
+    
+    const removedCount = originalCookies.length - this.cookies.cookies.length;
+    if (removedCount > 0) {
+      this.log(`Filtered out ${removedCount} expired cookies`, Level.LOG);
+    }
+  }
+
+  private async applyStoredCookies(page: Page): Promise<boolean> {
+    if (!this.cookies?.cookies || this.cookies.cookies.length === 0) return false;
+
+    try {
+      await page.context().addCookies(this.cookies.cookies);
+
+      return true;
+    } catch (error) {
+      this.log(`Failed to apply cookies: ${error}`, Level.ERROR);
+      return false;
+    }
+  }
+
   private async applyAdBlocker(page: Page): Promise<void> {
     if (this.blocker) {
       await this.blocker.enableBlockingInPage(page);
@@ -120,6 +184,42 @@ export default class Interpreter extends EventEmitter {
       await this.blocker.disableBlockingInPage(page);
     }
   }
+
+  private isLoginUrl(url: string): boolean {
+    const loginKeywords = ['login', 'signin', 'sign-in', 'auth'];
+    const lowercaseUrl = url.toLowerCase();
+    return loginKeywords.some(keyword => lowercaseUrl.includes(keyword));
+  }
+
+  private getUrlString(url: RegexableString | undefined): string {
+    if (!url) return '';
+    
+    if (typeof url === 'string') return url;
+    
+    if ('$regex' in url) {
+        let normalUrl = url['$regex'];
+        return normalUrl
+            .replace(/^\^/, '')           
+            .replace(/\$$/, '')           
+            .replace(/\\([?])/g, '$1');   
+    }
+    
+    return '';
+}
+
+  private findFirstPostLoginAction(workflow: Workflow): number {
+    for (let i = workflow.length - 1; i >= 0; i--) {
+      const action = workflow[i];
+      if (action.where.url && action.where.url !== "about:blank") {
+        const urlString = this.getUrlString(action.where.url);
+        if (!this.isLoginUrl(urlString)) {
+          return i;
+        }
+      }
+    }
+    return -1;
+  }
+  
 
   // private getSelectors(workflow: Workflow, actionId: number): string[] {
   //   const selectors: string[] = [];
@@ -228,12 +328,31 @@ export default class Interpreter extends EventEmitter {
     
     const action = workflowCopy[workflowCopy.length - 1];
 
-    // console.log("Next action:", action)
-
     let url: any = page.url();
 
     if (action && action.where.url !== url && action.where.url !== "about:blank") {
       url = action.where.url;
+    }
+
+    if (this.loginSuccessful) {
+      const pageCookies = await page.context().cookies([page.url()]);
+
+      this.cookies.cookies = pageCookies.map(cookie => ({
+        name: cookie.name,
+        path: cookie.path || '/',
+        value: cookie.value,
+        domain: cookie.domain,
+        secure: cookie.secure || false,
+        expires: cookie.expires || Math.floor(Date.now() / 1000) + 86400,
+        httpOnly: cookie.httpOnly || false,
+        sameSite: cookie.sameSite || 'Lax'
+      }));
+
+      Object.assign(this.cookies, { lastUpdated: Date.now() });
+      
+      // this.filterValidCookies();
+      this.loginSuccessful = false;
+      this.log('Stored authentication cookies after successful login', Level.LOG);
     }
 
     return {
@@ -669,6 +788,35 @@ export default class Interpreter extends EventEmitter {
     let actionId = -1
     let repeatCount = 0;
 
+    // this.filterValidCookies();
+
+    if (this.cookies?.cookies?.length > 0) {
+      const cookiesApplied = await this.applyStoredCookies(p);
+      if (cookiesApplied) {
+        console.log("Cookies applied successfully.");
+        const postLoginActionId = this.findFirstPostLoginAction(workflowCopy);
+        if (postLoginActionId !== -1) {
+          const targetUrl = this.getUrlString(workflowCopy[postLoginActionId].where.url);
+          if (targetUrl) {
+            try {
+              await p.goto(targetUrl);
+
+              await p.waitForLoadState('networkidle');
+              
+              if (!this.isLoginUrl(targetUrl)) {
+                workflowCopy.splice(postLoginActionId + 1);
+                this.log('Successfully skipped login using stored cookies', Level.LOG);
+              } else {
+                this.log('Cookie authentication failed, proceeding with manual login', Level.LOG);
+              }
+            } catch (error) {
+              this.log(`Failed to navigate with stored cookies: ${error}`, Level.ERROR);
+            }
+          }
+        }
+      }
+    }
+
     /**
     *  Enables the interpreter functionality for popup windows.
     * User-requested concurrency should be entirely managed by the concurrency manager,
@@ -694,11 +842,9 @@ export default class Interpreter extends EventEmitter {
       }
 
       let pageState = {};
-      let getStateTest = "Hello";
       try {
         pageState = await this.getState(p, workflowCopy, selectors);
         selectors = [];
-        console.log("Empty selectors:", selectors)
       } catch (e: any) {
         this.log('The browser has been closed.');
         return;
@@ -722,27 +868,29 @@ export default class Interpreter extends EventEmitter {
 
       const action = workflowCopy[actionId];
 
-      console.log("MATCHED ACTION:", action);
-      console.log("MATCHED ACTION ID:", actionId);
       this.log(`Matched ${JSON.stringify(action?.where)}`, Level.LOG);
 
-      if (action) { // action is matched
+      if (action) { 
         if (this.options.debugChannel?.activeId) {
           this.options.debugChannel.activeId(actionId);
         }
         
         repeatCount = action === lastAction ? repeatCount + 1 : 0;
         
-        console.log("REPEAT COUNT", repeatCount);
         if (this.options.maxRepeats && repeatCount > this.options.maxRepeats) {
           return;
         }
         lastAction = action;
         
         try {
-          console.log("Carrying out:", action.what);
           await this.carryOutSteps(p, action.what);
           usedActions.push(action.id ?? 'undefined');
+
+          const url = this.getUrlString(action.where.url);
+          
+          if (this.isLoginUrl(url)) {
+            this.loginSuccessful = true;  
+          }
 
           workflowCopy.splice(actionId, 1);
           console.log(`Action with ID ${action.id} removed from the workflow copy.`);
@@ -779,7 +927,7 @@ export default class Interpreter extends EventEmitter {
    * @param {ParamType} params Workflow specific, set of parameters
    *  for the `{$param: nameofparam}` fields.
    */
-  public async run(page: Page, params?: ParamType): Promise<void> {
+  public async run(page: Page, params?: ParamType): Promise<CookieData> {
     this.log('Starting the workflow.', Level.LOG);
     const context = page.context();
 
@@ -815,6 +963,8 @@ export default class Interpreter extends EventEmitter {
     await this.concurrency.waitForCompletion();
 
     this.stopper = null;
+
+    return this.cookies;
   }
 
   public async stop(): Promise<void> {

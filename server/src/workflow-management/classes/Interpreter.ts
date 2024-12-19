@@ -4,6 +4,23 @@ import { Socket } from "socket.io";
 import { Page } from "playwright";
 import { InterpreterSettings } from "../../types";
 import { decrypt } from "../../utils/auth";
+import { default as axios } from "axios";
+
+interface Cookie {
+  name: string;
+  path: string;
+  value: string;
+  domain: string;
+  secure: boolean;
+  expires: number;
+  httpOnly: boolean;
+  sameSite: "Strict" | "Lax" | "None";
+}
+
+interface CookieData {
+  cookies: Cookie[];
+  lastUpdated: number;
+}
 
 /**
  * Decrypts any encrypted inputs in the workflow.
@@ -238,6 +255,29 @@ export class WorkflowInterpreter {
     this.binaryData = [];
   }
 
+  private async fetchCookies(robotId: string): Promise<any> {
+    try {
+      const response = await axios.get(`http://localhost:8080/storage/recordings/${robotId}/cookies`);
+      
+      this.debugMessages.push(`Successfully fetched ${response.data.cookies.length} cookies for robot ${robotId}`);
+
+      return response.data.cookies;
+    } catch (error) {
+      this.debugMessages.push(`Failed to fetch cookies for robot ${robotId}: ${error}`);
+    }
+  }
+
+  private async setCookies(robotId: string, cookies: CookieData): Promise<void> {
+    try {
+      await axios.put(`http://localhost:8080/storage/recordings/${robotId}/cookies`, {
+        cookies
+      });
+      this.debugMessages.push(`Successfully stored ${cookies.cookies.length} cookies for robot ${robotId}`);
+    } catch (error) {
+      this.debugMessages.push(`Failed to store cookies for robot ${robotId}: ${error}`);
+    }
+  }
+
   /**
    * Interprets the recording as a run.
    * @param workflow The workflow to interpret.
@@ -248,8 +288,15 @@ export class WorkflowInterpreter {
     workflow: WorkflowFile, 
     page: Page, 
     updatePageOnPause: (page: Page) => void,
-    settings: InterpreterSettings
+    settings: InterpreterSettings,
+    robotId?: string
   ) => {
+    let cookies: CookieData = { cookies: [], lastUpdated: 0 };
+
+    if (robotId) {
+      cookies = await this.fetchCookies(robotId);
+    }
+
     const params = settings.params ? settings.params : null;
     delete settings.params;
 
@@ -277,7 +324,7 @@ export class WorkflowInterpreter {
       }
     }
 
-    const interpreter = new Interpreter(decryptedWorkflow, options);
+    const interpreter = new Interpreter(decryptedWorkflow, options, cookies);
     this.interpreter = interpreter;
 
     interpreter.on('flag', async (page, resume) => {
@@ -297,7 +344,11 @@ export class WorkflowInterpreter {
       }
     });
 
-    const status = await interpreter.run(page, params);
+    const cookie = await interpreter.run(page, params);
+
+    if (robotId && cookie) {
+      await this.setCookies(robotId, cookie);
+    }
 
     const lastArray = this.serializableData.length > 1
     ? [this.serializableData[this.serializableData.length - 1]]
@@ -305,7 +356,7 @@ export class WorkflowInterpreter {
 
     const result = {
       log: this.debugMessages,
-      result: status,
+      result: cookie,
       serializableOutput: lastArray.reduce((reducedObject, item, index) => {
         return {
           [`item-${index}`]: item,
