@@ -275,6 +275,26 @@ export class WorkflowGenerator {
     await this.addPairToWorkflowAndNotifyClient(pair, page);
   };
 
+  public onDropdownSelection = async (page: Page, data: { selector: string, value: string }) => {
+    const { selector, value } = data;
+
+    try {
+      await page.selectOption(selector, value);
+    } catch (error) {
+        console.error("Failed to fill date value:", error);
+    }
+    
+    const pair: WhereWhatPair = {
+        where: { url: this.getBestUrl(page.url()) },
+        what: [{
+            action: 'selectOption',
+            args: [selector, value],
+        }],
+    };
+
+    await this.addPairToWorkflowAndNotifyClient(pair, page);
+  };
+
   /**
    * Generates a pair for the click event.
    * @param coordinates The coordinates of the click event.
