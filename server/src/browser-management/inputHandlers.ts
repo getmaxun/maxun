@@ -250,6 +250,16 @@ const onDropdownSelection = async (data: { selector: string, value: string }) =>
     await handleWrapper(handleDropdownSelection, data);
 }
 
+const handleTimeSelection = async (generator: WorkflowGenerator, page: Page, data: { selector: string, value: string }) => {
+    await generator.onTimeSelection(page, data);
+    logger.log('debug', `Time value ${data.value} selected`);
+}
+
+const onTimeSelection = async (data: { selector: string, value: string }) => {
+    logger.log('debug', 'Handling time selection event emitted from client');
+    await handleWrapper(handleTimeSelection, data);
+}
+
 /**
  * A wrapper function for handling the keyup event.
  * @param keyboardInput - the keyboard input of the keyup event
@@ -407,6 +417,7 @@ const registerInputHandlers = (socket: Socket) => {
     socket.on("input:forward", onGoForward);
     socket.on("input:date", onDateSelection);
     socket.on("input:dropdown", onDropdownSelection);
+    socket.on("input:time", onTimeSelection);
     socket.on("action", onGenerateAction);
 };
 
