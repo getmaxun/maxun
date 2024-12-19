@@ -289,6 +289,45 @@ export class WorkflowGenerator {
     const elementInfo = await getElementInformation(page, coordinates, '', false);
     console.log("Element info: ", elementInfo);
 
+    // Check if clicked element is a select dropdown
+    const isDropdown = elementInfo?.tagName === 'SELECT';
+    
+    if (isDropdown && elementInfo.innerHTML) {
+      // Parse options from innerHTML
+      const options = elementInfo.innerHTML
+        .split('<option')
+        .slice(1) // Remove first empty element
+        .map(optionHtml => {
+          const valueMatch = optionHtml.match(/value="([^"]*)"/);
+          const disabledMatch = optionHtml.includes('disabled="disabled"');
+          const selectedMatch = optionHtml.includes('selected="selected"');
+          
+          // Extract text content between > and </option>
+          const textMatch = optionHtml.match(/>([^<]*)</);
+          const text = textMatch 
+            ? textMatch[1]
+                .replace(/\n/g, '') // Remove all newlines
+                .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+                .trim()
+            : '';
+          
+          return {
+              value: valueMatch ? valueMatch[1] : '',
+              text,
+              disabled: disabledMatch,
+              selected: selectedMatch
+          };
+        });
+
+      // Notify client to show dropdown overlay
+      this.socket.emit('showDropdown', {
+          coordinates,
+          selector,
+          options
+      });
+      return;
+    }
+
     // Check if clicked element is a date input
     const isDateInput = elementInfo?.tagName === 'INPUT' && elementInfo?.attributes?.type === 'date';
 
