@@ -5,6 +5,7 @@ import { useGlobalInfoStore } from "../../context/globalInfo";
 import { useActionContext } from '../../context/browserActions';
 import DatePicker from './DatePicker';
 import Dropdown from './Dropdown';
+import TimePicker from './TimePicker';
 
 interface CreateRefCallback {
     (ref: React.RefObject<HTMLCanvasElement>): void;
@@ -49,6 +50,11 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
         }>;
     } | null>(null);
 
+    const [timePickerInfo, setTimePickerInfo] = React.useState<{
+        coordinates: Coordinates;
+        selector: string;
+    } | null>(null);
+
     const notifyLastAction = (action: string) => {
         if (lastAction !== action) {
             setLastAction(action);
@@ -79,6 +85,10 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
                 }>;
             }) => {
                 setDropdownInfo(info);
+            });
+
+            socket.on('showTimePicker', (info: {coordinates: Coordinates, selector: string}) => {
+                setTimePickerInfo(info);
             });
 
             return () => {
@@ -203,6 +213,13 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
                     selector={dropdownInfo.selector}
                     options={dropdownInfo.options}
                     onClose={() => setDropdownInfo(null)}
+                />
+            )}
+            {timePickerInfo && (
+                <TimePicker
+                    coordinates={timePickerInfo.coordinates}
+                    selector={timePickerInfo.selector}
+                    onClose={() => setTimePickerInfo(null)}
                 />
             )}
         </div>
