@@ -5,8 +5,13 @@ import { AuthContext } from "../context/auth";
 import { Box, Typography, TextField, Button, CircularProgress } from "@mui/material";
 import { useGlobalInfoStore } from "../context/globalInfo";
 import { apiUrl } from "../apiConfig";
+import { useTranslation } from 'react-i18next';
+import i18n from '../i18n';
+
+
 
 const Register = () => {
+  const {t} = useTranslation();
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -40,11 +45,13 @@ const Register = () => {
         password,
       });
       dispatch({ type: "LOGIN", payload: data });
-      notify("success", "Registration Successful!");
+      notify("success", t('register.welcome_notification'));
       window.localStorage.setItem("user", JSON.stringify(data));
       navigate("/");
     } catch (error:any) {
-      notify("error",  `Registration Failed. Please try again. ${error.response.data}`);
+
+      notify("error", error.response.data || t('register.error_notification'));
+
       setLoading(false);
     }
   };
@@ -78,11 +85,11 @@ const Register = () => {
       >
         <img src="../src/assets/maxunlogo.png" alt="logo" height={55} width={60} style={{ marginBottom: 20, borderRadius: "20%", alignItems: "center" }} />
         <Typography variant="h4" gutterBottom>
-          Create an Account
+          {t('register.title')}
         </Typography>
         <TextField
           fullWidth
-          label="Email"
+          label={t('register.email')}
           name="email"
           value={email}
           onChange={handleChange}
@@ -92,7 +99,7 @@ const Register = () => {
         />
         <TextField
           fullWidth
-          label="Password"
+          label={t('register.password')}
           name="password"
           type="password"
           value={password}
@@ -115,13 +122,14 @@ const Register = () => {
               Loading
             </>
           ) : (
-            "Register"
+            t('register.button')
           )}
         </Button>
         <Typography variant="body2" align="center">
-          Already have an account?{" "}
+          {t('register.register_prompt')}{" "}
           <Link to="/login" style={{ textDecoration: "none", color: "#ff33cc" }}>
-            Login
+            
+            {t('register.login_link')}
           </Link>
         </Typography>
       </Box>
