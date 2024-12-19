@@ -4,6 +4,7 @@ import { getMappedCoordinates } from "../../helpers/inputHelpers";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { useActionContext } from '../../context/browserActions';
 import DatePicker from './DatePicker';
+import Dropdown from './Dropdown';
 
 interface CreateRefCallback {
     (ref: React.RefObject<HTMLCanvasElement>): void;
@@ -37,6 +38,17 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
         selector: string;
     } | null>(null);
 
+    const [dropdownInfo, setDropdownInfo] = React.useState<{
+        coordinates: Coordinates;
+        selector: string;
+        options: Array<{
+            value: string;
+            text: string;
+            disabled: boolean;
+            selected: boolean;
+        }>;
+    } | null>(null);
+
     const notifyLastAction = (action: string) => {
         if (lastAction !== action) {
             setLastAction(action);
@@ -56,8 +68,22 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
                 setDatePickerInfo(info);
             });
 
+            socket.on('showDropdown', (info: {
+                coordinates: Coordinates,
+                selector: string,
+                options: Array<{
+                    value: string;
+                    text: string;
+                    disabled: boolean;
+                    selected: boolean;
+                }>;
+            }) => {
+                setDropdownInfo(info);
+            });
+
             return () => {
                 socket.off('showDatePicker');
+                socket.off('showDropdown');
             };
         }
     }, [socket]);
@@ -169,6 +195,14 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
                     coordinates={datePickerInfo.coordinates}
                     selector={datePickerInfo.selector}
                     onClose={() => setDatePickerInfo(null)}
+                />
+            )}
+            {dropdownInfo && (
+                <Dropdown
+                    coordinates={dropdownInfo.coordinates}
+                    selector={dropdownInfo.selector}
+                    options={dropdownInfo.options}
+                    onClose={() => setDropdownInfo(null)}
                 />
             )}
         </div>
