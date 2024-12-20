@@ -238,6 +238,11 @@ export const NavBar: React.FC<NavBarProps> = ({ recordingName, isRecording }) =>
                                 cd maxun
                                 <br />
                                 <br />
+                                # stop the working containers
+                                <br />
+                                docker-compose down
+                                <br />
+                                <br />
                                 # pull latest docker images
                                 <br />
                                 docker-compose pull
