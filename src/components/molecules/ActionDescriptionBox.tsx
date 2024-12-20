@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { Typography, FormControlLabel, Checkbox, Box } from '@mui/material';
 import { useActionContext } from '../../context/browserActions';
 import MaxunLogo from "../../assets/maxunlogo.png";
+import { useTranslation } from 'react-i18next';
 
 const CustomBoxContainer = styled.div`
   position: relative;
@@ -44,6 +45,7 @@ const Content = styled.div`
 `;
 
 const ActionDescriptionBox = () => {
+  const { t } = useTranslation();
   const { getText, getScreenshot, getList, captureStage } = useActionContext() as {
     getText: boolean;
     getScreenshot: boolean;
@@ -52,36 +54,36 @@ const ActionDescriptionBox = () => {
   };
 
   const messages = [
-    { stage: 'initial' as const, text: 'Select the list you want to extract along with the texts inside it' },
-    { stage: 'pagination' as const, text: 'Select how the robot can capture the rest of the list' },
-    { stage: 'limit' as const, text: 'Choose the number of items to extract' },
-    { stage: 'complete' as const, text: 'Capture is complete' },
+    { stage: 'initial' as const, text: t('action_description.list_stages.initial') },
+    { stage: 'pagination' as const, text: t('action_description.list_stages.pagination') },
+    { stage: 'limit' as const, text: t('action_description.list_stages.limit') },
+    { stage: 'complete' as const, text: t('action_description.list_stages.complete') },
   ];
 
-  const stages = messages.map(({ stage }) => stage); // Create a list of stages
-  const currentStageIndex = stages.indexOf(captureStage); // Get the index of the current stage
+  const stages = messages.map(({ stage }) => stage);
+  const currentStageIndex = stages.indexOf(captureStage);
 
   const renderActionDescription = () => {
     if (getText) {
       return (
         <>
-          <Typography variant="subtitle2" gutterBottom>Capture Text</Typography>
-          <Typography variant="body2" gutterBottom>Hover over the texts you want to extract and click to select them</Typography>
+          <Typography variant="subtitle2" gutterBottom>{t('action_description.text.title')}</Typography>
+          <Typography variant="body2" gutterBottom>{t('action_description.text.description')}</Typography>
         </>
       );
     } else if (getScreenshot) {
       return (
         <>
-          <Typography variant="subtitle2" gutterBottom>Capture Screenshot</Typography>
-          <Typography variant="body2" gutterBottom>Capture a partial or full page screenshot of the current page.</Typography>
+          <Typography variant="subtitle2" gutterBottom>{t('action_description.screenshot.title')}</Typography>
+          <Typography variant="body2" gutterBottom>{t('action_description.screenshot.description')}</Typography>
         </>
       );
     } else if (getList) {
       return (
         <>
-          <Typography variant="subtitle2" gutterBottom>Capture List</Typography>
+          <Typography variant="subtitle2" gutterBottom>{t('action_description.list.title')}</Typography>
           <Typography variant="body2" gutterBottom>
-            Hover over the list you want to extract. Once selected, you can hover over all texts inside the list you selected. Click to select them.
+            {t('action_description.list.description')}
           </Typography>
           <Box>
             {messages.map(({ stage, text }, index) => (
@@ -89,7 +91,7 @@ const ActionDescriptionBox = () => {
                 key={stage}
                 control={
                   <Checkbox
-                    checked={index < currentStageIndex} // Check the box if we are past this stage
+                    checked={index < currentStageIndex}
                     disabled
                   />
                 }
@@ -102,8 +104,8 @@ const ActionDescriptionBox = () => {
     } else {
       return (
         <>
-          <Typography variant="subtitle2" gutterBottom>What data do you want to extract?</Typography>
-          <Typography variant="body2" gutterBottom>A robot is designed to perform one action at a time. You can choose any of the options below.</Typography>
+          <Typography variant="subtitle2" gutterBottom>{t('action_description.default.title')}</Typography>
+          <Typography variant="body2" gutterBottom>{t('action_description.default.description')}</Typography>
         </>
       );
     }
@@ -111,7 +113,7 @@ const ActionDescriptionBox = () => {
 
   return (
     <CustomBoxContainer>
-      <Logo src={MaxunLogo} alt="Maxun Logo" />
+      <Logo src={MaxunLogo} alt={t('common.maxun_logo')} />
       <Triangle />
       <Content>
         {renderActionDescription()}
