@@ -93,5 +93,30 @@
       "remove_success": "Configuración del proxy eliminada con éxito",
       "remove_error": "Error al eliminar la configuración del proxy. Inténtelo de nuevo."
     }
-  }
+  },
+  "apikey": {
+    "title": "Gestionar tu Clave API",
+    "default_name": "Clave API de Maxun",
+    "table": {
+      "name": "Nombre de la Clave API",
+      "key": "Clave API",
+      "actions": "Acciones"
+    },
+    "actions": {
+      "copy": "Copiar",
+      "show": "Mostrar",
+      "hide": "Ocultar",
+      "delete": "Eliminar"
+    },
+    "no_key_message": "Aún no has generado una clave API.",
+    "generate_button": "Generar Clave API",
+    "notifications": {
+      "fetch_error": "Error al obtener la clave API - ${error}",
+      "generate_success": "Clave API generada con éxito",
+      "generate_error": "Error al generar la clave API - ${error}",
+      "delete_success": "Clave API eliminada con éxito",
+      "delete_error": "Error al eliminar la clave API - ${error}",
+      "copy_success": "Clave API copiada con éxito"
+    }
+}
 }
