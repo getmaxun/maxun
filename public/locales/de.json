@@ -92,5 +92,30 @@
             "remove_success": "Proxy-Konfiguration erfolgreich entfernt",
             "remove_error": "Fehler beim Entfernen der Proxy-Konfiguration. Bitte erneut versuchen."
         }
+    },
+    "apikey": {
+        "title": "API-Schlüssel verwalten",
+        "default_name": "Maxun API-Schlüssel",
+        "table": {
+            "name": "API-Schlüssel Name",
+            "key": "API-Schlüssel",
+            "actions": "Aktionen"
+        },
+        "actions": {
+            "copy": "Kopieren",
+            "show": "Anzeigen",
+            "hide": "Ausblenden",
+            "delete": "Löschen"
+        },
+        "no_key_message": "Sie haben noch keinen API-Schlüssel generiert.",
+        "generate_button": "API-Schlüssel generieren",
+        "notifications": {
+            "fetch_error": "API-Schlüssel konnte nicht abgerufen werden - ${error}",
+            "generate_success": "API-Schlüssel erfolgreich generiert",
+            "generate_error": "API-Schlüssel konnte nicht generiert werden - ${error}",
+            "delete_success": "API-Schlüssel erfolgreich gelöscht",
+            "delete_error": "API-Schlüssel konnte nicht gelöscht werden - ${error}",
+            "copy_success": "API-Schlüssel erfolgreich kopiert"
+        }
     }
 }
