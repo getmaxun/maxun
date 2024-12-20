@@ -59,8 +59,41 @@
       "delete":"Delete",
       "settings":"Settings",
       "search":"Search Runs..."
-
-
-
+    },
+    "proxy": {
+      "title": "Proxy Configuration",
+      "tab_standard": "Standard Proxy",
+      "tab_rotation": "Automatic Proxy Rotation",
+      "server_url": "Proxy Server URL",
+      "server_url_helper": "Proxy to be used for all robots. HTTP and SOCKS proxies are supported. Example http://myproxy.com:3128 or socks5://myproxy.com:3128. Short form myproxy.com:3128 is considered an HTTP proxy.",
+      "requires_auth": "Requires Authentication?",
+      "username": "Username",
+      "password": "Password",
+      "add_proxy": "Add Proxy",
+      "test_proxy": "Test Proxy",
+      "remove_proxy": "Remove Proxy",
+      "table": {
+        "proxy_url": "Proxy URL",
+        "requires_auth": "Requires Authentication"
+      },
+      "coming_soon": "Coming Soon - In Open Source (Basic Rotation) & Cloud (Advanced Rotation). If you don't want to manage the infrastructure, join our cloud waitlist to get early access.",
+      "join_waitlist": "Join Maxun Cloud Waitlist",
+      "alert": {
+        "title": "If your proxy requires a username and password, always provide them separately from the proxy URL.",
+        "right_way": "The right way",
+        "wrong_way": "The wrong way",
+        "proxy_url": "Proxy URL:",
+        "username": "Username:",
+        "password": "Password:"
+      },
+      "notifications": {
+        "config_success": "Proxy configuration submitted successfully",
+        "config_error": "Failed to submit proxy configuration. Try again.",
+        "test_success": "Proxy configuration is working",
+        "test_error": "Failed to test proxy configuration. Try again.",
+        "fetch_success": "Proxy configuration fetched successfully",
+        "remove_success": "Proxy configuration removed successfully",
+        "remove_error": "Failed to remove proxy configuration. Try again."
+      }
     }
   } 
