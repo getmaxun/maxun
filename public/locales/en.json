@@ -95,5 +95,30 @@
         "remove_success": "Proxy configuration removed successfully",
         "remove_error": "Failed to remove proxy configuration. Try again."
       }
+    },
+    "apikey": {
+      "title": "Manage Your API Key",
+      "default_name": "Maxun API Key",
+      "table": {
+        "name": "API Key Name",
+        "key": "API Key",
+        "actions": "Actions"
+      },
+      "actions": {
+        "copy": "Copy",
+        "show": "Show",
+        "hide": "Hide",
+        "delete": "Delete"
+      },
+      "no_key_message": "You haven't generated an API key yet.",
+      "generate_button": "Generate API Key",
+      "notifications": {
+        "fetch_error": "Failed to fetch API Key - ${error}",
+        "generate_success": "Generated API Key successfully",
+        "generate_error": "Failed to generate API Key - ${error}",
+        "delete_success": "API Key deleted successfully",
+        "delete_error": "Failed to delete API Key - ${error}",
+        "copy_success": "Copied API Key successfully"
+      }
     }
   } 
