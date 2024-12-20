@@ -25,7 +25,7 @@ export const NavBar: React.FC<NavBarProps> = ({ recordingName, isRecording }) =>
   const navigate = useNavigate();
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const currentVersion = packageJson.version;
+  const currentVersion = "0.0.3"
 
   const [open, setOpen] = useState(false);
   const [latestVersion, setLatestVersion] = useState<string | null>(null);
@@ -208,6 +208,11 @@ export const NavBar: React.FC<NavBarProps> = ({ recordingName, isRecording }) =>
                             <Box sx={{ marginLeft: '30px', background: '#cfd0d1', padding: 1, borderRadius: 3 }}>
                               <code style={{ color: 'black' }}>
                                 <p>Run the commands below</p>
+                                # cd to project directory (eg: maxun)
+                                <br />
+                                cd maxun
+                                <br />
+                                <br />
                                 # pull latest changes
                                 <br />
                                 git pull origin master
