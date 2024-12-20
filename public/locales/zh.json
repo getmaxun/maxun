@@ -142,5 +142,57 @@
       "limit": "选择要提取的项目数量",
       "complete": "捕获完成"
     }
+  },
+  "right_panel": {
+    "buttons": {
+      "capture_list": "捕获列表",
+      "capture_text": "捕获文本",
+      "capture_screenshot": "捕获截图",
+      "confirm": "确认",
+      "discard": "放弃",
+      "confirm_capture": "确认捕获",
+      "confirm_pagination": "确认分页",
+      "confirm_limit": "确认限制",
+      "finish_capture": "完成捕获",
+      "finish": "完成"
+    },
+    "screenshot": {
+      "capture_fullpage": "捕获整页",
+      "capture_visible": "捕获可见部分",
+      "display_fullpage": "获取整页截图",
+      "display_visible": "获取可见部分截图"
+    },
+    "pagination": {
+      "title": "如何在页面上找到下一个列表项？",
+      "click_next": "点击下一页导航到下一页",
+      "click_load_more": "点击加载更多来加载更多项目",
+      "scroll_down": "向下滚动加载更多项目",
+      "scroll_up": "向上滚动加载更多项目",
+      "none": "没有更多项目可加载"
+    },
+    "limit": {
+      "title": "您想要提取的最大行数是多少？",
+      "custom": "自定义",
+      "enter_number": "输入数字"
+    },
+    "fields": {
+      "label": "标签",
+      "data": "数据",
+      "field_label": "字段标签",
+      "field_data": "字段数据"
+    },
+    "messages": {
+      "list_selected": "列表选择成功"
+    },
+    "errors": {
+      "select_pagination": "请选择分页类型。",
+      "select_pagination_element": "请先选择分页元素。",
+      "select_limit": "请选择限制或输入自定义限制。",
+      "invalid_limit": "请输入有效的限制。",
+      "confirm_text_fields": "请确认所有文本字段",
+      "unable_create_settings": "无法创建列表设置。请确保您已为列表定义了字段。",
+      "capture_text_discarded": "文本捕获已放弃",
+      "capture_list_discarded": "列表捕获已放弃"
+    }
   }
 }
