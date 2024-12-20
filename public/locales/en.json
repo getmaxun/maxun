@@ -196,5 +196,23 @@
         "capture_text_discarded": "Capture Text Discarded",
         "capture_list_discarded": "Capture List Discarded"
       }
+    },
+    "save_recording": {
+      "title": "Save Robot",
+      "robot_name": "Robot Name",
+      "buttons": {
+        "save": "Save",
+        "confirm": "Confirm"
+      },
+      "notifications": {
+        "save_success": "Robot saved successfully"
+      },
+      "errors": {
+        "user_not_logged": "User not logged in. Cannot save recording.",
+        "exists_warning": "Robot with this name already exists, please confirm the Robot's overwrite."
+      },
+      "tooltips": {
+        "saving": "Optimizing and saving the workflow"
+      }
     }
   } 
