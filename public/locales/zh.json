@@ -1,13 +1,61 @@
 {
-    "app": {
-      "name": "Maxun",
-      "version": "beta"
+  "login": {
+    "title": "欢迎回来！",
+    "email": "电子邮箱",
+    "password": "密码",
+    "button": "登录",
+    "loading": "加载中",
+    "register_prompt": "还没有账号？",
+    "register_link": "注册",
+    "welcome_notification": "欢迎使用 Maxun！",
+    "error_notification": "登录失败。请重试。"
+  },
+  "register": {
+    "title": "注册账号",
+    "email": "电子邮箱",
+    "password": "密码",
+    "button": "注册",
+    "loading": "加载中",
+    "register_prompt": "已有账号？",
+    "login_link": "登录",
+    "welcome_notification": "欢迎使用 Maxun！",
+    "error_notification": "注册失败。请重试。"
+  },
+  "recordingtable": {
+    "run": "运行",
+    "name": "名称",
+    "schedule": "计划",
+    "integrate": "集成",
+    "settings": "设置",
+    "options": "选项",
+    "heading": "我的机器人",
+    "new": "创建机器人",
+    "modal": {
+      "title": "输入URL",
+      "label": "URL",
+      "button": "开始录制"
     },
-    "login": {
-      "title": "欢迎回来！",
-      "email": "电子邮件",
-      "password": "密码",
-      "button": "登录",
-      "register_prompt": "没有账号？注册"
-    }
+    "edit": "编辑",
+    "delete": "删除",
+    "duplicate": "复制",
+    "search": "搜索机器人..."
+  },
+  "mainmenu": {
+    "recordings": "机器人",
+    "runs": "运行记录",
+    "proxy": "代理",
+    "apikey": "API密钥",
+    "feedback": "加入 Maxun Cloud",
+    "apidocs": "API文档"
+  },
+  "runstable": {
+    "runs": "所有运行记录",
+    "runStatus": "状态",
+    "runName": "名称",
+    "startedAt": "开始时间",
+    "finishedAt": "结束时间",
+    "delete": "删除",
+    "settings": "设置",
+    "search": "搜索运行记录..."
   }
+}
