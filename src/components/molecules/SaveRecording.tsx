@@ -97,7 +97,7 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
             ?
             (<React.Fragment>
               <Button color="error" variant="contained" onClick={saveRecording} sx={{ marginTop: '10px' }}>
-                {t('save_recording.button.confirm')}
+                {t('save_recording.buttons.confirm')}
               </Button>
               <WarningText>
                 <NotificationImportantIcon color="warning" />
@@ -105,7 +105,7 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
               </WarningText>
             </React.Fragment>)
             : <Button type="submit" variant="contained" sx={{ marginTop: '10px' }}>
-                {t('save_recording.button.save')}
+                {t('save_recording.buttons.save')}
               </Button>
           }
           {waitingForSave &&
