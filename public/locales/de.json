@@ -141,5 +141,56 @@
             "limit": "Wählen Sie die Anzahl der zu extrahierenden Elemente",
             "complete": "Erfassung ist abgeschlossen"
         }
+    },
+    "right_panel": {
+        "buttons": {
+            "capture_list": "Liste erfassen",
+            "capture_text": "Text erfassen",
+            "capture_screenshot": "Screenshot erfassen",
+            "confirm": "Bestätigen",
+            "discard": "Verwerfen",
+            "confirm_capture": "Erfassung bestätigen",
+            "confirm_pagination": "Paginierung bestätigen",
+            "confirm_limit": "Limit bestätigen",
+            "finish_capture": "Erfassung abschließen"
+        },
+        "screenshot": {
+            "capture_fullpage": "Vollständige Seite erfassen",
+            "capture_visible": "Sichtbaren Bereich erfassen",
+            "display_fullpage": "Vollständige Seite Screenshot",
+            "display_visible": "Sichtbarer Bereich Screenshot"
+        },
+        "pagination": {
+            "title": "Wie können wir das nächste Listenelement auf der Seite finden?",
+            "click_next": "Auf 'Weiter' klicken, um zur nächsten Seite zu navigieren",
+            "click_load_more": "Auf 'Mehr laden' klicken, um weitere Elemente zu laden",
+            "scroll_down": "Nach unten scrollen, um mehr Elemente zu laden",
+            "scroll_up": "Nach oben scrollen, um mehr Elemente zu laden",
+            "none": "Keine weiteren Elemente zu laden"
+        },
+        "limit": {
+            "title": "Wie viele Zeilen möchten Sie maximal extrahieren?",
+            "custom": "Benutzerdefiniert",
+            "enter_number": "Nummer eingeben"
+        },
+        "fields": {
+            "label": "Bezeichnung",
+            "data": "Daten",
+            "field_label": "Feldbezeichnung",
+            "field_data": "Felddaten"
+        },
+        "messages": {
+            "list_selected": "Liste erfolgreich ausgewählt"
+        },
+        "errors": {
+            "select_pagination": "Bitte wählen Sie einen Paginierungstyp aus.",
+            "select_pagination_element": "Bitte wählen Sie zuerst das Paginierungselement aus.",
+            "select_limit": "Bitte wählen Sie ein Limit oder geben Sie ein benutzerdefiniertes Limit ein.",
+            "invalid_limit": "Bitte geben Sie ein gültiges Limit ein.",
+            "confirm_text_fields": "Bitte bestätigen Sie alle Textfelder",
+            "unable_create_settings": "Listeneinstellungen können nicht erstellt werden. Stellen Sie sicher, dass Sie ein Feld für die Liste definiert haben.",
+            "capture_text_discarded": "Texterfassung verworfen",
+            "capture_list_discarded": "Listenerfassung verworfen"
+        }
     }
 }
