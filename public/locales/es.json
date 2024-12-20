@@ -57,5 +57,41 @@
     "delete": "Eliminar",
     "settings": "Ajustes",
     "search": "Buscar ejecuciones..."
+  },
+  "proxy": {
+    "title": "Configuración del Proxy",
+    "tab_standard": "Proxy Estándar",
+    "tab_rotation": "Rotación Automática de Proxy",
+    "server_url": "URL del Servidor Proxy",
+    "server_url_helper": "Proxy para usar en todos los robots. Se admiten proxies HTTP y SOCKS. Ejemplo http://myproxy.com:3128 o socks5://myproxy.com:3128. La forma corta myproxy.com:3128 se considera un proxy HTTP.",
+    "requires_auth": "¿Requiere Autenticación?",
+    "username": "Usuario",
+    "password": "Contraseña",
+    "add_proxy": "Agregar Proxy",
+    "test_proxy": "Probar Proxy",
+    "remove_proxy": "Eliminar Proxy",
+    "table": {
+      "proxy_url": "URL del Proxy",
+      "requires_auth": "Requiere Autenticación"
+    },
+    "coming_soon": "Próximamente - En Open Source (Rotación Básica) y Cloud (Rotación Avanzada). Si no desea administrar la infraestructura, únase a nuestra lista de espera en la nube para obtener acceso anticipado.",
+    "join_waitlist": "Unirse a la Lista de Espera de Maxun Cloud",
+    "alert": {
+      "title": "Si su proxy requiere un nombre de usuario y contraseña, proporcione siempre estos datos por separado de la URL del proxy.",
+      "right_way": "La forma correcta",
+      "wrong_way": "La forma incorrecta",
+      "proxy_url": "URL del Proxy:",
+      "username": "Usuario:",
+      "password": "Contraseña:"
+    },
+    "notifications": {
+      "config_success": "Configuración del proxy enviada con éxito",
+      "config_error": "Error al enviar la configuración del proxy. Inténtelo de nuevo.",
+      "test_success": "La configuración del proxy funciona correctamente",
+      "test_error": "Error al probar la configuración del proxy. Inténtelo de nuevo.",
+      "fetch_success": "Configuración del proxy recuperada con éxito",
+      "remove_success": "Configuración del proxy eliminada con éxito",
+      "remove_error": "Error al eliminar la configuración del proxy. Inténtelo de nuevo."
+    }
   }
 }
