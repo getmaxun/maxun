@@ -117,5 +117,29 @@
             "delete_error": "API-Schlüssel konnte nicht gelöscht werden - ${error}",
             "copy_success": "API-Schlüssel erfolgreich kopiert"
         }
+    },
+    "action_description": {
+        "text": {
+            "title": "Text erfassen",
+            "description": "Fahren Sie über die Texte, die Sie extrahieren möchten, und klicken Sie, um sie auszuwählen"
+        },
+        "screenshot": {
+            "title": "Screenshot erfassen",
+            "description": "Erfassen Sie einen Teil- oder Vollbildschirmfoto der aktuellen Seite."
+        },
+        "list": {
+            "title": "Liste erfassen",
+            "description": "Fahren Sie über die Liste, die Sie extrahieren möchten. Nach der Auswahl können Sie über alle Texte in der ausgewählten Liste fahren. Klicken Sie zum Auswählen."
+        },
+        "default": {
+            "title": "Welche Daten möchten Sie extrahieren?",
+            "description": "Ein Roboter ist darauf ausgelegt, eine Aktion nach der anderen auszuführen. Sie können eine der folgenden Optionen wählen."
+        },
+        "list_stages": {
+            "initial": "Wählen Sie die Liste aus, die Sie extrahieren möchten, zusammen mit den darin enthaltenen Texten",
+            "pagination": "Wählen Sie aus, wie der Roboter den Rest der Liste erfassen kann",
+            "limit": "Wählen Sie die Anzahl der zu extrahierenden Elemente",
+            "complete": "Erfassung ist abgeschlossen"
+        }
     }
 }
