@@ -46,5 +46,15 @@
         "apikey": "API-Schlüssel",
         "feedback": "Maxun Cloud beitreten",
         "apidocs": "API-Dokumentation"
+    },
+    "runstable": {
+        "runs": "Alle Ausführungen",
+        "runStatus": "Status",
+        "runName": "Name",
+        "startedAt": "Gestartet am",
+        "finishedAt": "Beendet am",
+        "delete": "Löschen",
+        "settings": "Einstellungen",
+        "search": "Ausführungen suchen..."
     }
 }
