@@ -154,7 +154,8 @@
       "confirm_pagination": "Confirmar Paginación",
       "confirm_limit": "Confirmar Límite",
       "finish_capture": "Finalizar Captura",
-      "finish": "Finalizar"
+      "finish": "Finalizar",
+      "cancel": "Cancelar"
     },
     "screenshot": {
       "capture_fullpage": "Capturar Página Completa",
@@ -212,5 +213,13 @@
     "tooltips": {
       "saving": "Optimizando y guardando el flujo de trabajo"
     }
-  }
+  },
+  "browser_recording": {
+    "modal": {
+        "confirm_discard": "¿Está seguro de que desea descartar la grabación?"
+    },
+    "notifications": {
+        "terminated": "La grabación actual fue terminada"
+    }
+  } 
 }
