@@ -1,61 +1,97 @@
 {
   "login": {
-      "title": "お帰りなさい！",
-      "email": "メールアドレス",
-      "password": "パスワード",
-      "button": "ログイン",
-      "loading": "読み込み中",
-      "register_prompt": "アカウントをお持ちでないですか？",
-      "register_link": "登録する",
-      "welcome_notification": "Maxunへようこそ！",
-      "error_notification": "ログインに失敗しました。もう一度お試しください。"
+        "title": "お帰りなさい！",
+        "email": "メールアドレス",
+        "password": "パスワード",
+        "button": "ログイン",
+        "loading": "読み込み中",
+        "register_prompt": "アカウントをお持ちでないですか？",
+        "register_link": "登録する",
+        "welcome_notification": "Maxunへようこそ！",
+        "error_notification": "ログインに失敗しました。もう一度お試しください。"
   },
   "register": {
-      "title": "アカウントを登録する",
-      "email": "メールアドレス",
-      "password": "パスワード",
-      "button": "登録する",
-      "loading": "読み込み中",
-      "register_prompt": "既にアカウントをお持ちですか？",
-      "login_link": "ログイン",
-      "welcome_notification": "Maxunへようこそ！",
-      "error_notification": "登録に失敗しました。もう一度お試しください。"
+        "title": "アカウントを登録する",
+        "email": "メールアドレス",
+        "password": "パスワード",
+        "button": "登録する",
+        "loading": "読み込み中",
+        "register_prompt": "既にアカウントをお持ちですか？",
+        "login_link": "ログイン",
+        "welcome_notification": "Maxunへようこそ！",
+        "error_notification": "登録に失敗しました。もう一度お試しください。"
   },
   "recordingtable": {
-      "run": "実行",
-      "name": "名前",
-      "schedule": "スケジュール",
-      "integrate": "統合",
-      "settings": "設定",
-      "options": "オプション",
-      "heading": "私のロボット",
-      "new": "ロボットを作成",
-      "modal": {
-          "title": "URLを入力してください",
-          "label": "URL",
-          "button": "録画を開始"
-      },
-      "edit": "編集",
-      "delete": "削除",
-      "duplicate": "複製",
-      "search": "ロボットを検索..."
+        "run": "実行",
+        "name": "名前",
+        "schedule": "スケジュール",
+        "integrate": "統合",
+        "settings": "設定",
+        "options": "オプション",
+        "heading": "私のロボット",
+        "new": "ロボットを作成",
+        "modal": {
+            "title": "URLを入力してください",
+            "label": "URL",
+            "button": "録画を開始"
+        },
+        "edit": "編集",
+        "delete": "削除",
+        "duplicate": "複製",
+        "search": "ロボットを検索..."
   },
   "mainmenu": {
-      "recordings": "ロボット",
-      "runs": "実行",
-      "proxy": "プロキシ",
-      "apikey": "APIキー",
-      "feedback": "Maxunクラウドに参加する",
-      "apidocs": "APIドキュメント"
+        "recordings": "ロボット",
+        "runs": "実行",
+        "proxy": "プロキシ",
+        "apikey": "APIキー",
+        "feedback": "Maxunクラウドに参加する",
+        "apidocs": "APIドキュメント"
   },
   "runstable": {
-      "runs": "すべての実行",
-      "runStatus": "ステータス",
-      "runName": "名前",
-      "startedAt": "開始日時",
-      "finishedAt": "終了日時",
-      "delete": "削除",
-      "settings": "設定",
-      "search": "実行を検索..."
-  }
+        "runs": "すべての実行",
+        "runStatus": "ステータス",
+        "runName": "名前",
+        "startedAt": "開始日時",
+        "finishedAt": "終了日時",
+        "delete": "削除",
+        "settings": "設定",
+        "search": "実行を検索..."
+  },
+  "proxy": {
+        "title": "プロキシ設定",
+        "tab_standard": "標準プロキシ",
+        "tab_rotation": "自動プロキシローテーション",
+        "server_url": "プロキシサーバーURL",
+        "server_url_helper": "すべてのロボットで使用するプロキシ。HTTPとSOCKSプロキシがサポートされています。例：http://myproxy.com:3128 または socks5://myproxy.com:3128。短縮形 myproxy.com:3128 はHTTPプロキシとして扱われます。",
+        "requires_auth": "認証が必要ですか？",
+        "username": "ユーザー名",
+        "password": "パスワード",
+        "add_proxy": "プロキシを追加",
+        "test_proxy": "プロキシをテスト",
+        "remove_proxy": "プロキシを削除",
+        "table": {
+            "proxy_url": "プロキシURL",
+            "requires_auth": "認証が必要"
+        },
+        "coming_soon": "近日公開 - オープンソース（基本ローテーション）とクラウド（高度なローテーション）。インフラストラクチャを管理したくない場合は、クラウドの待機リストに参加して早期アクセスを取得してください。",
+        "join_waitlist": "Maxun Cloud待機リストに参加",
+        "alert": {
+            "title": "プロキシにユーザー名とパスワードが必要な場合は、必ずプロキシURLとは別に指定してください。",
+            "right_way": "正しい方法",
+            "wrong_way": "間違った方法",
+            "proxy_url": "プロキシURL：",
+            "username": "ユーザー名：",
+            "password": "パスワード："
+        },
+        "notifications": {
+            "config_success": "プロキシ設定が正常に送信されました",
+            "config_error": "プロキシ設定の送信に失敗しました。もう一度お試しください。",
+            "test_success": "プロキシ設定は正常に動作しています",
+            "test_error": "プロキシ設定のテストに失敗しました。もう一度お試しください。",
+            "fetch_success": "プロキシ設定の取得に成功しました",
+            "remove_success": "プロキシ設定が正常に削除されました",
+            "remove_error": "プロキシ設定の削除に失敗しました。もう一度お試しください。"
+        }
+    }
 }
