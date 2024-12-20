@@ -142,5 +142,57 @@
             "limit": "抽出するアイテムの数を選択してください",
             "complete": "取得が完了しました"
         }
+    },
+    "right_panel": {
+        "buttons": {
+            "capture_list": "リストを取得",
+            "capture_text": "テキストを取得",
+            "capture_screenshot": "スクリーンショットを取得",
+            "confirm": "確認",
+            "discard": "破棄",
+            "confirm_capture": "取得を確認",
+            "confirm_pagination": "ページネーションを確認",
+            "confirm_limit": "制限を確認",
+            "finish_capture": "取得を完了",
+            "finish": "完了"
+        },
+        "screenshot": {
+            "capture_fullpage": "フルページを取得",
+            "capture_visible": "表示部分を取得",
+            "display_fullpage": "フルページスクリーンショットを撮影",
+            "display_visible": "表示部分のスクリーンショットを撮影"
+        },
+        "pagination": {
+            "title": "次のリスト項目をページ上でどのように見つけますか？",
+            "click_next": "次へをクリックして次のページへ移動",
+            "click_load_more": "もっと読み込むをクリックして項目を追加",
+            "scroll_down": "下にスクロールして項目を追加",
+            "scroll_up": "上にスクロールして項目を追加",
+            "none": "これ以上読み込む項目はありません"
+        },
+        "limit": {
+            "title": "抽出する最大行数はいくつですか？",
+            "custom": "カスタム",
+            "enter_number": "数値を入力"
+        },
+        "fields": {
+            "label": "ラベル",
+            "data": "データ",
+            "field_label": "フィールドラベル",
+            "field_data": "フィールドデータ"
+        },
+        "messages": {
+            "list_selected": "リストが正常に選択されました"
+        },
+        "errors": {
+            "select_pagination": "ページネーションタイプを選択してください。",
+            "select_pagination_element": "まずページネーション要素を選択してください。",
+            "select_limit": "制限を選択するかカスタム制限を入力してください。",
+            "invalid_limit": "有効な制限を入力してください。",
+            "confirm_text_fields": "すべてのテキストフィールドを確認してください",
+            "unable_create_settings": "リスト設定を作成できません。リストのフィールドを定義したことを確認してください。",
+            "capture_text_discarded": "テキスト取得が破棄されました",
+            "capture_list_discarded": "リスト取得が破棄されました"
+        }
     }
 }
