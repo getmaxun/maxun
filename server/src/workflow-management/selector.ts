@@ -53,7 +53,14 @@ export const getElementInformation = async (
               info.url = (element as HTMLAnchorElement).href;
               info.innerText = element.innerText ?? '';
             } else if (element?.tagName === 'IMG') {
-              info.imageUrl = (element as HTMLImageElement).src;
+                info.imageUrl = (element as HTMLImageElement).src;
+              } else if (element?.tagName === 'SELECT') {
+                const selectElement = element as HTMLSelectElement;
+                info.innerText = selectElement.options[selectElement.selectedIndex]?.text ?? '';
+                info.attributes = {
+                ...info.attributes,
+                selectedValue: selectElement.value,
+                };
             } else {
               info.hasOnlyText = element?.children?.length === 0 &&
                 element?.innerText?.length > 0;
