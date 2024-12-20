@@ -120,5 +120,29 @@
         "delete_error": "Failed to delete API Key - ${error}",
         "copy_success": "Copied API Key successfully"
       }
+    },
+    "action_description": {
+      "text": {
+        "title": "Capture Text",
+        "description": "Hover over the texts you want to extract and click to select them"
+      },
+      "screenshot": {
+        "title": "Capture Screenshot",
+        "description": "Capture a partial or full page screenshot of the current page."
+      },
+      "list": {
+        "title": "Capture List",
+        "description": "Hover over the list you want to extract. Once selected, you can hover over all texts inside the list you selected. Click to select them."
+      },
+      "default": {
+        "title": "What data do you want to extract?",
+        "description": "A robot is designed to perform one action at a time. You can choose any of the options below."
+      },
+      "list_stages": {
+        "initial": "Select the list you want to extract along with the texts inside it",
+        "pagination": "Select how the robot can capture the rest of the list",
+        "limit": "Choose the number of items to extract",
+        "complete": "Capture is complete"
+      }
     }
   } 
