@@ -93,5 +93,30 @@
             "remove_success": "プロキシ設定が正常に削除されました",
             "remove_error": "プロキシ設定の削除に失敗しました。もう一度お試しください。"
         }
+    },
+    "apikey": {
+        "title": "APIキーの管理",
+        "default_name": "Maxun APIキー",
+        "table": {
+            "name": "APIキー名",
+            "key": "APIキー",
+            "actions": "アクション"
+        },
+        "actions": {
+            "copy": "コピー",
+            "show": "表示",
+            "hide": "非表示",
+            "delete": "削除"
+        },
+        "no_key_message": "APIキーはまだ生成されていません。",
+        "generate_button": "APIキーを生成",
+        "notifications": {
+            "fetch_error": "APIキーの取得に失敗しました - ${error}",
+            "generate_success": "APIキーが正常に生成されました",
+            "generate_error": "APIキーの生成に失敗しました - ${error}",
+            "delete_success": "APIキーが正常に削除されました",
+            "delete_error": "APIキーの削除に失敗しました - ${error}",
+            "copy_success": "APIキーがコピーされました"
+        }
     }
 }
