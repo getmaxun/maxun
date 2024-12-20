@@ -25,7 +25,7 @@ export const NavBar: React.FC<NavBarProps> = ({ recordingName, isRecording }) =>
   const navigate = useNavigate();
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const currentVersion = "0.0.3"
+  const currentVersion = packageJson.version;
 
   const [open, setOpen] = useState(false);
   const [latestVersion, setLatestVersion] = useState<string | null>(null);
