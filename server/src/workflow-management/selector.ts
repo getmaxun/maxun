@@ -23,10 +23,8 @@ export const getElementInformation = async (
     if (!getList || listSelector !== '') {
       const elementInfo = await page.evaluate(
         async ({ x, y }) => {
-          const el = document.elementFromPoint(x, y) as HTMLElement;
-          if (el) {
-            const { parentElement } = el;
-            const element = parentElement?.tagName === 'A' ? parentElement : el;
+          // Helper function to get element info
+          const getElementInfo = (element: HTMLElement) => {
             let info: {
               tagName: string;
               hasOnlyText?: boolean;
@@ -36,9 +34,12 @@ export const getElementInformation = async (
               attributes?: Record<string, string>;
               innerHTML?: string;
               outerHTML?: string;
+              fromIframe?: boolean;
+              iframePath?: string[];
             } = {
               tagName: element?.tagName ?? '',
             };
+
             if (element) {
               info.attributes = Array.from(element.attributes).reduce(
                 (acc, attr) => {
@@ -48,7 +49,7 @@ export const getElementInformation = async (
                 {} as Record<string, string>
               );
             }
-            // Gather specific information based on the tag
+
             if (element?.tagName === 'A') {
               info.url = (element as HTMLAnchorElement).href;
               info.innerText = element.innerText ?? '';
@@ -61,29 +62,186 @@ export const getElementInformation = async (
                 ...info.attributes,
                 selectedValue: selectElement.value,
               };
-            } else if (element?.tagName === 'INPUT' && (element as HTMLInputElement).type === 'time' || (element as HTMLInputElement).type === 'date') {
+            } else if (element?.tagName === 'INPUT' && 
+                      ((element as HTMLInputElement).type === 'time' || 
+                       (element as HTMLInputElement).type === 'date')) {
               info.innerText = (element as HTMLInputElement).value;
             } else {
               info.hasOnlyText = element?.children?.length === 0 &&
                 element?.innerText?.length > 0;
               info.innerText = element?.innerText ?? '';
             }
+
             info.innerHTML = element.innerHTML;
             info.outerHTML = element.outerHTML;
             return info;
+          };
+
+          // Helper function to search in iframe
+          const searchInIframe = (
+            iframe: HTMLIFrameElement, 
+            relativeX: number, 
+            relativeY: number,
+            iframePath: string[]
+          ) => {
+            try {
+              if (!iframe.contentDocument) return null;
+              
+              const el = iframe.contentDocument.elementFromPoint(relativeX, relativeY) as HTMLElement;
+              if (!el) return null;
+
+              const { parentElement } = el;
+              const element = parentElement?.tagName === 'A' ? parentElement : el;
+              
+              const info = getElementInfo(element);
+              info.fromIframe = true;
+              info.iframePath = iframePath;
+
+              return info;
+            } catch (e) {
+              console.warn('Cannot access iframe content:', e);
+              return null;
+            }
+          };
+
+          const el = document.elementFromPoint(x, y) as HTMLElement;
+          if (el) {
+            // Check if the element is an iframe
+            if (el.tagName === 'IFRAME') {
+              const iframe = el as HTMLIFrameElement;
+              const rect = iframe.getBoundingClientRect();
+              const relativeX = x - rect.left;
+              const relativeY = y - rect.top;
+              
+              const iframeResult = searchInIframe(
+                iframe, 
+                relativeX, 
+                relativeY, 
+                [iframe.id || 'unnamed-iframe']
+              );
+              if (iframeResult) return iframeResult;
+            }
+
+            const { parentElement } = el;
+            const element = parentElement?.tagName === 'A' ? parentElement : el;
+            return getElementInfo(element);
           }
           return null;
         },
-        { x: coordinates.x, y: coordinates.y },
+        { x: coordinates.x, y: coordinates.y }
       );
       return elementInfo;
     } else {
       const elementInfo = await page.evaluate(
         async ({ x, y }) => {
+          // Helper function to get element info (same as above)
+          const getElementInfo = (element: HTMLElement) => {
+            let info: {
+              tagName: string;
+              hasOnlyText?: boolean;
+              innerText?: string;
+              url?: string;
+              imageUrl?: string;
+              attributes?: Record<string, string>;
+              innerHTML?: string;
+              outerHTML?: string;
+              fromIframe?: boolean;
+              iframePath?: string[];
+            } = {
+              tagName: element?.tagName ?? '',
+            };
+
+            if (element) {
+              info.attributes = Array.from(element.attributes).reduce(
+                (acc, attr) => {
+                  acc[attr.name] = attr.value;
+                  return acc;
+                },
+                {} as Record<string, string>
+              );
+            }
+
+            if (element?.tagName === 'A') {
+              info.url = (element as HTMLAnchorElement).href;
+              info.innerText = element.innerText ?? '';
+            } else if (element?.tagName === 'IMG') {
+              info.imageUrl = (element as HTMLImageElement).src;
+            } else {
+              info.hasOnlyText = element?.children?.length === 0 &&
+                element?.innerText?.length > 0;
+              info.innerText = element?.innerText ?? '';
+            }
+
+            info.innerHTML = element.innerHTML;
+            info.outerHTML = element.outerHTML;
+            return info;
+          };
+
+          // Helper function to search in iframe (same as above)
+          const searchInIframe = (
+            iframe: HTMLIFrameElement, 
+            relativeX: number, 
+            relativeY: number,
+            iframePath: string[]
+          ) => {
+            try {
+              if (!iframe.contentDocument) return null;
+              
+              const el = iframe.contentDocument.elementFromPoint(relativeX, relativeY) as HTMLElement;
+              if (!el) return null;
+
+              let element = el;
+              while (element.parentElement) {
+                const parentRect = element.parentElement.getBoundingClientRect();
+                const childRect = element.getBoundingClientRect();
+
+                const fullyContained =
+                  parentRect.left <= childRect.left &&
+                  parentRect.right >= childRect.right &&
+                  parentRect.top <= childRect.top &&
+                  parentRect.bottom >= childRect.bottom;
+
+                const significantOverlap =
+                  (childRect.width * childRect.height) /
+                  (parentRect.width * parentRect.height) > 0.5;
+
+                if (fullyContained && significantOverlap) {
+                  element = element.parentElement;
+                } else {
+                  break;
+                }
+              }
+
+              const info = getElementInfo(element);
+              info.fromIframe = true;
+              info.iframePath = iframePath;
+
+              return info;
+            } catch (e) {
+              console.warn('Cannot access iframe content:', e);
+              return null;
+            }
+          };
+
           const originalEl = document.elementFromPoint(x, y) as HTMLElement;
           if (originalEl) {
-            let element = originalEl;
+            // Check if the element is an iframe
+            if (originalEl.tagName === 'IFRAME') {
+              const iframe = originalEl as HTMLIFrameElement;
+              const rect = iframe.getBoundingClientRect();
+              const relativeX = x - rect.left;
+              const relativeY = y - rect.top;
+              
+              const iframeResult = searchInIframe(
+                iframe, 
+                relativeX, 
+                relativeY, 
+                [iframe.id || 'unnamed-iframe']
+              );
+              if (iframeResult) return iframeResult;
+            }
 
+            let element = originalEl;
             while (element.parentElement) {
               const parentRect = element.parentElement.getBoundingClientRect();
               const childRect = element.getBoundingClientRect();
@@ -105,47 +263,11 @@ export const getElementInformation = async (
               }
             }
 
-            let info: {
-              tagName: string;
-              hasOnlyText?: boolean;
-              innerText?: string;
-              url?: string;
-              imageUrl?: string;
-              attributes?: Record<string, string>;
-              innerHTML?: string;
-              outerHTML?: string;
-            } = {
-              tagName: element?.tagName ?? '',
-            };
-
-            if (element) {
-              info.attributes = Array.from(element.attributes).reduce(
-                (acc, attr) => {
-                  acc[attr.name] = attr.value;
-                  return acc;
-                },
-                {} as Record<string, string>
-              );
-            }
-
-            if (element?.tagName === 'A') {
-              info.url = (element as HTMLAnchorElement).href;
-              info.innerText = element.innerText ?? '';
-            } else if (element?.tagName === 'IMG') {
-              info.imageUrl = (element as HTMLImageElement).src;
-            } else {
-              info.hasOnlyText = element?.children?.length === 0 &&
-                element?.innerText?.length > 0;
-              info.innerText = element?.innerText ?? '';
-            }
-
-            info.innerHTML = element.innerHTML;
-            info.outerHTML = element.outerHTML;
-            return info;
+            return getElementInfo(element);
           }
           return null;
         },
-        { x: coordinates.x, y: coordinates.y },
+        { x: coordinates.x, y: coordinates.y }
       );
       return elementInfo;
     }
