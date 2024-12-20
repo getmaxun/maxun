@@ -57,5 +57,41 @@
     "delete": "删除",
     "settings": "设置",
     "search": "搜索运行记录..."
+  },
+  "proxy": {
+    "title": "代理设置",
+    "tab_standard": "标准代理",
+    "tab_rotation": "自动代理轮换",
+    "server_url": "代理服务器URL",
+    "server_url_helper": "用于所有机器人的代理。支持HTTP和SOCKS代理。示例 http://myproxy.com:3128 或 socks5://myproxy.com:3128。简短形式 myproxy.com:3128 被视为HTTP代理。",
+    "requires_auth": "需要认证？",
+    "username": "用户名",
+    "password": "密码",
+    "add_proxy": "添加代理",
+    "test_proxy": "测试代理",
+    "remove_proxy": "删除代理",
+    "table": {
+        "proxy_url": "代理URL",
+        "requires_auth": "需要认证"
+    },
+    "coming_soon": "即将推出 - 开源版（基础轮换）和云版（高级轮换）。如果您不想管理基础设施，请加入我们的云服务等候名单以获得早期访问权限。",
+    "join_waitlist": "加入Maxun Cloud等候名单",
+    "alert": {
+        "title": "如果您的代理需要用户名和密码，请务必将它们与代理URL分开提供。",
+        "right_way": "正确方式",
+        "wrong_way": "错误方式",
+        "proxy_url": "代理URL：",
+        "username": "用户名：",
+        "password": "密码："
+    },
+    "notifications": {
+        "config_success": "代理配置提交成功",
+        "config_error": "提交代理配置失败。请重试。",
+        "test_success": "代理配置运行正常",
+        "test_error": "测试代理配置失败。请重试。",
+        "fetch_success": "成功获取代理配置",
+        "remove_success": "成功删除代理配置",
+        "remove_error": "删除代理配置失败。请重试。"
+    }
   }
 }
