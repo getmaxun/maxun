@@ -194,5 +194,23 @@
       "capture_text_discarded": "Captura de texto descartada",
       "capture_list_discarded": "Captura de lista descartada"
     }
+  },
+  "save_recording": {
+    "title": "Guardar Robot",
+    "robot_name": "Nombre del Robot",
+    "buttons": {
+      "save": "Guardar",
+      "confirm": "Confirmar"
+    },
+    "notifications": {
+      "save_success": "Robot guardado exitosamente"
+    },
+    "errors": {
+      "user_not_logged": "Usuario no conectado. No se puede guardar la grabación.",
+      "exists_warning": "Ya existe un robot con este nombre, por favor confirme la sobrescritura del robot."
+    },
+    "tooltips": {
+      "saving": "Optimizando y guardando el flujo de trabajo"
+    }
   }
 }
