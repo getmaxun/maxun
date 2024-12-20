@@ -142,5 +142,57 @@
       "limit": "Elija el número de elementos a extraer",
       "complete": "Captura completada"
     }
+  },
+  "right_panel": {
+    "buttons": {
+      "capture_list": "Capturar Lista",
+      "capture_text": "Capturar Texto",
+      "capture_screenshot": "Capturar Pantalla",
+      "confirm": "Confirmar",
+      "discard": "Descartar",
+      "confirm_capture": "Confirmar Captura",
+      "confirm_pagination": "Confirmar Paginación",
+      "confirm_limit": "Confirmar Límite",
+      "finish_capture": "Finalizar Captura",
+      "finish": "Finalizar"
+    },
+    "screenshot": {
+      "capture_fullpage": "Capturar Página Completa",
+      "capture_visible": "Capturar Parte Visible",
+      "display_fullpage": "Capturar Screenshot de Página Completa",
+      "display_visible": "Capturar Screenshot de Parte Visible"
+    },
+    "pagination": {
+      "title": "¿Cómo podemos encontrar el siguiente elemento de la lista en la página?",
+      "click_next": "Hacer clic en siguiente para navegar a la siguiente página",
+      "click_load_more": "Hacer clic en cargar más para cargar más elementos",
+      "scroll_down": "Desplazarse hacia abajo para cargar más elementos",
+      "scroll_up": "Desplazarse hacia arriba para cargar más elementos",
+      "none": "No hay más elementos para cargar"
+    },
+    "limit": {
+      "title": "¿Cuál es el número máximo de filas que desea extraer?",
+      "custom": "Personalizado",
+      "enter_number": "Ingrese número"
+    },
+    "fields": {
+      "label": "Etiqueta",
+      "data": "Datos",
+      "field_label": "Etiqueta del Campo",
+      "field_data": "Datos del Campo"
+    },
+    "messages": {
+      "list_selected": "Lista seleccionada exitosamente"
+    },
+    "errors": {
+      "select_pagination": "Por favor seleccione un tipo de paginación.",
+      "select_pagination_element": "Por favor seleccione primero el elemento de paginación.",
+      "select_limit": "Por favor seleccione un límite o ingrese un límite personalizado.",
+      "invalid_limit": "Por favor ingrese un límite válido.",
+      "confirm_text_fields": "Por favor confirme todos los campos de texto",
+      "unable_create_settings": "No se pueden crear las configuraciones de la lista. Asegúrese de haber definido un campo para la lista.",
+      "capture_text_discarded": "Captura de texto descartada",
+      "capture_list_discarded": "Captura de lista descartada"
+    }
   }
 }
