@@ -118,5 +118,29 @@
       "delete_error": "删除API密钥失败 - ${error}",
       "copy_success": "API密钥复制成功"
     }
+  },
+  "action_description": {
+    "text": {
+      "title": "捕获文本",
+      "description": "将鼠标悬停在要提取的文本上并点击选择"
+    },
+    "screenshot": {
+      "title": "捕获截图",
+      "description": "捕获当前页面的部分或全部截图。"
+    },
+    "list": {
+      "title": "捕获列表",
+      "description": "将鼠标悬停在要提取的列表上。选择后，您可以将鼠标悬停在所选列表中的所有文本上。点击选择它们。"
+    },
+    "default": {
+      "title": "您想提取什么数据？",
+      "description": "机器人设计为一次执行一个操作。您可以选择以下任何选项。"
+    },
+    "list_stages": {
+      "initial": "选择要提取的列表及其中的文本",
+      "pagination": "选择机器人如何捕获列表的其余部分",
+      "limit": "选择要提取的项目数量",
+      "complete": "捕获完成"
+    }
   }
 }
