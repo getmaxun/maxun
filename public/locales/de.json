@@ -153,7 +153,8 @@
             "confirm_pagination": "Paginierung bestätigen",
             "confirm_limit": "Limit bestätigen",
             "finish_capture": "Erfassung abschließen",
-            "finish": "Fertig"
+            "finish": "Fertig",
+            "cancel": "Abbrechen"
         },
         "screenshot": {
             "capture_fullpage": "Vollständige Seite erfassen",
@@ -210,6 +211,14 @@
         },
         "tooltips": {
             "saving": "Workflow wird optimiert und gespeichert"
+        }
+    },
+    "browser_recording": {
+        "modal": {
+            "confirm_discard": "Sind Sie sicher, dass Sie die Aufnahme verwerfen möchten?"
+        },
+        "notifications": {
+            "terminated": "Aktuelle Aufnahme wurde beendet"
         }
     }
 }
