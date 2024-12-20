@@ -152,7 +152,8 @@
             "confirm_capture": "Erfassung bestätigen",
             "confirm_pagination": "Paginierung bestätigen",
             "confirm_limit": "Limit bestätigen",
-            "finish_capture": "Erfassung abschließen"
+            "finish_capture": "Erfassung abschließen",
+            "finish": "Fertig"
         },
         "screenshot": {
             "capture_fullpage": "Vollständige Seite erfassen",
