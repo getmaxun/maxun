@@ -144,5 +144,57 @@
         "limit": "Choose the number of items to extract",
         "complete": "Capture is complete"
       }
+    },
+    "right_panel": {
+      "buttons": {
+        "capture_list": "Capture List",
+        "capture_text": "Capture Text",
+        "capture_screenshot": "Capture Screenshot",
+        "confirm": "Confirm",
+        "discard": "Discard",
+        "confirm_capture": "Confirm Capture",
+        "confirm_pagination": "Confirm Pagination",
+        "confirm_limit": "Confirm Limit",
+        "finish_capture": "Finish Capture",
+        "finish": "Finish"
+      },
+      "screenshot": {
+        "capture_fullpage": "Capture Fullpage",
+        "capture_visible": "Capture Visible Part",
+        "display_fullpage": "Take Fullpage Screenshot",
+        "display_visible": "Take Visible Part Screenshot"
+      },
+      "pagination": {
+        "title": "How can we find the next list item on the page?",
+        "click_next": "Click on next to navigate to the next page",
+        "click_load_more": "Click on load more to load more items",
+        "scroll_down": "Scroll down to load more items",
+        "scroll_up": "Scroll up to load more items",
+        "none": "No more items to load"
+      },
+      "limit": {
+        "title": "What is the maximum number of rows you want to extract?",
+        "custom": "Custom",
+        "enter_number": "Enter number"
+      },
+      "fields": {
+        "label": "Label",
+        "data": "Data",
+        "field_label": "Field Label",
+        "field_data": "Field Data"
+      },
+      "messages": {
+        "list_selected": "List Selected Successfully"
+      },
+      "errors": {
+        "select_pagination": "Please select a pagination type.",
+        "select_pagination_element": "Please select the pagination element first.",
+        "select_limit": "Please select a limit or enter a custom limit.",
+        "invalid_limit": "Please enter a valid limit.",
+        "confirm_text_fields": "Please confirm all text fields",
+        "unable_create_settings": "Unable to create list settings. Make sure you have defined a field for the list.",
+        "capture_text_discarded": "Capture Text Discarded",
+        "capture_list_discarded": "Capture List Discarded"
+      }
     }
   } 
