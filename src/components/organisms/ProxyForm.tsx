@@ -3,6 +3,7 @@ import { styled } from '@mui/system';
 import { Alert, AlertTitle, TextField, Button, Switch, FormControlLabel, Box, Typography, Tabs, Tab, Table, TableContainer, TableHead, TableRow, TableBody, TableCell, Paper } from '@mui/material';
 import { sendProxyConfig, getProxyConfig, testProxyConfig, deleteProxyConfig } from '../../api/proxy';
 import { useGlobalInfoStore } from '../../context/globalInfo';
+import { useTranslation } from 'react-i18next';
 
 const FormContainer = styled(Box)({
     display: 'flex',
@@ -16,6 +17,7 @@ const FormControl = styled(Box)({
 });
 
 const ProxyForm: React.FC = () => {
+    const { t } = useTranslation();
     const [proxyConfigForm, setProxyConfigForm] = useState({
         server_url: '',
         username: '',
@@ -79,9 +81,9 @@ const ProxyForm: React.FC = () => {
         try {
             const response = await sendProxyConfig(proxyConfigForm);
             if (response) {
-                notify('success', 'Proxy configuration submitted successfully');
+                notify('success', t('proxy.notifications.config_success'));
             } else {
-                notify('error', `Failed to submit proxy configuration. Try again. ${response}`);
+                notify('error', t('proxy.notifications.config_error'));
                 console.log(`Failed to submit proxy configuration. Try again. ${response}`)
             }
         } catch (error: any) {
@@ -96,9 +98,9 @@ const ProxyForm: React.FC = () => {
     const testProxy = async () => {
         await testProxyConfig().then((response) => {
             if (response.success) {
-                notify('success', 'Proxy configuration is working');
+                notify('success', t('proxy.notifications.test_success'));
             } else {
-                notify('error', 'Failed to test proxy configuration. Try again.');
+                notify('error', t('proxy.notifications.test_error'));
             }
         });
     };
@@ -109,7 +111,7 @@ const ProxyForm: React.FC = () => {
             if (response.proxy_url) {
                 setIsProxyConfigured(true);
                 setProxy(response);
-                notify('success', 'Proxy configuration fetched successfully');
+                notify('success', t('proxy.notifications.fetch_success'));
             }
         } catch (error: any) {
             notify('error', error);
@@ -119,11 +121,11 @@ const ProxyForm: React.FC = () => {
     const removeProxy = async () => {
         await deleteProxyConfig().then((response) => {
             if (response) {
-                notify('success', 'Proxy configuration removed successfully');
+                notify('success', t('proxy.notifications.remove_success'));
                 setIsProxyConfigured(false);
                 setProxy({ proxy_url: '', auth: false });
             } else {
-                notify('error', 'Failed to remove proxy configuration. Try again.');
+                notify('error', t('proxy.notifications.remove_error'));
             }
         });
     }
@@ -136,11 +138,11 @@ const ProxyForm: React.FC = () => {
         <>
             <FormContainer>
                 <Typography variant="h6" gutterBottom component="div" style={{ marginTop: '20px' }}>
-                    Proxy Configuration
+                    {t('proxy.title')}
                 </Typography>
                 <Tabs value={tabIndex} onChange={handleTabChange}>
-                    <Tab label="Standard Proxy" />
-                    <Tab label="Automatic Proxy Rotation" />
+                    <Tab label={t('proxy.tab_standard')} />
+                    <Tab label={t('proxy.tab_rotation')} />
                 </Tabs>
                 {tabIndex === 0 && (
                     isProxyConfigured ? (
@@ -149,8 +151,8 @@ const ProxyForm: React.FC = () => {
                                 <Table>
                                     <TableHead>
                                         <TableRow>
-                                            <TableCell><strong>Proxy URL</strong></TableCell>
-                                            <TableCell><strong>Requires Authentication</strong></TableCell>
+                                            <TableCell><strong>{t('proxy.table.proxy_url')}</strong></TableCell>
+                                            <TableCell><strong>{t('proxy.table.requires_auth')}</strong></TableCell>
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
@@ -162,39 +164,37 @@ const ProxyForm: React.FC = () => {
                                 </Table>
                             </TableContainer>
                             <Button variant="outlined" color="primary" onClick={testProxy}>
-                                Test Proxy
+                                {t('proxy.test_proxy')}
                             </Button>
                             <Button variant="outlined" color="error" onClick={removeProxy} sx={{ marginLeft: '10px' }}>
-                                Remove Proxy
+                                {t('proxy.remove_proxy')}
                             </Button>
                         </Box>
                     ) : (
                         <Box component="form" onSubmit={handleSubmit} sx={{ maxWidth: 400, width: '100%' }}>
                             <FormControl>
                                 <TextField
-                                    label="Proxy Server URL"
+                                    label={t('proxy.server_url')}
                                     name="server_url"
                                     value={proxyConfigForm.server_url}
                                     onChange={handleChange}
                                     fullWidth
                                     required
                                     error={!!errors.server_url}
-                                    helperText={errors.server_url || `Proxy to be used for all robots. HTTP and SOCKS proxies are supported. 
-                            Example http://myproxy.com:3128 or socks5://myproxy.com:3128. 
-                            Short form myproxy.com:3128 is considered an HTTP proxy.`}
+                                    helperText={errors.server_url || t('proxy.server_url_helper')}
                                 />
                             </FormControl>
                             <FormControl>
                                 <FormControlLabel
                                     control={<Switch checked={requiresAuth} onChange={handleAuthToggle} />}
-                                    label="Requires Authentication?"
+                                    label={t('proxy.requires_auth')}
                                 />
                             </FormControl>
                             {requiresAuth && (
                                 <>
                                     <FormControl>
                                         <TextField
-                                            label="Username"
+                                            label={t('proxy.username')}
                                             name="username"
                                             value={proxyConfigForm.username}
                                             onChange={handleChange}
@@ -206,7 +206,7 @@ const ProxyForm: React.FC = () => {
                                     </FormControl>
                                     <FormControl>
                                         <TextField
-                                            label="Password"
+                                            label={t('proxy.password')}
                                             name="password"
                                             value={proxyConfigForm.password}
                                             onChange={handleChange}
@@ -226,7 +226,7 @@ const ProxyForm: React.FC = () => {
                                 fullWidth
                                 disabled={!proxyConfigForm.server_url || (requiresAuth && (!proxyConfigForm.username || !proxyConfigForm.password))}
                             >
-                                Add Proxy
+                                {t('proxy.add_proxy')}
                             </Button>
                         </Box>
                     ))}
@@ -234,30 +234,30 @@ const ProxyForm: React.FC = () => {
                     <Box sx={{ maxWidth: 400, width: '100%', textAlign: 'center', marginTop: '20px' }}>
                         <>
                             <Typography variant="body1" gutterBottom component="div">
-                                Coming Soon - In Open Source (Basic Rotation) & Cloud (Advanced Rotation). If you don't want to manage the infrastructure, join our cloud waitlist to get early access.
+                                {t('proxy.coming_soon')}
                             </Typography>
                             <Button variant="contained" color="primary" sx={{ marginTop: '20px' }}>
-                                <a style={{ color: 'white', textDecoration: 'none' }} href="https://forms.gle/hXjgqDvkEhPcaBW76">Join Maxun Cloud Waitlist</a>
+                                <a style={{ color: 'white', textDecoration: 'none' }} href="https://forms.gle/hXjgqDvkEhPcaBW76">{t('proxy.join_waitlist')}</a>
                             </Button>
                         </>
                     </Box>
                 )}
             </FormContainer>
             <Alert severity="info" sx={{ marginTop: '80px', marginLeft: '50px', height: '230px', width: '450px', border: '1px solid #ff00c3' }}>
-            <AlertTitle>If your proxy requires a username and password, always provide them separately from the proxy URL. </AlertTitle>
+                <AlertTitle>{t('proxy.alert.title')}</AlertTitle>
                 <br />
-                <b>The right way</b>
+                <b>{t('proxy.alert.right_way')}</b>
                 <br />
-                Proxy URL: http://proxy.com:1337
+                {t('proxy.alert.proxy_url')} http://proxy.com:1337
                 <br />
-                Username: myusername
+                {t('proxy.alert.username')} myusername
                 <br />
-                Password: mypassword
+                {t('proxy.alert.password')} mypassword
                 <br />
                 <br />
-                <b>The wrong way</b>
+                <b>{t('proxy.alert.wrong_way')}</b>
                 <br />
-                Proxy URL: http://myusername:mypassword@proxy.com:1337
+                {t('proxy.alert.proxy_url')} http://myusername:mypassword@proxy.com:1337
             </Alert>
         </>
     );
