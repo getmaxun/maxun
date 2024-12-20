@@ -208,6 +208,11 @@ export const NavBar: React.FC<NavBarProps> = ({ recordingName, isRecording }) =>
                             <Box sx={{ marginLeft: '30px', background: '#cfd0d1', padding: 1, borderRadius: 3 }}>
                               <code style={{ color: 'black' }}>
                                 <p>Run the commands below</p>
+                                # cd to project directory (eg: maxun)
+                                <br />
+                                cd maxun
+                                <br />
+                                <br />
                                 # pull latest changes
                                 <br />
                                 git pull origin master
@@ -228,6 +233,16 @@ export const NavBar: React.FC<NavBarProps> = ({ recordingName, isRecording }) =>
                             <Box sx={{ marginLeft: '30px', background: '#cfd0d1', padding: 1, borderRadius: 3 }}>
                               <code style={{ color: 'black' }}>
                                 <p>Run the commands below</p>
+                                # cd to project directory (eg: maxun)
+                                <br />
+                                cd maxun
+                                <br />
+                                <br />
+                                # stop the working containers
+                                <br />
+                                docker-compose down
+                                <br />
+                                <br />
                                 # pull latest docker images
                                 <br />
                                 docker-compose pull
