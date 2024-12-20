@@ -193,5 +193,23 @@
             "capture_text_discarded": "Texterfassung verworfen",
             "capture_list_discarded": "Listenerfassung verworfen"
         }
+    },
+    "save_recording": {
+        "title": "Roboter speichern",
+        "robot_name": "Roboter Name",
+        "buttons": {
+            "save": "Speichern",
+            "confirm": "Bestätigen"
+        },
+        "notifications": {
+            "save_success": "Roboter erfolgreich gespeichert"
+        },
+        "errors": {
+            "user_not_logged": "Benutzer nicht angemeldet. Aufnahme kann nicht gespeichert werden.",
+            "exists_warning": "Ein Roboter mit diesem Namen existiert bereits, bitte bestätigen Sie das Überschreiben des Roboters."
+        },
+        "tooltips": {
+            "saving": "Workflow wird optimiert und gespeichert"
+        }
     }
 }
