@@ -71,27 +71,52 @@
     "test_proxy": "测试代理",
     "remove_proxy": "删除代理",
     "table": {
-        "proxy_url": "代理URL",
-        "requires_auth": "需要认证"
+      "proxy_url": "代理URL",
+      "requires_auth": "需要认证"
     },
     "coming_soon": "即将推出 - 开源版（基础轮换）和云版（高级轮换）。如果您不想管理基础设施，请加入我们的云服务等候名单以获得早期访问权限。",
     "join_waitlist": "加入Maxun Cloud等候名单",
     "alert": {
-        "title": "如果您的代理需要用户名和密码，请务必将它们与代理URL分开提供。",
-        "right_way": "正确方式",
-        "wrong_way": "错误方式",
-        "proxy_url": "代理URL：",
-        "username": "用户名：",
-        "password": "密码："
+      "title": "如果您的代理需要用户名和密码，请务必将它们与代理URL分开提供。",
+      "right_way": "正确方式",
+      "wrong_way": "错误方式",
+      "proxy_url": "代理URL：",
+      "username": "用户名：",
+      "password": "密码："
     },
     "notifications": {
-        "config_success": "代理配置提交成功",
-        "config_error": "提交代理配置失败。请重试。",
-        "test_success": "代理配置运行正常",
-        "test_error": "测试代理配置失败。请重试。",
-        "fetch_success": "成功获取代理配置",
-        "remove_success": "成功删除代理配置",
-        "remove_error": "删除代理配置失败。请重试。"
+      "config_success": "代理配置提交成功",
+      "config_error": "提交代理配置失败。请重试。",
+      "test_success": "代理配置运行正常",
+      "test_error": "测试代理配置失败。请重试。",
+      "fetch_success": "成功获取代理配置",
+      "remove_success": "成功删除代理配置",
+      "remove_error": "删除代理配置失败。请重试。"
+    }
+  },
+  "apikey": {
+    "title": "管理API密钥",
+    "default_name": "Maxun API密钥",
+    "table": {
+      "name": "API密钥名称",
+      "key": "API密钥",
+      "actions": "操作"
+    },
+    "actions": {
+      "copy": "复制",
+      "show": "显示",
+      "hide": "隐藏",
+      "delete": "删除"
+    },
+    "no_key_message": "您还未生成API密钥。",
+    "generate_button": "生成API密钥",
+    "notifications": {
+      "fetch_error": "获取API密钥失败 - ${error}",
+      "generate_success": "API密钥生成成功",
+      "generate_error": "生成API密钥失败 - ${error}",
+      "delete_success": "API密钥删除成功",
+      "delete_error": "删除API密钥失败 - ${error}",
+      "copy_success": "API密钥复制成功"
     }
   }
 }
