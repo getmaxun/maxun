@@ -194,5 +194,23 @@
       "capture_text_discarded": "文本捕获已放弃",
       "capture_list_discarded": "列表捕获已放弃"
     }
+  },
+  "save_recording": {
+    "title": "保存机器人",
+    "robot_name": "机器人名称",
+    "buttons": {
+      "save": "保存",
+      "confirm": "确认"
+    },
+    "notifications": {
+      "save_success": "机器人保存成功"
+    },
+    "errors": {
+      "user_not_logged": "用户未登录。无法保存录制。",
+      "exists_warning": "已存在同名机器人，请确认是否覆盖机器人。"
+    },
+    "tooltips": {
+      "saving": "正在优化并保存工作流程"
+    }
   }
 }
