@@ -292,25 +292,90 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
     if (!getList || listSelector !== '') {
       const rect = await page.evaluate(
         async ({ x, y }) => {
+          // Helper function to convert rectangle to plain object
+          const getRectangleInfo = (rectangle: DOMRect) => {
+            const info = {
+              x: rectangle.x,
+              y: rectangle.y,
+              width: rectangle.width,
+              height: rectangle.height,
+              top: rectangle.top,
+              right: rectangle.right,
+              bottom: rectangle.bottom,
+              left: rectangle.left,
+              fromIframe: false,
+              iframePath: [] as string[]
+            };
+            return info;
+          };
+
+          // Helper function to search in iframe
+          const searchInIframe = (
+            iframe: HTMLIFrameElement, 
+            relativeX: number, 
+            relativeY: number,
+            iframePath: string[]
+          ) => {
+            try {
+              if (!iframe.contentDocument) return null;
+              
+              const el = iframe.contentDocument.elementFromPoint(relativeX, relativeY) as HTMLElement;
+              if (!el) return null;
+
+              const { parentElement } = el;
+              const element = parentElement?.tagName === 'A' ? parentElement : el;
+              const rectangle = element?.getBoundingClientRect();
+              
+              if (rectangle) {
+                const iframeRect = iframe.getBoundingClientRect();
+                const rectInfo = getRectangleInfo(rectangle);
+                
+                // Adjust coordinates relative to the main document
+                rectInfo.x += iframeRect.x;
+                rectInfo.y += iframeRect.y;
+                rectInfo.top += iframeRect.top;
+                rectInfo.right += iframeRect.left;
+                rectInfo.bottom += iframeRect.top;
+                rectInfo.left += iframeRect.left;
+                rectInfo.fromIframe = true;
+                rectInfo.iframePath = iframePath;
+                
+                return rectInfo;
+              }
+              return null;
+            } catch (e) {
+              console.warn('Cannot access iframe content:', e);
+              return null;
+            }
+          };
+
           const el = document.elementFromPoint(x, y) as HTMLElement;
           if (el) {
+            // Check if the element is an iframe
+            if (el.tagName === 'IFRAME') {
+              const iframe = el as HTMLIFrameElement;
+              const rect = iframe.getBoundingClientRect();
+              const relativeX = x - rect.left;
+              const relativeY = y - rect.top;
+              
+              const iframeResult = searchInIframe(
+                iframe, 
+                relativeX, 
+                relativeY, 
+                [iframe.id || 'unnamed-iframe']
+              );
+              if (iframeResult) return iframeResult;
+            }
+
             const { parentElement } = el;
-            // Match the logic in recorder.ts for link clicks
             const element = parentElement?.tagName === 'A' ? parentElement : el;
             const rectangle = element?.getBoundingClientRect();
+            
             if (rectangle) {
-              return {
-                x: rectangle.x,
-                y: rectangle.y,
-                width: rectangle.width,
-                height: rectangle.height,
-                top: rectangle.top,
-                right: rectangle.right,
-                bottom: rectangle.bottom,
-                left: rectangle.left,
-              };
+              return getRectangleInfo(rectangle);
             }
           }
+          return null;
         },
         { x: coordinates.x, y: coordinates.y },
       );
@@ -318,10 +383,98 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
     } else {
       const rect = await page.evaluate(
         async ({ x, y }) => {
+          // Helper function to convert rectangle to plain object (same as above)
+          const getRectangleInfo = (rectangle: DOMRect) => ({
+            x: rectangle.x,
+            y: rectangle.y,
+            width: rectangle.width,
+            height: rectangle.height,
+            top: rectangle.top,
+            right: rectangle.right,
+            bottom: rectangle.bottom,
+            left: rectangle.left,
+            fromIframe: false,
+            iframePath: [] as string[]
+          });
+
+          // Helper function to search in iframe (same as above)
+          const searchInIframe = (
+            iframe: HTMLIFrameElement, 
+            relativeX: number, 
+            relativeY: number,
+            iframePath: string[]
+          ) => {
+            try {
+              if (!iframe.contentDocument) return null;
+              
+              const el = iframe.contentDocument.elementFromPoint(relativeX, relativeY) as HTMLElement;
+              if (!el) return null;
+
+              let element = el;
+              while (element.parentElement) {
+                const parentRect = element.parentElement.getBoundingClientRect();
+                const childRect = element.getBoundingClientRect();
+
+                const fullyContained =
+                  parentRect.left <= childRect.left &&
+                  parentRect.right >= childRect.right &&
+                  parentRect.top <= childRect.top &&
+                  parentRect.bottom >= childRect.bottom;
+
+                const significantOverlap =
+                  (childRect.width * childRect.height) /
+                  (parentRect.width * parentRect.height) > 0.5;
+
+                if (fullyContained && significantOverlap) {
+                  element = element.parentElement;
+                } else {
+                  break;
+                }
+              }
+
+              const rectangle = element?.getBoundingClientRect();
+              if (rectangle) {
+                const iframeRect = iframe.getBoundingClientRect();
+                const rectInfo = getRectangleInfo(rectangle);
+                
+                // Adjust coordinates relative to the main document
+                rectInfo.x += iframeRect.x;
+                rectInfo.y += iframeRect.y;
+                rectInfo.top += iframeRect.top;
+                rectInfo.right += iframeRect.left;
+                rectInfo.bottom += iframeRect.top;
+                rectInfo.left += iframeRect.left;
+                rectInfo.fromIframe = true;
+                rectInfo.iframePath = iframePath;
+                
+                return rectInfo;
+              }
+              return null;
+            } catch (e) {
+              console.warn('Cannot access iframe content:', e);
+              return null;
+            }
+          };
+
           const originalEl = document.elementFromPoint(x, y) as HTMLElement;
           if (originalEl) {
-            let element = originalEl;
+            // Check if the element is an iframe
+            if (originalEl.tagName === 'IFRAME') {
+              const iframe = originalEl as HTMLIFrameElement;
+              const rect = iframe.getBoundingClientRect();
+              const relativeX = x - rect.left;
+              const relativeY = y - rect.top;
+              
+              const iframeResult = searchInIframe(
+                iframe, 
+                relativeX, 
+                relativeY, 
+                [iframe.id || 'unnamed-iframe']
+              );
+              if (iframeResult) return iframeResult;
+            }
 
+            let element = originalEl;
             while (element.parentElement) {
               const parentRect = element.parentElement.getBoundingClientRect();
               const childRect = element.getBoundingClientRect();
@@ -344,18 +497,8 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
             }
 
             const rectangle = element?.getBoundingClientRect();
-
             if (rectangle) {
-              return {
-                x: rectangle.x,
-                y: rectangle.y,
-                width: rectangle.width,
-                height: rectangle.height,
-                top: rectangle.top,
-                right: rectangle.right,
-                bottom: rectangle.bottom,
-                left: rectangle.left,
-              };
+              return getRectangleInfo(rectangle);
             }
           }
           return null;
