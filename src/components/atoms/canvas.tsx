@@ -6,6 +6,7 @@ import { useActionContext } from '../../context/browserActions';
 import DatePicker from './DatePicker';
 import Dropdown from './Dropdown';
 import TimePicker from './TimePicker';
+import DateTimeLocalPicker from './DateTimeLocalPicker';
 
 interface CreateRefCallback {
     (ref: React.RefObject<HTMLCanvasElement>): void;
@@ -55,6 +56,11 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
         selector: string;
     } | null>(null);
 
+    const [dateTimeLocalInfo, setDateTimeLocalInfo] = React.useState<{
+        coordinates: Coordinates;
+        selector: string;
+    } | null>(null);
+
     const notifyLastAction = (action: string) => {
         if (lastAction !== action) {
             setLastAction(action);
@@ -91,9 +97,15 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
                 setTimePickerInfo(info);
             });
 
+            socket.on('showDateTimePicker', (info: {coordinates: Coordinates, selector: string}) => {
+                setDateTimeLocalInfo(info);
+            });
+
             return () => {
                 socket.off('showDatePicker');
                 socket.off('showDropdown');
+                socket.off('showTimePicker');
+                socket.off('showDateTimePicker');
             };
         }
     }, [socket]);
@@ -220,6 +232,13 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
                     coordinates={timePickerInfo.coordinates}
                     selector={timePickerInfo.selector}
                     onClose={() => setTimePickerInfo(null)}
+                />
+            )}
+            {dateTimeLocalInfo && (
+                <DateTimeLocalPicker
+                    coordinates={dateTimeLocalInfo.coordinates}
+                    selector={dateTimeLocalInfo.selector}
+                    onClose={() => setDateTimeLocalInfo(null)}
                 />
             )}
         </div>

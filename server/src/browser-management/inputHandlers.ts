@@ -260,6 +260,16 @@ const onTimeSelection = async (data: { selector: string, value: string }) => {
     await handleWrapper(handleTimeSelection, data);
 }
 
+const handleDateTimeLocalSelection = async (generator: WorkflowGenerator, page: Page, data: { selector: string, value: string }) => {
+    await generator.onDateTimeLocalSelection(page, data);
+    logger.log('debug', `DateTime Local value ${data.value} selected`);
+}
+
+const onDateTimeLocalSelection = async (data: { selector: string, value: string }) => {
+    logger.log('debug', 'Handling datetime-local selection event emitted from client');
+    await handleWrapper(handleDateTimeLocalSelection, data);
+}
+
 /**
  * A wrapper function for handling the keyup event.
  * @param keyboardInput - the keyboard input of the keyup event
@@ -418,6 +428,7 @@ const registerInputHandlers = (socket: Socket) => {
     socket.on("input:date", onDateSelection);
     socket.on("input:dropdown", onDropdownSelection);
     socket.on("input:time", onTimeSelection);
+    socket.on("input:datetime-local", onDateTimeLocalSelection);
     socket.on("action", onGenerateAction);
 };
 
