@@ -56,5 +56,41 @@
         "delete": "Löschen",
         "settings": "Einstellungen",
         "search": "Ausführungen suchen..."
+    },
+    "proxy": {
+        "title": "Proxy-Konfiguration",
+        "tab_standard": "Standard-Proxy",
+        "tab_rotation": "Automatische Proxy-Rotation",
+        "server_url": "Proxy-Server-URL",
+        "server_url_helper": "Proxy für alle Roboter. HTTP- und SOCKS-Proxys werden unterstützt. Beispiel http://myproxy.com:3128 oder socks5://myproxy.com:3128. Kurzform myproxy.com:3128 wird als HTTP-Proxy behandelt.",
+        "requires_auth": "Authentifizierung erforderlich?",
+        "username": "Benutzername",
+        "password": "Passwort",
+        "add_proxy": "Proxy hinzufügen",
+        "test_proxy": "Proxy testen",
+        "remove_proxy": "Proxy entfernen",
+        "table": {
+            "proxy_url": "Proxy-URL",
+            "requires_auth": "Authentifizierung erforderlich"
+        },
+        "coming_soon": "Demnächst verfügbar - In Open Source (Basis-Rotation) & Cloud (Erweiterte Rotation). Wenn Sie die Infrastruktur nicht selbst verwalten möchten, tragen Sie sich in unsere Cloud-Warteliste ein.",
+        "join_waitlist": "Maxun Cloud Warteliste beitreten",
+        "alert": {
+            "title": "Wenn Ihr Proxy einen Benutzernamen und ein Passwort erfordert, geben Sie diese immer separat von der Proxy-URL an.",
+            "right_way": "Der richtige Weg",
+            "wrong_way": "Der falsche Weg",
+            "proxy_url": "Proxy-URL:",
+            "username": "Benutzername:",
+            "password": "Passwort:"
+        },
+        "notifications": {
+            "config_success": "Proxy-Konfiguration erfolgreich übermittelt",
+            "config_error": "Fehler beim Übermitteln der Proxy-Konfiguration. Bitte erneut versuchen.",
+            "test_success": "Proxy-Konfiguration funktioniert",
+            "test_error": "Fehler beim Testen der Proxy-Konfiguration. Bitte erneut versuchen.",
+            "fetch_success": "Proxy-Konfiguration erfolgreich abgerufen",
+            "remove_success": "Proxy-Konfiguration erfolgreich entfernt",
+            "remove_error": "Fehler beim Entfernen der Proxy-Konfiguration. Bitte erneut versuchen."
+        }
     }
 }
