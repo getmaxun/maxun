@@ -194,5 +194,23 @@
             "capture_text_discarded": "テキスト取得が破棄されました",
             "capture_list_discarded": "リスト取得が破棄されました"
         }
+    },
+    "save_recording": {
+        "title": "ロボットを保存",
+        "robot_name": "ロボット名",
+        "buttons": {
+            "save": "保存",
+            "confirm": "確認"
+        },
+        "notifications": {
+            "save_success": "ロボットが正常に保存されました"
+        },
+        "errors": {
+            "user_not_logged": "ユーザーがログインしていません。録画を保存できません。",
+            "exists_warning": "この名前のロボットは既に存在します。ロボットの上書きを確認してください。"
+        },
+        "tooltips": {
+            "saving": "ワークフローを最適化して保存中"
+        }
     }
 }
