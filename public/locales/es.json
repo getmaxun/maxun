@@ -1,13 +1,61 @@
 {
-    "app": {
-      "name": "Maxun",
-      "version": "beta"
+  "login": {
+    "title": "¡Bienvenido de nuevo!",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "button": "Iniciar sesión",
+    "loading": "Cargando",
+    "register_prompt": "¿No tienes una cuenta?",
+    "register_link": "Registrarse",
+    "welcome_notification": "¡Bienvenido a Maxun!",
+    "error_notification": "Error al iniciar sesión. Por favor, inténtalo de nuevo."
+  },
+  "register": {
+    "title": "Crear cuenta",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "button": "Registrarse",
+    "loading": "Cargando",
+    "register_prompt": "¿Ya tienes una cuenta?",
+    "login_link": "Iniciar sesión",
+    "welcome_notification": "¡Bienvenido a Maxun!",
+    "error_notification": "Error en el registro. Por favor, inténtalo de nuevo."
+  },
+  "recordingtable": {
+    "run": "Ejecutar",
+    "name": "Nombre",
+    "schedule": "Programar",
+    "integrate": "Integrar",
+    "settings": "Ajustes",
+    "options": "Opciones",
+    "heading": "Mis Robots",
+    "new": "Crear Robot",
+    "modal": {
+      "title": "Ingresa la URL",
+      "label": "URL",
+      "button": "Comenzar grabación"
     },
-    "login": {
-      "title": "¡Bienvenido de nuevo!",
-      "email": "Correo electrónico",
-      "password": "Contraseña",
-      "button": "Iniciar sesión",
-      "register_prompt": "¿No tienes una cuenta? Regístrate"
-    }
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "duplicate": "Duplicar",
+    "search": "Buscar robots..."
+  },
+  "mainmenu": {
+    "recordings": "Robots",
+    "runs": "Ejecuciones",
+    "proxy": "Proxy",
+    "apikey": "Clave API",
+    "feedback": "Unirse a Maxun Cloud",
+    "apidocs": "Documentación API"
+  },
+  "runstable": {
+    "runs": "Todas las ejecuciones",
+    "runStatus": "Estado",
+    "runName": "Nombre",
+    "startedAt": "Iniciado el",
+    "finishedAt": "Finalizado el",
+    "delete": "Eliminar",
+    "settings": "Ajustes",
+    "search": "Buscar ejecuciones..."
   }
+}
