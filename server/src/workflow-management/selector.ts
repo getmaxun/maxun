@@ -61,8 +61,8 @@ export const getElementInformation = async (
                 ...info.attributes,
                 selectedValue: selectElement.value,
                 };
-            } else if (element?.tagName === 'INPUT' && element?.type === 'time') {
-              info.innerText = element.value;       
+            } else if (element?.tagName === 'INPUT' && (element as HTMLInputElement).type === 'time') {
+              info.innerText = (element as HTMLInputElement).value;       
             } else {
               info.hasOnlyText = element?.children?.length === 0 &&
                 element?.innerText?.length > 0;
