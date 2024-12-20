@@ -118,5 +118,29 @@
       "delete_error": "Error al eliminar la clave API - ${error}",
       "copy_success": "Clave API copiada con éxito"
     }
-}
+  },
+  "action_description": {
+    "text": {
+      "title": "Capturar Texto",
+      "description": "Pase el cursor sobre los textos que desea extraer y haga clic para seleccionarlos"
+    },
+    "screenshot": {
+      "title": "Capturar Pantalla",
+      "description": "Capture una captura de pantalla parcial o completa de la página actual."
+    },
+    "list": {
+      "title": "Capturar Lista",
+      "description": "Pase el cursor sobre la lista que desea extraer. Una vez seleccionada, puede pasar el cursor sobre todos los textos dentro de la lista seleccionada. Haga clic para seleccionarlos."
+    },
+    "default": {
+      "title": "¿Qué datos desea extraer?",
+      "description": "Un robot está diseñado para realizar una acción a la vez. Puede elegir cualquiera de las siguientes opciones."
+    },
+    "list_stages": {
+      "initial": "Seleccione la lista que desea extraer junto con los textos que contiene",
+      "pagination": "Seleccione cómo puede el robot capturar el resto de la lista",
+      "limit": "Elija el número de elementos a extraer",
+      "complete": "Captura completada"
+    }
+  }
 }
