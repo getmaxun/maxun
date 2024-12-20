@@ -62,9 +62,9 @@ export const getElementInformation = async (
                 ...info.attributes,
                 selectedValue: selectElement.value,
               };
-            } else if (element?.tagName === 'INPUT' && 
-                      ((element as HTMLInputElement).type === 'time' || 
-                       (element as HTMLInputElement).type === 'date')) {
+            } else if (element?.tagName === 'INPUT' &&
+              ((element as HTMLInputElement).type === 'time' ||
+                (element as HTMLInputElement).type === 'date')) {
               info.innerText = (element as HTMLInputElement).value;
             } else {
               info.hasOnlyText = element?.children?.length === 0 &&
@@ -79,20 +79,20 @@ export const getElementInformation = async (
 
           // Helper function to search in iframe
           const searchInIframe = (
-            iframe: HTMLIFrameElement, 
-            relativeX: number, 
+            iframe: HTMLIFrameElement,
+            relativeX: number,
             relativeY: number,
             iframePath: string[]
           ) => {
             try {
               if (!iframe.contentDocument) return null;
-              
+
               const el = iframe.contentDocument.elementFromPoint(relativeX, relativeY) as HTMLElement;
               if (!el) return null;
 
               const { parentElement } = el;
               const element = parentElement?.tagName === 'A' ? parentElement : el;
-              
+
               const info = getElementInfo(element);
               info.fromIframe = true;
               info.iframePath = iframePath;
@@ -112,11 +112,11 @@ export const getElementInformation = async (
               const rect = iframe.getBoundingClientRect();
               const relativeX = x - rect.left;
               const relativeY = y - rect.top;
-              
+
               const iframeResult = searchInIframe(
-                iframe, 
-                relativeX, 
-                relativeY, 
+                iframe,
+                relativeX,
+                relativeY,
                 [iframe.id || 'unnamed-iframe']
               );
               if (iframeResult) return iframeResult;
@@ -179,14 +179,14 @@ export const getElementInformation = async (
 
           // Helper function to search in iframe (same as above)
           const searchInIframe = (
-            iframe: HTMLIFrameElement, 
-            relativeX: number, 
+            iframe: HTMLIFrameElement,
+            relativeX: number,
             relativeY: number,
             iframePath: string[]
           ) => {
             try {
               if (!iframe.contentDocument) return null;
-              
+
               const el = iframe.contentDocument.elementFromPoint(relativeX, relativeY) as HTMLElement;
               if (!el) return null;
 
@@ -231,11 +231,11 @@ export const getElementInformation = async (
               const rect = iframe.getBoundingClientRect();
               const relativeX = x - rect.left;
               const relativeY = y - rect.top;
-              
+
               const iframeResult = searchInIframe(
-                iframe, 
-                relativeX, 
-                relativeY, 
+                iframe,
+                relativeX,
+                relativeY,
                 [iframe.id || 'unnamed-iframe']
               );
               if (iframeResult) return iframeResult;
@@ -311,25 +311,25 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
 
           // Helper function to search in iframe
           const searchInIframe = (
-            iframe: HTMLIFrameElement, 
-            relativeX: number, 
+            iframe: HTMLIFrameElement,
+            relativeX: number,
             relativeY: number,
             iframePath: string[]
           ) => {
             try {
               if (!iframe.contentDocument) return null;
-              
+
               const el = iframe.contentDocument.elementFromPoint(relativeX, relativeY) as HTMLElement;
               if (!el) return null;
 
               const { parentElement } = el;
               const element = parentElement?.tagName === 'A' ? parentElement : el;
               const rectangle = element?.getBoundingClientRect();
-              
+
               if (rectangle) {
                 const iframeRect = iframe.getBoundingClientRect();
                 const rectInfo = getRectangleInfo(rectangle);
-                
+
                 // Adjust coordinates relative to the main document
                 rectInfo.x += iframeRect.x;
                 rectInfo.y += iframeRect.y;
@@ -339,7 +339,7 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
                 rectInfo.left += iframeRect.left;
                 rectInfo.fromIframe = true;
                 rectInfo.iframePath = iframePath;
-                
+
                 return rectInfo;
               }
               return null;
@@ -357,11 +357,11 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
               const rect = iframe.getBoundingClientRect();
               const relativeX = x - rect.left;
               const relativeY = y - rect.top;
-              
+
               const iframeResult = searchInIframe(
-                iframe, 
-                relativeX, 
-                relativeY, 
+                iframe,
+                relativeX,
+                relativeY,
                 [iframe.id || 'unnamed-iframe']
               );
               if (iframeResult) return iframeResult;
@@ -370,7 +370,7 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
             const { parentElement } = el;
             const element = parentElement?.tagName === 'A' ? parentElement : el;
             const rectangle = element?.getBoundingClientRect();
-            
+
             if (rectangle) {
               return getRectangleInfo(rectangle);
             }
@@ -399,14 +399,14 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
 
           // Helper function to search in iframe (same as above)
           const searchInIframe = (
-            iframe: HTMLIFrameElement, 
-            relativeX: number, 
+            iframe: HTMLIFrameElement,
+            relativeX: number,
             relativeY: number,
             iframePath: string[]
           ) => {
             try {
               if (!iframe.contentDocument) return null;
-              
+
               const el = iframe.contentDocument.elementFromPoint(relativeX, relativeY) as HTMLElement;
               if (!el) return null;
 
@@ -436,7 +436,7 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
               if (rectangle) {
                 const iframeRect = iframe.getBoundingClientRect();
                 const rectInfo = getRectangleInfo(rectangle);
-                
+
                 // Adjust coordinates relative to the main document
                 rectInfo.x += iframeRect.x;
                 rectInfo.y += iframeRect.y;
@@ -446,7 +446,7 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
                 rectInfo.left += iframeRect.left;
                 rectInfo.fromIframe = true;
                 rectInfo.iframePath = iframePath;
-                
+
                 return rectInfo;
               }
               return null;
@@ -464,11 +464,11 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
               const rect = iframe.getBoundingClientRect();
               const relativeX = x - rect.left;
               const relativeY = y - rect.top;
-              
+
               const iframeResult = searchInIframe(
-                iframe, 
-                relativeX, 
-                relativeY, 
+                iframe,
+                relativeX,
+                relativeY,
                 [iframe.id || 'unnamed-iframe']
               );
               if (iframeResult) return iframeResult;
