@@ -156,7 +156,8 @@
         "confirm_pagination": "Confirm Pagination",
         "confirm_limit": "Confirm Limit",
         "finish_capture": "Finish Capture",
-        "finish": "Finish"
+        "finish": "Finish",
+        "cancel": "Cancel"
       },
       "screenshot": {
         "capture_fullpage": "Capture Fullpage",
@@ -213,6 +214,14 @@
       },
       "tooltips": {
         "saving": "Optimizing and saving the workflow"
+      }
+    },
+    "browser_recording": {
+      "modal": {
+          "confirm_discard": "Are you sure you want to discard the recording?"
+      },
+      "notifications": {
+          "terminated": "Current Recording was terminated"
       }
     }
   } 
