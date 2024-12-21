@@ -116,6 +116,7 @@ export const NavBar: React.FC<NavBarProps> = ({
   }, []);
 
   return (
+    <>
       <NavBarWrapper>
         <div style={{
           display: 'flex',
