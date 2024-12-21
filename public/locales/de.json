@@ -328,5 +328,17 @@
         "errors": {
             "robot_not_found": "Roboterdetails konnten nicht gefunden werden. Bitte versuchen Sie es erneut."
         }
+    },
+    "robot_edit": {
+        "title": "Roboter bearbeiten",
+        "change_name": "Roboternamen ändern",
+        "robot_limit": "Roboter-Limit",
+        "save": "Änderungen speichern",
+        "cancel": "Abbrechen",
+        "notifications": {
+            "update_success": "Roboter erfolgreich aktualisiert.",
+            "update_failed": "Aktualisierung des Roboters fehlgeschlagen. Bitte erneut versuchen.",
+            "update_error": "Beim Aktualisieren des Roboters ist ein Fehler aufgetreten."
+        }
     }
 }
