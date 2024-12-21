@@ -216,10 +216,28 @@
   },
   "browser_recording": {
     "modal": {
-        "confirm_discard": "¿Está seguro de que desea descartar la grabación?"
+      "confirm_discard": "¿Está seguro de que desea descartar la grabación?"
     },
     "notifications": {
-        "terminated": "La grabación actual fue terminada"
+      "terminated": "La grabación actual fue terminada"
     }
-  } 
+  },
+  "interpretation_log": {
+    "titles": {
+      "output_preview": "Vista Previa de Datos de Salida",
+      "screenshot": "Captura de pantalla"
+    },
+    "messages": {
+      "additional_rows": "Se extraerán filas adicionales de datos una vez que termine la grabación.",
+      "successful_training": "¡Has entrenado exitosamente al robot para realizar acciones! Haz clic en el botón de abajo para obtener una vista previa de los datos que tu robot extraerá.",
+      "no_selection": "Parece que aún no has seleccionado nada para extraer. Una vez que lo hagas, el robot mostrará una vista previa de tus selecciones aquí."
+    },
+    "data_sections": {
+      "binary_received": "---------- Datos binarios de salida recibidos ----------",
+      "serializable_received": "---------- Datos serializables de salida recibidos ----------",
+      "mimetype": "tipo MIME: ",
+      "image_below": "La imagen se muestra a continuación:",
+      "separator": "--------------------------------------------------"
+    }
+  }
 }
