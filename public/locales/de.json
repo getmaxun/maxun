@@ -238,5 +238,23 @@
             "image_below": "Bild wird unten angezeigt:",
             "separator": "--------------------------------------------------"
         }
+    },
+    "interpretation_buttons": {
+        "buttons": {
+            "preview": "Vorschau der Ausgabedaten anzeigen",
+            "yes": "Ja",
+            "no": "Nein"
+        },
+        "messages": {
+            "extracting": "Daten werden extrahiert...bitte warten Sie 10 Sekunden bis 1 Minute",
+            "restart_required": "Bitte starten Sie die Interpretation nach der Aktualisierung der Aufnahme neu",
+            "run_finished": "Durchlauf beendet",
+            "run_failed": "Start fehlgeschlagen"
+        },
+        "modal": {
+            "use_previous": "Möchten Sie Ihre vorherige Auswahl als Bedingung für diese Aktion verwenden?",
+            "previous_action": "Ihre vorherige Aktion war: ",
+            "element_text": "auf einem Element mit Text "
+        }
     }
 }
