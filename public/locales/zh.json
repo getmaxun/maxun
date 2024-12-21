@@ -56,7 +56,11 @@
     "finishedAt": "结束时间",
     "delete": "删除",
     "settings": "设置",
-    "search": "搜索运行记录..."
+    "search": "搜索运行记录...",
+    "notifications": {
+      "no_runs": "未找到运行记录。请重试。",
+      "delete_success": "运行记录删除成功"
+    }
   },
   "proxy": {
     "title": "代理设置",
