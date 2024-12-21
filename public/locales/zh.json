@@ -251,6 +251,7 @@
   "interpretation_buttons": {
     "buttons": {
       "preview": "获取输出数据预览",
+      "reset": "重置",
       "yes": "是",
       "no": "否"
     },

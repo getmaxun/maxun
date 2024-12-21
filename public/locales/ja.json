@@ -251,6 +251,7 @@
     "interpretation_buttons": {
         "buttons": {
             "preview": "出力データのプレビューを取得",
+            "reset": "リセット",
             "yes": "はい",
             "no": "いいえ"
         },

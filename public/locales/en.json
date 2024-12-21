@@ -251,6 +251,7 @@
     "interpretation_buttons": {
       "buttons": {
         "preview": "Get Preview of Output Data",
+        "reset": "Reset",
         "yes": "Yes",
         "no": "No"
       },

@@ -251,6 +251,7 @@
   "interpretation_buttons": {
     "buttons": {
       "preview": "Obtener Vista Previa de Datos de Salida",
+      "reset": "Restablecer",
       "yes": "Sí",
       "no": "No"
     },

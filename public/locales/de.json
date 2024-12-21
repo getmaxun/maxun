@@ -250,6 +250,7 @@
     "interpretation_buttons": {
         "buttons": {
             "preview": "Vorschau der Ausgabedaten anzeigen",
+            "reset": "Zurücksetzen",
             "yes": "Ja",
             "no": "Nein"
         },
