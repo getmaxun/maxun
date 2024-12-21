@@ -384,5 +384,27 @@
       "proxy": "代理",
       "apikey": "API密钥"
     }
+  },
+  "browser_window": {
+    "attribute_modal": {
+      "title": "选择属性",
+      "notifications": {
+        "list_select_success": "列表选择成功。选择要提取的文本数据。",
+        "pagination_select_success": "分页元素选择成功。"
+      }
+    },
+    "attribute_options": {
+      "anchor": {
+        "text": "文本: {{text}}",
+        "url": "URL: {{url}}"
+      },
+      "image": {
+        "alt_text": "替代文本: {{altText}}",
+        "image_url": "图像URL: {{imageUrl}}"
+      },
+      "default": {
+        "text": "文本: {{text}}"
+      }
+    }
   }
 }
