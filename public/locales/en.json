@@ -223,5 +223,23 @@
       "notifications": {
           "terminated": "Current Recording was terminated"
       }
+    },
+    "interpretation_log": {
+      "titles": {
+        "output_preview": "Output Data Preview",
+        "screenshot": "Screenshot"
+      },
+      "messages": {
+        "additional_rows": "Additional rows of data will be extracted once you finish recording.",
+        "successful_training": "You've successfully trained the robot to perform actions! Click on the button below to get a preview of the data your robot will extract.",
+        "no_selection": "It looks like you have not selected anything for extraction yet. Once you do, the robot will show a preview of your selections here."
+      },
+      "data_sections": {
+        "binary_received": "---------- Binary output data received ----------",
+        "serializable_received": "---------- Serializable output data received ----------",
+        "mimetype": "mimetype: ",
+        "image_below": "Image is rendered below:",
+        "separator": "--------------------------------------------------"
+      }
     }
   } 
