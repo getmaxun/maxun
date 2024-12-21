@@ -365,5 +365,23 @@
             "th": "."
             }
         }
+    },
+    "main_page": {
+        "notifications": {
+            "interpretation_success": "Interpretation des Roboters {{name}} erfolgreich",
+            "interpretation_failed": "Interpretation des Roboters {{name}} fehlgeschlagen",
+            "run_started": "Roboter wird ausgeführt: {{name}}",
+            "run_start_failed": "Fehler beim Ausführen des Roboters: {{name}}",
+            "schedule_success": "Roboter {{name}} erfolgreich geplant",
+            "schedule_failed": "Planen des Roboters {{name}} fehlgeschlagen",
+            "abort_success": "Interpretation des Roboters {{name}} erfolgreich abgebrochen",
+            "abort_failed": "Abbrechen der Interpretation des Roboters {{name}} fehlgeschlagen"
+        },
+        "menu": {
+            "recordings": "Roboter",
+            "runs": "Ausführungen",
+            "proxy": "Proxy",
+            "apikey": "API-Schlüssel"
+        }
     }
 }
