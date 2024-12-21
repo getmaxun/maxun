@@ -288,5 +288,27 @@
       "select_sheet": "选择Google Sheet",
       "selected_sheet": "已选择表格: {{name}} (ID: {{id}})"
     }
+  },
+  "robot_duplication": {
+    "title": "复制机器人",
+    "descriptions": {
+      "purpose": "机器人复制功能用于从具有相同结构的页面提取数据。",
+      "example": "示例：如果您已经为{{url1}}创建了机器人，您可以复制它来抓取类似的页面（如{{url2}}），而无需从头开始训练机器人。",
+      "warning": "⚠️ 确保新页面与原始页面具有相同的结构。"
+    },
+    "fields": {
+      "target_url": "机器人目标URL"
+    },
+    "buttons": {
+      "duplicate": "复制机器人",
+      "cancel": "取消"
+    },
+    "notifications": {
+      "robot_not_found": "找不到机器人详细信息。请重试。",
+      "url_required": "需要目标URL。",
+      "duplicate_success": "机器人复制成功。",
+      "duplicate_error": "更新目标URL失败。请重试。",
+      "unknown_error": "更新目标URL时发生错误。"
+    }
   }
 }
