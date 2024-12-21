@@ -288,5 +288,27 @@
             "select_sheet": "Google Sheetを選択",
             "selected_sheet": "選択したシート: {{name}} (ID: {{id}})"
         }
+    },
+    "robot_duplication": {
+        "title": "ロボットを複製",
+        "descriptions": {
+            "purpose": "ロボットの複製は、同じ構造のページからデータを抽出する際に便利です。",
+            "example": "例：{{url1}}用のロボットを作成した場合、ロボットを一から作り直すことなく、{{url2}}のような類似のページをスクレイピングするために複製できます。",
+            "warning": "⚠️ 新しいページが元のページと同じ構造であることを確認してください。"
+        },
+        "fields": {
+            "target_url": "ロボットのターゲットURL"
+        },
+        "buttons": {
+            "duplicate": "ロボットを複製",
+            "cancel": "キャンセル"
+        },
+        "notifications": {
+            "robot_not_found": "ロボットの詳細が見つかりません。もう一度お試しください。",
+            "url_required": "ターゲットURLが必要です。",
+            "duplicate_success": "ロボットが正常に複製されました。",
+            "duplicate_error": "ターゲットURLの更新に失敗しました。もう一度お試しください。",
+            "unknown_error": "ターゲットURLの更新中にエラーが発生しました。"
+        }
     }
 }
