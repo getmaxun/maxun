@@ -220,5 +220,23 @@
         "notifications": {
             "terminated": "Aktuelle Aufnahme wurde beendet"
         }
+    },
+    "interpretation_log": {
+        "titles": {
+            "output_preview": "Vorschau der Ausgabedaten",
+            "screenshot": "Bildschirmfoto"
+        },
+        "messages": {
+            "additional_rows": "Weitere Datenzeilen werden nach Abschluss der Aufnahme extrahiert.",
+            "successful_training": "Sie haben den Roboter erfolgreich für Aktionen trainiert! Klicken Sie auf die Schaltfläche unten, um eine Vorschau der Daten zu erhalten, die Ihr Roboter extrahieren wird.",
+            "no_selection": "Sie haben noch nichts zur Extraktion ausgewählt. Sobald Sie dies tun, wird der Roboter hier eine Vorschau Ihrer Auswahl anzeigen."
+        },
+        "data_sections": {
+            "binary_received": "---------- Binäre Ausgabedaten empfangen ----------",
+            "serializable_received": "---------- Serialisierbare Ausgabedaten empfangen ----------",
+            "mimetype": "Medientyp: ",
+            "image_below": "Bild wird unten angezeigt:",
+            "separator": "--------------------------------------------------"
+        }
     }
 }
