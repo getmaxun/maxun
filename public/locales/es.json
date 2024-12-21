@@ -242,25 +242,51 @@
   },
   "interpretation_buttons": {
     "buttons": {
-        "preview": "Obtener Vista Previa de Datos de Salida",
-        "yes": "Sí",
-        "no": "No"
+      "preview": "Obtener Vista Previa de Datos de Salida",
+      "yes": "Sí",
+      "no": "No"
     },
     "messages": {
-        "extracting": "Extrayendo datos...espere de 10 segundos a 1 minuto",
-        "restart_required": "Por favor, reinicie la interpretación después de actualizar la grabación",
-        "run_finished": "Ejecución finalizada",
-        "run_failed": "Error al iniciar la ejecución"
+      "extracting": "Extrayendo datos...espere de 10 segundos a 1 minuto",
+      "restart_required": "Por favor, reinicie la interpretación después de actualizar la grabación",
+      "run_finished": "Ejecución finalizada",
+      "run_failed": "Error al iniciar la ejecución"
     },
     "modal": {
-        "use_previous": "¿Desea usar su selección anterior como condición para realizar esta acción?",
-        "previous_action": "Su acción anterior fue: ",
-        "element_text": "en un elemento con texto "
+      "use_previous": "¿Desea usar su selección anterior como condición para realizar esta acción?",
+      "previous_action": "Su acción anterior fue: ",
+      "element_text": "en un elemento con texto "
     }
   },
   "recording_page": {
     "loader": {
       "browser_startup": "Iniciando el navegador...Navegando a {{url}}"
+    }
+  },
+  "integration_settings": {
+    "title": "Integrar con Google Sheet",
+    "descriptions": {
+      "sync_info": "Si habilitas esta opción, cada vez que este robot ejecute una tarea exitosamente, sus datos capturados se añadirán a tu Google Sheet.",
+      "authenticated_as": "Autenticado como: {{email}}"
+    },
+    "alerts": {
+      "success": {
+        "title": "Google Sheet integrado exitosamente.",
+        "content": "Cada vez que este robot crea una ejecución exitosa, sus datos capturados se añaden a tu Google Sheet {{sheetName}}. Puedes verificar las actualizaciones de datos",
+        "here": "aquí",
+        "note": "Nota:",
+        "sync_limitation": "Los datos extraídos antes de la integración con Google Sheets no se sincronizarán en el Google Sheet. Solo se sincronizarán los datos extraídos después de la integración."
+      }
+    },
+    "buttons": {
+      "authenticate": "Autenticar con Google",
+      "fetch_sheets": "Obtener Google Sheets",
+      "remove_integration": "Eliminar integración",
+      "submit": "Enviar"
+    },
+    "fields": {
+      "select_sheet": "Seleccionar Google Sheet",
+      "selected_sheet": "Hoja seleccionada: {{name}} (ID: {{id}})"
     }
   }
 }
