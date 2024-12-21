@@ -384,5 +384,27 @@
             "proxy": "プロキシ",
             "apikey": "APIキー"
         }
+    },
+    "browser_window": {
+        "attribute_modal": {
+            "title": "属性を選択",
+            "notifications": {
+                "list_select_success": "リストが正常に選択されました。抽出するテキストデータを選択してください。",
+                "pagination_select_success": "ページネーション要素が正常に選択されました。"
+            }
+        },
+        "attribute_options": {
+            "anchor": {
+                "text": "テキスト: {{text}}",
+                "url": "URL: {{url}}"
+            },
+            "image": {
+                "alt_text": "代替テキスト: {{altText}}",
+                "image_url": "画像URL: {{imageUrl}}"
+            },
+            "default": {
+                "text": "テキスト: {{text}}"
+            }
+        }
     }
 }
