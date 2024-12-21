@@ -57,7 +57,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const [hoverStates, setHoverStates] = useState<{ [id: string]: boolean }>({});
   const [browserStepIdList, setBrowserStepIdList] = useState<number[]>([]);
 
-  const { lastAction, notify, currentWorkflowActionsState, setCurrentWorkflowActionsState } = useGlobalInfoStore();
+  const { lastAction, notify, currentWorkflowActionsState, setCurrentWorkflowActionsState, resetInterpretationLog } = useGlobalInfoStore();
   const { getText, startGetText, stopGetText, getScreenshot, startGetScreenshot, stopGetScreenshot, getList, startGetList, stopGetList, startPaginationMode, stopPaginationMode, paginationType, updatePaginationType, limitType, customLimit, updateLimitType, updateCustomLimit, stopLimitMode, startLimitMode, captureStage, setCaptureStage } = useActionContext();
   const { browserSteps, updateBrowserTextStepLabel, deleteBrowserStep, addScreenshotStep, updateListTextFieldLabel, removeListTextField } = useBrowserSteps();
   const { id, socket } = useSocketStore();
@@ -225,8 +225,9 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     if (hasTextSteps) {
       socket?.emit('action', { action: 'scrapeSchema', settings });
     }
+    resetInterpretationLog();
     onFinishCapture();
-  }, [stopGetText, getTextSettingsObject, socket, browserSteps, confirmedTextSteps]);
+  }, [stopGetText, getTextSettingsObject, socket, browserSteps, confirmedTextSteps, resetInterpretationLog]);
 
   const getListSettingsObject = useCallback(() => {
     let settings: {
