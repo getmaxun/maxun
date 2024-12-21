@@ -241,5 +241,23 @@
         "image_below": "Image is rendered below:",
         "separator": "--------------------------------------------------"
       }
+    },
+    "interpretation_buttons": {
+      "buttons": {
+        "preview": "Get Preview of Output Data",
+        "yes": "Yes",
+        "no": "No"
+      },
+      "messages": {
+        "extracting": "Extracting data...please wait for 10secs to 1min",
+        "restart_required": "Please restart the interpretation after updating the recording",
+        "run_finished": "Run finished",
+        "run_failed": "Run failed to start"
+      },
+      "modal": {
+        "use_previous": "Do you want to use your previous selection as a condition for performing this action?",
+        "previous_action": "Your previous action was: ",
+        "element_text": "on an element with text "
+      }
     }
   } 
