@@ -36,7 +36,7 @@ interface Column {
   format?: (value: string) => string;
 }
 
-interface Data {
+export interface Data {
   id: number;
   status: string;
   name: string;
