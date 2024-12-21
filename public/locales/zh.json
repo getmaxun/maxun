@@ -239,5 +239,23 @@
       "image_below": "图片显示如下：",
       "separator": "--------------------------------------------------"
     }
+  },
+  "interpretation_buttons": {
+    "buttons": {
+      "preview": "获取输出数据预览",
+      "yes": "是",
+      "no": "否"
+    },
+    "messages": {
+      "extracting": "正在提取数据...请等待10秒到1分钟",
+      "restart_required": "更新录制后请重新启动解释",
+      "run_finished": "运行完成",
+      "run_failed": "运行启动失败"
+    },
+    "modal": {
+      "use_previous": "您要将之前的选择用作执行此操作的条件吗？",
+      "previous_action": "您之前的操作是：",
+      "element_text": "在文本元素上 "
+    }
   }
 }
