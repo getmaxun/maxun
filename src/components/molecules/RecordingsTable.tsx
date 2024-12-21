@@ -261,14 +261,14 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
 
                                     checkRunsForRecording(row.id).then((result: boolean) => {
                                       if (result) {
-                                        notify('warning', 'Cannot delete robot as it has associated runs');
+                                        notify('warning', t('recordingtable.notifications.delete_warning'));
                                       }
                                     })
 
                                     deleteRecordingFromStorage(row.id).then((result: boolean) => {
                                       if (result) {
                                         setRows([]);
-                                        notify('success', 'Robot deleted successfully');
+                                        notify('success', t('recordingtable.notifications.delete_success'));
                                         fetchRecordings();
                                       }
                                     })
