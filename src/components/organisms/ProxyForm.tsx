@@ -84,10 +84,10 @@ const ProxyForm: React.FC = () => {
                 notify('success', t('proxy.notifications.config_success'));
             } else {
                 notify('error', t('proxy.notifications.config_error'));
-                console.log(`Failed to submit proxy configuration. Try again. ${response}`)
+                console.log(`${t('proxy.notifications.config_error')} ${response}`)
             }
         } catch (error: any) {
-            notify('error', `${error} : Failed to submit proxy configuration`);
+            notify('error', `${error} : ${t('proxy.notifications.config_error')}`);
         }
     };
 
