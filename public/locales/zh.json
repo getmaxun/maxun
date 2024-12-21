@@ -341,5 +341,30 @@
       "update_failed": "无法更新机器人。请重试。",
       "update_error": "更新机器人时发生错误。"
     }
+  },
+  "schedule_settings": {
+    "title": "计划设置",
+    "run_every": "每次运行",
+    "start_from": "开始于",
+    "on_day": "在日",
+    "at_around": "大约在",
+    "timezone": "时区",
+    "buttons": {
+      "delete_schedule": "删除计划",
+      "save_schedule": "保存计划",
+      "cancel": "取消"
+    },
+    "labels": {
+      "in_between": "之间",
+      "run_once_every": "每次运行",
+      "start_from_label": "开始于",
+      "on_day_of_month": "月份日期",
+      "on_day": {
+        "st": "日",
+        "nd": "日",
+        "rd": "日",
+        "th": "日"
+      }
+    }
   }
 }
