@@ -79,8 +79,9 @@ export const IntegrationSettingsModal = ({
       );
       notify(
         "error",
-        `Error fetching spreadsheet files: ${error.response?.data?.message || error.message
-        }`
+        t('integration_settings.errors.fetch_error', {
+          message: error.response?.data?.message || error.message
+        })
       );
     }
   };
