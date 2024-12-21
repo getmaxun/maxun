@@ -354,6 +354,14 @@ export const NavBar: React.FC<NavBarProps> = ({
                 >
                   中文
                 </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    changeLanguage("de");
+                    handleMenuClose();
+                  }}
+                >
+                  Deutsch
+                </MenuItem>
               </Menu>
             </div>
           ) : (
@@ -413,6 +421,14 @@ export const NavBar: React.FC<NavBarProps> = ({
                   }}
                 >
                   中文
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    changeLanguage("de");
+                    handleMenuClose();
+                  }}
+                >
+                  Deutsch
                 </MenuItem>
               </Menu></>
           )}
