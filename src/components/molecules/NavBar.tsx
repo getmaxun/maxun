@@ -105,7 +105,7 @@ export const NavBar: React.FC<NavBarProps> = ({
   const goToMainMenu = async () => {
     if (browserId) {
       await stopRecording(browserId);
-      notify("warning", "Current Recording was terminated");
+      notify("warning", t('browser_recording.notifications.terminated'));
       setBrowserId(null);
     }
     navigate("/");
