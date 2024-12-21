@@ -351,5 +351,30 @@
         "update_failed": "Failed to update the robot. Please try again.",
         "update_error": "An error occurred while updating the robot."
       }
+    },
+    "schedule_settings": {
+      "title": "Schedule Settings",
+      "run_every": "Run every",
+      "start_from": "Start From",
+      "on_day": "On day",
+      "at_around": "At around",
+      "timezone": "Timezone",
+      "buttons": {
+        "delete_schedule": "Delete Schedule",
+        "save_schedule": "Save Schedule",
+        "cancel": "Cancel"
+      },
+      "labels": {
+        "in_between": "In Between",
+        "run_once_every": "Run once every",
+        "start_from_label": "Start From",
+        "on_day_of_month": "On Day of the Month",
+        "on_day": {
+          "st": "st",
+          "nd": "nd",
+          "rd": "rd",
+          "th": "th"
+        }
+      }
     }
   } 
