@@ -329,5 +329,17 @@
     "errors": {
       "robot_not_found": "无法找到机器人详细信息。请重试。"
     }
+  },
+  "robot_edit": {
+    "title": "编辑机器人",
+    "change_name": "更改机器人名称",
+    "robot_limit": "机器人限制",
+    "save": "保存更改",
+    "cancel": "取消",
+    "notifications": {
+      "update_success": "机器人更新成功。",
+      "update_failed": "无法更新机器人。请重试。",
+      "update_error": "更新机器人时发生错误。"
+    }
   }
 }
