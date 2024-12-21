@@ -406,5 +406,29 @@
         "text": "Texto: {{text}}"
       }
     }
+  },
+  "runs_table": {
+    "run_type_chips": {
+      "manual_run": "Ejecución Manual",
+      "scheduled_run": "Ejecución Programada",
+      "api": "API",
+      "unknown_run_type": "Tipo de Ejecución Desconocido"
+    },
+    "run_status_chips": {
+      "success": "Éxito",
+      "running": "Ejecutando",
+      "scheduled": "Programado",
+      "failed": "Fallido"
+    },
+    "run_settings_modal": {
+      "title": "Configuración de Ejecución",
+      "labels": {
+        "run_id": "ID de Ejecución",
+        "run_by_user": "Ejecutado por Usuario",
+        "run_by_schedule": "Ejecutado por ID de Programación",
+        "run_by_api": "Ejecutado por API",
+        "run_type": "Tipo de Ejecución"
+      }
+    }
   }
 }
