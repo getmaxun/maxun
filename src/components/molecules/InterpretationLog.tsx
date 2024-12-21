@@ -35,7 +35,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
   const { width } = useBrowserDimensionsStore();
   const { socket } = useSocketStore();
-  const { currentWorkflowActionsState, notify } = useGlobalInfoStore();
+  const { currentWorkflowActionsState, shouldResetInterpretationLog, notify } = useGlobalInfoStore();
 
   const toggleDrawer = (newOpen: boolean) => (event: React.KeyboardEvent | React.MouseEvent) => {
     if (
@@ -94,12 +94,13 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     setCustomValue(event.target.value);
   };
 
-  const handleReset = () => {
-    setLog('');
-    setTableData([]);
-    setBinaryData(null);
-    notify("success", t('interpretation_log.notifications.reset_success'));
-  };
+  useEffect(() => {
+    if (shouldResetInterpretationLog) {
+      setLog('');
+      setTableData([]);
+      setBinaryData(null);
+    }
+  }, [shouldResetInterpretationLog]);
 
   useEffect(() => {
     socket?.on('log', handleLog);
