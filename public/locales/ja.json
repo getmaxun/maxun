@@ -56,7 +56,11 @@
         "finishedAt": "終了日時",
         "delete": "削除",
         "settings": "設定",
-        "search": "実行を検索..."
+        "search": "実行を検索...",
+        "notifications": {
+            "no_runs": "実行が見つかりません。もう一度お試しください。",
+            "delete_success": "実行が正常に削除されました"
+        }
   },
   "proxy": {
         "title": "プロキシ設定",
