@@ -406,5 +406,29 @@
         "text": "文本: {{text}}"
       }
     }
+  },
+  "runs_table": {
+    "run_type_chips": {
+      "manual_run": "手动运行",
+      "scheduled_run": "计划运行",
+      "api": "API",
+      "unknown_run_type": "未知运行类型"
+    },
+    "run_status_chips": {
+      "success": "成功",
+      "running": "运行中",
+      "scheduled": "已计划",
+      "failed": "失败"
+    },
+    "run_settings_modal": {
+      "title": "运行设置",
+      "labels": {
+        "run_id": "运行ID",
+        "run_by_user": "由用户运行",
+        "run_by_schedule": "按计划ID运行",
+        "run_by_api": "由API运行",
+        "run_type": "运行类型"
+      }
+    }
   }
 }
