@@ -405,5 +405,29 @@
                 "text": "Text: {{text}}"
             }
         }
+    },
+    "runs_table": {
+        "run_type_chips": {
+            "manual_run": "Manuelle Ausführung",
+            "scheduled_run": "Geplante Ausführung",
+            "api": "API",
+            "unknown_run_type": "Unbekannter Ausführungstyp"
+        },
+        "run_status_chips": {
+            "success": "Erfolg",
+            "running": "Läuft",
+            "scheduled": "Geplant",
+            "failed": "Fehlgeschlagen"
+        },
+        "run_settings_modal": {
+            "title": "Ausführungseinstellungen",
+            "labels": {
+                "run_id": "Ausführungs-ID",
+                "run_by_user": "Ausgeführt von Benutzer",
+                "run_by_schedule": "Ausgeführt nach Zeitplan-ID",
+                "run_by_api": "Ausgeführt durch API",
+                "run_type": "Ausführungstyp"
+            }
+        }
     }
 }
