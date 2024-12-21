@@ -297,141 +297,141 @@ export const NavBar: React.FC<NavBarProps> = ({
                   <SaveRecording fileName={recordingName} />
                 </>
               )}
-            <IconButton
-            onClick={handleLangMenuOpen}
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              borderRadius: "5px",
-              padding: "8px",
-              marginRight: "10px",
-            }}
-          >
-            <Typography variant="body1">{t("language")}</Typography>
-          </IconButton>
-          <Menu
-            anchorEl={langAnchorEl}
-            open={Boolean(langAnchorEl)}
-            onClose={handleMenuClose}
-            anchorOrigin={{
-              vertical: "bottom",
-              horizontal: "right",
-            }}
-            transformOrigin={{
-              vertical: "top",
-              horizontal: "right",
-            }}
-          >
-            <MenuItem
-              onClick={() => {
-                changeLanguage("en");
-                handleMenuClose();
+              <IconButton
+                onClick={handleLangMenuOpen}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  borderRadius: "5px",
+                  padding: "8px",
+                  marginRight: "10px",
+                }}
+              >
+                <Typography variant="body1">{t("language")}</Typography>
+              </IconButton>
+              <Menu
+                anchorEl={langAnchorEl}
+                open={Boolean(langAnchorEl)}
+                onClose={handleMenuClose}
+                anchorOrigin={{
+                  vertical: "bottom",
+                  horizontal: "right",
+                }}
+                transformOrigin={{
+                  vertical: "top",
+                  horizontal: "right",
+                }}
+              >
+                <MenuItem
+                  onClick={() => {
+                    changeLanguage("en");
+                    handleMenuClose();
+                  }}
+                >
+                  English
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    changeLanguage("es");
+                    handleMenuClose();
+                  }}
+                >
+                  Español
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    changeLanguage("ja");
+                    handleMenuClose();
+                  }}
+                >
+                  日本語
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    changeLanguage("ar");
+                    handleMenuClose();
+                  }}
+                >
+                  العربية
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    changeLanguage("zh");
+                    handleMenuClose();
+                  }}
+                >
+                  中文
+                </MenuItem>
+              </Menu>
+            </div>
+          ) : (
+            <><IconButton
+              onClick={handleLangMenuOpen}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                borderRadius: "5px",
+                padding: "8px",
+                marginRight: "10px",
               }}
             >
-              English
-            </MenuItem>
-            <MenuItem
-              onClick={() => {
-                changeLanguage("es");
-                handleMenuClose();
-              }}
-            >
-              Español
-            </MenuItem>
-            <MenuItem
-              onClick={() => {
-                changeLanguage("ja");
-                handleMenuClose();
-              }}
-            >
-              日本語
-            </MenuItem>
-            <MenuItem
-              onClick={() => {
-                changeLanguage("ar");
-                handleMenuClose();
-              }}
-            >
-              العربية
-            </MenuItem>
-            <MenuItem
-              onClick={() => {
-                changeLanguage("zh");
-                handleMenuClose();
-              }}
-            >
-              中文
-            </MenuItem>
-          </Menu>
-        </div>
-      ) : (
-       <><IconButton
-       onClick={handleLangMenuOpen}
-       sx={{
-         display: "flex",
-         alignItems: "center",
-         borderRadius: "5px",
-         padding: "8px",
-         marginRight: "10px",
-       }}
-     >
-       <Typography variant="body1">{t("language")}</Typography>
-     </IconButton>
-     <Menu
-       anchorEl={langAnchorEl}
-       open={Boolean(langAnchorEl)}
-       onClose={handleMenuClose}
-       anchorOrigin={{
-         vertical: "bottom",
-         horizontal: "right",
-       }}
-       transformOrigin={{
-         vertical: "top",
-         horizontal: "right",
-       }}
-     >
-       <MenuItem
-         onClick={() => {
-           changeLanguage("en");
-           handleMenuClose();
-         }}
-       >
-         English
-       </MenuItem>
-       <MenuItem
-         onClick={() => {
-           changeLanguage("es");
-           handleMenuClose();
-         }}
-       >
-         Español
-       </MenuItem>
-       <MenuItem
-         onClick={() => {
-           changeLanguage("ja");
-           handleMenuClose();
-         }}
-       >
-         日本語
-       </MenuItem>
-       <MenuItem
-         onClick={() => {
-           changeLanguage("ar");
-           handleMenuClose();
-         }}
-       >
-         العربية
-       </MenuItem>
-       <MenuItem
-         onClick={() => {
-           changeLanguage("zh");
-           handleMenuClose();
-         }}
-       >
-         中文
-       </MenuItem>
-     </Menu></>
-      )}
+              <Typography variant="body1">{t("language")}</Typography>
+            </IconButton>
+              <Menu
+                anchorEl={langAnchorEl}
+                open={Boolean(langAnchorEl)}
+                onClose={handleMenuClose}
+                anchorOrigin={{
+                  vertical: "bottom",
+                  horizontal: "right",
+                }}
+                transformOrigin={{
+                  vertical: "top",
+                  horizontal: "right",
+                }}
+              >
+                <MenuItem
+                  onClick={() => {
+                    changeLanguage("en");
+                    handleMenuClose();
+                  }}
+                >
+                  English
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    changeLanguage("es");
+                    handleMenuClose();
+                  }}
+                >
+                  Español
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    changeLanguage("ja");
+                    handleMenuClose();
+                  }}
+                >
+                  日本語
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    changeLanguage("ar");
+                    handleMenuClose();
+                  }}
+                >
+                  العربية
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    changeLanguage("zh");
+                    handleMenuClose();
+                  }}
+                >
+                  中文
+                </MenuItem>
+              </Menu></>
+          )}
       </NavBarWrapper>
     </>
   );
