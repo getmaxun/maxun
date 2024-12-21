@@ -415,5 +415,29 @@
           "text": "テキスト: {{text}}"
         }
       }
+    },
+    "runs_table": {
+      "run_type_chips": {
+        "manual_run": "Manual Run",
+        "scheduled_run": "Scheduled Run", 
+        "api": "API",
+        "unknown_run_type": "Unknown Run Type"
+      },
+      "run_status_chips": {
+        "success": "Success",
+        "running": "Running",
+        "scheduled": "Scheduled",
+        "failed": "Failed"
+      },
+      "run_settings_modal": {
+        "title": "Run Settings",
+        "labels": {
+          "run_id": "Run ID",
+          "run_by_user": "Run by User",
+          "run_by_schedule": "Run by Schedule ID",
+          "run_by_api": "Run by API",
+          "run_type": "Run Type"
+        }
+      }
     }
-  } 
+} 
