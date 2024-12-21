@@ -429,5 +429,25 @@
                 "run_type": "Ausführungstyp"
             }
         }
+    },
+    "run_content": {
+        "tabs": {
+            "output_data": "Ausgabedaten",
+            "log": "Protokoll"
+        },
+        "empty_output": "Die Ausgabe ist leer.",
+        "captured_data": {
+            "title": "Erfasste Daten",
+            "download_json": "Als JSON herunterladen",
+            "download_csv": "Als CSV herunterladen"
+        },
+        "captured_screenshot": {
+            "title": "Erfasster Screenshot",
+            "download": "Screenshot herunterladen",
+            "render_failed": "Das Bild konnte nicht gerendert werden"
+        },
+        "buttons": {
+            "stop": "Stoppen"
+        }
     }
 }
