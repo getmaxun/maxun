@@ -257,5 +257,10 @@
         "previous_action": "Su acción anterior fue: ",
         "element_text": "en un elemento con texto "
     }
+  },
+  "recording_page": {
+    "loader": {
+      "browser_startup": "Iniciando el navegador...Navegando a {{url}}"
+    }
   }
 }
