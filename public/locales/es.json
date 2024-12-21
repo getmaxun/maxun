@@ -1,0 +1,487 @@
+{
+  "login": {
+    "title": "¡Bienvenido de nuevo!",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "button": "Iniciar sesión",
+    "loading": "Cargando",
+    "register_prompt": "¿No tienes una cuenta?",
+    "register_link": "Registrarse",
+    "welcome_notification": "¡Bienvenido a Maxun!",
+    "error_notification": "Error al iniciar sesión. Por favor, inténtalo de nuevo."
+  },
+  "register": {
+    "title": "Crear cuenta",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "button": "Registrarse",
+    "loading": "Cargando",
+    "register_prompt": "¿Ya tienes una cuenta?",
+    "login_link": "Iniciar sesión",
+    "welcome_notification": "¡Bienvenido a Maxun!",
+    "error_notification": "Error en el registro. Por favor, inténtalo de nuevo."
+  },
+  "recordingtable": {
+    "run": "Ejecutar",
+    "name": "Nombre",
+    "schedule": "Programar",
+    "integrate": "Integrar",
+    "settings": "Ajustes",
+    "options": "Opciones",
+    "heading": "Mis Robots",
+    "new": "Crear Robot",
+    "modal": {
+      "title": "Ingresa la URL",
+      "label": "URL",
+      "button": "Comenzar grabación"
+    },
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "duplicate": "Duplicar",
+    "search": "Buscar robots...",
+    "notifications": {
+      "delete_warning": "No se puede eliminar el robot ya que tiene ejecuciones asociadas",
+      "delete_success": "Robot eliminado exitosamente"
+    }
+  },
+  "mainmenu": {
+    "recordings": "Robots",
+    "runs": "Ejecuciones",
+    "proxy": "Proxy",
+    "apikey": "Clave API",
+    "feedback": "Unirse a Maxun Cloud",
+    "apidocs": "Sitio Web a API"
+  },
+  "runstable": {
+    "runs": "Todas las ejecuciones",
+    "runStatus": "Estado",
+    "runName": "Nombre",
+    "startedAt": "Iniciado el",
+    "finishedAt": "Finalizado el",
+    "delete": "Eliminar",
+    "settings": "Ajustes",
+    "search": "Buscar ejecuciones...",
+    "notifications": {
+      "no_runs": "No se encontraron ejecuciones. Por favor, inténtelo de nuevo.",
+      "delete_success": "Ejecución eliminada con éxito"
+    }
+  },
+  "proxy": {
+    "title": "Configuración del Proxy",
+    "tab_standard": "Proxy Estándar",
+    "tab_rotation": "Rotación Automática de Proxy",
+    "server_url": "URL del Servidor Proxy",
+    "server_url_helper": "Proxy para usar en todos los robots. Se admiten proxies HTTP y SOCKS. Ejemplo http://myproxy.com:3128 o socks5://myproxy.com:3128. La forma corta myproxy.com:3128 se considera un proxy HTTP.",
+    "requires_auth": "¿Requiere Autenticación?",
+    "username": "Usuario",
+    "password": "Contraseña",
+    "add_proxy": "Agregar Proxy",
+    "test_proxy": "Probar Proxy",
+    "remove_proxy": "Eliminar Proxy",
+    "table": {
+      "proxy_url": "URL del Proxy",
+      "requires_auth": "Requiere Autenticación"
+    },
+    "coming_soon": "Próximamente - En Open Source (Rotación Básica) y Cloud (Rotación Avanzada). Si no desea administrar la infraestructura, únase a nuestra lista de espera en la nube para obtener acceso anticipado.",
+    "join_waitlist": "Unirse a la Lista de Espera de Maxun Cloud",
+    "alert": {
+      "title": "Si su proxy requiere un nombre de usuario y contraseña, proporcione siempre estos datos por separado de la URL del proxy.",
+      "right_way": "La forma correcta",
+      "wrong_way": "La forma incorrecta",
+      "proxy_url": "URL del Proxy:",
+      "username": "Usuario:",
+      "password": "Contraseña:"
+    },
+    "notifications": {
+      "config_success": "Configuración del proxy enviada con éxito",
+      "config_error": "Error al enviar la configuración del proxy. Inténtelo de nuevo.",
+      "test_success": "La configuración del proxy funciona correctamente",
+      "test_error": "Error al probar la configuración del proxy. Inténtelo de nuevo.",
+      "fetch_success": "Configuración del proxy recuperada con éxito",
+      "remove_success": "Configuración del proxy eliminada con éxito",
+      "remove_error": "Error al eliminar la configuración del proxy. Inténtelo de nuevo."
+    }
+  },
+  "apikey": {
+    "title": "Gestionar tu Clave API",
+    "default_name": "Clave API de Maxun",
+    "table": {
+      "name": "Nombre de la Clave API",
+      "key": "Clave API",
+      "actions": "Acciones"
+    },
+    "actions": {
+      "copy": "Copiar",
+      "show": "Mostrar",
+      "hide": "Ocultar",
+      "delete": "Eliminar"
+    },
+    "no_key_message": "Aún no has generado una clave API.",
+    "generate_button": "Generar Clave API",
+    "notifications": {
+      "fetch_error": "Error al obtener la clave API - ${error}",
+      "generate_success": "Clave API generada con éxito",
+      "generate_error": "Error al generar la clave API - ${error}",
+      "delete_success": "Clave API eliminada con éxito",
+      "delete_error": "Error al eliminar la clave API - ${error}",
+      "copy_success": "Clave API copiada con éxito"
+    }
+  },
+  "action_description": {
+    "text": {
+      "title": "Capturar Texto",
+      "description": "Pase el cursor sobre los textos que desea extraer y haga clic para seleccionarlos"
+    },
+    "screenshot": {
+      "title": "Capturar Pantalla",
+      "description": "Capture una captura de pantalla parcial o completa de la página actual."
+    },
+    "list": {
+      "title": "Capturar Lista",
+      "description": "Pase el cursor sobre la lista que desea extraer. Una vez seleccionada, puede pasar el cursor sobre todos los textos dentro de la lista seleccionada. Haga clic para seleccionarlos."
+    },
+    "default": {
+      "title": "¿Qué datos desea extraer?",
+      "description": "Un robot está diseñado para realizar una acción a la vez. Puede elegir cualquiera de las siguientes opciones."
+    },
+    "list_stages": {
+      "initial": "Seleccione la lista que desea extraer junto con los textos que contiene",
+      "pagination": "Seleccione cómo puede el robot capturar el resto de la lista",
+      "limit": "Elija el número de elementos a extraer",
+      "complete": "Captura completada"
+    }
+  },
+  "right_panel": {
+    "buttons": {
+      "capture_list": "Capturar Lista",
+      "capture_text": "Capturar Texto",
+      "capture_screenshot": "Capturar Pantalla",
+      "confirm": "Confirmar",
+      "discard": "Descartar",
+      "confirm_capture": "Confirmar Captura",
+      "confirm_pagination": "Confirmar Paginación",
+      "confirm_limit": "Confirmar Límite",
+      "finish_capture": "Finalizar Captura",
+      "finish": "Finalizar",
+      "cancel": "Cancelar"
+    },
+    "screenshot": {
+      "capture_fullpage": "Capturar Página Completa",
+      "capture_visible": "Capturar Parte Visible",
+      "display_fullpage": "Capturar Screenshot de Página Completa",
+      "display_visible": "Capturar Screenshot de Parte Visible"
+    },
+    "pagination": {
+      "title": "¿Cómo podemos encontrar el siguiente elemento de la lista en la página?",
+      "click_next": "Hacer clic en siguiente para navegar a la siguiente página",
+      "click_load_more": "Hacer clic en cargar más para cargar más elementos",
+      "scroll_down": "Desplazarse hacia abajo para cargar más elementos",
+      "scroll_up": "Desplazarse hacia arriba para cargar más elementos",
+      "none": "No hay más elementos para cargar"
+    },
+    "limit": {
+      "title": "¿Cuál es el número máximo de filas que desea extraer?",
+      "custom": "Personalizado",
+      "enter_number": "Ingrese número"
+    },
+    "fields": {
+      "label": "Etiqueta",
+      "data": "Datos",
+      "field_label": "Etiqueta del Campo",
+      "field_data": "Datos del Campo"
+    },
+    "messages": {
+      "list_selected": "Lista seleccionada exitosamente"
+    },
+    "errors": {
+      "select_pagination": "Por favor seleccione un tipo de paginación.",
+      "select_pagination_element": "Por favor seleccione primero el elemento de paginación.",
+      "select_limit": "Por favor seleccione un límite o ingrese un límite personalizado.",
+      "invalid_limit": "Por favor ingrese un límite válido.",
+      "confirm_text_fields": "Por favor confirme todos los campos de texto",
+      "unable_create_settings": "No se pueden crear las configuraciones de la lista. Asegúrese de haber definido un campo para la lista.",
+      "capture_text_discarded": "Captura de texto descartada",
+      "capture_list_discarded": "Captura de lista descartada"
+    }
+  },
+  "save_recording": {
+    "title": "Guardar Robot",
+    "robot_name": "Nombre del Robot",
+    "buttons": {
+      "save": "Guardar",
+      "confirm": "Confirmar"
+    },
+    "notifications": {
+      "save_success": "Robot guardado exitosamente"
+    },
+    "errors": {
+      "user_not_logged": "Usuario no conectado. No se puede guardar la grabación.",
+      "exists_warning": "Ya existe un robot con este nombre, por favor confirme la sobrescritura del robot."
+    },
+    "tooltips": {
+      "saving": "Optimizando y guardando el flujo de trabajo"
+    }
+  },
+  "browser_recording": {
+    "modal": {
+      "confirm_discard": "¿Está seguro de que desea descartar la grabación?"
+    },
+    "notifications": {
+      "terminated": "La grabación actual fue terminada"
+    }
+  },
+  "interpretation_log": {
+    "titles": {
+      "output_preview": "Vista Previa de Datos de Salida",
+      "screenshot": "Captura de pantalla"
+    },
+    "messages": {
+      "additional_rows": "Se extraerán filas adicionales de datos una vez que termine la grabación.",
+      "successful_training": "¡Has entrenado exitosamente al robot para realizar acciones! Haz clic en el botón de abajo para obtener una vista previa de los datos que tu robot extraerá.",
+      "no_selection": "Parece que aún no has seleccionado nada para extraer. Una vez que lo hagas, el robot mostrará una vista previa de tus selecciones aquí."
+    },
+    "data_sections": {
+      "binary_received": "---------- Datos binarios de salida recibidos ----------",
+      "serializable_received": "---------- Datos serializables de salida recibidos ----------",
+      "mimetype": "tipo MIME: ",
+      "image_below": "La imagen se muestra a continuación:",
+      "separator": "--------------------------------------------------"
+    }
+  },
+  "interpretation_buttons": {
+    "buttons": {
+      "preview": "Obtener Vista Previa de Datos de Salida",
+      "yes": "Sí",
+      "no": "No"
+    },
+    "messages": {
+      "extracting": "Extrayendo datos...espere de 10 segundos a 1 minuto",
+      "restart_required": "Por favor, reinicie la interpretación después de actualizar la grabación",
+      "run_finished": "Ejecución finalizada",
+      "run_failed": "Error al iniciar la ejecución"
+    },
+    "modal": {
+      "use_previous": "¿Desea usar su selección anterior como condición para realizar esta acción?",
+      "previous_action": "Su acción anterior fue: ",
+      "element_text": "en un elemento con texto "
+    }
+  },
+  "recording_page": {
+    "loader": {
+      "browser_startup": "Iniciando el navegador...Navegando a {{url}}"
+    }
+  },
+  "integration_settings": {
+    "title": "Integrar con Google Sheet",
+    "descriptions": {
+      "sync_info": "Si habilitas esta opción, cada vez que este robot ejecute una tarea exitosamente, sus datos capturados se añadirán a tu Google Sheet.",
+      "authenticated_as": "Autenticado como: {{email}}"
+    },
+    "alerts": {
+      "success": {
+        "title": "Google Sheet integrado exitosamente.",
+        "content": "Cada vez que este robot crea una ejecución exitosa, sus datos capturados se añaden a tu Google Sheet {{sheetName}}. Puedes verificar las actualizaciones de datos",
+        "here": "aquí",
+        "note": "Nota:",
+        "sync_limitation": "Los datos extraídos antes de la integración con Google Sheets no se sincronizarán en el Google Sheet. Solo se sincronizarán los datos extraídos después de la integración."
+      }
+    },
+    "buttons": {
+      "authenticate": "Autenticar con Google",
+      "fetch_sheets": "Obtener Google Sheets",
+      "remove_integration": "Eliminar integración",
+      "submit": "Enviar"
+    },
+    "fields": {
+      "select_sheet": "Seleccionar Google Sheet",
+      "selected_sheet": "Hoja seleccionada: {{name}} (ID: {{id}})"
+    }
+  },
+  "robot_duplication": {
+    "title": "Duplicar Robot",
+    "descriptions": {
+      "purpose": "La duplicación de robots es útil para extraer datos de páginas con la misma estructura.",
+      "example": "Ejemplo: Si has creado un robot para {{url1}}, puedes duplicarlo para extraer páginas similares como {{url2}} sin tener que entrenar un robot desde cero.",
+      "warning": "⚠️ Asegúrate de que la nueva página tenga la misma estructura que la página original."
+    },
+    "fields": {
+      "target_url": "URL Destino del Robot"
+    },
+    "buttons": {
+      "duplicate": "Duplicar Robot",
+      "cancel": "Cancelar"
+    },
+    "notifications": {
+      "robot_not_found": "No se pudieron encontrar los detalles del robot. Por favor, inténtalo de nuevo.",
+      "url_required": "Se requiere la URL de destino.",
+      "duplicate_success": "Robot duplicado con éxito.",
+      "duplicate_error": "Error al actualizar la URL de destino. Por favor, inténtalo de nuevo.",
+      "unknown_error": "Ocurrió un error al actualizar la URL de destino."
+    }
+  },
+  "robot_settings": {
+    "title": "Configuración del Robot",
+    "target_url": "URL de Destino del Robot",
+    "robot_id": "ID del Robot",
+    "robot_limit": "Límite del Robot",
+    "created_by_user": "Creado por Usuario",
+    "created_at": "Fecha de Creación del Robot",
+    "errors": {
+      "robot_not_found": "No se pudieron encontrar los detalles del robot. Inténtelo de nuevo."
+    }
+  },
+  "robot_edit": {
+    "title": "Editar Robot",
+    "change_name": "Cambiar Nombre del Robot",
+    "robot_limit": "Límite del Robot",
+    "save": "Guardar Cambios",
+    "cancel": "Cancelar",
+    "notifications": {
+      "update_success": "Robot actualizado exitosamente.",
+      "update_failed": "Error al actualizar el robot. Intente de nuevo.",
+      "update_error": "Ocurrió un error al actualizar el robot."
+    }
+  },
+  "schedule_settings": {
+    "title": "Configuración de Programación",
+    "run_every": "Ejecutar cada",
+    "start_from": "Iniciar desde",
+    "on_day": "En día",
+    "at_around": "Alrededor de",
+    "timezone": "Zona horaria",
+    "buttons": {
+      "delete_schedule": "Eliminar Programación",
+      "save_schedule": "Guardar Programación",
+      "cancel": "Cancelar"
+    },
+    "labels": {
+      "in_between": "Entre",
+      "run_once_every": "Ejecutar cada",
+      "start_from_label": "Iniciar desde",
+      "on_day_of_month": "Día del mes",
+      "on_day": {
+        "st": "º",
+        "nd": "º",
+        "rd": "º",
+        "th": "º"
+      }
+    }
+  },
+  "main_page": {
+    "notifications": {
+      "interpretation_success": "Interpretación del robot {{name}} completada con éxito",
+      "interpretation_failed": "Error al interpretar el robot {{name}}",
+      "run_started": "Ejecutando robot: {{name}}",
+      "run_start_failed": "Error al ejecutar el robot: {{name}}",
+      "schedule_success": "Robot {{name}} programado exitosamente",
+      "schedule_failed": "Error al programar el robot {{name}}",
+      "abort_success": "Interpretación del robot {{name}} abortada exitosamente",
+      "abort_failed": "Error al abortar la interpretación del robot {{name}}"
+    },
+    "menu": {
+      "recordings": "Robots",
+      "runs": "Ejecuciones",
+      "proxy": "Proxy",
+      "apikey": "Clave API"
+    }
+  },
+  "browser_window": {
+    "attribute_modal": {
+      "title": "Seleccionar Atributo",
+      "notifications": {
+        "list_select_success": "Lista seleccionada correctamente. Seleccione los datos de texto para extracción.",
+        "pagination_select_success": "Elemento de paginación seleccionado correctamente."
+      }
+    },
+    "attribute_options": {
+      "anchor": {
+        "text": "Texto: {{text}}",
+        "url": "URL: {{url}}"
+      },
+      "image": {
+        "alt_text": "Texto Alt: {{altText}}",
+        "image_url": "URL de Imagen: {{imageUrl}}"
+      },
+      "default": {
+        "text": "Texto: {{text}}"
+      }
+    }
+  },
+  "runs_table": {
+    "run_type_chips": {
+      "manual_run": "Ejecución Manual",
+      "scheduled_run": "Ejecución Programada",
+      "api": "API",
+      "unknown_run_type": "Tipo de Ejecución Desconocido"
+    },
+    "run_status_chips": {
+      "success": "Éxito",
+      "running": "Ejecutando",
+      "scheduled": "Programado",
+      "failed": "Fallido"
+    },
+    "run_settings_modal": {
+      "title": "Configuración de Ejecución",
+      "labels": {
+        "run_id": "ID de Ejecución",
+        "run_by_user": "Ejecutado por Usuario",
+        "run_by_schedule": "Ejecutado por ID de Programación",
+        "run_by_api": "Ejecutado por API",
+        "run_type": "Tipo de Ejecución"
+      }
+    }
+  },
+  "run_content": {
+    "tabs": {
+      "output_data": "Datos de Salida",
+      "log": "Registro"
+    },
+    "empty_output": "La salida está vacía.",
+    "captured_data": {
+      "title": "Datos Capturados",
+      "download_json": "Descargar como JSON",
+      "download_csv": "Descargar como CSV"
+    },
+    "captured_screenshot": {
+      "title": "Captura de Pantalla",
+      "download": "Descargar Captura",
+      "render_failed": "No se pudo renderizar la imagen"
+    },
+    "buttons": {
+      "stop": "Detener"
+    }
+  },
+  "navbar": {
+    "project_name": "Maxun",
+    "upgrade": {
+      "button": "Actualizar",
+      "modal": {
+        "up_to_date": "¡Estás actualizado!",
+        "new_version_available": "Hay una nueva versión disponible: {{version}}. ¡Actualice a la última versión para correcciones de errores, mejoras y nuevas características!",
+        "view_updates": "Ver todas las actualizaciones",
+        "view_updates_link": "aquí",
+        "tabs": {
+          "manual_setup": "Actualización de Configuración Manual",
+          "docker_setup": "Actualización de Configuración Docker Compose"
+        }
+      }
+    },
+    "menu_items": {
+      "logout": "Cerrar sesión",
+      "discord": "Discord",
+      "youtube": "YouTube",
+      "twitter": "Twitter (X)",
+      "language": "Idioma"
+    },
+    "recording": {
+      "discard": "Descartar"
+    }
+  },
+  "language_menu": {
+    "en": "Inglés",
+    "es": "Español",
+    "ja": "Japonés",
+    "zh": "Chino",
+    "de": "Alemán"
+  }
+}

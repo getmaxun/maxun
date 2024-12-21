@@ -1,10 +1,11 @@
+import { useTranslation } from "react-i18next";
 import React, { useState, useContext, useEffect } from 'react';
 import axios from 'axios';
 import styled from "styled-components";
 import { stopRecording } from "../../api/recording";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { IconButton, Menu, MenuItem, Typography, Chip, Button, Modal, Tabs, Tab, Box, Snackbar } from "@mui/material";
-import { AccountCircle, Logout, Clear, YouTube, X, Update, Close } from "@mui/icons-material";
+import { AccountCircle, Logout, Clear, YouTube, X, Update, Close, Language } from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/auth';
 import { SaveRecording } from '../molecules/SaveRecording';
@@ -13,18 +14,26 @@ import { apiUrl } from '../../apiConfig';
 import MaxunLogo from "../../assets/maxunlogo.png";
 import packageJson from "../../../package.json"
 
+
 interface NavBarProps {
   recordingName: string;
   isRecording: boolean;
 }
 
-export const NavBar: React.FC<NavBarProps> = ({ recordingName, isRecording }) => {
-  const { notify, browserId, setBrowserId, recordingUrl } = useGlobalInfoStore();
+export const NavBar: React.FC<NavBarProps> = ({
+  recordingName,
+  isRecording,
+}) => {
+  const { notify, browserId, setBrowserId } = useGlobalInfoStore();
   const { state, dispatch } = useContext(AuthContext);
   const { user } = state;
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+  const [langAnchorEl, setLangAnchorEl] = useState<null | HTMLElement>(null);
+
   const currentVersion = packageJson.version;
 
   const [open, setOpen] = useState(false);
@@ -40,7 +49,7 @@ export const NavBar: React.FC<NavBarProps> = ({ recordingName, isRecording }) =>
       return version;
     } catch (error) {
       console.error("Failed to fetch latest version:", error);
-      return null; // Handle errors gracefully
+      return null;
     }
   };
 
@@ -62,33 +71,43 @@ export const NavBar: React.FC<NavBarProps> = ({ recordingName, isRecording }) =>
     setAnchorEl(event.currentTarget);
   };
 
+  const handleLangMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setLangAnchorEl(event.currentTarget);
+  };
+
   const handleMenuClose = () => {
     setAnchorEl(null);
+    setLangAnchorEl(null);
   };
 
   const logout = async () => {
-    dispatch({ type: 'LOGOUT' });
-    window.localStorage.removeItem('user');
+    dispatch({ type: "LOGOUT" });
+    window.localStorage.removeItem("user");
     const { data } = await axios.get(`${apiUrl}/auth/logout`);
-    notify('success', data.message);
-    navigate('/login');
+    notify("success", data.message);
+    navigate("/login");
   };
 
   const goToMainMenu = async () => {
     if (browserId) {
       await stopRecording(browserId);
-      notify('warning', 'Current Recording was terminated');
+      notify("warning", t('browser_recording.notifications.terminated'));
       setBrowserId(null);
     }
-    navigate('/');
+    navigate("/");
+  };
+
+  const changeLanguage = (lang: string) => {
+    i18n.changeLanguage(lang);
+    localStorage.setItem("language", lang);
   };
 
   useEffect(() => {
     const checkForUpdates = async () => {
       const latestVersion = await fetchLatestVersion();
-      setLatestVersion(latestVersion); // Set the latest version state
+      setLatestVersion(latestVersion);
       if (latestVersion && latestVersion !== currentVersion) {
-        setIsUpdateAvailable(true); // Show a notification or highlight the "Upgrade" button
+        setIsUpdateAvailable(true);
       }
     };
     checkForUpdates();
@@ -101,7 +120,7 @@ export const NavBar: React.FC<NavBarProps> = ({ recordingName, isRecording }) =>
           open={isUpdateAvailable}
           onClose={() => setIsUpdateAvailable(false)}
           message={
-            `New version ${latestVersion} available! Click "Upgrade" to update.`
+            `${t('navbar.upgrade.modal.new_version_available', { version: latestVersion })} ${t('navbar.upgrade.modal.view_updates')}`
           }
           action={
             <>
@@ -118,7 +137,7 @@ export const NavBar: React.FC<NavBarProps> = ({ recordingName, isRecording }) =>
                   borderRadius: '5px',
                 }}
               >
-                Upgrade
+                {t('navbar.upgrade.button')}
               </Button>
               <IconButton
                 size="small"
@@ -138,7 +157,6 @@ export const NavBar: React.FC<NavBarProps> = ({ recordingName, isRecording }) =>
             }
           }}
         />
-
       )}
       <NavBarWrapper>
         <div style={{
@@ -146,7 +164,7 @@ export const NavBar: React.FC<NavBarProps> = ({ recordingName, isRecording }) =>
           justifyContent: 'flex-start',
         }}>
           <img src={MaxunLogo} width={45} height={40} style={{ borderRadius: '5px', margin: '5px 0px 5px 15px' }} />
-          <div style={{ padding: '11px' }}><ProjectName>Maxun</ProjectName></div>
+          <div style={{ padding: '11px' }}><ProjectName>{t('navbar.project_name')}</ProjectName></div>
           <Chip
             label={`${currentVersion}`}
             color="primary"
@@ -165,7 +183,7 @@ export const NavBar: React.FC<NavBarProps> = ({ recordingName, isRecording }) =>
                     border: "#00000099 1px solid",
                     '&:hover': { color: '#ff00c3', border: '#ff00c3 1px solid' }
                   }}>
-                    <Update sx={{ marginRight: '5px' }} /> Upgrade Maxun
+                    <Update sx={{ marginRight: '5px' }} /> {t('navbar.upgrade.button')} Maxun
                   </Button>
                   <Modal open={open} onClose={handleUpdateClose}>
                     <Box
@@ -185,14 +203,14 @@ export const NavBar: React.FC<NavBarProps> = ({ recordingName, isRecording }) =>
                         <Typography>Checking for updates...</Typography>
                       ) : currentVersion === latestVersion ? (
                         <Typography variant="h6" textAlign="center">
-                          🎉 You're up to date!
+                          {t('navbar.upgrade.modal.up_to_date')}
                         </Typography>
                       ) : (
                         <>
                           <Typography variant="body1" textAlign="left" sx={{ marginLeft: '30px' }}>
-                            A new version is available: {latestVersion}. Upgrade to the latest version for bug fixes, enhancements and new features!
+                            {t('navbar.upgrade.modal.new_version_available', { version: latestVersion })}
                             <br />
-                            View all the new updates
+                            {t('navbar.upgrade.modal.view_updates')}
                             <a href="https://github.com/getmaxun/maxun/releases/" target="_blank" style={{ textDecoration: 'none' }}>{' '}here.</a>
                           </Typography>
                           <Tabs
@@ -201,8 +219,8 @@ export const NavBar: React.FC<NavBarProps> = ({ recordingName, isRecording }) =>
                             sx={{ marginTop: 2, marginBottom: 2 }}
                             centered
                           >
-                            <Tab label="Manual Setup Upgrade" />
-                            <Tab label="Docker Compose Setup Upgrade" />
+                            <Tab label={t('navbar.upgrade.modal.tabs.manual_setup')} />
+                            <Tab label={t('navbar.upgrade.modal.tabs.docker_setup')} />
                           </Tabs>
                           {tab === 0 && (
                             <Box sx={{ marginLeft: '30px', background: '#cfd0d1', padding: 1, borderRadius: 3 }}>
@@ -285,7 +303,7 @@ export const NavBar: React.FC<NavBarProps> = ({ recordingName, isRecording }) =>
                     PaperProps={{ sx: { width: '180px' } }}
                   >
                     <MenuItem onClick={() => { handleMenuClose(); logout(); }}>
-                      <Logout sx={{ marginRight: '5px' }} /> Logout
+                      <Logout sx={{ marginRight: '5px' }} /> {t('navbar.menu_items.logout')}
                     </MenuItem>
                     <MenuItem onClick={() => {
                       window.open('https://discord.gg/5GbPjBUkws', '_blank');
@@ -302,6 +320,63 @@ export const NavBar: React.FC<NavBarProps> = ({ recordingName, isRecording }) =>
                     }}>
                       <X sx={{ marginRight: '5px' }} /> Twiiter (X)
                     </MenuItem>
+                    <MenuItem onClick={handleLangMenuOpen}>
+                      <Language sx={{ marginRight: '5px' }} /> {t('navbar.menu_items.language')}
+                    </MenuItem>
+                    <Menu
+                      anchorEl={langAnchorEl}
+                      open={Boolean(langAnchorEl)}
+                      onClose={handleMenuClose}
+                      anchorOrigin={{
+                        vertical: "bottom",
+                        horizontal: "right",
+                      }}
+                      transformOrigin={{
+                        vertical: "top",
+                        horizontal: "right",
+                      }}
+                    >
+                      <MenuItem
+                        onClick={() => {
+                          changeLanguage("en");
+                          handleMenuClose();
+                        }}
+                      >
+                        English
+                      </MenuItem>
+                      <MenuItem
+                        onClick={() => {
+                          changeLanguage("es");
+                          handleMenuClose();
+                        }}
+                      >
+                        Español
+                      </MenuItem>
+                      <MenuItem
+                        onClick={() => {
+                          changeLanguage("ja");
+                          handleMenuClose();
+                        }}
+                      >
+                        日本語
+                      </MenuItem>
+                      <MenuItem
+                        onClick={() => {
+                          changeLanguage("zh");
+                          handleMenuClose();
+                        }}
+                      >
+                        中文
+                      </MenuItem>
+                      <MenuItem
+                        onClick={() => {
+                          changeLanguage("de");
+                          handleMenuClose();
+                        }}
+                      >
+                        Deutsch
+                      </MenuItem>
+                    </Menu>
                   </Menu>
                 </>
               ) : (
@@ -315,14 +390,80 @@ export const NavBar: React.FC<NavBarProps> = ({ recordingName, isRecording }) =>
                     '&:hover': { color: 'white', backgroundColor: 'red' }
                   }}>
                     <Clear sx={{ marginRight: '5px' }} />
-                    Discard
+                    {t('navbar.recording.discard')}
                   </IconButton>
                   <SaveRecording fileName={recordingName} />
                 </>
               )}
             </div>
-          ) : ""
-        }
+          ) : (
+            <><IconButton
+              onClick={handleLangMenuOpen}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                borderRadius: "5px",
+                padding: "8px",
+                marginRight: "10px",
+              }}
+            >
+              <Language sx={{ marginRight: '5px' }} /><Typography variant="body1">{t("Language")}</Typography>
+            </IconButton>
+              <Menu
+                anchorEl={langAnchorEl}
+                open={Boolean(langAnchorEl)}
+                onClose={handleMenuClose}
+                anchorOrigin={{
+                  vertical: "bottom",
+                  horizontal: "right",
+                }}
+                transformOrigin={{
+                  vertical: "top",
+                  horizontal: "right",
+                }}
+              >
+                <MenuItem
+                  onClick={() => {
+                    changeLanguage("en");
+                    handleMenuClose();
+                  }}
+                >
+                  English
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    changeLanguage("es");
+                    handleMenuClose();
+                  }}
+                >
+                  Español
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    changeLanguage("ja");
+                    handleMenuClose();
+                  }}
+                >
+                  日本語
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    changeLanguage("zh");
+                    handleMenuClose();
+                  }}
+                >
+                  中文
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    changeLanguage("de");
+                    handleMenuClose();
+                  }}
+                >
+                  Deutsch
+                </MenuItem>
+              </Menu></>
+          )}
       </NavBarWrapper>
     </>
   );
@@ -331,7 +472,7 @@ export const NavBar: React.FC<NavBarProps> = ({ recordingName, isRecording }) =>
 const NavBarWrapper = styled.div`
   grid-area: navbar;
   background-color: white;
-  padding:5px;
+  padding: 5px;
   display: flex;
   justify-content: space-between;
   border-bottom: 1px solid #e0e0e0;

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GenericModal } from "../atoms/GenericModal";
 import { TextField, Typography, Box, Button } from "@mui/material";
 import { modalStyle } from "./AddWhereCondModal";
@@ -54,10 +55,10 @@ interface RobotSettingsProps {
     handleStart: (settings: RobotSettings) => void;
     handleClose: () => void;
     initialSettings?: RobotSettings | null;
-    
 }
 
 export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettings }: RobotSettingsProps) => {
+    const { t } = useTranslation();
     const [robot, setRobot] = useState<RobotSettings | null>(null);
     const { recordingId, notify } = useGlobalInfoStore();
 
@@ -72,7 +73,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
             const robot = await getStoredRecording(recordingId);
             setRobot(robot);
         } else {
-            notify('error', 'Could not find robot details. Please try again.');
+            notify('error', t('robot_edit.notifications.update_failed'));
         }
     }
 
@@ -102,6 +103,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
             return { ...prev, recording: { ...prev.recording, workflow: updatedWorkflow } };
         });
     };
+
     const handleSave = async () => {
         if (!robot) return;
 
@@ -114,7 +116,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
             const success = await updateRecording(robot.recording_meta.id, payload);
 
             if (success) {
-                notify('success', 'Robot updated successfully.');
+                notify('success', t('robot_edit.notifications.update_success'));
                 handleStart(robot); // Inform parent about the updated robot
                 handleClose(); 
 
@@ -122,10 +124,10 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                     window.location.reload();
                 }, 1000);
             } else {
-                notify('error', 'Failed to update the robot. Please try again.');
+                notify('error', t('robot_edit.notifications.update_failed'));
             }
         } catch (error) {
-            notify('error', 'An error occurred while updating the robot.');
+            notify('error', t('robot_edit.notifications.update_error'));
             console.error('Error updating robot:', error);
         }
     };
@@ -137,13 +139,15 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
             modalStyle={modalStyle}
         >
             <>
-                <Typography variant="h5" style={{ marginBottom: '20px' }}>Edit Robot</Typography>
+                <Typography variant="h5" style={{ marginBottom: '20px' }}>
+                    {t('robot_edit.title')}
+                </Typography>
                 <Box style={{ display: 'flex', flexDirection: 'column' }}>
                     {
                         robot && (
                             <>
                                 <TextField
-                                    label="Change Robot Name"
+                                    label={t('robot_edit.change_name')}
                                     key="Change Robot Name"
                                     type='text'
                                     value={robot.recording_meta.name}
@@ -152,7 +156,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                                 />
                                 {robot.recording.workflow?.[0]?.what?.[0]?.args?.[0]?.limit !== undefined && (
                                     <TextField
-                                        label="Robot Limit"
+                                        label={t('robot_edit.robot_limit')}
                                         type="number"
                                         value={robot.recording.workflow[0].what[0].args[0].limit || ''}
                                         onChange={(e) =>{
@@ -168,10 +172,15 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
 
                                 <Box mt={2} display="flex" justifyContent="flex-end" onClick={handleSave}>
                                     <Button variant="contained" color="primary">
-                                        Save Changes
+                                        {t('robot_edit.save')}
                                     </Button>
-                                    <Button onClick={handleClose} color="primary" variant="outlined" style={{ marginLeft: '10px' }}>
-                                        Cancel
+                                    <Button 
+                                        onClick={handleClose} 
+                                        color="primary" 
+                                        variant="outlined" 
+                                        style={{ marginLeft: '10px' }}
+                                    >
+                                        {t('robot_edit.cancel')}
                                     </Button>
                                 </Box>
                             </>
