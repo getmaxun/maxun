@@ -259,5 +259,10 @@
         "previous_action": "Your previous action was: ",
         "element_text": "on an element with text "
       }
+    },
+    "recording_page": {
+      "loader": {
+        "browser_startup": "Spinning up a browser...Navigating to {{url}}"
+      }
     }
   } 
