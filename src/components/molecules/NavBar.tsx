@@ -348,14 +348,6 @@ export const NavBar: React.FC<NavBarProps> = ({
                 </MenuItem>
                 <MenuItem
                   onClick={() => {
-                    changeLanguage("ar");
-                    handleMenuClose();
-                  }}
-                >
-                  العربية
-                </MenuItem>
-                <MenuItem
-                  onClick={() => {
                     changeLanguage("zh");
                     handleMenuClose();
                   }}
