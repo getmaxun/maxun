@@ -366,5 +366,23 @@
             "th": "日"
             }
         }
+    },
+    "main_page": {
+        "notifications": {
+            "interpretation_success": "ロボット{{name}}の解釈に成功しました",
+            "interpretation_failed": "ロボット{{name}}の解釈に失敗しました",
+            "run_started": "ロボット{{name}}を実行中",
+            "run_start_failed": "ロボット{{name}}の実行に失敗しました",
+            "schedule_success": "ロボット{{name}}のスケジュールが正常に設定されました",
+            "schedule_failed": "ロボット{{name}}のスケジュール設定に失敗しました",
+            "abort_success": "ロボット{{name}}の解釈を中止しました",
+            "abort_failed": "ロボット{{name}}の解釈中止に失敗しました"
+        },
+        "menu": {
+            "recordings": "ロボット",
+            "runs": "実行",
+            "proxy": "プロキシ",
+            "apikey": "APIキー"
+        }
     }
 }
