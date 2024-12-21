@@ -55,7 +55,11 @@
         "finishedAt": "Beendet am",
         "delete": "Löschen",
         "settings": "Einstellungen",
-        "search": "Ausführungen suchen..."
+        "search": "Ausführungen suchen...",
+        "notifications": {
+            "no_runs": "Keine Ausführungen gefunden. Bitte versuchen Sie es erneut.",
+            "delete_success": "Ausführung erfolgreich gelöscht"
+        }
     },
     "proxy": {
         "title": "Proxy-Konfiguration",
