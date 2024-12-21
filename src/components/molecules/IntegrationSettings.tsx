@@ -15,6 +15,7 @@ import { useGlobalInfoStore } from "../../context/globalInfo";
 import { getStoredRecording } from "../../api/storage";
 import { apiUrl } from "../../apiConfig.js";
 import Cookies from 'js-cookie';
+import { useTranslation } from "react-i18next";
 
 interface IntegrationProps {
   isOpen: boolean;
@@ -33,6 +34,7 @@ export const IntegrationSettingsModal = ({
   handleStart,
   handleClose,
 }: IntegrationProps) => {
+  const { t } = useTranslation();
   const [settings, setSettings] = useState<IntegrationSettings>({
     spreadsheetId: "",
     spreadsheetName: "",
@@ -168,38 +170,28 @@ export const IntegrationSettingsModal = ({
 
   return (
     <GenericModal isOpen={isOpen} onClose={handleClose} modalStyle={modalStyle}>
-      <div
-        style={{
+      <div style={{
           display: "flex",
           flexDirection: "column",
           alignItems: "flex-start",
           marginLeft: "65px",
-        }}
-      >
+        }}>
         <Typography variant="h6">
-          Integrate with Google Sheet{" "}
-          {/* <Chip label="beta" color="primary" variant="outlined" /> */}
+          {t('integration_settings.title')}
         </Typography>
 
         {recording && recording.google_sheet_id ? (
           <>
             <Alert severity="info" sx={{ marginTop: '10px', border: '1px solid #ff00c3' }}>
-              <AlertTitle>Google Sheet Integrated Successfully.</AlertTitle>
-              Every time this robot creates a successful run, its captured data
-              is appended to your {recording.google_sheet_name} Google Sheet.
-              You can check the data updates{" "}
-              <a
-                href={`https://docs.google.com/spreadsheets/d/${recording.google_sheet_id}`}
+              <AlertTitle>{t('integration_settings.alerts.success.title')}</AlertTitle>
+              {t('integration_settings.alerts.success.content', { sheetName: recording.google_sheet_name })}
+              <a href={`https://docs.google.com/spreadsheets/d/${recording.google_sheet_id}`}
                 target="_blank"
-                rel="noreferrer"
-              >
-                here
-              </a>
-              .
+                rel="noreferrer">
+                {t('integration_settings.alerts.success.here')}
+              </a>.
               <br />
-              <strong>Note:</strong> The data extracted before integrating with
-              Google Sheets will not be synced in the Google Sheet. Only the
-              data extracted after the integration will be synced.
+              <strong>{t('integration_settings.alerts.success.note')}</strong> {t('integration_settings.alerts.success.sync_limitation')}
             </Alert>
             <Button
               variant="outlined"
@@ -207,31 +199,29 @@ export const IntegrationSettingsModal = ({
               onClick={removeIntegration}
               style={{ marginTop: "15px" }}
             >
-              Remove Integration
+              {t('integration_settings.buttons.remove_integration')}
             </Button>
           </>
         ) : (
           <>
             {!recording?.google_sheet_email ? (
               <>
-                <p>
-                  If you enable this option, every time this robot runs a task
-                  successfully, its captured data will be appended to your
-                  Google Sheet.
-                </p>
+                <p>{t('integration_settings.descriptions.sync_info')}</p>
                 <Button
                   variant="contained"
                   color="primary"
                   onClick={authenticateWithGoogle}
                 >
-                  Authenticate with Google
+                  {t('integration_settings.buttons.authenticate')}
                 </Button>
               </>
             ) : (
               <>
                 {recording.google_sheet_email && (
                   <Typography sx={{ margin: "20px 0px 30px 0px" }}>
-                    Authenticated as: {recording.google_sheet_email}
+                    {t('integration_settings.descriptions.authenticated_as', { 
+                      email: recording.google_sheet_email 
+                    })}
                   </Typography>
                 )}
 
@@ -247,14 +237,14 @@ export const IntegrationSettingsModal = ({
                         color="primary"
                         onClick={fetchSpreadsheetFiles}
                       >
-                        Fetch Google Spreadsheets
+                        {t('integration_settings.buttons.fetch_sheets')}
                       </Button>
                       <Button
                         variant="outlined"
                         color="error"
                         onClick={removeIntegration}
                       >
-                        Remove Integration
+                        {t('integration_settings.buttons.remove_integration')}
                       </Button>
                     </div>
                   </>
@@ -263,7 +253,7 @@ export const IntegrationSettingsModal = ({
                     <TextField
                       sx={{ marginBottom: "15px" }}
                       select
-                      label="Select Google Sheet"
+                      label={t('integration_settings.fields.select_sheet')}
                       required
                       value={settings.spreadsheetId}
                       onChange={handleSpreadsheetSelect}
@@ -278,13 +268,10 @@ export const IntegrationSettingsModal = ({
 
                     {settings.spreadsheetId && (
                       <Typography sx={{ marginBottom: "10px" }}>
-                        Selected Sheet:{" "}
-                        {
-                          spreadsheets.find(
-                            (s) => s.id === settings.spreadsheetId
-                          )?.name
-                        }{" "}
-                        (ID: {settings.spreadsheetId})
+                        {t('integration_settings.fields.selected_sheet', {
+                          name: spreadsheets.find((s) => s.id === settings.spreadsheetId)?.name,
+                          id: settings.spreadsheetId
+                        })}
                       </Typography>
                     )}
 
@@ -298,7 +285,7 @@ export const IntegrationSettingsModal = ({
                       style={{ marginTop: "10px" }}
                       disabled={!settings.spreadsheetId || loading}
                     >
-                      Submit
+                      {t('integration_settings.buttons.submit')}
                     </Button>
                   </>
                 )}
