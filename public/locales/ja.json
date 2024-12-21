@@ -430,5 +430,25 @@
                 "run_type": "実行タイプ"
             }
         }
+    },
+    "run_content": {
+        "tabs": {
+            "output_data": "出力データ",
+            "log": "ログ"
+        },
+        "empty_output": "出力は空です。",
+        "captured_data": {
+            "title": "キャプチャされたデータ",
+            "download_json": "JSONとしてダウンロード",
+            "download_csv": "CSVとしてダウンロード"
+        },
+        "captured_screenshot": {
+            "title": "キャプチャされたスクリーンショット",
+            "download": "スクリーンショットをダウンロード",
+            "render_failed": "画像のレンダリングに失敗しました"
+        },
+        "buttons": {
+            "stop": "停止"
+        }
     }
 }
