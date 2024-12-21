@@ -318,5 +318,16 @@
             "duplicate_error": "ターゲットURLの更新に失敗しました。もう一度お試しください。",
             "unknown_error": "ターゲットURLの更新中にエラーが発生しました。"
         }
+    },
+    "robot_settings": {
+        "title": "ロボット設定",
+        "target_url": "ロボットのターゲットURL",
+        "robot_id": "ロボットID",
+        "robot_limit": "ロボットの制限",
+        "created_by_user": "作成したユーザー",
+        "created_at": "作成日時",
+        "errors": {
+            "robot_not_found": "ロボットの詳細が見つかりませんでした。もう一度試してください。"
+        }
     }
 }
