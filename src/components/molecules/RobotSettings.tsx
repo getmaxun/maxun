@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GenericModal } from "../atoms/GenericModal";
 import { TextField, Typography, Box } from "@mui/material";
 import { modalStyle } from "./AddWhereCondModal";
@@ -50,10 +51,10 @@ interface RobotSettingsProps {
     handleStart: (settings: RobotSettings) => void;
     handleClose: () => void;
     initialSettings?: RobotSettings | null;
-
 }
 
 export const RobotSettingsModal = ({ isOpen, handleStart, handleClose, initialSettings }: RobotSettingsProps) => {
+    const { t } = useTranslation();
     const [robot, setRobot] = useState<RobotSettings | null>(null);
     const [userEmail, setUserEmail] = useState<string | null>(null);
     const { recordingId, notify } = useGlobalInfoStore();
@@ -69,7 +70,7 @@ export const RobotSettingsModal = ({ isOpen, handleStart, handleClose, initialSe
             const robot = await getStoredRecording(recordingId);
             setRobot(robot);
         } else {
-            notify('error', 'Could not find robot details. Please try again.');
+            notify('error', t('robot_settings.errors.robot_not_found'));
         }
     }
 
@@ -97,13 +98,15 @@ export const RobotSettingsModal = ({ isOpen, handleStart, handleClose, initialSe
             modalStyle={modalStyle}
         >
             <>
-                <Typography variant="h5" style={{ marginBottom: '20px' }}>Robot Settings</Typography>
+                <Typography variant="h5" style={{ marginBottom: '20px' }}>
+                    {t('robot_settings.title')}
+                </Typography>
                 <Box style={{ display: 'flex', flexDirection: 'column' }}>
                     {
                         robot && (
                             <>
                                 <TextField
-                                    label="Robot Target URL"
+                                    label={t('robot_settings.target_url')}
                                     key="Robot Target URL"
                                     value={targetUrl}
                                     InputProps={{
@@ -112,7 +115,7 @@ export const RobotSettingsModal = ({ isOpen, handleStart, handleClose, initialSe
                                     style={{ marginBottom: '20px' }}
                                 />
                                 <TextField
-                                    label="Robot ID"
+                                    label={t('robot_settings.robot_id')}
                                     key="Robot ID"
                                     value={robot.recording_meta.id}
                                     InputProps={{
@@ -122,17 +125,17 @@ export const RobotSettingsModal = ({ isOpen, handleStart, handleClose, initialSe
                                 />
                                 {robot.recording.workflow?.[0]?.what?.[0]?.args?.[0]?.limit !== undefined && (
                                     <TextField
-                                        label="Robot Limit"
+                                        label={t('robot_settings.robot_limit')}
                                         type="number"
                                         value={robot.recording.workflow[0].what[0].args[0].limit || ''}
                                         InputProps={{
-                                        readOnly: true,
-                                    }}
+                                            readOnly: true,
+                                        }}
                                         style={{ marginBottom: '20px' }}
                                     />
                                 )}
                                 <TextField
-                                    label="Created By User"
+                                    label={t('robot_settings.created_by_user')}
                                     key="Created By User"
                                     value={userEmail ? userEmail : ''}
                                     InputProps={{
@@ -141,7 +144,7 @@ export const RobotSettingsModal = ({ isOpen, handleStart, handleClose, initialSe
                                     style={{ marginBottom: '20px' }}
                                 />
                                 <TextField
-                                    label="Robot Created At"
+                                    label={t('robot_settings.created_at')}
                                     key="Robot Created At"
                                     value={robot.recording_meta.createdAt}
                                     InputProps={{
