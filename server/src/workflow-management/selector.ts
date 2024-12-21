@@ -54,6 +54,15 @@ export const getElementInformation = async (
               info.innerText = element.innerText ?? '';
             } else if (element?.tagName === 'IMG') {
               info.imageUrl = (element as HTMLImageElement).src;
+            } else if (element?.tagName === 'SELECT') {
+              const selectElement = element as HTMLSelectElement;
+              info.innerText = selectElement.options[selectElement.selectedIndex]?.text ?? '';
+              info.attributes = {
+                ...info.attributes,
+                selectedValue: selectElement.value,
+              };
+            } else if (element?.tagName === 'INPUT' && (element as HTMLInputElement).type === 'time' || (element as HTMLInputElement).type === 'date') {
+              info.innerText = (element as HTMLInputElement).value;
             } else {
               info.hasOnlyText = element?.children?.length === 0 &&
                 element?.innerText?.length > 0;
@@ -856,118 +865,118 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
   try {
     if (!listSelector) {
       console.log(`NON UNIQUE: MODE 1`)
-    const selectors = await page.evaluate(({ x, y }: { x: number, y: number }) => {
-      function getNonUniqueSelector(element: HTMLElement): string {
-        let selector = element.tagName.toLowerCase();
+      const selectors = await page.evaluate(({ x, y }: { x: number, y: number }) => {
+        function getNonUniqueSelector(element: HTMLElement): string {
+          let selector = element.tagName.toLowerCase();
 
-        if (element.className) {
-          const classes = element.className.split(/\s+/).filter((cls: string) => Boolean(cls));
-          if (classes.length > 0) {
-            const validClasses = classes.filter((cls: string) => !cls.startsWith('!') && !cls.includes(':'));
-            if (validClasses.length > 0) {
-              selector += '.' + validClasses.map(cls => CSS.escape(cls)).join('.');
+          if (element.className) {
+            const classes = element.className.split(/\s+/).filter((cls: string) => Boolean(cls));
+            if (classes.length > 0) {
+              const validClasses = classes.filter((cls: string) => !cls.startsWith('!') && !cls.includes(':'));
+              if (validClasses.length > 0) {
+                selector += '.' + validClasses.map(cls => CSS.escape(cls)).join('.');
+              }
             }
           }
+
+          return selector;
         }
 
-        return selector;
-      }
+        function getSelectorPath(element: HTMLElement | null): string {
+          const path: string[] = [];
+          let depth = 0;
+          const maxDepth = 2;
 
-      function getSelectorPath(element: HTMLElement | null): string {
-        const path: string[] = [];
-        let depth = 0;
-        const maxDepth = 2;
+          while (element && element !== document.body && depth < maxDepth) {
+            const selector = getNonUniqueSelector(element);
+            path.unshift(selector);
+            element = element.parentElement;
+            depth++;
+          }
 
-        while (element && element !== document.body && depth < maxDepth) {
-          const selector = getNonUniqueSelector(element);
-          path.unshift(selector);
-          element = element.parentElement;
-          depth++;
+          return path.join(' > ');
         }
 
-        return path.join(' > ');
-      }
+        const originalEl = document.elementFromPoint(x, y) as HTMLElement;
+        if (!originalEl) return null;
 
-      const originalEl = document.elementFromPoint(x, y) as HTMLElement;
-      if (!originalEl) return null;
+        let element = originalEl;
 
-      let element = originalEl;
-
-      // if (listSelector === '') {
+        // if (listSelector === '') {
         while (element.parentElement) {
           const parentRect = element.parentElement.getBoundingClientRect();
           const childRect = element.getBoundingClientRect();
-  
+
           const fullyContained =
             parentRect.left <= childRect.left &&
             parentRect.right >= childRect.right &&
             parentRect.top <= childRect.top &&
             parentRect.bottom >= childRect.bottom;
-  
+
           const significantOverlap =
             (childRect.width * childRect.height) /
             (parentRect.width * parentRect.height) > 0.5;
-  
+
           if (fullyContained && significantOverlap) {
             element = element.parentElement;
           } else {
             break;
           }
         }
-      // }
+        // }
 
-      const generalSelector = getSelectorPath(element);
-      return {
-        generalSelector,
-      };
-    }, coordinates);
-    return selectors || { generalSelector: '' };
-  } else {
-    console.log(`NON UNIQUE: MODE 2`)
-    const selectors = await page.evaluate(({ x, y }: { x: number, y: number }) => {
-      function getNonUniqueSelector(element: HTMLElement): string {
-        let selector = element.tagName.toLowerCase();
+        const generalSelector = getSelectorPath(element);
+        return {
+          generalSelector,
+        };
+      }, coordinates);
+      return selectors || { generalSelector: '' };
+    } else {
+      console.log(`NON UNIQUE: MODE 2`)
+      const selectors = await page.evaluate(({ x, y }: { x: number, y: number }) => {
+        function getNonUniqueSelector(element: HTMLElement): string {
+          let selector = element.tagName.toLowerCase();
 
-        if (element.className) {
-          const classes = element.className.split(/\s+/).filter((cls: string) => Boolean(cls));
-          if (classes.length > 0) {
-            const validClasses = classes.filter((cls: string) => !cls.startsWith('!') && !cls.includes(':'));
-            if (validClasses.length > 0) {
-              selector += '.' + validClasses.map(cls => CSS.escape(cls)).join('.');
+          if (element.className) {
+            const classes = element.className.split(/\s+/).filter((cls: string) => Boolean(cls));
+            if (classes.length > 0) {
+              const validClasses = classes.filter((cls: string) => !cls.startsWith('!') && !cls.includes(':'));
+              if (validClasses.length > 0) {
+                selector += '.' + validClasses.map(cls => CSS.escape(cls)).join('.');
+              }
             }
           }
+
+          return selector;
         }
 
-        return selector;
-      }
+        function getSelectorPath(element: HTMLElement | null): string {
+          const path: string[] = [];
+          let depth = 0;
+          const maxDepth = 2;
 
-      function getSelectorPath(element: HTMLElement | null): string {
-        const path: string[] = [];
-        let depth = 0;
-        const maxDepth = 2;
+          while (element && element !== document.body && depth < maxDepth) {
+            const selector = getNonUniqueSelector(element);
+            path.unshift(selector);
+            element = element.parentElement;
+            depth++;
+          }
 
-        while (element && element !== document.body && depth < maxDepth) {
-          const selector = getNonUniqueSelector(element);
-          path.unshift(selector);
-          element = element.parentElement;
-          depth++;
+          return path.join(' > ');
         }
 
-        return path.join(' > ');
-      }
+        const originalEl = document.elementFromPoint(x, y) as HTMLElement;
+        if (!originalEl) return null;
 
-      const originalEl = document.elementFromPoint(x, y) as HTMLElement;
-      if (!originalEl) return null;
+        let element = originalEl;
 
-      let element = originalEl;
-
-      const generalSelector = getSelectorPath(element);
-      return {
-        generalSelector,
-      };
-    }, coordinates);
-    return selectors || { generalSelector: '' };
-  }
+        const generalSelector = getSelectorPath(element);
+        return {
+          generalSelector,
+        };
+      }, coordinates);
+      return selectors || { generalSelector: '' };
+    }
 
   } catch (error) {
     console.error('Error in getNonUniqueSelectors:', error);

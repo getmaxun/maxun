@@ -36,7 +36,7 @@ interface Column {
   format?: (value: string) => string;
 }
 
-interface Data {
+export interface Data {
   id: number;
   status: string;
   name: string;
@@ -105,7 +105,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
       }));
       setRows(parsedRows);
     } else {
-      notify('error', 'No runs found. Please try again.');
+      notify('error', t('runstable.notifications.no_runs'));
     }
   };
 
@@ -118,7 +118,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
 
   const handleDelete = () => {
     setRows([]);
-    notify('success', 'Run deleted successfully');
+    notify('success', t('runstable.notifications.delete_success'));
     fetchRuns();
   };
 

@@ -1,4 +1,4 @@
-import { Action, ActionType, Coordinates, TagName } from "../../types";
+import { Action, ActionType, Coordinates, TagName, DatePickerEventData } from "../../types";
 import { WhereWhatPair, WorkflowFile } from 'maxun-core';
 import logger from "../../logger";
 import { Socket } from "socket.io";
@@ -255,6 +255,85 @@ export class WorkflowGenerator {
     logger.log('info', `Workflow emitted`);
   };
   
+  public onDateSelection = async (page: Page, data: DatePickerEventData) => {
+    const { selector, value } = data;
+
+    try {
+      await page.fill(selector, value);
+    } catch (error) {
+        console.error("Failed to fill date value:", error);
+    }
+    
+    const pair: WhereWhatPair = {
+        where: { url: this.getBestUrl(page.url()) },
+        what: [{
+            action: 'fill',
+            args: [selector, value],
+        }],
+    };
+
+    await this.addPairToWorkflowAndNotifyClient(pair, page);
+  };
+
+  public onDropdownSelection = async (page: Page, data: { selector: string, value: string }) => {
+    const { selector, value } = data;
+
+    try {
+      await page.selectOption(selector, value);
+    } catch (error) {
+        console.error("Failed to fill date value:", error);
+    }
+    
+    const pair: WhereWhatPair = {
+        where: { url: this.getBestUrl(page.url()) },
+        what: [{
+            action: 'selectOption',
+            args: [selector, value],
+        }],
+    };
+
+    await this.addPairToWorkflowAndNotifyClient(pair, page);
+  };
+
+  public onTimeSelection = async (page: Page, data: { selector: string, value: string }) => {
+    const { selector, value } = data;
+
+    try {
+        await page.fill(selector, value);
+    } catch (error) {
+        console.error("Failed to set time value:", error);
+    }
+    
+    const pair: WhereWhatPair = {
+        where: { url: this.getBestUrl(page.url()) },
+        what: [{
+            action: 'fill',
+            args: [selector, value],
+        }],
+    };
+
+    await this.addPairToWorkflowAndNotifyClient(pair, page);
+  };
+
+  public onDateTimeLocalSelection = async (page: Page, data: { selector: string, value: string }) => {
+    const { selector, value } = data;
+    
+    try {
+        await page.fill(selector, value);
+    } catch (error) {
+        console.error("Failed to fill datetime-local value:", error);
+    }
+    
+    const pair: WhereWhatPair = {
+        where: { url: this.getBestUrl(page.url()) },
+        what: [{
+            action: 'fill',
+            args: [selector, value],
+        }],
+    };
+
+    await this.addPairToWorkflowAndNotifyClient(pair, page);
+  };
 
   /**
    * Generates a pair for the click event.
@@ -266,6 +345,81 @@ export class WorkflowGenerator {
     let where: WhereWhatPair["where"] = { url: this.getBestUrl(page.url()) };
     const selector = await this.generateSelector(page, coordinates, ActionType.Click);
     logger.log('debug', `Element's selector: ${selector}`);
+
+    const elementInfo = await getElementInformation(page, coordinates, '', false);
+    console.log("Element info: ", elementInfo);
+
+    // Check if clicked element is a select dropdown
+    const isDropdown = elementInfo?.tagName === 'SELECT';
+    
+    if (isDropdown && elementInfo.innerHTML) {
+      // Parse options from innerHTML
+      const options = elementInfo.innerHTML
+        .split('<option')
+        .slice(1) // Remove first empty element
+        .map(optionHtml => {
+          const valueMatch = optionHtml.match(/value="([^"]*)"/);
+          const disabledMatch = optionHtml.includes('disabled="disabled"');
+          const selectedMatch = optionHtml.includes('selected="selected"');
+          
+          // Extract text content between > and </option>
+          const textMatch = optionHtml.match(/>([^<]*)</);
+          const text = textMatch 
+            ? textMatch[1]
+                .replace(/\n/g, '') // Remove all newlines
+                .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+                .trim()
+            : '';
+          
+          return {
+              value: valueMatch ? valueMatch[1] : '',
+              text,
+              disabled: disabledMatch,
+              selected: selectedMatch
+          };
+        });
+
+      // Notify client to show dropdown overlay
+      this.socket.emit('showDropdown', {
+          coordinates,
+          selector,
+          options
+      });
+      return;
+    }
+
+    // Check if clicked element is a date input
+    const isDateInput = elementInfo?.tagName === 'INPUT' && elementInfo?.attributes?.type === 'date';
+
+    if (isDateInput) {
+      // Notify client to show datepicker overlay
+      this.socket.emit('showDatePicker', {
+          coordinates,
+          selector
+      });
+      return; 
+    }
+
+    const isTimeInput = elementInfo?.tagName === 'INPUT' && elementInfo?.attributes?.type === 'time';
+
+    if (isTimeInput) {
+      this.socket.emit('showTimePicker', {
+          coordinates,
+          selector
+      });
+      return;
+    }
+
+    const isDateTimeLocal = elementInfo?.tagName === 'INPUT' && elementInfo?.attributes?.type === 'datetime-local';
+
+    if (isDateTimeLocal) {
+      this.socket.emit('showDateTimePicker', {
+          coordinates,
+          selector
+      });
+      return;
+    }
+
     //const element = await getElementMouseIsOver(page, coordinates);
     //logger.log('debug', `Element: ${JSON.stringify(element, null, 2)}`);
     if (selector) {

@@ -10,6 +10,7 @@ import { RunContent } from "./RunContent";
 import { GenericModal } from "../atoms/GenericModal";
 import { modalStyle } from "./AddWhereCondModal";
 import { getUserById } from "../../api/auth";
+import { useTranslation } from "react-i18next";
 
 interface RunTypeChipProps {
   runByUserId?: string;
@@ -18,10 +19,12 @@ interface RunTypeChipProps {
 }
 
 const RunTypeChip: React.FC<RunTypeChipProps> = ({ runByUserId, runByScheduledId, runByAPI }) => {
-  if (runByUserId) return <Chip label="Manual Run" color="primary" variant="outlined" />;
-  if (runByScheduledId) return <Chip label="Scheduled Run" color="primary" variant="outlined" />;
-  if (runByAPI) return <Chip label="API" color="primary" variant="outlined" />;
-  return <Chip label="Unknown Run Type" color="primary" variant="outlined" />;
+  const { t } = useTranslation();
+
+  if (runByUserId) return <Chip label={t('runs_table.run_type_chips.manual_run')} color="primary" variant="outlined" />;
+  if (runByScheduledId) return <Chip label={t('runs_table.run_type_chips.scheduled_run')} color="primary" variant="outlined" />;
+  if (runByAPI) return <Chip label={t('runs_table.run_type_chips.api')} color="primary" variant="outlined" />;
+  return <Chip label={t('runs_table.run_type_chips.unknown_run_type')} color="primary" variant="outlined" />;
 };
 
 interface CollapsibleRowProps {
@@ -33,6 +36,7 @@ interface CollapsibleRowProps {
   runningRecordingName: string;
 }
 export const CollapsibleRow = ({ row, handleDelete, isOpen, currentLog, abortRunHandler, runningRecordingName }: CollapsibleRowProps) => {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(isOpen);
   const [openSettingsModal, setOpenSettingsModal] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -99,12 +103,12 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, currentLog, abortRun
           } else {
             switch (column.id) {
               case 'runStatus':
-                return (
+                return (  
                   <TableCell key={column.id} align={column.align}>
-                    {row.status === 'success' && <Chip label="Success" color="success" variant="outlined" />}
-                    {row.status === 'running' && <Chip label="Running" color="warning" variant="outlined" />}
-                    {row.status === 'scheduled' && <Chip label="Scheduled" variant="outlined" />}
-                    {row.status === 'failed' && <Chip label="Failed" color="error" variant="outlined" />}
+                    {row.status === 'success' && <Chip label={t('runs_table.run_status_chips.success')} color="success" variant="outlined" />}
+                    {row.status === 'running' && <Chip label={t('runs_table.run_status_chips.running')} color="warning" variant="outlined" />}
+                    {row.status === 'scheduled' && <Chip label={t('runs_table.run_status_chips.scheduled')} variant="outlined" />}
+                    {row.status === 'failed' && <Chip label={t('runs_table.run_status_chips.failed')} color="error" variant="outlined" />}
                   </TableCell>
                 )
               case 'delete':
@@ -133,21 +137,35 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, currentLog, abortRun
                       modalStyle={modalStyle}
                     >
                       <>
-                        <Typography variant="h5" style={{ marginBottom: '20px' }}>Run Settings</Typography>
+                        <Typography variant="h5" style={{ marginBottom: '20px' }}>
+                          {t('runs_table.run_settings_modal.title')}
+                        </Typography>
                         <Box style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                           <TextField
-                            label="Run ID"
+                            label={t('runs_table.run_settings_modal.labels.run_id')}
                             value={row.runId}
                             InputProps={{ readOnly: true }}
                           />
                           <TextField
-                            label={row.runByUserId ? "Run by User" : row.runByScheduleId ? "Run by Schedule ID" : "Run by API"}
+                            label={
+                              row.runByUserId 
+                                ? t('runs_table.run_settings_modal.labels.run_by_user') 
+                                : row.runByScheduleId 
+                                ? t('runs_table.run_settings_modal.labels.run_by_schedule') 
+                                : t('runs_table.run_settings_modal.labels.run_by_api')
+                            }
                             value={runByLabel}
                             InputProps={{ readOnly: true }}
                           />
                           <Box style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <Typography variant="body1">Run Type:</Typography>
-                            <RunTypeChip runByUserId={row.runByUserId} runByScheduledId={row.runByScheduleId} runByAPI={row.runByAPI ?? false} />
+                            <Typography variant="body1">
+                              {t('runs_table.run_settings_modal.labels.run_type')}:
+                            </Typography>
+                            <RunTypeChip 
+                              runByUserId={row.runByUserId} 
+                              runByScheduledId={row.runByScheduleId} 
+                              runByAPI={row.runByAPI ?? false} 
+                            />
                           </Box>
                         </Box>
                       </>

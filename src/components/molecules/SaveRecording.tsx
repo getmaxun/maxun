@@ -9,13 +9,14 @@ import { TextField, Typography } from "@mui/material";
 import { WarningText } from "../atoms/texts";
 import NotificationImportantIcon from "@mui/icons-material/NotificationImportant";
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 interface SaveRecordingProps {
   fileName: string;
 }
 
 export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
-
+  const { t } = useTranslation();
   const [openModal, setOpenModal] = useState<boolean>(false);
   const [needConfirm, setNeedConfirm] = useState<boolean>(false);
   const [recordingName, setRecordingName] = useState<string>(fileName);
@@ -46,7 +47,7 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
   };
 
   const exitRecording = useCallback(async () => {
-    notify('success', 'Robot saved successfully');
+    notify('success', t('save_recording.notifications.save_success'));
     if (browserId) {
       await stopRecording(browserId);
     }
@@ -63,7 +64,7 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
       setWaitingForSave(true);
       console.log(`Saving the recording as ${recordingName} for userId ${user.id}`);
     } else {
-      console.error('User not logged in. Cannot save recording.');
+      console.error(t('save_recording.notifications.user_not_logged'));
     }
   };
 
@@ -77,34 +78,38 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
   return (
     <div>
       <Button onClick={() => setOpenModal(true)} variant="outlined" sx={{ marginRight: '20px' }} size="small" color="success">
-        Finish
+        {t('right_panel.buttons.finish')}
       </Button>
 
       <GenericModal isOpen={openModal} onClose={() => setOpenModal(false)} modalStyle={modalStyle}>
         <form onSubmit={handleSaveRecording} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-          <Typography variant="h6">Save Robot</Typography>
+          <Typography variant="h6">{t('save_recording.title')}</Typography>
           <TextField
             required
             sx={{ width: '300px', margin: '15px 0px' }}
             onChange={handleChangeOfTitle}
             id="title"
-            label="Robot Name"
+            label={t('save_recording.robot_name')}
             variant="outlined"
             defaultValue={recordingName ? recordingName : null}
           />
           {needConfirm
             ?
             (<React.Fragment>
-              <Button color="error" variant="contained" onClick={saveRecording} sx={{ marginTop: '10px' }}>Confirm</Button>
+              <Button color="error" variant="contained" onClick={saveRecording} sx={{ marginTop: '10px' }}>
+                {t('save_recording.buttons.confirm')}
+              </Button>
               <WarningText>
                 <NotificationImportantIcon color="warning" />
-                Robot with this name already exists, please confirm the Robot's overwrite.
+                {t('save_recording.warnings.robot_exists')}
               </WarningText>
             </React.Fragment>)
-            : <Button type="submit" variant="contained" sx={{ marginTop: '10px' }}>Save</Button>
+            : <Button type="submit" variant="contained" sx={{ marginTop: '10px' }}>
+                {t('save_recording.buttons.save')}
+              </Button>
           }
           {waitingForSave &&
-            <Tooltip title='Optimizing and saving the workflow' placement={"bottom"}>
+            <Tooltip title={t('save_recording.tooltips.optimizing')} placement={"bottom"}>
               <Box sx={{ width: '100%', marginTop: '10px' }}>
                 <LinearProgress />
               </Box>
