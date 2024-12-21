@@ -256,5 +256,10 @@
             "previous_action": "Ihre vorherige Aktion war: ",
             "element_text": "auf einem Element mit Text "
         }
+    },
+    "recording_page": {
+        "loader": {
+            "browser_startup": "Browser wird gestartet...Navigation zu {{url}}"
+        }
     }
 }
