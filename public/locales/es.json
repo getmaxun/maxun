@@ -430,5 +430,25 @@
         "run_type": "Tipo de Ejecución"
       }
     }
+  },
+  "run_content": {
+    "tabs": {
+      "output_data": "Datos de Salida",
+      "log": "Registro"
+    },
+    "empty_output": "La salida está vacía.",
+    "captured_data": {
+      "title": "Datos Capturados",
+      "download_json": "Descargar como JSON",
+      "download_csv": "Descargar como CSV"
+    },
+    "captured_screenshot": {
+      "title": "Captura de Pantalla",
+      "download": "Descargar Captura",
+      "render_failed": "No se pudo renderizar la imagen"
+    },
+    "buttons": {
+      "stop": "Detener"
+    }
   }
 }
