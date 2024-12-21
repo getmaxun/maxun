@@ -450,5 +450,38 @@
     "buttons": {
       "stop": "停止"
     }
+  },
+  "navbar": {
+    "project_name": "Maxun",
+    "upgrade": {
+      "button": "升级",
+      "modal": {
+        "up_to_date": "🎉 您已是最新版本！",
+        "new_version_available": "新版本已可用：{{version}}。升级到最新版本以获取错误修复、增强和新功能！",
+        "view_updates": "查看所有新更新",
+        "view_updates_link": "此处",
+        "tabs": {
+          "manual_setup": "手动设置升级",
+          "docker_setup": "Docker Compose设置升级"
+        }
+      }
+    },
+    "menu_items": {
+      "logout": "退出登录",
+      "discord": "Discord",
+      "youtube": "YouTube",
+      "twitter": "Twitter (X)",
+      "language": "语言"
+    },
+    "recording": {
+      "discard": "丢弃"
+    }
+  },
+  "language_menu": {
+    "en": "英语",
+    "es": "西班牙语",
+    "ja": "日语",
+    "zh": "中文",
+    "de": "德语"
   }
 }
