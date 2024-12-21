@@ -287,5 +287,27 @@
             "select_sheet": "Google Sheet auswählen",
             "selected_sheet": "Ausgewähltes Sheet: {{name}} (ID: {{id}})"
         }
+    },
+    "robot_duplication": {
+        "title": "Roboter duplizieren",
+        "descriptions": {
+            "purpose": "Die Roboter-Duplizierung ist nützlich, um Daten von Seiten mit der gleichen Struktur zu extrahieren.",
+            "example": "Beispiel: Wenn Sie einen Roboter für {{url1}} erstellt haben, können Sie ihn duplizieren, um ähnliche Seiten wie {{url2}} zu durchsuchen, ohne einen Roboter von Grund auf neu zu trainieren.",
+            "warning": "⚠️ Stellen Sie sicher, dass die neue Seite die gleiche Struktur wie die Originalseite hat."
+        },
+        "fields": {
+            "target_url": "Roboter Ziel-URL"
+        },
+        "buttons": {
+            "duplicate": "Roboter duplizieren",
+            "cancel": "Abbrechen"
+        },
+        "notifications": {
+            "robot_not_found": "Roboterdetails konnten nicht gefunden werden. Bitte versuchen Sie es erneut.",
+            "url_required": "Ziel-URL ist erforderlich.",
+            "duplicate_success": "Roboter erfolgreich dupliziert.",
+            "duplicate_error": "Fehler beim Aktualisieren der Ziel-URL. Bitte versuchen Sie es erneut.",
+            "unknown_error": "Beim Aktualisieren der Ziel-URL ist ein Fehler aufgetreten."
+        }
     }
 }
