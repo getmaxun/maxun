@@ -341,5 +341,30 @@
             "update_failed": "ロボットの更新に失敗しました。もう一度試してください。",
             "update_error": "ロボットの更新中にエラーが発生しました。"
         }
+    },
+    "schedule_settings": {
+        "title": "スケジュール設定",
+        "run_every": "実行間隔",
+        "start_from": "開始日",
+        "on_day": "日付",
+        "at_around": "時刻",
+        "timezone": "タイムゾーン",
+        "buttons": {
+            "delete_schedule": "スケジュールを削除",
+            "save_schedule": "スケジュールを保存",
+            "cancel": "キャンセル"
+        },
+        "labels": {
+            "in_between": "間隔",
+            "run_once_every": "実行間隔",
+            "start_from_label": "開始日",
+            "on_day_of_month": "月の日付",
+            "on_day": {
+            "st": "日",
+            "nd": "日",
+            "rd": "日",
+            "th": "日"
+            }
+        }
     }
 }
