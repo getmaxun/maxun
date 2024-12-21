@@ -366,5 +366,23 @@
         "th": "日"
       }
     }
+  },
+  "main_page": {
+    "notifications": {
+      "interpretation_success": "机器人{{name}}解释成功",
+      "interpretation_failed": "机器人{{name}}解释失败",
+      "run_started": "正在运行机器人：{{name}}",
+      "run_start_failed": "机器人运行失败：{{name}}",
+      "schedule_success": "机器人{{name}}调度成功",
+      "schedule_failed": "机器人{{name}}调度失败",
+      "abort_success": "成功中止机器人{{name}}的解释",
+      "abort_failed": "中止机器人{{name}}的解释失败"
+    },
+    "menu": {
+      "recordings": "机器人",
+      "runs": "运行",
+      "proxy": "代理",
+      "apikey": "API密钥"
+    }
   }
 }
