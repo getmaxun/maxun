@@ -264,5 +264,40 @@
       "loader": {
         "browser_startup": "Spinning up a browser...Navigating to {{url}}"
       }
+    },
+    "integration_settings": {
+      "title": "Integrate with Google Sheet",
+      "descriptions": {
+        "sync_info": "If you enable this option, every time this robot runs a task successfully, its captured data will be appended to your Google Sheet.",
+        "authenticated_as": "Authenticated as: {{email}}"
+      },
+      "alerts": {
+        "success": {
+          "title": "Google Sheet Integrated Successfully.",
+          "content": "Every time this robot creates a successful run, its captured data is appended to your {{sheetName}} Google Sheet. You can check the data updates",
+          "here": "here",
+          "note": "Note:",
+          "sync_limitation": "The data extracted before integrating with Google Sheets will not be synced in the Google Sheet. Only the data extracted after the integration will be synced."
+        }
+      },
+      "buttons": {
+        "authenticate": "Authenticate with Google",
+        "fetch_sheets": "Fetch Google Spreadsheets",
+        "remove_integration": "Remove Integration",
+        "submit": "Submit"
+      },
+      "fields": {
+        "select_sheet": "Select Google Sheet",
+        "selected_sheet": "Selected Sheet: {{name}} (ID: {{id}})"
+      },
+      "errors": {
+        "auth_error": "Error authenticating with Google",
+        "fetch_error": "Error fetching spreadsheet files: {{message}}",
+        "update_error": "Error updating Google Sheet ID: {{message}}",
+        "remove_error": "Error removing Google Sheets integration: {{message}}"
+      },
+      "notifications": {
+        "sheet_selected": "Google Sheet selected successfully"
+      }
     }
   } 
