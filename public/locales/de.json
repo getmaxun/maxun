@@ -37,7 +37,11 @@
         },
         "edit": "Bearbeiten",
         "delete": "Löschen",
-        "duplicate": "Duplizieren"
+        "duplicate": "Duplizieren",
+        "notifications": {
+            "delete_warning": "Roboter kann nicht gelöscht werden, da zugehörige Ausführungen vorhanden sind",
+            "delete_success": "Roboter erfolgreich gelöscht"
+        }
     },
     "mainmenu": {
         "recordings": "Roboter",
