@@ -383,5 +383,27 @@
             "proxy": "Proxy",
             "apikey": "API-Schlüssel"
         }
+    },
+    "browser_window": {
+        "attribute_modal": {
+            "title": "Attribut auswählen",
+            "notifications": {
+                "list_select_success": "Liste erfolgreich ausgewählt. Wählen Sie die zu extrahierenden Textdaten.",
+                "pagination_select_success": "Paginierungselement erfolgreich ausgewählt."
+            }
+        },
+        "attribute_options": {
+            "anchor": {
+                "text": "Text: {{text}}",
+                "url": "URL: {{url}}"
+            },
+            "image": {
+                "alt_text": "Alt-Text: {{altText}}",
+                "image_url": "Bild-URL: {{imageUrl}}"
+            },
+            "default": {
+                "text": "Text: {{text}}"
+            }
+        }
     }
 }
