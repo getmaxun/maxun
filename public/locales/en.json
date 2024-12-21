@@ -328,5 +328,16 @@
         "duplicate_error": "Failed to update the Target URL. Please try again.",
         "unknown_error": "An error occurred while updating the Target URL."
       }
+    },
+    "robot_settings": {
+      "title": "Robot Settings",
+      "target_url": "Robot Target URL",
+      "robot_id": "Robot ID",
+      "robot_limit": "Robot Limit",
+      "created_by_user": "Created By User",
+      "created_at": "Robot Created At",
+      "errors": {
+        "robot_not_found": "Could not find robot details. Please try again."
+      }
     }
   } 
