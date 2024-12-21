@@ -262,5 +262,31 @@
         "loader": {
             "browser_startup": "ブラウザを起動中...{{url}}に移動中"
         }
+    },
+    "integration_settings": {
+        "title": "Google Sheetと連携",
+        "descriptions": {
+            "sync_info": "このオプションを有効にすると、このロボットがタスクを正常に実行するたびに、取得したデータがGoogle Sheetに追加されます。",
+            "authenticated_as": "認証済みユーザー: {{email}}"
+        },
+        "alerts": {
+            "success": {
+                "title": "Google Sheetの連携が完了しました。",
+                "content": "このロボットが正常に実行を完了するたびに、取得したデータはGoogle Sheet {{sheetName}}に追加されます。データの更新は",
+                "here": "こちら",
+                "note": "注意：",
+                "sync_limitation": "Google Sheetsとの連携前に抽出されたデータは同期されません。連携後に抽出されたデータのみが同期されます。"
+            }
+        },
+        "buttons": {
+            "authenticate": "Googleで認証",
+            "fetch_sheets": "Google Sheetsを取得",
+            "remove_integration": "連携を解除",
+            "submit": "送信"
+        },
+        "fields": {
+            "select_sheet": "Google Sheetを選択",
+            "selected_sheet": "選択したシート: {{name}} (ID: {{id}})"
+        }
     }
 }
