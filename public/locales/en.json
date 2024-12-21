@@ -299,5 +299,27 @@
       "notifications": {
         "sheet_selected": "Google Sheet selected successfully"
       }
+    },
+    "robot_duplication": {
+      "title": "Duplicate Robot",
+      "descriptions": {
+        "purpose": "Robot duplication is useful to extract data from pages with the same structure.",
+        "example": "Example: If you've created a robot for {{url1}}, you can duplicate it to scrape similar pages like {{url2}} without training a robot from scratch.",
+        "warning": "⚠️ Ensure the new page has the same structure as the original page."
+      },
+      "fields": {
+        "target_url": "Robot Target URL"
+      },
+      "buttons": {
+        "duplicate": "Duplicate Robot",
+        "cancel": "Cancel"
+      },
+      "notifications": {
+        "robot_not_found": "Could not find robot details. Please try again.",
+        "url_required": "Target URL is required.",
+        "duplicate_success": "Robot duplicated successfully.",
+        "duplicate_error": "Failed to update the Target URL. Please try again.",
+        "unknown_error": "An error occurred while updating the Target URL."
+      }
     }
   } 
