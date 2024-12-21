@@ -257,5 +257,10 @@
       "previous_action": "您之前的操作是：",
       "element_text": "在文本元素上 "
     }
+  },
+  "recording_page": {
+    "loader": {
+      "browser_startup": "正在启动浏览器...正在导航至{{url}}"
+    }
   }
 }
