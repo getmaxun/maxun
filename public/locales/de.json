@@ -449,5 +449,38 @@
         "buttons": {
             "stop": "Stoppen"
         }
+    },
+    "navbar": {
+        "project_name": "Maxun",
+        "upgrade": {
+            "button": "Upgrade",
+            "modal": {
+                "up_to_date": "🎉 Du bist auf dem neuesten Stand!",
+                "new_version_available": "Eine neue Version ist verfügbar: {{version}}. Aktualisieren Sie auf die neueste Version für Fehlerkorrekturen, Verbesserungen und neue Funktionen!",
+                "view_updates": "Alle Updates anzeigen",
+                "view_updates_link": "hier",
+                "tabs": {
+                    "manual_setup": "Manuelles Setup-Upgrade",
+                    "docker_setup": "Docker Compose Setup-Upgrade"
+                }
+            }
+        },
+        "menu_items": {
+            "logout": "Abmelden",
+            "discord": "Discord",
+            "youtube": "YouTube",
+            "twitter": "Twitter (X)",
+            "language": "Sprache"
+        },
+        "recording": {
+            "discard": "Verwerfen"
+        }
+    },
+    "language_menu": {
+        "en": "Englisch",
+        "es": "Spanisch",
+        "ja": "Japanisch",
+        "zh": "Chinesisch",
+        "de": "Deutsch"
     }
 }
