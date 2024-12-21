@@ -288,5 +288,27 @@
       "select_sheet": "Seleccionar Google Sheet",
       "selected_sheet": "Hoja seleccionada: {{name}} (ID: {{id}})"
     }
+  },
+  "robot_duplication": {
+    "title": "Duplicar Robot",
+    "descriptions": {
+      "purpose": "La duplicación de robots es útil para extraer datos de páginas con la misma estructura.",
+      "example": "Ejemplo: Si has creado un robot para {{url1}}, puedes duplicarlo para extraer páginas similares como {{url2}} sin tener que entrenar un robot desde cero.",
+      "warning": "⚠️ Asegúrate de que la nueva página tenga la misma estructura que la página original."
+    },
+    "fields": {
+      "target_url": "URL Destino del Robot"
+    },
+    "buttons": {
+      "duplicate": "Duplicar Robot",
+      "cancel": "Cancelar"
+    },
+    "notifications": {
+      "robot_not_found": "No se pudieron encontrar los detalles del robot. Por favor, inténtalo de nuevo.",
+      "url_required": "Se requiere la URL de destino.",
+      "duplicate_success": "Robot duplicado con éxito.",
+      "duplicate_error": "Error al actualizar la URL de destino. Por favor, inténtalo de nuevo.",
+      "unknown_error": "Ocurrió un error al actualizar la URL de destino."
+    }
   }
 }
