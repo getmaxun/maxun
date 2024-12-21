@@ -450,5 +450,38 @@
         "buttons": {
             "stop": "停止"
         }
+    },
+    "navbar": {
+        "project_name": "Maxun",
+        "upgrade": {
+        "button": "アップグレード",
+        "modal": {
+            "up_to_date": "最新版です！",
+            "new_version_available": "新しいバージョンが利用可能です: {{version}}。バグ修正、機能強化のために最新版にアップグレードしてください。",
+            "view_updates": "すべての更新を",
+            "view_updates_link": "こちら",
+            "tabs": {
+                "manual_setup": "手動セットアップ",
+                "docker_setup": "Docker Composeセットアップ"
+            }
+        }
+        },
+        "menu_items": {
+            "logout": "ログアウト",
+            "discord": "Discord",
+            "youtube": "YouTube",
+            "twitter": "Twitter (X)",
+            "language": "言語"
+        },
+        "recording": {
+            "discard": "破棄"
+        }
+    },
+    "language_menu": {
+        "en": "英語",
+        "es": "スペイン語",
+        "ja": "日本語",
+        "zh": "中国語",
+        "de": "ドイツ語"
     }
 }

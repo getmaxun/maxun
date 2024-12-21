@@ -120,7 +120,7 @@ export const NavBar: React.FC<NavBarProps> = ({
           open={isUpdateAvailable}
           onClose={() => setIsUpdateAvailable(false)}
           message={
-            `New version ${latestVersion} available! Click "Upgrade" to update.`
+            `${t('navbar.upgrade.modal.new_version_available', { version: latestVersion })} ${t('navbar.upgrade.modal.view_updates')}`
           }
           action={
             <>
@@ -137,7 +137,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                   borderRadius: '5px',
                 }}
               >
-                Upgrade
+                {t('navbar.upgrade.button')}
               </Button>
               <IconButton
                 size="small"
@@ -164,7 +164,7 @@ export const NavBar: React.FC<NavBarProps> = ({
           justifyContent: 'flex-start',
         }}>
           <img src={MaxunLogo} width={45} height={40} style={{ borderRadius: '5px', margin: '5px 0px 5px 15px' }} />
-          <div style={{ padding: '11px' }}><ProjectName>Maxun</ProjectName></div>
+          <div style={{ padding: '11px' }}><ProjectName>{t('navbar.project_name')}</ProjectName></div>
           <Chip
             label={`${currentVersion}`}
             color="primary"
@@ -183,7 +183,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                     border: "#00000099 1px solid",
                     '&:hover': { color: '#ff00c3', border: '#ff00c3 1px solid' }
                   }}>
-                    <Update sx={{ marginRight: '5px' }} /> Upgrade Maxun
+                    <Update sx={{ marginRight: '5px' }} /> {t('navbar.upgrade.button')} Maxun
                   </Button>
                   <Modal open={open} onClose={handleUpdateClose}>
                     <Box
@@ -203,14 +203,14 @@ export const NavBar: React.FC<NavBarProps> = ({
                         <Typography>Checking for updates...</Typography>
                       ) : currentVersion === latestVersion ? (
                         <Typography variant="h6" textAlign="center">
-                          🎉 You're up to date!
+                          {t('navbar.upgrade.modal.up_to_date')}
                         </Typography>
                       ) : (
                         <>
                           <Typography variant="body1" textAlign="left" sx={{ marginLeft: '30px' }}>
-                            A new version is available: {latestVersion}. Upgrade to the latest version for bug fixes, enhancements and new features!
+                            {t('navbar.upgrade.modal.new_version_available', { version: latestVersion })}
                             <br />
-                            View all the new updates
+                            {t('navbar.upgrade.modal.view_updates')}
                             <a href="https://github.com/getmaxun/maxun/releases/" target="_blank" style={{ textDecoration: 'none' }}>{' '}here.</a>
                           </Typography>
                           <Tabs
@@ -219,8 +219,8 @@ export const NavBar: React.FC<NavBarProps> = ({
                             sx={{ marginTop: 2, marginBottom: 2 }}
                             centered
                           >
-                            <Tab label="Manual Setup Upgrade" />
-                            <Tab label="Docker Compose Setup Upgrade" />
+                            <Tab label={t('navbar.upgrade.modal.tabs.manual_setup')} />
+                            <Tab label={t('navbar.upgrade.modal.tabs.docker_setup')} />
                           </Tabs>
                           {tab === 0 && (
                             <Box sx={{ marginLeft: '30px', background: '#cfd0d1', padding: 1, borderRadius: 3 }}>
@@ -303,7 +303,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                     PaperProps={{ sx: { width: '180px' } }}
                   >
                     <MenuItem onClick={() => { handleMenuClose(); logout(); }}>
-                      <Logout sx={{ marginRight: '5px' }} /> Logout
+                      <Logout sx={{ marginRight: '5px' }} /> {t('navbar.menu_items.logout')}
                     </MenuItem>
                     <MenuItem onClick={() => {
                       window.open('https://discord.gg/5GbPjBUkws', '_blank');
@@ -321,7 +321,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                       <X sx={{ marginRight: '5px' }} /> Twiiter (X)
                     </MenuItem>
                     <MenuItem onClick={handleLangMenuOpen}>
-                      <Language sx={{ marginRight: '5px' }} /> {t("Language")}
+                      <Language sx={{ marginRight: '5px' }} /> {t('navbar.menu_items.language')}
                     </MenuItem>
                     <Menu
                       anchorEl={langAnchorEl}
@@ -390,7 +390,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                     '&:hover': { color: 'white', backgroundColor: 'red' }
                   }}>
                     <Clear sx={{ marginRight: '5px' }} />
-                    Discard
+                    {t('navbar.recording.discard')}
                   </IconButton>
                   <SaveRecording fileName={recordingName} />
                 </>
