@@ -261,5 +261,31 @@
         "loader": {
             "browser_startup": "Browser wird gestartet...Navigation zu {{url}}"
         }
+    },
+    "integration_settings": {
+        "title": "Mit Google Sheet integrieren",
+        "descriptions": {
+            "sync_info": "Wenn Sie diese Option aktivieren, werden bei jeder erfolgreichen Ausführung dieses Roboters die erfassten Daten in Ihrem Google Sheet ergänzt.",
+            "authenticated_as": "Authentifiziert als: {{email}}"
+        },
+        "alerts": {
+            "success": {
+                "title": "Google Sheet erfolgreich integriert.",
+                "content": "Jedes Mal, wenn dieser Roboter eine erfolgreiche Ausführung erstellt, werden die erfassten Daten Ihrem Google Sheet {{sheetName}} hinzugefügt. Sie können die Datenaktualisierungen",
+                "here": "hier",
+                "note": "Hinweis:",
+                "sync_limitation": "Die vor der Integration mit Google Sheets extrahierten Daten werden nicht im Google Sheet synchronisiert. Nur die nach der Integration extrahierten Daten werden synchronisiert."
+            }
+        },
+        "buttons": {
+            "authenticate": "Mit Google authentifizieren",
+            "fetch_sheets": "Google Sheets abrufen",
+            "remove_integration": "Integration entfernen",
+            "submit": "Absenden"
+        },
+        "fields": {
+            "select_sheet": "Google Sheet auswählen",
+            "selected_sheet": "Ausgewähltes Sheet: {{name}} (ID: {{id}})"
+        }
     }
 }
