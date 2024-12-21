@@ -341,5 +341,30 @@
       "update_failed": "Error al actualizar el robot. Intente de nuevo.",
       "update_error": "Ocurrió un error al actualizar el robot."
     }
+  },
+  "schedule_settings": {
+    "title": "Configuración de Programación",
+    "run_every": "Ejecutar cada",
+    "start_from": "Iniciar desde",
+    "on_day": "En día",
+    "at_around": "Alrededor de",
+    "timezone": "Zona horaria",
+    "buttons": {
+      "delete_schedule": "Eliminar Programación",
+      "save_schedule": "Guardar Programación",
+      "cancel": "Cancelar"
+    },
+    "labels": {
+      "in_between": "Entre",
+      "run_once_every": "Ejecutar cada",
+      "start_from_label": "Iniciar desde",
+      "on_day_of_month": "Día del mes",
+      "on_day": {
+        "st": "º",
+        "nd": "º",
+        "rd": "º",
+        "th": "º"
+      }
+    }
   }
 }
