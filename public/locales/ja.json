@@ -221,5 +221,23 @@
         "notifications": {
             "terminated": "現在の録画は終了しました"
         }
+    },
+    "interpretation_log": {
+        "titles": {
+            "output_preview": "出力データプレビュー",
+            "screenshot": "スクリーンショット"
+        },
+        "messages": {
+            "additional_rows": "記録が完了すると、追加のデータ行が抽出されます。",
+            "successful_training": "ロボットのアクショントレーニングが成功しました！下のボタンをクリックすると、ロボットが抽出するデータのプレビューが表示されます。",
+            "no_selection": "まだ抽出対象が選択されていません。選択すると、ロボットがここで選択内容のプレビューを表示します。"
+        },
+        "data_sections": {
+            "binary_received": "---------- バイナリ出力データを受信 ----------",
+            "serializable_received": "---------- シリアライズ可能な出力データを受信 ----------",
+            "mimetype": "MIMEタイプ: ",
+            "image_below": "画像は以下に表示されます：",
+            "separator": "--------------------------------------------------"
+        }
     }
 }
