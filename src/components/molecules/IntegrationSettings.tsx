@@ -109,7 +109,7 @@ export const IntegrationSettingsModal = ({
         },
         { withCredentials: true }
       );
-      notify(`success`, `Google Sheet selected successfully`)
+      notify(`success`, t('integration_settings.notifications.sheet_selected'));
       console.log("Google Sheet ID updated:", response.data);
     } catch (error: any) {
       console.error(
