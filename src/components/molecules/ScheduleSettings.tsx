@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GenericModal } from "../atoms/GenericModal";
 import { MenuItem, TextField, Typography, Box } from "@mui/material";
 import { Dropdown } from "../atoms/DropdownMui";
@@ -25,6 +26,7 @@ export interface ScheduleSettings {
 }
 
 export const ScheduleSettingsModal = ({ isOpen, handleStart, handleClose, initialSettings }: ScheduleSettingsProps) => {
+  const { t } = useTranslation();
   const [schedule, setSchedule] = useState<ScheduleSettings | null>(null);
   const [settings, setSettings] = useState<ScheduleSettings>({
     runEvery: 1,
@@ -116,6 +118,25 @@ export const ScheduleSettingsModal = ({ isOpen, handleStart, handleClose, initia
     }
   }, [isOpen]);
 
+  const getDayOrdinal = (day: string | undefined) => {
+    if (!day) return '';
+    const lastDigit = day.slice(-1);
+    const lastTwoDigits = day.slice(-2);
+    
+    // Special cases for 11, 12, 13
+    if (['11', '12', '13'].includes(lastTwoDigits)) {
+      return t('schedule_settings.labels.on_day.th');
+    }
+    
+    // Other cases
+    switch (lastDigit) {
+      case '1': return t('schedule_settings.labels.on_day.st');
+      case '2': return t('schedule_settings.labels.on_day.nd');
+      case '3': return t('schedule_settings.labels.on_day.rd');
+      default: return t('schedule_settings.labels.on_day.th');
+    }
+  };
+
   return (
     <GenericModal
       isOpen={isOpen}
@@ -129,30 +150,30 @@ export const ScheduleSettingsModal = ({ isOpen, handleStart, handleClose, initia
         padding: '20px',
         '& > *': { marginBottom: '20px' },
       }}>
-        <Typography variant="h6" sx={{ marginBottom: '20px' }}>Schedule Settings</Typography>
+        <Typography variant="h6" sx={{ marginBottom: '20px' }}>{t('schedule_settings.title')}</Typography>
         <>
           {schedule !== null ? (
             <>
-              <Typography>Run every: {schedule.runEvery} {schedule.runEveryUnit.toLowerCase()}</Typography>
-              <Typography>{['MONTHS', 'WEEKS'].includes(settings.runEveryUnit) ? "Start From" : "On"} {schedule.startFrom.charAt(0).toUpperCase() + schedule.startFrom.slice(1).toLowerCase()}</Typography>
+              <Typography>{t('schedule_settings.run_every')}: {schedule.runEvery} {schedule.runEveryUnit.toLowerCase()}</Typography>
+              <Typography>{['MONTHS', 'WEEKS'].includes(settings.runEveryUnit) ? t('schedule_settings.start_from') : t('schedule_settings.start_from')}: {schedule.startFrom.charAt(0).toUpperCase() + schedule.startFrom.slice(1).toLowerCase()}</Typography>
               {schedule.runEveryUnit === 'MONTHS' && (
-                <Typography>On day: {schedule.dayOfMonth}{['1', '21', '31'].includes(schedule.dayOfMonth || '') ? 'st' : ['2', '22'].includes(schedule.dayOfMonth || '') ? 'nd' : ['3', '23'].includes(schedule.dayOfMonth || '') ? 'rd' : 'th'} of the month</Typography>
+                <Typography>{t('schedule_settings.on_day')}: {schedule.dayOfMonth}{getDayOrdinal(schedule.dayOfMonth)} of the month</Typography>
               )}
-              <Typography>At around: {schedule.atTimeStart}, {schedule.timezone} Timezone</Typography>
+              <Typography>{t('schedule_settings.at_around')}: {schedule.atTimeStart}, {schedule.timezone} {t('schedule_settings.timezone')}</Typography>
               <Box mt={2} display="flex" justifyContent="space-between">
                 <Button
                   onClick={deleteRobotSchedule}
                   variant="outlined"
                   color="error"
                 >
-                  Delete Schedule
+                  {t('schedule_settings.buttons.delete_schedule')}
                 </Button>
               </Box>
             </>
           ) : (
             <>
               <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                <Typography sx={{ marginRight: '10px' }}>Run once every</Typography>
+                <Typography sx={{ marginRight: '10px' }}>{t('schedule_settings.labels.run_once_every')}</Typography>
                 <TextField
                   type="number"
                   value={settings.runEvery}
@@ -174,7 +195,9 @@ export const ScheduleSettingsModal = ({ isOpen, handleStart, handleClose, initia
               </Box>
 
               <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                <Typography sx={{ marginBottom: '5px', marginRight: '25px' }}>{['MONTHS', 'WEEKS'].includes(settings.runEveryUnit) ? "Start From" : "On"}</Typography>
+                <Typography sx={{ marginBottom: '5px', marginRight: '25px' }}>
+                  {['MONTHS', 'WEEKS'].includes(settings.runEveryUnit) ? t('schedule_settings.labels.start_from_label') : t('schedule_settings.labels.start_from_label')}
+                </Typography>
                 <Dropdown
                   label=""
                   id="startFrom"
@@ -190,7 +213,7 @@ export const ScheduleSettingsModal = ({ isOpen, handleStart, handleClose, initia
 
               {settings.runEveryUnit === 'MONTHS' && (
                 <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                  <Typography sx={{ marginBottom: '5px', marginRight: '25px' }}>On Day of the Month</Typography>
+                  <Typography sx={{ marginBottom: '5px', marginRight: '25px' }}>{t('schedule_settings.labels.on_day_of_month')}</Typography>
                   <TextField
                     type="number"
                     value={settings.dayOfMonth}
@@ -204,7 +227,7 @@ export const ScheduleSettingsModal = ({ isOpen, handleStart, handleClose, initia
               {['MINUTES', 'HOURS'].includes(settings.runEveryUnit) ? (
                 <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
                   <Box sx={{ marginRight: '20px' }}>
-                    <Typography sx={{ marginBottom: '5px' }}>In Between</Typography>
+                    <Typography sx={{ marginBottom: '5px' }}>{t('schedule_settings.labels.in_between')}</Typography>
                     <TextField
                       type="time"
                       value={settings.atTimeStart}
@@ -221,7 +244,7 @@ export const ScheduleSettingsModal = ({ isOpen, handleStart, handleClose, initia
                 </Box>
               ) : (
                 <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                  <Typography sx={{ marginBottom: '5px', marginRight: '10px' }}>At Around</Typography>
+                  <Typography sx={{ marginBottom: '5px', marginRight: '10px' }}>{t('schedule_settings.at_around')}</Typography>
                   <TextField
                     type="time"
                     value={settings.atTimeStart}
@@ -232,7 +255,7 @@ export const ScheduleSettingsModal = ({ isOpen, handleStart, handleClose, initia
               )}
 
               <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                <Typography sx={{ marginRight: '10px' }}>Timezone</Typography>
+                <Typography sx={{ marginRight: '10px' }}>{t('schedule_settings.timezone')}</Typography>
                 <Dropdown
                   label=""
                   id="timezone"
@@ -247,10 +270,10 @@ export const ScheduleSettingsModal = ({ isOpen, handleStart, handleClose, initia
               </Box>
               <Box mt={2} display="flex" justifyContent="flex-end">
                 <Button onClick={() => handleStart(settings)} variant="contained" color="primary">
-                  Save Schedule
+                  {t('schedule_settings.buttons.save_schedule')}
                 </Button>
                 <Button onClick={handleClose} color="primary" variant="outlined" style={{ marginLeft: '10px' }}>
-                  Cancel
+                  {t('schedule_settings.buttons.cancel')}
                 </Button>
               </Box>
             </>
