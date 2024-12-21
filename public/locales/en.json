@@ -439,5 +439,25 @@
           "run_type": "Run Type"
         }
       }
+    },
+    "run_content": {
+      "tabs": {
+        "output_data": "Output Data",
+        "log": "Log"
+      },
+      "empty_output": "The output is empty.",
+      "captured_data": {
+        "title": "Captured Data",
+        "download_json": "Download as JSON",
+        "download_csv": "Download as CSV"
+      },
+      "captured_screenshot": {
+        "title": "Captured Screenshot",
+        "download": "Download Screenshot",
+        "render_failed": "The image failed to render"
+      },
+      "buttons": {
+        "stop": "Stop"
+      }
     }
 } 
