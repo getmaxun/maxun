@@ -38,7 +38,11 @@
     "edit": "Editar",
     "delete": "Eliminar",
     "duplicate": "Duplicar",
-    "search": "Buscar robots..."
+    "search": "Buscar robots...",
+    "notifications": {
+      "delete_warning": "No se puede eliminar el robot ya que tiene ejecuciones asociadas",
+      "delete_success": "Robot eliminado exitosamente"
+    }
   },
   "mainmenu": {
     "recordings": "Robots",
