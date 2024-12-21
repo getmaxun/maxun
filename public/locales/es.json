@@ -56,7 +56,11 @@
     "finishedAt": "Finalizado el",
     "delete": "Eliminar",
     "settings": "Ajustes",
-    "search": "Buscar ejecuciones..."
+    "search": "Buscar ejecuciones...",
+    "notifications": {
+      "no_runs": "No se encontraron ejecuciones. Por favor, inténtelo de nuevo.",
+      "delete_success": "Ejecución eliminada con éxito"
+    }
   },
   "proxy": {
     "title": "Configuración del Proxy",
