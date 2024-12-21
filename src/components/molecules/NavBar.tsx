@@ -5,7 +5,7 @@ import styled from "styled-components";
 import { stopRecording } from "../../api/recording";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { IconButton, Menu, MenuItem, Typography, Chip, Button, Modal, Tabs, Tab, Box, Snackbar } from "@mui/material";
-import { AccountCircle, Logout, Clear, YouTube, X, Update, Close } from "@mui/icons-material";
+import { AccountCircle, Logout, Clear, YouTube, X, Update, Close, Language } from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/auth';
 import { SaveRecording } from '../molecules/SaveRecording';
@@ -320,36 +320,11 @@ export const NavBar: React.FC<NavBarProps> = ({
                     }}>
                       <X sx={{ marginRight: '5px' }} /> Twiiter (X)
                     </MenuItem>
-                  </Menu>
-                </>
-              ) : (
-                <>
-                  <IconButton onClick={goToMainMenu} sx={{
-                    borderRadius: '5px',
-                    padding: '8px',
-                    background: 'red',
-                    color: 'white',
-                    marginRight: '10px',
-                    '&:hover': { color: 'white', backgroundColor: 'red' }
-                  }}>
-                    <Clear sx={{ marginRight: '5px' }} />
-                    Discard
-                  </IconButton>
-                  <SaveRecording fileName={recordingName} />
-                </>
-              )}
-              <IconButton
-                onClick={handleLangMenuOpen}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  borderRadius: "5px",
-                  padding: "8px",
-                  marginRight: "10px",
-                }}
+                    <MenuItem onClick={handleLangMenuOpen}
+                
               >
-                <Typography variant="body1">{t("language")}</Typography>
-              </IconButton>
+                <Language sx={{ marginRight: '5px' }} /> {t("Language")}
+              </MenuItem>
               <Menu
                 anchorEl={langAnchorEl}
                 open={Boolean(langAnchorEl)}
@@ -404,6 +379,24 @@ export const NavBar: React.FC<NavBarProps> = ({
                   Deutsch
                 </MenuItem>
               </Menu>
+                  </Menu>
+                </>
+              ) : (
+                <>
+                  <IconButton onClick={goToMainMenu} sx={{
+                    borderRadius: '5px',
+                    padding: '8px',
+                    background: 'red',
+                    color: 'white',
+                    marginRight: '10px',
+                    '&:hover': { color: 'white', backgroundColor: 'red' }
+                  }}>
+                    <Clear sx={{ marginRight: '5px' }} />
+                    Discard
+                  </IconButton>
+                  <SaveRecording fileName={recordingName} />
+                </>
+              )}
             </div>
           ) : (
             <><IconButton
