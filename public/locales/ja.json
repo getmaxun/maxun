@@ -257,5 +257,10 @@
             "previous_action": "前回の操作: ",
             "element_text": "テキスト要素 "
         }
+    },
+    "recording_page": {
+        "loader": {
+            "browser_startup": "ブラウザを起動中...{{url}}に移動中"
+        }
     }
 }
