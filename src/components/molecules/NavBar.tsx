@@ -157,7 +157,6 @@ export const NavBar: React.FC<NavBarProps> = ({
             }
           }}
         />
-
       )}
       <NavBarWrapper>
         <div style={{
