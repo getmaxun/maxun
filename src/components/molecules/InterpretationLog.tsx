@@ -94,6 +94,12 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     setCustomValue(event.target.value);
   };
 
+  const handleReset = () => {
+    setLog('');
+    setTableData([]);
+    setBinaryData(null);
+  };
+
   useEffect(() => {
     socket?.on('log', handleLog);
     socket?.on('serializableCallback', handleSerializableCallback);
@@ -172,12 +178,34 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
           >
             {
               binaryData ? (
-                <div style={{ marginBottom: '20px' }}>
-                  <Typography variant="body1" gutterBottom>
-                    {t('interpretation_log.titles.screenshot')}
-                  </Typography>
-                  <img src={binaryData} alt={t('interpretation_log.titles.screenshot')} style={{ maxWidth: '100%' }} />
-                </div>
+                <>
+                  <div style={{ marginBottom: '20px' }}>
+                    <Typography variant="body1" gutterBottom>
+                      {t('interpretation_log.titles.screenshot')}
+                    </Typography>
+                    <img src={binaryData} alt={t('interpretation_log.titles.screenshot')} style={{ maxWidth: '100%' }} />
+                  </div>
+                  <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleReset}
+                  sx={{
+                    position: 'absolute',
+                    color: 'white',
+                    bottom: '20px',
+                    right: '20px',
+                    backgroundColor: '#ff00c3',
+                    overflow: 'hidden',
+                    textAlign: 'left',
+                    '&:hover': {
+                      backgroundColor: '#ff00c3',
+                    },
+                  }}
+                  >
+                  Reset
+                  {/* {t('interpretation_log.buttons.reset')} */}
+                </Button>
+              </>
               ) : tableData.length > 0 ? (
                 <>
                   <TableContainer component={Paper}>
@@ -203,6 +231,25 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                   <span style={{ marginLeft: '15px', marginTop: '10px', fontSize: '12px' }}>
                     {t('interpretation_log.messages.additional_rows')}
                   </span>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleReset}
+                    sx={{
+                      position: 'absolute',
+                      color: 'white',
+                      bottom: '20px',
+                      right: '20px',
+                      backgroundColor: '#ff00c3',
+                      overflow: 'hidden',
+                      textAlign: 'left',
+                      '&:hover': {
+                        backgroundColor: '#ff00c3',
+                      },
+                    }}
+                    >
+                    {t('interpretation_buttons.buttons.reset')}
+                  </Button>
                 </>
               ) : (
                 <Grid container justifyContent="center" alignItems="center" style={{ height: '100%' }}>
