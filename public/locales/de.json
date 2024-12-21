@@ -340,5 +340,30 @@
             "update_failed": "Aktualisierung des Roboters fehlgeschlagen. Bitte erneut versuchen.",
             "update_error": "Beim Aktualisieren des Roboters ist ein Fehler aufgetreten."
         }
+    },
+    "schedule_settings": {
+        "title": "Zeitplan-Einstellungen",
+        "run_every": "Ausführen alle",
+        "start_from": "Beginnen ab",
+        "on_day": "An Tag",
+        "at_around": "Um",
+        "timezone": "Zeitzone",
+        "buttons": {
+            "delete_schedule": "Zeitplan löschen",
+            "save_schedule": "Zeitplan speichern",
+            "cancel": "Abbrechen"
+        },
+        "labels": {
+            "in_between": "Zwischen",
+            "run_once_every": "Ausführen alle",
+            "start_from_label": "Beginnen ab",
+            "on_day_of_month": "Tag des Monats",
+            "on_day": {
+            "st": ".",
+            "nd": ".",
+            "rd": ".",
+            "th": "."
+            }
+        }
     }
 }
