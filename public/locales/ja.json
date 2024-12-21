@@ -246,6 +246,9 @@
             "mimetype": "MIMEタイプ: ",
             "image_below": "画像は以下に表示されます：",
             "separator": "--------------------------------------------------"
+        },
+        "notifications": {
+            "reset_success": "出力プレビューが正常にリセットされました"
         }
     },
     "interpretation_buttons": {

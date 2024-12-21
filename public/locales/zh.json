@@ -246,6 +246,9 @@
       "mimetype": "MIME类型：",
       "image_below": "图片显示如下：",
       "separator": "--------------------------------------------------"
+    },
+    "notifications": {
+      "reset_success": "输出预览已成功重置"
     }
   },
   "interpretation_buttons": {

@@ -246,6 +246,9 @@
         "mimetype": "mimetype: ",
         "image_below": "Image is rendered below:",
         "separator": "--------------------------------------------------"
+      }, 
+      "notifications": {
+        "reset_success": "Output Preview reset successfully"
       }
     },
     "interpretation_buttons": {
