@@ -50,7 +50,7 @@
         "proxy": "プロキシ",
         "apikey": "APIキー",
         "feedback": "Maxunクラウドに参加する",
-        "apidocs": "APIドキュメント"
+        "apidocs": "WebサイトからAPI"
   },
   "runstable": {
         "runs": "すべての実行",
