@@ -406,5 +406,29 @@
                 "text": "テキスト: {{text}}"
             }
         }
+    },
+    "runs_table": {
+        "run_type_chips": {
+            "manual_run": "手動実行",
+            "scheduled_run": "スケジュール実行",
+            "api": "API",
+            "unknown_run_type": "不明な実行タイプ"
+        },
+        "run_status_chips": {
+            "success": "成功",
+            "running": "実行中",
+            "scheduled": "スケジュール済み",
+            "failed": "失敗"
+        },
+        "run_settings_modal": {
+            "title": "実行設定",
+            "labels": {
+                "run_id": "実行ID",
+                "run_by_user": "ユーザーによる実行",
+                "run_by_schedule": "スケジュールによる実行",
+                "run_by_api": "APIによる実行",
+                "run_type": "実行タイプ"
+            }
+        }
     }
 }
