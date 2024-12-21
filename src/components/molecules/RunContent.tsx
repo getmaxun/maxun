@@ -50,7 +50,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     }
   }, [row.serializableOutput]);
 
-
   // Function to convert table data to CSV format
   const convertToCSV = (data: any[], columns: string[]): string => {
     const header = columns.join(',');
@@ -58,6 +57,29 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
       columns.map(col => JSON.stringify(row[col], null, 2)).join(',')
     );
     return [header, ...rows].join('\n');
+  };
+
+ 
+  const convertToMarkdown = (data: any[], columns: string[]): string => {
+    
+    const headerRow = `| ${columns.join(' | ')} |`;
+    
+    // Create separator row for Markdown tables
+    const separatorRow = `| ${columns.map(() => '---').join(' | ')} |`;
+    
+    
+    const dataRows = data.map(row => 
+      `| ${columns.map(col => {
+        
+        const value = row[col];
+        return value === undefined || value === "" ? "-" : 
+               
+               String(value).replace(/\|/g, '\\|').replace(/\n/g, ' ');
+      }).join(' | ')} |`
+    );
+
+
+    return [headerRow, separatorRow, ...dataRows].join('\n');
   };
 
   const downloadCSV = () => {
@@ -68,6 +90,19 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     const link = document.createElement("a");
     link.href = url;
     link.setAttribute("download", "data.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const downloadMarkdown = () => {
+    const markdownContent = convertToMarkdown(tableData, columns);
+    const blob = new Blob([markdownContent], { type: 'text/markdown;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "data.md");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -130,6 +165,11 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   onClick={downloadCSV}
                 >
                   <a style={{ textDecoration: 'none', cursor: 'pointer' }}>{t('run_content.captured_data.download_csv')}</a>
+                </Typography>
+                <Typography
+                  onClick={downloadMarkdown}
+                >
+                  <a style={{ textDecoration: 'none', cursor: 'pointer' }}>Download as Markdown</a>
                 </Typography>
               </Box>
               {tableData.length > 0 ? (
