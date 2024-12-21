@@ -320,65 +320,63 @@ export const NavBar: React.FC<NavBarProps> = ({
                     }}>
                       <X sx={{ marginRight: '5px' }} /> Twiiter (X)
                     </MenuItem>
-                    <MenuItem onClick={handleLangMenuOpen}
-                
-              >
-                <Language sx={{ marginRight: '5px' }} /> {t("Language")}
-              </MenuItem>
-              <Menu
-                anchorEl={langAnchorEl}
-                open={Boolean(langAnchorEl)}
-                onClose={handleMenuClose}
-                anchorOrigin={{
-                  vertical: "bottom",
-                  horizontal: "right",
-                }}
-                transformOrigin={{
-                  vertical: "top",
-                  horizontal: "right",
-                }}
-              >
-                <MenuItem
-                  onClick={() => {
-                    changeLanguage("en");
-                    handleMenuClose();
-                  }}
-                >
-                  English
-                </MenuItem>
-                <MenuItem
-                  onClick={() => {
-                    changeLanguage("es");
-                    handleMenuClose();
-                  }}
-                >
-                  Español
-                </MenuItem>
-                <MenuItem
-                  onClick={() => {
-                    changeLanguage("ja");
-                    handleMenuClose();
-                  }}
-                >
-                  日本語
-                </MenuItem>
-                <MenuItem
-                  onClick={() => {
-                    changeLanguage("zh");
-                    handleMenuClose();
-                  }}
-                >
-                  中文
-                </MenuItem>
-                <MenuItem
-                  onClick={() => {
-                    changeLanguage("de");
-                    handleMenuClose();
-                  }}
-                >
-                  Deutsch
-                </MenuItem>
-              </Menu>
+                    <MenuItem onClick={handleLangMenuOpen}>
+                      <Language sx={{ marginRight: '5px' }} /> {t("Language")}
+                    </MenuItem>
+                    <Menu
+                      anchorEl={langAnchorEl}
+                      open={Boolean(langAnchorEl)}
+                      onClose={handleMenuClose}
+                      anchorOrigin={{
+                        vertical: "bottom",
+                        horizontal: "right",
+                      }}
+                      transformOrigin={{
+                        vertical: "top",
+                        horizontal: "right",
+                      }}
+                    >
+                      <MenuItem
+                        onClick={() => {
+                          changeLanguage("en");
+                          handleMenuClose();
+                        }}
+                      >
+                        English
+                      </MenuItem>
+                      <MenuItem
+                        onClick={() => {
+                          changeLanguage("es");
+                          handleMenuClose();
+                        }}
+                      >
+                        Español
+                      </MenuItem>
+                      <MenuItem
+                        onClick={() => {
+                          changeLanguage("ja");
+                          handleMenuClose();
+                        }}
+                      >
+                        日本語
+                      </MenuItem>
+                      <MenuItem
+                        onClick={() => {
+                          changeLanguage("zh");
+                          handleMenuClose();
+                        }}
+                      >
+                        中文
+                      </MenuItem>
+                      <MenuItem
+                        onClick={() => {
+                          changeLanguage("de");
+                          handleMenuClose();
+                        }}
+                      >
+                        Deutsch
+                      </MenuItem>
+                    </Menu>
                   </Menu>
                 </>
               ) : (
@@ -409,7 +407,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                 marginRight: "10px",
               }}
             >
-              <Typography variant="body1">{t("language")}</Typography>
+              <Typography variant="body1">{t("Language")}</Typography>
             </IconButton>
               <Menu
                 anchorEl={langAnchorEl}
