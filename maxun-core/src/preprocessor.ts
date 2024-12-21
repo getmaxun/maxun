@@ -168,11 +168,11 @@ export default class Preprocessor {
       );
     }
 
-    workflowCopy = initSpecialRecurse(
-      workflowCopy,
-      '$regex',
-      (regex) => new RegExp(regex),
-    );
+    // workflowCopy = initSpecialRecurse(
+    //   workflowCopy,
+    //   '$regex',
+    //   (regex) => new RegExp(regex),
+    // );
 
     return <Workflow>workflowCopy;
   }

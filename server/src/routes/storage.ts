@@ -20,6 +20,7 @@ import { capture } from "../utils/analytics";
 import { tryCatch } from 'bullmq';
 import { WorkflowFile } from 'maxun-core';
 import { Page } from 'playwright';
+import StoredCookie  from "../models/Robot";
 chromium.use(stealthPlugin());
 
 export const router = Router();
@@ -90,6 +91,67 @@ router.get(('/recordings/:id/runs'), requireSignIn, async (req, res) => {
     });
 }
 })
+
+/**
+ * GET endpoint for retrieving cookies for a specific robot.
+ * Returns the cookie storage object containing all cookies and their metadata.
+ */
+router.get('/recordings/:id/cookies', async (req, res) => {
+  try {
+    const robot = await Robot.findOne({
+      where: { 'recording_meta.id': req.params.id },
+      attributes: ['cookie_storage'],
+      raw: true
+    });
+
+    if (!robot) {
+      return res.status(404).json({
+        error: 'Robot not found'
+      });
+    }
+
+    return res.json({
+      cookies: robot.cookie_storage 
+    });
+  } catch (error) {
+    logger.log('error', `Error retrieving cookies for robot ${req.params.id}: ${error}`);
+    return res.status(500).json({
+      error: 'Failed to retrieve cookies'
+    });
+  }
+});
+
+/**
+ * PUT endpoint for updating cookies for a specific robot.
+ * Expects a cookie storage object in the request body.
+ */
+router.put('/recordings/:id/cookies', async (req, res) => {
+  try {
+    const robot = await Robot.findOne({
+      where: { 'recording_meta.id': req.params.id }
+    });
+
+    if (!robot) {
+      return res.status(404).json({
+        error: 'Robot not found'
+      });
+    }
+
+    await robot.update({
+      cookie_storage: req.body.cookies
+    });
+
+    return res.json({
+      message: 'Cookie storage updated successfully'
+    });
+
+  } catch (error) {
+    logger.log('error', `Error updating cookies for robot ${req.params.id}: ${error}`);
+    return res.status(500).json({
+      error: 'Failed to update cookies'
+    });
+  }
+});
 
 function formatRunResponse(run: any) {
   const formattedRun = {
@@ -253,6 +315,7 @@ router.post('/recordings/:id/duplicate', requireSignIn, async (req: Authenticate
       google_sheet_id: null,
       google_access_token: null,
       google_refresh_token: null,
+      isLogin: false,
       schedule: null, 
     });
 
@@ -460,7 +523,7 @@ router.post('/runs/run/:id', requireSignIn, async (req: AuthenticatedRequest, re
     if (browser && currentPage) {
       const workflow = AddGeneratedFlags(recording.recording);
       const interpretationInfo = await browser.interpreter.InterpretRecording(
-        workflow, currentPage, (newPage: Page) => currentPage = newPage, plainRun.interpreterSettings);
+        workflow, currentPage, (newPage: Page) => currentPage = newPage, plainRun.interpreterSettings, plainRun.robotMetaId);
       const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
       const uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, interpretationInfo.binaryOutput);
       await destroyRemoteBrowser(plainRun.browserId);
