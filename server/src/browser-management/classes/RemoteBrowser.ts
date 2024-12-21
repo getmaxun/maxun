@@ -104,7 +104,7 @@ export class RemoteBrowser {
         } catch {
             return url;
         }
-    }   
+    }
 
     /**
      * Determines if a URL change is significant enough to emit
@@ -130,11 +130,11 @@ export class RemoteBrowser {
         });
 
         // Handle page load events with retry mechanism
-        page.on('load', async () => { 
+        page.on('load', async () => {
             const injectScript = async (): Promise<boolean> => {
                 try {
                     await page.waitForLoadState('networkidle', { timeout: 5000 });
-                    
+
                     await page.evaluate(getInjectableScript());
                     return true;
                 } catch (error: any) {
@@ -148,6 +148,19 @@ export class RemoteBrowser {
         });
     }
 
+    private getUserAgent() {
+        const userAgents = [
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.5845.140 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) Gecko/20100101 Firefox/117.0',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.1938.81 Safari/537.36 Edg/116.0.1938.81',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.5845.96 Safari/537.36 OPR/101.0.4843.25',
+            'Mozilla/5.0 (Windows NT 11.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.5938.62 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:118.0) Gecko/20100101 Firefox/118.0',
+        ];
+    
+        return userAgents[Math.floor(Math.random() * userAgents.length)];
+    }
+
     /**
      * An asynchronous constructor for asynchronously initialized properties.
      * Must be called right after creating an instance of RemoteBrowser class.
@@ -155,37 +168,17 @@ export class RemoteBrowser {
      * @returns {Promise<void>}
      */
     public initialize = async (userId: string): Promise<void> => {
-        // const launchOptions = {
-        //     headless: true,
-        //     proxy: options.launchOptions?.proxy,
-        //     chromiumSandbox: false,
-        //     args: [
-        //         '--no-sandbox',
-        //         '--disable-setuid-sandbox',
-        //         '--headless=new',
-        //         '--disable-gpu',
-        //         '--disable-dev-shm-usage',
-        //         '--disable-software-rasterizer',
-        //         '--in-process-gpu',
-        //         '--disable-infobars',
-        //         '--single-process', 
-        //         '--no-zygote',
-        //         '--disable-notifications',
-        //         '--disable-extensions',
-        //         '--disable-background-timer-throttling',
-        //         ...(options.launchOptions?.args || [])
-        //     ],
-        //     env: {
-        //         ...process.env,
-        //         CHROMIUM_FLAGS: '--disable-gpu --no-sandbox --headless=new'
-        //     }
-        // };
-        // console.log('Launch options before:', options.launchOptions);
-        // this.browser = <Browser>(await options.browser.launch(launchOptions));
-
-        // console.log('Launch options after:', options.launchOptions)
         this.browser = <Browser>(await chromium.launch({
             headless: true,
+            args: [
+                "--disable-blink-features=AutomationControlled",
+                "--disable-web-security",
+                "--disable-features=IsolateOrigins,site-per-process",
+                "--disable-site-isolation-trials",
+                "--disable-extensions",
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+            ], 
         }));
         const proxyConfig = await getDecryptedProxyConfig(userId);
         let proxyOptions: { server: string, username?: string, password?: string } = { server: '' };
@@ -201,7 +194,7 @@ export class RemoteBrowser {
         const contextOptions: any = {
             viewport: { height: 400, width: 900 },
             // recordVideo: { dir: 'videos/' }
-             // Force reduced motion to prevent animation issues
+            // Force reduced motion to prevent animation issues
             reducedMotion: 'reduce',
             // Force JavaScript to be enabled
             javaScriptEnabled: true,
@@ -210,7 +203,8 @@ export class RemoteBrowser {
             // Disable hardware acceleration
             forcedColors: 'none',
             isMobile: false,
-            hasTouch: false
+            hasTouch: false,
+            userAgent: this.getUserAgent(),
         };
 
         if (proxyOptions.server) {
@@ -220,19 +214,38 @@ export class RemoteBrowser {
                 password: proxyOptions.password ? proxyOptions.password : undefined,
             };
         }
-        const browserUserAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.5481.38 Safari/537.36";
 
-
-        contextOptions.userAgent = browserUserAgent;
         this.context = await this.browser.newContext(contextOptions);
+        await this.context.addInitScript(
+            `const defaultGetter = Object.getOwnPropertyDescriptor(
+              Navigator.prototype,
+              "webdriver"
+            ).get;
+            defaultGetter.apply(navigator);
+            defaultGetter.toString();
+            Object.defineProperty(Navigator.prototype, "webdriver", {
+              set: undefined,
+              enumerable: true,
+              configurable: true,
+              get: new Proxy(defaultGetter, {
+                apply: (target, thisArg, args) => {
+                  Reflect.apply(target, thisArg, args);
+                  return false;
+                },
+              }),
+            });
+            const patchedGetter = Object.getOwnPropertyDescriptor(
+              Navigator.prototype,
+              "webdriver"
+            ).get;
+            patchedGetter.apply(navigator);
+            patchedGetter.toString();`
+        );
         this.currentPage = await this.context.newPage();
 
         await this.setupPageEventListeners(this.currentPage);
 
-        // await this.currentPage.setExtraHTTPHeaders({
-        //     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
-        // });
-        const blocker = await PlaywrightBlocker.fromPrebuiltAdsAndTracking(fetch);
+        const blocker = await PlaywrightBlocker.fromLists(fetch, ['https://easylist.to/easylist/easylist.txt']);
         await blocker.enableBlockingInPage(this.currentPage);
         this.client = await this.currentPage.context().newCDPSession(this.currentPage);
         await blocker.disableBlockingInPage(this.currentPage);
@@ -456,7 +469,7 @@ export class RemoteBrowser {
         this.currentPage = newPage;
         if (this.currentPage) {
             await this.setupPageEventListeners(this.currentPage);
-            
+
             this.client = await this.currentPage.context().newCDPSession(this.currentPage);
             await this.subscribeToScreencast();
         } else {

@@ -49,7 +49,7 @@
     "jwt-decode": "^4.0.0",
     "loglevel": "^1.8.0",
     "loglevel-plugin-remote": "^0.6.8",
-    "maxun-core": "^0.0.5",
+    "maxun-core": "^0.0.6",
     "minio": "^8.0.1",
     "moment-timezone": "^0.5.45",
     "node-cron": "^3.0.3",
