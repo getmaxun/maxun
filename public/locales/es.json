@@ -366,5 +366,23 @@
         "th": "º"
       }
     }
+  },
+  "main_page": {
+    "notifications": {
+      "interpretation_success": "Interpretación del robot {{name}} completada con éxito",
+      "interpretation_failed": "Error al interpretar el robot {{name}}",
+      "run_started": "Ejecutando robot: {{name}}",
+      "run_start_failed": "Error al ejecutar el robot: {{name}}",
+      "schedule_success": "Robot {{name}} programado exitosamente",
+      "schedule_failed": "Error al programar el robot {{name}}",
+      "abort_success": "Interpretación del robot {{name}} abortada exitosamente",
+      "abort_failed": "Error al abortar la interpretación del robot {{name}}"
+    },
+    "menu": {
+      "recordings": "Robots",
+      "runs": "Ejecuciones",
+      "proxy": "Proxy",
+      "apikey": "Clave API"
+    }
   }
 }
