@@ -430,5 +430,25 @@
         "run_type": "运行类型"
       }
     }
+  },
+  "run_content": {
+    "tabs": {
+      "output_data": "输出数据",
+      "log": "日志"
+    },
+    "empty_output": "输出为空。",
+    "captured_data": {
+      "title": "捕获的数据",
+      "download_json": "下载为JSON",
+      "download_csv": "下载为CSV"
+    },
+    "captured_screenshot": {
+      "title": "捕获的截图",
+      "download": "下载截图",
+      "render_failed": "图像渲染失败"
+    },
+    "buttons": {
+      "stop": "停止"
+    }
   }
 }
