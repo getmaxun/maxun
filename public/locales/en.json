@@ -38,8 +38,11 @@
       "edit":"Edit",
       "delete":"Delete",
       "duplicate":"Duplicate",
-      "search":"Search Robots..."
-      
+      "search":"Search Robots...",
+      "notifications": {
+        "delete_warning": "Cannot delete robot as it has associated runs",
+        "delete_success": "Robot deleted successfully"
+      }
     },
     "mainmenu":{
       "recordings": "Robots",
