@@ -318,5 +318,16 @@
       "duplicate_error": "更新目标URL失败。请重试。",
       "unknown_error": "更新目标URL时发生错误。"
     }
+  },
+  "robot_settings": {
+    "title": "机器人设置",
+    "target_url": "机器人目标URL",
+    "robot_id": "机器人ID",
+    "robot_limit": "机器人限制",
+    "created_by_user": "由用户创建",
+    "created_at": "机器人创建时间",
+    "errors": {
+      "robot_not_found": "无法找到机器人详细信息。请重试。"
+    }
   }
 }
