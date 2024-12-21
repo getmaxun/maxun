@@ -317,5 +317,16 @@
             "duplicate_error": "Fehler beim Aktualisieren der Ziel-URL. Bitte versuchen Sie es erneut.",
             "unknown_error": "Beim Aktualisieren der Ziel-URL ist ein Fehler aufgetreten."
         }
+    },
+    "robot_settings": {
+        "title": "Roboter-Einstellungen",
+        "target_url": "Roboter-Ziel-URL",
+        "robot_id": "Roboter-ID",
+        "robot_limit": "Roboter-Limit",
+        "created_by_user": "Erstellt von Benutzer",
+        "created_at": "Erstellungsdatum des Roboters",
+        "errors": {
+            "robot_not_found": "Roboterdetails konnten nicht gefunden werden. Bitte versuchen Sie es erneut."
+        }
     }
 }
