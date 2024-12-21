@@ -239,5 +239,23 @@
             "image_below": "画像は以下に表示されます：",
             "separator": "--------------------------------------------------"
         }
+    },
+    "interpretation_buttons": {
+        "buttons": {
+            "preview": "出力データのプレビューを取得",
+            "yes": "はい",
+            "no": "いいえ"
+        },
+        "messages": {
+            "extracting": "データ抽出中...10秒から1分ほどお待ちください",
+            "restart_required": "録画を更新した後、解釈を再起動してください",
+            "run_finished": "実行完了",
+            "run_failed": "実行の開始に失敗しました"
+        },
+        "modal": {
+            "use_previous": "この操作の条件として前回の選択を使用しますか？",
+            "previous_action": "前回の操作: ",
+            "element_text": "テキスト要素 "
+        }
     }
 }
