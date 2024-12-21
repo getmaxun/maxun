@@ -216,10 +216,28 @@
   },
   "browser_recording": {
     "modal": {
-        "confirm_discard": "您确定要放弃录制吗？"
+      "confirm_discard": "您确定要放弃录制吗？"
     },
     "notifications": {
-        "terminated": "当前录制已终止"
+      "terminated": "当前录制已终止"
+    }
+  },
+  "interpretation_log": {
+    "titles": {
+      "output_preview": "输出数据预览",
+      "screenshot": "截图"
+    },
+    "messages": {
+      "additional_rows": "完成录制后将提取更多数据行。",
+      "successful_training": "您已成功训练机器人执行操作！点击下方按钮预览机器人将提取的数据。",
+      "no_selection": "看起来您还没有选择要提取的内容。选择后，机器人将在此处显示您的选择预览。"
+    },
+    "data_sections": {
+      "binary_received": "---------- 已接收二进制输出数据 ----------",
+      "serializable_received": "---------- 已接收可序列化输出数据 ----------",
+      "mimetype": "MIME类型：",
+      "image_below": "图片显示如下：",
+      "separator": "--------------------------------------------------"
     }
   }
 }
