@@ -239,5 +239,23 @@
       "image_below": "La imagen se muestra a continuación:",
       "separator": "--------------------------------------------------"
     }
+  },
+  "interpretation_buttons": {
+    "buttons": {
+        "preview": "Obtener Vista Previa de Datos de Salida",
+        "yes": "Sí",
+        "no": "No"
+    },
+    "messages": {
+        "extracting": "Extrayendo datos...espere de 10 segundos a 1 minuto",
+        "restart_required": "Por favor, reinicie la interpretación después de actualizar la grabación",
+        "run_finished": "Ejecución finalizada",
+        "run_failed": "Error al iniciar la ejecución"
+    },
+    "modal": {
+        "use_previous": "¿Desea usar su selección anterior como condición para realizar esta acción?",
+        "previous_action": "Su acción anterior fue: ",
+        "element_text": "en un elemento con texto "
+    }
   }
 }
