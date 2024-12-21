@@ -318,5 +318,16 @@
       "duplicate_error": "Error al actualizar la URL de destino. Por favor, inténtalo de nuevo.",
       "unknown_error": "Ocurrió un error al actualizar la URL de destino."
     }
+  },
+  "robot_settings": {
+    "title": "Configuración del Robot",
+    "target_url": "URL de Destino del Robot",
+    "robot_id": "ID del Robot",
+    "robot_limit": "Límite del Robot",
+    "created_by_user": "Creado por Usuario",
+    "created_at": "Fecha de Creación del Robot",
+    "errors": {
+      "robot_not_found": "No se pudieron encontrar los detalles del robot. Inténtelo de nuevo."
+    }
   }
 }
