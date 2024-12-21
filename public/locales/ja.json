@@ -329,5 +329,17 @@
         "errors": {
             "robot_not_found": "ロボットの詳細が見つかりませんでした。もう一度試してください。"
         }
+    },
+    "robot_edit": {
+        "title": "ロボットを編集",
+        "change_name": "ロボット名の変更",
+        "robot_limit": "ロボットの制限",
+        "save": "変更を保存",
+        "cancel": "キャンセル",
+        "notifications": {
+            "update_success": "ロボットが正常に更新されました。",
+            "update_failed": "ロボットの更新に失敗しました。もう一度試してください。",
+            "update_error": "ロボットの更新中にエラーが発生しました。"
+        }
     }
 }
