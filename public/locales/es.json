@@ -251,6 +251,7 @@
   "interpretation_buttons": {
     "buttons": {
       "preview": "Obtener Vista Previa de Datos de Salida",
+      "reset": "Restablecer",
       "yes": "Sí",
       "no": "No"
     },
@@ -264,6 +265,9 @@
       "use_previous": "¿Desea usar su selección anterior como condición para realizar esta acción?",
       "previous_action": "Su acción anterior fue: ",
       "element_text": "en un elemento con texto "
+    },
+    "notifications": {
+      "reset_success": "Vista previa restablecida correctamente"
     }
   },
   "recording_page": {

@@ -245,11 +245,15 @@
             "mimetype": "Medientyp: ",
             "image_below": "Bild wird unten angezeigt:",
             "separator": "--------------------------------------------------"
+        },
+        "notifications": {
+            "reset_success": "Vorschau erfolgreich zurückgesetzt"
         }
     },
     "interpretation_buttons": {
         "buttons": {
             "preview": "Vorschau der Ausgabedaten anzeigen",
+            "reset": "Zurücksetzen",
             "yes": "Ja",
             "no": "Nein"
         },

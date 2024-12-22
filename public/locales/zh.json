@@ -246,11 +246,15 @@
       "mimetype": "MIME类型：",
       "image_below": "图片显示如下：",
       "separator": "--------------------------------------------------"
+    },
+    "notifications": {
+      "reset_success": "输出预览已成功重置"
     }
   },
   "interpretation_buttons": {
     "buttons": {
       "preview": "获取输出数据预览",
+      "reset": "重置",
       "yes": "是",
       "no": "否"
     },

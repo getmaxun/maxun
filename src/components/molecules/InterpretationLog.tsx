@@ -35,7 +35,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
   const { width } = useBrowserDimensionsStore();
   const { socket } = useSocketStore();
-  const { currentWorkflowActionsState } = useGlobalInfoStore();
+  const { currentWorkflowActionsState, shouldResetInterpretationLog, notify } = useGlobalInfoStore();
 
   const toggleDrawer = (newOpen: boolean) => (event: React.KeyboardEvent | React.MouseEvent) => {
     if (
@@ -93,6 +93,14 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
   const handleCustomValueChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setCustomValue(event.target.value);
   };
+
+  useEffect(() => {
+    if (shouldResetInterpretationLog) {
+      setLog('');
+      setTableData([]);
+      setBinaryData(null);
+    }
+  }, [shouldResetInterpretationLog]);
 
   useEffect(() => {
     socket?.on('log', handleLog);

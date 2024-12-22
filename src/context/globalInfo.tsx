@@ -32,6 +32,8 @@ interface GlobalInfo {
     hasScreenshotAction: boolean;
     hasScrapeSchemaAction: boolean;
   }) => void;
+  shouldResetInterpretationLog: boolean;
+  resetInterpretationLog: () => void;
 };
 
 class GlobalInfoStore implements Partial<GlobalInfo> {
@@ -53,6 +55,7 @@ class GlobalInfoStore implements Partial<GlobalInfo> {
     hasScreenshotAction: false,
     hasScrapeSchemaAction: false,
   };
+  shouldResetInterpretationLog = false;
 };
 
 const globalInfoStore = new GlobalInfoStore();
@@ -71,6 +74,7 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
   const [recordingName, setRecordingName] = useState<string>(globalInfoStore.recordingName);
   const [recordingUrl, setRecordingUrl] = useState<string>(globalInfoStore.recordingUrl);
   const [currentWorkflowActionsState, setCurrentWorkflowActionsState] = useState(globalInfoStore.currentWorkflowActionsState);
+  const [shouldResetInterpretationLog, setShouldResetInterpretationLog] = useState<boolean>(globalInfoStore.shouldResetInterpretationLog);
 
   const notify = (severity: 'error' | 'warning' | 'info' | 'success', message: string) => {
     setNotification({ severity, message, isOpen: true });
@@ -85,6 +89,14 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
     if (!browserId) {
       setRecordingLength(0);
     }
+  }
+
+  const resetInterpretationLog = () => {
+    setShouldResetInterpretationLog(true);
+    // Reset the flag after a short delay to allow components to respond
+    setTimeout(() => {
+      setShouldResetInterpretationLog(false);
+    }, 100);
   }
 
   return (
@@ -111,6 +123,8 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
         setRecordingUrl,
         currentWorkflowActionsState,
         setCurrentWorkflowActionsState,
+        shouldResetInterpretationLog,
+        resetInterpretationLog,
       }}
     >
       {children}
