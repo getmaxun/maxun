@@ -670,7 +670,11 @@ export default class Interpreter extends EventEmitter {
     const workflowCopy: Workflow = JSON.parse(JSON.stringify(workflow));
 
     // apply ad-blocker to the current page
-    await this.applyAdBlocker(p);
+    try {
+      await this.applyAdBlocker(p);
+    } catch (error) {
+      this.log(`Failed to apply ad-blocker: ${error.message}`, Level.ERROR);
+    }
     const usedActions: string[] = [];
     let selectors: string[] = [];
     let lastAction = null;
