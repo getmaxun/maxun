@@ -245,10 +245,17 @@ export class RemoteBrowser {
 
         await this.setupPageEventListeners(this.currentPage);
 
-        const blocker = await PlaywrightBlocker.fromLists(fetch, ['https://easylist.to/easylist/easylist.txt']);
-        await blocker.enableBlockingInPage(this.currentPage);
-        this.client = await this.currentPage.context().newCDPSession(this.currentPage);
-        await blocker.disableBlockingInPage(this.currentPage);
+        try {
+            const blocker = await PlaywrightBlocker.fromLists(fetch, ['https://easylist.to/easylist/easylist.txt']);
+            await blocker.enableBlockingInPage(this.currentPage);
+            this.client = await this.currentPage.context().newCDPSession(this.currentPage);
+            await blocker.disableBlockingInPage(this.currentPage);
+            console.log('Adblocker initialized');
+          } catch (error: any) {
+            console.warn('Failed to initialize adblocker, continuing without it:', error.message);
+            // Still need to set up the CDP session even if blocker fails
+            this.client = await this.currentPage.context().newCDPSession(this.currentPage);
+          }
     };
 
     /**
