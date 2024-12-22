@@ -43,7 +43,7 @@ services:
     #build:
       #context: .
       #dockerfile: server/Dockerfile
-    image: getmaxun/maxun-backend:v0.0.8
+    image: getmaxun/maxun-backend:v0.0.9
     ports:
       - "${BACKEND_PORT:-8080}:${BACKEND_PORT:-8080}"
     env_file: .env
@@ -70,7 +70,7 @@ services:
       #build:
       #context: .
       #dockerfile: Dockerfile
-    image: getmaxun/maxun-frontend:v0.0.4
+    image: getmaxun/maxun-frontend:v0.0.5
     ports:
       - "${FRONTEND_PORT:-5173}:${FRONTEND_PORT:-5173}"
     env_file: .env
