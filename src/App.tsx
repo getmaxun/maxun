@@ -1,8 +1,10 @@
-import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import React from "react";
+import { Routes, Route } from "react-router-dom";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import { GlobalInfoProvider } from "./context/globalInfo";
 import { PageWrapper } from "./pages/PageWrappper";
+import i18n from "./i18n";
+
 
 const theme = createTheme({
   palette: {
@@ -20,14 +22,14 @@ const theme = createTheme({
         },
         containedPrimary: {
           // Styles for 'contained' variant with 'primary' color
-          '&:hover': {
+          "&:hover": {
             backgroundColor: "#ff66d9",
           },
         },
         outlined: {
           // Apply white background for all 'outlined' variant buttons
           backgroundColor: "#ffffff",
-          '&:hover': {
+          "&:hover": {
             backgroundColor: "#f0f0f0", // Optional lighter background on hover
           },
         },
@@ -36,7 +38,7 @@ const theme = createTheme({
     MuiLink: {
       styleOverrides: {
         root: {
-          '&:hover': {
+          "&:hover": {
             color: "#ff00c3",
           },
         },
@@ -63,7 +65,7 @@ const theme = createTheme({
         standardInfo: {
           backgroundColor: "#fce1f4",
           color: "#ff00c3",
-          '& .MuiAlert-icon': {
+          "& .MuiAlert-icon": {
             color: "#ff00c3",
           },
         },
@@ -72,7 +74,7 @@ const theme = createTheme({
     MuiAlertTitle: {
       styleOverrides: {
         root: {
-          '& .MuiAlert-icon': {
+          "& .MuiAlert-icon": {
             color: "#ffffff",
           },
         },
@@ -81,15 +83,16 @@ const theme = createTheme({
   },
 });
 
-
 function App() {
   return (
     <ThemeProvider theme={theme}>
-      <GlobalInfoProvider>
-        <Routes>
-          <Route path="/*" element={<PageWrapper />} />
-        </Routes>
-      </GlobalInfoProvider>
+      
+        <GlobalInfoProvider>
+          <Routes>
+            <Route path="/*" element={<PageWrapper />} />
+          </Routes>
+        </GlobalInfoProvider>
+     
     </ThemeProvider>
   );
 }

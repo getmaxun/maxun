@@ -7,13 +7,14 @@ WORKDIR /app
 COPY package*.json ./
 COPY maxun-core ./maxun-core
 COPY src ./src
+COPY public ./public 
 COPY server ./server
 COPY tsconfig.json ./
 COPY server/tsconfig.json ./server/
 # COPY server/start.sh ./  
 
 # Install dependencies
-RUN npm install
+RUN npm install --legacy-peer-deps
 
 # Install Playwright browsers and dependencies
 RUN npx playwright install --with-deps chromium

@@ -111,13 +111,21 @@ export default class Interpreter extends EventEmitter {
 
   private async applyAdBlocker(page: Page): Promise<void> {
     if (this.blocker) {
-      await this.blocker.enableBlockingInPage(page);
+      try {
+        await this.blocker.enableBlockingInPage(page);
+      } catch (err) {
+        this.log(`Ad-blocker operation failed:`, Level.ERROR);
+      }
     }
   }
 
   private async disableAdBlocker(page: Page): Promise<void> {
     if (this.blocker) {
-      await this.blocker.disableBlockingInPage(page);
+      try {
+        await this.blocker.disableBlockingInPage(page);
+      } catch (err) {
+        this.log(`Ad-blocker operation failed:`, Level.ERROR);
+      }
     }
   }
 
@@ -192,8 +200,8 @@ export default class Interpreter extends EventEmitter {
     // const actionable = async (selector: string): Promise<boolean> => {
     //   try {
     //     const proms = [
-    //       page.isEnabled(selector, { timeout: 5000 }),
-    //       page.isVisible(selector, { timeout: 5000 }),
+    //       page.isEnabled(selector, { timeout: 10000 }),
+    //       page.isVisible(selector, { timeout: 10000 }),
     //     ];
 
     //     return await Promise.all(proms).then((bools) => bools.every((x) => x));
@@ -214,6 +222,17 @@ export default class Interpreter extends EventEmitter {
     //     return [];
     //   }),
     // ).then((x) => x.flat());
+
+    const presentSelectors: SelectorArray = await Promise.all(
+        selectors.map(async (selector) => {
+            try {
+                await page.waitForSelector(selector, { state: 'attached' });
+                return [selector];
+            } catch (e) {
+                return [];
+            }
+        }),
+    ).then((x) => x.flat());
     
     const action = workflowCopy[workflowCopy.length - 1];
 
@@ -233,7 +252,7 @@ export default class Interpreter extends EventEmitter {
             ...p,
             [cookie.name]: cookie.value,
           }), {}),
-      selectors,
+      selectors: presentSelectors,
     };
   }
 
@@ -506,7 +525,11 @@ export default class Interpreter extends EventEmitter {
           try {
             await executeAction(invokee, methodName, step.args);
           } catch (error) {
-            await executeAction(invokee, methodName, [step.args[0], { force: true }]);
+            try{
+              await executeAction(invokee, methodName, [step.args[0], { force: true }]);
+            } catch (error) {
+              continue
+            }
           }
         } else {
           await executeAction(invokee, methodName, step.args);
@@ -647,7 +670,11 @@ export default class Interpreter extends EventEmitter {
     const workflowCopy: Workflow = JSON.parse(JSON.stringify(workflow));
 
     // apply ad-blocker to the current page
-    await this.applyAdBlocker(p);
+    try {
+      await this.applyAdBlocker(p);
+    } catch (error) {
+      this.log(`Failed to apply ad-blocker: ${error.message}`, Level.ERROR);
+    }
     const usedActions: string[] = [];
     let selectors: string[] = [];
     let lastAction = null;
@@ -767,6 +794,8 @@ export default class Interpreter extends EventEmitter {
   public async run(page: Page, params?: ParamType): Promise<void> {
     this.log('Starting the workflow.', Level.LOG);
     const context = page.context();
+
+    page.setDefaultNavigationTimeout(100000);
     
     // Check proxy settings from context options
     const contextOptions = (context as any)._options;
