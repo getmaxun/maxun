@@ -7,6 +7,7 @@ WORKDIR /app
 COPY package*.json ./
 COPY maxun-core ./maxun-core
 COPY src ./src
+COPY public ./public 
 COPY server ./server
 COPY tsconfig.json ./
 COPY server/tsconfig.json ./server/
