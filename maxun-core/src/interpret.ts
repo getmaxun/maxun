@@ -111,13 +111,21 @@ export default class Interpreter extends EventEmitter {
 
   private async applyAdBlocker(page: Page): Promise<void> {
     if (this.blocker) {
-      await this.blocker.enableBlockingInPage(page);
+      try {
+        await this.blocker.enableBlockingInPage(page);
+      } catch (err) {
+        this.log(`Ad-blocker operation failed:`, Level.ERROR);
+      }
     }
   }
 
   private async disableAdBlocker(page: Page): Promise<void> {
     if (this.blocker) {
-      await this.blocker.disableBlockingInPage(page);
+      try {
+        await this.blocker.disableBlockingInPage(page);
+      } catch (err) {
+        this.log(`Ad-blocker operation failed:`, Level.ERROR);
+      }
     }
   }
 
@@ -662,7 +670,11 @@ export default class Interpreter extends EventEmitter {
     const workflowCopy: Workflow = JSON.parse(JSON.stringify(workflow));
 
     // apply ad-blocker to the current page
-    await this.applyAdBlocker(p);
+    try {
+      await this.applyAdBlocker(p);
+    } catch (error) {
+      this.log(`Failed to apply ad-blocker: ${error.message}`, Level.ERROR);
+    }
     const usedActions: string[] = [];
     let selectors: string[] = [];
     let lastAction = null;
