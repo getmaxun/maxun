@@ -11,6 +11,7 @@ RUN npm install --legacy-peer-deps
 
 # Copy frontend source code and config
 COPY src ./src
+COPY public ./public 
 COPY index.html ./
 COPY vite.config.js ./
 COPY tsconfig.json ./
