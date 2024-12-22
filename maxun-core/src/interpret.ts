@@ -111,13 +111,21 @@ export default class Interpreter extends EventEmitter {
 
   private async applyAdBlocker(page: Page): Promise<void> {
     if (this.blocker) {
-      await this.blocker.enableBlockingInPage(page);
+      try {
+        await this.blocker.enableBlockingInPage(page);
+      } catch (err) {
+        this.log(`Ad-blocker operation failed:`, Level.ERROR);
+      }
     }
   }
 
   private async disableAdBlocker(page: Page): Promise<void> {
     if (this.blocker) {
-      await this.blocker.disableBlockingInPage(page);
+      try {
+        await this.blocker.disableBlockingInPage(page);
+      } catch (err) {
+        this.log(`Ad-blocker operation failed:`, Level.ERROR);
+      }
     }
   }
 
