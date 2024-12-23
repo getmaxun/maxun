@@ -55,7 +55,6 @@ const Login = () => {
      }
    };
 
-   // Language switcher function
    
 
    return (
