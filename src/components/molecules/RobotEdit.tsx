@@ -170,8 +170,8 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                                     />
                                 )}
 
-                                <Box mt={2} display="flex" justifyContent="flex-end" onClick={handleSave}>
-                                    <Button variant="contained" color="primary">
+                                <Box mt={2} display="flex" justifyContent="flex-end">
+                                    <Button variant="contained" color="primary" onClick={handleSave}>
                                         {t('robot_edit.save')}
                                     </Button>
                                     <Button 
