@@ -931,7 +931,6 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
       }, coordinates);
       return selectors || { generalSelector: '' };
     } else {
-      console.log(`NON UNIQUE: MODE 2`)
       const selectors = await page.evaluate(({ x, y }: { x: number, y: number }) => {
         function getNonUniqueSelector(element: HTMLElement): string {
           let selector = element.tagName.toLowerCase();
