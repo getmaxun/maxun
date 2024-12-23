@@ -148,8 +148,8 @@ export const RobotDuplicationModal = ({ isOpen, handleStart, handleClose, initia
                                     onChange={handleTargetUrlChange}
                                     style={{ marginBottom: '20px', marginTop: '30px' }}
                                 />
-                                <Box mt={2} display="flex" justifyContent="flex-end" onClick={handleSave}>
-                                    <Button variant="contained" color="primary">
+                                <Box mt={2} display="flex" justifyContent="flex-end">
+                                    <Button variant="contained" color="primary" onClick={handleSave}>
                                         {t('robot_duplication.buttons.duplicate')}
                                     </Button>
                                     <Button onClick={handleClose} color="primary" variant="outlined" style={{ marginLeft: '10px' }}>
