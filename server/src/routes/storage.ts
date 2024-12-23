@@ -153,6 +153,36 @@ router.put('/recordings/:id/cookies', async (req, res) => {
   }
 });
 
+/**
+ * GET endpoint for retrieving the isLogin status of a specific robot.
+ * Returns a boolean indicating if the robot is logged in.
+ */
+router.get('/recordings/:id/login-status', requireSignIn, async (req, res) => {
+  try {
+    const robot = await Robot.findOne({
+      where: { 'recording_meta.id': req.params.id },
+      attributes: ['isLogin'],
+      raw: true
+    });
+
+    if (!robot) {
+      return res.status(404).json({
+        error: 'Robot not found'
+      });
+    }
+
+    return res.json({
+      isLogin: robot.isLogin
+    });
+
+  } catch (error) {
+    logger.log('error', `Error retrieving login status for robot ${req.params.id}: ${error}`);
+    return res.status(500).json({
+      error: 'Failed to retrieve login status'
+    });
+  }
+});
+
 function formatRunResponse(run: any) {
   const formattedRun = {
       id: run.id,
