@@ -869,6 +869,13 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
         function getNonUniqueSelector(element: HTMLElement): string {
           let selector = element.tagName.toLowerCase();
 
+          if (selector === 'td' && element.parentElement) {
+            // Find position among td siblings
+            const siblings = Array.from(element.parentElement.children);
+            const position = siblings.indexOf(element) + 1;
+            return `${selector}:nth-child(${position})`;
+          }
+
           if (element.className) {
             const classes = element.className.split(/\s+/).filter((cls: string) => Boolean(cls));
             if (classes.length > 0) {
@@ -937,6 +944,12 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
         function getNonUniqueSelector(element: HTMLElement): string {
           let selector = element.tagName.toLowerCase();
 
+          if (selector === 'td' && element.parentElement) {
+            const siblings = Array.from(element.parentElement.children);
+            const position = siblings.indexOf(element) + 1;
+            return `${selector}:nth-child(${position})`;
+          }
+
           if (element.className) {
             const classes = element.className.split(/\s+/).filter((cls: string) => Boolean(cls));
             if (classes.length > 0) {
@@ -990,6 +1003,12 @@ export const getChildSelectors = async (page: Page, parentSelector: string): Pro
       // Function to get a non-unique selector based on tag and class (if present)
       function getNonUniqueSelector(element: HTMLElement): string {
         let selector = element.tagName.toLowerCase();
+
+        if (selector === 'td' && element.parentElement) {
+          const siblings = Array.from(element.parentElement.children);
+          const position = siblings.indexOf(element) + 1;
+          return `${selector}:nth-child(${position})`;
+        }
 
         const className = typeof element.className === 'string' ? element.className : '';
         if (className) {
