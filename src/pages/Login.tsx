@@ -50,7 +50,7 @@ const Login = () => {
        window.localStorage.setItem("user", JSON.stringify(data));
        navigate("/");
      } catch (err) {
-       notify("error", t('login.error_notification')); // Translated error
+       notify("error", t('login.error_notification'));
        setLoading(false);
      }
    };
