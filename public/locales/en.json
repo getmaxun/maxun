@@ -345,7 +345,7 @@
     },
     "robot_edit": {
       "title": "Edit Robot",
-      "change_name": "Change Robot Name",
+      "change_name": "Robot Name",
       "robot_limit": "Robot Limit",
       "save": "Save Changes",
       "cancel": "Cancel",
