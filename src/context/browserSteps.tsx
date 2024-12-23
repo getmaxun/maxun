@@ -62,26 +62,35 @@ export const BrowserStepsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const addListStep = (listSelector: string, newFields: { [key: string]: TextStep }, listId: number, pagination?: { type: string; selector: string }, limit?: number) => {
         setBrowserSteps(prevSteps => {
             const existingListStepIndex = prevSteps.findIndex(step => step.type === 'list' && step.id === listId);
+            
             if (existingListStepIndex !== -1) {
                 const updatedSteps = [...prevSteps];
                 const existingListStep = updatedSteps[existingListStepIndex] as ListStep;
-
-                const filteredNewFields = Object.entries(newFields).reduce((acc, [key, value]) => {
+    
+                // Preserve existing labels for fields
+                const mergedFields = Object.entries(newFields).reduce((acc, [key, field]) => {
                     if (!discardedFields.has(`${listId}-${key}`)) {
-                        acc[key] = value;
+                        // If field exists, preserve its label
+                        if (existingListStep.fields[key]) {
+                            acc[key] = {
+                                ...field,
+                                label: existingListStep.fields[key].label
+                            };
+                        } else {
+                            acc[key] = field;
+                        }
                     }
                     return acc;
                 }, {} as { [key: string]: TextStep });
-
+    
                 updatedSteps[existingListStepIndex] = {
                     ...existingListStep,
-                    fields: { ...existingListStep.fields, ...filteredNewFields },
-                    pagination: pagination,
-                    limit: limit,
+                    fields: mergedFields,
+                    pagination: pagination || existingListStep.pagination,
+                    limit: limit
                 };
                 return updatedSteps;
             } else {
-                // Create a new ListStep
                 return [
                     ...prevSteps,
                     { id: listId, type: 'list', listSelector, fields: newFields, pagination, limit }
