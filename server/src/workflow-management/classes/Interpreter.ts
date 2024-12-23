@@ -255,6 +255,17 @@ export class WorkflowInterpreter {
     this.binaryData = [];
   }
 
+  private async fetchLoginStatus(robotId: string): Promise<any> {
+    try {
+      const response = await axios.get(`http://localhost:8080/storage/recordings/${robotId}/login-status`);
+      this.debugMessages.push(`Successfully fetched login status for robot ${robotId}`);
+      console.log("LOGIN STATUSS: ", response.data.isLogin);
+      return response.data.isLogin;
+    } catch (error) {
+      this.debugMessages.push(`Failed to fetch login status for robot ${robotId}: ${error}`);
+    }
+  }
+
   private async fetchCookies(robotId: string): Promise<any> {
     try {
       const response = await axios.get(`http://localhost:8080/storage/recordings/${robotId}/cookies`);
@@ -294,7 +305,9 @@ export class WorkflowInterpreter {
     let cookies: CookieData = { cookies: [], lastUpdated: 0 };
 
     if (robotId) {
-      cookies = await this.fetchCookies(robotId);
+      if (await this.fetchLoginStatus(robotId)) {
+        cookies = await this.fetchCookies(robotId);
+      }
     }
 
     const params = settings.params ? settings.params : null;
