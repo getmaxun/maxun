@@ -220,7 +220,6 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     }
     stopGetText();
     const settings = getTextSettingsObject();
-    console.log("SETTINGS", settings);
     const hasTextSteps = browserSteps.some(step => step.type === 'text');
     if (hasTextSteps) {
       socket?.emit('action', { action: 'scrapeSchema', settings });

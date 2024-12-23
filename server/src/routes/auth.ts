@@ -52,7 +52,7 @@ router.post("/register", async (req, res) => {
       userId: user.id,
       registeredAt: new Date().toISOString(),
     });
-    console.log(`User registered - ${user.email}`);
+    console.log(`User registered`);
     res.json(user);
   } catch (error: any) {
     console.log(`Could not register user - ${error}`);

@@ -10,8 +10,6 @@ import i18n from '../i18n';
 
 const Login = () => {
    const { t } = useTranslation();
-   console.log(i18n) 
-   console.log(t)
    const [form, setForm] = useState({
      email: "",
      password: "",
