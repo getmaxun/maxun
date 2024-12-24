@@ -23,7 +23,28 @@ export const getElementInformation = async (
     if (!getList || listSelector !== '') {
       const elementInfo = await page.evaluate(
         async ({ x, y }) => {
-          const el = document.elementFromPoint(x, y) as HTMLElement;
+          // Helper function to get element from point including shadow DOM
+          const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
+            let element = document.elementFromPoint(x, y) as HTMLElement;
+            if (!element) return null;
+
+            // Traverse through shadow roots
+            let current = element;
+            while (current) {
+              // Check if element has shadow root
+              const shadowRoot = current.shadowRoot;
+              if (!shadowRoot) break;
+
+              // Try to find deeper element in shadow DOM
+              const shadowElement = shadowRoot.elementFromPoint(x, y) as HTMLElement;
+              if (!shadowElement || shadowElement === current) break;
+
+              current = shadowElement;
+            }
+            return current;
+          };
+
+          const el = getDeepestElementFromPoint(x, y);
           if (el) {
             const { parentElement } = el;
             const element = parentElement?.tagName === 'A' ? parentElement : el;
@@ -36,9 +57,12 @@ export const getElementInformation = async (
               attributes?: Record<string, string>;
               innerHTML?: string;
               outerHTML?: string;
+              isShadowRoot?: boolean;
             } = {
               tagName: element?.tagName ?? '',
+              isShadowRoot: !!element?.shadowRoot
             };
+            
             if (element) {
               info.attributes = Array.from(element.attributes).reduce(
                 (acc, attr) => {
@@ -48,6 +72,7 @@ export const getElementInformation = async (
                 {} as Record<string, string>
               );
             }
+
             // Gather specific information based on the tag
             if (element?.tagName === 'A') {
               info.url = (element as HTMLAnchorElement).href;
@@ -61,7 +86,7 @@ export const getElementInformation = async (
                 ...info.attributes,
                 selectedValue: selectElement.value,
               };
-            } else if (element?.tagName === 'INPUT' && (element as HTMLInputElement).type === 'time' || (element as HTMLInputElement).type === 'date') {
+            } else if (element?.tagName === 'INPUT' && ((element as HTMLInputElement).type === 'time' || (element as HTMLInputElement).type === 'date')) {
               info.innerText = (element as HTMLInputElement).value;
             } else {
               info.hasOnlyText = element?.children?.length === 0 &&
@@ -80,7 +105,26 @@ export const getElementInformation = async (
     } else {
       const elementInfo = await page.evaluate(
         async ({ x, y }) => {
-          const originalEl = document.elementFromPoint(x, y) as HTMLElement;
+          // Helper function to get element from point including shadow DOM
+          const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
+            let element = document.elementFromPoint(x, y) as HTMLElement;
+            if (!element) return null;
+
+            // Traverse through shadow roots
+            let current = element;
+            while (current) {
+              const shadowRoot = current.shadowRoot;
+              if (!shadowRoot) break;
+
+              const shadowElement = shadowRoot.elementFromPoint(x, y) as HTMLElement;
+              if (!shadowElement || shadowElement === current) break;
+
+              current = shadowElement;
+            }
+            return current;
+          };
+
+          const originalEl = getDeepestElementFromPoint(x, y);
           if (originalEl) {
             let element = originalEl;
 
@@ -114,8 +158,10 @@ export const getElementInformation = async (
               attributes?: Record<string, string>;
               innerHTML?: string;
               outerHTML?: string;
+              isShadowRoot?: boolean;
             } = {
               tagName: element?.tagName ?? '',
+              isShadowRoot: !!element?.shadowRoot
             };
 
             if (element) {
@@ -156,24 +202,33 @@ export const getElementInformation = async (
   }
 };
 
-/**
- * Returns a {@link Rectangle} object representing
- * the coordinates, width, height and corner points of the element.
- * If an element is not found, returns null.
- * @param page The page instance.
- * @param coordinates Coordinates of an element.
- * @category WorkflowManagement-Selectors
- * @returns {Promise<Rectangle|undefined|null>}
- */
 export const getRect = async (page: Page, coordinates: Coordinates, listSelector: string, getList: boolean) => {
   try {
     if (!getList || listSelector !== '') {
       const rect = await page.evaluate(
         async ({ x, y }) => {
-          const el = document.elementFromPoint(x, y) as HTMLElement;
+          // Helper function to get element from point including shadow DOM
+          const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
+            let element = document.elementFromPoint(x, y) as HTMLElement;
+            if (!element) return null;
+
+            // Traverse through shadow roots
+            let current = element;
+            while (current) {
+              const shadowRoot = current.shadowRoot;
+              if (!shadowRoot) break;
+
+              const shadowElement = shadowRoot.elementFromPoint(x, y) as HTMLElement;
+              if (!shadowElement || shadowElement === current) break;
+
+              current = shadowElement;
+            }
+            return current;
+          };
+
+          const el = getDeepestElementFromPoint(x, y);
           if (el) {
             const { parentElement } = el;
-            // Match the logic in recorder.ts for link clicks
             const element = parentElement?.tagName === 'A' ? parentElement : el;
             const rectangle = element?.getBoundingClientRect();
             if (rectangle) {
@@ -196,7 +251,26 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
     } else {
       const rect = await page.evaluate(
         async ({ x, y }) => {
-          const originalEl = document.elementFromPoint(x, y) as HTMLElement;
+          // Helper function to get element from point including shadow DOM
+          const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
+            let element = document.elementFromPoint(x, y) as HTMLElement;
+            if (!element) return null;
+
+            // Traverse through shadow roots
+            let current = element;
+            while (current) {
+              const shadowRoot = current.shadowRoot;
+              if (!shadowRoot) break;
+
+              const shadowElement = shadowRoot.elementFromPoint(x, y) as HTMLElement;
+              if (!shadowElement || shadowElement === current) break;
+
+              current = shadowElement;
+            }
+            return current;
+          };
+
+          const originalEl = getDeepestElementFromPoint(x, y);
           if (originalEl) {
             let element = originalEl;
 
@@ -248,7 +322,6 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
     logger.log('error', `Stack: ${stack}`);
   }
 };
-
 
 /**
  * Returns the best and unique css {@link Selectors} for the element on the page.
