@@ -85,6 +85,11 @@ export const getElementInformation = async (
             let element = originalEl;
 
             while (element.parentElement) {
+              if (element.tagName.toLowerCase() === 'body' || 
+                  element.tagName.toLowerCase() === 'html') {
+                break;
+              }
+
               const parentRect = element.parentElement.getBoundingClientRect();
               const childRect = element.getBoundingClientRect();
 
@@ -99,7 +104,14 @@ export const getElementInformation = async (
                 (parentRect.width * parentRect.height) > 0.5;
 
               if (fullyContained && significantOverlap) {
-                element = element.parentElement;
+                // Only traverse up if next parent isn't body or html
+                const nextParent = element.parentElement;
+                if (nextParent.tagName.toLowerCase() !== 'body' && 
+                    nextParent.tagName.toLowerCase() !== 'html') {
+                  element = nextParent;
+                } else {
+                  break;
+                }
               } else {
                 break;
               }
@@ -201,6 +213,11 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
             let element = originalEl;
 
             while (element.parentElement) {
+              if (element.tagName.toLowerCase() === 'body' || 
+                element.tagName.toLowerCase() === 'html') {
+                break;
+              }
+
               const parentRect = element.parentElement.getBoundingClientRect();
               const childRect = element.getBoundingClientRect();
 
@@ -215,7 +232,14 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
                 (parentRect.width * parentRect.height) > 0.5;
 
               if (fullyContained && significantOverlap) {
-                element = element.parentElement;
+                // Only traverse up if next parent isn't body or html
+                const nextParent = element.parentElement;
+                if (nextParent.tagName.toLowerCase() !== 'body' && 
+                    nextParent.tagName.toLowerCase() !== 'html') {
+                  element = nextParent;
+                } else {
+                  break;
+                }
               } else {
                 break;
               }
@@ -868,6 +892,13 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
         function getNonUniqueSelector(element: HTMLElement): string {
           let selector = element.tagName.toLowerCase();
 
+          if (selector === 'td' && element.parentElement) {
+            // Find position among td siblings
+            const siblings = Array.from(element.parentElement.children);
+            const position = siblings.indexOf(element) + 1;
+            return `${selector}:nth-child(${position})`;
+          }
+
           if (element.className) {
             const classes = element.className.split(/\s+/).filter((cls: string) => Boolean(cls));
             if (classes.length > 0) {
@@ -903,6 +934,11 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
 
         // if (listSelector === '') {
         while (element.parentElement) {
+          if (element.tagName.toLowerCase() === 'body' || 
+              element.tagName.toLowerCase() === 'html') {
+            break;
+          }
+
           const parentRect = element.parentElement.getBoundingClientRect();
           const childRect = element.getBoundingClientRect();
 
@@ -917,7 +953,14 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
             (parentRect.width * parentRect.height) > 0.5;
 
           if (fullyContained && significantOverlap) {
-            element = element.parentElement;
+            // Only traverse up if next parent isn't body or html
+            const nextParent = element.parentElement;
+            if (nextParent.tagName.toLowerCase() !== 'body' && 
+                nextParent.tagName.toLowerCase() !== 'html') {
+              element = nextParent;
+            } else {
+              break;
+            }
           } else {
             break;
           }
@@ -934,6 +977,12 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
       const selectors = await page.evaluate(({ x, y }: { x: number, y: number }) => {
         function getNonUniqueSelector(element: HTMLElement): string {
           let selector = element.tagName.toLowerCase();
+
+          if (selector === 'td' && element.parentElement) {
+            const siblings = Array.from(element.parentElement.children);
+            const position = siblings.indexOf(element) + 1;
+            return `${selector}:nth-child(${position})`;
+          }
 
           if (element.className) {
             const classes = element.className.split(/\s+/).filter((cls: string) => Boolean(cls));
@@ -988,6 +1037,12 @@ export const getChildSelectors = async (page: Page, parentSelector: string): Pro
       // Function to get a non-unique selector based on tag and class (if present)
       function getNonUniqueSelector(element: HTMLElement): string {
         let selector = element.tagName.toLowerCase();
+
+        if (selector === 'td' && element.parentElement) {
+          const siblings = Array.from(element.parentElement.children);
+          const position = siblings.indexOf(element) + 1;
+          return `${selector}:nth-child(${position})`;
+        }
 
         const className = typeof element.className === 'string' ? element.className : '';
         if (className) {

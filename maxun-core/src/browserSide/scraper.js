@@ -262,76 +262,86 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
  * @returns {Array.<Array.<Object>>} Array of arrays of scraped items, one sub-array per list
  */
   window.scrapeList = async function ({ listSelector, fields, limit = 10 }) {
+    const tableFields = {};
+    const nonTableFields = {};
+    
+    for (const [label, field] of Object.entries(fields)) {
+        if (['TD', 'TH', 'TR'].includes(field.tag)) {
+            tableFields[label] = field;
+        } else {
+            nonTableFields[label] = field;
+        }
+    }
+
+    const parentElements = Array.from(document.querySelectorAll(listSelector));
     const scrapedData = [];
 
-    while (scrapedData.length < limit) {
-        let parentElements = Array.from(document.querySelectorAll(listSelector));
+    for (const parent of parentElements) {
+        // Get the first field's elements to determine how many items we have
+        const firstField = Object.values(fields)[0];
+        const baseElements = Array.from(parent.querySelectorAll(firstField.selector));
         
-        // If we only got one element or none, try a more generic approach
-        if (limit > 1 && parentElements.length <= 1) {
-            const [containerSelector, _] = listSelector.split('>').map(s => s.trim());
-            const container = document.querySelector(containerSelector);
-            
-            if (container) {
-                const allChildren = Array.from(container.children);
-                
-                const firstMatch = document.querySelector(listSelector);
-                if (firstMatch) {
-                    // Get classes from the first matching element
-                    const firstMatchClasses = Array.from(firstMatch.classList);
-                    
-                    // Find similar elements by matching most of their classes
-                    parentElements = allChildren.filter(element => {
-                        const elementClasses = Array.from(element.classList);
-
-                        // Element should share at least 70% of classes with the first match
-                        const commonClasses = firstMatchClasses.filter(cls => 
-                            elementClasses.includes(cls));
-                        return commonClasses.length >= Math.floor(firstMatchClasses.length * 0.7);
-                    });
-                }
-            }
-        }
-
-        // Iterate through each parent element
-        for (const parent of parentElements) {
-            if (scrapedData.length >= limit) break;
+        // Process each item up to the limit
+        for (let i = 0; i < Math.min(baseElements.length, limit); i++) {
             const record = {};
-
-            // For each field, select the corresponding element within the parent
-            for (const [label, { selector, attribute }] of Object.entries(fields)) {
-                const fieldElement = parent.querySelector(selector);
-
-                if (fieldElement) {
+            
+            // Process table fields
+            for (const [label, { selector, attribute }] of Object.entries(tableFields)) {
+                const elements = Array.from(parent.querySelectorAll(selector));
+                // Use the same index to maintain correspondence between fields
+                const element = elements[i];
+                
+                if (element) {
+                    let value;
                     if (attribute === 'innerText') {
-                        record[label] = fieldElement.innerText.trim();
+                        value = element.innerText.trim();
                     } else if (attribute === 'innerHTML') {
-                        record[label] = fieldElement.innerHTML.trim();
-                    } else if (attribute === 'src') {
-                        // Handle relative 'src' URLs
-                        const src = fieldElement.getAttribute('src');
-                        record[label] = src ? new URL(src, window.location.origin).href : null;
-                    } else if (attribute === 'href') {
-                        // Handle relative 'href' URLs
-                        const href = fieldElement.getAttribute('href');
-                        record[label] = href ? new URL(href, window.location.origin).href : null;
+                        value = element.innerHTML.trim();
+                    } else if (attribute === 'src' || attribute === 'href') {
+                        const attrValue = element.getAttribute(attribute);
+                        value = attrValue ? new URL(attrValue, window.location.origin).href : null;
                     } else {
-                        record[label] = fieldElement.getAttribute(attribute);
+                        value = element.getAttribute(attribute);
                     }
+                    record[label] = value;
                 }
             }
-            scrapedData.push(record);
+            
+            // Process non-table fields
+            for (const [label, { selector, attribute }] of Object.entries(nonTableFields)) {
+                const elements = Array.from(parent.querySelectorAll(selector));
+                // Use the same index to maintain correspondence between fields
+                const element = elements[i];
+                
+                if (element) {
+                    let value;
+                    if (attribute === 'innerText') {
+                        value = element.innerText.trim();
+                    } else if (attribute === 'innerHTML') {
+                        value = element.innerHTML.trim();
+                    } else if (attribute === 'src' || attribute === 'href') {
+                        const attrValue = element.getAttribute(attribute);
+                        value = attrValue ? new URL(attrValue, window.location.origin).href : null;
+                    } else {
+                        value = element.getAttribute(attribute);
+                    }
+                    record[label] = value;
+                }
+            }
+            
+            if (Object.keys(record).length > 0) {
+                scrapedData.push(record);
+            }
         }
 
-        // If we've processed all available elements and still haven't reached the limit,
-        // break to avoid infinite loop
-        if (parentElements.length === 0 || scrapedData.length >= parentElements.length) {
+        if (scrapedData.length >= limit) {
+            scrapedData.length = limit;
             break;
         }
     }
+    
     return scrapedData;
 };
-
 
   /**
  * Gets all children of the elements matching the listSelector,
