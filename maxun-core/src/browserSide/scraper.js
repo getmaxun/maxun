@@ -262,7 +262,6 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
  * @returns {Array.<Array.<Object>>} Array of arrays of scraped items, one sub-array per list
  */
   window.scrapeList = async function ({ listSelector, fields, limit = 10 }) {
-    // Separate fields into table and non-table categories
     const tableFields = {};
     const nonTableFields = {};
     
@@ -278,19 +277,19 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
     const scrapedData = [];
 
     for (const parent of parentElements) {
-        // First, get the number of rows we'll need by checking the first table field
-        const firstTableField = Object.values(tableFields)[0];
-        const tableRows = firstTableField 
-            ? Array.from(parent.querySelectorAll(firstTableField.selector)).slice(0, limit)
-            : [null]; 
-
-        tableRows.forEach((_, rowIndex) => {
+        // Get the first field's elements to determine how many items we have
+        const firstField = Object.values(fields)[0];
+        const baseElements = Array.from(parent.querySelectorAll(firstField.selector));
+        
+        // Process each item up to the limit
+        for (let i = 0; i < Math.min(baseElements.length, limit); i++) {
             const record = {};
             
-            // Table fields
+            // Process table fields
             for (const [label, { selector, attribute }] of Object.entries(tableFields)) {
                 const elements = Array.from(parent.querySelectorAll(selector));
-                const element = elements[rowIndex];
+                // Use the same index to maintain correspondence between fields
+                const element = elements[i];
                 
                 if (element) {
                     let value;
@@ -308,9 +307,11 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
                 }
             }
             
-            // Non table fields
+            // Process non-table fields
             for (const [label, { selector, attribute }] of Object.entries(nonTableFields)) {
-                const element = parent.querySelector(selector);
+                const elements = Array.from(parent.querySelectorAll(selector));
+                // Use the same index to maintain correspondence between fields
+                const element = elements[i];
                 
                 if (element) {
                     let value;
@@ -331,7 +332,7 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
             if (Object.keys(record).length > 0) {
                 scrapedData.push(record);
             }
-        });
+        }
 
         if (scrapedData.length >= limit) {
             scrapedData.length = limit;
@@ -341,7 +342,6 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
     
     return scrapedData;
 };
-
 
   /**
  * Gets all children of the elements matching the listSelector,
