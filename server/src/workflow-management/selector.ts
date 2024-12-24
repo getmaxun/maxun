@@ -85,6 +85,11 @@ export const getElementInformation = async (
             let element = originalEl;
 
             while (element.parentElement) {
+              if (element.tagName.toLowerCase() === 'body' || 
+                  element.tagName.toLowerCase() === 'html') {
+                break;
+              }
+
               const parentRect = element.parentElement.getBoundingClientRect();
               const childRect = element.getBoundingClientRect();
 
@@ -99,7 +104,14 @@ export const getElementInformation = async (
                 (parentRect.width * parentRect.height) > 0.5;
 
               if (fullyContained && significantOverlap) {
-                element = element.parentElement;
+                // Only traverse up if next parent isn't body or html
+                const nextParent = element.parentElement;
+                if (nextParent.tagName.toLowerCase() !== 'body' && 
+                    nextParent.tagName.toLowerCase() !== 'html') {
+                  element = nextParent;
+                } else {
+                  break;
+                }
               } else {
                 break;
               }
@@ -201,6 +213,11 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
             let element = originalEl;
 
             while (element.parentElement) {
+              if (element.tagName.toLowerCase() === 'body' || 
+                element.tagName.toLowerCase() === 'html') {
+                break;
+              }
+
               const parentRect = element.parentElement.getBoundingClientRect();
               const childRect = element.getBoundingClientRect();
 
@@ -215,7 +232,14 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
                 (parentRect.width * parentRect.height) > 0.5;
 
               if (fullyContained && significantOverlap) {
-                element = element.parentElement;
+                // Only traverse up if next parent isn't body or html
+                const nextParent = element.parentElement;
+                if (nextParent.tagName.toLowerCase() !== 'body' && 
+                    nextParent.tagName.toLowerCase() !== 'html') {
+                  element = nextParent;
+                } else {
+                  break;
+                }
               } else {
                 break;
               }
@@ -911,6 +935,11 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
 
         // if (listSelector === '') {
         while (element.parentElement) {
+          if (element.tagName.toLowerCase() === 'body' || 
+              element.tagName.toLowerCase() === 'html') {
+            break;
+          }
+
           const parentRect = element.parentElement.getBoundingClientRect();
           const childRect = element.getBoundingClientRect();
 
@@ -925,7 +954,14 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
             (parentRect.width * parentRect.height) > 0.5;
 
           if (fullyContained && significantOverlap) {
-            element = element.parentElement;
+            // Only traverse up if next parent isn't body or html
+            const nextParent = element.parentElement;
+            if (nextParent.tagName.toLowerCase() !== 'body' && 
+                nextParent.tagName.toLowerCase() !== 'html') {
+              element = nextParent;
+            } else {
+              break;
+            }
           } else {
             break;
           }
