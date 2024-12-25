@@ -437,26 +437,19 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
 
         // Handle non-table fields
         if (Object.keys(nonTableFields).length > 0) {
-            const firstField = Object.values(nonTableFields)[0];
-            const baseElements = Array.from(container.querySelectorAll(firstField.selector));
+          const record = {};
 
-            for (let i = 0; i < Math.min(baseElements.length, limit); i++) {
-              const record = {};
-
-              for (const [label, { selector, attribute }] of Object.entries(nonTableFields)) {
-                const elements = Array.from(parent.querySelectorAll(selector));
-                // Use the same index to maintain correspondence between fields
-                const element = elements[i];
-                
-                if (element) {
-                  record[label] = extractValue(element, attribute);
-                }
-              }
-                
-              if (Object.keys(record).length > 0) {
-                  scrapedData.push(record);
-              }
+          for (const [label, { selector, attribute }] of Object.entries(nonTableFields)) {
+            const element = container.querySelector(selector);
+            
+            if (element) {
+              record[label] = extractValue(element, attribute);
             }
+          }
+            
+          if (Object.keys(record).length > 0) {
+              scrapedData.push(record);
+          }  
         }
     });
     
