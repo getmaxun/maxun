@@ -330,8 +330,33 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
     }
 
     // Get all containers that match the listSelector
-    const containers = Array.from(document.querySelectorAll(listSelector));
+    let containers = Array.from(document.querySelectorAll(listSelector));
     if (containers.length === 0) return [];
+
+    if (limit > 1 && containers.length <= 1) {
+      const [containerSelector, _] = listSelector.split('>').map(s => s.trim());
+      const container = document.querySelector(containerSelector);
+      
+      if (container) {
+        const allChildren = Array.from(container.children);
+        
+        const firstMatch = document.querySelector(listSelector);
+        if (firstMatch) {
+            // Get classes from the first matching element
+            const firstMatchClasses = Array.from(firstMatch.classList);
+            
+            // Find similar elements by matching most of their classes
+            containers = allChildren.filter(element => {
+                const elementClasses = Array.from(element.classList);
+
+                // Element should share at least 70% of classes with the first match
+                const commonClasses = firstMatchClasses.filter(cls => 
+                    elementClasses.includes(cls));
+                return commonClasses.length >= Math.floor(firstMatchClasses.length * 0.7);
+            });
+        }
+      }
+    }
 
     // Initialize arrays to store field classifications for each container
     const containerFields = containers.map(() => ({
@@ -436,7 +461,7 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
       }
     }
   
-      // Process non-table fields across all containers
+    // Process non-table fields across all containers
     for (let containerIndex = 0; containerIndex < containers.length; containerIndex++) {
       if (nonTableData.length >= limit) break;
 
