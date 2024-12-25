@@ -262,84 +262,206 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
  * @returns {Array.<Array.<Object>>} Array of arrays of scraped items, one sub-array per list
  */
   window.scrapeList = async function ({ listSelector, fields, limit = 10 }) {
-    const tableFields = {};
-    const nonTableFields = {};
-    
-    for (const [label, field] of Object.entries(fields)) {
-        if (['TD', 'TH', 'TR'].includes(field.tag)) {
-            tableFields[label] = field;
-        } else {
-            nonTableFields[label] = field;
-        }
-    }
-
-    const parentElements = Array.from(document.querySelectorAll(listSelector));
-    const scrapedData = [];
-
-    for (const parent of parentElements) {
-        // Get the first field's elements to determine how many items we have
-        const firstField = Object.values(fields)[0];
-        const baseElements = Array.from(parent.querySelectorAll(firstField.selector));
+    // Helper function to extract values from elements
+    function extractValue(element, attribute) {
+        if (!element) return null;
         
-        // Process each item up to the limit
-        for (let i = 0; i < Math.min(baseElements.length, limit); i++) {
-            const record = {};
-            
-            // Process table fields
-            for (const [label, { selector, attribute }] of Object.entries(tableFields)) {
-                const elements = Array.from(parent.querySelectorAll(selector));
-                // Use the same index to maintain correspondence between fields
-                const element = elements[i];
-                
-                if (element) {
-                    let value;
-                    if (attribute === 'innerText') {
-                        value = element.innerText.trim();
-                    } else if (attribute === 'innerHTML') {
-                        value = element.innerHTML.trim();
-                    } else if (attribute === 'src' || attribute === 'href') {
-                        const attrValue = element.getAttribute(attribute);
-                        value = attrValue ? new URL(attrValue, window.location.origin).href : null;
-                    } else {
-                        value = element.getAttribute(attribute);
-                    }
-                    record[label] = value;
-                }
-            }
-            
-            // Process non-table fields
-            for (const [label, { selector, attribute }] of Object.entries(nonTableFields)) {
-                const elements = Array.from(parent.querySelectorAll(selector));
-                // Use the same index to maintain correspondence between fields
-                const element = elements[i];
-                
-                if (element) {
-                    let value;
-                    if (attribute === 'innerText') {
-                        value = element.innerText.trim();
-                    } else if (attribute === 'innerHTML') {
-                        value = element.innerHTML.trim();
-                    } else if (attribute === 'src' || attribute === 'href') {
-                        const attrValue = element.getAttribute(attribute);
-                        value = attrValue ? new URL(attrValue, window.location.origin).href : null;
-                    } else {
-                        value = element.getAttribute(attribute);
-                    }
-                    record[label] = value;
-                }
-            }
-            
-            if (Object.keys(record).length > 0) {
-                scrapedData.push(record);
-            }
+        if (attribute === 'innerText') {
+            return element.innerText.trim();
+        } else if (attribute === 'innerHTML') {
+            return element.innerHTML.trim();
+        } else if (attribute === 'src' || attribute === 'href') {
+            const attrValue = element.getAttribute(attribute);
+            return attrValue ? new URL(attrValue, window.location.origin).href : null;
         }
-
-        if (scrapedData.length >= limit) {
-            scrapedData.length = limit;
-            break;
-        }
+        return element.getAttribute(attribute);
     }
-    
+
+    // Helper function to find table ancestors
+    function findTableAncestor(element) {
+        let currentElement = element;
+        const MAX_DEPTH = 5;
+        let depth = 0;
+        
+        while (currentElement && depth < MAX_DEPTH) {
+            if (currentElement.tagName === 'TD') {
+                return { type: 'TD', element: currentElement };
+            } else if (currentElement.tagName === 'TR') {
+                return { type: 'TR', element: currentElement };
+            }
+            currentElement = currentElement.parentElement;
+            depth++;
+        }
+        return null;
+    }
+
+    function getCellIndex(td) {
+        let index = 0;
+        let sibling = td;
+        while (sibling = sibling.previousElementSibling) {
+            index++;
+        }
+        return index;
+    }
+
+    function hasThElement(row, tableFields) {
+        for (const [label, { selector }] of Object.entries(tableFields)) {
+            const element = row.querySelector(selector);
+            if (element) {
+                let current = element;
+                while (current && current !== row) {
+                    if (current.tagName === 'TH') {
+                        return true;
+                    }
+                    current = current.parentElement;
+                }
+            }
+        }
+        return false;
+    }
+
+    function filterRowsBasedOnTag(rows, tableFields) {
+        for (const row of rows) {
+            if (hasThElement(row, tableFields)) {
+                return rows;
+            }
+        }
+        return rows.filter(row => row.getElementsByTagName('TH').length === 0);
+    }
+
+    // Get all containers that match the listSelector
+    const containers = Array.from(document.querySelectorAll(listSelector));
+    if (containers.length === 0) return [];
+
+    // Initialize arrays to store field classifications for each container
+    const containerFields = containers.map(() => ({
+        tableFields: {},
+        nonTableFields: {}
+    }));
+
+    // Analyze field types for each container
+    containers.forEach((container, containerIndex) => {
+        for (const [label, field] of Object.entries(fields)) {
+            const sampleElement = container.querySelector(field.selector);
+            
+            if (sampleElement) {
+                const ancestor = findTableAncestor(sampleElement);
+                if (ancestor) {
+                    containerFields[containerIndex].tableFields[label] = {
+                        ...field,
+                        tableContext: ancestor.type,
+                        cellIndex: ancestor.type === 'TD' ? getCellIndex(ancestor.element) : -1
+                    };
+                } else {
+                    containerFields[containerIndex].nonTableFields[label] = field;
+                }
+            } else {
+                containerFields[containerIndex].nonTableFields[label] = field;
+            }
+        }
+    });
+
+    const tableData = [];
+    const nonTableData = [];
+  
+      // Process table fields across all containers
+    for (let containerIndex = 0; containerIndex < containers.length; containerIndex++) {
+      const container = containers[containerIndex];
+      const { tableFields } = containerFields[containerIndex];
+
+      if (Object.keys(tableFields).length > 0) {
+        const firstField = Object.values(tableFields)[0];
+        const firstElement = container.querySelector(firstField.selector);
+        let tableContext = firstElement;
+            
+        while (tableContext && tableContext.tagName !== 'TABLE' && tableContext !== container) {
+            tableContext = tableContext.parentElement;
+        }
+            
+        if (tableContext) {
+          const rows = Array.from(tableContext.getElementsByTagName('TR'));
+          const processedRows = filterRowsBasedOnTag(rows, tableFields);
+                
+          for (let rowIndex = 0; rowIndex < processedRows.length; rowIndex++) {
+            const record = {};
+            const currentRow = processedRows[rowIndex];
+                
+            for (const [label, { selector, attribute, cellIndex }] of Object.entries(tableFields)) {
+              let element = null;
+                    
+              if (cellIndex >= 0) {
+                const td = currentRow.children[cellIndex];
+                if (td) {
+                  element = td.querySelector(selector);
+                  
+                  if (!element && selector.split(">").pop().includes('td:nth-child')) {
+                      element = td;
+                  }
+
+                  if (!element) {
+                      const tagOnlySelector = selector.split('.')[0];
+                      element = td.querySelector(tagOnlySelector);
+                  }
+                  
+                  if (!element) {
+                      let currentElement = td;
+                      while (currentElement && currentElement.children.length > 0) {
+                          let foundContentChild = false;
+                          for (const child of currentElement.children) {
+                              if (extractValue(child, attribute)) {
+                                  currentElement = child;
+                                  foundContentChild = true;
+                                  break;
+                              }
+                          }
+                          if (!foundContentChild) break;
+                      }
+                      element = currentElement;
+                  }
+                } 
+              } else {
+                element = currentRow.querySelector(selector);
+              }
+                    
+              if (element) {
+                record[label] = extractValue(element, attribute);
+              }
+            }
+
+            if (Object.keys(record).length > 0) {
+                tableData.push(record);
+            }
+          }
+        }
+      }
+    }
+  
+      // Process non-table fields across all containers
+    for (let containerIndex = 0; containerIndex < containers.length; containerIndex++) {
+      if (nonTableData.length >= limit) break;
+
+      const container = containers[containerIndex];
+      const { nonTableFields } = containerFields[containerIndex];
+
+      if (Object.keys(nonTableFields).length > 0) {
+        const record = {};
+
+        for (const [label, { selector, attribute }] of Object.entries(nonTableFields)) {
+          const element = container.querySelector(selector);
+            
+          if (element) {
+            record[label] = extractValue(element, attribute);
+          }
+        }
+              
+        if (Object.keys(record).length > 0) {
+            nonTableData.push(record);
+        }
+      }
+    }
+      
+    // Merge and limit the results
+    const scrapedData = [...tableData, ...nonTableData];
     return scrapedData;
 };
 
