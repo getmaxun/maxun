@@ -407,7 +407,7 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
           const rows = Array.from(tableContext.getElementsByTagName('TR'));
           const processedRows = filterRowsBasedOnTag(rows, tableFields);
                 
-          for (let rowIndex = 0; rowIndex < processedRows.length; rowIndex++) {
+          for (let rowIndex = 0; rowIndex < Math.min(processedRows.length, limit); rowIndex++) {
             const record = {};
             const currentRow = processedRows[rowIndex];
                 
