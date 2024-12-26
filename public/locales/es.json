@@ -1,7 +1,7 @@
 {
   "login": {
     "title": "¡Bienvenido de nuevo!",
-    "email": "Correo electrónico",
+    "email": "Introducir correo electrónico de trabajo",
     "password": "Contraseña",
     "button": "Iniciar sesión",
     "loading": "Cargando",
@@ -12,7 +12,7 @@
   },
   "register": {
     "title": "Crear cuenta",
-    "email": "Correo electrónico",
+    "email": "Introducir correo electrónico de trabajo",
     "password": "Contraseña",
     "button": "Registrarse",
     "loading": "Cargando",
