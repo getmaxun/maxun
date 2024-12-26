@@ -12,7 +12,7 @@
     },
     "register": {
         "title": "Konto registrieren",
-        "email": "E-Mail",
+        "email": "Geben Sie Ihre geschäftliche E-Mail-Adresse ein",
         "password": "Passwort",
         "button": "Registrieren",
         "loading": "Lädt",
