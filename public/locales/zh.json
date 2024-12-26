@@ -12,7 +12,7 @@
   },
   "register": {
     "title": "注册账号",
-    "email": "电子邮箱",
+    "email": "输入工作电子邮箱",
     "password": "密码",
     "button": "注册",
     "loading": "加载中",
