@@ -12,7 +12,7 @@
     },
     "register": {
       "title": "Register Account",
-      "email": "Email",
+      "email": "Enter Work Email",
       "password": "Password",
       "button": "Register",
       "loading": "Loading",
