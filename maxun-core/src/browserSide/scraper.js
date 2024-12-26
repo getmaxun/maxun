@@ -262,76 +262,254 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
  * @returns {Array.<Array.<Object>>} Array of arrays of scraped items, one sub-array per list
  */
   window.scrapeList = async function ({ listSelector, fields, limit = 10 }) {
-    const scrapedData = [];
-
-    while (scrapedData.length < limit) {
-        let parentElements = Array.from(document.querySelectorAll(listSelector));
+    // Helper function to extract values from elements
+    function extractValue(element, attribute) {
+        if (!element) return null;
         
-        // If we only got one element or none, try a more generic approach
-        if (limit > 1 && parentElements.length <= 1) {
-            const [containerSelector, _] = listSelector.split('>').map(s => s.trim());
-            const container = document.querySelector(containerSelector);
-            
-            if (container) {
-                const allChildren = Array.from(container.children);
-                
-                const firstMatch = document.querySelector(listSelector);
-                if (firstMatch) {
-                    // Get classes from the first matching element
-                    const firstMatchClasses = Array.from(firstMatch.classList);
-                    
-                    // Find similar elements by matching most of their classes
-                    parentElements = allChildren.filter(element => {
-                        const elementClasses = Array.from(element.classList);
-
-                        // Element should share at least 70% of classes with the first match
-                        const commonClasses = firstMatchClasses.filter(cls => 
-                            elementClasses.includes(cls));
-                        return commonClasses.length >= Math.floor(firstMatchClasses.length * 0.7);
-                    });
-                }
-            }
+        if (attribute === 'innerText') {
+            return element.innerText.trim();
+        } else if (attribute === 'innerHTML') {
+            return element.innerHTML.trim();
+        } else if (attribute === 'src' || attribute === 'href') {
+            const attrValue = element.getAttribute(attribute);
+            return attrValue ? new URL(attrValue, window.location.origin).href : null;
         }
-
-        // Iterate through each parent element
-        for (const parent of parentElements) {
-            if (scrapedData.length >= limit) break;
-            const record = {};
-
-            // For each field, select the corresponding element within the parent
-            for (const [label, { selector, attribute }] of Object.entries(fields)) {
-                const fieldElement = parent.querySelector(selector);
-
-                if (fieldElement) {
-                    if (attribute === 'innerText') {
-                        record[label] = fieldElement.innerText.trim();
-                    } else if (attribute === 'innerHTML') {
-                        record[label] = fieldElement.innerHTML.trim();
-                    } else if (attribute === 'src') {
-                        // Handle relative 'src' URLs
-                        const src = fieldElement.getAttribute('src');
-                        record[label] = src ? new URL(src, window.location.origin).href : null;
-                    } else if (attribute === 'href') {
-                        // Handle relative 'href' URLs
-                        const href = fieldElement.getAttribute('href');
-                        record[label] = href ? new URL(href, window.location.origin).href : null;
-                    } else {
-                        record[label] = fieldElement.getAttribute(attribute);
-                    }
-                }
-            }
-            scrapedData.push(record);
-        }
-
-        // If we've processed all available elements and still haven't reached the limit,
-        // break to avoid infinite loop
-        if (parentElements.length === 0 || scrapedData.length >= parentElements.length) {
-            break;
-        }
+        return element.getAttribute(attribute);
     }
+
+    // Helper function to find table ancestors
+    function findTableAncestor(element) {
+        let currentElement = element;
+        const MAX_DEPTH = 5;
+        let depth = 0;
+        
+        while (currentElement && depth < MAX_DEPTH) {
+            if (currentElement.tagName === 'TD') {
+                return { type: 'TD', element: currentElement };
+            } else if (currentElement.tagName === 'TR') {
+                return { type: 'TR', element: currentElement };
+            }
+            currentElement = currentElement.parentElement;
+            depth++;
+        }
+        return null;
+    }
+
+    function getCellIndex(td) {
+        let index = 0;
+        let sibling = td;
+        while (sibling = sibling.previousElementSibling) {
+            index++;
+        }
+        return index;
+    }
+
+    function hasThElement(row, tableFields) {
+        for (const [label, { selector }] of Object.entries(tableFields)) {
+            const element = row.querySelector(selector);
+            if (element) {
+                let current = element;
+                while (current && current !== row) {
+                    if (current.tagName === 'TH') {
+                        return true;
+                    }
+                    current = current.parentElement;
+                }
+            }
+        }
+        return false;
+    }
+
+    function filterRowsBasedOnTag(rows, tableFields) {
+        for (const row of rows) {
+            if (hasThElement(row, tableFields)) {
+                return rows;
+            }
+        }
+        return rows.filter(row => row.getElementsByTagName('TH').length === 0);
+    }
+
+    function calculateClassSimilarity(classList1, classList2) {
+      const set1 = new Set(classList1);
+      const set2 = new Set(classList2);
+      
+      // Calculate intersection
+      const intersection = new Set([...set1].filter(x => set2.has(x)));
+      
+      // Calculate union
+      const union = new Set([...set1, ...set2]);
+      
+      // Return Jaccard similarity coefficient
+      return intersection.size / union.size;
+    } 
+
+  // New helper function to find elements with similar classes
+    function findSimilarElements(baseElement, similarityThreshold = 0.7) {
+      const baseClasses = Array.from(baseElement.classList);
+      
+      if (baseClasses.length === 0) return [];
+      
+      const potentialElements = document.getElementsByTagName(baseElement.tagName);
+      
+      return Array.from(potentialElements).filter(element => {
+        if (element === baseElement) return false;
+        
+        const similarity = calculateClassSimilarity(
+          baseClasses,
+          Array.from(element.classList)
+        );
+        
+        return similarity >= similarityThreshold;
+      });
+    }
+
+    let containers = Array.from(document.querySelectorAll(listSelector));
+    if (containers.length === 0) return [];
+
+    if (limit > 1 && containers.length === 1) {
+      const baseContainer = containers[0];
+      const similarContainers = findSimilarElements(baseContainer);
+      
+      if (similarContainers.length > 0) {
+          const newContainers = similarContainers.filter(container => 
+              !container.matches(listSelector)
+          );
+          
+          containers = [...containers, ...newContainers];
+      }
+    }
+
+    // Initialize arrays to store field classifications for each container
+    const containerFields = containers.map(() => ({
+        tableFields: {},
+        nonTableFields: {}
+    }));
+
+    // Analyze field types for each container
+    containers.forEach((container, containerIndex) => {
+        for (const [label, field] of Object.entries(fields)) {
+            const sampleElement = container.querySelector(field.selector);
+            
+            if (sampleElement) {
+                const ancestor = findTableAncestor(sampleElement);
+                if (ancestor) {
+                    containerFields[containerIndex].tableFields[label] = {
+                        ...field,
+                        tableContext: ancestor.type,
+                        cellIndex: ancestor.type === 'TD' ? getCellIndex(ancestor.element) : -1
+                    };
+                } else {
+                    containerFields[containerIndex].nonTableFields[label] = field;
+                }
+            } else {
+                containerFields[containerIndex].nonTableFields[label] = field;
+            }
+        }
+    });
+
+    const tableData = [];
+    const nonTableData = [];
+  
+    // Process table fields across all containers
+    for (let containerIndex = 0; containerIndex < containers.length; containerIndex++) {
+      const container = containers[containerIndex];
+      const { tableFields } = containerFields[containerIndex];
+
+      if (Object.keys(tableFields).length > 0) {
+        const firstField = Object.values(tableFields)[0];
+        const firstElement = container.querySelector(firstField.selector);
+        let tableContext = firstElement;
+            
+        while (tableContext && tableContext.tagName !== 'TABLE' && tableContext !== container) {
+            tableContext = tableContext.parentElement;
+        }
+            
+        if (tableContext) {
+          const rows = Array.from(tableContext.getElementsByTagName('TR'));
+          const processedRows = filterRowsBasedOnTag(rows, tableFields);
+                
+          for (let rowIndex = 0; rowIndex < Math.min(processedRows.length, limit); rowIndex++) {
+            const record = {};
+            const currentRow = processedRows[rowIndex];
+                
+            for (const [label, { selector, attribute, cellIndex }] of Object.entries(tableFields)) {
+              let element = null;
+                    
+              if (cellIndex >= 0) {
+                const td = currentRow.children[cellIndex];
+                if (td) {
+                  element = td.querySelector(selector);
+                  
+                  if (!element && selector.split(">").pop().includes('td:nth-child')) {
+                      element = td;
+                  }
+
+                  if (!element) {
+                      const tagOnlySelector = selector.split('.')[0];
+                      element = td.querySelector(tagOnlySelector);
+                  }
+                  
+                  if (!element) {
+                      let currentElement = td;
+                      while (currentElement && currentElement.children.length > 0) {
+                          let foundContentChild = false;
+                          for (const child of currentElement.children) {
+                              if (extractValue(child, attribute)) {
+                                  currentElement = child;
+                                  foundContentChild = true;
+                                  break;
+                              }
+                          }
+                          if (!foundContentChild) break;
+                      }
+                      element = currentElement;
+                  }
+                } 
+              } else {
+                element = currentRow.querySelector(selector);
+              }
+                    
+              if (element) {
+                record[label] = extractValue(element, attribute);
+              }
+            }
+
+            if (Object.keys(record).length > 0) {
+                tableData.push(record);
+            }
+          }
+        }
+      }
+    }
+  
+    // Process non-table fields across all containers
+    for (let containerIndex = 0; containerIndex < containers.length; containerIndex++) {
+      if (nonTableData.length >= limit) break;
+
+      const container = containers[containerIndex];
+      const { nonTableFields } = containerFields[containerIndex];
+
+      if (Object.keys(nonTableFields).length > 0) {
+        const record = {};
+
+        for (const [label, { selector, attribute }] of Object.entries(nonTableFields)) {
+          const element = container.querySelector(selector);
+            
+          if (element) {
+            record[label] = extractValue(element, attribute);
+          }
+        }
+              
+        if (Object.keys(record).length > 0) {
+            nonTableData.push(record);
+        }
+      }
+    }
+      
+    // Merge and limit the results
+    const scrapedData = [...tableData, ...nonTableData];
     return scrapedData;
 };
-
 
   /**
  * Gets all children of the elements matching the listSelector,
