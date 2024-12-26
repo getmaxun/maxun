@@ -84,36 +84,44 @@ export const getElementInformation = async (
           if (originalEl) {
             let element = originalEl;
 
-            while (element.parentElement) {
-              if (element.tagName.toLowerCase() === 'body' || 
-                  element.tagName.toLowerCase() === 'html') {
-                break;
+            if (element.tagName === 'TD' || element.tagName === 'TH') {
+              const tableParent = element.closest('table');
+              if (tableParent) {
+                element = tableParent;
               }
+            }
 
-              const parentRect = element.parentElement.getBoundingClientRect();
-              const childRect = element.getBoundingClientRect();
+            if (element.tagName !== 'TABLE') {
+              while (element.parentElement) {
+                if (element.tagName.toLowerCase() === 'body' || 
+                    element.tagName.toLowerCase() === 'html') {
+                  break;
+                }
 
-              const fullyContained =
-                parentRect.left <= childRect.left &&
-                parentRect.right >= childRect.right &&
-                parentRect.top <= childRect.top &&
-                parentRect.bottom >= childRect.bottom;
+                const parentRect = element.parentElement.getBoundingClientRect();
+                const childRect = element.getBoundingClientRect();
 
-              const significantOverlap =
-                (childRect.width * childRect.height) /
-                (parentRect.width * parentRect.height) > 0.5;
+                const fullyContained =
+                  parentRect.left <= childRect.left &&
+                  parentRect.right >= childRect.right &&
+                  parentRect.top <= childRect.top &&
+                  parentRect.bottom >= childRect.bottom;
 
-              if (fullyContained && significantOverlap) {
-                // Only traverse up if next parent isn't body or html
-                const nextParent = element.parentElement;
-                if (nextParent.tagName.toLowerCase() !== 'body' && 
-                    nextParent.tagName.toLowerCase() !== 'html') {
-                  element = nextParent;
+                const significantOverlap =
+                  (childRect.width * childRect.height) /
+                  (parentRect.width * parentRect.height) > 0.5;
+
+                if (fullyContained && significantOverlap) {
+                  const nextParent = element.parentElement;
+                  if (nextParent.tagName.toLowerCase() !== 'body' && 
+                      nextParent.tagName.toLowerCase() !== 'html') {
+                    element = nextParent;
+                  } else {
+                    break;
+                  }
                 } else {
                   break;
                 }
-              } else {
-                break;
               }
             }
 
@@ -212,36 +220,44 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
           if (originalEl) {
             let element = originalEl;
 
-            while (element.parentElement) {
-              if (element.tagName.toLowerCase() === 'body' || 
-                element.tagName.toLowerCase() === 'html') {
-                break;
+            if (element.tagName === 'TD' || element.tagName === 'TH') {
+              const tableParent = element.closest('table');
+              if (tableParent) {
+                element = tableParent;
               }
+            }
 
-              const parentRect = element.parentElement.getBoundingClientRect();
-              const childRect = element.getBoundingClientRect();
+            if (element.tagName !== 'TABLE') {
+              while (element.parentElement) {
+                if (element.tagName.toLowerCase() === 'body' || 
+                    element.tagName.toLowerCase() === 'html') {
+                  break;
+                }
 
-              const fullyContained =
-                parentRect.left <= childRect.left &&
-                parentRect.right >= childRect.right &&
-                parentRect.top <= childRect.top &&
-                parentRect.bottom >= childRect.bottom;
+                const parentRect = element.parentElement.getBoundingClientRect();
+                const childRect = element.getBoundingClientRect();
 
-              const significantOverlap =
-                (childRect.width * childRect.height) /
-                (parentRect.width * parentRect.height) > 0.5;
+                const fullyContained =
+                  parentRect.left <= childRect.left &&
+                  parentRect.right >= childRect.right &&
+                  parentRect.top <= childRect.top &&
+                  parentRect.bottom >= childRect.bottom;
 
-              if (fullyContained && significantOverlap) {
-                // Only traverse up if next parent isn't body or html
-                const nextParent = element.parentElement;
-                if (nextParent.tagName.toLowerCase() !== 'body' && 
-                    nextParent.tagName.toLowerCase() !== 'html') {
-                  element = nextParent;
+                const significantOverlap =
+                  (childRect.width * childRect.height) /
+                  (parentRect.width * parentRect.height) > 0.5;
+
+                if (fullyContained && significantOverlap) {
+                  const nextParent = element.parentElement;
+                  if (nextParent.tagName.toLowerCase() !== 'body' && 
+                      nextParent.tagName.toLowerCase() !== 'html') {
+                    element = nextParent;
+                  } else {
+                    break;
+                  }
                 } else {
                   break;
                 }
-              } else {
-                break;
               }
             }
 
@@ -933,37 +949,45 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
 
         let element = originalEl;
 
-        // if (listSelector === '') {
-        while (element.parentElement) {
-          if (element.tagName.toLowerCase() === 'body' || 
-              element.tagName.toLowerCase() === 'html') {
-            break;
+        if (element.tagName === 'TD' || element.tagName === 'TH') {
+          const tableParent = element.closest('table');
+          if (tableParent) {
+            element = tableParent;
           }
+        }
 
-          const parentRect = element.parentElement.getBoundingClientRect();
-          const childRect = element.getBoundingClientRect();
+        // if (listSelector === '') {
+        if (element.tagName !== 'TABLE') {
+          while (element.parentElement) {
+            if (element.tagName.toLowerCase() === 'body' || 
+                element.tagName.toLowerCase() === 'html') {
+              break;
+            }
 
-          const fullyContained =
-            parentRect.left <= childRect.left &&
-            parentRect.right >= childRect.right &&
-            parentRect.top <= childRect.top &&
-            parentRect.bottom >= childRect.bottom;
+            const parentRect = element.parentElement.getBoundingClientRect();
+            const childRect = element.getBoundingClientRect();
 
-          const significantOverlap =
-            (childRect.width * childRect.height) /
-            (parentRect.width * parentRect.height) > 0.5;
+            const fullyContained =
+              parentRect.left <= childRect.left &&
+              parentRect.right >= childRect.right &&
+              parentRect.top <= childRect.top &&
+              parentRect.bottom >= childRect.bottom;
 
-          if (fullyContained && significantOverlap) {
-            // Only traverse up if next parent isn't body or html
-            const nextParent = element.parentElement;
-            if (nextParent.tagName.toLowerCase() !== 'body' && 
-                nextParent.tagName.toLowerCase() !== 'html') {
-              element = nextParent;
+            const significantOverlap =
+              (childRect.width * childRect.height) /
+              (parentRect.width * parentRect.height) > 0.5;
+
+            if (fullyContained && significantOverlap) {
+              const nextParent = element.parentElement;
+              if (nextParent.tagName.toLowerCase() !== 'body' && 
+                  nextParent.tagName.toLowerCase() !== 'html') {
+                element = nextParent;
+              } else {
+                break;
+              }
             } else {
               break;
             }
-          } else {
-            break;
           }
         }
         // }
