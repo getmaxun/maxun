@@ -329,32 +329,53 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
         return rows.filter(row => row.getElementsByTagName('TH').length === 0);
     }
 
-    // Get all containers that match the listSelector
+    function calculateClassSimilarity(classList1, classList2) {
+      const set1 = new Set(classList1);
+      const set2 = new Set(classList2);
+      
+      // Calculate intersection
+      const intersection = new Set([...set1].filter(x => set2.has(x)));
+      
+      // Calculate union
+      const union = new Set([...set1, ...set2]);
+      
+      // Return Jaccard similarity coefficient
+      return intersection.size / union.size;
+    } 
+
+  // New helper function to find elements with similar classes
+    function findSimilarElements(baseElement, similarityThreshold = 0.7) {
+      const baseClasses = Array.from(baseElement.classList);
+      
+      if (baseClasses.length === 0) return [];
+      
+      const potentialElements = document.getElementsByTagName(baseElement.tagName);
+      
+      return Array.from(potentialElements).filter(element => {
+        if (element === baseElement) return false;
+        
+        const similarity = calculateClassSimilarity(
+          baseClasses,
+          Array.from(element.classList)
+        );
+        
+        return similarity >= similarityThreshold;
+      });
+    }
+
     let containers = Array.from(document.querySelectorAll(listSelector));
     if (containers.length === 0) return [];
 
-    if (limit > 1 && containers.length <= 1) {
-      const [containerSelector, _] = listSelector.split('>').map(s => s.trim());
-      const container = document.querySelector(containerSelector);
+    if (limit > 1 && containers.length === 1) {
+      const baseContainer = containers[0];
+      const similarContainers = findSimilarElements(baseContainer);
       
-      if (container) {
-        const allChildren = Array.from(container.children);
-        
-        const firstMatch = document.querySelector(listSelector);
-        if (firstMatch) {
-            // Get classes from the first matching element
-            const firstMatchClasses = Array.from(firstMatch.classList);
-            
-            // Find similar elements by matching most of their classes
-            containers = allChildren.filter(element => {
-                const elementClasses = Array.from(element.classList);
-
-                // Element should share at least 70% of classes with the first match
-                const commonClasses = firstMatchClasses.filter(cls => 
-                    elementClasses.includes(cls));
-                return commonClasses.length >= Math.floor(firstMatchClasses.length * 0.7);
-            });
-        }
+      if (similarContainers.length > 0) {
+          const newContainers = similarContainers.filter(container => 
+              !container.matches(listSelector)
+          );
+          
+          containers = [...containers, ...newContainers];
       }
     }
 
@@ -389,7 +410,7 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
     const tableData = [];
     const nonTableData = [];
   
-      // Process table fields across all containers
+    // Process table fields across all containers
     for (let containerIndex = 0; containerIndex < containers.length; containerIndex++) {
       const container = containers[containerIndex];
       const { tableFields } = containerFields[containerIndex];
