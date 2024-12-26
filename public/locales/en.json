@@ -1,7 +1,7 @@
 {
     "login": {
       "title": "Welcome Back!",
-      "email": "Email",
+      "email": "Enter Work Email",
       "password": "Password",
       "button": "Login",
       "loading": "Loading",
