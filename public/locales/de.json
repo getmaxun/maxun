@@ -1,7 +1,7 @@
 {
     "login": {
         "title": "Willkommen zurück!",
-        "email": "E-Mail",
+        "email": "Geben Sie Ihre geschäftliche E-Mail-Adresse ein",
         "password": "Passwort",
         "button": "Einloggen",
         "loading": "Lädt",
