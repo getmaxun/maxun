@@ -376,6 +376,14 @@ export const NavBar: React.FC<NavBarProps> = ({
                       >
                         Deutsch
                       </MenuItem>
+                      <MenuItem
+                        onClick={() => {
+                          changeLanguage("de");
+                          handleMenuClose();
+                        }}
+                      >
+                        Add Language
+                      </MenuItem>
                     </Menu>
                   </Menu>
                 </>
