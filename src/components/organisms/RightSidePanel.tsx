@@ -169,6 +169,22 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     });
   };
 
+  const handleTextStepDelete = (id: number) => {
+    deleteBrowserStep(id);
+    setTextLabels(prevLabels => {
+      const { [id]: _, ...rest } = prevLabels;
+      return rest;
+    });
+    setConfirmedTextSteps(prev => {
+      const { [id]: _, ...rest } = prev;
+      return rest;
+    });
+    setErrors(prevErrors => {
+      const { [id]: _, ...rest } = prevErrors;
+      return rest;
+    });
+  };
+
   const handleListTextFieldConfirm = (listId: number, fieldKey: string) => {
     setConfirmedListTextFields(prev => ({
       ...prev,
@@ -180,6 +196,22 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   };
 
   const handleListTextFieldDiscard = (listId: number, fieldKey: string) => {
+    removeListTextField(listId, fieldKey);
+    setConfirmedListTextFields(prev => {
+      const updatedListFields = { ...(prev[listId] || {}) };
+      delete updatedListFields[fieldKey];
+      return {
+        ...prev,
+        [listId]: updatedListFields
+      };
+    });
+    setErrors(prev => {
+      const { [fieldKey]: _, ...rest } = prev;
+      return rest;
+    });
+  };
+
+  const handleListTextFieldDelete = (listId: number, fieldKey: string) => {
     removeListTextField(listId, fieldKey);
     setConfirmedListTextFields(prev => {
       const updatedListFields = { ...(prev[listId] || {}) };
@@ -526,10 +558,20 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                       )
                     }}
                   />
-                  {!confirmedTextSteps[step.id] && (
+                  {!confirmedTextSteps[step.id] ? (
                     <Box display="flex" justifyContent="space-between" gap={2}>
                       <Button variant="contained" onClick={() => handleTextStepConfirm(step.id)} disabled={!textLabels[step.id]?.trim()}>{t('right_panel.buttons.confirm')}</Button>
                       <Button variant="contained" color="error" onClick={() => handleTextStepDiscard(step.id)}>{t('right_panel.buttons.discard')}</Button>
+                    </Box>
+                  ) : (
+                    <Box display="flex" justifyContent="flex-end" gap={2}>
+                      <Button
+                        variant="contained"
+                        color="error"
+                        onClick={() => handleTextStepDelete(step.id)}
+                      >
+                        {t('right_panel.buttons.delete')}
+                      </Button>
                     </Box>
                   )}
                 </>
@@ -578,7 +620,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                         )
                       }}
                     />
-                    {!confirmedListTextFields[step.id]?.[key] && (
+                    {!confirmedListTextFields[step.id]?.[key] ? (
                       <Box display="flex" justifyContent="space-between" gap={2}>
                         <Button
                           variant="contained"
@@ -593,6 +635,16 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                           onClick={() => handleListTextFieldDiscard(step.id, key)}
                         >
                           {t('right_panel.buttons.discard')}
+                        </Button>
+                      </Box>
+                    ) : (
+                      <Box display="flex" justifyContent="flex-end" gap={2}>
+                        <Button
+                          variant="contained"
+                          color="error"
+                          onClick={() => handleListTextFieldDelete(step.id, key)}
+                        >
+                          {t('right_panel.buttons.delete')}
                         </Button>
                       </Box>
                     )}
