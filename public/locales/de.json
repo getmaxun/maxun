@@ -190,7 +190,8 @@
             "field_data": "Felddaten"
         },
         "messages": {
-            "list_selected": "Liste erfolgreich ausgewählt"
+            "list_selected": "Liste erfolgreich ausgewählt",
+            "list_empty": "Liste ist leer. Es wurden keine Felder ausgewählt."
         },
         "errors": {
             "select_pagination": "Bitte wählen Sie einen Paginierungstyp aus.",

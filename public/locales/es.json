@@ -191,7 +191,8 @@
       "field_data": "Datos del Campo"
     },
     "messages": {
-      "list_selected": "Lista seleccionada exitosamente"
+      "list_selected": "Lista seleccionada exitosamente",
+      "list_empty": "La lista está vacía. No se han seleccionado campos."
     },
     "errors": {
       "select_pagination": "Por favor seleccione un tipo de paginación.",
