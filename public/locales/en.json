@@ -191,7 +191,8 @@
         "field_data": "Field Data"
       },
       "messages": {
-        "list_selected": "List Selected Successfully"
+        "list_selected": "List Selected Successfully",
+        "list_empty": "List is empty. No fields have been selected."
       },
       "errors": {
         "select_pagination": "Please select a pagination type.",
