@@ -23,31 +23,41 @@ export const getElementInformation = async (
     if (!getList || listSelector !== '') {
       const elementInfo = await page.evaluate(
         async ({ x, y }) => {
-          // Helper function to get element from point including shadow DOM
+          // Enhanced helper function to get element from point including shadow DOM
           const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
             let element = document.elementFromPoint(x, y) as HTMLElement;
             if (!element) return null;
 
             // Traverse through shadow roots
             let current = element;
-            while (current) {
-              // Check if element has shadow root
-              const shadowRoot = current.shadowRoot;
-              if (!shadowRoot) break;
-
-              // Try to find deeper element in shadow DOM
+            let shadowRoot = current.shadowRoot;
+            
+            // Keep track of the deepest shadow DOM element found
+            let deepestElement = current;
+            
+            while (shadowRoot) {
+              // Try to find element at same point in shadow DOM
               const shadowElement = shadowRoot.elementFromPoint(x, y) as HTMLElement;
               if (!shadowElement || shadowElement === current) break;
-
+              
+              // Update our tracking of the deepest element
+              deepestElement = shadowElement;
               current = shadowElement;
+              shadowRoot = current.shadowRoot;
             }
-            return current;
+
+            return deepestElement;
           };
 
           const el = getDeepestElementFromPoint(x, y);
           if (el) {
             const { parentElement } = el;
             const element = parentElement?.tagName === 'A' ? parentElement : el;
+            
+            // Get the containing shadow root if any
+            const containingShadowRoot = element.getRootNode() as ShadowRoot;
+            const isShadowRoot = containingShadowRoot instanceof ShadowRoot;
+
             let info: {
               tagName: string;
               hasOnlyText?: boolean;
@@ -58,11 +68,20 @@ export const getElementInformation = async (
               innerHTML?: string;
               outerHTML?: string;
               isShadowRoot?: boolean;
+              shadowRootMode?: string;
+              shadowRootContent?: string;
             } = {
               tagName: element?.tagName ?? '',
-              isShadowRoot: !!element?.shadowRoot
+              isShadowRoot: isShadowRoot
             };
+
+            if (isShadowRoot) {
+              // Include shadow root specific information
+              info.shadowRootMode = containingShadowRoot.mode;
+              info.shadowRootContent = containingShadowRoot.innerHTML;
+            }
             
+            // Get attributes including those from shadow DOM context
             if (element) {
               info.attributes = Array.from(element.attributes).reduce(
                 (acc, attr) => {
@@ -71,84 +90,82 @@ export const getElementInformation = async (
                 },
                 {} as Record<string, string>
               );
+              
+              // Get text content considering shadow DOM context
+              info.innerText = element.textContent ?? '';
+              info.innerHTML = element.innerHTML;
+              info.outerHTML = element.outerHTML;
+              info.hasOnlyText = element.children.length === 0 && 
+                   (element.textContent !== null && 
+                    element.textContent.trim().length > 0);
             }
 
-            // Gather specific information based on the tag
-            if (element?.tagName === 'A') {
-              info.url = (element as HTMLAnchorElement).href;
-              info.innerText = element.innerText ?? '';
-            } else if (element?.tagName === 'IMG') {
-              info.imageUrl = (element as HTMLImageElement).src;
-            } else if (element?.tagName === 'SELECT') {
-              const selectElement = element as HTMLSelectElement;
-              info.innerText = selectElement.options[selectElement.selectedIndex]?.text ?? '';
-              info.attributes = {
-                ...info.attributes,
-                selectedValue: selectElement.value,
-              };
-            } else if (element?.tagName === 'INPUT' && ((element as HTMLInputElement).type === 'time' || (element as HTMLInputElement).type === 'date')) {
-              info.innerText = (element as HTMLInputElement).value;
-            } else {
-              info.hasOnlyText = element?.children?.length === 0 &&
-                element?.innerText?.length > 0;
-              info.innerText = element?.innerText ?? '';
-            }
-            info.innerHTML = element.innerHTML;
-            info.outerHTML = element.outerHTML;
             return info;
           }
           return null;
         },
-        { x: coordinates.x, y: coordinates.y },
+        { x: coordinates.x, y: coordinates.y }
       );
       return elementInfo;
     } else {
       const elementInfo = await page.evaluate(
         async ({ x, y }) => {
-          // Helper function to get element from point including shadow DOM
+          // Enhanced helper function to get element from point including shadow DOM
           const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
             let element = document.elementFromPoint(x, y) as HTMLElement;
             if (!element) return null;
-
+    
             // Traverse through shadow roots
             let current = element;
-            while (current) {
-              const shadowRoot = current.shadowRoot;
-              if (!shadowRoot) break;
-
+            let shadowRoot = current.shadowRoot;
+            
+            // Keep track of the deepest shadow DOM element found
+            let deepestElement = current;
+            
+            while (shadowRoot) {
+              // Try to find element at same point in shadow DOM
               const shadowElement = shadowRoot.elementFromPoint(x, y) as HTMLElement;
               if (!shadowElement || shadowElement === current) break;
-
+              
+              // Update our tracking of the deepest element
+              deepestElement = shadowElement;
               current = shadowElement;
+              shadowRoot = current.shadowRoot;
             }
-            return current;
+    
+            return deepestElement;
           };
-
+    
           const originalEl = getDeepestElementFromPoint(x, y);
           if (originalEl) {
             let element = originalEl;
-
+    
+            // Handle element hierarchy traversal for list items
             while (element.parentElement) {
               const parentRect = element.parentElement.getBoundingClientRect();
               const childRect = element.getBoundingClientRect();
-
+    
               const fullyContained =
                 parentRect.left <= childRect.left &&
                 parentRect.right >= childRect.right &&
                 parentRect.top <= childRect.top &&
                 parentRect.bottom >= childRect.bottom;
-
+    
               const significantOverlap =
                 (childRect.width * childRect.height) /
                 (parentRect.width * parentRect.height) > 0.5;
-
+    
               if (fullyContained && significantOverlap) {
                 element = element.parentElement;
               } else {
                 break;
               }
             }
-
+    
+            // Get the containing shadow root if any
+            const containingShadowRoot = element.getRootNode() as ShadowRoot;
+            const isShadowRoot = containingShadowRoot instanceof ShadowRoot;
+    
             let info: {
               tagName: string;
               hasOnlyText?: boolean;
@@ -159,12 +176,21 @@ export const getElementInformation = async (
               innerHTML?: string;
               outerHTML?: string;
               isShadowRoot?: boolean;
+              shadowRootMode?: string;
+              shadowRootContent?: string;
             } = {
               tagName: element?.tagName ?? '',
-              isShadowRoot: !!element?.shadowRoot
+              isShadowRoot: isShadowRoot
             };
-
+    
+            if (isShadowRoot) {
+              // Include shadow root specific information
+              info.shadowRootMode = containingShadowRoot.mode;
+              info.shadowRootContent = containingShadowRoot.innerHTML;
+            }
+    
             if (element) {
+              // Get attributes including those from shadow DOM context
               info.attributes = Array.from(element.attributes).reduce(
                 (acc, attr) => {
                   acc[attr.name] = attr.value;
@@ -172,21 +198,25 @@ export const getElementInformation = async (
                 },
                 {} as Record<string, string>
               );
+    
+              // Handle specific element types
+              if (element.tagName === 'A') {
+                info.url = (element as HTMLAnchorElement).href;
+                info.innerText = element.textContent ?? '';
+              } else if (element.tagName === 'IMG') {
+                info.imageUrl = (element as HTMLImageElement).src;
+              } else {
+                // Handle text content with proper null checking
+                info.hasOnlyText = element.children.length === 0 && 
+                  (element.textContent !== null && 
+                   element.textContent.trim().length > 0);
+                info.innerText = element.textContent ?? '';
+              }
+    
+              info.innerHTML = element.innerHTML;
+              info.outerHTML = element.outerHTML;
             }
-
-            if (element?.tagName === 'A') {
-              info.url = (element as HTMLAnchorElement).href;
-              info.innerText = element.innerText ?? '';
-            } else if (element?.tagName === 'IMG') {
-              info.imageUrl = (element as HTMLImageElement).src;
-            } else {
-              info.hasOnlyText = element?.children?.length === 0 &&
-                element?.innerText?.length > 0;
-              info.innerText = element?.innerText ?? '';
-            }
-
-            info.innerHTML = element.innerHTML;
-            info.outerHTML = element.outerHTML;
+    
             return info;
           }
           return null;
@@ -793,6 +823,76 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
         return output;
       }
 
+      const MAX_DEPTH = 10;
+
+      const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
+        let element = document.elementFromPoint(x, y) as HTMLElement;
+        if (!element) return null;
+
+        let current = element;
+        let deepestElement = current;
+        let depth = 0;
+
+        while (current && depth < MAX_DEPTH) {
+          const shadowRoot = current.shadowRoot;
+          if (shadowRoot) {
+            const shadowElement = shadowRoot.elementFromPoint(x, y) as HTMLElement;
+            if (!shadowElement) break;
+            
+            deepestElement = shadowElement;
+            current = shadowElement;
+          } else {
+            break;
+          }
+          depth++;
+        }
+
+        return deepestElement;
+      };
+
+      const genSelectorForShadowDOM = (element: HTMLElement) => {
+        const findShadowContext = (element: HTMLElement): { host: HTMLElement, root: ShadowRoot } | null => {
+          let current: HTMLElement | null = element;
+          let depth = 0;
+          
+          while (current && depth < MAX_DEPTH) {
+            // Check if element is inside a shadow root
+            if (current.parentNode instanceof ShadowRoot) {
+              return {
+                host: (current.parentNode as ShadowRoot).host as HTMLElement,
+                root: current.parentNode as ShadowRoot
+              };
+            }
+            current = current.parentElement;
+            depth++;
+          }
+          return null;
+        };
+          
+        const shadowContext = findShadowContext(element);
+        if (!shadowContext) return null;
+
+        try {
+          // Generate selector for the shadow host
+          const hostSelector = finder(shadowContext.host);
+          
+          // Generate selector for the element within the shadow DOM
+          const shadowElementSelector = finder(element, {
+            root: shadowContext.root as unknown as Element
+          });
+
+          return {
+            fullSelector: `${hostSelector} >>> ${shadowElementSelector}`,
+            hostSelector,
+            shadowElementSelector,
+            mode: shadowContext.root.mode
+          };
+        } catch (e) {
+          console.warn('Error generating shadow DOM selector:', e);
+          return null;
+        }
+      };
+
       const genSelectors = (element: HTMLElement | null) => {
         if (element == null) {
           return null;
@@ -811,6 +911,9 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
           attrSelector = finder(element, { attr: () => true });
         } catch (e) {
         }
+
+        // Generate shadow DOM specific selector
+        const shadowSelector = genSelectorForShadowDOM(element);
 
         const hrefSelector = genSelectorForAttributes(element, ['href']);
         const formSelector = genSelectorForAttributes(element, [
@@ -858,8 +961,20 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
           hrefSelector,
           accessibilitySelector,
           formSelector,
+          // Shadow DOM selector
+          shadowSelector: shadowSelector ? {
+            // Full selector that can traverse shadow DOM
+            full: shadowSelector.fullSelector,
+            // Individual parts for more flexible usage
+            host: shadowSelector.hostSelector,
+            element: shadowSelector.shadowElementSelector,
+            // Shadow root mode (open/closed)
+            mode: shadowSelector.mode
+          } : null
         };
       }
+
+      
 
       function genAttributeSet(element: HTMLElement, attributes: string[]) {
         return new Set(
@@ -900,7 +1015,7 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
         return char.length === 1 && char.match(/[0-9]/);
       }
 
-      const hoveredElement = document.elementFromPoint(x, y) as HTMLElement;
+      const hoveredElement = getDeepestElementFromPoint(x, y);
       if (
         hoveredElement != null &&
         !hoveredElement.closest('#overlay-controls') != null
