@@ -403,7 +403,7 @@ export default class Interpreter extends EventEmitter {
         await this.options.serializableCallback(scrapeResults);
       },
 
-      scrapeSchema: async (schema: Record<string, { selector: string; tag: string, attribute: string; }>) => {
+      scrapeSchema: async (schema: Record<string, { selector: string; tag: string, attribute: string; shadow: string}>) => {
         await this.ensureScriptsLoaded(page);
       
         const scrapeResult = await page.evaluate((schemaObj) => window.scrapeSchema(schemaObj), schema);
