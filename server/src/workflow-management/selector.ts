@@ -882,7 +882,7 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
           });
 
           return {
-            fullSelector: `${hostSelector} >>> ${shadowElementSelector}`,
+            fullSelector: `${hostSelector} > ${shadowElementSelector}`,
             hostSelector,
             shadowElementSelector,
             mode: shadowContext.root.mode
