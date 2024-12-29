@@ -129,6 +129,13 @@ export interface BaseActionInfo {
     hasOnlyText: boolean;
 }
 
+interface ShadowSelector {
+    full: string;
+    host: string;
+    element: string;
+    mode: string;
+}
+
 /**
  * Holds all the possible css selectors that has been found for an element.
  * @category Types
@@ -143,6 +150,7 @@ export interface Selectors {
     hrefSelector: string|null;
     accessibilitySelector: string|null;
     formSelector: string|null;
+    shadowSelector: ShadowSelector | null;
 }
 
 /**
@@ -156,7 +164,7 @@ export interface BaseAction extends BaseActionInfo{
     associatedActions: ActionType[];
     inputType: string | undefined;
     value: string | undefined;
-    selectors: { [key: string]: string | null };
+    selectors: Selectors;
     timestamp: number;
     isPassword: boolean;
     /**
