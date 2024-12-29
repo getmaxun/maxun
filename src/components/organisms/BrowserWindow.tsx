@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 interface ElementInfo {
     tagName: string;
     hasOnlyText?: boolean;
+    isShadowRoot?: boolean;
     innerText?: string;
     url?: string;
     imageUrl?: string;
@@ -185,6 +186,7 @@ export const BrowserWindow = () => {
                         addTextStep('', data, {
                             selector: highlighterData.selector,
                             tag: highlighterData.elementInfo?.tagName,
+                            shadow: highlighterData.elementInfo?.isShadowRoot,
                             attribute
                         });
                     } else {
@@ -192,7 +194,7 @@ export const BrowserWindow = () => {
                         setAttributeOptions(options);
                         setSelectedElement({
                             selector: highlighterData.selector,
-                            info: highlighterData.elementInfo
+                            info: highlighterData.elementInfo,
                         });
                         setShowAttributeModal(true);
                     }
@@ -229,6 +231,7 @@ export const BrowserWindow = () => {
                             selectorObj: {
                                 selector: highlighterData.selector,
                                 tag: highlighterData.elementInfo?.tagName,
+                                shadow: highlighterData.elementInfo?.isShadowRoot,
                                 attribute
                             }
                         };
@@ -276,6 +279,7 @@ export const BrowserWindow = () => {
                     addTextStep('', data, {
                         selector: selectedElement.selector,
                         tag: selectedElement.info?.tagName,
+                        shadow: selectedElement.info?.isShadowRoot,
                         attribute: attribute
                     });
                 }
@@ -288,6 +292,7 @@ export const BrowserWindow = () => {
                         selectorObj: {
                             selector: selectedElement.selector,
                             tag: selectedElement.info?.tagName,
+                            shadow: selectedElement.info?.isShadowRoot,
                             attribute: attribute
                         }
                     };
