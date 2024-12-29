@@ -189,68 +189,102 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
    * @returns {Array.<Object.<string, string>>}
    */
   window.scrapeSchema = function (lists) {
+    // These utility functions remain unchanged as they work perfectly
     function omap(object, f, kf = (x) => x) {
-      return Object.fromEntries(
-        Object.entries(object)
-          .map(([k, v]) => [kf(k), f(v)]),
-      );
+        return Object.fromEntries(
+            Object.entries(object)
+                .map(([k, v]) => [kf(k), f(v)]),
+        );
     }
 
     function ofilter(object, f) {
-      return Object.fromEntries(
-        Object.entries(object)
-          .filter(([k, v]) => f(k, v)),
-      );
+        return Object.fromEntries(
+            Object.entries(object)
+                .filter(([k, v]) => f(k, v)),
+        );
     }
 
-    function getSeedKey(listObj) {
-      const maxLength = Math.max(...Object.values(omap(listObj, (x) => document.querySelectorAll(x.selector).length)));
-      return Object.keys(ofilter(listObj, (_, v) => document.querySelectorAll(v.selector).length === maxLength))[0];
-    }
-
-    function getMBEs(elements) {
-      return elements.map((element) => {
-        let candidate = element;
-        const isUniqueChild = (e) => elements
-          .filter((elem) => e.parentNode?.contains(elem))
-          .length === 1;
-
-        while (candidate && isUniqueChild(candidate)) {
-          candidate = candidate.parentNode;
+    function findElement(config) {
+        // If this is a shadow DOM query
+        if (config.shadow && config.selector.includes('>>')) {
+            const [hostSelector, shadowSelector] = config.selector.split('>>').map(s => s.trim());
+            const host = document.querySelector(hostSelector);
+            return host?.shadowRoot?.querySelector(shadowSelector) || null;
         }
+        // Otherwise, use regular querySelector
+        return document.querySelector(config.selector);
+    }
 
-        return candidate;
-      });
+    function findAllElements(config) {
+        // If this is a shadow DOM query
+        if (config.shadow && config.selector.includes('>>')) {
+            const element = findElement(config);
+            return element ? [element] : [];
+        }
+        // Otherwise, use regular querySelectorAll
+        return Array.from(document.querySelectorAll(config.selector));
+    }
+
+    // Modified to use our new element finding functions
+    function getSeedKey(listObj) {
+        const maxLength = Math.max(...Object.values(
+            omap(listObj, (x) => findAllElements(x).length)
+        ));
+        return Object.keys(
+            ofilter(listObj, (_, v) => findAllElements(v).length === maxLength)
+        )[0];
+    }
+
+    // This function remains unchanged as it works with DOM elements
+    // regardless of how they were found
+    function getMBEs(elements) {
+        return elements.map((element) => {
+            let candidate = element;
+            const isUniqueChild = (e) => elements
+                .filter((elem) => e.parentNode?.contains(elem))
+                .length === 1;
+
+            while (candidate && isUniqueChild(candidate)) {
+                candidate = candidate.parentNode;
+            }
+
+            return candidate;
+        });
     }
 
     const seedName = getSeedKey(lists);
-    const seedElements = Array.from(document.querySelectorAll(lists[seedName].selector));
+    const seedElements = findAllElements(lists[seedName]);
     const MBEs = getMBEs(seedElements);
 
     return MBEs.map((mbe) => omap(
-      lists,
-      ({ selector, attribute }, key) => {
-        const elem = Array.from(document.querySelectorAll(selector)).find((elem) => mbe.contains(elem));
-        if (!elem) return undefined;
+        lists,
+        (config, key) => {
+            // Use our new findAllElements function
+            const elem = findAllElements(config)
+                .find((elem) => mbe.contains(elem));
 
-        switch (attribute) {
-          case 'href':
-            const relativeHref = elem.getAttribute('href');
-            return relativeHref ? new URL(relativeHref, window.location.origin).href : null;
-          case 'src':
-            const relativeSrc = elem.getAttribute('src');
-            return relativeSrc ? new URL(relativeSrc, window.location.origin).href : null;
-          case 'innerText':
-            return elem.innerText;
-          case 'textContent':
-            return elem.textContent;
-          default:
-            return elem.innerText;
-        }
-      },
-      (key) => key // Use the original key in the output
+            if (!elem) return undefined;
+
+            switch (config.attribute) {
+                case 'href': {
+                    const relativeHref = elem.getAttribute('href');
+                    return relativeHref ? new URL(relativeHref, window.location.origin).href : null;
+                }
+                case 'src': {
+                    const relativeSrc = elem.getAttribute('src');
+                    return relativeSrc ? new URL(relativeSrc, window.location.origin).href : null;
+                }
+                case 'innerText':
+                    return elem.innerText;
+                case 'textContent':
+                    return elem.textContent;
+                default:
+                    return elem.getAttribute(config.attribute) || elem.innerText;
+            }
+        },
+        (key) => key
     )) || [];
-  }
+  };
 
   /**
  * Scrapes multiple lists of similar items based on a template item.
