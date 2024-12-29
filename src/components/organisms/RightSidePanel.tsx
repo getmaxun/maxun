@@ -336,6 +336,23 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     }
   }, [captureStage, paginationType, limitType, customLimit, startPaginationMode, stopPaginationMode, startLimitMode, stopLimitMode, notify, stopCaptureAndEmitGetListSettings, getListSettingsObject]);
 
+  const handleBackCaptureList = useCallback(() => {
+    switch (captureStage) {
+      case 'limit':
+        stopLimitMode();
+        setShowLimitOptions(false);
+        startPaginationMode();
+        setShowPaginationOptions(true);
+        setCaptureStage('pagination');
+        break;
+      case 'pagination':
+        stopPaginationMode();
+        setShowPaginationOptions(false);
+        setCaptureStage('initial');
+        break;
+    }
+  }, [captureStage, stopLimitMode, startPaginationMode, stopPaginationMode]);
+
   const handlePaginationSettingSelect = (option: PaginationType) => {
     updatePaginationType(option);
   };
@@ -408,6 +425,14 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         {getList && (
           <>
             <Box display="flex" justifyContent="space-between" gap={2} style={{ margin: '15px' }}>
+              {(captureStage === 'pagination' || captureStage === 'limit') && (
+                <Button
+                  variant="outlined"
+                  onClick={handleBackCaptureList}
+                >
+                  {t('right_panel.buttons.back')}
+                </Button>
+              )}
               <Button
                 variant="outlined"
                 onClick={handleConfirmListCapture}
@@ -418,7 +443,9 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                 captureStage === 'limit' ? t('right_panel.buttons.confirm_limit') : 
                 t('right_panel.buttons.finish_capture')}
               </Button>
-              <Button variant="outlined" color="error" onClick={discardGetList}>{t('right_panel.buttons.discard')}</Button>
+              <Button variant="outlined" color="error" onClick={discardGetList}>
+                {t('right_panel.buttons.discard')}
+              </Button>
             </Box>
           </>
         )}
