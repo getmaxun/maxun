@@ -162,6 +162,7 @@
             "confirm_pagination": "ページネーションを確認",
             "confirm_limit": "制限を確認",
             "finish_capture": "取得を完了",
+            "back": "戻る",
             "finish": "完了",
             "cancel": "キャンセル",
             "delete": "削除"
