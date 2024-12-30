@@ -823,7 +823,7 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
         return output;
       }
 
-      const MAX_DEPTH = 10;
+      // const MAX_DEPTH = 10;
 
       const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
         let element = document.elementFromPoint(x, y) as HTMLElement;
@@ -832,60 +832,76 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
         let current = element;
         let deepestElement = current;
         let depth = 0;
+        const MAX_DEPTH = 4; // Limit to 2 levels of shadow DOM
 
         while (current && depth < MAX_DEPTH) {
           const shadowRoot = current.shadowRoot;
-          if (shadowRoot) {
-            const shadowElement = shadowRoot.elementFromPoint(x, y) as HTMLElement;
-            if (!shadowElement) break;
-            
-            deepestElement = shadowElement;
-            current = shadowElement;
-          } else {
-            break;
-          }
+          if (!shadowRoot) break;
+
+          const shadowElement = shadowRoot.elementFromPoint(x, y) as HTMLElement;
+          if (!shadowElement || shadowElement === current) break;
+          
+          deepestElement = shadowElement;
+          current = shadowElement;
           depth++;
         }
 
         return deepestElement;
       };
 
+      // Helper function to generate selectors for shadow DOM elements
       const genSelectorForShadowDOM = (element: HTMLElement) => {
-        const findShadowContext = (element: HTMLElement): { host: HTMLElement, root: ShadowRoot } | null => {
-          let current: HTMLElement | null = element;
+        // Get complete path up to document root
+        const getShadowPath = (el: HTMLElement) => {
+          const path = [];
+          let current = el;
           let depth = 0;
+          const MAX_DEPTH = 4;
           
           while (current && depth < MAX_DEPTH) {
-            // Check if element is inside a shadow root
-            if (current.parentNode instanceof ShadowRoot) {
-              return {
-                host: (current.parentNode as ShadowRoot).host as HTMLElement,
-                root: current.parentNode as ShadowRoot
-              };
+            const rootNode = current.getRootNode();
+            if (rootNode instanceof ShadowRoot) {
+              path.unshift({
+                host: rootNode.host as HTMLElement,
+                root: rootNode,
+                element: current
+              });
+              current = rootNode.host as HTMLElement;
+              depth++;
+            } else {
+              break;
             }
-            current = current.parentElement;
-            depth++;
           }
-          return null;
+          return path;
         };
-          
-        const shadowContext = findShadowContext(element);
-        if (!shadowContext) return null;
+
+        const shadowPath = getShadowPath(element);
+        if (shadowPath.length === 0) return null;
 
         try {
-          // Generate selector for the shadow host
-          const hostSelector = finder(shadowContext.host);
+          const selectorParts: string[] = [];
           
-          // Generate selector for the element within the shadow DOM
-          const shadowElementSelector = finder(element, {
-            root: shadowContext.root as unknown as Element
+          // Generate selector for each shadow DOM boundary
+          shadowPath.forEach((context, index) => {
+            // Get selector for the host element
+            const hostSelector = finder(context.host, {
+              root: index === 0 ? document.body : (shadowPath[index - 1].root as unknown as Element)
+            });
+
+            // For the last context, get selector for target element
+            if (index === shadowPath.length - 1) {
+              const elementSelector = finder(element, {
+                root: context.root as unknown as Element
+              });
+              selectorParts.push(`${hostSelector} >> ${elementSelector}`);
+            } else {
+              selectorParts.push(hostSelector);
+            }
           });
 
           return {
-            fullSelector: `${hostSelector} >> ${shadowElementSelector}`,
-            hostSelector,
-            shadowElementSelector,
-            mode: shadowContext.root.mode
+            fullSelector: selectorParts.join(' >> '),
+            mode: shadowPath[shadowPath.length - 1].root.mode
           };
         } catch (e) {
           console.warn('Error generating shadow DOM selector:', e);
@@ -963,12 +979,7 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
           formSelector,
           // Shadow DOM selector
           shadowSelector: shadowSelector ? {
-            // Full selector that can traverse shadow DOM
             full: shadowSelector.fullSelector,
-            // Individual parts for more flexible usage
-            host: shadowSelector.hostSelector,
-            element: shadowSelector.shadowElementSelector,
-            // Shadow root mode (open/closed)
             mode: shadowSelector.mode
           } : null
         };
