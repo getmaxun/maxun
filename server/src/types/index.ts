@@ -131,8 +131,6 @@ export interface BaseActionInfo {
 
 interface ShadowSelector {
     full: string;
-    host: string;
-    element: string;
     mode: string;
 }
 
