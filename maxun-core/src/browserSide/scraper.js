@@ -204,69 +204,68 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
     }
   
     function findAllElements(config) {
-      if (!config.shadow || !config.selector.includes('>>')) {
-          return Array.from(document.querySelectorAll(config.selector));
-      }
-  
-      // For shadow DOM, we'll get all possible combinations
-      const parts = config.selector.split('>>').map(s => s.trim());
-      let currentElements = [document];
-      
-      for (let i = 0; i < parts.length; i++) {
-          const part = parts[i];
-          const nextElements = [];
-          
-          for (const element of currentElements) {
-            let targets;
-            if (i === 0) {
-                // First selector is queried from document
-                targets = Array.from(element.querySelectorAll(part))
-                    .filter(el => {
-                        // Only include elements that either:
-                        // 1. Have an open shadow root
-                        // 2. Don't need shadow root (last part of selector)
-                        if (i === parts.length - 1) return true;
-                        const shadowRoot = el.shadowRoot;
-                        return shadowRoot && shadowRoot.mode === 'open';
-                    });
-            } else {
-                // For subsequent selectors, only use elements with open shadow roots
-                const shadowRoot = element.shadowRoot;
-                if (!shadowRoot || shadowRoot.mode !== 'open') continue;
-                
-                targets = Array.from(shadowRoot.querySelectorAll(part));
+        if (!config.shadow || !config.selector.includes('>>')) {
+            return Array.from(document.querySelectorAll(config.selector));
+        }
+    
+        // For shadow DOM, we'll get all possible combinations
+        const parts = config.selector.split('>>').map(s => s.trim());
+        let currentElements = [document];
+        
+        for (let i = 0; i < parts.length; i++) {
+            const part = parts[i];
+            const nextElements = [];
+            
+            for (const element of currentElements) {
+                let targets;
+                if (i === 0) {
+                    // First selector is queried from document
+                    targets = Array.from(element.querySelectorAll(part))
+                        .filter(el => {
+                            // Only include elements that either:
+                            // 1. Have an open shadow root
+                            // 2. Don't need shadow root (last part of selector)
+                            if (i === parts.length - 1) return true;
+                            const shadowRoot = el.shadowRoot;
+                            return shadowRoot && shadowRoot.mode === 'open';
+                        });
+                } else {
+                    // For subsequent selectors, only use elements with open shadow roots
+                    const shadowRoot = element.shadowRoot;
+                    if (!shadowRoot || shadowRoot.mode !== 'open') continue;
+                    
+                    targets = Array.from(shadowRoot.querySelectorAll(part));
+                }
+                nextElements.push(...targets);
             }
-            nextElements.push(...targets);
-          }
-          
-          if (nextElements.length === 0) return [];
-          currentElements = nextElements;
-      }
-  
-      return currentElements;
+            
+            if (nextElements.length === 0) return [];
+            currentElements = nextElements;
+        }
+    
+        return currentElements;
     }
   
-  // Helper function to extract value from element based on attribute
-  function getElementValue(element, attribute) {
-      if (!element) return null;
-  
-      switch (attribute) {
-          case 'href': {
-              const relativeHref = element.getAttribute('href');
-              return relativeHref ? new URL(relativeHref, window.location.origin).href : null;
-          }
-          case 'src': {
-              const relativeSrc = element.getAttribute('src');
-              return relativeSrc ? new URL(relativeSrc, window.location.origin).href : null;
-          }
-          case 'innerText':
-              return element.innerText?.trim();
-          case 'textContent':
-              return element.textContent?.trim();
-          default:
-              return element.getAttribute(attribute) || element.innerText?.trim();
-      }
-  }
+    function getElementValue(element, attribute) {
+        if (!element) return null;
+    
+        switch (attribute) {
+            case 'href': {
+                const relativeHref = element.getAttribute('href');
+                return relativeHref ? new URL(relativeHref, window.location.origin).href : null;
+            }
+            case 'src': {
+                const relativeSrc = element.getAttribute('src');
+                return relativeSrc ? new URL(relativeSrc, window.location.origin).href : null;
+            }
+            case 'innerText':
+                return element.innerText?.trim();
+            case 'textContent':
+                return element.textContent?.trim();
+            default:
+                return element.getAttribute(attribute) || element.innerText?.trim();
+        }
+    }
 
     // Get the seed key based on the maximum number of elements found
     function getSeedKey(listObj) {
@@ -280,26 +279,26 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
 
     // Find minimal bounding elements
     function getMBEs(elements) {
-        return elements.map((element) => {
-            let candidate = element;
-            const isUniqueChild = (e) => elements
-                .filter((elem) => e.parentNode?.contains(elem))
-                .length === 1;
+      return elements.map((element) => {
+          let candidate = element;
+          const isUniqueChild = (e) => elements
+              .filter((elem) => e.parentNode?.contains(elem))
+              .length === 1;
 
-            while (candidate && isUniqueChild(candidate)) {
-                candidate = candidate.parentNode;
-            }
+          while (candidate && isUniqueChild(candidate)) {
+              candidate = candidate.parentNode;
+          }
 
-            return candidate;
-        });
+          return candidate;
+      });
     }
 
-    // Main scraping logic
+    // First try the MBE approach
     const seedName = getSeedKey(lists);
     const seedElements = findAllElements(lists[seedName]);
     const MBEs = getMBEs(seedElements);
-
-    return MBEs.map((mbe) => omap(
+    
+    const mbeResults = MBEs.map((mbe) => omap(
         lists,
         (config) => {
             const elem = findAllElements(config)
@@ -309,6 +308,33 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
         },
         (key) => key
     )) || [];
+
+    // If MBE approach didn't find all elements, try independent scraping
+    if (mbeResults.some(result => Object.values(result).some(v => v === undefined))) {
+        // Fall back to independent scraping
+        const results = [];
+        const foundElements = new Map();
+
+        // Find all elements for each selector
+        Object.entries(lists).forEach(([key, config]) => {
+            const elements = findAllElements(config);
+            foundElements.set(key, elements);
+        });
+
+        // Create result objects for each found element
+        foundElements.forEach((elements, key) => {
+            elements.forEach((element, index) => {
+                if (!results[index]) {
+                    results[index] = {};
+                }
+                results[index][key] = getElementValue(element, lists[key].attribute);
+            });
+        });
+
+        return results.filter(result => Object.keys(result).length > 0);
+    }
+
+    return mbeResults;
   };
 
   /**
