@@ -163,7 +163,8 @@
             "confirm_limit": "制限を確認",
             "finish_capture": "取得を完了",
             "finish": "完了",
-            "cancel": "キャンセル"
+            "cancel": "キャンセル",
+            "delete": "削除"
         },
         "screenshot": {
             "capture_fullpage": "フルページを取得",

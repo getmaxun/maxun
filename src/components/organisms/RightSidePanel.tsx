@@ -56,6 +56,8 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const [showCaptureText, setShowCaptureText] = useState(true);
   const [hoverStates, setHoverStates] = useState<{ [id: string]: boolean }>({});
   const [browserStepIdList, setBrowserStepIdList] = useState<number[]>([]);
+  const [isCaptureTextConfirmed, setIsCaptureTextConfirmed] = useState(false);
+  const [isCaptureListConfirmed, setIsCaptureListConfirmed] = useState(false);
 
   const { lastAction, notify, currentWorkflowActionsState, setCurrentWorkflowActionsState, resetInterpretationLog } = useGlobalInfoStore();
   const { getText, startGetText, stopGetText, getScreenshot, startGetScreenshot, stopGetScreenshot, getList, startGetList, stopGetList, startPaginationMode, stopPaginationMode, paginationType, updatePaginationType, limitType, customLimit, updateLimitType, updateCustomLimit, stopLimitMode, startLimitMode, captureStage, setCaptureStage } = useActionContext();
@@ -130,6 +132,16 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
 
   const handlePairDelete = () => { }
 
+  const handleStartGetText = () => {
+    setIsCaptureTextConfirmed(false);
+    startGetText();
+  }
+
+  const handleStartGetList = () => {
+    setIsCaptureListConfirmed(false);
+    startGetList();
+  }
+
   const handleTextLabelChange = (id: number, label: string, listId?: number, fieldKey?: string) => {
     if (listId !== undefined && fieldKey !== undefined) {
       // Prevent editing if the field is confirmed
@@ -169,6 +181,22 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     });
   };
 
+  const handleTextStepDelete = (id: number) => {
+    deleteBrowserStep(id);
+    setTextLabels(prevLabels => {
+      const { [id]: _, ...rest } = prevLabels;
+      return rest;
+    });
+    setConfirmedTextSteps(prev => {
+      const { [id]: _, ...rest } = prev;
+      return rest;
+    });
+    setErrors(prevErrors => {
+      const { [id]: _, ...rest } = prevErrors;
+      return rest;
+    });
+  };
+
   const handleListTextFieldConfirm = (listId: number, fieldKey: string) => {
     setConfirmedListTextFields(prev => ({
       ...prev,
@@ -180,6 +208,22 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   };
 
   const handleListTextFieldDiscard = (listId: number, fieldKey: string) => {
+    removeListTextField(listId, fieldKey);
+    setConfirmedListTextFields(prev => {
+      const updatedListFields = { ...(prev[listId] || {}) };
+      delete updatedListFields[fieldKey];
+      return {
+        ...prev,
+        [listId]: updatedListFields
+      };
+    });
+    setErrors(prev => {
+      const { [fieldKey]: _, ...rest } = prev;
+      return rest;
+    });
+  };
+
+  const handleListTextFieldDelete = (listId: number, fieldKey: string) => {
     removeListTextField(listId, fieldKey);
     setConfirmedListTextFields(prev => {
       const updatedListFields = { ...(prev[listId] || {}) };
@@ -224,6 +268,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     if (hasTextSteps) {
       socket?.emit('action', { action: 'scrapeSchema', settings });
     }
+    setIsCaptureTextConfirmed(true);
     resetInterpretationLog();
     onFinishCapture();
   }, [stopGetText, getTextSettingsObject, socket, browserSteps, confirmedTextSteps, resetInterpretationLog]);
@@ -326,6 +371,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         }
         stopLimitMode();
         setShowLimitOptions(false);
+        setIsCaptureListConfirmed(true);
         stopCaptureAndEmitGetListSettings();
         setCaptureStage('complete');
         break;
@@ -350,6 +396,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     setTextLabels({});
     setErrors({});
     setConfirmedTextSteps({});
+    setIsCaptureTextConfirmed(false);
     notify('error', t('right_panel.errors.capture_text_discarded'));
   }, [browserSteps, stopGetText, deleteBrowserStep]);
 
@@ -365,6 +412,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     setShowLimitOptions(false);
     setCaptureStage('initial');
     setConfirmedListTextFields({});
+    setIsCaptureListConfirmed(false);
     notify('error', t('right_panel.errors.capture_list_discarded'));
   }, [browserSteps, stopGetList, deleteBrowserStep, resetListState]);
 
@@ -470,7 +518,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
             </RadioGroup>
           </FormControl>
         )}
-        {!getText && !getScreenshot && !getList && showCaptureText && <Button variant="contained" onClick={startGetText}>{t('right_panel.buttons.capture_text')}</Button>}
+        {!getText && !getScreenshot && !getList && showCaptureText && <Button variant="contained" onClick={handleStartGetText}>{t('right_panel.buttons.capture_text')}</Button>}
         {getText &&
           <>
             <Box display="flex" justifyContent="space-between" gap={2} style={{ margin: '15px' }}>
@@ -526,10 +574,20 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                       )
                     }}
                   />
-                  {!confirmedTextSteps[step.id] && (
+                  {!confirmedTextSteps[step.id] ? (
                     <Box display="flex" justifyContent="space-between" gap={2}>
                       <Button variant="contained" onClick={() => handleTextStepConfirm(step.id)} disabled={!textLabels[step.id]?.trim()}>{t('right_panel.buttons.confirm')}</Button>
                       <Button variant="contained" color="error" onClick={() => handleTextStepDiscard(step.id)}>{t('right_panel.buttons.discard')}</Button>
+                    </Box>
+                  ) : !isCaptureTextConfirmed && (
+                    <Box display="flex" justifyContent="flex-end" gap={2}>
+                      <Button
+                        variant="contained"
+                        color="error"
+                        onClick={() => handleTextStepDelete(step.id)}
+                      >
+                        {t('right_panel.buttons.delete')}
+                      </Button>
                     </Box>
                   )}
                 </>
@@ -578,7 +636,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                         )
                       }}
                     />
-                    {!confirmedListTextFields[step.id]?.[key] && (
+                    {!confirmedListTextFields[step.id]?.[key] ? (
                       <Box display="flex" justifyContent="space-between" gap={2}>
                         <Button
                           variant="contained"
@@ -593,6 +651,16 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                           onClick={() => handleListTextFieldDiscard(step.id, key)}
                         >
                           {t('right_panel.buttons.discard')}
+                        </Button>
+                      </Box>
+                    ) : !isCaptureListConfirmed && (
+                      <Box display="flex" justifyContent="flex-end" gap={2}>
+                        <Button
+                          variant="contained"
+                          color="error"
+                          onClick={() => handleListTextFieldDelete(step.id, key)}
+                        >
+                          {t('right_panel.buttons.delete')}
                         </Button>
                       </Box>
                     )}

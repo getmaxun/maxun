@@ -162,7 +162,8 @@
             "confirm_limit": "Limit bestätigen",
             "finish_capture": "Erfassung abschließen",
             "finish": "Fertig",
-            "cancel": "Abbrechen"
+            "cancel": "Abbrechen",
+            "delete": "Löschen"
         },
         "screenshot": {
             "capture_fullpage": "Vollständige Seite erfassen",

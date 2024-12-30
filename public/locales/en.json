@@ -163,7 +163,8 @@
         "confirm_limit": "Confirm Limit",
         "finish_capture": "Finish Capture",
         "finish": "Finish",
-        "cancel": "Cancel"
+        "cancel": "Cancel",
+        "delete": "Delete"
       },
       "screenshot": {
         "capture_fullpage": "Capture Fullpage",

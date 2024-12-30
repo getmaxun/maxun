@@ -163,7 +163,8 @@
       "confirm_limit": "确认限制",
       "finish_capture": "完成捕获",
       "finish": "完成",
-      "cancel": "取消"
+      "cancel": "取消",
+      "delete": "删除"
     },
     "screenshot": {
       "capture_fullpage": "捕获整页",
