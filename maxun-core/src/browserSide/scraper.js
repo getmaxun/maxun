@@ -188,8 +188,7 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
    * @param {Object.<string, {selector: string, tag: string}>} lists The named lists of HTML elements.
    * @returns {Array.<Object.<string, string>>}
    */
-  window.scrapeSchema = function (lists) {
-    // These utility functions remain unchanged as they work perfectly
+  window.scrapeSchema = function(lists) {
     function omap(object, f, kf = (x) => x) {
         return Object.fromEntries(
             Object.entries(object)
@@ -203,29 +202,73 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
                 .filter(([k, v]) => f(k, v)),
         );
     }
-
-    function findElement(config) {
-        // If this is a shadow DOM query
-        if (config.shadow && config.selector.includes('>>')) {
-            const [hostSelector, shadowSelector] = config.selector.split('>>').map(s => s.trim());
-            const host = document.querySelector(hostSelector);
-            return host?.shadowRoot?.querySelector(shadowSelector) || null;
-        }
-        // Otherwise, use regular querySelector
-        return document.querySelector(config.selector);
-    }
-
+  
     function findAllElements(config) {
-        // If this is a shadow DOM query
-        if (config.shadow && config.selector.includes('>>')) {
-            const element = findElement(config);
-            return element ? [element] : [];
-        }
-        // Otherwise, use regular querySelectorAll
-        return Array.from(document.querySelectorAll(config.selector));
+      if (!config.shadow || !config.selector.includes('>>')) {
+          return Array.from(document.querySelectorAll(config.selector));
+      }
+  
+      // For shadow DOM, we'll get all possible combinations
+      const parts = config.selector.split('>>').map(s => s.trim());
+      let currentElements = [document];
+      
+      for (let i = 0; i < parts.length; i++) {
+          const part = parts[i];
+          const nextElements = [];
+          
+          for (const element of currentElements) {
+            let targets;
+            if (i === 0) {
+                // First selector is queried from document
+                targets = Array.from(element.querySelectorAll(part))
+                    .filter(el => {
+                        // Only include elements that either:
+                        // 1. Have an open shadow root
+                        // 2. Don't need shadow root (last part of selector)
+                        if (i === parts.length - 1) return true;
+                        const shadowRoot = el.shadowRoot;
+                        return shadowRoot && shadowRoot.mode === 'open';
+                    });
+            } else {
+                // For subsequent selectors, only use elements with open shadow roots
+                const shadowRoot = element.shadowRoot;
+                if (!shadowRoot || shadowRoot.mode !== 'open') continue;
+                
+                targets = Array.from(shadowRoot.querySelectorAll(part));
+            }
+            nextElements.push(...targets);
+          }
+          
+          if (nextElements.length === 0) return [];
+          currentElements = nextElements;
+      }
+  
+      return currentElements;
     }
+  
+  // Helper function to extract value from element based on attribute
+  function getElementValue(element, attribute) {
+      if (!element) return null;
+  
+      switch (attribute) {
+          case 'href': {
+              const relativeHref = element.getAttribute('href');
+              return relativeHref ? new URL(relativeHref, window.location.origin).href : null;
+          }
+          case 'src': {
+              const relativeSrc = element.getAttribute('src');
+              return relativeSrc ? new URL(relativeSrc, window.location.origin).href : null;
+          }
+          case 'innerText':
+              return element.innerText?.trim();
+          case 'textContent':
+              return element.textContent?.trim();
+          default:
+              return element.getAttribute(attribute) || element.innerText?.trim();
+      }
+  }
 
-    // Modified to use our new element finding functions
+    // Get the seed key based on the maximum number of elements found
     function getSeedKey(listObj) {
         const maxLength = Math.max(...Object.values(
             omap(listObj, (x) => findAllElements(x).length)
@@ -235,8 +278,7 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
         )[0];
     }
 
-    // This function remains unchanged as it works with DOM elements
-    // regardless of how they were found
+    // Find minimal bounding elements
     function getMBEs(elements) {
         return elements.map((element) => {
             let candidate = element;
@@ -252,35 +294,18 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
         });
     }
 
+    // Main scraping logic
     const seedName = getSeedKey(lists);
     const seedElements = findAllElements(lists[seedName]);
     const MBEs = getMBEs(seedElements);
 
     return MBEs.map((mbe) => omap(
         lists,
-        (config, key) => {
-            // Use our new findAllElements function
+        (config) => {
             const elem = findAllElements(config)
                 .find((elem) => mbe.contains(elem));
-
-            if (!elem) return undefined;
-
-            switch (config.attribute) {
-                case 'href': {
-                    const relativeHref = elem.getAttribute('href');
-                    return relativeHref ? new URL(relativeHref, window.location.origin).href : null;
-                }
-                case 'src': {
-                    const relativeSrc = elem.getAttribute('src');
-                    return relativeSrc ? new URL(relativeSrc, window.location.origin).href : null;
-                }
-                case 'innerText':
-                    return elem.innerText;
-                case 'textContent':
-                    return elem.textContent;
-                default:
-                    return elem.getAttribute(config.attribute) || elem.innerText;
-            }
+            
+            return elem ? getElementValue(elem, config.attribute) : undefined;
         },
         (key) => key
     )) || [];
