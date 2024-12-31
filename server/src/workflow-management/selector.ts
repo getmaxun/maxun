@@ -237,23 +237,30 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
     if (!getList || listSelector !== '') {
       const rect = await page.evaluate(
         async ({ x, y }) => {
-          // Helper function to get element from point including shadow DOM
+          // Enhanced helper function to get element from point including shadow DOM
           const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
             let element = document.elementFromPoint(x, y) as HTMLElement;
             if (!element) return null;
 
             // Traverse through shadow roots
             let current = element;
-            while (current) {
-              const shadowRoot = current.shadowRoot;
-              if (!shadowRoot) break;
-
+            let shadowRoot = current.shadowRoot;
+            
+            // Keep track of the deepest shadow DOM element found
+            let deepestElement = current;
+            
+            while (shadowRoot) {
+              // Try to find element at same point in shadow DOM
               const shadowElement = shadowRoot.elementFromPoint(x, y) as HTMLElement;
               if (!shadowElement || shadowElement === current) break;
-
+              
+              // Update our tracking of the deepest element
+              deepestElement = shadowElement;
               current = shadowElement;
+              shadowRoot = current.shadowRoot;
             }
-            return current;
+
+            return deepestElement;
           };
 
           const el = getDeepestElementFromPoint(x, y);
@@ -274,36 +281,45 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
               };
             }
           }
+          return null;
         },
-        { x: coordinates.x, y: coordinates.y },
+        { x: coordinates.x, y: coordinates.y }
       );
       return rect;
     } else {
       const rect = await page.evaluate(
         async ({ x, y }) => {
-          // Helper function to get element from point including shadow DOM
+          // Enhanced helper function to get element from point including shadow DOM
           const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
             let element = document.elementFromPoint(x, y) as HTMLElement;
             if (!element) return null;
 
             // Traverse through shadow roots
             let current = element;
-            while (current) {
-              const shadowRoot = current.shadowRoot;
-              if (!shadowRoot) break;
-
+            let shadowRoot = current.shadowRoot;
+            
+            // Keep track of the deepest shadow DOM element found
+            let deepestElement = current;
+            
+            while (shadowRoot) {
+              // Try to find element at same point in shadow DOM
               const shadowElement = shadowRoot.elementFromPoint(x, y) as HTMLElement;
               if (!shadowElement || shadowElement === current) break;
-
+              
+              // Update our tracking of the deepest element
+              deepestElement = shadowElement;
               current = shadowElement;
+              shadowRoot = current.shadowRoot;
             }
-            return current;
+
+            return deepestElement;
           };
 
           const originalEl = getDeepestElementFromPoint(x, y);
           if (originalEl) {
             let element = originalEl;
 
+            // Handle element hierarchy traversal for list items
             while (element.parentElement) {
               const parentRect = element.parentElement.getBoundingClientRect();
               const childRect = element.getBoundingClientRect();
@@ -326,7 +342,6 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
             }
 
             const rectangle = element?.getBoundingClientRect();
-
             if (rectangle) {
               return {
                 x: rectangle.x,
@@ -342,14 +357,14 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
           }
           return null;
         },
-        { x: coordinates.x, y: coordinates.y },
+        { x: coordinates.x, y: coordinates.y }
       );
       return rect;
     }
   } catch (error) {
     const { message, stack } = error as Error;
-    logger.log('error', `Error while retrieving selector: ${message}`);
-    logger.log('error', `Stack: ${stack}`);
+    console.error('Error while retrieving selector:', message);
+    console.error('Stack:', stack);
   }
 };
 
