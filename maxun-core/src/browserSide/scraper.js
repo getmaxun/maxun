@@ -349,27 +349,100 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
   window.scrapeList = async function ({ listSelector, fields, limit = 10 }) {
     const scrapedData = [];
 
-    while (scrapedData.length < limit) {
-        let parentElements = Array.from(document.querySelectorAll(listSelector));
+    // Helper function to query through Shadow DOM
+    const queryShadowDOM = (rootElement, selector) => {
+        // Split the selector by Shadow DOM delimiter
+        const parts = selector.split('>>').map(part => part.trim());
+        let currentElement = rootElement;
+
+        // Traverse through each part of the selector
+        for (let i = 0; i < parts.length; i++) {
+            if (!currentElement) return null;
+
+            // If we're at the document level (first part)
+            if (!currentElement.querySelector && !currentElement.shadowRoot) {
+                currentElement = document.querySelector(parts[i]);
+                continue;
+            }
+
+            // Try to find element in regular DOM first
+            let nextElement = currentElement.querySelector(parts[i]);
+
+            // If not found, check shadow DOM
+            if (!nextElement && currentElement.shadowRoot) {
+                nextElement = currentElement.shadowRoot.querySelector(parts[i]);
+            }
+
+            // If still not found, try to find in shadow DOM of all child elements
+            if (!nextElement) {
+                const allChildren = Array.from(currentElement.children || []);
+                for (const child of allChildren) {
+                    if (child.shadowRoot) {
+                        nextElement = child.shadowRoot.querySelector(parts[i]);
+                        if (nextElement) break;
+                    }
+                }
+            }
+
+            currentElement = nextElement;
+        }
+
+        return currentElement;
+    };
+
+    // Helper function to query all elements through Shadow DOM
+    const queryShadowDOMAll = (rootElement, selector) => {
+        const parts = selector.split('>>').map(part => part.trim());
+        let currentElements = [rootElement];
         
-        // If we only got one element or none, try a more generic approach
+        for (const part of parts) {
+            const nextElements = [];
+            
+            for (const element of currentElements) {
+                // Check regular DOM
+                if (element.querySelectorAll) {
+                    nextElements.push(...element.querySelectorAll(part));
+                }
+                
+                // Check shadow DOM
+                if (element.shadowRoot) {
+                    nextElements.push(...element.shadowRoot.querySelectorAll(part));
+                }
+                
+                // Check shadow DOM of children
+                const children = Array.from(element.children || []);
+                for (const child of children) {
+                    if (child.shadowRoot) {
+                        nextElements.push(...child.shadowRoot.querySelectorAll(part));
+                    }
+                }
+            }
+            
+            currentElements = nextElements;
+        }
+        
+        return currentElements;
+    };
+
+    while (scrapedData.length < limit) {
+        // Use our shadow DOM query function to get parent elements
+        let parentElements = queryShadowDOMAll(document, listSelector);
+        parentElements = Array.from(parentElements);
+
+        // Handle the case when we don't find enough elements
         if (limit > 1 && parentElements.length <= 1) {
-            const [containerSelector, _] = listSelector.split('>').map(s => s.trim());
-            const container = document.querySelector(containerSelector);
+            const [containerSelector, ...rest] = listSelector.split('>>').map(s => s.trim());
+            const container = queryShadowDOM(document, containerSelector);
             
             if (container) {
-                const allChildren = Array.from(container.children);
+                const allChildren = Array.from(container.children || []);
+                const firstMatch = queryShadowDOM(document, listSelector);
                 
-                const firstMatch = document.querySelector(listSelector);
                 if (firstMatch) {
-                    // Get classes from the first matching element
-                    const firstMatchClasses = Array.from(firstMatch.classList);
+                    const firstMatchClasses = Array.from(firstMatch.classList || []);
                     
-                    // Find similar elements by matching most of their classes
                     parentElements = allChildren.filter(element => {
-                        const elementClasses = Array.from(element.classList);
-
-                        // Element should share at least 70% of classes with the first match
+                        const elementClasses = Array.from(element.classList || []);
                         const commonClasses = firstMatchClasses.filter(cls => 
                             elementClasses.includes(cls));
                         return commonClasses.length >= Math.floor(firstMatchClasses.length * 0.7);
@@ -378,42 +451,49 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
             }
         }
 
-        // Iterate through each parent element
+        // Process each parent element
         for (const parent of parentElements) {
             if (scrapedData.length >= limit) break;
             const record = {};
 
-            // For each field, select the corresponding element within the parent
+            // Process each field using shadow DOM querying
             for (const [label, { selector, attribute }] of Object.entries(fields)) {
-                const fieldElement = parent.querySelector(selector);
+                // Use relative selector from parent
+                const relativeSelector = selector.split('>>').slice(-1)[0];
+                const fieldElement = queryShadowDOM(parent, relativeSelector);
 
                 if (fieldElement) {
-                    if (attribute === 'innerText') {
-                        record[label] = fieldElement.innerText.trim();
-                    } else if (attribute === 'innerHTML') {
-                        record[label] = fieldElement.innerHTML.trim();
-                    } else if (attribute === 'src') {
-                        // Handle relative 'src' URLs
-                        const src = fieldElement.getAttribute('src');
-                        record[label] = src ? new URL(src, window.location.origin).href : null;
-                    } else if (attribute === 'href') {
-                        // Handle relative 'href' URLs
-                        const href = fieldElement.getAttribute('href');
-                        record[label] = href ? new URL(href, window.location.origin).href : null;
-                    } else {
-                        record[label] = fieldElement.getAttribute(attribute);
+                    switch (attribute) {
+                        case 'innerText':
+                            record[label] = fieldElement.innerText?.trim() || '';
+                            break;
+                        case 'innerHTML':
+                            record[label] = fieldElement.innerHTML?.trim() || '';
+                            break;
+                        case 'src':
+                            const src = fieldElement.getAttribute('src');
+                            record[label] = src ? new URL(src, window.location.origin).href : null;
+                            break;
+                        case 'href':
+                            const href = fieldElement.getAttribute('href');
+                            record[label] = href ? new URL(href, window.location.origin).href : null;
+                            break;
+                        default:
+                            record[label] = fieldElement.getAttribute(attribute);
                     }
                 }
             }
-            scrapedData.push(record);
+            
+            if (Object.keys(record).length > 0) {
+                scrapedData.push(record);
+            }
         }
 
-        // If we've processed all available elements and still haven't reached the limit,
-        // break to avoid infinite loop
         if (parentElements.length === 0 || scrapedData.length >= parentElements.length) {
             break;
         }
     }
+    
     return scrapedData;
 };
 
