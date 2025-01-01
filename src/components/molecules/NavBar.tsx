@@ -318,7 +318,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                     <MenuItem onClick={() => {
                       window.open('https://x.com/maxun_io?ref=app', '_blank');
                     }}>
-                      <X sx={{ marginRight: '5px' }} /> Twiter (X)
+                      <X sx={{ marginRight: '5px' }} /> Twitter (X)
                     </MenuItem>
                     <MenuItem onClick={handleLangMenuOpen}>
                       <Language sx={{ marginRight: '5px' }} /> {t('navbar.menu_items.language')}
