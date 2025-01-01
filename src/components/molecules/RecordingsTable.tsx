@@ -33,10 +33,6 @@ interface Column {
   format?: (value: string) => string;
 }
 
-
-
-
-
 interface Data {
   id: string;
   name: string;
