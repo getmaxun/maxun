@@ -5,11 +5,6 @@ import { ScheduleSettings } from "../components/molecules/ScheduleSettings";
 import { CreateRunResponse, ScheduleRunResponse } from "../pages/MainPage";
 import { apiUrl } from "../apiConfig";
 
-
-
-
-
-
 export const getStoredRecordings = async (): Promise<string[] | null> => {
   try {
     const response = await axios.get(`${apiUrl}/storage/recordings`);
