@@ -79,7 +79,7 @@ export const ScheduleSettingsModal = ({ isOpen, handleStart, handleClose, initia
     'SUNDAY'
   ];
 
-  const { recordingId } = useGlobalInfoStore();
+  const { recordingId, notify } = useGlobalInfoStore();
 
   const deleteRobotSchedule = () => {
     if (recordingId) {
