@@ -1076,46 +1076,133 @@ interface SelectorResult {
  */
 
 export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates, listSelector: string): Promise<SelectorResult> => {
+  interface ShadowContext {
+    host: HTMLElement;
+    root: ShadowRoot;
+    element: HTMLElement;
+  }
+
   try {
     if (!listSelector) {
       const selectors = await page.evaluate(({ x, y }: { x: number, y: number }) => {
-        function getNonUniqueSelector(element: HTMLElement): string {
-          let selector = element.tagName.toLowerCase();
+        // Helper function to get deepest element, traversing shadow DOM
+        function getDeepestElementFromPoint(x: number, y: number): HTMLElement | null {
+          let element = document.elementFromPoint(x, y) as HTMLElement;
+          if (!element) return null;
 
-          if (element.className) {
-            const classes = element.className.split(/\s+/).filter((cls: string) => Boolean(cls));
-            if (classes.length > 0) {
-              const validClasses = classes.filter((cls: string) => !cls.startsWith('!') && !cls.includes(':'));
-              if (validClasses.length > 0) {
-                selector += '.' + validClasses.map(cls => CSS.escape(cls)).join('.');
-              }
-            }
+          let current = element;
+          let deepestElement = current;
+          let depth = 0;
+          const MAX_DEPTH = 4; // Limit shadow DOM traversal depth
+          
+          while (current && depth < MAX_DEPTH) {
+            const shadowRoot = current.shadowRoot;
+            if (!shadowRoot) break;
+            
+            const shadowElement = shadowRoot.elementFromPoint(x, y) as HTMLElement;
+            if (!shadowElement || shadowElement === current) break;
+            
+            deepestElement = shadowElement;
+            current = shadowElement;
+            depth++;
           }
 
+          return deepestElement;
+        }
+
+        // Generate basic selector from element's tag and classes
+        function getNonUniqueSelector(element: HTMLElement): string {
+          let selector = element.tagName.toLowerCase();
+          
+          const className = typeof element.className === 'string' ? element.className : '';
+          if (className) {
+            const classes = className.split(/\s+/)
+              .filter(cls => Boolean(cls) && !cls.startsWith('!') && !cls.includes(':'));
+            
+            if (classes.length > 0) {
+              selector += '.' + classes.map(cls => CSS.escape(cls)).join('.');
+            }
+          }
+          
           return selector;
         }
 
-        function getSelectorPath(element: HTMLElement | null): string {
-          const path: string[] = [];
+        // Get complete shadow DOM path for an element
+        function getShadowPath(element: HTMLElement): ShadowContext[] {
+          const path: ShadowContext[] = [];
+          let current = element;
           let depth = 0;
-          const maxDepth = 2;
+          const MAX_DEPTH = 4;
+          
+          while (current && depth < MAX_DEPTH) {
+            const rootNode = current.getRootNode();
+            if (rootNode instanceof ShadowRoot) {
+              path.unshift({
+                host: rootNode.host as HTMLElement,
+                root: rootNode,
+                element: current
+              });
+              current = rootNode.host as HTMLElement;
+              depth++;
+            } else {
+              break;
+            }
+          }
+          return path;
+        }
 
-          while (element && element !== document.body && depth < maxDepth) {
-            const selector = getNonUniqueSelector(element);
+        // Generate complete selector path for any element
+        function getSelectorPath(element: HTMLElement | null): string {
+          if (!element) return '';
+          
+          // Check for shadow DOM path first
+          const shadowPath = getShadowPath(element);
+          if (shadowPath.length > 0) {
+            const selectorParts: string[] = [];
+            
+            // Build complete shadow DOM path
+            shadowPath.forEach((context, index) => {
+              const hostSelector = getNonUniqueSelector(context.host);
+              
+              if (index === shadowPath.length - 1) {
+                // For deepest shadow context, include target element
+                const elementSelector = getNonUniqueSelector(element);
+                selectorParts.push(`${hostSelector} >> ${elementSelector}`);
+              } else {
+                // For intermediate shadow boundaries
+                selectorParts.push(hostSelector);
+              }
+            });
+            
+            return selectorParts.join(' >> ');
+          }
+
+          // Regular DOM path generation
+          const path: string[] = [];
+          let currentElement = element;
+          let depth = 0;
+          const MAX_DEPTH = 2;
+
+          while (currentElement && currentElement !== document.body && depth < MAX_DEPTH) {
+            const selector = getNonUniqueSelector(currentElement);
             path.unshift(selector);
-            element = element.parentElement;
+            
+            const parentElement = currentElement.parentElement;
+            if (!parentElement) break;
+            currentElement = parentElement;
             depth++;
           }
 
           return path.join(' > ');
         }
 
-        const originalEl = document.elementFromPoint(x, y) as HTMLElement;
+        // Main logic to get element and generate selector
+        const originalEl = getDeepestElementFromPoint(x, y);
         if (!originalEl) return null;
 
         let element = originalEl;
 
-        // if (listSelector === '') {
+        // Handle parent traversal for better element targeting
         while (element.parentElement) {
           const parentRect = element.parentElement.getBoundingClientRect();
           const childRect = element.getBoundingClientRect();
@@ -1136,60 +1223,134 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
             break;
           }
         }
-        // }
 
         const generalSelector = getSelectorPath(element);
-        return {
-          generalSelector,
-        };
+        return { generalSelector };
       }, coordinates);
+
       return selectors || { generalSelector: '' };
     } else {
+      // When we have a list selector, we need special handling while maintaining shadow DOM support
       const selectors = await page.evaluate(({ x, y }: { x: number, y: number }) => {
-        function getNonUniqueSelector(element: HTMLElement): string {
-          let selector = element.tagName.toLowerCase();
+        // Helper function to get deepest element, traversing shadow DOM
+        function getDeepestElementFromPoint(x: number, y: number): HTMLElement | null {
+          let element = document.elementFromPoint(x, y) as HTMLElement;
+          if (!element) return null;
 
-          if (element.className) {
-            const classes = element.className.split(/\s+/).filter((cls: string) => Boolean(cls));
-            if (classes.length > 0) {
-              const validClasses = classes.filter((cls: string) => !cls.startsWith('!') && !cls.includes(':'));
-              if (validClasses.length > 0) {
-                selector += '.' + validClasses.map(cls => CSS.escape(cls)).join('.');
-              }
-            }
+          let current = element;
+          let deepestElement = current;
+          let depth = 0;
+          const MAX_DEPTH = 4;
+          
+          while (current && depth < MAX_DEPTH) {
+            const shadowRoot = current.shadowRoot;
+            if (!shadowRoot) break;
+            
+            const shadowElement = shadowRoot.elementFromPoint(x, y) as HTMLElement;
+            if (!shadowElement || shadowElement === current) break;
+            
+            deepestElement = shadowElement;
+            current = shadowElement;
+            depth++;
           }
 
+          return deepestElement;
+        }
+
+        // Generate basic selector from element's tag and classes
+        function getNonUniqueSelector(element: HTMLElement): string {
+          let selector = element.tagName.toLowerCase();
+          
+          const className = typeof element.className === 'string' ? element.className : '';
+          if (className) {
+            const classes = className.split(/\s+/)
+              .filter(cls => Boolean(cls) && !cls.startsWith('!') && !cls.includes(':'));
+            
+            if (classes.length > 0) {
+              selector += '.' + classes.map(cls => CSS.escape(cls)).join('.');
+            }
+          }
+          
           return selector;
         }
 
-        function getSelectorPath(element: HTMLElement | null): string {
-          const path: string[] = [];
+        // Get complete shadow DOM path for an element
+        function getShadowPath(element: HTMLElement): ShadowContext[] {
+          const path: ShadowContext[] = [];
+          let current = element;
           let depth = 0;
-          const maxDepth = 2;
+          const MAX_DEPTH = 4;
+          
+          while (current && depth < MAX_DEPTH) {
+            const rootNode = current.getRootNode();
+            if (rootNode instanceof ShadowRoot) {
+              path.unshift({
+                host: rootNode.host as HTMLElement,
+                root: rootNode,
+                element: current
+              });
+              current = rootNode.host as HTMLElement;
+              depth++;
+            } else {
+              break;
+            }
+          }
+          return path;
+        }
 
-          while (element && element !== document.body && depth < maxDepth) {
-            const selector = getNonUniqueSelector(element);
+        // Generate selector path specifically for list items
+        function getListItemSelectorPath(element: HTMLElement | null): string {
+          if (!element) return '';
+          
+          // Check for shadow DOM path first
+          const shadowPath = getShadowPath(element);
+          if (shadowPath.length > 0) {
+            const selectorParts: string[] = [];
+            
+            shadowPath.forEach((context, index) => {
+              const hostSelector = getNonUniqueSelector(context.host);
+              
+              if (index === shadowPath.length - 1) {
+                const elementSelector = getNonUniqueSelector(element);
+                selectorParts.push(`${hostSelector} >> ${elementSelector}`);
+              } else {
+                selectorParts.push(hostSelector);
+              }
+            });
+            
+            return selectorParts.join(' >> ');
+          }
+
+          // For list items, we want a shallower path to better match list patterns
+          const path: string[] = [];
+          let currentElement = element;
+          let depth = 0;
+          const MAX_LIST_DEPTH = 2;  // Keeping shallow depth for list items
+
+          while (currentElement && currentElement !== document.body && depth < MAX_LIST_DEPTH) {
+            const selector = getNonUniqueSelector(currentElement);
             path.unshift(selector);
-            element = element.parentElement;
+            
+            if (!currentElement.parentElement) break;
+            currentElement = currentElement.parentElement;
             depth++;
           }
 
           return path.join(' > ');
         }
 
-        const originalEl = document.elementFromPoint(x, y) as HTMLElement;
-        if (!originalEl) return null;
+        // Main logic for list item selection
+        const originalEl = getDeepestElementFromPoint(x, y);
+        if (!originalEl) return { generalSelector: '' };
 
         let element = originalEl;
 
-        const generalSelector = getSelectorPath(element);
-        return {
-          generalSelector,
-        };
-      }, coordinates);
-      return selectors || { generalSelector: '' };
-    }
+        const generalSelector = getListItemSelectorPath(element);
+        return { generalSelector };
+    }, coordinates);
 
+    return selectors || { generalSelector: '' };
+    }
   } catch (error) {
     console.error('Error in getNonUniqueSelectors:', error);
     return { generalSelector: '' };
@@ -1218,42 +1379,110 @@ export const getChildSelectors = async (page: Page, parentSelector: string): Pro
       }
 
       // Function to generate selector path from an element to its parent
-      function getSelectorPath(element: HTMLElement | null): string {
+      function getSelectorPath(element: HTMLElement): string {
         if (!element || !element.parentElement) return '';
 
         const parentSelector = getNonUniqueSelector(element.parentElement);
         const elementSelector = getNonUniqueSelector(element);
 
+        // Check if element is in shadow DOM
+        const rootNode = element.getRootNode();
+        if (rootNode instanceof ShadowRoot) {
+          const hostSelector = getNonUniqueSelector(rootNode.host as HTMLElement);
+          return `${hostSelector} >> ${elementSelector}`;
+        }
+
         return `${parentSelector} > ${elementSelector}`;
       }
 
-      // Function to recursively get all descendant selectors
+      // Function to get all shadow DOM children of an element
+      function getShadowChildren(element: HTMLElement): HTMLElement[] {
+        const children: HTMLElement[] = [];
+        
+        // Check if element has shadow root
+        const shadowRoot = element.shadowRoot;
+        if (shadowRoot) {
+          // Get all elements in the shadow DOM
+          const shadowElements = Array.from(shadowRoot.querySelectorAll('*')) as HTMLElement[];
+          children.push(...shadowElements);
+        }
+        
+        return children;
+      }
+
+      // Function to recursively get all descendant selectors including shadow DOM
       function getAllDescendantSelectors(element: HTMLElement): string[] {
         let selectors: string[] = [];
+        
+        // Handle regular DOM children
         const children = Array.from(element.children) as HTMLElement[];
-
         for (const child of children) {
           const childPath = getSelectorPath(child);
           if (childPath) {
-            selectors.push(childPath);  // Add direct child path
-            selectors = selectors.concat(getAllDescendantSelectors(child));  // Recursively process descendants
+            selectors.push(childPath);
+            // Recursively process regular DOM descendants
+            selectors = selectors.concat(getAllDescendantSelectors(child));
+            
+            // Check for shadow DOM in this child
+            const shadowChildren = getShadowChildren(child);
+            for (const shadowChild of shadowChildren) {
+              const shadowPath = getSelectorPath(shadowChild);
+              if (shadowPath) {
+                selectors.push(shadowPath);
+                // Recursively process shadow DOM descendants
+                selectors = selectors.concat(getAllDescendantSelectors(shadowChild));
+              }
+            }
+          }
+        }
+
+        // Handle direct shadow DOM children of the current element
+        const shadowChildren = getShadowChildren(element);
+        for (const shadowChild of shadowChildren) {
+          const shadowPath = getSelectorPath(shadowChild);
+          if (shadowPath) {
+            selectors.push(shadowPath);
+            selectors = selectors.concat(getAllDescendantSelectors(shadowChild));
           }
         }
 
         return selectors;
       }
 
-      // Find all occurrences of the parent selector in the DOM
-      const parentElements = Array.from(document.querySelectorAll(parentSelector)) as HTMLElement[];
-      const allChildSelectors = new Set<string>();  // Use a set to ensure uniqueness
+      // Split the parent selector if it contains shadow DOM parts
+      const selectorParts = parentSelector.split('>>').map(part => part.trim());
+      let parentElements: HTMLElement[] = [];
+
+      // Handle shadow DOM traversal if needed
+      if (selectorParts.length > 1) {
+        // Start with the host elements
+        parentElements = Array.from(document.querySelectorAll(selectorParts[0])) as HTMLElement[];
+        
+        // Traverse through shadow DOM parts
+        for (let i = 1; i < selectorParts.length; i++) {
+          const newParentElements: HTMLElement[] = [];
+          for (const element of parentElements) {
+            if (element.shadowRoot) {
+              const shadowChildren = Array.from(element.shadowRoot.querySelectorAll(selectorParts[i])) as HTMLElement[];
+              newParentElements.push(...shadowChildren);
+            }
+          }
+          parentElements = newParentElements;
+        }
+      } else {
+        // Regular DOM selector
+        parentElements = Array.from(document.querySelectorAll(parentSelector)) as HTMLElement[];
+      }
+
+      const allChildSelectors = new Set<string>();
 
       // Process each parent element and its descendants
       parentElements.forEach((parentElement) => {
         const descendantSelectors = getAllDescendantSelectors(parentElement);
-        descendantSelectors.forEach((selector) => allChildSelectors.add(selector));  // Add selectors to the set
+        descendantSelectors.forEach((selector) => allChildSelectors.add(selector));
       });
 
-      return Array.from(allChildSelectors);  // Convert the set back to an array
+      return Array.from(allChildSelectors);
     }, parentSelector);
 
     return childSelectors || [];
