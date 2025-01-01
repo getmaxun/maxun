@@ -437,7 +437,6 @@ const OptionsButton = ({ handleEdit, handleDelete, handleDuplicate }: OptionsBut
           </ListItemIcon>
           <ListItemText>{t('recordingtable.duplicate')}</ListItemText>
         </MenuItem>
-        
       </Menu>
     </>
   );
