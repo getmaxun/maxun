@@ -85,6 +85,7 @@ export const ScheduleSettingsModal = ({ isOpen, handleStart, handleClose, initia
     if (recordingId) {
       deleteSchedule(recordingId);
       setSchedule(null);
+      notify('success', t('Schedule deleted successfully'));
     } else {
       console.error('No recording id provided');
     }
