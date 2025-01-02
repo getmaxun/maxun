@@ -9,7 +9,6 @@ import { useBrowserSteps, TextStep } from '../../context/browserSteps';
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { useTranslation } from 'react-i18next';
 
-
 interface ElementInfo {
     tagName: string;
     hasOnlyText?: boolean;
