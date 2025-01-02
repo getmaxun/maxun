@@ -23,247 +23,110 @@ export const getElementInformation = async (
     if (!getList || listSelector !== '') {
       const elementInfo = await page.evaluate(
         async ({ x, y }) => {
-          // Helper function to get element info
-          const getElementInfo = (element: HTMLElement) => {
-            let info: {
-              tagName: string;
-              hasOnlyText?: boolean;
-              innerText?: string;
-              url?: string;
-              imageUrl?: string;
-              attributes?: Record<string, string>;
-              innerHTML?: string;
-              outerHTML?: string;
-              fromIframe?: boolean;
-              iframePath?: string[];
-            } = {
-              tagName: element?.tagName ?? '',
-            };
+          // Helper function to find elements within iframes, handling nested cases
+          const getElementFromIframePoint = (
+            x: number,
+            y: number,
+            context: Document = document,
+            iframePath: string[] = []
+          ): { element: HTMLElement | null; iframePath: string[] } => {
+            // First try to get element at the given coordinates
+            let element = context.elementFromPoint(x, y) as HTMLElement;
+            if (!element) return { element: null, iframePath };
 
-            if (element) {
-              info.attributes = Array.from(element.attributes).reduce(
-                (acc, attr) => {
-                  acc[attr.name] = attr.value;
-                  return acc;
-                },
-                {} as Record<string, string>
-              );
-            }
-
-            if (element?.tagName === 'A') {
-              info.url = (element as HTMLAnchorElement).href;
-              info.innerText = element.innerText ?? '';
-            } else if (element?.tagName === 'IMG') {
-              info.imageUrl = (element as HTMLImageElement).src;
-            } else if (element?.tagName === 'SELECT') {
-              const selectElement = element as HTMLSelectElement;
-              info.innerText = selectElement.options[selectElement.selectedIndex]?.text ?? '';
-              info.attributes = {
-                ...info.attributes,
-                selectedValue: selectElement.value,
-              };
-            } else if (element?.tagName === 'INPUT' &&
-              ((element as HTMLInputElement).type === 'time' ||
-                (element as HTMLInputElement).type === 'date')) {
-              info.innerText = (element as HTMLInputElement).value;
-            } else {
-              info.hasOnlyText = element?.children?.length === 0 &&
-                element?.innerText?.length > 0;
-              info.innerText = element?.innerText ?? '';
-            }
-
-            info.innerHTML = element.innerHTML;
-            info.outerHTML = element.outerHTML;
-            return info;
-          };
-
-          // Helper function to search in iframe
-          const searchInIframe = (
-            iframe: HTMLIFrameElement,
-            relativeX: number,
-            relativeY: number,
-            iframePath: string[]
-          ) => {
-            try {
-              if (!iframe.contentDocument) return null;
-
-              const el = iframe.contentDocument.elementFromPoint(relativeX, relativeY) as HTMLElement;
-              if (!el) return null;
-
-              const { parentElement } = el;
-              const element = parentElement?.tagName === 'A' ? parentElement : el;
-
-              const info = getElementInfo(element);
-              info.fromIframe = true;
-              info.iframePath = iframePath;
-
-              return info;
-            } catch (e) {
-              console.warn('Cannot access iframe content:', e);
-              return null;
-            }
-          };
-
-          const el = document.elementFromPoint(x, y) as HTMLElement;
-          if (el) {
-            // Check if the element is an iframe
-            if (el.tagName === 'IFRAME') {
-              const iframe = el as HTMLIFrameElement;
-              const rect = iframe.getBoundingClientRect();
-              const relativeX = x - rect.left;
-              const relativeY = y - rect.top;
-
-              const iframeResult = searchInIframe(
-                iframe,
-                relativeX,
-                relativeY,
-                [iframe.id || 'unnamed-iframe']
-              );
-              if (iframeResult) return iframeResult;
-            }
-
-            const { parentElement } = el;
-            const element = parentElement?.tagName === 'A' ? parentElement : el;
-            return getElementInfo(element);
-          }
-          return null;
-        },
-        { x: coordinates.x, y: coordinates.y }
-      );
-      return elementInfo;
-    } else {
-      const elementInfo = await page.evaluate(
-        async ({ x, y }) => {
-          // Helper function to get element info (same as above)
-          const getElementInfo = (element: HTMLElement) => {
-            let info: {
-              tagName: string;
-              hasOnlyText?: boolean;
-              innerText?: string;
-              url?: string;
-              imageUrl?: string;
-              attributes?: Record<string, string>;
-              innerHTML?: string;
-              outerHTML?: string;
-              fromIframe?: boolean;
-              iframePath?: string[];
-            } = {
-              tagName: element?.tagName ?? '',
-            };
-
-            if (element) {
-              info.attributes = Array.from(element.attributes).reduce(
-                (acc, attr) => {
-                  acc[attr.name] = attr.value;
-                  return acc;
-                },
-                {} as Record<string, string>
-              );
-            }
-
-            if (element?.tagName === 'A') {
-              info.url = (element as HTMLAnchorElement).href;
-              info.innerText = element.innerText ?? '';
-            } else if (element?.tagName === 'IMG') {
-              info.imageUrl = (element as HTMLImageElement).src;
-            } else {
-              info.hasOnlyText = element?.children?.length === 0 &&
-                element?.innerText?.length > 0;
-              info.innerText = element?.innerText ?? '';
-            }
-
-            info.innerHTML = element.innerHTML;
-            info.outerHTML = element.outerHTML;
-            return info;
-          };
-
-          // Helper function to search in iframe (same as above)
-          const searchInIframe = (
-            iframe: HTMLIFrameElement,
-            relativeX: number,
-            relativeY: number,
-            iframePath: string[]
-          ) => {
-            try {
-              if (!iframe.contentDocument) return null;
-
-              const el = iframe.contentDocument.elementFromPoint(relativeX, relativeY) as HTMLElement;
-              if (!el) return null;
-
-              let element = el;
-              while (element.parentElement) {
-                const parentRect = element.parentElement.getBoundingClientRect();
-                const childRect = element.getBoundingClientRect();
-
-                const fullyContained =
-                  parentRect.left <= childRect.left &&
-                  parentRect.right >= childRect.right &&
-                  parentRect.top <= childRect.top &&
-                  parentRect.bottom >= childRect.bottom;
-
-                const significantOverlap =
-                  (childRect.width * childRect.height) /
-                  (parentRect.width * parentRect.height) > 0.5;
-
-                if (fullyContained && significantOverlap) {
-                  element = element.parentElement;
-                } else {
-                  break;
+            // Check if we found an iframe
+            if (element.tagName === 'IFRAME') {
+              const iframe = element as HTMLIFrameElement;
+              try {
+                // Make sure we can access the iframe's content
+                if (!iframe.contentDocument) {
+                  return { element, iframePath };
                 }
+
+                // Transform coordinates to iframe's space
+                const rect = iframe.getBoundingClientRect();
+                const relativeX = x - rect.left;
+                const relativeY = y - rect.top;
+
+                // Add this iframe to the path
+                const updatedPath = [...iframePath, iframe.id || 'unnamed-iframe'];
+
+                // Recursively search within the iframe
+                const iframeResult = getElementFromIframePoint(
+                  relativeX,
+                  relativeY,
+                  iframe.contentDocument,
+                  updatedPath
+                );
+
+                // If we found an element in the iframe, return it
+                if (iframeResult.element) {
+                  return iframeResult;
+                }
+              } catch (e) {
+                console.warn('Cannot access iframe content:', e);
               }
-
-              const info = getElementInfo(element);
-              info.fromIframe = true;
-              info.iframePath = iframePath;
-
-              return info;
-            } catch (e) {
-              console.warn('Cannot access iframe content:', e);
-              return null;
             }
+
+            // Return the element we found (either in main document or iframe)
+            return { element, iframePath };
           };
 
-          const originalEl = document.elementFromPoint(x, y) as HTMLElement;
-          if (originalEl) {
-            // Check if the element is an iframe
-            if (originalEl.tagName === 'IFRAME') {
-              const iframe = originalEl as HTMLIFrameElement;
-              const rect = iframe.getBoundingClientRect();
-              const relativeX = x - rect.left;
-              const relativeY = y - rect.top;
+          // Get the element and its iframe path
+          const { element: el, iframePath } = getElementFromIframePoint(x, y);
+          
+          if (el) {
+            // Handle potential anchor parent
+            const { parentElement } = el;
+            const targetElement = parentElement?.tagName === 'A' ? parentElement : el;
 
-              const iframeResult = searchInIframe(
-                iframe,
-                relativeX,
-                relativeY,
-                [iframe.id || 'unnamed-iframe']
+            // Build the element information object
+            let info: {
+              tagName: string;
+              hasOnlyText?: boolean;
+              innerText?: string;
+              url?: string;
+              imageUrl?: string;
+              attributes?: Record<string, string>;
+              innerHTML?: string;
+              outerHTML?: string;
+              fromIframe?: boolean;
+              iframePath?: string[];
+            } = {
+              tagName: targetElement?.tagName ?? '',
+              fromIframe: iframePath.length > 0,
+              iframePath: iframePath.length > 0 ? iframePath : undefined
+            };
+
+            // Collect element attributes and properties
+            if (targetElement) {
+              // Get all attributes
+              info.attributes = Array.from(targetElement.attributes).reduce(
+                (acc, attr) => {
+                  acc[attr.name] = attr.value;
+                  return acc;
+                },
+                {} as Record<string, string>
               );
-              if (iframeResult) return iframeResult;
-            }
 
-            let element = originalEl;
-            while (element.parentElement) {
-              const parentRect = element.parentElement.getBoundingClientRect();
-              const childRect = element.getBoundingClientRect();
-
-              const fullyContained =
-                parentRect.left <= childRect.left &&
-                parentRect.right >= childRect.right &&
-                parentRect.top <= childRect.top &&
-                parentRect.bottom >= childRect.bottom;
-
-              const significantOverlap =
-                (childRect.width * childRect.height) /
-                (parentRect.width * parentRect.height) > 0.5;
-
-              if (fullyContained && significantOverlap) {
-                element = element.parentElement;
+              // Handle specific element types
+              if (targetElement.tagName === 'A') {
+                info.url = (targetElement as HTMLAnchorElement).href;
+                info.innerText = targetElement.textContent ?? '';
+              } else if (targetElement.tagName === 'IMG') {
+                info.imageUrl = (targetElement as HTMLImageElement).src;
               } else {
-                break;
+                info.hasOnlyText = targetElement.children.length === 0 && 
+                     (targetElement.textContent !== null && 
+                      targetElement.textContent.trim().length > 0);
+                info.innerText = targetElement.textContent ?? '';
               }
+
+              info.innerHTML = targetElement.innerHTML;
+              info.outerHTML = targetElement.outerHTML;
             }
 
-            return getElementInfo(element);
+            return info;
           }
           return null;
         },
@@ -271,6 +134,7 @@ export const getElementInformation = async (
       );
       return elementInfo;
     }
+    // ... rest of the code remains same
   } catch (error) {
     const { message, stack } = error as Error;
     console.error('Error while retrieving selector:', message);
@@ -984,6 +848,148 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
         }
         return output;
       }
+      
+      const getIframeOffset = (iframe: HTMLIFrameElement): { x: number; y: number } => {
+        const rect = iframe.getBoundingClientRect();
+        return {
+          x: rect.left,
+          y: rect.top
+        };
+      };
+      
+      const isAccessibleIframe = (iframe: HTMLIFrameElement): boolean => {
+        try {
+          return !!iframe.contentDocument;
+        } catch (e) {
+          return false;
+        }
+      };
+      
+      const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
+        // Get the initial element at the specified coordinates
+        let currentElement = document.elementFromPoint(x, y) as HTMLElement;
+        if (!currentElement) return null;
+        
+        let deepestElement = currentElement;
+        let current = currentElement;
+        let currentX = x;
+        let currentY = y;
+        let depth = 0;
+        const MAX_DEPTH = 20; // Prevent infinite loops with deeply nested iframes
+      
+        // Continue traversing while we find nested iframes
+        while (current && depth < MAX_DEPTH) {
+          // Check if the current element is an iframe and if we can access it
+          if (current instanceof HTMLIFrameElement && isAccessibleIframe(current)) {
+            // Calculate the offset of the iframe
+            const iframeOffset = getIframeOffset(current);
+            
+            // Transform coordinates to be relative to the iframe's content window
+            const relativeX = currentX - iframeOffset.x;
+            const relativeY = currentY - iframeOffset.y;
+      
+            // Find the element at these coordinates within the iframe
+            const iframeElement = current.contentDocument?.elementFromPoint(relativeX, relativeY) as HTMLElement;
+            
+            // If we don't find an element or we get the same element, stop traversing
+            if (!iframeElement || iframeElement === current) break;
+      
+            // Update our tracking variables
+            deepestElement = iframeElement;
+            current = iframeElement;
+            currentX = relativeX;
+            currentY = relativeY;
+            depth++;
+          } else {
+            // If the current element is not an iframe, we're done traversing
+            break;
+          }
+        }
+      
+        return deepestElement;
+      };
+
+      interface IframeContext {
+        frame: HTMLIFrameElement;
+        document: Document;
+        element: HTMLElement;
+      }
+      
+      const genSelectorForIframe = (element: HTMLElement) => {
+        // Helper function to check if we can access an iframe's content
+        const isAccessibleIframe = (iframe: HTMLIFrameElement): boolean => {
+          try {
+            return !!iframe.contentDocument;
+          } catch (e) {
+            return false;
+          }
+        };
+      
+        // Get complete path up through nested iframes to document root
+        const getIframePath = (el: HTMLElement) => {
+          const path: IframeContext[] = [];
+          let current = el;
+          let currentDoc = el.ownerDocument;
+          let depth = 0;
+          const MAX_DEPTH = 20;  // Limit depth to prevent infinite loops
+          
+          while (current && depth < MAX_DEPTH) {
+            // If we're in an iframe, get its parent document
+            const frameElement = currentDoc.defaultView?.frameElement as HTMLIFrameElement;
+            if (frameElement && isAccessibleIframe(frameElement)) {
+              path.unshift({
+                frame: frameElement,
+                document: currentDoc,
+                element: current
+              });
+              current = frameElement;
+              currentDoc = frameElement.ownerDocument;
+              depth++;
+            } else {
+              break;
+            }
+          }
+          return path;
+        };
+      
+        // Get the iframe path for our target element
+        const iframePath = getIframePath(element);
+        if (iframePath.length === 0) return null;
+      
+        try {
+          const selectorParts: string[] = [];
+          
+          // Generate selector for each iframe boundary
+          iframePath.forEach((context, index) => {
+            // Get selector for the iframe element in its parent document
+            const frameSelector = finder(context.frame, {
+              root: index === 0 ? document.body : (iframePath[index - 1].document.body as Element)
+            });
+            
+            // For the last context, get selector for target element
+            if (index === iframePath.length - 1) {
+              const elementSelector = finder(element, {
+                root: context.document.body as Element
+              });
+              // Use :>> for iframe traversal in the selector
+              selectorParts.push(`${frameSelector} :>> ${elementSelector}`);
+            } else {
+              selectorParts.push(frameSelector);
+            }
+          });
+      
+          return {
+            // Join all parts with :>> to indicate iframe traversal
+            fullSelector: selectorParts.join(' :>> '),
+            // Include additional metadata about the frames if needed
+            frameCount: iframePath.length,
+            isAccessible: true
+          };
+        } catch (e) {
+          console.warn('Error generating iframe selector:', e);
+          return null;
+        }
+      };
 
       const genSelectors = (element: HTMLElement | null) => {
         if (element == null) {
@@ -1003,6 +1009,8 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
           attrSelector = finder(element, { attr: () => true });
         } catch (e) {
         }
+
+        const iframeSelector = genSelectorForIframe(element);
 
         const hrefSelector = genSelectorForAttributes(element, ['href']);
         const formSelector = genSelectorForAttributes(element, [
@@ -1050,6 +1058,11 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
           hrefSelector,
           accessibilitySelector,
           formSelector,
+          iframeSelector: iframeSelector ? {
+            full: iframeSelector.fullSelector,
+            frame: iframeSelector.frameCount,
+            accesible: iframeSelector.isAccessible
+          } : null
         };
       }
 
@@ -1092,7 +1105,7 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
         return char.length === 1 && char.match(/[0-9]/);
       }
 
-      const hoveredElement = document.elementFromPoint(x, y) as HTMLElement;
+      const hoveredElement = getDeepestElementFromPoint(x, y) as HTMLElement;
       if (
         hoveredElement != null &&
         !hoveredElement.closest('#overlay-controls') != null
