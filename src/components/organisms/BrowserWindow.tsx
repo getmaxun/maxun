@@ -69,7 +69,7 @@ export const BrowserWindow = () => {
 
     const { socket } = useSocketStore();
     const { notify } = useGlobalInfoStore();
-    const { getText, getList, paginationMode, paginationType, limitMode } = useActionContext();
+    const { getText, getList, paginationMode, paginationType, limitMode, captureStage } = useActionContext();
     const { addTextStep, addListStep } = useBrowserSteps();
 
     const onMouseMove = (e: MouseEvent) => {
@@ -173,7 +173,7 @@ export const BrowserWindow = () => {
             // for non-list steps
             setHighlighterData(data);
         }
-    }, [highlighterData, getList, socket, listSelector, paginationMode, paginationType]);
+    }, [highlighterData, getList, socket, listSelector, paginationMode, paginationType, captureStage]);
 
 
     useEffect(() => {
@@ -186,6 +186,13 @@ export const BrowserWindow = () => {
             socket?.off("highlighter", highlighterHandler);
         };
     }, [socket, onMouseMove]);
+
+    useEffect(() => {
+        if (captureStage === 'initial' && listSelector) {
+            socket?.emit('setGetList', { getList: true });
+            socket?.emit('listSelector', { selector: listSelector });
+        }
+    }, [captureStage, listSelector, socket]);
 
     const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
         if (highlighterData && canvasRef?.current) {

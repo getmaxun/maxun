@@ -33,10 +33,6 @@ interface Column {
   format?: (value: string) => string;
 }
 
-
-
-
-
 interface Data {
   id: string;
   name: string;
@@ -441,7 +437,6 @@ const OptionsButton = ({ handleEdit, handleDelete, handleDuplicate }: OptionsBut
           </ListItemIcon>
           <ListItemText>{t('recordingtable.duplicate')}</ListItemText>
         </MenuItem>
-        
       </Menu>
     </>
   );

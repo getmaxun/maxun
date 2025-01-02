@@ -1,6 +1,6 @@
 <h1 align="center">
     <div>
-        <a href="https://maxun-website.vercel.app/">
+        <a href="https://maxun-website.vercel.app/?ref=ghread">
             <img src="/src/assets/maxunlogo.png" width="50" />
             <br>
             Maxun
@@ -15,11 +15,11 @@ Maxun lets you train a robot in 2 minutes and scrape the web on auto-pilot. Web 
 
 
 <p align="center">
-    <a href="https://maxun-website.vercel.app/"><b>Website</b></a> |
+    <a href="https://www.maxun.dev/?ref=ghread"><b>Website</b></a> |
     <a href="https://discord.gg/5GbPjBUkws"><b>Discord</b></a> |
-    <a href="https://x.com/maxun_io"><b>Twitter</b></a> |
+    <a href="https://x.com/maxun_io?ref=ghread"><b>Twitter</b></a> |
     <a href="https://docs.google.com/forms/d/e/1FAIpQLSdbD2uhqC4sbg4eLZ9qrFbyrfkXZ2XsI6dQ0USRCQNZNn5pzg/viewform"><b>Join Maxun Cloud</b></a> | 
-    <a href="https://www.youtube.com/@MaxunOSS"><b>Watch Tutorials</b></a>
+    <a href="https://www.youtube.com/@MaxunOSS?ref=ghread"><b>Watch Tutorials</b></a>
     <br />
     <br />
 <a href="https://trendshift.io/repositories/12113" target="_blank"><img src="https://trendshift.io/api/badge/repositories/12113" alt="getmaxun%2Fmaxun | Trendshift" style="width: 250px; height: 55px; margin-top: 10px;" width="250" height="55"/></a>
