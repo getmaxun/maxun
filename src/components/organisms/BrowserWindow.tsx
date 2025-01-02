@@ -119,9 +119,6 @@ export const BrowserWindow = () => {
     const highlighterHandler = useCallback((data: { rect: DOMRect, selector: string, elementInfo: ElementInfo | null, childSelectors?: string[] }) => {
         if (getList === true) {
             if (listSelector) {
-                console.log("LIST SELEECTORRRRR: ", listSelector);
-                console.log("DATA SELEECTORRRRR: ", data.selector);
-                console.log("CHILDREEENN SELECORRRR: ", data.childSelectors);
                 socket?.emit('listSelector', { selector: listSelector });
 
                 const hasValidChildSelectors = Array.isArray(data.childSelectors) && data.childSelectors.length > 0;
