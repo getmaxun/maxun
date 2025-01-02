@@ -326,7 +326,6 @@ export const BrowserWindow = () => {
         }
     }, [paginationMode, resetPaginationSelector]);
 
-  
     return (
         <div onClick={handleClick} style={{ width: '900px' }} id="browser-window">
             {
