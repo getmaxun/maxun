@@ -705,13 +705,13 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
             if (Object.keys(record).length > 0) {
                 nonTableData.push(record);
             }
-        }
+        }  
     }
-    
+      
+    // Merge and limit the results
     const scrapedData = [...tableData, ...nonTableData];
     return scrapedData;
 };
-
 
   /**
  * Gets all children of the elements matching the listSelector,

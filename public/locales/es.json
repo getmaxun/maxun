@@ -1,7 +1,7 @@
 {
   "login": {
     "title": "¡Bienvenido de nuevo!",
-    "email": "Correo electrónico",
+    "email": "Introducir correo electrónico de trabajo",
     "password": "Contraseña",
     "button": "Iniciar sesión",
     "loading": "Cargando",
@@ -12,7 +12,7 @@
   },
   "register": {
     "title": "Crear cuenta",
-    "email": "Correo electrónico",
+    "email": "Introducir correo electrónico de trabajo",
     "password": "Contraseña",
     "button": "Registrarse",
     "loading": "Cargando",
@@ -159,11 +159,13 @@
       "confirm": "Confirmar",
       "discard": "Descartar",
       "confirm_capture": "Confirmar Captura",
-      "confirm_pagination": "Confirmar Paginación",
-      "confirm_limit": "Confirmar Límite",
+      "confirm_pagination": "Confirmar",
+      "confirm_limit": "Confirmar",
       "finish_capture": "Finalizar Captura",
+      "back": "Atrás",
       "finish": "Finalizar",
-      "cancel": "Cancelar"
+      "cancel": "Cancelar",
+      "delete": "Eliminar"
     },
     "screenshot": {
       "capture_fullpage": "Capturar Página Completa",

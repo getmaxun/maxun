@@ -1,7 +1,7 @@
 {
   "login": {
         "title": "お帰りなさい！",
-        "email": "メールアドレス",
+        "email": "勤務先メールアドレスを入力",
         "password": "パスワード",
         "button": "ログイン",
         "loading": "読み込み中",
@@ -12,7 +12,7 @@
   },
   "register": {
         "title": "アカウントを登録する",
-        "email": "メールアドレス",
+        "email": "勤務先メールアドレスを入力",
         "password": "パスワード",
         "button": "登録する",
         "loading": "読み込み中",
@@ -159,11 +159,13 @@
             "confirm": "確認",
             "discard": "破棄",
             "confirm_capture": "取得を確認",
-            "confirm_pagination": "ページネーションを確認",
-            "confirm_limit": "制限を確認",
+            "confirm_pagination": "確認",
+            "confirm_limit": "確認",
             "finish_capture": "取得を完了",
+            "back": "戻る",
             "finish": "完了",
-            "cancel": "キャンセル"
+            "cancel": "キャンセル",
+            "delete": "削除"
         },
         "screenshot": {
             "capture_fullpage": "フルページを取得",
