@@ -9,10 +9,10 @@ import { useBrowserSteps, TextStep } from '../../context/browserSteps';
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { useTranslation } from 'react-i18next';
 
-
 interface ElementInfo {
     tagName: string;
     hasOnlyText?: boolean;
+    isShadowRoot?: boolean;
     innerText?: string;
     url?: string;
     imageUrl?: string;
@@ -120,6 +120,9 @@ export const BrowserWindow = () => {
         if (getList === true) {
             if (listSelector) {
                 socket?.emit('listSelector', { selector: listSelector });
+
+                const hasValidChildSelectors = Array.isArray(data.childSelectors) && data.childSelectors.length > 0;
+
                 if (limitMode) {
                     setHighlighterData(null);
                 } else if (paginationMode) {
@@ -132,7 +135,29 @@ export const BrowserWindow = () => {
                 } else if (data.childSelectors && data.childSelectors.includes(data.selector)) {
                     // highlight only valid child elements within the listSelector
                     setHighlighterData(data);
-                } else {
+                } else if (data.elementInfo?.isShadowRoot && data.childSelectors) {
+                    // New case: Handle pure Shadow DOM elements
+                    // Check if the selector matches any shadow root child selectors
+                    const isShadowChild = data.childSelectors.some(childSelector => 
+                        data.selector.includes('>>') && // Shadow DOM uses >> for piercing
+                        childSelector.split('>>').some(part => 
+                            data.selector.includes(part.trim())
+                        )
+                    );
+                    setHighlighterData(isShadowChild ? data : null);
+                } else if (data.selector.includes('>>') && hasValidChildSelectors) {
+                    // New case: Handle mixed DOM cases
+                    // Split the selector into parts and check each against child selectors
+                    const selectorParts = data.selector.split('>>').map(part => part.trim());
+                    const isValidMixedSelector = selectorParts.some(part => 
+                        // Now we know data.childSelectors is defined
+                        data.childSelectors!.some(childSelector => 
+                            childSelector.includes(part)
+                        )
+                    );
+                    setHighlighterData(isValidMixedSelector ? data : null);
+                }
+                 else {
                     // if !valid child in normal mode, clear the highlighter
                     setHighlighterData(null);
                 }
@@ -192,6 +217,7 @@ export const BrowserWindow = () => {
                         addTextStep('', data, {
                             selector: highlighterData.selector,
                             tag: highlighterData.elementInfo?.tagName,
+                            shadow: highlighterData.elementInfo?.isShadowRoot,
                             attribute
                         });
                     } else {
@@ -199,7 +225,7 @@ export const BrowserWindow = () => {
                         setAttributeOptions(options);
                         setSelectedElement({
                             selector: highlighterData.selector,
-                            info: highlighterData.elementInfo
+                            info: highlighterData.elementInfo,
                         });
                         setShowAttributeModal(true);
                     }
@@ -236,6 +262,7 @@ export const BrowserWindow = () => {
                             selectorObj: {
                                 selector: highlighterData.selector,
                                 tag: highlighterData.elementInfo?.tagName,
+                                shadow: highlighterData.elementInfo?.isShadowRoot,
                                 attribute
                             }
                         };
@@ -283,6 +310,7 @@ export const BrowserWindow = () => {
                     addTextStep('', data, {
                         selector: selectedElement.selector,
                         tag: selectedElement.info?.tagName,
+                        shadow: selectedElement.info?.isShadowRoot,
                         attribute: attribute
                     });
                 }
@@ -295,6 +323,7 @@ export const BrowserWindow = () => {
                         selectorObj: {
                             selector: selectedElement.selector,
                             tag: selectedElement.info?.tagName,
+                            shadow: selectedElement.info?.isShadowRoot,
                             attribute: attribute
                         }
                     };
