@@ -347,33 +347,29 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
  * @returns {Array.<Array.<Object>>} Array of arrays of scraped items, one sub-array per list
  */
   window.scrapeList = async function ({ listSelector, fields, limit = 10 }) {
-    const scrapedData = [];
-
-    // Helper function to query through Shadow DOM
+    // Shadow DOM query functions remain unchanged
     const queryShadowDOM = (rootElement, selector) => {
-        // Split the selector by Shadow DOM delimiter
+        if (!selector.includes('>>')) {
+          return rootElement.querySelector(selector);
+        }
+
         const parts = selector.split('>>').map(part => part.trim());
         let currentElement = rootElement;
 
-        // Traverse through each part of the selector
         for (let i = 0; i < parts.length; i++) {
             if (!currentElement) return null;
 
-            // If we're at the document level (first part)
             if (!currentElement.querySelector && !currentElement.shadowRoot) {
                 currentElement = document.querySelector(parts[i]);
                 continue;
             }
 
-            // Try to find element in regular DOM first
             let nextElement = currentElement.querySelector(parts[i]);
 
-            // If not found, check shadow DOM
             if (!nextElement && currentElement.shadowRoot) {
                 nextElement = currentElement.shadowRoot.querySelector(parts[i]);
             }
 
-            // If still not found, try to find in shadow DOM of all child elements
             if (!nextElement) {
                 const allChildren = Array.from(currentElement.children || []);
                 for (const child of allChildren) {
@@ -390,8 +386,11 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
         return currentElement;
     };
 
-    // Helper function to query all elements through Shadow DOM
     const queryShadowDOMAll = (rootElement, selector) => {
+        if (!selector.includes('>>')) {
+          return rootElement.querySelectorAll(selector);
+        }
+
         const parts = selector.split('>>').map(part => part.trim());
         let currentElements = [rootElement];
         
@@ -399,17 +398,14 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
             const nextElements = [];
             
             for (const element of currentElements) {
-                // Check regular DOM
                 if (element.querySelectorAll) {
                     nextElements.push(...element.querySelectorAll(part));
                 }
                 
-                // Check shadow DOM
                 if (element.shadowRoot) {
                     nextElements.push(...element.shadowRoot.querySelectorAll(part));
                 }
                 
-                // Check shadow DOM of children
                 const children = Array.from(element.children || []);
                 for (const child of children) {
                     if (child.shadowRoot) {
@@ -424,76 +420,295 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
         return currentElements;
     };
 
-    while (scrapedData.length < limit) {
-        // Use our shadow DOM query function to get parent elements
-        let parentElements = queryShadowDOMAll(document, listSelector);
-        parentElements = Array.from(parentElements);
+    // Enhanced table processing helper functions with shadow DOM support
+    function extractValue(element, attribute) {
+        if (!element) return null;
+        
+        // Check for shadow root first
+        if (element.shadowRoot) {
+            const shadowContent = element.shadowRoot.textContent;
+            if (shadowContent && shadowContent.trim()) {
+                return shadowContent.trim();
+            }
+        }
+        
+        if (attribute === 'innerText') {
+            return element.innerText.trim();
+        } else if (attribute === 'innerHTML') {
+            return element.innerHTML.trim();
+        } else if (attribute === 'src' || attribute === 'href') {
+            const attrValue = element.getAttribute(attribute);
+            return attrValue ? new URL(attrValue, window.location.origin).href : null;
+        }
+        return element.getAttribute(attribute);
+    }
 
-        // Handle the case when we don't find enough elements
-        if (limit > 1 && parentElements.length <= 1) {
-            const [containerSelector, ...rest] = listSelector.split('>>').map(s => s.trim());
-            const container = queryShadowDOM(document, containerSelector);
+    function findTableAncestor(element) {
+        let currentElement = element;
+        const MAX_DEPTH = 5;
+        let depth = 0;
+        
+        while (currentElement && depth < MAX_DEPTH) {
+            // Check if current element is in shadow DOM
+            if (currentElement.getRootNode() instanceof ShadowRoot) {
+                currentElement = currentElement.getRootNode().host;
+                continue;
+            }
             
-            if (container) {
-                const allChildren = Array.from(container.children || []);
-                const firstMatch = queryShadowDOM(document, listSelector);
-                
-                if (firstMatch) {
-                    const firstMatchClasses = Array.from(firstMatch.classList || []);
+            if (currentElement.tagName === 'TD') {
+                return { type: 'TD', element: currentElement };
+            } else if (currentElement.tagName === 'TR') {
+                return { type: 'TR', element: currentElement };
+            }
+            currentElement = currentElement.parentElement;
+            depth++;
+        }
+        return null;
+    }
+
+    function getCellIndex(td) {
+        let index = 0;
+        let sibling = td;
+        
+        // Handle shadow DOM case
+        if (td.getRootNode() instanceof ShadowRoot) {
+            const shadowRoot = td.getRootNode();
+            const allCells = Array.from(shadowRoot.querySelectorAll('td'));
+            return allCells.indexOf(td);
+        }
+        
+        while (sibling = sibling.previousElementSibling) {
+            index++;
+        }
+        return index;
+    }
+
+    function hasThElement(row, tableFields) {
+        for (const [label, { selector }] of Object.entries(tableFields)) {
+            const element = queryShadowDOM(row, selector);
+            if (element) {
+                let current = element;
+                while (current && current !== row) {
+                    // Check if we're in shadow DOM
+                    if (current.getRootNode() instanceof ShadowRoot) {
+                        current = current.getRootNode().host;
+                        continue;
+                    }
                     
-                    parentElements = allChildren.filter(element => {
-                        const elementClasses = Array.from(element.classList || []);
-                        const commonClasses = firstMatchClasses.filter(cls => 
-                            elementClasses.includes(cls));
-                        return commonClasses.length >= Math.floor(firstMatchClasses.length * 0.7);
-                    });
+                    if (current.tagName === 'TH') {
+                        return true;
+                    }
+                    current = current.parentElement;
                 }
             }
         }
+        return false;
+    }
 
-        // Process each parent element
-        for (const parent of parentElements) {
-            if (scrapedData.length >= limit) break;
-            const record = {};
+    function filterRowsBasedOnTag(rows, tableFields) {
+        for (const row of rows) {
+            if (hasThElement(row, tableFields)) {
+                return rows;
+            }
+        }
+        // Include shadow DOM in TH search
+        return rows.filter(row => {
+            const directTH = row.getElementsByTagName('TH').length === 0;
+            const shadowTH = row.shadowRoot ? 
+                row.shadowRoot.querySelector('th') === null : true;
+            return directTH && shadowTH;
+        });
+    }
 
-            // Process each field using shadow DOM querying
-            for (const [label, { selector, attribute }] of Object.entries(fields)) {
-                // Use relative selector from parent
-                const relativeSelector = selector.split('>>').slice(-1)[0];
-                const fieldElement = queryShadowDOM(parent, relativeSelector);
+    // Class similarity functions remain unchanged
+    function calculateClassSimilarity(classList1, classList2) {
+        const set1 = new Set(classList1);
+        const set2 = new Set(classList2);
+        const intersection = new Set([...set1].filter(x => set2.has(x)));
+        const union = new Set([...set1, ...set2]);
+        return intersection.size / union.size;
+    }
 
-                if (fieldElement) {
-                    switch (attribute) {
-                        case 'innerText':
-                            record[label] = fieldElement.innerText?.trim() || '';
-                            break;
-                        case 'innerHTML':
-                            record[label] = fieldElement.innerHTML?.trim() || '';
-                            break;
-                        case 'src':
-                            const src = fieldElement.getAttribute('src');
-                            record[label] = src ? new URL(src, window.location.origin).href : null;
-                            break;
-                        case 'href':
-                            const href = fieldElement.getAttribute('href');
-                            record[label] = href ? new URL(href, window.location.origin).href : null;
-                            break;
-                        default:
-                            record[label] = fieldElement.getAttribute(attribute);
+    function findSimilarElements(baseElement, similarityThreshold = 0.7) {
+        const baseClasses = Array.from(baseElement.classList);
+        if (baseClasses.length === 0) return [];
+        const potentialElements = document.getElementsByTagName(baseElement.tagName);
+        return Array.from(potentialElements).filter(element => {
+            if (element === baseElement) return false;
+            const similarity = calculateClassSimilarity(
+                baseClasses,
+                Array.from(element.classList)
+            );
+            return similarity >= similarityThreshold;
+        });
+    }
+
+    // Main scraping logic with shadow DOM support
+    let containers = queryShadowDOMAll(document, listSelector);
+    containers = Array.from(containers);
+
+    if (containers.length === 0) return [];
+
+    if (limit > 1 && containers.length === 1) {
+        const baseContainer = containers[0];
+        const similarContainers = findSimilarElements(baseContainer);
+        
+        if (similarContainers.length > 0) {
+            const newContainers = similarContainers.filter(container => 
+                !container.matches(listSelector)
+            );
+            containers = [...containers, ...newContainers];
+        }
+    }
+
+    const containerFields = containers.map(() => ({
+        tableFields: {},
+        nonTableFields: {}
+    }));
+
+    // Classify fields
+    containers.forEach((container, containerIndex) => {
+        for (const [label, field] of Object.entries(fields)) {
+            const sampleElement = queryShadowDOM(container, field.selector);
+            
+            if (sampleElement) {
+                const ancestor = findTableAncestor(sampleElement);
+                if (ancestor) {
+                    containerFields[containerIndex].tableFields[label] = {
+                        ...field,
+                        tableContext: ancestor.type,
+                        cellIndex: ancestor.type === 'TD' ? getCellIndex(ancestor.element) : -1
+                    };
+                } else {
+                    containerFields[containerIndex].nonTableFields[label] = field;
+                }
+            } else {
+                containerFields[containerIndex].nonTableFields[label] = field;
+            }
+        }
+    });
+
+    const tableData = [];
+    const nonTableData = [];
+
+    // Process table data with shadow DOM support
+    for (let containerIndex = 0; containerIndex < containers.length; containerIndex++) {
+        const container = containers[containerIndex];
+        const { tableFields } = containerFields[containerIndex];
+
+        if (Object.keys(tableFields).length > 0) {
+            const firstField = Object.values(tableFields)[0];
+            const firstElement = queryShadowDOM(container, firstField.selector);
+            let tableContext = firstElement;
+            
+            // Find table context including shadow DOM
+            while (tableContext && tableContext.tagName !== 'TABLE' && tableContext !== container) {
+                if (tableContext.getRootNode() instanceof ShadowRoot) {
+                    tableContext = tableContext.getRootNode().host;
+                } else {
+                    tableContext = tableContext.parentElement;
+                }
+            }
+
+            if (tableContext) {
+                // Get rows from both regular DOM and shadow DOM
+                const rows = [];
+                if (tableContext.shadowRoot) {
+                    rows.push(...tableContext.shadowRoot.getElementsByTagName('TR'));
+                }
+                rows.push(...tableContext.getElementsByTagName('TR'));
+                
+                const processedRows = filterRowsBasedOnTag(rows, tableFields);
+                
+                for (let rowIndex = 0; rowIndex < Math.min(processedRows.length, limit); rowIndex++) {
+                    const record = {};
+                    const currentRow = processedRows[rowIndex];
+                    
+                    for (const [label, { selector, attribute, cellIndex }] of Object.entries(tableFields)) {
+                        let element = null;
+                        
+                        if (cellIndex >= 0) {
+                            let td = currentRow.children[cellIndex];
+                            
+                            // Check shadow DOM for td
+                            if (!td && currentRow.shadowRoot) {
+                                const shadowCells = currentRow.shadowRoot.children;
+                                if (shadowCells && shadowCells.length > cellIndex) {
+                                    td = shadowCells[cellIndex];
+                                }
+                            }
+                            
+                            if (td) {
+                                element = queryShadowDOM(td, selector);
+                                
+                                if (!element && selector.split(">").pop().includes('td:nth-child')) {
+                                    element = td;
+                                }
+
+                                if (!element) {
+                                    const tagOnlySelector = selector.split('.')[0];
+                                    element = queryShadowDOM(td, tagOnlySelector);
+                                }
+                                
+                                if (!element) {
+                                    let currentElement = td;
+                                    while (currentElement && currentElement.children.length > 0) {
+                                        let foundContentChild = false;
+                                        for (const child of currentElement.children) {
+                                            if (extractValue(child, attribute)) {
+                                                currentElement = child;
+                                                foundContentChild = true;
+                                                break;
+                                            }
+                                        }
+                                        if (!foundContentChild) break;
+                                    }
+                                    element = currentElement;
+                                }
+                            }
+                        } else {
+                            element = queryShadowDOM(currentRow, selector);
+                        }
+                        
+                        if (element) {
+                            record[label] = extractValue(element, attribute);
+                        }
+                    }
+
+                    if (Object.keys(record).length > 0) {
+                        tableData.push(record);
                     }
                 }
             }
-            
-            if (Object.keys(record).length > 0) {
-                scrapedData.push(record);
-            }
         }
+    }
 
-        if (parentElements.length === 0 || scrapedData.length >= parentElements.length) {
-            break;
+    // Non-table data scraping remains unchanged
+    for (let containerIndex = 0; containerIndex < containers.length; containerIndex++) {
+        if (nonTableData.length >= limit) break;
+
+        const container = containers[containerIndex];
+        const { nonTableFields } = containerFields[containerIndex];
+
+        if (Object.keys(nonTableFields).length > 0) {
+            const record = {};
+
+            for (const [label, { selector, attribute }] of Object.entries(nonTableFields)) {
+                const relativeSelector = selector.split('>>').slice(-1)[0];
+                const element = queryShadowDOM(container, relativeSelector);
+                
+                if (element) {
+                    record[label] = extractValue(element, attribute);
+                }
+            }
+                
+            if (Object.keys(record).length > 0) {
+                nonTableData.push(record);
+            }
         }
     }
     
+    const scrapedData = [...tableData, ...nonTableData];
     return scrapedData;
 };
 
