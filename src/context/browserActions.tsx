@@ -15,6 +15,10 @@ interface ActionContextProps {
     limitType: LimitType;
     customLimit: string;
     captureStage: CaptureStage;
+    showPaginationOptions: boolean;
+    showLimitOptions: boolean;
+    setShowPaginationOptions: (show: boolean) => void;
+    setShowLimitOptions: (show: boolean) => void;
     setCaptureStage: (stage: CaptureStage) => void;
     startPaginationMode: () => void;
     startGetText: () => void;
@@ -43,6 +47,8 @@ export const ActionProvider = ({ children }: { children: ReactNode }) => {
     const [limitType, setLimitType] = useState<LimitType>('');
     const [customLimit, setCustomLimit] = useState<string>('');
     const [captureStage, setCaptureStage] = useState<CaptureStage>('initial');
+    const [showPaginationOptions, setShowPaginationOptions] = useState(false);
+    const [showLimitOptions, setShowLimitOptions] = useState(false);
 
     const { socket } = useSocketStore();
 
@@ -96,6 +102,10 @@ export const ActionProvider = ({ children }: { children: ReactNode }) => {
             limitType,
             customLimit,
             captureStage,
+            showPaginationOptions,
+            showLimitOptions,
+            setShowPaginationOptions,   
+            setShowLimitOptions,
             setCaptureStage,
             startGetText,
             stopGetText,
