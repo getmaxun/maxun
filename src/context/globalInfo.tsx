@@ -20,6 +20,8 @@ interface GlobalInfo {
   setRecordingId: (newId: string | null) => void;
   recordingName: string;
   setRecordingName: (recordingName: string) => void;
+  initialUrl: string;
+  setInitialUrl: (initialUrl: string) => void;
   recordingUrl: string;
   setRecordingUrl: (recordingUrl: string) => void;
   currentWorkflowActionsState: {
@@ -49,6 +51,7 @@ class GlobalInfoStore implements Partial<GlobalInfo> {
   recordings: string[] = [];
   rerenderRuns = false;
   recordingName = '';
+  initialUrl = 'https://';
   recordingUrl = 'https://';
   currentWorkflowActionsState = {
     hasScrapeListAction: false,
@@ -72,6 +75,7 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
   const [recordingLength, setRecordingLength] = useState<number>(globalInfoStore.recordingLength);
   const [recordingId, setRecordingId] = useState<string | null>(globalInfoStore.recordingId);
   const [recordingName, setRecordingName] = useState<string>(globalInfoStore.recordingName);
+  const [initialUrl, setInitialUrl] = useState<string>(globalInfoStore.initialUrl);
   const [recordingUrl, setRecordingUrl] = useState<string>(globalInfoStore.recordingUrl);
   const [currentWorkflowActionsState, setCurrentWorkflowActionsState] = useState(globalInfoStore.currentWorkflowActionsState);
   const [shouldResetInterpretationLog, setShouldResetInterpretationLog] = useState<boolean>(globalInfoStore.shouldResetInterpretationLog);
@@ -119,6 +123,8 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
         setRecordingId,
         recordingName,
         setRecordingName,
+        initialUrl,
+        setInitialUrl,
         recordingUrl,
         setRecordingUrl,
         currentWorkflowActionsState,

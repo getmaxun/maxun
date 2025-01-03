@@ -161,8 +161,10 @@
         "confirm_capture": "Confirm Capture",
         "confirm_pagination": "Confirm",
         "confirm_limit": "Confirm",
+        "confirm_reset": "Confirm",
         "finish_capture": "Finish Capture",
         "back": "Back",
+        "reset": "Reset",
         "finish": "Finish",
         "cancel": "Cancel",
         "delete": "Delete"
@@ -226,10 +228,14 @@
     },
     "browser_recording": {
       "modal": {
-          "confirm_discard": "Are you sure you want to discard the recording?"
+          "confirm_discard": "Are you sure you want to discard the recording?",
+          "confirm_reset": "Are you sure you want to reset?",
+          "reset_warning": "This will clear all current captures and return you to the home page. Your recording will not be discarded."
       },
       "notifications": {
-          "terminated": "Current Recording was terminated"
+          "terminated": "Current Recording was terminated",
+          "environment_reset": "Browser environment has been reset",
+          "reset_successful": "Successfully reset all captures and returned to initial state"
       }
     },
     "interpretation_log": {

@@ -163,6 +163,7 @@
             "confirm_limit": "確認",
             "finish_capture": "取得を完了",
             "back": "戻る",
+            "reset": "リセット",
             "finish": "完了",
             "cancel": "キャンセル",
             "delete": "削除"
@@ -226,10 +227,14 @@
     },
     "browser_recording": {
         "modal": {
-            "confirm_discard": "録画を破棄してもよろしいですか？"
+            "confirm_discard": "録画を破棄してもよろしいですか？",
+            "confirm_reset": "リセットしてもよろしいですか？",
+            "reset_warning": "現在のキャプチャーがすべてクリアされ、ホームページに戻ります。録画は破棄されません。"
         },
         "notifications": {
-            "terminated": "現在の録画は終了しました"
+            "terminated": "現在の録画は終了しました",
+            "environment_reset": "ブラウザー環境がリセットされました",
+            "reset_successful": "すべてのキャプチャーを正常にリセットし、初期状態に戻りました"
         }
     },
     "interpretation_log": {
