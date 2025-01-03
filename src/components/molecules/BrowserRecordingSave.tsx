@@ -15,7 +15,7 @@ const BrowserRecordingSave = () => {
   const { t } = useTranslation();
   const [openDiscardModal, setOpenDiscardModal] = useState<boolean>(false);
   const [openResetModal, setOpenResetModal] = useState<boolean>(false);
-  const { recordingName, browserId, setBrowserId, notify, setCurrentWorkflowActionsState, resetInterpretationLog } = useGlobalInfoStore();
+  const { recordingName, browserId, initialUrl, setRecordingUrl, setBrowserId, notify, setCurrentWorkflowActionsState, resetInterpretationLog } = useGlobalInfoStore();
   const navigate = useNavigate();
 
   const { socket } = useSocketStore();
@@ -75,6 +75,13 @@ const BrowserRecordingSave = () => {
     browserSteps.forEach(step => {
       deleteBrowserStep(step.id);
     });
+    
+    if (socket) {
+      socket?.emit('new-recording');
+      socket.emit('input:url', initialUrl);
+      // Update the URL in the navbar to match
+      setRecordingUrl(initialUrl);
+    }
 
     // Close the reset confirmation modal
     setOpenResetModal(false);
