@@ -113,7 +113,7 @@ const ActionDescriptionBox = () => {
 
   return (
     <CustomBoxContainer>
-      <Logo src={MaxunLogo} alt={t('common.maxun_logo')} />
+      <Logo src={MaxunLogo} alt='maxun_logo' />
       <Triangle />
       <Content>
         {renderActionDescription()}
