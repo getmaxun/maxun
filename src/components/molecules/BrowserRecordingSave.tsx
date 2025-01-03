@@ -8,6 +8,8 @@ import { stopRecording } from "../../api/recording";
 import { useNavigate } from 'react-router-dom';
 import { GenericModal } from "../atoms/GenericModal";
 import { useTranslation } from 'react-i18next';
+import { emptyWorkflow } from '../../shared/constants';
+import { useSocketStore } from '../../context/socket';
 
 const BrowserRecordingSave = () => {
   const { t } = useTranslation();
@@ -15,6 +17,8 @@ const BrowserRecordingSave = () => {
   const [openResetModal, setOpenResetModal] = useState<boolean>(false);
   const { recordingName, browserId, setBrowserId, notify, setCurrentWorkflowActionsState, resetInterpretationLog } = useGlobalInfoStore();
   const navigate = useNavigate();
+
+  const { socket } = useSocketStore();
 
   const { 
     stopGetText, 
@@ -28,6 +32,7 @@ const BrowserRecordingSave = () => {
     updateCustomLimit,
     setShowLimitOptions,
     setShowPaginationOptions,
+    setWorkflow,
   } = useActionContext();
 
   const { browserSteps, deleteBrowserStep } = useBrowserSteps();
@@ -61,6 +66,8 @@ const BrowserRecordingSave = () => {
       hasScreenshotAction: false,
       hasScrapeSchemaAction: false
     });
+
+    setWorkflow(emptyWorkflow);
 
     resetInterpretationLog();
 
