@@ -101,7 +101,7 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
               </Button>
               <WarningText>
                 <NotificationImportantIcon color="warning" />
-                {t('save_recording.warnings.robot_exists')}
+                {t('save_recording.errors.exists_warning')}
               </WarningText>
             </React.Fragment>)
             : <Button type="submit" variant="contained" sx={{ marginTop: '10px' }}>
