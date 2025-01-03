@@ -44,7 +44,6 @@ interface RightSidePanelProps {
 }
 
 export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture }) => {
-  const [workflow, setWorkflow] = useState<WorkflowFile>(emptyWorkflow);
   const [textLabels, setTextLabels] = useState<{ [id: string]: string }>({});
   const [errors, setErrors] = useState<{ [id: string]: string }>({});
   const [confirmedTextSteps, setConfirmedTextSteps] = useState<{ [id: string]: boolean }>({});
@@ -60,7 +59,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const [isCaptureListConfirmed, setIsCaptureListConfirmed] = useState(false);
 
   const { lastAction, notify, currentWorkflowActionsState, setCurrentWorkflowActionsState, resetInterpretationLog } = useGlobalInfoStore();
-  const { getText, startGetText, stopGetText, getScreenshot, startGetScreenshot, stopGetScreenshot, getList, startGetList, stopGetList, startPaginationMode, stopPaginationMode, paginationType, updatePaginationType, limitType, customLimit, updateLimitType, updateCustomLimit, stopLimitMode, startLimitMode, captureStage, setCaptureStage, showPaginationOptions, setShowPaginationOptions, showLimitOptions, setShowLimitOptions } = useActionContext();
+  const { getText, startGetText, stopGetText, getScreenshot, startGetScreenshot, stopGetScreenshot, getList, startGetList, stopGetList, startPaginationMode, stopPaginationMode, paginationType, updatePaginationType, limitType, customLimit, updateLimitType, updateCustomLimit, stopLimitMode, startLimitMode, captureStage, setCaptureStage, showPaginationOptions, setShowPaginationOptions, showLimitOptions, setShowLimitOptions, workflow, setWorkflow } = useActionContext();
   const { browserSteps, updateBrowserTextStepLabel, deleteBrowserStep, addScreenshotStep, updateListTextFieldLabel, removeListTextField } = useBrowserSteps();
   const { id, socket } = useSocketStore();
   const { t } = useTranslation();
@@ -68,7 +67,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const workflowHandler = useCallback((data: WorkflowFile) => {
     setWorkflow(data);
     //setRecordingLength(data.workflow.length);
-  }, [workflow])
+  }, [])
 
   useEffect(() => {
     if (socket) {
