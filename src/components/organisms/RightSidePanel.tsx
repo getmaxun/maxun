@@ -529,7 +529,22 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                   <TextField
                   type="number"
                   value={customLimit}
-                  onChange={(e) => updateCustomLimit(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    const value = parseInt(e.target.value);
+                    // Only update if the value is greater than or equal to 1 or if the field is empty
+                    if (e.target.value === '' || value >= 1) {
+                      updateCustomLimit(e.target.value);
+                    }
+                  }}
+                  inputProps={{
+                    min: 1,
+                    onKeyPress: (e: React.KeyboardEvent<HTMLInputElement>) => {
+                      const value = (e.target as HTMLInputElement).value + e.key;
+                      if (parseInt(value) < 1) {
+                        e.preventDefault();
+                      }
+                    }
+                  }}
                   placeholder={t('right_panel.limit.enter_number')}
                   sx={{
                     marginLeft: '10px',
