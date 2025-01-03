@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { useSocketStore } from './socket';
+import { WorkflowFile } from 'maxun-core';
+import { emptyWorkflow } from '../shared/constants';
 
 export type PaginationType = 'scrollDown' | 'scrollUp' | 'clickNext' | 'clickLoadMore' | 'none' | '';
 export type LimitType = '10' | '100' | 'custom' | '';
@@ -13,10 +15,12 @@ interface ActionContextProps {
     limitMode: boolean;
     paginationType: PaginationType;
     limitType: LimitType;
+    workflow: WorkflowFile;
     customLimit: string;
     captureStage: CaptureStage;
     showPaginationOptions: boolean;
     showLimitOptions: boolean;
+    setWorkflow: (workflow: WorkflowFile) => void;
     setShowPaginationOptions: (show: boolean) => void;
     setShowLimitOptions: (show: boolean) => void;
     setCaptureStage: (stage: CaptureStage) => void;
@@ -38,6 +42,7 @@ interface ActionContextProps {
 const ActionContext = createContext<ActionContextProps | undefined>(undefined);
 
 export const ActionProvider = ({ children }: { children: ReactNode }) => {
+    const [workflow, setWorkflow] = useState<WorkflowFile>(emptyWorkflow);
     const [getText, setGetText] = useState<boolean>(false);
     const [getList, setGetList] = useState<boolean>(false);
     const [getScreenshot, setGetScreenshot] = useState<boolean>(false);
@@ -100,10 +105,12 @@ export const ActionProvider = ({ children }: { children: ReactNode }) => {
             limitMode,
             paginationType,
             limitType,
+            workflow,
             customLimit,
             captureStage,
             showPaginationOptions,
             showLimitOptions,
+            setWorkflow,
             setShowPaginationOptions,   
             setShowLimitOptions,
             setCaptureStage,
