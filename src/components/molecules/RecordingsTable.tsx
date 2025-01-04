@@ -1,41 +1,49 @@
-import * as React from 'react';
-import { useTranslation } from 'react-i18next';
-import Paper from '@mui/material/Paper';
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableContainer from '@mui/material/TableContainer';
-import TableHead from '@mui/material/TableHead';
-import TablePagination from '@mui/material/TablePagination';
-import TableRow from '@mui/material/TableRow';
+import * as React from "react";
+import { useTranslation } from "react-i18next";
+import Paper from "@mui/material/Paper";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TablePagination from "@mui/material/TablePagination";
+import TableRow from "@mui/material/TableRow";
 import { useEffect } from "react";
 import { WorkflowFile } from "maxun-core";
-import SearchIcon from '@mui/icons-material/Search';
-import { IconButton, Button, Box, Typography, TextField, MenuItem, Menu, ListItemIcon, ListItemText } from "@mui/material";
-import { Schedule, DeleteForever, Edit, PlayCircle, Settings, Power, ContentCopy, MoreHoriz } from "@mui/icons-material";
+import SearchIcon from "@mui/icons-material/Search";
+import { IconButton, Button, Box, Typography, TextField, MenuItem, Menu, ListItemIcon, ListItemText, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from "@mui/material"
+import {
+  Schedule,
+  DeleteForever,
+  Edit,
+  PlayCircle,
+  Settings,
+  Power,
+  ContentCopy,
+  MoreHoriz,
+} from "@mui/icons-material";
 import { useGlobalInfoStore } from "../../context/globalInfo";
-import { checkRunsForRecording, deleteRecordingFromStorage, getStoredRecordings } from "../../api/storage";
+import {
+  checkRunsForRecording,
+  deleteRecordingFromStorage,
+  getStoredRecordings,
+} from "../../api/storage";
 import { Add } from "@mui/icons-material";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
 import { stopRecording } from "../../api/recording";
-import { GenericModal } from '../atoms/GenericModal';
-
+import { GenericModal } from "../atoms/GenericModal";
 
 /** TODO:
  *  1. allow editing existing robot after persisting browser steps
-*/
+ */
 
 interface Column {
-  id: 'interpret' | 'name' | 'options' | 'schedule' | 'integrate' | 'settings';
+  id: "interpret" | "name" | "options" | "schedule" | "integrate" | "settings";
   label: string;
   minWidth?: number;
-  align?: 'right';
+  align?: "right";
   format?: (value: string) => string;
 }
-
-
-
-
 
 interface Data {
   id: string;
@@ -49,54 +57,87 @@ interface Data {
 interface RecordingsTableProps {
   handleEditRecording: (id: string, fileName: string) => void;
   handleRunRecording: (id: string, fileName: string, params: string[]) => void;
-  handleScheduleRecording: (id: string, fileName: string, params: string[]) => void;
-  handleIntegrateRecording: (id: string, fileName: string, params: string[]) => void;
-  handleSettingsRecording: (id: string, fileName: string, params: string[]) => void;
+  handleScheduleRecording: (
+    id: string,
+    fileName: string,
+    params: string[]
+  ) => void;
+  handleIntegrateRecording: (
+    id: string,
+    fileName: string,
+    params: string[]
+  ) => void;
+  handleSettingsRecording: (
+    id: string,
+    fileName: string,
+    params: string[]
+  ) => void;
   handleEditRobot: (id: string, name: string, params: string[]) => void;
   handleDuplicateRobot: (id: string, name: string, params: string[]) => void;
 }
 
-export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handleScheduleRecording, handleIntegrateRecording, handleSettingsRecording, handleEditRobot, handleDuplicateRobot }: RecordingsTableProps) => {
-  const {t} = useTranslation();
+export const RecordingsTable = ({
+  handleEditRecording,
+  handleRunRecording,
+  handleScheduleRecording,
+  handleIntegrateRecording,
+  handleSettingsRecording,
+  handleEditRobot,
+  handleDuplicateRobot,
+}: RecordingsTableProps) => {
+  const { t } = useTranslation();
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
   const [rows, setRows] = React.useState<Data[]>([]);
   const [isModalOpen, setModalOpen] = React.useState(false);
-  const [searchTerm, setSearchTerm] = React.useState('');
+  const [searchTerm, setSearchTerm] = React.useState("");
 
   const columns: readonly Column[] = [
-    { id: 'interpret', label: t('recordingtable.run'), minWidth: 80 },
-    { id: 'name', label: t('recordingtable.name'), minWidth: 80 },
+    { id: "interpret", label: t("recordingtable.run"), minWidth: 80 },
+    { id: "name", label: t("recordingtable.name"), minWidth: 80 },
     {
-      id: 'schedule',
-      label: t('recordingtable.schedule'),
+      id: "schedule",
+      label: t("recordingtable.schedule"),
       minWidth: 80,
     },
     {
-      id: 'integrate',
-      label: t('recordingtable.integrate'),
+      id: "integrate",
+      label: t("recordingtable.integrate"),
       minWidth: 80,
     },
     {
-      id: 'settings',
-      label: t('recordingtable.settings'),
+      id: "settings",
+      label: t("recordingtable.settings"),
       minWidth: 80,
     },
     {
-      id: 'options',
-      label: t('recordingtable.options'),
+      id: "options",
+      label: t("recordingtable.options"),
       minWidth: 80,
     },
   ];
 
-  const { notify, setRecordings, browserId, setBrowserId, recordingUrl, setRecordingUrl, recordingName, setRecordingName, recordingId, setRecordingId } = useGlobalInfoStore();
+  const {
+    notify,
+    setRecordings,
+    browserId,
+    setBrowserId,
+    recordingUrl,
+    setRecordingUrl,
+    recordingName,
+    setRecordingName,
+    recordingId,
+    setRecordingId,
+  } = useGlobalInfoStore();
   const navigate = useNavigate();
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
   };
 
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChangeRowsPerPage = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     setRowsPerPage(+event.target.value);
     setPage(0);
   };
@@ -107,39 +148,52 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
   };
 
   const fetchRecordings = async () => {
-    const recordings = await getStoredRecordings();
-    if (recordings) {
-      const parsedRows: Data[] = [];
-      recordings.map((recording: any, index: number) => {
-        if (recording && recording.recording_meta) {
-          parsedRows.push({
-            id: index,
-            ...recording.recording_meta,
-            content: recording.recording
-          });
+    try {
+      const recordings = await getStoredRecordings();
+        if (recordings) {
+          const parsedRows: Data[] = [];
+          recordings.map((recording: any, index: number) => {
+              if (recording && recording.recording_meta) {
+                parsedRows.push({
+                  id: index,
+                  ...recording.recording_meta,
+                  content: recording.recording,
+                });
+              }
+            });
+          setRecordings(parsedRows.map((recording) => recording.name));
+          setRows(parsedRows);
+        } else {
+          console.log("No recordings found.");
         }
-      });
-      setRecordings(parsedRows.map((recording) => recording.name));
-      setRows(parsedRows);
-    } else {
-      console.log('No recordings found.');
     }
-  }
+    catch (error) {
+       notify('error', 'Error fetching recordings.');
+       console.error('Error fetching recordings: ', error);
+    }
+  };
 
   const handleNewRecording = async () => {
     if (browserId) {
-      setBrowserId(null);
-      await stopRecording(browserId);
+      try {
+        await stopRecording(browserId);
+      }
+        catch(error) {
+           notify('error', 'Error stopping recording. Please try again later.');
+           console.error('Error stopping recording', error);
+        }
+        setBrowserId(null);
+      
     }
     setModalOpen(true);
   };
 
   const handleStartRecording = () => {
-    setBrowserId('new-recording');
-    setRecordingName('');
-    setRecordingId('');
-    navigate('/recording');
-  }
+    setBrowserId("new-recording");
+    setRecordingName("");
+    setRecordingId("");
+    navigate("/recording");
+  };
 
   const startRecording = () => {
     setModalOpen(false);
@@ -152,54 +206,57 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
     }
   }, []);
 
-
   // Filter rows based on search term
   const filteredRows = rows.filter((row) =>
     row.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-
   return (
     <React.Fragment>
       <Box display="flex" justifyContent="space-between" alignItems="center">
         <Typography variant="h6" gutterBottom>
-          {t('recordingtable.heading')}
+          {t("recordingtable.heading")}
         </Typography>
         <Box display="flex" alignItems="center" gap={2}>
           <TextField
             size="small"
-            placeholder={t('recordingtable.search')}
+            placeholder={t("recordingtable.search")}
             value={searchTerm}
             onChange={handleSearchChange}
             InputProps={{
-              startAdornment: <SearchIcon sx={{ color: 'action.active', mr: 1 }} />
+              startAdornment: (
+                <SearchIcon sx={{ color: "action.active", mr: 1 }} />
+              ),
             }}
-            sx={{ width: '250px' }}
+            sx={{ width: "250px" }}
           />
           <IconButton
             aria-label="new"
             size={"small"}
             onClick={handleNewRecording}
             sx={{
-              width: '140px',
-              borderRadius: '5px',
-              padding: '8px',
-              background: '#ff00c3',
-              color: 'white',
-              marginRight: '10px',
+              width: "140px",
+              borderRadius: "5px",
+              padding: "8px",
+              background: "#ff00c3",
+              color: "white",
+              marginRight: "10px",
               fontFamily: '"Roboto","Helvetica","Arial",sans-serif',
-              fontWeight: '500',
-              fontSize: '0.875rem',
-              lineHeight: '1.75',
-              letterSpacing: '0.02857em',
-              '&:hover': { color: 'white', backgroundColor: '#ff00c3' }
+              fontWeight: "500",
+              fontSize: "0.875rem",
+              lineHeight: "1.75",
+              letterSpacing: "0.02857em",
+              "&:hover": { color: "white", backgroundColor: "#ff00c3" },
             }}
           >
-            <Add sx={{ marginRight: '5px' }} /> {t('recordingtable.new')}
+            <Add sx={{ marginRight: "5px" }} /> {t("recordingtable.new")}
           </IconButton>
         </Box>
       </Box>
-      <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden', marginTop: '15px' }}>
+      <TableContainer
+        component={Paper}
+        sx={{ width: "100%", overflow: "hidden", marginTop: "15px" }}
+      >
         <Table stickyHeader aria-label="sticky table">
           <TableHead>
             <TableRow>
@@ -215,81 +272,149 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredRows.length !== 0 ? filteredRows
-              .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-              .map((row) => {
-                return (
-                  <TableRow hover role="checkbox" tabIndex={-1} key={row.id}>
-                    {columns.map((column) => {
-                      // @ts-ignore
-                      const value: any = row[column.id];
-                      if (value !== undefined) {
-                        return (
-                          <TableCell key={column.id} align={column.align}>
-                            {value}
-                          </TableCell>
-                        );
-                      } else {
-                        switch (column.id) {
-                          case 'interpret':
+            {filteredRows.length !== 0
+              ? filteredRows
+                  .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                  .map((row) => {
+                    return (
+                      <TableRow
+                        hover
+                        role="checkbox"
+                        tabIndex={-1}
+                        key={row.id}
+                      >
+                        {columns.map((column) => {
+                          // @ts-ignore
+                          const value: any = row[column.id];
+                          if (value !== undefined) {
                             return (
                               <TableCell key={column.id} align={column.align}>
-                                <InterpretButton handleInterpret={() => handleRunRecording(row.id, row.name, row.params || [])} />
+                                {value}
                               </TableCell>
                             );
-                          case 'schedule':
-                            return (
-                              <TableCell key={column.id} align={column.align}>
-                                <ScheduleButton handleSchedule={() => handleScheduleRecording(row.id, row.name, row.params || [])} />
-                              </TableCell>
-                            );
-                          case 'integrate':
-                            return (
-                              <TableCell key={column.id} align={column.align}>
-                                <IntegrateButton handleIntegrate={() => handleIntegrateRecording(row.id, row.name, row.params || [])} />
-                              </TableCell>
-                            );
-                          case 'options':
-                            return (
-                              <TableCell key={column.id} align={column.align}>
-                                <OptionsButton
-                                  handleEdit={() => handleEditRobot(row.id, row.name, row.params || [])}
-                                  handleDuplicate={() => {
-                                    handleDuplicateRobot(row.id, row.name, row.params || []);
-                                  }}
-                                  handleDelete={() => {
-
-                                    checkRunsForRecording(row.id).then((result: boolean) => {
-                                      if (result) {
-                                        notify('warning', t('recordingtable.notifications.delete_warning'));
+                          } else {
+                            switch (column.id) {
+                              case "interpret":
+                                return (
+                                  <TableCell
+                                    key={column.id}
+                                    align={column.align}
+                                  >
+                                    <InterpretButton
+                                      handleInterpret={() =>
+                                        handleRunRecording(
+                                          row.id,
+                                          row.name,
+                                          row.params || []
+                                        )
                                       }
-                                    })
-
-                                    deleteRecordingFromStorage(row.id).then((result: boolean) => {
-                                      if (result) {
-                                        setRows([]);
-                                        notify('success', t('recordingtable.notifications.delete_success'));
-                                        fetchRecordings();
+                                    />
+                                  </TableCell>
+                                );
+                              case "schedule":
+                                return (
+                                  <TableCell
+                                    key={column.id}
+                                    align={column.align}
+                                  >
+                                    <ScheduleButton
+                                      handleSchedule={() =>
+                                        handleScheduleRecording(
+                                          row.id,
+                                          row.name,
+                                          row.params || []
+                                        )
                                       }
-                                    })
-                                  }}
-                                />
-                              </TableCell>
-                            );
-                          case 'settings':
-                            return (
-                              <TableCell key={column.id} align={column.align}>
-                                <SettingsButton handleSettings={() => handleSettingsRecording(row.id, row.name, row.params || [])} />
-                              </TableCell>
-                            );
-                          default:
-                            return null;
-                        }
-                      }
-                    })}
-                  </TableRow>
-                );
-              })
+                                    />
+                                  </TableCell>
+                                );
+                              case "integrate":
+                                return (
+                                  <TableCell
+                                    key={column.id}
+                                    align={column.align}
+                                  >
+                                    <IntegrateButton
+                                      handleIntegrate={() =>
+                                        handleIntegrateRecording(
+                                          row.id,
+                                          row.name,
+                                          row.params || []
+                                        )
+                                      }
+                                    />
+                                  </TableCell>
+                                );
+                              case "options":
+                                return (
+                                  <TableCell
+                                    key={column.id}
+                                    align={column.align}
+                                  >
+                                    <OptionsButton
+                                      recordingName={row.name}
+                                      handleEdit={() =>
+                                        handleEditRobot(
+                                          row.id,
+                                          row.name,
+                                          row.params || []
+                                        )
+                                      }
+                                      handleDuplicate={() => {
+                                        handleDuplicateRobot(
+                                          row.id,
+                                          row.name,
+                                          row.params || []
+                                        );
+                                      }}
+                                      handleDelete={() => {
+                                          deleteRecordingFromStorage(row.id).then(
+                                            (result: boolean) => {
+                                              if (result) {
+                                                setRows([]);
+                                                notify(
+                                                  "success",
+                                                  t(
+                                                    "recordingtable.notifications.delete_success"
+                                                  )
+                                                );
+                                                fetchRecordings();
+                                              }
+                                            }
+                                          ).catch(error => {
+                                             notify("error", "Error deleting recording.");
+                                             console.error("Error deleting recording", error);
+                                            });
+                                      }}
+                                      
+                                    />
+                                  </TableCell>
+                                );
+                              case "settings":
+                                return (
+                                  <TableCell
+                                    key={column.id}
+                                    align={column.align}
+                                  >
+                                    <SettingsButton
+                                      handleSettings={() =>
+                                        handleSettingsRecording(
+                                          row.id,
+                                          row.name,
+                                          row.params || []
+                                        )
+                                      }
+                                    />
+                                  </TableCell>
+                                );
+                              default:
+                                return null;
+                            }
+                          }
+                        })}
+                      </TableRow>
+                    );
+                  })
               : null}
           </TableBody>
         </Table>
@@ -303,16 +428,23 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
         onPageChange={handleChangePage}
         onRowsPerPageChange={handleChangeRowsPerPage}
       />
-      <GenericModal isOpen={isModalOpen} onClose={() => setModalOpen(false)} modalStyle={modalStyle}>
-        <div style={{ padding: '20px' }}>
-          <Typography variant="h6" gutterBottom>{t('recordingtable.modal.title')}</Typography>
+      <GenericModal
+        isOpen={isModalOpen}
+        onClose={() => setModalOpen(false)}
+         modalStyle={modalStyle}
+        
+      >
+        <div style={{ padding: "20px" }}>
+          <Typography variant="h6" gutterBottom>
+            {t("recordingtable.modal.title")}
+          </Typography>
           <TextField
-            label={t('recordingtable.modal.label')}
+            label={t("recordingtable.modal.label")}
             variant="outlined"
             fullWidth
             value={recordingUrl}
             onChange={(e: any) => setRecordingUrl(e.target.value)}
-            style={{ marginBottom: '20px', marginTop: '20px' }}
+            style={{ marginBottom: "20px", marginTop: "20px" }}
           />
           <Button
             variant="contained"
@@ -320,13 +452,13 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
             onClick={startRecording}
             disabled={!recordingUrl}
           >
-            {t('recordingtable.modal.button')}
+            {t("recordingtable.modal.button")}
           </Button>
         </div>
       </GenericModal>
     </React.Fragment>
   );
-}
+};
 
 interface InterpretButtonProps {
   handleInterpret: () => void;
@@ -334,14 +466,17 @@ interface InterpretButtonProps {
 
 const InterpretButton = ({ handleInterpret }: InterpretButtonProps) => {
   return (
-    <IconButton aria-label="add" size="small" onClick={() => {
-      handleInterpret();
-    }}
+    <IconButton
+      aria-label="add"
+      size="small"
+      onClick={() => {
+        handleInterpret();
+      }}
     >
       <PlayCircle />
     </IconButton>
-  )
-}
+  );
+};
 
 interface ScheduleButtonProps {
   handleSchedule: () => void;
@@ -349,14 +484,17 @@ interface ScheduleButtonProps {
 
 const ScheduleButton = ({ handleSchedule }: ScheduleButtonProps) => {
   return (
-    <IconButton aria-label="add" size="small" onClick={() => {
-      handleSchedule();
-    }}
+    <IconButton
+      aria-label="add"
+      size="small"
+      onClick={() => {
+        handleSchedule();
+      }}
     >
       <Schedule />
     </IconButton>
-  )
-}
+  );
+};
 
 interface IntegrateButtonProps {
   handleIntegrate: () => void;
@@ -364,14 +502,17 @@ interface IntegrateButtonProps {
 
 const IntegrateButton = ({ handleIntegrate }: IntegrateButtonProps) => {
   return (
-    <IconButton aria-label="add" size="small" onClick={() => {
-      handleIntegrate();
-    }}
+    <IconButton
+      aria-label="add"
+      size="small"
+      onClick={() => {
+        handleIntegrate();
+      }}
     >
       <Power />
     </IconButton>
-  )
-}
+  );
+};
 
 interface SettingsButtonProps {
   handleSettings: () => void;
@@ -379,23 +520,35 @@ interface SettingsButtonProps {
 
 const SettingsButton = ({ handleSettings }: SettingsButtonProps) => {
   return (
-    <IconButton aria-label="add" size="small" onClick={() => {
-      handleSettings();
-    }}
+    <IconButton
+      aria-label="add"
+      size="small"
+      onClick={() => {
+        handleSettings();
+      }}
     >
       <Settings />
     </IconButton>
-  )
-}
+  );
+};
 
 interface OptionsButtonProps {
   handleEdit: () => void;
   handleDelete: () => void;
   handleDuplicate: () => void;
+  recordingName: string;
 }
 
-const OptionsButton = ({ handleEdit, handleDelete, handleDuplicate }: OptionsButtonProps) => {
+const OptionsButton = ({
+  handleEdit,
+  handleDelete,
+  handleDuplicate,
+  recordingName,
+}: OptionsButtonProps) => {
+  const { t } = useTranslation();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const { notify } = useGlobalInfoStore();
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -405,56 +558,120 @@ const OptionsButton = ({ handleEdit, handleDelete, handleDuplicate }: OptionsBut
     setAnchorEl(null);
   };
 
-  const {t} = useTranslation();
+  const handleDeleteClick = () => {
+    setDeleteDialogOpen(true);
+    handleClose();
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+       checkRunsForRecording(recordingName).then((result: boolean) => {
+        if (result) {
+          notify('warning', t('recordingtable.notifications.delete_warning'));
+          setDeleteDialogOpen(false);
+        }
+      })
+     
+      
+      
+
+      // Only proceed with deletion if there are no runs
+      handleDelete();
+      setDeleteDialogOpen(false);
+      notify("success", t("recordingtable.notifications.delete_success"));
+    } catch (error) {
+      console.error('Error during deletion:', error);
+      notify("error", t("recordingtable.notifications.delete_error"));
+      setDeleteDialogOpen(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+  };
 
   return (
     <>
-      <IconButton
-        aria-label="options"
-        size="small"
+      <IconButton 
+        aria-label="options" 
+        size="small" 
         onClick={handleClick}
       >
         <MoreHoriz />
       </IconButton>
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
+
+      <Menu 
+        anchorEl={anchorEl} 
+        open={Boolean(anchorEl)} 
         onClose={handleClose}
       >
-        <MenuItem onClick={() => { handleEdit(); handleClose(); }}>
+        <MenuItem
+          onClick={() => {
+            handleEdit();
+            handleClose();
+          }}
+        >
           <ListItemIcon>
             <Edit fontSize="small" />
           </ListItemIcon>
-          <ListItemText>{t('recordingtable.edit')}</ListItemText>
+          <ListItemText>{t("recordingtable.edit")}</ListItemText>
         </MenuItem>
 
-        <MenuItem onClick={() => { handleDelete(); handleClose(); }}>
+        <MenuItem onClick={()=>handleDeleteClick()}>
           <ListItemIcon>
             <DeleteForever fontSize="small" />
           </ListItemIcon>
-          <ListItemText>{t('recordingtable.delete')}</ListItemText>
+          <ListItemText>{t("recordingtable.delete")}</ListItemText>
         </MenuItem>
 
-        <MenuItem onClick={() => { handleDuplicate(); handleClose(); }}>
+        <MenuItem
+          onClick={() => {
+            handleDuplicate();
+            handleClose();
+          }}
+        >
           <ListItemIcon>
             <ContentCopy fontSize="small" />
           </ListItemIcon>
-          <ListItemText>{t('recordingtable.duplicate')}</ListItemText>
+          <ListItemText>{t("recordingtable.duplicate")}</ListItemText>
         </MenuItem>
-        
       </Menu>
+
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteCancel}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">
+          {t('recordingtable.delete_confirmation.title')}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            {t('recordingtable.delete_confirmation.message', { name: recordingName })}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel} color="primary">
+            {t('recordingtable.delete_confirmation.cancel')}
+          </Button>
+          <Button onClick={handleDeleteConfirm} color="error" autoFocus>
+            {t('recordingtable.delete_confirmation.confirm')}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };
 
 const modalStyle = {
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  width: '30%',
-  backgroundColor: 'background.paper',
+  top: "50%",
+  left: "50%",
+  transform: "translate(-50%, -50%)",
+  width: "30%",
+  backgroundColor: "background.paper",
   p: 4,
-  height: 'fit-content',
-  display: 'block',
-  padding: '20px',
+  height: "fit-content",
+  display: "block",
+  padding: "20px",
 };
