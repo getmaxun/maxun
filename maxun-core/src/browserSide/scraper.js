@@ -188,69 +188,154 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
    * @param {Object.<string, {selector: string, tag: string}>} lists The named lists of HTML elements.
    * @returns {Array.<Object.<string, string>>}
    */
-  window.scrapeSchema = function (lists) {
+  window.scrapeSchema = function(lists) {
     function omap(object, f, kf = (x) => x) {
-      return Object.fromEntries(
-        Object.entries(object)
-          .map(([k, v]) => [kf(k), f(v)]),
-      );
+        return Object.fromEntries(
+            Object.entries(object)
+                .map(([k, v]) => [kf(k), f(v)]),
+        );
     }
 
     function ofilter(object, f) {
-      return Object.fromEntries(
-        Object.entries(object)
-          .filter(([k, v]) => f(k, v)),
-      );
+        return Object.fromEntries(
+            Object.entries(object)
+                .filter(([k, v]) => f(k, v)),
+        );
+    }
+  
+    function findAllElements(config) {
+        if (!config.shadow || !config.selector.includes('>>')) {
+            return Array.from(document.querySelectorAll(config.selector));
+        }
+    
+        // For shadow DOM, we'll get all possible combinations
+        const parts = config.selector.split('>>').map(s => s.trim());
+        let currentElements = [document];
+        
+        for (let i = 0; i < parts.length; i++) {
+            const part = parts[i];
+            const nextElements = [];
+            
+            for (const element of currentElements) {
+                let targets;
+                if (i === 0) {
+                    // First selector is queried from document
+                    targets = Array.from(element.querySelectorAll(part))
+                        .filter(el => {
+                            // Only include elements that either:
+                            // 1. Have an open shadow root
+                            // 2. Don't need shadow root (last part of selector)
+                            if (i === parts.length - 1) return true;
+                            const shadowRoot = el.shadowRoot;
+                            return shadowRoot && shadowRoot.mode === 'open';
+                        });
+                } else {
+                    // For subsequent selectors, only use elements with open shadow roots
+                    const shadowRoot = element.shadowRoot;
+                    if (!shadowRoot || shadowRoot.mode !== 'open') continue;
+                    
+                    targets = Array.from(shadowRoot.querySelectorAll(part));
+                }
+                nextElements.push(...targets);
+            }
+            
+            if (nextElements.length === 0) return [];
+            currentElements = nextElements;
+        }
+    
+        return currentElements;
+    }
+  
+    function getElementValue(element, attribute) {
+        if (!element) return null;
+    
+        switch (attribute) {
+            case 'href': {
+                const relativeHref = element.getAttribute('href');
+                return relativeHref ? new URL(relativeHref, window.location.origin).href : null;
+            }
+            case 'src': {
+                const relativeSrc = element.getAttribute('src');
+                return relativeSrc ? new URL(relativeSrc, window.location.origin).href : null;
+            }
+            case 'innerText':
+                return element.innerText?.trim();
+            case 'textContent':
+                return element.textContent?.trim();
+            default:
+                return element.getAttribute(attribute) || element.innerText?.trim();
+        }
     }
 
+    // Get the seed key based on the maximum number of elements found
     function getSeedKey(listObj) {
-      const maxLength = Math.max(...Object.values(omap(listObj, (x) => document.querySelectorAll(x.selector).length)));
-      return Object.keys(ofilter(listObj, (_, v) => document.querySelectorAll(v.selector).length === maxLength))[0];
+        const maxLength = Math.max(...Object.values(
+            omap(listObj, (x) => findAllElements(x).length)
+        ));
+        return Object.keys(
+            ofilter(listObj, (_, v) => findAllElements(v).length === maxLength)
+        )[0];
     }
 
+    // Find minimal bounding elements
     function getMBEs(elements) {
       return elements.map((element) => {
-        let candidate = element;
-        const isUniqueChild = (e) => elements
-          .filter((elem) => e.parentNode?.contains(elem))
-          .length === 1;
+          let candidate = element;
+          const isUniqueChild = (e) => elements
+              .filter((elem) => e.parentNode?.contains(elem))
+              .length === 1;
 
-        while (candidate && isUniqueChild(candidate)) {
-          candidate = candidate.parentNode;
-        }
+          while (candidate && isUniqueChild(candidate)) {
+              candidate = candidate.parentNode;
+          }
 
-        return candidate;
+          return candidate;
       });
     }
 
+    // First try the MBE approach
     const seedName = getSeedKey(lists);
-    const seedElements = Array.from(document.querySelectorAll(lists[seedName].selector));
+    const seedElements = findAllElements(lists[seedName]);
     const MBEs = getMBEs(seedElements);
-
-    return MBEs.map((mbe) => omap(
-      lists,
-      ({ selector, attribute }, key) => {
-        const elem = Array.from(document.querySelectorAll(selector)).find((elem) => mbe.contains(elem));
-        if (!elem) return undefined;
-
-        switch (attribute) {
-          case 'href':
-            const relativeHref = elem.getAttribute('href');
-            return relativeHref ? new URL(relativeHref, window.location.origin).href : null;
-          case 'src':
-            const relativeSrc = elem.getAttribute('src');
-            return relativeSrc ? new URL(relativeSrc, window.location.origin).href : null;
-          case 'innerText':
-            return elem.innerText;
-          case 'textContent':
-            return elem.textContent;
-          default:
-            return elem.innerText;
-        }
-      },
-      (key) => key // Use the original key in the output
+    
+    const mbeResults = MBEs.map((mbe) => omap(
+        lists,
+        (config) => {
+            const elem = findAllElements(config)
+                .find((elem) => mbe.contains(elem));
+            
+            return elem ? getElementValue(elem, config.attribute) : undefined;
+        },
+        (key) => key
     )) || [];
-  }
+
+    // If MBE approach didn't find all elements, try independent scraping
+    if (mbeResults.some(result => Object.values(result).some(v => v === undefined))) {
+        // Fall back to independent scraping
+        const results = [];
+        const foundElements = new Map();
+
+        // Find all elements for each selector
+        Object.entries(lists).forEach(([key, config]) => {
+            const elements = findAllElements(config);
+            foundElements.set(key, elements);
+        });
+
+        // Create result objects for each found element
+        foundElements.forEach((elements, key) => {
+            elements.forEach((element, index) => {
+                if (!results[index]) {
+                    results[index] = {};
+                }
+                results[index][key] = getElementValue(element, lists[key].attribute);
+            });
+        });
+
+        return results.filter(result => Object.keys(result).length > 0);
+    }
+
+    return mbeResults;
+  };
 
   /**
  * Scrapes multiple lists of similar items based on a template item.
@@ -262,9 +347,90 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
  * @returns {Array.<Array.<Object>>} Array of arrays of scraped items, one sub-array per list
  */
   window.scrapeList = async function ({ listSelector, fields, limit = 10 }) {
-    // Helper function to extract values from elements
+    // Shadow DOM query functions remain unchanged
+    const queryShadowDOM = (rootElement, selector) => {
+        if (!selector.includes('>>')) {
+          return rootElement.querySelector(selector);
+        }
+
+        const parts = selector.split('>>').map(part => part.trim());
+        let currentElement = rootElement;
+
+        for (let i = 0; i < parts.length; i++) {
+            if (!currentElement) return null;
+
+            if (!currentElement.querySelector && !currentElement.shadowRoot) {
+                currentElement = document.querySelector(parts[i]);
+                continue;
+            }
+
+            let nextElement = currentElement.querySelector(parts[i]);
+
+            if (!nextElement && currentElement.shadowRoot) {
+                nextElement = currentElement.shadowRoot.querySelector(parts[i]);
+            }
+
+            if (!nextElement) {
+                const allChildren = Array.from(currentElement.children || []);
+                for (const child of allChildren) {
+                    if (child.shadowRoot) {
+                        nextElement = child.shadowRoot.querySelector(parts[i]);
+                        if (nextElement) break;
+                    }
+                }
+            }
+
+            currentElement = nextElement;
+        }
+
+        return currentElement;
+    };
+
+    const queryShadowDOMAll = (rootElement, selector) => {
+        if (!selector.includes('>>')) {
+          return rootElement.querySelectorAll(selector);
+        }
+
+        const parts = selector.split('>>').map(part => part.trim());
+        let currentElements = [rootElement];
+        
+        for (const part of parts) {
+            const nextElements = [];
+            
+            for (const element of currentElements) {
+                if (element.querySelectorAll) {
+                    nextElements.push(...element.querySelectorAll(part));
+                }
+                
+                if (element.shadowRoot) {
+                    nextElements.push(...element.shadowRoot.querySelectorAll(part));
+                }
+                
+                const children = Array.from(element.children || []);
+                for (const child of children) {
+                    if (child.shadowRoot) {
+                        nextElements.push(...child.shadowRoot.querySelectorAll(part));
+                    }
+                }
+            }
+            
+            currentElements = nextElements;
+        }
+        
+        return currentElements;
+    };
+
+    // Enhanced table processing helper functions with shadow DOM support
     function extractValue(element, attribute) {
         if (!element) return null;
+        
+        // Check for shadow root first
+        if (element.shadowRoot) {
+            const shadowContent = element.shadowRoot.textContent;
+            if (shadowContent && shadowContent.trim()) {
+                return shadowContent.trim();
+            }
+        }
         
         if (attribute === 'innerText') {
             return element.innerText.trim();
@@ -277,13 +443,18 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
         return element.getAttribute(attribute);
     }
 
-    // Helper function to find table ancestors
     function findTableAncestor(element) {
         let currentElement = element;
         const MAX_DEPTH = 5;
         let depth = 0;
         
         while (currentElement && depth < MAX_DEPTH) {
+            // Check if current element is in shadow DOM
+            if (currentElement.getRootNode() instanceof ShadowRoot) {
+                currentElement = currentElement.getRootNode().host;
+                continue;
+            }
+            
             if (currentElement.tagName === 'TD') {
                 return { type: 'TD', element: currentElement };
             } else if (currentElement.tagName === 'TR') {
@@ -298,6 +469,14 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
     function getCellIndex(td) {
         let index = 0;
         let sibling = td;
+        
+        // Handle shadow DOM case
+        if (td.getRootNode() instanceof ShadowRoot) {
+            const shadowRoot = td.getRootNode();
+            const allCells = Array.from(shadowRoot.querySelectorAll('td'));
+            return allCells.indexOf(td);
+        }
+        
         while (sibling = sibling.previousElementSibling) {
             index++;
         }
@@ -306,10 +485,16 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
 
     function hasThElement(row, tableFields) {
         for (const [label, { selector }] of Object.entries(tableFields)) {
-            const element = row.querySelector(selector);
+            const element = queryShadowDOM(row, selector);
             if (element) {
                 let current = element;
                 while (current && current !== row) {
+                    // Check if we're in shadow DOM
+                    if (current.getRootNode() instanceof ShadowRoot) {
+                        current = current.getRootNode().host;
+                        continue;
+                    }
+                    
                     if (current.tagName === 'TH') {
                         return true;
                     }
@@ -326,69 +511,65 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
                 return rows;
             }
         }
-        return rows.filter(row => row.getElementsByTagName('TH').length === 0);
+        // Include shadow DOM in TH search
+        return rows.filter(row => {
+            const directTH = row.getElementsByTagName('TH').length === 0;
+            const shadowTH = row.shadowRoot ? 
+                row.shadowRoot.querySelector('th') === null : true;
+            return directTH && shadowTH;
+        });
     }
 
+    // Class similarity functions remain unchanged
     function calculateClassSimilarity(classList1, classList2) {
-      const set1 = new Set(classList1);
-      const set2 = new Set(classList2);
-      
-      // Calculate intersection
-      const intersection = new Set([...set1].filter(x => set2.has(x)));
-      
-      // Calculate union
-      const union = new Set([...set1, ...set2]);
-      
-      // Return Jaccard similarity coefficient
-      return intersection.size / union.size;
-    } 
-
-  // New helper function to find elements with similar classes
-    function findSimilarElements(baseElement, similarityThreshold = 0.7) {
-      const baseClasses = Array.from(baseElement.classList);
-      
-      if (baseClasses.length === 0) return [];
-      
-      const potentialElements = document.getElementsByTagName(baseElement.tagName);
-      
-      return Array.from(potentialElements).filter(element => {
-        if (element === baseElement) return false;
-        
-        const similarity = calculateClassSimilarity(
-          baseClasses,
-          Array.from(element.classList)
-        );
-        
-        return similarity >= similarityThreshold;
-      });
+        const set1 = new Set(classList1);
+        const set2 = new Set(classList2);
+        const intersection = new Set([...set1].filter(x => set2.has(x)));
+        const union = new Set([...set1, ...set2]);
+        return intersection.size / union.size;
     }
 
-    let containers = Array.from(document.querySelectorAll(listSelector));
+    function findSimilarElements(baseElement, similarityThreshold = 0.7) {
+        const baseClasses = Array.from(baseElement.classList);
+        if (baseClasses.length === 0) return [];
+        const potentialElements = document.getElementsByTagName(baseElement.tagName);
+        return Array.from(potentialElements).filter(element => {
+            if (element === baseElement) return false;
+            const similarity = calculateClassSimilarity(
+                baseClasses,
+                Array.from(element.classList)
+            );
+            return similarity >= similarityThreshold;
+        });
+    }
+
+    // Main scraping logic with shadow DOM support
+    let containers = queryShadowDOMAll(document, listSelector);
+    containers = Array.from(containers);
+
     if (containers.length === 0) return [];
 
     if (limit > 1 && containers.length === 1) {
-      const baseContainer = containers[0];
-      const similarContainers = findSimilarElements(baseContainer);
-      
-      if (similarContainers.length > 0) {
-          const newContainers = similarContainers.filter(container => 
-              !container.matches(listSelector)
-          );
-          
-          containers = [...containers, ...newContainers];
-      }
+        const baseContainer = containers[0];
+        const similarContainers = findSimilarElements(baseContainer);
+        
+        if (similarContainers.length > 0) {
+            const newContainers = similarContainers.filter(container => 
+                !container.matches(listSelector)
+            );
+            containers = [...containers, ...newContainers];
+        }
     }
 
-    // Initialize arrays to store field classifications for each container
     const containerFields = containers.map(() => ({
         tableFields: {},
         nonTableFields: {}
     }));
 
-    // Analyze field types for each container
+    // Classify fields
     containers.forEach((container, containerIndex) => {
         for (const [label, field] of Object.entries(fields)) {
-            const sampleElement = container.querySelector(field.selector);
+            const sampleElement = queryShadowDOM(container, field.selector);
             
             if (sampleElement) {
                 const ancestor = findTableAncestor(sampleElement);
@@ -409,101 +590,122 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
 
     const tableData = [];
     const nonTableData = [];
-  
-    // Process table fields across all containers
+
+    // Process table data with shadow DOM support
     for (let containerIndex = 0; containerIndex < containers.length; containerIndex++) {
-      const container = containers[containerIndex];
-      const { tableFields } = containerFields[containerIndex];
+        const container = containers[containerIndex];
+        const { tableFields } = containerFields[containerIndex];
 
-      if (Object.keys(tableFields).length > 0) {
-        const firstField = Object.values(tableFields)[0];
-        const firstElement = container.querySelector(firstField.selector);
-        let tableContext = firstElement;
+        if (Object.keys(tableFields).length > 0) {
+            const firstField = Object.values(tableFields)[0];
+            const firstElement = queryShadowDOM(container, firstField.selector);
+            let tableContext = firstElement;
             
-        while (tableContext && tableContext.tagName !== 'TABLE' && tableContext !== container) {
-            tableContext = tableContext.parentElement;
-        }
-            
-        if (tableContext) {
-          const rows = Array.from(tableContext.getElementsByTagName('TR'));
-          const processedRows = filterRowsBasedOnTag(rows, tableFields);
-                
-          for (let rowIndex = 0; rowIndex < Math.min(processedRows.length, limit); rowIndex++) {
-            const record = {};
-            const currentRow = processedRows[rowIndex];
-                
-            for (const [label, { selector, attribute, cellIndex }] of Object.entries(tableFields)) {
-              let element = null;
-                    
-              if (cellIndex >= 0) {
-                const td = currentRow.children[cellIndex];
-                if (td) {
-                  element = td.querySelector(selector);
-                  
-                  if (!element && selector.split(">").pop().includes('td:nth-child')) {
-                      element = td;
-                  }
-
-                  if (!element) {
-                      const tagOnlySelector = selector.split('.')[0];
-                      element = td.querySelector(tagOnlySelector);
-                  }
-                  
-                  if (!element) {
-                      let currentElement = td;
-                      while (currentElement && currentElement.children.length > 0) {
-                          let foundContentChild = false;
-                          for (const child of currentElement.children) {
-                              if (extractValue(child, attribute)) {
-                                  currentElement = child;
-                                  foundContentChild = true;
-                                  break;
-                              }
-                          }
-                          if (!foundContentChild) break;
-                      }
-                      element = currentElement;
-                  }
-                } 
-              } else {
-                element = currentRow.querySelector(selector);
-              }
-                    
-              if (element) {
-                record[label] = extractValue(element, attribute);
-              }
+            // Find table context including shadow DOM
+            while (tableContext && tableContext.tagName !== 'TABLE' && tableContext !== container) {
+                if (tableContext.getRootNode() instanceof ShadowRoot) {
+                    tableContext = tableContext.getRootNode().host;
+                } else {
+                    tableContext = tableContext.parentElement;
+                }
             }
 
-            if (Object.keys(record).length > 0) {
-                tableData.push(record);
+            if (tableContext) {
+                // Get rows from both regular DOM and shadow DOM
+                const rows = [];
+                if (tableContext.shadowRoot) {
+                    rows.push(...tableContext.shadowRoot.getElementsByTagName('TR'));
+                }
+                rows.push(...tableContext.getElementsByTagName('TR'));
+                
+                const processedRows = filterRowsBasedOnTag(rows, tableFields);
+                
+                for (let rowIndex = 0; rowIndex < Math.min(processedRows.length, limit); rowIndex++) {
+                    const record = {};
+                    const currentRow = processedRows[rowIndex];
+                    
+                    for (const [label, { selector, attribute, cellIndex }] of Object.entries(tableFields)) {
+                        let element = null;
+                        
+                        if (cellIndex >= 0) {
+                            let td = currentRow.children[cellIndex];
+                            
+                            // Check shadow DOM for td
+                            if (!td && currentRow.shadowRoot) {
+                                const shadowCells = currentRow.shadowRoot.children;
+                                if (shadowCells && shadowCells.length > cellIndex) {
+                                    td = shadowCells[cellIndex];
+                                }
+                            }
+                            
+                            if (td) {
+                                element = queryShadowDOM(td, selector);
+                                
+                                if (!element && selector.split(">").pop().includes('td:nth-child')) {
+                                    element = td;
+                                }
+
+                                if (!element) {
+                                    const tagOnlySelector = selector.split('.')[0];
+                                    element = queryShadowDOM(td, tagOnlySelector);
+                                }
+                                
+                                if (!element) {
+                                    let currentElement = td;
+                                    while (currentElement && currentElement.children.length > 0) {
+                                        let foundContentChild = false;
+                                        for (const child of currentElement.children) {
+                                            if (extractValue(child, attribute)) {
+                                                currentElement = child;
+                                                foundContentChild = true;
+                                                break;
+                                            }
+                                        }
+                                        if (!foundContentChild) break;
+                                    }
+                                    element = currentElement;
+                                }
+                            }
+                        } else {
+                            element = queryShadowDOM(currentRow, selector);
+                        }
+                        
+                        if (element) {
+                            record[label] = extractValue(element, attribute);
+                        }
+                    }
+
+                    if (Object.keys(record).length > 0) {
+                        tableData.push(record);
+                    }
+                }
             }
-          }
         }
-      }
     }
-  
-    // Process non-table fields across all containers
+
+    // Non-table data scraping remains unchanged
     for (let containerIndex = 0; containerIndex < containers.length; containerIndex++) {
-      if (nonTableData.length >= limit) break;
+        if (nonTableData.length >= limit) break;
 
-      const container = containers[containerIndex];
-      const { nonTableFields } = containerFields[containerIndex];
+        const container = containers[containerIndex];
+        const { nonTableFields } = containerFields[containerIndex];
 
-      if (Object.keys(nonTableFields).length > 0) {
-        const record = {};
+        if (Object.keys(nonTableFields).length > 0) {
+            const record = {};
 
-        for (const [label, { selector, attribute }] of Object.entries(nonTableFields)) {
-          const element = container.querySelector(selector);
-            
-          if (element) {
-            record[label] = extractValue(element, attribute);
-          }
-        }
-              
-        if (Object.keys(record).length > 0) {
-            nonTableData.push(record);
-        }
-      }
+            for (const [label, { selector, attribute }] of Object.entries(nonTableFields)) {
+                const relativeSelector = selector.split('>>').slice(-1)[0];
+                const element = queryShadowDOM(container, relativeSelector);
+                
+                if (element) {
+                    record[label] = extractValue(element, attribute);
+                }
+            }
+                
+            if (Object.keys(record).length > 0) {
+                nonTableData.push(record);
+            }
+        }  
     }
       
     // Merge and limit the results

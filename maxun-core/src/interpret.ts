@@ -403,7 +403,7 @@ export default class Interpreter extends EventEmitter {
         await this.options.serializableCallback(scrapeResults);
       },
 
-      scrapeSchema: async (schema: Record<string, { selector: string; tag: string, attribute: string; }>) => {
+      scrapeSchema: async (schema: Record<string, { selector: string; tag: string, attribute: string; shadow: string}>) => {
         await this.ensureScriptsLoaded(page);
       
         const scrapeResult = await page.evaluate((schemaObj) => window.scrapeSchema(schemaObj), schema);
@@ -663,11 +663,28 @@ export default class Interpreter extends EventEmitter {
       if (isApplicable) {
           return actionId;
       }
+    }
   }
+
+  private removeShadowSelectors(workflow: Workflow) {
+    for (let actionId = workflow.length - 1; actionId >= 0; actionId--) {
+      const step = workflow[actionId];
+      
+      // Check if step has where and selectors
+      if (step.where && Array.isArray(step.where.selectors)) {
+          // Filter out selectors that contain ">>"
+          step.where.selectors = step.where.selectors.filter(selector => !selector.includes('>>'));
+      }
+    }
+  
+    return workflow;
   }
 
   private async runLoop(p: Page, workflow: Workflow) {
-    const workflowCopy: Workflow = JSON.parse(JSON.stringify(workflow));
+    let workflowCopy: Workflow = JSON.parse(JSON.stringify(workflow));
+
+    // remove shadow selectors
+    workflowCopy = this.removeShadowSelectors(workflowCopy);
 
     // apply ad-blocker to the current page
     try {

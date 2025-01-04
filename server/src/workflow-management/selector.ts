@@ -23,10 +23,41 @@ export const getElementInformation = async (
     if (!getList || listSelector !== '') {
       const elementInfo = await page.evaluate(
         async ({ x, y }) => {
-          const el = document.elementFromPoint(x, y) as HTMLElement;
+          // Enhanced helper function to get element from point including shadow DOM
+          const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
+            let element = document.elementFromPoint(x, y) as HTMLElement;
+            if (!element) return null;
+
+            // Traverse through shadow roots
+            let current = element;
+            let shadowRoot = current.shadowRoot;
+            
+            // Keep track of the deepest shadow DOM element found
+            let deepestElement = current;
+            
+            while (shadowRoot) {
+              // Try to find element at same point in shadow DOM
+              const shadowElement = shadowRoot.elementFromPoint(x, y) as HTMLElement;
+              if (!shadowElement || shadowElement === current) break;
+              
+              // Update our tracking of the deepest element
+              deepestElement = shadowElement;
+              current = shadowElement;
+              shadowRoot = current.shadowRoot;
+            }
+
+            return deepestElement;
+          };
+
+          const el = getDeepestElementFromPoint(x, y);
           if (el) {
             const { parentElement } = el;
             const element = parentElement?.tagName === 'A' ? parentElement : el;
+            
+            // Get the containing shadow root if any
+            const containingShadowRoot = element.getRootNode() as ShadowRoot;
+            const isShadowRoot = containingShadowRoot instanceof ShadowRoot;
+
             let info: {
               tagName: string;
               hasOnlyText?: boolean;
@@ -36,9 +67,21 @@ export const getElementInformation = async (
               attributes?: Record<string, string>;
               innerHTML?: string;
               outerHTML?: string;
+              isShadowRoot?: boolean;
+              shadowRootMode?: string;
+              shadowRootContent?: string;
             } = {
               tagName: element?.tagName ?? '',
+              isShadowRoot: isShadowRoot
             };
+
+            if (isShadowRoot) {
+              // Include shadow root specific information
+              info.shadowRootMode = containingShadowRoot.mode;
+              info.shadowRootContent = containingShadowRoot.innerHTML;
+            }
+            
+            // Get attributes including those from shadow DOM context
             if (element) {
               info.attributes = Array.from(element.attributes).reduce(
                 (acc, attr) => {
@@ -47,40 +90,53 @@ export const getElementInformation = async (
                 },
                 {} as Record<string, string>
               );
+              
+              // Get text content considering shadow DOM context
+              info.innerText = element.textContent ?? '';
+              info.innerHTML = element.innerHTML;
+              info.outerHTML = element.outerHTML;
+              info.hasOnlyText = element.children.length === 0 && 
+                   (element.textContent !== null && 
+                    element.textContent.trim().length > 0);
             }
-            // Gather specific information based on the tag
-            if (element?.tagName === 'A') {
-              info.url = (element as HTMLAnchorElement).href;
-              info.innerText = element.innerText ?? '';
-            } else if (element?.tagName === 'IMG') {
-              info.imageUrl = (element as HTMLImageElement).src;
-            } else if (element?.tagName === 'SELECT') {
-              const selectElement = element as HTMLSelectElement;
-              info.innerText = selectElement.options[selectElement.selectedIndex]?.text ?? '';
-              info.attributes = {
-                ...info.attributes,
-                selectedValue: selectElement.value,
-              };
-            } else if (element?.tagName === 'INPUT' && (element as HTMLInputElement).type === 'time' || (element as HTMLInputElement).type === 'date') {
-              info.innerText = (element as HTMLInputElement).value;
-            } else {
-              info.hasOnlyText = element?.children?.length === 0 &&
-                element?.innerText?.length > 0;
-              info.innerText = element?.innerText ?? '';
-            }
-            info.innerHTML = element.innerHTML;
-            info.outerHTML = element.outerHTML;
+
             return info;
           }
           return null;
         },
-        { x: coordinates.x, y: coordinates.y },
+        { x: coordinates.x, y: coordinates.y }
       );
       return elementInfo;
     } else {
       const elementInfo = await page.evaluate(
         async ({ x, y }) => {
-          const originalEl = document.elementFromPoint(x, y) as HTMLElement;
+          // Enhanced helper function to get element from point including shadow DOM
+          const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
+            let element = document.elementFromPoint(x, y) as HTMLElement;
+            if (!element) return null;
+    
+            // Traverse through shadow roots
+            let current = element;
+            let shadowRoot = current.shadowRoot;
+            
+            // Keep track of the deepest shadow DOM element found
+            let deepestElement = current;
+            
+            while (shadowRoot) {
+              // Try to find element at same point in shadow DOM
+              const shadowElement = shadowRoot.elementFromPoint(x, y) as HTMLElement;
+              if (!shadowElement || shadowElement === current) break;
+              
+              // Update our tracking of the deepest element
+              deepestElement = shadowElement;
+              current = shadowElement;
+              shadowRoot = current.shadowRoot;
+            }
+    
+            return deepestElement;
+          };
+    
+          const originalEl = getDeepestElementFromPoint(x, y);
           if (originalEl) {
             let element = originalEl;
 
@@ -124,7 +180,11 @@ export const getElementInformation = async (
                 }
               }
             }
-
+    
+            // Get the containing shadow root if any
+            const containingShadowRoot = element.getRootNode() as ShadowRoot;
+            const isShadowRoot = containingShadowRoot instanceof ShadowRoot;
+    
             let info: {
               tagName: string;
               hasOnlyText?: boolean;
@@ -134,11 +194,22 @@ export const getElementInformation = async (
               attributes?: Record<string, string>;
               innerHTML?: string;
               outerHTML?: string;
+              isShadowRoot?: boolean;
+              shadowRootMode?: string;
+              shadowRootContent?: string;
             } = {
               tagName: element?.tagName ?? '',
+              isShadowRoot: isShadowRoot
             };
-
+    
+            if (isShadowRoot) {
+              // Include shadow root specific information
+              info.shadowRootMode = containingShadowRoot.mode;
+              info.shadowRootContent = containingShadowRoot.innerHTML;
+            }
+    
             if (element) {
+              // Get attributes including those from shadow DOM context
               info.attributes = Array.from(element.attributes).reduce(
                 (acc, attr) => {
                   acc[attr.name] = attr.value;
@@ -146,21 +217,25 @@ export const getElementInformation = async (
                 },
                 {} as Record<string, string>
               );
+    
+              // Handle specific element types
+              if (element.tagName === 'A') {
+                info.url = (element as HTMLAnchorElement).href;
+                info.innerText = element.textContent ?? '';
+              } else if (element.tagName === 'IMG') {
+                info.imageUrl = (element as HTMLImageElement).src;
+              } else {
+                // Handle text content with proper null checking
+                info.hasOnlyText = element.children.length === 0 && 
+                  (element.textContent !== null && 
+                   element.textContent.trim().length > 0);
+                info.innerText = element.textContent ?? '';
+              }
+    
+              info.innerHTML = element.innerHTML;
+              info.outerHTML = element.outerHTML;
             }
-
-            if (element?.tagName === 'A') {
-              info.url = (element as HTMLAnchorElement).href;
-              info.innerText = element.innerText ?? '';
-            } else if (element?.tagName === 'IMG') {
-              info.imageUrl = (element as HTMLImageElement).src;
-            } else {
-              info.hasOnlyText = element?.children?.length === 0 &&
-                element?.innerText?.length > 0;
-              info.innerText = element?.innerText ?? '';
-            }
-
-            info.innerHTML = element.innerHTML;
-            info.outerHTML = element.outerHTML;
+    
             return info;
           }
           return null;
@@ -176,24 +251,40 @@ export const getElementInformation = async (
   }
 };
 
-/**
- * Returns a {@link Rectangle} object representing
- * the coordinates, width, height and corner points of the element.
- * If an element is not found, returns null.
- * @param page The page instance.
- * @param coordinates Coordinates of an element.
- * @category WorkflowManagement-Selectors
- * @returns {Promise<Rectangle|undefined|null>}
- */
 export const getRect = async (page: Page, coordinates: Coordinates, listSelector: string, getList: boolean) => {
   try {
     if (!getList || listSelector !== '') {
       const rect = await page.evaluate(
         async ({ x, y }) => {
-          const el = document.elementFromPoint(x, y) as HTMLElement;
+          // Enhanced helper function to get element from point including shadow DOM
+          const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
+            let element = document.elementFromPoint(x, y) as HTMLElement;
+            if (!element) return null;
+
+            // Traverse through shadow roots
+            let current = element;
+            let shadowRoot = current.shadowRoot;
+            
+            // Keep track of the deepest shadow DOM element found
+            let deepestElement = current;
+            
+            while (shadowRoot) {
+              // Try to find element at same point in shadow DOM
+              const shadowElement = shadowRoot.elementFromPoint(x, y) as HTMLElement;
+              if (!shadowElement || shadowElement === current) break;
+              
+              // Update our tracking of the deepest element
+              deepestElement = shadowElement;
+              current = shadowElement;
+              shadowRoot = current.shadowRoot;
+            }
+
+            return deepestElement;
+          };
+
+          const el = getDeepestElementFromPoint(x, y);
           if (el) {
             const { parentElement } = el;
-            // Match the logic in recorder.ts for link clicks
             const element = parentElement?.tagName === 'A' ? parentElement : el;
             const rectangle = element?.getBoundingClientRect();
             if (rectangle) {
@@ -209,14 +300,41 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
               };
             }
           }
+          return null;
         },
-        { x: coordinates.x, y: coordinates.y },
+        { x: coordinates.x, y: coordinates.y }
       );
       return rect;
     } else {
       const rect = await page.evaluate(
         async ({ x, y }) => {
-          const originalEl = document.elementFromPoint(x, y) as HTMLElement;
+          // Enhanced helper function to get element from point including shadow DOM
+          const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
+            let element = document.elementFromPoint(x, y) as HTMLElement;
+            if (!element) return null;
+
+            // Traverse through shadow roots
+            let current = element;
+            let shadowRoot = current.shadowRoot;
+            
+            // Keep track of the deepest shadow DOM element found
+            let deepestElement = current;
+            
+            while (shadowRoot) {
+              // Try to find element at same point in shadow DOM
+              const shadowElement = shadowRoot.elementFromPoint(x, y) as HTMLElement;
+              if (!shadowElement || shadowElement === current) break;
+              
+              // Update our tracking of the deepest element
+              deepestElement = shadowElement;
+              current = shadowElement;
+              shadowRoot = current.shadowRoot;
+            }
+
+            return deepestElement;
+          };
+
+          const originalEl = getDeepestElementFromPoint(x, y);
           if (originalEl) {
             let element = originalEl;
 
@@ -262,7 +380,6 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
             }
 
             const rectangle = element?.getBoundingClientRect();
-
             if (rectangle) {
               return {
                 x: rectangle.x,
@@ -278,17 +395,16 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
           }
           return null;
         },
-        { x: coordinates.x, y: coordinates.y },
+        { x: coordinates.x, y: coordinates.y }
       );
       return rect;
     }
   } catch (error) {
     const { message, stack } = error as Error;
-    logger.log('error', `Error while retrieving selector: ${message}`);
-    logger.log('error', `Stack: ${stack}`);
+    console.error('Error while retrieving selector:', message);
+    console.error('Stack:', stack);
   }
 };
-
 
 /**
  * Returns the best and unique css {@link Selectors} for the element on the page.
@@ -760,6 +876,92 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
         return output;
       }
 
+      // const MAX_DEPTH = 10;
+
+      const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
+        let element = document.elementFromPoint(x, y) as HTMLElement;
+        if (!element) return null;
+
+        let current = element;
+        let deepestElement = current;
+        let depth = 0;
+        const MAX_DEPTH = 4; // Limit to 2 levels of shadow DOM
+
+        while (current && depth < MAX_DEPTH) {
+          const shadowRoot = current.shadowRoot;
+          if (!shadowRoot) break;
+
+          const shadowElement = shadowRoot.elementFromPoint(x, y) as HTMLElement;
+          if (!shadowElement || shadowElement === current) break;
+          
+          deepestElement = shadowElement;
+          current = shadowElement;
+          depth++;
+        }
+
+        return deepestElement;
+      };
+
+      // Helper function to generate selectors for shadow DOM elements
+      const genSelectorForShadowDOM = (element: HTMLElement) => {
+        // Get complete path up to document root
+        const getShadowPath = (el: HTMLElement) => {
+          const path = [];
+          let current = el;
+          let depth = 0;
+          const MAX_DEPTH = 4;
+          
+          while (current && depth < MAX_DEPTH) {
+            const rootNode = current.getRootNode();
+            if (rootNode instanceof ShadowRoot) {
+              path.unshift({
+                host: rootNode.host as HTMLElement,
+                root: rootNode,
+                element: current
+              });
+              current = rootNode.host as HTMLElement;
+              depth++;
+            } else {
+              break;
+            }
+          }
+          return path;
+        };
+
+        const shadowPath = getShadowPath(element);
+        if (shadowPath.length === 0) return null;
+
+        try {
+          const selectorParts: string[] = [];
+          
+          // Generate selector for each shadow DOM boundary
+          shadowPath.forEach((context, index) => {
+            // Get selector for the host element
+            const hostSelector = finder(context.host, {
+              root: index === 0 ? document.body : (shadowPath[index - 1].root as unknown as Element)
+            });
+
+            // For the last context, get selector for target element
+            if (index === shadowPath.length - 1) {
+              const elementSelector = finder(element, {
+                root: context.root as unknown as Element
+              });
+              selectorParts.push(`${hostSelector} >> ${elementSelector}`);
+            } else {
+              selectorParts.push(hostSelector);
+            }
+          });
+
+          return {
+            fullSelector: selectorParts.join(' >> '),
+            mode: shadowPath[shadowPath.length - 1].root.mode
+          };
+        } catch (e) {
+          console.warn('Error generating shadow DOM selector:', e);
+          return null;
+        }
+      };
+
       const genSelectors = (element: HTMLElement | null) => {
         if (element == null) {
           return null;
@@ -778,6 +980,9 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
           attrSelector = finder(element, { attr: () => true });
         } catch (e) {
         }
+
+        // Generate shadow DOM specific selector
+        const shadowSelector = genSelectorForShadowDOM(element);
 
         const hrefSelector = genSelectorForAttributes(element, ['href']);
         const formSelector = genSelectorForAttributes(element, [
@@ -825,8 +1030,15 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
           hrefSelector,
           accessibilitySelector,
           formSelector,
+          // Shadow DOM selector
+          shadowSelector: shadowSelector ? {
+            full: shadowSelector.fullSelector,
+            mode: shadowSelector.mode
+          } : null
         };
       }
+
+      
 
       function genAttributeSet(element: HTMLElement, attributes: string[]) {
         return new Set(
@@ -867,7 +1079,7 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
         return char.length === 1 && char.match(/[0-9]/);
       }
 
-      const hoveredElement = document.elementFromPoint(x, y) as HTMLElement;
+      const hoveredElement = getDeepestElementFromPoint(x, y);
       if (
         hoveredElement != null &&
         !hoveredElement.closest('#overlay-controls') != null
@@ -902,9 +1114,41 @@ interface SelectorResult {
  */
 
 export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates, listSelector: string): Promise<SelectorResult> => {
+  interface ShadowContext {
+    host: HTMLElement;
+    root: ShadowRoot;
+    element: HTMLElement;
+  }
+
   try {
     if (!listSelector) {
       const selectors = await page.evaluate(({ x, y }: { x: number, y: number }) => {
+        // Helper function to get deepest element, traversing shadow DOM
+        function getDeepestElementFromPoint(x: number, y: number): HTMLElement | null {
+          let element = document.elementFromPoint(x, y) as HTMLElement;
+          if (!element) return null;
+
+          let current = element;
+          let deepestElement = current;
+          let depth = 0;
+          const MAX_DEPTH = 4; // Limit shadow DOM traversal depth
+          
+          while (current && depth < MAX_DEPTH) {
+            const shadowRoot = current.shadowRoot;
+            if (!shadowRoot) break;
+            
+            const shadowElement = shadowRoot.elementFromPoint(x, y) as HTMLElement;
+            if (!shadowElement || shadowElement === current) break;
+            
+            deepestElement = shadowElement;
+            current = shadowElement;
+            depth++;
+          }
+
+          return deepestElement;
+        }
+
+        // Generate basic selector from element's tag and classes
         function getNonUniqueSelector(element: HTMLElement): string {
           let selector = element.tagName.toLowerCase();
 
@@ -928,22 +1172,77 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
           return selector;
         }
 
-        function getSelectorPath(element: HTMLElement | null): string {
-          const path: string[] = [];
+        // Get complete shadow DOM path for an element
+        function getShadowPath(element: HTMLElement): ShadowContext[] {
+          const path: ShadowContext[] = [];
+          let current = element;
           let depth = 0;
-          const maxDepth = 2;
+          const MAX_DEPTH = 4;
+          
+          while (current && depth < MAX_DEPTH) {
+            const rootNode = current.getRootNode();
+            if (rootNode instanceof ShadowRoot) {
+              path.unshift({
+                host: rootNode.host as HTMLElement,
+                root: rootNode,
+                element: current
+              });
+              current = rootNode.host as HTMLElement;
+              depth++;
+            } else {
+              break;
+            }
+          }
+          return path;
+        }
 
-          while (element && element !== document.body && depth < maxDepth) {
-            const selector = getNonUniqueSelector(element);
+        // Generate complete selector path for any element
+        function getSelectorPath(element: HTMLElement | null): string {
+          if (!element) return '';
+          
+          // Check for shadow DOM path first
+          const shadowPath = getShadowPath(element);
+          if (shadowPath.length > 0) {
+            const selectorParts: string[] = [];
+            
+            // Build complete shadow DOM path
+            shadowPath.forEach((context, index) => {
+              const hostSelector = getNonUniqueSelector(context.host);
+              
+              if (index === shadowPath.length - 1) {
+                // For deepest shadow context, include target element
+                const elementSelector = getNonUniqueSelector(element);
+                selectorParts.push(`${hostSelector} >> ${elementSelector}`);
+              } else {
+                // For intermediate shadow boundaries
+                selectorParts.push(hostSelector);
+              }
+            });
+            
+            return selectorParts.join(' >> ');
+          }
+
+          // Regular DOM path generation
+          const path: string[] = [];
+          let currentElement = element;
+          let depth = 0;
+          const MAX_DEPTH = 2;
+
+          while (currentElement && currentElement !== document.body && depth < MAX_DEPTH) {
+            const selector = getNonUniqueSelector(currentElement);
             path.unshift(selector);
-            element = element.parentElement;
+            
+            const parentElement = currentElement.parentElement;
+            if (!parentElement) break;
+            currentElement = parentElement;
             depth++;
           }
 
           return path.join(' > ');
         }
 
-        const originalEl = document.elementFromPoint(x, y) as HTMLElement;
+        // Main logic to get element and generate selector
+        const originalEl = getDeepestElementFromPoint(x, y);
         if (!originalEl) return null;
 
         let element = originalEl;
@@ -989,16 +1288,41 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
             }
           }
         }
-        // }
 
         const generalSelector = getSelectorPath(element);
-        return {
-          generalSelector,
-        };
+        return { generalSelector };
       }, coordinates);
+
       return selectors || { generalSelector: '' };
     } else {
+      // When we have a list selector, we need special handling while maintaining shadow DOM support
       const selectors = await page.evaluate(({ x, y }: { x: number, y: number }) => {
+        // Helper function to get deepest element, traversing shadow DOM
+        function getDeepestElementFromPoint(x: number, y: number): HTMLElement | null {
+          let element = document.elementFromPoint(x, y) as HTMLElement;
+          if (!element) return null;
+
+          let current = element;
+          let deepestElement = current;
+          let depth = 0;
+          const MAX_DEPTH = 4;
+          
+          while (current && depth < MAX_DEPTH) {
+            const shadowRoot = current.shadowRoot;
+            if (!shadowRoot) break;
+            
+            const shadowElement = shadowRoot.elementFromPoint(x, y) as HTMLElement;
+            if (!shadowElement || shadowElement === current) break;
+            
+            deepestElement = shadowElement;
+            current = shadowElement;
+            depth++;
+          }
+
+          return deepestElement;
+        }
+
+        // Generate basic selector from element's tag and classes
         function getNonUniqueSelector(element: HTMLElement): string {
           let selector = element.tagName.toLowerCase();
 
@@ -1021,34 +1345,83 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
           return selector;
         }
 
-        function getSelectorPath(element: HTMLElement | null): string {
-          const path: string[] = [];
+        // Get complete shadow DOM path for an element
+        function getShadowPath(element: HTMLElement): ShadowContext[] {
+          const path: ShadowContext[] = [];
+          let current = element;
           let depth = 0;
-          const maxDepth = 2;
+          const MAX_DEPTH = 4;
+          
+          while (current && depth < MAX_DEPTH) {
+            const rootNode = current.getRootNode();
+            if (rootNode instanceof ShadowRoot) {
+              path.unshift({
+                host: rootNode.host as HTMLElement,
+                root: rootNode,
+                element: current
+              });
+              current = rootNode.host as HTMLElement;
+              depth++;
+            } else {
+              break;
+            }
+          }
+          return path;
+        }
 
-          while (element && element !== document.body && depth < maxDepth) {
-            const selector = getNonUniqueSelector(element);
+        // Generate selector path specifically for list items
+        function getListItemSelectorPath(element: HTMLElement | null): string {
+          if (!element) return '';
+          
+          // Check for shadow DOM path first
+          const shadowPath = getShadowPath(element);
+          if (shadowPath.length > 0) {
+            const selectorParts: string[] = [];
+            
+            shadowPath.forEach((context, index) => {
+              const hostSelector = getNonUniqueSelector(context.host);
+              
+              if (index === shadowPath.length - 1) {
+                const elementSelector = getNonUniqueSelector(element);
+                selectorParts.push(`${hostSelector} >> ${elementSelector}`);
+              } else {
+                selectorParts.push(hostSelector);
+              }
+            });
+            
+            return selectorParts.join(' >> ');
+          }
+
+          // For list items, we want a shallower path to better match list patterns
+          const path: string[] = [];
+          let currentElement = element;
+          let depth = 0;
+          const MAX_LIST_DEPTH = 2;  // Keeping shallow depth for list items
+
+          while (currentElement && currentElement !== document.body && depth < MAX_LIST_DEPTH) {
+            const selector = getNonUniqueSelector(currentElement);
             path.unshift(selector);
-            element = element.parentElement;
+            
+            if (!currentElement.parentElement) break;
+            currentElement = currentElement.parentElement;
             depth++;
           }
 
           return path.join(' > ');
         }
 
-        const originalEl = document.elementFromPoint(x, y) as HTMLElement;
-        if (!originalEl) return null;
+        // Main logic for list item selection
+        const originalEl = getDeepestElementFromPoint(x, y);
+        if (!originalEl) return { generalSelector: '' };
 
         let element = originalEl;
 
-        const generalSelector = getSelectorPath(element);
-        return {
-          generalSelector,
-        };
-      }, coordinates);
-      return selectors || { generalSelector: '' };
-    }
+        const generalSelector = getListItemSelectorPath(element);
+        return { generalSelector };
+    }, coordinates);
 
+    return selectors || { generalSelector: '' };
+    }
   } catch (error) {
     console.error('Error in getNonUniqueSelectors:', error);
     return { generalSelector: '' };
@@ -1083,42 +1456,110 @@ export const getChildSelectors = async (page: Page, parentSelector: string): Pro
       }
 
       // Function to generate selector path from an element to its parent
-      function getSelectorPath(element: HTMLElement | null): string {
+      function getSelectorPath(element: HTMLElement): string {
         if (!element || !element.parentElement) return '';
 
         const parentSelector = getNonUniqueSelector(element.parentElement);
         const elementSelector = getNonUniqueSelector(element);
 
+        // Check if element is in shadow DOM
+        const rootNode = element.getRootNode();
+        if (rootNode instanceof ShadowRoot) {
+          const hostSelector = getNonUniqueSelector(rootNode.host as HTMLElement);
+          return `${hostSelector} >> ${elementSelector}`;
+        }
+
         return `${parentSelector} > ${elementSelector}`;
       }
 
-      // Function to recursively get all descendant selectors
+      // Function to get all shadow DOM children of an element
+      function getShadowChildren(element: HTMLElement): HTMLElement[] {
+        const children: HTMLElement[] = [];
+        
+        // Check if element has shadow root
+        const shadowRoot = element.shadowRoot;
+        if (shadowRoot) {
+          // Get all elements in the shadow DOM
+          const shadowElements = Array.from(shadowRoot.querySelectorAll('*')) as HTMLElement[];
+          children.push(...shadowElements);
+        }
+        
+        return children;
+      }
+
+      // Function to recursively get all descendant selectors including shadow DOM
       function getAllDescendantSelectors(element: HTMLElement): string[] {
         let selectors: string[] = [];
+        
+        // Handle regular DOM children
         const children = Array.from(element.children) as HTMLElement[];
-
         for (const child of children) {
           const childPath = getSelectorPath(child);
           if (childPath) {
-            selectors.push(childPath);  // Add direct child path
-            selectors = selectors.concat(getAllDescendantSelectors(child));  // Recursively process descendants
+            selectors.push(childPath);
+            // Recursively process regular DOM descendants
+            selectors = selectors.concat(getAllDescendantSelectors(child));
+            
+            // Check for shadow DOM in this child
+            const shadowChildren = getShadowChildren(child);
+            for (const shadowChild of shadowChildren) {
+              const shadowPath = getSelectorPath(shadowChild);
+              if (shadowPath) {
+                selectors.push(shadowPath);
+                // Recursively process shadow DOM descendants
+                selectors = selectors.concat(getAllDescendantSelectors(shadowChild));
+              }
+            }
+          }
+        }
+
+        // Handle direct shadow DOM children of the current element
+        const shadowChildren = getShadowChildren(element);
+        for (const shadowChild of shadowChildren) {
+          const shadowPath = getSelectorPath(shadowChild);
+          if (shadowPath) {
+            selectors.push(shadowPath);
+            selectors = selectors.concat(getAllDescendantSelectors(shadowChild));
           }
         }
 
         return selectors;
       }
 
-      // Find all occurrences of the parent selector in the DOM
-      const parentElements = Array.from(document.querySelectorAll(parentSelector)) as HTMLElement[];
-      const allChildSelectors = new Set<string>();  // Use a set to ensure uniqueness
+      // Split the parent selector if it contains shadow DOM parts
+      const selectorParts = parentSelector.split('>>').map(part => part.trim());
+      let parentElements: HTMLElement[] = [];
+
+      // Handle shadow DOM traversal if needed
+      if (selectorParts.length > 1) {
+        // Start with the host elements
+        parentElements = Array.from(document.querySelectorAll(selectorParts[0])) as HTMLElement[];
+        
+        // Traverse through shadow DOM parts
+        for (let i = 1; i < selectorParts.length; i++) {
+          const newParentElements: HTMLElement[] = [];
+          for (const element of parentElements) {
+            if (element.shadowRoot) {
+              const shadowChildren = Array.from(element.shadowRoot.querySelectorAll(selectorParts[i])) as HTMLElement[];
+              newParentElements.push(...shadowChildren);
+            }
+          }
+          parentElements = newParentElements;
+        }
+      } else {
+        // Regular DOM selector
+        parentElements = Array.from(document.querySelectorAll(parentSelector)) as HTMLElement[];
+      }
+
+      const allChildSelectors = new Set<string>();
 
       // Process each parent element and its descendants
       parentElements.forEach((parentElement) => {
         const descendantSelectors = getAllDescendantSelectors(parentElement);
-        descendantSelectors.forEach((selector) => allChildSelectors.add(selector));  // Add selectors to the set
+        descendantSelectors.forEach((selector) => allChildSelectors.add(selector));
       });
 
-      return Array.from(allChildSelectors);  // Convert the set back to an array
+      return Array.from(allChildSelectors);
     }, parentSelector);
 
     return childSelectors || [];
