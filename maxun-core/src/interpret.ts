@@ -658,8 +658,24 @@ export default class Interpreter extends EventEmitter {
   }
   }
 
+  private removeIframeSelectors(workflow: Workflow) {
+    for (let actionId = workflow.length - 1; actionId >= 0; actionId--) {
+      const step = workflow[actionId];
+      
+      // Check if step has where and selectors
+      if (step.where && Array.isArray(step.where.selectors)) {
+          // Filter out selectors that contain ">>"
+          step.where.selectors = step.where.selectors.filter(selector => !selector.includes(':>>'));
+      }
+    }
+  
+    return workflow;
+  }
+
   private async runLoop(p: Page, workflow: Workflow) {
-    const workflowCopy: Workflow = JSON.parse(JSON.stringify(workflow));
+    let workflowCopy: Workflow = JSON.parse(JSON.stringify(workflow));
+
+    workflowCopy = this.removeIframeSelectors(workflowCopy);
 
     // apply ad-blocker to the current page
     await this.applyAdBlocker(p);
