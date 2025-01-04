@@ -849,145 +849,115 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
         return output;
       }
       
-      const getIframeOffset = (iframe: HTMLIFrameElement): { x: number; y: number } => {
-        const rect = iframe.getBoundingClientRect();
-        return {
-          x: rect.left,
-          y: rect.top
-        };
-      };
-      
-      const isAccessibleIframe = (iframe: HTMLIFrameElement): boolean => {
-        try {
-          return !!iframe.contentDocument;
-        } catch (e) {
-          return false;
-        }
-      };
-      
       const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
-        // Get the initial element at the specified coordinates
-        let currentElement = document.elementFromPoint(x, y) as HTMLElement;
-        if (!currentElement) return null;
-        
-        let deepestElement = currentElement;
-        let current = currentElement;
-        let currentX = x;
-        let currentY = y;
+        // First, get the element at the specified coordinates in the main document
+        let element = document.elementFromPoint(x, y) as HTMLElement;
+        if (!element) return null;
+    
+        // Check if the element is an iframe
+        if (element.tagName !== 'IFRAME') return element;
+    
+        let currentIframe = element as HTMLIFrameElement;
+        let deepestElement = element;
         let depth = 0;
-        const MAX_DEPTH = 20; // Prevent infinite loops with deeply nested iframes
-      
-        // Continue traversing while we find nested iframes
-        while (current && depth < MAX_DEPTH) {
-          // Check if the current element is an iframe and if we can access it
-          if (current instanceof HTMLIFrameElement && isAccessibleIframe(current)) {
-            // Calculate the offset of the iframe
-            const iframeOffset = getIframeOffset(current);
-            
-            // Transform coordinates to be relative to the iframe's content window
-            const relativeX = currentX - iframeOffset.x;
-            const relativeY = currentY - iframeOffset.y;
-      
-            // Find the element at these coordinates within the iframe
-            const iframeElement = current.contentDocument?.elementFromPoint(relativeX, relativeY) as HTMLElement;
-            
-            // If we don't find an element or we get the same element, stop traversing
-            if (!iframeElement || iframeElement === current) break;
-      
-            // Update our tracking variables
-            deepestElement = iframeElement;
-            current = iframeElement;
-            currentX = relativeX;
-            currentY = relativeY;
-            depth++;
-          } else {
-            // If the current element is not an iframe, we're done traversing
-            break;
-          }
+        const MAX_DEPTH = 4; // Limit the depth of nested iframes to prevent infinite loops
+    
+        while (currentIframe && depth < MAX_DEPTH) {
+            try {
+                // Convert coordinates from main document to iframe's coordinate system
+                const iframeRect = currentIframe.getBoundingClientRect();
+                const iframeX = x - iframeRect.left;
+                const iframeY = y - iframeRect.top;
+    
+                // Access the iframe's content document and get the element at the transformed coordinates
+                const iframeDoc = currentIframe.contentDocument || currentIframe.contentWindow?.document;
+                if (!iframeDoc) break;
+    
+                const iframeElement = iframeDoc.elementFromPoint(iframeX, iframeY) as HTMLElement;
+                if (!iframeElement) break;
+    
+                // If the element found is another iframe, continue traversing
+                if (iframeElement.tagName === 'IFRAME') {
+                    deepestElement = iframeElement;
+                    currentIframe = iframeElement as HTMLIFrameElement;
+                    depth++;
+                } else {
+                    // If it's not an iframe, we've found our deepest element
+                    deepestElement = iframeElement;
+                    break;
+                }
+            } catch (error) {
+                // Handle potential security errors when accessing cross-origin iframes
+                console.warn('Cannot access iframe content:', error);
+                break;
+            }
         }
-      
         return deepestElement;
       };
-
-      interface IframeContext {
-        frame: HTMLIFrameElement;
-        document: Document;
-        element: HTMLElement;
-      }
       
       const genSelectorForIframe = (element: HTMLElement) => {
-        // Helper function to check if we can access an iframe's content
-        const isAccessibleIframe = (iframe: HTMLIFrameElement): boolean => {
-          try {
-            return !!iframe.contentDocument;
-          } catch (e) {
-            return false;
-          }
-        };
-      
-        // Get complete path up through nested iframes to document root
+        // Helper function to get the complete iframe path up to document root
         const getIframePath = (el: HTMLElement) => {
-          const path: IframeContext[] = [];
-          let current = el;
-          let currentDoc = el.ownerDocument;
-          let depth = 0;
-          const MAX_DEPTH = 20;  // Limit depth to prevent infinite loops
-          
-          while (current && depth < MAX_DEPTH) {
-            // If we're in an iframe, get its parent document
-            const frameElement = currentDoc.defaultView?.frameElement as HTMLIFrameElement;
-            if (frameElement && isAccessibleIframe(frameElement)) {
-              path.unshift({
-                frame: frameElement,
-                document: currentDoc,
-                element: current
-              });
-              current = frameElement;
-              currentDoc = frameElement.ownerDocument;
-              depth++;
-            } else {
-              break;
+            const path = [];
+            let current = el;
+            let depth = 0;
+            const MAX_DEPTH = 4;
+            
+            while (current && depth < MAX_DEPTH) {
+                // Get the owner document of the current element
+                const ownerDocument = current.ownerDocument;
+                
+                // Check if this document belongs to an iframe
+                const frameElement = ownerDocument?.defaultView?.frameElement as HTMLIFrameElement;
+                
+                if (frameElement) {
+                    path.unshift({
+                        frame: frameElement,
+                        document: ownerDocument,
+                        element: current
+                    });
+                    // Move up to the parent document's element (the iframe)
+                    current = frameElement;
+                    depth++;
+                } else {
+                    break;
+                }
             }
-          }
-          return path;
+            return path;
         };
-      
-        // Get the iframe path for our target element
+    
         const iframePath = getIframePath(element);
         if (iframePath.length === 0) return null;
-      
+    
         try {
-          const selectorParts: string[] = [];
-          
-          // Generate selector for each iframe boundary
-          iframePath.forEach((context, index) => {
-            // Get selector for the iframe element in its parent document
-            const frameSelector = finder(context.frame, {
-              root: index === 0 ? document.body : (iframePath[index - 1].document.body as Element)
-            });
+            const selectorParts: string[] = [];
             
-            // For the last context, get selector for target element
-            if (index === iframePath.length - 1) {
-              const elementSelector = finder(element, {
-                root: context.document.body as Element
-              });
-              // Use :>> for iframe traversal in the selector
-              selectorParts.push(`${frameSelector} :>> ${elementSelector}`);
-            } else {
-              selectorParts.push(frameSelector);
-            }
-          });
-      
-          return {
-            // Join all parts with :>> to indicate iframe traversal
-            fullSelector: selectorParts.join(' :>> '),
-            // Include additional metadata about the frames if needed
-            frameCount: iframePath.length,
-            isAccessible: true
-          };
+            // Generate selector for each iframe boundary
+            iframePath.forEach((context, index) => {
+                // Get selector for the iframe element
+                const frameSelector = finder(context.frame, {
+                    root: index === 0 ? document.body : 
+                          (iframePath[index - 1].document.body as Element)
+                });
+    
+                // For the last context, get selector for target element
+                if (index === iframePath.length - 1) {
+                    const elementSelector = finder(element, {
+                        root: context.document.body as Element
+                    });
+                    selectorParts.push(`${frameSelector} :>> ${elementSelector}`);
+                } else {
+                    selectorParts.push(frameSelector);
+                }
+            });
+    
+            return {
+                fullSelector: selectorParts.join(' :>> '),
+                isFrameContent: true
+            };
         } catch (e) {
-          console.warn('Error generating iframe selector:', e);
-          return null;
+            console.warn('Error generating iframe selector:', e);
+            return null;
         }
       };
 
@@ -1060,8 +1030,7 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
           formSelector,
           iframeSelector: iframeSelector ? {
             full: iframeSelector.fullSelector,
-            frame: iframeSelector.frameCount,
-            accesible: iframeSelector.isAccessible
+            isIframe: iframeSelector.isFrameContent,
           } : null
         };
       }
