@@ -730,15 +730,26 @@ export class WorkflowGenerator {
     const displaySelector = await this.generateSelector(page, coordinates, ActionType.Click);
     const elementInfo = await getElementInformation(page, coordinates, this.listSelector, this.getList);
     if (rect) {
+      const highlighterData = {
+        rect,
+        selector: displaySelector,
+        elementInfo,
+        // Include shadow DOM specific information
+        shadowInfo: elementInfo?.isShadowRoot ? {
+          mode: elementInfo.shadowRootMode,
+          content: elementInfo.shadowRootContent
+        } : null
+      };
+
       if (this.getList === true) {
         if (this.listSelector !== '') {
           const childSelectors = await getChildSelectors(page, this.listSelector || '');
-          this.socket.emit('highlighter', { rect, selector: displaySelector, elementInfo, childSelectors })
+          this.socket.emit('highlighter', { ...highlighterData, childSelectors })
         } else {
-          this.socket.emit('highlighter', { rect, selector: displaySelector, elementInfo });
+          this.socket.emit('highlighter', { ...highlighterData });
         }
       } else {
-        this.socket.emit('highlighter', { rect, selector: displaySelector, elementInfo });
+        this.socket.emit('highlighter', { ...highlighterData });
       }
     }
   }
