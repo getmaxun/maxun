@@ -14,8 +14,8 @@ interface ActionContextProps {
     paginationType: PaginationType;
     limitType: LimitType;
     customLimit: string;
-    captureStage: CaptureStage; // New captureStage property
-    setCaptureStage: (stage: CaptureStage) => void; // Setter for captureStage
+    captureStage: CaptureStage;
+    setCaptureStage: (stage: CaptureStage) => void;
     startPaginationMode: () => void;
     startGetText: () => void;
     stopGetText: () => void;

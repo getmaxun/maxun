@@ -15,6 +15,7 @@ import { editRecordingFromStorage } from "../api/storage";
 import { WhereWhatPair } from "maxun-core";
 import styled from "styled-components";
 import BrowserRecordingSave from '../components/molecules/BrowserRecordingSave';
+import { useTranslation } from 'react-i18next';
 
 interface RecordingPageProps {
   recordingName?: string;
@@ -26,7 +27,7 @@ export interface PairForEdit {
 }
 
 export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
-
+  const { t } = useTranslation();
   const [isLoaded, setIsLoaded] = React.useState(false);
   const [hasScrollbar, setHasScrollbar] = React.useState(false);
   const [pairForEdit, setPairForEdit] = useState<PairForEdit>({
@@ -145,7 +146,7 @@ export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
               </Grid>
             </>
           ) : (
-            <Loader text={`Spinning up a browser...Navigating to ${recordingUrl}`} />
+            <Loader text={t('recording_page.loader.browser_startup', { url: recordingUrl })} />
           )}
         </div>
       </BrowserStepsProvider>

@@ -17,6 +17,7 @@ import StorageIcon from '@mui/icons-material/Storage';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import { SidePanelHeader } from './SidePanelHeader';
 import { useGlobalInfoStore } from '../../context/globalInfo';
+import { useTranslation } from 'react-i18next';
 
 interface InterpretationLogProps {
   isOpen: boolean;
@@ -24,6 +25,7 @@ interface InterpretationLogProps {
 }
 
 export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, setIsOpen }) => {
+  const { t } = useTranslation();
   const [log, setLog] = useState<string>('');
   const [customValue, setCustomValue] = useState('');
   const [tableData, setTableData] = useState<any[]>([]);
@@ -33,7 +35,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
   const { width } = useBrowserDimensionsStore();
   const { socket } = useSocketStore();
-  const { currentWorkflowActionsState } = useGlobalInfoStore();
+  const { currentWorkflowActionsState, shouldResetInterpretationLog, notify } = useGlobalInfoStore();
 
   const toggleDrawer = (newOpen: boolean) => (event: React.KeyboardEvent | React.MouseEvent) => {
     if (
@@ -63,33 +65,42 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
   const handleSerializableCallback = useCallback((data: any) => {
     setLog((prevState) =>
-      prevState + '\n' + '---------- Serializable output data received ----------' + '\n'
-      + JSON.stringify(data, null, 2) + '\n' + '--------------------------------------------------');
+      prevState + '\n' + t('interpretation_log.data_sections.serializable_received') + '\n'
+      + JSON.stringify(data, null, 2) + '\n' + t('interpretation_log.data_sections.separator'));
 
     if (Array.isArray(data)) {
       setTableData(data);
     }
 
     scrollLogToBottom();
-  }, [log, scrollLogToBottom]);
+  }, [log, scrollLogToBottom, t]);
 
   const handleBinaryCallback = useCallback(({ data, mimetype }: any) => {
     const base64String = Buffer.from(data).toString('base64');
     const imageSrc = `data:${mimetype};base64,${base64String}`;
 
     setLog((prevState) =>
-      prevState + '\n' + '---------- Binary output data received ----------' + '\n'
-      + `mimetype: ${mimetype}` + '\n' + 'Image is rendered below:' + '\n'
-      + '------------------------------------------------');
+      prevState + '\n' + t('interpretation_log.data_sections.binary_received') + '\n'
+      + t('interpretation_log.data_sections.mimetype') + mimetype + '\n' 
+      + t('interpretation_log.data_sections.image_below') + '\n'
+      + t('interpretation_log.data_sections.separator'));
 
     setBinaryData(imageSrc);
     scrollLogToBottom();
-  }, [log, scrollLogToBottom]);
+  }, [log, scrollLogToBottom, t]);
 
 
   const handleCustomValueChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setCustomValue(event.target.value);
   };
+
+  useEffect(() => {
+    if (shouldResetInterpretationLog) {
+      setLog('');
+      setTableData([]);
+      setBinaryData(null);
+    }
+  }, [shouldResetInterpretationLog]);
 
   useEffect(() => {
     socket?.on('log', handleLog);
@@ -136,7 +147,8 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
             },
           }}
         >
-        <ArrowUpwardIcon fontSize="inherit" sx={{ marginRight: '10px'}} /> Output Data Preview 
+          <ArrowUpwardIcon fontSize="inherit" sx={{ marginRight: '10px'}} /> 
+          {t('interpretation_log.titles.output_preview')}
         </Button>
         <SwipeableDrawer
           anchor="bottom"
@@ -155,9 +167,10 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
             },
           }}
         >
-            <Typography variant="h6" gutterBottom style={{ display: 'flex', alignItems: 'center' }}>
-            <StorageIcon style={{ marginRight: '8px' }} /> Output Data Preview
-            </Typography>
+          <Typography variant="h6" gutterBottom style={{ display: 'flex', alignItems: 'center' }}>
+            <StorageIcon style={{ marginRight: '8px' }} /> 
+            {t('interpretation_log.titles.output_preview')}
+          </Typography>
           <div
             style={{
               height: '50vh',
@@ -168,8 +181,10 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
             {
               binaryData ? (
                 <div style={{ marginBottom: '20px' }}>
-                  <Typography variant="body1" gutterBottom>Screenshot</Typography>
-                  <img src={binaryData} alt="Binary Output" style={{ maxWidth: '100%' }} />
+                  <Typography variant="body1" gutterBottom>
+                    {t('interpretation_log.titles.screenshot')}
+                  </Typography>
+                  <img src={binaryData} alt={t('interpretation_log.titles.screenshot')} style={{ maxWidth: '100%' }} />
                 </div>
               ) : tableData.length > 0 ? (
                 <>
@@ -193,7 +208,9 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                       </TableBody>
                     </Table>
                   </TableContainer>
-                  <span style={{ marginLeft: '15px', marginTop: '10px', fontSize: '12px' }}>Additional rows of data will be extracted once you finish recording. </span>
+                  <span style={{ marginLeft: '15px', marginTop: '10px', fontSize: '12px' }}>
+                    {t('interpretation_log.messages.additional_rows')}
+                  </span>
                 </>
               ) : (
                 <Grid container justifyContent="center" alignItems="center" style={{ height: '100%' }}>
@@ -201,13 +218,13 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                     {hasScrapeListAction || hasScrapeSchemaAction || hasScreenshotAction ? (
                       <>
                         <Typography variant="h6" gutterBottom align="left">
-                          You've successfully trained the robot to perform actions! Click on the button below to get a preview of the data your robot will extract.
+                          {t('interpretation_log.messages.successful_training')}
                         </Typography>
                         <SidePanelHeader />
                       </>
                     ) : (
                       <Typography variant="h6" gutterBottom align="left">
-                        It looks like you have not selected anything for extraction yet. Once you do, the robot will show a preview of your selections here.
+                        {t('interpretation_log.messages.no_selection')}
                       </Typography>
                     )}
                   </Grid>
@@ -219,4 +236,4 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
       </Grid>
     </Grid>
   );
-}
+};

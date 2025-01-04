@@ -7,6 +7,7 @@ import { GenericModal } from '../atoms/GenericModal';
 import { useActionContext } from '../../context/browserActions';
 import { useBrowserSteps, TextStep } from '../../context/browserSteps';
 import { useGlobalInfoStore } from '../../context/globalInfo';
+import { useTranslation } from 'react-i18next';
 
 
 interface ElementInfo {
@@ -53,6 +54,7 @@ const getAttributeOptions = (tagName: string, elementInfo: ElementInfo | null): 
 };
 
 export const BrowserWindow = () => {
+    const { t } = useTranslation();
     const [canvasRef, setCanvasReference] = useState<React.RefObject<HTMLCanvasElement> | undefined>(undefined);
     const [screenShot, setScreenShot] = useState<string>("");
     const [highlighterData, setHighlighterData] = useState<{ rect: DOMRect, selector: string, elementInfo: ElementInfo | null, childSelectors?: string[] } | null>(null);
@@ -67,7 +69,7 @@ export const BrowserWindow = () => {
 
     const { socket } = useSocketStore();
     const { notify } = useGlobalInfoStore();
-    const { getText, getList, paginationMode, paginationType, limitMode } = useActionContext();
+    const { getText, getList, paginationMode, paginationType, limitMode, captureStage } = useActionContext();
     const { addTextStep, addListStep } = useBrowserSteps();
 
     const onMouseMove = (e: MouseEvent) => {
@@ -169,7 +171,7 @@ export const BrowserWindow = () => {
             // For non-list steps
             setHighlighterData(data);
         }
-    }, [highlighterData, getList, socket, listSelector, paginationMode, paginationType]);
+    }, [highlighterData, getList, socket, listSelector, paginationMode, paginationType, captureStage]);
 
 
     useEffect(() => {
@@ -182,6 +184,13 @@ export const BrowserWindow = () => {
             socket?.off("highlighter", highlighterHandler);
         };
     }, [socket, onMouseMove]);
+
+    useEffect(() => {
+        if (captureStage === 'initial' && listSelector) {
+            socket?.emit('setGetList', { getList: true });
+            socket?.emit('listSelector', { selector: listSelector });
+        }
+    }, [captureStage, listSelector, socket]);
 
     const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
         if (highlighterData && canvasRef?.current) {
@@ -227,7 +236,7 @@ export const BrowserWindow = () => {
                     // Only allow selection in pagination mode if type is not empty, 'scrollDown', or 'scrollUp'
                     if (paginationType !== '' && paginationType !== 'scrollDown' && paginationType !== 'scrollUp' && paginationType !== 'none') {
                         setPaginationSelector(highlighterData.selector);
-                        notify(`info`, `Pagination element selected successfully.`);
+                        notify(`info`, t('browser_window.attribute_modal.notifications.pagination_select_success'));
                         addListStep(listSelector!, fields, currentListId || 0, { type: paginationType, selector: highlighterData.selector });
                     }
                     return;
@@ -235,7 +244,7 @@ export const BrowserWindow = () => {
 
                 if (getList === true && !listSelector) {
                     setListSelector(highlighterData.selector);
-                    notify(`info`, `List selected succesfully. Select the text data for extraction.`)
+                    notify(`info`, t('browser_window.attribute_modal.notifications.list_select_success'));
                     setCurrentListId(Date.now());
                     setFields({});
                 } else if (getList === true && listSelector && currentListId) {

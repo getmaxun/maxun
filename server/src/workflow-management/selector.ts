@@ -223,24 +223,44 @@ export const getElementInformation = async (
           if (originalEl) {
             let element = originalEl;
 
-            while (element.parentElement) {
-              const parentRect = element.parentElement.getBoundingClientRect();
-              const childRect = element.getBoundingClientRect();
+            if (element.tagName === 'TD' || element.tagName === 'TH') {
+              const tableParent = element.closest('table');
+              if (tableParent) {
+                element = tableParent;
+              }
+            }
 
-              const fullyContained =
-                parentRect.left <= childRect.left &&
-                parentRect.right >= childRect.right &&
-                parentRect.top <= childRect.top &&
-                parentRect.bottom >= childRect.bottom;
+            if (element.tagName !== 'TABLE') {
+              while (element.parentElement) {
+                if (element.tagName.toLowerCase() === 'body' || 
+                    element.tagName.toLowerCase() === 'html') {
+                  break;
+                }
 
-              const significantOverlap =
-                (childRect.width * childRect.height) /
-                (parentRect.width * parentRect.height) > 0.5;
+                const parentRect = element.parentElement.getBoundingClientRect();
+                const childRect = element.getBoundingClientRect();
 
-              if (fullyContained && significantOverlap) {
-                element = element.parentElement;
-              } else {
-                break;
+                const fullyContained =
+                  parentRect.left <= childRect.left &&
+                  parentRect.right >= childRect.right &&
+                  parentRect.top <= childRect.top &&
+                  parentRect.bottom >= childRect.bottom;
+
+                const significantOverlap =
+                  (childRect.width * childRect.height) /
+                  (parentRect.width * parentRect.height) > 0.5;
+
+                if (fullyContained && significantOverlap) {
+                  const nextParent = element.parentElement;
+                  if (nextParent.tagName.toLowerCase() !== 'body' && 
+                      nextParent.tagName.toLowerCase() !== 'html') {
+                    element = nextParent;
+                  } else {
+                    break;
+                  }
+                } else {
+                  break;
+                }
               }
             }
     
@@ -512,24 +532,44 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
           if (originalEl) {
             let element = originalEl;
 
-            while (element.parentElement) {
-              const parentRect = element.parentElement.getBoundingClientRect();
-              const childRect = element.getBoundingClientRect();
+            if (element.tagName === 'TD' || element.tagName === 'TH') {
+              const tableParent = element.closest('table');
+              if (tableParent) {
+                element = tableParent;
+              }
+            }
 
-              const fullyContained =
-                parentRect.left <= childRect.left &&
-                parentRect.right >= childRect.right &&
-                parentRect.top <= childRect.top &&
-                parentRect.bottom >= childRect.bottom;
+            if (element.tagName !== 'TABLE') {
+              while (element.parentElement) {
+                if (element.tagName.toLowerCase() === 'body' || 
+                    element.tagName.toLowerCase() === 'html') {
+                  break;
+                }
 
-              const significantOverlap =
-                (childRect.width * childRect.height) /
-                (parentRect.width * parentRect.height) > 0.5;
+                const parentRect = element.parentElement.getBoundingClientRect();
+                const childRect = element.getBoundingClientRect();
 
-              if (fullyContained && significantOverlap) {
-                element = element.parentElement;
-              } else {
-                break;
+                const fullyContained =
+                  parentRect.left <= childRect.left &&
+                  parentRect.right >= childRect.right &&
+                  parentRect.top <= childRect.top &&
+                  parentRect.bottom >= childRect.bottom;
+
+                const significantOverlap =
+                  (childRect.width * childRect.height) /
+                  (parentRect.width * parentRect.height) > 0.5;
+
+                if (fullyContained && significantOverlap) {
+                  const nextParent = element.parentElement;
+                  if (nextParent.tagName.toLowerCase() !== 'body' && 
+                      nextParent.tagName.toLowerCase() !== 'html') {
+                    element = nextParent;
+                  } else {
+                    break;
+                  }
+                } else {
+                  break;
+                }
               }
             }
 
@@ -1386,6 +1426,13 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
         function getNonUniqueSelector(element: HTMLElement): string {
           let selector = element.tagName.toLowerCase();
 
+          if (selector === 'td' && element.parentElement) {
+            // Find position among td siblings
+            const siblings = Array.from(element.parentElement.children);
+            const position = siblings.indexOf(element) + 1;
+            return `${selector}:nth-child(${position})`;
+          }
+
           if (element.className) {
             const classes = element.className.split(/\s+/).filter((cls: string) => Boolean(cls));
             if (classes.length > 0) {
@@ -1474,25 +1521,45 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
 
         let element = originalEl;
 
+        if (element.tagName === 'TD' || element.tagName === 'TH') {
+          const tableParent = element.closest('table');
+          if (tableParent) {
+            element = tableParent;
+          }
+        }
+
         // if (listSelector === '') {
-        while (element.parentElement) {
-          const parentRect = element.parentElement.getBoundingClientRect();
-          const childRect = element.getBoundingClientRect();
+        if (element.tagName !== 'TABLE') {
+          while (element.parentElement) {
+            if (element.tagName.toLowerCase() === 'body' || 
+                element.tagName.toLowerCase() === 'html') {
+              break;
+            }
 
-          const fullyContained =
-            parentRect.left <= childRect.left &&
-            parentRect.right >= childRect.right &&
-            parentRect.top <= childRect.top &&
-            parentRect.bottom >= childRect.bottom;
+            const parentRect = element.parentElement.getBoundingClientRect();
+            const childRect = element.getBoundingClientRect();
 
-          const significantOverlap =
-            (childRect.width * childRect.height) /
-            (parentRect.width * parentRect.height) > 0.5;
+            const fullyContained =
+              parentRect.left <= childRect.left &&
+              parentRect.right >= childRect.right &&
+              parentRect.top <= childRect.top &&
+              parentRect.bottom >= childRect.bottom;
 
-          if (fullyContained && significantOverlap) {
-            element = element.parentElement;
-          } else {
-            break;
+            const significantOverlap =
+              (childRect.width * childRect.height) /
+              (parentRect.width * parentRect.height) > 0.5;
+
+            if (fullyContained && significantOverlap) {
+              const nextParent = element.parentElement;
+              if (nextParent.tagName.toLowerCase() !== 'body' && 
+                  nextParent.tagName.toLowerCase() !== 'html') {
+                element = nextParent;
+              } else {
+                break;
+              }
+            } else {
+              break;
+            }
           }
         }
         // }
@@ -1504,7 +1571,6 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
       }, coordinates);
       return selectors || { generalSelector: '' };
     } else {
-      console.log(`NON UNIQUE: MODE 2`)
       const selectors = await page.evaluate(({ x, y }: { x: number, y: number }) => {
         const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
           // First, get the element at the specified coordinates in the main document
@@ -1554,6 +1620,12 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
 
         function getNonUniqueSelector(element: HTMLElement): string {
           let selector = element.tagName.toLowerCase();
+
+          if (selector === 'td' && element.parentElement) {
+            const siblings = Array.from(element.parentElement.children);
+            const position = siblings.indexOf(element) + 1;
+            return `${selector}:nth-child(${position})`;
+          }
 
           if (element.className) {
             const classes = element.className.split(/\s+/).filter((cls: string) => Boolean(cls));
@@ -1663,6 +1735,12 @@ export const getChildSelectors = async (page: Page, parentSelector: string): Pro
       // Function to get a non-unique selector based on tag and class (if present)
       function getNonUniqueSelector(element: HTMLElement): string {
         let selector = element.tagName.toLowerCase();
+
+        if (selector === 'td' && element.parentElement) {
+          const siblings = Array.from(element.parentElement.children);
+          const position = siblings.indexOf(element) + 1;
+          return `${selector}:nth-child(${position})`;
+        }
 
         const className = typeof element.className === 'string' ? element.className : '';
         if (className) {

@@ -712,7 +712,6 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
     return scrapedData;
   };
 
-
   /**
  * Gets all children of the elements matching the listSelector,
  * returning their CSS selectors and innerText.

@@ -7,6 +7,7 @@ import { useGlobalInfoStore } from "../../context/globalInfo";
 import { GenericModal } from "../atoms/GenericModal";
 import { WhereWhatPair } from "maxun-core";
 import HelpIcon from '@mui/icons-material/Help';
+import { useTranslation } from "react-i18next";
 
 interface InterpretationButtonsProps {
   enableStepping: (isPaused: boolean) => void;
@@ -23,6 +24,7 @@ const interpretationInfo: InterpretationInfo = {
 };
 
 export const InterpretationButtons = ({ enableStepping }: InterpretationButtonsProps) => {
+  const { t } = useTranslation();
   const [info, setInfo] = useState<InterpretationInfo>(interpretationInfo);
   const [decisionModal, setDecisionModal] = useState<{
     pair: WhereWhatPair | null,
@@ -44,9 +46,9 @@ export const InterpretationButtons = ({ enableStepping }: InterpretationButtonsP
 
   const breakpointHitHandler = useCallback(() => {
     setInfo({ running: false, isPaused: true });
-    notify('warning', 'Please restart the interpretation after updating the recording');
+    notify('warning', t('interpretation_buttons.messages.restart_required'));
     enableStepping(true);
-  }, [enableStepping]);
+  }, [enableStepping, t]);
 
   const decisionHandler = useCallback(
     ({ pair, actionType, lastData }: { pair: WhereWhatPair | null, actionType: string, lastData: { selector: string, action: string, tagName: string, innerText: string } }) => {
@@ -73,11 +75,12 @@ export const InterpretationButtons = ({ enableStepping }: InterpretationButtonsP
       return (
         <>
           <Typography>
-            Do you want to use your previous selection as a condition for performing this action?
+            {t('interpretation_buttons.modal.use_previous')}
           </Typography>
           <Box style={{ marginTop: '4px' }}>
             <Typography>
-              Your previous action was: <b>{decisionModal.action}</b>, on an element with text <b>{decisionModal.innerText}</b>
+              {t('interpretation_buttons.modal.previous_action')} <b>{decisionModal.action}</b>, 
+              {t('interpretation_buttons.modal.element_text')} <b>{decisionModal.innerText}</b>
             </Typography>
           </Box>
         </>
@@ -105,9 +108,9 @@ export const InterpretationButtons = ({ enableStepping }: InterpretationButtonsP
       const finished = await interpretCurrentRecording();
       setInfo({ ...info, running: false });
       if (finished) {
-        notify('info', 'Run finished');
+        notify('info', t('interpretation_buttons.messages.run_finished'));
       } else {
-        notify('error', 'Run failed to start');
+        notify('error', t('interpretation_buttons.messages.run_failed'));
       }
     }
   };
@@ -139,9 +142,12 @@ export const InterpretationButtons = ({ enableStepping }: InterpretationButtonsP
         disabled={info.running}
         sx={{ display: 'grid' }}
       >
-        {info.running ? <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <CircularProgress size={22} color="inherit" sx={{ marginRight: '10px' }} /> Extracting data...please wait for 10secs to 1min
-        </Box> : 'Get Preview of Output Data'}
+        {info.running ? (
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <CircularProgress size={22} color="inherit" sx={{ marginRight: '10px' }} />
+            {t('interpretation_buttons.messages.extracting')}
+          </Box>
+        ) : t('interpretation_buttons.buttons.preview')}
       </Button>
       <GenericModal
         onClose={() => { }}
@@ -166,8 +172,12 @@ export const InterpretationButtons = ({ enableStepping }: InterpretationButtonsP
           <HelpIcon />
           {handleDescription()}
           <div style={{ float: 'right' }}>
-            <Button onClick={() => handleDecision(true)} color='success'>Yes</Button>
-            <Button onClick={() => handleDecision(false)} color='error'>No</Button>
+            <Button onClick={() => handleDecision(true)} color='success'>
+              {t('interpretation_buttons.buttons.yes')}
+            </Button>
+            <Button onClick={() => handleDecision(false)} color='error'>
+              {t('interpretation_buttons.buttons.no')}
+            </Button>
           </div>
         </div>
       </GenericModal>

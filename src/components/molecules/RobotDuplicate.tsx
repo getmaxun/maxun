@@ -6,6 +6,7 @@ import { useGlobalInfoStore } from '../../context/globalInfo';
 import { duplicateRecording, getStoredRecording } from '../../api/storage';
 import { WhereWhatPair } from 'maxun-core';
 import { getUserById } from "../../api/auth";
+import { useTranslation } from 'react-i18next';
 
 interface RobotMeta {
     name: string;
@@ -54,6 +55,7 @@ interface RobotSettingsProps {
 }
 
 export const RobotDuplicationModal = ({ isOpen, handleStart, handleClose, initialSettings }: RobotSettingsProps) => {
+    const { t } = useTranslation();
     const [robot, setRobot] = useState<RobotSettings | null>(null);
     const [targetUrl, setTargetUrl] = useState<string | undefined>('');
     const { recordingId, notify } = useGlobalInfoStore();
@@ -65,7 +67,6 @@ export const RobotDuplicationModal = ({ isOpen, handleStart, handleClose, initia
     }, [isOpen]);
 
     useEffect(() => {
-        // Update the targetUrl when the robot data is loaded
         if (robot) {
             const lastPair = robot?.recording.workflow[robot?.recording.workflow.length - 1];
             const url = lastPair?.what.find(action => action.action === "goto")?.args?.[0];
@@ -78,14 +79,9 @@ export const RobotDuplicationModal = ({ isOpen, handleStart, handleClose, initia
             const robot = await getStoredRecording(recordingId);
             setRobot(robot);
         } else {
-            notify('error', 'Could not find robot details. Please try again.');
+            notify('error', t('robot_duplication.notifications.robot_not_found'));
         }
     }
-
-    // const lastPair = robot?.recording.workflow[robot?.recording.workflow.length - 1];
-
-    // // Find the `goto` action in `what` and retrieve its arguments
-    // const targetUrl = lastPair?.what.find(action => action.action === "goto")?.args?.[0];
 
     const handleTargetUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setTargetUrl(e.target.value);
@@ -93,28 +89,26 @@ export const RobotDuplicationModal = ({ isOpen, handleStart, handleClose, initia
 
     const handleSave = async () => {
         if (!robot || !targetUrl) {
-            notify('error', 'Target URL is required.');
+            notify('error', t('robot_duplication.notifications.url_required'));
             return;
         }
-
-        console.log("handle save");
 
         try {
             const success = await duplicateRecording(robot.recording_meta.id, targetUrl);
 
             if (success) {
-                notify('success', 'Robot duplicated successfully.');
-                handleStart(robot); // Inform parent about the updated robot
+                notify('success', t('robot_duplication.notifications.duplicate_success'));
+                handleStart(robot);
                 handleClose(); 
 
                 setTimeout(() => {
                     window.location.reload();
                 }, 1000);
             } else {
-                notify('error', 'Failed to update the Target URL. Please try again.');
+                notify('error', t('robot_duplication.notifications.duplicate_error'));
             }
         } catch (error) {
-            notify('error', 'An error occurred while updating the Target URL.');
+            notify('error', t('robot_duplication.notifications.unknown_error'));
             console.error('Error updating Target URL:', error);
         }
     };
@@ -126,34 +120,40 @@ export const RobotDuplicationModal = ({ isOpen, handleStart, handleClose, initia
             modalStyle={modalStyle}
         >
             <>
-                <Typography variant="h5" style={{ marginBottom: '20px' }}>Duplicate Robot</Typography>
+                <Typography variant="h5" style={{ marginBottom: '20px' }}>
+                    {t('robot_duplication.title')}
+                </Typography>
                 <Box style={{ display: 'flex', flexDirection: 'column' }}>
                     {
                         robot && (
                             <>
-                                <span>Robot duplication is useful to extract data from pages with the same structure.</span>
+                                <span>
+                                    {t('robot_duplication.descriptions.purpose')}
+                                </span>
+                                <br />
+                                <span dangerouslySetInnerHTML={{
+                                    __html: t('robot_duplication.descriptions.example', {
+                                        url1: '<code>producthunt.com/topics/api</code>',
+                                        url2: '<code>producthunt.com/topics/database</code>'
+                                    })
+                                }}/>
                                 <br />
                                 <span>
-                                    Example: If you've created a robot for <code>producthunt.com/topics/api</code>, you can duplicate it to scrape similar pages 
-                                    like <code>producthunt.com/topics/database</code> without training a robot from scratch.
-                                    </span>
-                                    <br />
-                                <span>
-                                <b>⚠️ Ensure the new page has the same structure as the original page.</b>
+                                    <b>{t('robot_duplication.descriptions.warning')}</b>
                                 </span>
                                 <TextField
-                                    label="Robot Target URL"
-                                    key="Robot Target URL"
+                                    label={t('robot_duplication.fields.target_url')}
+                                    key={t('robot_duplication.fields.target_url')}
                                     value={targetUrl}
                                     onChange={handleTargetUrlChange}
                                     style={{ marginBottom: '20px', marginTop: '30px' }}
                                 />
-                                <Box mt={2} display="flex" justifyContent="flex-end" onClick={handleSave}>
-                                    <Button variant="contained" color="primary">
-                                        Duplicate Robot
+                                <Box mt={2} display="flex" justifyContent="flex-end">
+                                    <Button variant="contained" color="primary" onClick={handleSave}>
+                                        {t('robot_duplication.buttons.duplicate')}
                                     </Button>
                                     <Button onClick={handleClose} color="primary" variant="outlined" style={{ marginLeft: '10px' }}>
-                                        Cancel
+                                        {t('robot_duplication.buttons.cancel')}
                                     </Button>
                                 </Box>
                             </>

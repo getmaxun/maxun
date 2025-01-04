@@ -5,8 +5,14 @@ import { AuthContext } from "../context/auth";
 import { Box, Typography, TextField, Button, CircularProgress, Grid } from "@mui/material";
 import { useGlobalInfoStore } from "../context/globalInfo";
 import { apiUrl } from "../apiConfig";
+import { useTranslation } from 'react-i18next';
+import i18n from '../i18n';
 
 const Login = () => {
+  const { t } = useTranslation();
+  // just don't remove these logs - god knows why it's not working without them
+  console.log(i18n)
+  console.log(t)
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -40,11 +46,11 @@ const Login = () => {
         password,
       });
       dispatch({ type: "LOGIN", payload: data });
-      notify("success", "Welcome to Maxun!");
+      notify("success", t('login.welcome_notification'));
       window.localStorage.setItem("user", JSON.stringify(data));
       navigate("/");
     } catch (err) {
-      notify("error", "Login Failed. Please try again.");
+      notify("error", t('login.error_notification'));
       setLoading(false);
     }
   };
@@ -60,74 +66,72 @@ const Login = () => {
         padding: 4,
       }}
     >
-    
-        <Box
-          component="form"
-          onSubmit={submitForm}
-          sx={{
-            textAlign: "center",
-            backgroundColor: "#ffffff",
-            padding: 6,
-            borderRadius: 5,
-            boxShadow: "0px 20px 40px rgba(0, 0, 0, 0.2), 0px -5px 10px rgba(0, 0, 0, 0.15)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            maxWidth: 400,
-            width: "100%",
-          }}
+      <Box
+        component="form"
+        onSubmit={submitForm}
+        sx={{
+          textAlign: "center",
+          backgroundColor: "#ffffff",
+          padding: 6,
+          borderRadius: 5,
+          boxShadow: "0px 20px 40px rgba(0, 0, 0, 0.2), 0px -5px 10px rgba(0, 0, 0, 0.15)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          maxWidth: 400,
+          width: "100%",
+        }}
+      >
+        <img src="../src/assets/maxunlogo.png" alt="logo" height={55} width={60} style={{ marginBottom: 20, borderRadius: "20%", alignItems: "center" }} />
+        <Typography variant="h4" gutterBottom>
+          {t('login.title')}
+        </Typography>
+        <TextField
+          fullWidth
+          label={t('login.email')}
+          name="email"
+          value={email}
+          onChange={handleChange}
+          margin="normal"
+          variant="outlined"
+          required
+        />
+        <TextField
+          fullWidth
+          label={t('login.password')}
+          name="password"
+          type="password"
+          value={password}
+          onChange={handleChange}
+          margin="normal"
+          variant="outlined"
+          required
+        />
+        <Button
+          type="submit"
+          fullWidth
+          variant="contained"
+          color="primary"
+          sx={{ mt: 2, mb: 2 }}
+          disabled={loading || !email || !password}
         >
-          <img src="../src/assets/maxunlogo.png" alt="logo" height={55} width={60} style={{ marginBottom: 20, borderRadius: "20%", alignItems: "center" }} />
-          <Typography variant="h4" gutterBottom>
-            Welcome Back!
-          </Typography>
-          <TextField
-            fullWidth
-            label="Email"
-            name="email"
-            value={email}
-            onChange={handleChange}
-            margin="normal"
-            variant="outlined"
-            required
-          />
-          <TextField
-            fullWidth
-            label="Password"
-            name="password"
-            type="password"
-            value={password}
-            onChange={handleChange}
-            margin="normal"
-            variant="outlined"
-            required
-          />
-          <Button
-            type="submit"
-            fullWidth
-            variant="contained"
-            color="primary"
-            sx={{ mt: 2, mb: 2 }}
-            disabled={loading || !email || !password}
-          >
-            {loading ? (
-              <>
-                <CircularProgress size={20} sx={{ mr: 2 }} />
-                Loading
-              </>
-            ) : (
-              "Login"
-            )}
-          </Button>
-          <Typography variant="body2" align="center">
-            Don’t have an account?{" "}
-            <Link to="/register" style={{ textDecoration: "none", color: "#ff33cc" }}>
-              Register
-            </Link>
-          </Typography>
-        </Box>
-        </Box>
-     
+          {loading ? (
+            <>
+              <CircularProgress size={20} sx={{ mr: 2 }} />
+              {t('login.loading')}
+            </>
+          ) : (
+            t('login.button')
+          )}
+        </Button>
+        <Typography variant="body2" align="center">
+          {t('login.register_prompt')}{" "}
+          <Link to="/register" style={{ textDecoration: "none", color: "#ff33cc" }}>
+            {t('login.register_link')}
+          </Link>
+        </Typography>
+      </Box>
+    </Box>
   );
 };
 
