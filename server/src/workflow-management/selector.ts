@@ -1328,10 +1328,61 @@ interface SelectorResult {
  */
 
 export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates, listSelector: string): Promise<SelectorResult> => {
+  interface IframeContext {
+    frame: HTMLIFrameElement;
+    document: Document;
+    element: HTMLElement;
+  }
+
   try {
     if (!listSelector) {
-      console.log(`NON UNIQUE: MODE 1`)
       const selectors = await page.evaluate(({ x, y }: { x: number, y: number }) => {
+        const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
+          // First, get the element at the specified coordinates in the main document
+          let element = document.elementFromPoint(x, y) as HTMLElement;
+          if (!element) return null;
+      
+          // Check if the element is an iframe
+          if (element.tagName !== 'IFRAME') return element;
+      
+          let currentIframe = element as HTMLIFrameElement;
+          let deepestElement = element;
+          let depth = 0;
+          const MAX_DEPTH = 4; // Limit the depth of nested iframes to prevent infinite loops
+      
+          while (currentIframe && depth < MAX_DEPTH) {
+            try {
+              // Convert coordinates from main document to iframe's coordinate system
+              const iframeRect = currentIframe.getBoundingClientRect();
+              const iframeX = x - iframeRect.left;
+              const iframeY = y - iframeRect.top;
+  
+              // Access the iframe's content document and get the element at the transformed coordinates
+              const iframeDoc = currentIframe.contentDocument || currentIframe.contentWindow?.document;
+              if (!iframeDoc) break;
+  
+              const iframeElement = iframeDoc.elementFromPoint(iframeX, iframeY) as HTMLElement;
+              if (!iframeElement) break;
+  
+              // If the element found is another iframe, continue traversing
+              if (iframeElement.tagName === 'IFRAME') {
+                deepestElement = iframeElement;
+                currentIframe = iframeElement as HTMLIFrameElement;
+                depth++;
+              } else {
+                // If it's not an iframe, we've found our deepest element
+                deepestElement = iframeElement;
+                break;
+              }
+            } catch (error) {
+              // Handle potential security errors when accessing cross-origin iframes
+              console.warn('Cannot access iframe content:', error);
+              break;
+            }
+          }
+          return deepestElement;
+        };
+
         function getNonUniqueSelector(element: HTMLElement): string {
           let selector = element.tagName.toLowerCase();
 
@@ -1348,22 +1399,77 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
           return selector;
         }
 
-        function getSelectorPath(element: HTMLElement | null): string {
-          const path: string[] = [];
+        function getIframePath(element: HTMLElement): IframeContext[] {
+          const path: IframeContext[] = [];
+          let current = element;
           let depth = 0;
-          const maxDepth = 2;
+          const MAX_DEPTH = 4;
+          
+          while (current && depth < MAX_DEPTH) {
+            // Get the owning document and its frame element
+            const ownerDocument = current.ownerDocument;
+            const frameElement = ownerDocument?.defaultView?.frameElement as HTMLIFrameElement;
+            
+            if (frameElement) {
+              path.unshift({
+                frame: frameElement,
+                document: ownerDocument,
+                element: current
+              });
+              current = frameElement;
+              depth++;
+            } else {
+              break;
+            }
+          }
+          return path;
+        }
 
-          while (element && element !== document.body && depth < maxDepth) {
-            const selector = getNonUniqueSelector(element);
+        function getSelectorPath(element: HTMLElement | null): string {
+          if (!element) return '';
+          
+          // Check for iframe path first
+          const iframePath = getIframePath(element);
+          if (iframePath.length > 0) {
+            const selectorParts: string[] = [];
+            
+            // Build complete iframe path
+            iframePath.forEach((context, index) => {
+              const frameSelector = getNonUniqueSelector(context.frame);
+              
+              if (index === iframePath.length - 1) {
+                // For deepest iframe context, include target element
+                const elementSelector = getNonUniqueSelector(element);
+                selectorParts.push(`${frameSelector} :>> ${elementSelector}`);
+              } else {
+                // For intermediate iframe boundaries
+                selectorParts.push(frameSelector);
+              }
+            });
+            
+            return selectorParts.join(' :>> ');
+          }
+
+          // Regular DOM path generation remains the same
+          const path: string[] = [];
+          let currentElement = element;
+          let depth = 0;
+          const MAX_DEPTH = 2;
+
+          while (currentElement && currentElement !== document.body && depth < MAX_DEPTH) {
+            const selector = getNonUniqueSelector(currentElement);
             path.unshift(selector);
-            element = element.parentElement;
+            
+            const parentElement = currentElement.parentElement;
+            if (!parentElement) break;
+            currentElement = parentElement;
             depth++;
           }
 
           return path.join(' > ');
         }
 
-        const originalEl = document.elementFromPoint(x, y) as HTMLElement;
+        const originalEl = getDeepestElementFromPoint(x, y);
         if (!originalEl) return null;
 
         let element = originalEl;
@@ -1400,6 +1506,52 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
     } else {
       console.log(`NON UNIQUE: MODE 2`)
       const selectors = await page.evaluate(({ x, y }: { x: number, y: number }) => {
+        const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
+          // First, get the element at the specified coordinates in the main document
+          let element = document.elementFromPoint(x, y) as HTMLElement;
+          if (!element) return null;
+      
+          // Check if the element is an iframe
+          if (element.tagName !== 'IFRAME') return element;
+      
+          let currentIframe = element as HTMLIFrameElement;
+          let deepestElement = element;
+          let depth = 0;
+          const MAX_DEPTH = 4; // Limit the depth of nested iframes to prevent infinite loops
+      
+          while (currentIframe && depth < MAX_DEPTH) {
+            try {
+              // Convert coordinates from main document to iframe's coordinate system
+              const iframeRect = currentIframe.getBoundingClientRect();
+              const iframeX = x - iframeRect.left;
+              const iframeY = y - iframeRect.top;
+  
+              // Access the iframe's content document and get the element at the transformed coordinates
+              const iframeDoc = currentIframe.contentDocument || currentIframe.contentWindow?.document;
+              if (!iframeDoc) break;
+  
+              const iframeElement = iframeDoc.elementFromPoint(iframeX, iframeY) as HTMLElement;
+              if (!iframeElement) break;
+  
+              // If the element found is another iframe, continue traversing
+              if (iframeElement.tagName === 'IFRAME') {
+                deepestElement = iframeElement;
+                currentIframe = iframeElement as HTMLIFrameElement;
+                depth++;
+              } else {
+                // If it's not an iframe, we've found our deepest element
+                deepestElement = iframeElement;
+                break;
+              }
+            } catch (error) {
+              // Handle potential security errors when accessing cross-origin iframes
+              console.warn('Cannot access iframe content:', error);
+              break;
+            }
+          }
+          return deepestElement;
+        };
+
         function getNonUniqueSelector(element: HTMLElement): string {
           let selector = element.tagName.toLowerCase();
 
@@ -1416,22 +1568,77 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
           return selector;
         }
 
-        function getSelectorPath(element: HTMLElement | null): string {
-          const path: string[] = [];
+        function getIframePath(element: HTMLElement): IframeContext[] {
+          const path: IframeContext[] = [];
+          let current = element;
           let depth = 0;
-          const maxDepth = 2;
+          const MAX_DEPTH = 4;
+          
+          while (current && depth < MAX_DEPTH) {
+            // Get the owning document and its frame element
+            const ownerDocument = current.ownerDocument;
+            const frameElement = ownerDocument?.defaultView?.frameElement as HTMLIFrameElement;
+            
+            if (frameElement) {
+              path.unshift({
+                frame: frameElement,
+                document: ownerDocument,
+                element: current
+              });
+              current = frameElement;
+              depth++;
+            } else {
+              break;
+            }
+          }
+          return path;
+        }
 
-          while (element && element !== document.body && depth < maxDepth) {
-            const selector = getNonUniqueSelector(element);
+        function getSelectorPath(element: HTMLElement | null): string {
+          if (!element) return '';
+          
+          // Check for iframe path first
+          const iframePath = getIframePath(element);
+          if (iframePath.length > 0) {
+            const selectorParts: string[] = [];
+            
+            // Build complete iframe path
+            iframePath.forEach((context, index) => {
+              const frameSelector = getNonUniqueSelector(context.frame);
+              
+              if (index === iframePath.length - 1) {
+                // For deepest iframe context, include target element
+                const elementSelector = getNonUniqueSelector(element);
+                selectorParts.push(`${frameSelector} :>> ${elementSelector}`);
+              } else {
+                // For intermediate iframe boundaries
+                selectorParts.push(frameSelector);
+              }
+            });
+            
+            return selectorParts.join(' :>> ');
+          }
+
+          // Regular DOM path generation remains the same
+          const path: string[] = [];
+          let currentElement = element;
+          let depth = 0;
+          const MAX_DEPTH = 2;
+
+          while (currentElement && currentElement !== document.body && depth < MAX_DEPTH) {
+            const selector = getNonUniqueSelector(currentElement);
             path.unshift(selector);
-            element = element.parentElement;
+            
+            const parentElement = currentElement.parentElement;
+            if (!parentElement) break;
+            currentElement = parentElement;
             depth++;
           }
 
           return path.join(' > ');
         }
 
-        const originalEl = document.elementFromPoint(x, y) as HTMLElement;
+        const originalEl = getDeepestElementFromPoint(x, y);
         if (!originalEl) return null;
 
         let element = originalEl;
