@@ -188,69 +188,171 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
    * @param {Object.<string, {selector: string, tag: string}>} lists The named lists of HTML elements.
    * @returns {Array.<Object.<string, string>>}
    */
-  window.scrapeSchema = function (lists) {
+  window.scrapeSchema = function(lists) {
+    // Utility functions remain the same
     function omap(object, f, kf = (x) => x) {
       return Object.fromEntries(
         Object.entries(object)
-          .map(([k, v]) => [kf(k), f(v)]),
+            .map(([k, v]) => [kf(k), f(v)]),
       );
     }
 
     function ofilter(object, f) {
       return Object.fromEntries(
         Object.entries(object)
-          .filter(([k, v]) => f(k, v)),
+            .filter(([k, v]) => f(k, v)),
       );
     }
 
+    function findAllElements(config) {
+      // Check if selector contains iframe notation (:>>)
+      if (!config.selector.includes(':>>')) {
+          return Array.from(document.querySelectorAll(config.selector));
+      }
+  
+      // For iframe traversal, split by iframe boundary marker
+      const parts = config.selector.split(':>>').map(s => s.trim());
+      let currentElements = [document];
+      
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        const nextElements = [];
+          
+        for (const element of currentElements) {
+          try {
+            let targets;
+            if (i === 0) {
+                // First selector is queried from main document
+                targets = Array.from(element.querySelectorAll(part))
+                    .filter(el => {
+                        // Only include iframes if not the last part
+                        if (i === parts.length - 1) return true;
+                        return el.tagName === 'IFRAME';
+                    });
+            } else {
+                // For subsequent selectors, we need to look inside iframes
+                const iframeDocument = element.contentDocument || element.contentWindow?.document;
+                if (!iframeDocument) continue;
+                
+                targets = Array.from(iframeDocument.querySelectorAll(part));
+                
+                // If this isn't the last part, filter for iframes only
+                if (i < parts.length - 1) {
+                    targets = targets.filter(el => el.tagName === 'IFRAME');
+                }
+            }
+            nextElements.push(...targets);
+          } catch (error) {
+            // Handle cross-origin iframe access errors
+            console.warn('Cannot access iframe content:', error);
+            continue;
+          }
+        }
+          
+        if (nextElements.length === 0) return [];
+        currentElements = nextElements;
+      }
+  
+      return currentElements;
+    }
+
+    // Modified to handle iframe context for URL resolution
+    function getElementValue(element, attribute) {
+      if (!element) return null;
+  
+      // Get the base URL for resolving relative URLs
+      const baseURL = element.ownerDocument?.location?.href || window.location.origin;
+  
+      switch (attribute) {
+        case 'href': {
+            const relativeHref = element.getAttribute('href');
+            return relativeHref ? new URL(relativeHref, baseURL).href : null;
+        }
+        case 'src': {
+            const relativeSrc = element.getAttribute('src');
+            return relativeSrc ? new URL(relativeSrc, baseURL).href : null;
+        }
+        case 'innerText':
+            return element.innerText?.trim();
+        case 'textContent':
+            return element.textContent?.trim();
+        default:
+            return element.getAttribute(attribute) || element.innerText?.trim();
+      }
+    }
+
+    // Rest of the functions remain largely the same
     function getSeedKey(listObj) {
-      const maxLength = Math.max(...Object.values(omap(listObj, (x) => document.querySelectorAll(x.selector).length)));
-      return Object.keys(ofilter(listObj, (_, v) => document.querySelectorAll(v.selector).length === maxLength))[0];
+      const maxLength = Math.max(...Object.values(
+          omap(listObj, (x) => findAllElements(x).length)
+      ));
+      return Object.keys(
+          ofilter(listObj, (_, v) => findAllElements(v).length === maxLength)
+      )[0];
     }
 
     function getMBEs(elements) {
       return elements.map((element) => {
-        let candidate = element;
-        const isUniqueChild = (e) => elements
-          .filter((elem) => e.parentNode?.contains(elem))
-          .length === 1;
+          let candidate = element;
+          const isUniqueChild = (e) => elements
+              .filter((elem) => {
+                  // Handle iframe boundaries when checking containment
+                  const sameDocument = elem.ownerDocument === e.ownerDocument;
+                  return sameDocument && e.parentNode?.contains(elem);
+              })
+              .length === 1;
 
-        while (candidate && isUniqueChild(candidate)) {
-          candidate = candidate.parentNode;
-        }
+          while (candidate && isUniqueChild(candidate)) {
+              candidate = candidate.parentNode;
+          }
 
-        return candidate;
+          return candidate;
       });
     }
 
+    // Main scraping logic remains the same
     const seedName = getSeedKey(lists);
-    const seedElements = Array.from(document.querySelectorAll(lists[seedName].selector));
+    const seedElements = findAllElements(lists[seedName]);
     const MBEs = getMBEs(seedElements);
-
-    return MBEs.map((mbe) => omap(
-      lists,
-      ({ selector, attribute }, key) => {
-        const elem = Array.from(document.querySelectorAll(selector)).find((elem) => mbe.contains(elem));
-        if (!elem) return undefined;
-
-        switch (attribute) {
-          case 'href':
-            const relativeHref = elem.getAttribute('href');
-            return relativeHref ? new URL(relativeHref, window.location.origin).href : null;
-          case 'src':
-            const relativeSrc = elem.getAttribute('src');
-            return relativeSrc ? new URL(relativeSrc, window.location.origin).href : null;
-          case 'innerText':
-            return elem.innerText;
-          case 'textContent':
-            return elem.textContent;
-          default:
-            return elem.innerText;
-        }
-      },
-      (key) => key // Use the original key in the output
+    
+    const mbeResults = MBEs.map((mbe) => omap(
+        lists,
+        (config) => {
+            const elem = findAllElements(config)
+                .find((elem) => mbe.contains(elem));
+            
+            return elem ? getElementValue(elem, config.attribute) : undefined;
+        },
+        (key) => key
     )) || [];
-  }
+
+    // If MBE approach didn't find all elements, try independent scraping
+    if (mbeResults.some(result => Object.values(result).some(v => v === undefined))) {
+        // Fall back to independent scraping
+        const results = [];
+        const foundElements = new Map();
+
+        // Find all elements for each selector
+        Object.entries(lists).forEach(([key, config]) => {
+            const elements = findAllElements(config);
+            foundElements.set(key, elements);
+        });
+
+        // Create result objects for each found element
+        foundElements.forEach((elements, key) => {
+            elements.forEach((element, index) => {
+                if (!results[index]) {
+                    results[index] = {};
+                }
+                results[index][key] = getElementValue(element, lists[key].attribute);
+            });
+        });
+
+        return results.filter(result => Object.keys(result).length > 0);
+    }
+
+    return mbeResults;
+  };
 
   /**
  * Scrapes multiple lists of similar items based on a template item.
