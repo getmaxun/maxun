@@ -351,189 +351,167 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
     if (!getList || listSelector !== '') {
       const rect = await page.evaluate(
         async ({ x, y }) => {
-          // Helper function to convert rectangle to plain object
-          const getRectangleInfo = (rectangle: DOMRect) => {
-            const info = {
-              x: rectangle.x,
-              y: rectangle.y,
-              width: rectangle.width,
-              height: rectangle.height,
-              top: rectangle.top,
-              right: rectangle.right,
-              bottom: rectangle.bottom,
-              left: rectangle.left,
-              fromIframe: false,
-              iframePath: [] as string[]
-            };
-            return info;
-          };
+          // Enhanced helper function to get element from point including iframes
+          const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
+            // First, get the element at the clicked coordinates in the main document
+            let element = document.elementFromPoint(x, y) as HTMLElement;
+            if (!element) return null;
 
-          // Helper function to search in iframe
-          const searchInIframe = (
-            iframe: HTMLIFrameElement,
-            relativeX: number,
-            relativeY: number,
-            iframePath: string[]
-          ) => {
-            try {
-              if (!iframe.contentDocument) return null;
+            // If it's not an iframe, return the element as is
+            if (element.tagName !== 'IFRAME') return element;
 
-              const el = iframe.contentDocument.elementFromPoint(relativeX, relativeY) as HTMLElement;
-              if (!el) return null;
+            // Initialize tracking variables for iframe traversal
+            let currentIframe = element as HTMLIFrameElement;
+            let deepestElement = element;
 
-              const { parentElement } = el;
-              const element = parentElement?.tagName === 'A' ? parentElement : el;
-              const rectangle = element?.getBoundingClientRect();
+            // Continue traversing while we have a valid iframe
+            while (currentIframe) {
+              try {
+                // Convert coordinates from main document space to iframe's local space
+                const iframeRect = currentIframe.getBoundingClientRect();
+                const iframeX = x - iframeRect.left;
+                const iframeY = y - iframeRect.top;
 
-              if (rectangle) {
-                const iframeRect = iframe.getBoundingClientRect();
-                const rectInfo = getRectangleInfo(rectangle);
+                // Get the iframe's document object
+                const iframeDocument = currentIframe.contentDocument || currentIframe.contentWindow?.document;
+                if (!iframeDocument) break;
 
-                // Adjust coordinates relative to the main document
-                rectInfo.x += iframeRect.x;
-                rectInfo.y += iframeRect.y;
-                rectInfo.top += iframeRect.top;
-                rectInfo.right += iframeRect.left;
-                rectInfo.bottom += iframeRect.top;
-                rectInfo.left += iframeRect.left;
-                rectInfo.fromIframe = true;
-                rectInfo.iframePath = iframePath;
+                // Find the element at the transformed coordinates within the iframe
+                const iframeElement = iframeDocument.elementFromPoint(iframeX, iframeY) as HTMLElement;
+                if (!iframeElement) break;
 
-                return rectInfo;
+                // Update our tracking of the deepest element
+                deepestElement = iframeElement;
+
+                // If we found another iframe, continue traversing through it
+                if (iframeElement.tagName === 'IFRAME') {
+                  currentIframe = iframeElement as HTMLIFrameElement;
+                } else {
+                  break;
+                }
+              } catch (error) {
+                // Handle potential cross-origin security restrictions
+                console.warn('Cannot access iframe content:', error);
+                break;
               }
-              return null;
-            } catch (e) {
-              console.warn('Cannot access iframe content:', e);
-              return null;
             }
+            return deepestElement;
           };
 
-          const el = document.elementFromPoint(x, y) as HTMLElement;
+          const el = getDeepestElementFromPoint(x, y);
           if (el) {
-            // Check if the element is an iframe
-            if (el.tagName === 'IFRAME') {
-              const iframe = el as HTMLIFrameElement;
-              const rect = iframe.getBoundingClientRect();
-              const relativeX = x - rect.left;
-              const relativeY = y - rect.top;
-
-              const iframeResult = searchInIframe(
-                iframe,
-                relativeX,
-                relativeY,
-                [iframe.id || 'unnamed-iframe']
-              );
-              if (iframeResult) return iframeResult;
-            }
-
             const { parentElement } = el;
             const element = parentElement?.tagName === 'A' ? parentElement : el;
             const rectangle = element?.getBoundingClientRect();
-
             if (rectangle) {
-              return getRectangleInfo(rectangle);
+              const createRectObject = (rect: DOMRect) => ({
+                x: rect.x,
+                y: rect.y,
+                width: rect.width,
+                height: rect.height,
+                top: rect.top,
+                right: rect.right,
+                bottom: rect.bottom,
+                left: rect.left,
+                toJSON() {
+                  return {
+                    x: this.x,
+                    y: this.y,
+                    width: this.width,
+                    height: this.height,
+                    top: this.top,
+                    right: this.right,
+                    bottom: this.bottom,
+                    left: this.left
+                  };
+                }
+              });
+
+              // For elements inside iframes, adjust coordinates relative to the top window
+              let adjustedRect = createRectObject(rectangle);
+              let currentWindow = element.ownerDocument.defaultView;
+              
+              while (currentWindow !== window.top) {
+                const frameElement = currentWindow?.frameElement as HTMLIFrameElement;
+                if (!frameElement) break;
+                
+                const frameRect = frameElement.getBoundingClientRect();
+                adjustedRect = createRectObject({
+                  x: adjustedRect.x + frameRect.x,
+                  y: adjustedRect.y + frameRect.y,
+                  width: adjustedRect.width,
+                  height: adjustedRect.height,
+                  top: adjustedRect.top + frameRect.top,
+                  right: adjustedRect.right + frameRect.left,
+                  bottom: adjustedRect.bottom + frameRect.top,
+                  left: adjustedRect.left + frameRect.left,
+                } as DOMRect);
+                
+                currentWindow = frameElement.ownerDocument.defaultView;
+              }
+              
+              return adjustedRect;
             }
           }
           return null;
         },
-        { x: coordinates.x, y: coordinates.y },
+        { x: coordinates.x, y: coordinates.y }
       );
       return rect;
     } else {
       const rect = await page.evaluate(
         async ({ x, y }) => {
-          // Helper function to convert rectangle to plain object (same as above)
-          const getRectangleInfo = (rectangle: DOMRect) => ({
-            x: rectangle.x,
-            y: rectangle.y,
-            width: rectangle.width,
-            height: rectangle.height,
-            top: rectangle.top,
-            right: rectangle.right,
-            bottom: rectangle.bottom,
-            left: rectangle.left,
-            fromIframe: false,
-            iframePath: [] as string[]
-          });
+          // Same getDeepestElementFromPoint function as above
+          const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
+            // First, get the element at the clicked coordinates in the main document
+            let element = document.elementFromPoint(x, y) as HTMLElement;
+            if (!element) return null;
 
-          // Helper function to search in iframe (same as above)
-          const searchInIframe = (
-            iframe: HTMLIFrameElement,
-            relativeX: number,
-            relativeY: number,
-            iframePath: string[]
-          ) => {
-            try {
-              if (!iframe.contentDocument) return null;
+            // If it's not an iframe, return the element as is
+            if (element.tagName !== 'IFRAME') return element;
 
-              const el = iframe.contentDocument.elementFromPoint(relativeX, relativeY) as HTMLElement;
-              if (!el) return null;
+            // Initialize tracking variables for iframe traversal
+            let currentIframe = element as HTMLIFrameElement;
+            let deepestElement = element;
 
-              let element = el;
-              while (element.parentElement) {
-                const parentRect = element.parentElement.getBoundingClientRect();
-                const childRect = element.getBoundingClientRect();
+            // Continue traversing while we have a valid iframe
+            while (currentIframe) {
+              try {
+                // Convert coordinates from main document space to iframe's local space
+                const iframeRect = currentIframe.getBoundingClientRect();
+                const iframeX = x - iframeRect.left;
+                const iframeY = y - iframeRect.top;
 
-                const fullyContained =
-                  parentRect.left <= childRect.left &&
-                  parentRect.right >= childRect.right &&
-                  parentRect.top <= childRect.top &&
-                  parentRect.bottom >= childRect.bottom;
+                // Get the iframe's document object
+                const iframeDocument = currentIframe.contentDocument || currentIframe.contentWindow?.document;
+                if (!iframeDocument) break;
 
-                const significantOverlap =
-                  (childRect.width * childRect.height) /
-                  (parentRect.width * parentRect.height) > 0.5;
+                // Find the element at the transformed coordinates within the iframe
+                const iframeElement = iframeDocument.elementFromPoint(iframeX, iframeY) as HTMLElement;
+                if (!iframeElement) break;
 
-                if (fullyContained && significantOverlap) {
-                  element = element.parentElement;
+                // Update our tracking of the deepest element
+                deepestElement = iframeElement;
+
+                // If we found another iframe, continue traversing through it
+                if (iframeElement.tagName === 'IFRAME') {
+                  currentIframe = iframeElement as HTMLIFrameElement;
                 } else {
                   break;
                 }
+              } catch (error) {
+                // Handle potential cross-origin security restrictions
+                console.warn('Cannot access iframe content:', error);
+                break;
               }
-
-              const rectangle = element?.getBoundingClientRect();
-              if (rectangle) {
-                const iframeRect = iframe.getBoundingClientRect();
-                const rectInfo = getRectangleInfo(rectangle);
-
-                // Adjust coordinates relative to the main document
-                rectInfo.x += iframeRect.x;
-                rectInfo.y += iframeRect.y;
-                rectInfo.top += iframeRect.top;
-                rectInfo.right += iframeRect.left;
-                rectInfo.bottom += iframeRect.top;
-                rectInfo.left += iframeRect.left;
-                rectInfo.fromIframe = true;
-                rectInfo.iframePath = iframePath;
-
-                return rectInfo;
-              }
-              return null;
-            } catch (e) {
-              console.warn('Cannot access iframe content:', e);
-              return null;
             }
+            return deepestElement;
           };
 
-          const originalEl = document.elementFromPoint(x, y) as HTMLElement;
+          const originalEl = getDeepestElementFromPoint(x, y);
           if (originalEl) {
-            // Check if the element is an iframe
-            if (originalEl.tagName === 'IFRAME') {
-              const iframe = originalEl as HTMLIFrameElement;
-              const rect = iframe.getBoundingClientRect();
-              const relativeX = x - rect.left;
-              const relativeY = y - rect.top;
-
-              const iframeResult = searchInIframe(
-                iframe,
-                relativeX,
-                relativeY,
-                [iframe.id || 'unnamed-iframe']
-              );
-              if (iframeResult) return iframeResult;
-            }
-
             let element = originalEl;
+
             while (element.parentElement) {
               const parentRect = element.parentElement.getBoundingClientRect();
               const childRect = element.getBoundingClientRect();
@@ -557,19 +535,65 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
 
             const rectangle = element?.getBoundingClientRect();
             if (rectangle) {
-              return getRectangleInfo(rectangle);
+              const createRectObject = (rect: DOMRect) => ({
+                x: rect.x,
+                y: rect.y,
+                width: rect.width,
+                height: rect.height,
+                top: rect.top,
+                right: rect.right,
+                bottom: rect.bottom,
+                left: rect.left,
+                toJSON() {
+                  return {
+                    x: this.x,
+                    y: this.y,
+                    width: this.width,
+                    height: this.height,
+                    top: this.top,
+                    right: this.right,
+                    bottom: this.bottom,
+                    left: this.left
+                  };
+                }
+              });
+
+              // Same coordinate adjustment for iframe elements as above
+              let adjustedRect = createRectObject(rectangle);
+              let currentWindow = element.ownerDocument.defaultView;
+              
+              while (currentWindow !== window.top) {
+                const frameElement = currentWindow?.frameElement as HTMLIFrameElement;
+                if (!frameElement) break;
+                
+                const frameRect = frameElement.getBoundingClientRect();
+                adjustedRect = createRectObject({
+                  x: adjustedRect.x + frameRect.x,
+                  y: adjustedRect.y + frameRect.y,
+                  width: adjustedRect.width,
+                  height: adjustedRect.height,
+                  top: adjustedRect.top + frameRect.top,
+                  right: adjustedRect.right + frameRect.left,
+                  bottom: adjustedRect.bottom + frameRect.top,
+                  left: adjustedRect.left + frameRect.left,
+                } as DOMRect);
+                
+                currentWindow = frameElement.ownerDocument.defaultView;
+              }
+              
+              return adjustedRect;
             }
           }
           return null;
         },
-        { x: coordinates.x, y: coordinates.y },
+        { x: coordinates.x, y: coordinates.y }
       );
       return rect;
     }
   } catch (error) {
     const { message, stack } = error as Error;
-    logger.log('error', `Error while retrieving selector: ${message}`);
-    logger.log('error', `Stack: ${stack}`);
+    console.error('Error while retrieving selector:', message);
+    console.error('Stack:', stack);
   }
 };
 
