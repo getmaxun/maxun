@@ -62,6 +62,8 @@ export class WorkflowGenerator {
    */
   private getList: boolean = false;
 
+  private paginationMode: boolean = false;
+
   private listSelector: string = '';
 
   /**
@@ -119,6 +121,9 @@ export class WorkflowGenerator {
     });
     this.socket.on('listSelector', (data: { selector: string }) => {
       this.listSelector = data.selector;
+    })
+    this.socket.on('setPaginationMode', (data: { paginationMode: boolean }) => {
+      this.paginationMode = data.paginationMode;
     })
   }
 
@@ -703,6 +708,25 @@ export class WorkflowGenerator {
       ? await getNonUniqueSelectors(page, coordinates, this.listSelector)
       : await getSelectors(page, coordinates);
 
+    if (this.paginationMode) {
+      if (selectorBasedOnCustomAction.hrefSelector) {
+        // Look for pagination-specific parameters that would make the selector unreliable
+        const isOverlySpecific = (
+            selectorBasedOnCustomAction.hrefSelector.includes('page=') ||
+            selectorBasedOnCustomAction.hrefSelector.includes('offset=') ||
+            selectorBasedOnCustomAction.hrefSelector.includes('start=') ||
+            /p=\d+/.test(selectorBasedOnCustomAction.hrefSelector)
+        );
+
+        // If the href selector is too specific for pagination, try the other selector
+        if (isOverlySpecific) {
+            selectorBasedOnCustomAction.hrefSelector = null;
+            selectorBasedOnCustomAction.accessibilitySelector = null;
+            selectorBasedOnCustomAction.generalSelector = null;
+        }
+      }
+    }
+
     const bestSelector = getBestSelectorForAction(
       {
         type: action,
@@ -715,6 +739,7 @@ export class WorkflowGenerator {
         hasOnlyText: elementInfo?.hasOnlyText || false,
       } as Action,
     );
+
     return bestSelector;
   }
 
