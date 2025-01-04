@@ -148,7 +148,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                             <>
                                 <TextField
                                     label={t('robot_edit.change_name')}
-                                    key="Change Robot Name"
+                                    key="Robot Name"
                                     type='text'
                                     value={robot.recording_meta.name}
                                     onChange={(e) => handleRobotNameChange(e.target.value)}
@@ -170,8 +170,8 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                                     />
                                 )}
 
-                                <Box mt={2} display="flex" justifyContent="flex-end" onClick={handleSave}>
-                                    <Button variant="contained" color="primary">
+                                <Box mt={2} display="flex" justifyContent="flex-end">
+                                    <Button variant="contained" color="primary" onClick={handleSave}>
                                         {t('robot_edit.save')}
                                     </Button>
                                     <Button 
