@@ -16,6 +16,7 @@ import { WorkflowGenerator } from "../../workflow-management/classes/Generator";
 import { WorkflowInterpreter } from "../../workflow-management/classes/Interpreter";
 import { getDecryptedProxyConfig } from '../../routes/proxy';
 import { getInjectableScript } from 'idcac-playwright';
+import { BackendPerformanceMonitor } from '../../../../perf/performance'
 chromium.use(stealthPlugin());
 
 
@@ -78,6 +79,17 @@ export class RemoteBrowser {
      */
     public interpreter: WorkflowInterpreter;
 
+    private performanceMonitor: BackendPerformanceMonitor;
+
+    private startPerformanceReporting() {
+        setInterval(() => {
+            const report = this.performanceMonitor.getPerformanceReport();
+            
+            console.log('Backend Performance Report:', report);
+            
+        }, 5000);
+    }
+
     /**
      * Initializes a new instances of the {@link Generator} and {@link WorkflowInterpreter} classes and
      * assigns the socket instance everywhere.
@@ -88,6 +100,8 @@ export class RemoteBrowser {
         this.socket = socket;
         this.interpreter = new WorkflowInterpreter(socket);
         this.generator = new WorkflowGenerator(socket);
+        this.performanceMonitor = new BackendPerformanceMonitor();
+        this.startPerformanceReporting();
     }
 
     /**
@@ -519,8 +533,10 @@ export class RemoteBrowser {
      * @returns void
      */
     private emitScreenshot = (payload: any): void => {
-        const dataWithMimeType = ('data:image/jpeg;base64,').concat(payload);
-        this.socket.emit('screencast', dataWithMimeType);
-        logger.log('debug', `Screenshot emitted`);
+        this.performanceMonitor.measureEmitPerformance(() => {
+            const dataWithMimeType = ('data:image/jpeg;base64,').concat(payload);
+            this.socket.emit('screencast', dataWithMimeType);
+            logger.log('debug', `Screenshot emitted`);
+        });
     };
 }
