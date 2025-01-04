@@ -680,11 +680,25 @@ export default class Interpreter extends EventEmitter {
     return workflow;
   }
 
+  private removeSpecialSelectors(workflow: Workflow) {
+    for (let actionId = workflow.length - 1; actionId >= 0; actionId--) {
+        const step = workflow[actionId];
+        
+        if (step.where && Array.isArray(step.where.selectors)) {
+            // Filter out if selector has EITHER ":>>" OR ">>"
+            step.where.selectors = step.where.selectors.filter(selector => 
+                !(selector.includes(':>>') || selector.includes('>>'))
+            );
+        }
+    }
+
+    return workflow;
+  }
+
   private async runLoop(p: Page, workflow: Workflow) {
     let workflowCopy: Workflow = JSON.parse(JSON.stringify(workflow));
 
-    // remove shadow selectors
-    workflowCopy = this.removeShadowSelectors(workflowCopy);
+    workflowCopy = this.removeSpecialSelectors(workflowCopy);
 
     // apply ad-blocker to the current page
     try {

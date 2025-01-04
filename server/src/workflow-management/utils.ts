@@ -13,6 +13,10 @@ export const getBestSelectorForAction = (action: Action) => {
     case ActionType.DragAndDrop: {
       const selectors = action.selectors;
 
+
+      if (selectors?.iframeSelector?.full) {
+        return selectors.iframeSelector.full;
+
       if (selectors?.shadowSelector?.full) {
         return selectors.shadowSelector.full;
       }

@@ -129,6 +129,12 @@ export interface BaseActionInfo {
     hasOnlyText: boolean;
 }
 
+
+interface IframeSelector {
+    full: string;
+    isIframe: boolean;
+}
+
 interface ShadowSelector {
     full: string;
     mode: string;
@@ -148,7 +154,8 @@ export interface Selectors {
     hrefSelector: string|null;
     accessibilitySelector: string|null;
     formSelector: string|null;
-    shadowSelector: ShadowSelector | null;
+    iframeSelector: IframeSelector|null;
+    shadowSelector: ShadowSelector|null;
 }
 
 /**
