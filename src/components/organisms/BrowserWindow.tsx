@@ -12,6 +12,7 @@ import { useGlobalInfoStore } from '../../context/globalInfo';
 interface ElementInfo {
     tagName: string;
     hasOnlyText?: boolean;
+    isIframeContent?: boolean;
     innerText?: string;
     url?: string;
     imageUrl?: string;
@@ -115,31 +116,57 @@ export const BrowserWindow = () => {
     }, [screenShot, canvasRef, socket, screencastHandler]);
 
     const highlighterHandler = useCallback((data: { rect: DOMRect, selector: string, elementInfo: ElementInfo | null, childSelectors?: string[] }) => {
+        console.log("LIST SELECTOR", listSelector);
+        console.log("DATA SELECTOR", data.selector);
+        console.log("CHILD SELECTORS", data.childSelectors);
         if (getList === true) {
             if (listSelector) {
                 socket?.emit('listSelector', { selector: listSelector });
+                const hasValidChildSelectors = Array.isArray(data.childSelectors) && data.childSelectors.length > 0;
+                
                 if (limitMode) {
                     setHighlighterData(null);
                 } else if (paginationMode) {
-                    // only set highlighterData if type is not empty, 'none', 'scrollDown', or 'scrollUp'
+                    // Only set highlighterData if type is not empty, 'none', 'scrollDown', or 'scrollUp'
                     if (paginationType !== '' && !['none', 'scrollDown', 'scrollUp'].includes(paginationType)) {
                         setHighlighterData(data);
                     } else {
                         setHighlighterData(null);
                     }
                 } else if (data.childSelectors && data.childSelectors.includes(data.selector)) {
-                    // highlight only valid child elements within the listSelector
+                    // Highlight only valid child elements within the listSelector
                     setHighlighterData(data);
+                } else if (data.elementInfo?.isIframeContent && data.childSelectors) {
+                    // Handle pure iframe elements - similar to previous shadow DOM logic but using iframe syntax
+                    // Check if the selector matches any iframe child selectors
+                    const isIframeChild = data.childSelectors.some(childSelector => 
+                        data.selector.includes(':>>') && // Iframe uses :>> for traversal
+                        childSelector.split(':>>').some(part => 
+                            data.selector.includes(part.trim())
+                        )
+                    );
+                    setHighlighterData(isIframeChild ? data : null);
+                } else if (data.selector.includes(':>>') && hasValidChildSelectors) {
+                    // Handle mixed DOM cases with iframes
+                    // Split the selector into parts and check each against child selectors
+                    const selectorParts = data.selector.split(':>>').map(part => part.trim());
+                    const isValidMixedSelector = selectorParts.some(part => 
+                        // We know data.childSelectors is defined due to hasValidChildSelectors check
+                        data.childSelectors!.some(childSelector => 
+                            childSelector.includes(part)
+                        )
+                    );
+                    setHighlighterData(isValidMixedSelector ? data : null);
                 } else {
-                    // if !valid child in normal mode, clear the highlighter
+                    // If no valid child in normal mode, clear the highlighter
                     setHighlighterData(null);
                 }
             } else {
-                // set highlighterData for the initial listSelector selection
+                // Set highlighterData for the initial listSelector selection
                 setHighlighterData(data);
             }
         } else {
-            // for non-list steps
+            // For non-list steps
             setHighlighterData(data);
         }
     }, [highlighterData, getList, socket, listSelector, paginationMode, paginationType]);
