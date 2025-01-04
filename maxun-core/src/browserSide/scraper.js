@@ -364,75 +364,353 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
  * @returns {Array.<Array.<Object>>} Array of arrays of scraped items, one sub-array per list
  */
   window.scrapeList = async function ({ listSelector, fields, limit = 10 }) {
-    const scrapedData = [];
-
-    while (scrapedData.length < limit) {
-        let parentElements = Array.from(document.querySelectorAll(listSelector));
-        
-        // If we only got one element or none, try a more generic approach
-        if (limit > 1 && parentElements.length <= 1) {
-            const [containerSelector, _] = listSelector.split('>').map(s => s.trim());
-            const container = document.querySelector(containerSelector);
-            
-            if (container) {
-                const allChildren = Array.from(container.children);
-                
-                const firstMatch = document.querySelector(listSelector);
-                if (firstMatch) {
-                    // Get classes from the first matching element
-                    const firstMatchClasses = Array.from(firstMatch.classList);
-                    
-                    // Find similar elements by matching most of their classes
-                    parentElements = allChildren.filter(element => {
-                        const elementClasses = Array.from(element.classList);
-
-                        // Element should share at least 70% of classes with the first match
-                        const commonClasses = firstMatchClasses.filter(cls => 
-                            elementClasses.includes(cls));
-                        return commonClasses.length >= Math.floor(firstMatchClasses.length * 0.7);
-                    });
-                }
-            }
+    // Helper function to query elements within an iframe
+    const queryIframe = (rootElement, selector) => {
+        if (!selector.includes(':>>')) {
+            return rootElement.querySelector(selector);
         }
 
-        // Iterate through each parent element
-        for (const parent of parentElements) {
-            if (scrapedData.length >= limit) break;
-            const record = {};
+        const parts = selector.split(':>>').map(part => part.trim());
+        let currentElement = rootElement;
 
-            // For each field, select the corresponding element within the parent
-            for (const [label, { selector, attribute }] of Object.entries(fields)) {
-                const fieldElement = parent.querySelector(selector);
+        for (let i = 0; i < parts.length; i++) {
+            if (!currentElement) return null;
 
-                if (fieldElement) {
-                    if (attribute === 'innerText') {
-                        record[label] = fieldElement.innerText.trim();
-                    } else if (attribute === 'innerHTML') {
-                        record[label] = fieldElement.innerHTML.trim();
-                    } else if (attribute === 'src') {
-                        // Handle relative 'src' URLs
-                        const src = fieldElement.getAttribute('src');
-                        record[label] = src ? new URL(src, window.location.origin).href : null;
-                    } else if (attribute === 'href') {
-                        // Handle relative 'href' URLs
-                        const href = fieldElement.getAttribute('href');
-                        record[label] = href ? new URL(href, window.location.origin).href : null;
+            // Handle iframe content document
+            if (currentElement.tagName === 'IFRAME') {
+                try {
+                    const iframeDoc = currentElement.contentDocument || currentElement.contentWindow.document;
+                    currentElement = iframeDoc.querySelector(parts[i]);
+                    continue;
+                } catch (e) {
+                    console.error('Cannot access iframe content:', e);
+                    return null;
+                }
+            }
+
+            currentElement = currentElement.querySelector(parts[i]);
+        }
+
+        return currentElement;
+    };
+
+    // Helper function to query all matching elements within iframes
+    const queryIframeAll = (rootElement, selector) => {
+        if (!selector.includes(':>>')) {
+            return rootElement.querySelectorAll(selector);
+        }
+
+        const parts = selector.split(':>>').map(part => part.trim());
+        let currentElements = [rootElement];
+        
+        for (const part of parts) {
+            const nextElements = [];
+            
+            for (const element of currentElements) {
+                if (element.tagName === 'IFRAME') {
+                    try {
+                        const iframeDoc = element.contentDocument || element.contentWindow.document;
+                        nextElements.push(...iframeDoc.querySelectorAll(part));
+                    } catch (e) {
+                        console.error('Cannot access iframe content:', e);
+                        continue;
+                    }
+                } else {
+                    nextElements.push(...element.querySelectorAll(part));
+                }
+            }
+            
+            currentElements = nextElements;
+        }
+        
+        return currentElements;
+    };
+
+    // Helper function to extract values from elements
+    function extractValue(element, attribute) {
+        if (!element) return null;
+        
+        if (attribute === 'innerText') {
+            return element.innerText.trim();
+        } else if (attribute === 'innerHTML') {
+            return element.innerHTML.trim();
+        } else if (attribute === 'src' || attribute === 'href') {
+            const attrValue = element.getAttribute(attribute);
+            return attrValue ? new URL(attrValue, window.location.origin).href : null;
+        }
+        return element.getAttribute(attribute);
+    }
+
+    // Helper function to find table ancestor elements
+    function findTableAncestor(element) {
+        let currentElement = element;
+        const MAX_DEPTH = 5;
+        let depth = 0;
+        
+        while (currentElement && depth < MAX_DEPTH) {
+            if (currentElement.tagName === 'TD') {
+                return { type: 'TD', element: currentElement };
+            } else if (currentElement.tagName === 'TR') {
+                return { type: 'TR', element: currentElement };
+            }
+            
+            // Handle iframe boundary crossing
+            if (currentElement.tagName === 'IFRAME') {
+                try {
+                    currentElement = currentElement.contentDocument.body;
+                } catch (e) {
+                    return null;
+                }
+            } else {
+                currentElement = currentElement.parentElement;
+            }
+            depth++;
+        }
+        return null;
+    }
+
+    // Helper function to get cell index
+    function getCellIndex(td) {
+        let index = 0;
+        let sibling = td;
+        while (sibling = sibling.previousElementSibling) {
+            index++;
+        }
+        return index;
+    }
+
+    // Helper function to check for TH elements
+    function hasThElement(row, tableFields) {
+        for (const [label, { selector }] of Object.entries(tableFields)) {
+            const element = queryIframe(row, selector);
+            if (element) {
+                let current = element;
+                while (current && current !== row) {
+                    if (current.tagName === 'TH') {
+                        return true;
+                    }
+                    if (current.tagName === 'IFRAME') {
+                        try {
+                            current = current.contentDocument.body;
+                        } catch (e) {
+                            break;
+                        }
                     } else {
-                        record[label] = fieldElement.getAttribute(attribute);
+                        current = current.parentElement;
                     }
                 }
             }
-            scrapedData.push(record);
         }
+        return false;
+    }
 
-        // If we've processed all available elements and still haven't reached the limit,
-        // break to avoid infinite loop
-        if (parentElements.length === 0 || scrapedData.length >= parentElements.length) {
-            break;
+    // Helper function to filter rows
+    function filterRowsBasedOnTag(rows, tableFields) {
+        for (const row of rows) {
+            if (hasThElement(row, tableFields)) {
+                return rows;
+            }
+        }
+        return rows.filter(row => row.getElementsByTagName('TH').length === 0);
+    }
+
+    // Class similarity comparison functions
+    function calculateClassSimilarity(classList1, classList2) {
+        const set1 = new Set(classList1);
+        const set2 = new Set(classList2);
+        const intersection = new Set([...set1].filter(x => set2.has(x)));
+        const union = new Set([...set1, ...set2]);
+        return intersection.size / union.size;
+    }
+
+    function findSimilarElements(baseElement, similarityThreshold = 0.7) {
+        const baseClasses = Array.from(baseElement.classList);
+        if (baseClasses.length === 0) return [];
+        
+        // Include elements from all iframes
+        const allElements = [];
+        const iframes = document.getElementsByTagName('iframe');
+        
+        // Add elements from main document
+        allElements.push(...document.getElementsByTagName(baseElement.tagName));
+        
+        // Add elements from each iframe
+        for (const iframe of iframes) {
+            try {
+                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                allElements.push(...iframeDoc.getElementsByTagName(baseElement.tagName));
+            } catch (e) {
+                console.error('Cannot access iframe content:', e);
+            }
+        }
+        
+        return allElements.filter(element => {
+            if (element === baseElement) return false;
+            const similarity = calculateClassSimilarity(
+                baseClasses,
+                Array.from(element.classList)
+            );
+            return similarity >= similarityThreshold;
+        });
+    }
+
+    // Main scraping logic
+    let containers = queryIframeAll(document, listSelector);
+    containers = Array.from(containers);
+
+    if (containers.length === 0) return [];
+
+    if (limit > 1 && containers.length === 1) {
+        const baseContainer = containers[0];
+        const similarContainers = findSimilarElements(baseContainer);
+        
+        if (similarContainers.length > 0) {
+            const newContainers = similarContainers.filter(container => 
+                !container.matches(listSelector)
+            );
+            containers = [...containers, ...newContainers];
         }
     }
+
+    const containerFields = containers.map(() => ({
+        tableFields: {},
+        nonTableFields: {}
+    }));
+
+    // Classify fields
+    containers.forEach((container, containerIndex) => {
+        for (const [label, field] of Object.entries(fields)) {
+            const sampleElement = queryIframe(container, field.selector);
+            
+            if (sampleElement) {
+                const ancestor = findTableAncestor(sampleElement);
+                if (ancestor) {
+                    containerFields[containerIndex].tableFields[label] = {
+                        ...field,
+                        tableContext: ancestor.type,
+                        cellIndex: ancestor.type === 'TD' ? getCellIndex(ancestor.element) : -1
+                    };
+                } else {
+                    containerFields[containerIndex].nonTableFields[label] = field;
+                }
+            } else {
+                containerFields[containerIndex].nonTableFields[label] = field;
+            }
+        }
+    });
+
+    const tableData = [];
+    const nonTableData = [];
+
+    // Process table data
+    for (let containerIndex = 0; containerIndex < containers.length; containerIndex++) {
+        const container = containers[containerIndex];
+        const { tableFields } = containerFields[containerIndex];
+
+        if (Object.keys(tableFields).length > 0) {
+            const firstField = Object.values(tableFields)[0];
+            const firstElement = queryIframe(container, firstField.selector);
+            let tableContext = firstElement;
+            
+            while (tableContext && tableContext.tagName !== 'TABLE' && tableContext !== container) {
+                if (tableContext.tagName === 'IFRAME') {
+                    try {
+                        tableContext = tableContext.contentDocument.body;
+                    } catch (e) {
+                        break;
+                    }
+                } else {
+                    tableContext = tableContext.parentElement;
+                }
+            }
+
+            if (tableContext) {
+                const rows = Array.from(tableContext.getElementsByTagName('TR'));
+                const processedRows = filterRowsBasedOnTag(rows, tableFields);
+                
+                for (let rowIndex = 0; rowIndex < Math.min(processedRows.length, limit); rowIndex++) {
+                    const record = {};
+                    const currentRow = processedRows[rowIndex];
+                    
+                    for (const [label, { selector, attribute, cellIndex }] of Object.entries(tableFields)) {
+                        let element = null;
+                        
+                        if (cellIndex >= 0) {
+                            const td = currentRow.children[cellIndex];
+                            if (td) {
+                                element = queryIframe(td, selector);
+                                
+                                if (!element && selector.split(">").pop().includes('td:nth-child')) {
+                                    element = td;
+                                }
+
+                                if (!element) {
+                                    const tagOnlySelector = selector.split('.')[0];
+                                    element = queryIframe(td, tagOnlySelector);
+                                }
+                                
+                                if (!element) {
+                                    let currentElement = td;
+                                    while (currentElement && currentElement.children.length > 0) {
+                                        let foundContentChild = false;
+                                        for (const child of currentElement.children) {
+                                            if (extractValue(child, attribute)) {
+                                                currentElement = child;
+                                                foundContentChild = true;
+                                                break;
+                                            }
+                                        }
+                                        if (!foundContentChild) break;
+                                    }
+                                    element = currentElement;
+                                }
+                            }
+                        } else {
+                            element = queryIframe(currentRow, selector);
+                        }
+                        
+                        if (element) {
+                            record[label] = extractValue(element, attribute);
+                        }
+                    }
+
+                    if (Object.keys(record).length > 0) {
+                        tableData.push(record);
+                    }
+                }
+            }
+        }
+    }
+
+    // Process non-table data
+    for (let containerIndex = 0; containerIndex < containers.length; containerIndex++) {
+        if (nonTableData.length >= limit) break;
+
+        const container = containers[containerIndex];
+        const { nonTableFields } = containerFields[containerIndex];
+
+        if (Object.keys(nonTableFields).length > 0) {
+            const record = {};
+
+            for (const [label, { selector, attribute }] of Object.entries(nonTableFields)) {
+                const relativeSelector = selector.split(':>>').slice(-1)[0];
+                const element = queryIframe(container, relativeSelector);
+                
+                if (element) {
+                    record[label] = extractValue(element, attribute);
+                }
+            }
+                
+            if (Object.keys(record).length > 0) {
+                nonTableData.push(record);
+            }
+        }  
+    }
+      
+    // Merge and limit the results
+    const scrapedData = [...tableData, ...nonTableData];
     return scrapedData;
-};
+  };
 
 
   /**
