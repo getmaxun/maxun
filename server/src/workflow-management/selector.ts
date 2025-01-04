@@ -1679,33 +1679,130 @@ export const getChildSelectors = async (page: Page, parentSelector: string): Pro
       }
 
       // Function to generate selector path from an element to its parent
-      function getSelectorPath(element: HTMLElement | null): string {
+      function getSelectorPath(element: HTMLElement): string {
         if (!element || !element.parentElement) return '';
 
         const parentSelector = getNonUniqueSelector(element.parentElement);
         const elementSelector = getNonUniqueSelector(element);
 
+        // Check if element is in an iframe
+        const ownerDocument = element.ownerDocument;
+        const frameElement = ownerDocument?.defaultView?.frameElement as HTMLIFrameElement;
+        
+        if (frameElement) {
+          const frameSelector = getNonUniqueSelector(frameElement);
+          return `${frameSelector} :>> ${elementSelector}`;
+        }
+
         return `${parentSelector} > ${elementSelector}`;
+      }
+
+      function getIframeChildren(element: HTMLElement): HTMLElement[] {
+        const children: HTMLElement[] = [];
+        
+        // Find all iframe elements
+        const iframes = Array.from(element.querySelectorAll('iframe')) as HTMLIFrameElement[];
+        
+        for (const iframe of iframes) {
+          try {
+            // Access iframe's document
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+            if (iframeDoc) {
+              // Get all elements in the iframe
+              const iframeElements = Array.from(iframeDoc.querySelectorAll('*')) as HTMLElement[];
+              children.push(...iframeElements);
+            }
+          } catch (error) {
+            console.warn('Cannot access iframe content:', error);
+            continue;
+          }
+        }
+        
+        return children;
       }
 
       // Function to recursively get all descendant selectors
       function getAllDescendantSelectors(element: HTMLElement): string[] {
         let selectors: string[] = [];
+        
+        // Handle regular DOM children
         const children = Array.from(element.children) as HTMLElement[];
-
         for (const child of children) {
           const childPath = getSelectorPath(child);
           if (childPath) {
-            selectors.push(childPath);  // Add direct child path
-            selectors = selectors.concat(getAllDescendantSelectors(child));  // Recursively process descendants
+            selectors.push(childPath);
+            // Recursively process regular DOM descendants
+            selectors = selectors.concat(getAllDescendantSelectors(child));
+            
+            // Check for iframes in this child
+            const iframeChildren = getIframeChildren(child);
+            for (const iframeChild of iframeChildren) {
+              try {
+                const iframePath = getSelectorPath(iframeChild);
+                if (iframePath) {
+                  selectors.push(iframePath);
+                  // Recursively process iframe descendants
+                  selectors = selectors.concat(getAllDescendantSelectors(iframeChild));
+                }
+              } catch (error) {
+                console.warn('Error processing iframe child:', error);
+                continue;
+              }
+            }
+          }
+        }
+
+        // Handle direct iframe children of the current element
+        const iframeChildren = getIframeChildren(element);
+        for (const iframeChild of iframeChildren) {
+          try {
+            const iframePath = getSelectorPath(iframeChild);
+            if (iframePath) {
+              selectors.push(iframePath);
+              selectors = selectors.concat(getAllDescendantSelectors(iframeChild));
+            }
+          } catch (error) {
+            console.warn('Error processing direct iframe child:', error);
+            continue;
           }
         }
 
         return selectors;
       }
 
-      // Find all occurrences of the parent selector in the DOM
-      const parentElements = Array.from(document.querySelectorAll(parentSelector)) as HTMLElement[];
+      const selectorParts = parentSelector.split(':>>').map(part => part.trim());
+      let parentElements: HTMLElement[] = [];
+
+      // Handle iframe traversal if needed
+      if (selectorParts.length > 1) {
+        // Start with the initial iframe elements
+        parentElements = Array.from(document.querySelectorAll(selectorParts[0])) as HTMLElement[];
+        
+        // Traverse through iframe parts
+        for (let i = 1; i < selectorParts.length; i++) {
+          const newParentElements: HTMLElement[] = [];
+          for (const element of parentElements) {
+            if (element.tagName === 'IFRAME') {
+              try {
+                const iframeDoc = (element as HTMLIFrameElement).contentDocument || 
+                                (element as HTMLIFrameElement).contentWindow?.document;
+                if (iframeDoc) {
+                  const iframeChildren = Array.from(iframeDoc.querySelectorAll(selectorParts[i])) as HTMLElement[];
+                  newParentElements.push(...iframeChildren);
+                }
+              } catch (error) {
+                console.warn('Cannot access iframe content during traversal:', error);
+                continue;
+              }
+            }
+          }
+          parentElements = newParentElements;
+        }
+      } else {
+        // Regular DOM selector
+        parentElements = Array.from(document.querySelectorAll(parentSelector)) as HTMLElement[];
+      }
+
       const allChildSelectors = new Set<string>();  // Use a set to ensure uniqueness
 
       // Process each parent element and its descendants
