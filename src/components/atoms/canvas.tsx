@@ -26,7 +26,7 @@ class RAFScheduler {
         this.frameId = requestAnimationFrame(() => {
             const callbacks = Array.from(this.queue);
             this.queue.clear();
-            
+
             callbacks.forEach(callback => {
                 try {
                     callback();
@@ -37,7 +37,7 @@ class RAFScheduler {
 
             this.isProcessing = false;
             this.frameId = null;
-            
+
             if (this.queue.size > 0) {
                 this.process();
             }
@@ -87,12 +87,12 @@ class EventDebouncer {
             if (this.lowPriorityQueue.length > 0) {
                 const callback = this.lowPriorityQueue.shift();
                 callback?.();
-                
+
                 if (this.lowPriorityQueue.length > 0) {
                     this.process();
                 }
             }
-            
+
             this.processing = false;
         });
     }
@@ -282,7 +282,7 @@ const Canvas = React.memo(({ width, height, onCreateRef }: CanvasProps) => {
             canvas.removeEventListener('wheel', handleMouseEvent);
             canvas.removeEventListener('keydown', handleKeyboardEvent);
             canvas.removeEventListener('keyup', handleKeyboardEvent);
-            
+
             scheduler.current.clear();
             debouncer.current.clear();
             measurementCache.current.clear();
@@ -329,30 +329,30 @@ const Canvas = React.memo(({ width, height, onCreateRef }: CanvasProps) => {
                 className="block"
             />
             <Suspense fallback={null}>
-            {state.datePickerInfo && (
-                <DatePicker
-                    coordinates={state.datePickerInfo.coordinates}
-                    selector={state.datePickerInfo.selector}
-                    onClose={() => dispatch({ 
-                        type: 'BATCH_UPDATE', 
-                        payload: { datePickerInfo: null } 
-                    })}
-                />
-            )}
-            {state.timePickerInfo && (
-                <TimePicker
-                    coordinates={state.timePickerInfo.coordinates}
-                    selector={state.timePickerInfo.selector}
-                    onClose={() => dispatch({ type: 'SET_TIME_PICKER', payload: null })}
-                />
-            )}
-            {state.dateTimeLocalInfo && (
-                <DateTimeLocalPicker
-                    coordinates={state.dateTimeLocalInfo.coordinates}
-                    selector={state.dateTimeLocalInfo.selector}
-                    onClose={() => dispatch({ type: 'SET_DATETIME_PICKER', payload: null })}
-                />
-            )}
+                {state.datePickerInfo && (
+                    <DatePicker
+                        coordinates={state.datePickerInfo.coordinates}
+                        selector={state.datePickerInfo.selector}
+                        onClose={() => dispatch({
+                            type: 'BATCH_UPDATE',
+                            payload: { datePickerInfo: null }
+                        })}
+                    />
+                )}
+                {state.timePickerInfo && (
+                    <TimePicker
+                        coordinates={state.timePickerInfo.coordinates}
+                        selector={state.timePickerInfo.selector}
+                        onClose={() => dispatch({ type: 'SET_TIME_PICKER', payload: null })}
+                    />
+                )}
+                {state.dateTimeLocalInfo && (
+                    <DateTimeLocalPicker
+                        coordinates={state.dateTimeLocalInfo.coordinates}
+                        selector={state.dateTimeLocalInfo.selector}
+                        onClose={() => dispatch({ type: 'SET_DATETIME_PICKER', payload: null })}
+                    />
+                )}
             </Suspense>
         </div>
     );
