@@ -4,13 +4,11 @@ import { useGlobalInfoStore } from "../../context/globalInfo";
 import { useActionContext } from '../../context/browserActions';
 import { FrontendPerformanceMonitor } from '../../../perf/performance';
 
-// Lazy load components that aren't always needed
 const DatePicker = React.lazy(() => import('./DatePicker'));
 const Dropdown = React.lazy(() => import('./Dropdown'));
 const TimePicker = React.lazy(() => import('./TimePicker'));
 const DateTimeLocalPicker = React.lazy(() => import('./DateTimeLocalPicker'));
 
-// High-performance RAF scheduler
 class RAFScheduler {
     private queue: Set<() => void> = new Set();
     private isProcessing: boolean = false;
@@ -56,7 +54,6 @@ class RAFScheduler {
     }
 }
 
-// Enhanced event debouncer with priority queue
 class EventDebouncer {
     private highPriorityQueue: Array<() => void> = [];
     private lowPriorityQueue: Array<() => void> = [];
@@ -150,19 +147,16 @@ interface CanvasProps {
 }
 
 const Canvas = React.memo(({ width, height, onCreateRef }: CanvasProps) => {
-    // Core refs and state
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const { socket } = useSocketStore();
     const { setLastAction } = useGlobalInfoStore();
     const { getText, getList } = useActionContext();
 
-    // Performance optimization instances
     const scheduler = useRef(new RAFScheduler());
     const debouncer = useRef(new EventDebouncer(scheduler.current));
     const measurementCache = useRef(new MeasurementCache(50));
     const performanceMonitor = useRef(new FrontendPerformanceMonitor());
 
-    // Consolidated refs
     const refs = useRef({
         getText,
         getList,
@@ -171,7 +165,6 @@ const Canvas = React.memo(({ width, height, onCreateRef }: CanvasProps) => {
         context: null as CanvasRenderingContext2D | null,
     });
 
-    // Optimized state management
     const [state, dispatch] = React.useReducer((state: any, action: any) => {
         switch (action.type) {
             case 'BATCH_UPDATE':
@@ -186,7 +179,6 @@ const Canvas = React.memo(({ width, height, onCreateRef }: CanvasProps) => {
         dateTimeLocalInfo: null
     });
 
-    // Optimized coordinate calculation
     const getEventCoordinates = useCallback((event: MouseEvent): { x: number; y: number } => {
         if (!canvasRef.current) return { x: 0, y: 0 };
 
@@ -202,7 +194,6 @@ const Canvas = React.memo(({ width, height, onCreateRef }: CanvasProps) => {
         };
     }, []);
 
-    // High-performance mouse handler
     const handleMouseEvent = useCallback((event: MouseEvent) => {
         if (!socket || !canvasRef.current) return;
 
@@ -247,7 +238,6 @@ const Canvas = React.memo(({ width, height, onCreateRef }: CanvasProps) => {
         }
     }, [socket, getEventCoordinates]);
 
-    // Optimized keyboard handler
     const handleKeyboardEvent = useCallback((event: KeyboardEvent) => {
         if (!socket) return;
 
@@ -303,12 +293,11 @@ const Canvas = React.memo(({ width, height, onCreateRef }: CanvasProps) => {
     useEffect(() => {
         const intervalId = setInterval(() => {
             console.log('Performance Report:', performanceMonitor.current.getPerformanceReport());
-        }, 20000); // Reduced frequency
+        }, 20000);
 
         return () => clearInterval(intervalId);
     }, []);
 
-    // Socket events
     useEffect(() => {
         if (!socket) return;
 
