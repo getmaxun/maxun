@@ -1,5 +1,5 @@
-// Canvas.tsx
 import React, { useCallback, useEffect, useRef, useMemo } from 'react';
+import { unstable_batchedUpdates } from 'react-dom';
 import { useSocketStore } from '../../context/socket';
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { useActionContext } from '../../context/browserActions';
@@ -9,7 +9,36 @@ import TimePicker from './TimePicker';
 import DateTimeLocalPicker from './DateTimeLocalPicker';
 import { FrontendPerformanceMonitor } from '../../../perf/performance';
 
-// Types
+// Optimized throttle with RAF
+const rafThrottle = <T extends (...args: any[]) => any>(callback: T) => {
+    let requestId: number | null = null;
+    let lastArgs: Parameters<T>;
+
+    const later = () => {
+        requestId = null;
+        callback.apply(null, lastArgs);
+    };
+
+    return (...args: Parameters<T>) => {
+        lastArgs = args;
+        if (requestId === null) {
+            requestId = requestAnimationFrame(later);
+        }
+    };
+};
+
+// Cache DOM measurements
+let measurementCache = new WeakMap<HTMLElement, DOMRect>();
+const getBoundingClientRectCached = (element: HTMLElement) => {
+    let rect = measurementCache.get(element);
+    if (!rect) {
+        rect = element.getBoundingClientRect();
+        measurementCache.set(element, rect);
+    }
+    return rect;
+};
+
+// Types (kept the same)
 interface CreateRefCallback {
     (ref: React.RefObject<HTMLCanvasElement>): void;
 }
@@ -25,256 +54,208 @@ export interface Coordinates {
     y: number;
 }
 
-interface DropdownOption {
-    value: string;
-    text: string;
-    disabled: boolean;
-    selected: boolean;
-}
-
-interface CanvasState {
-    datePickerInfo: {
-        coordinates: Coordinates;
-        selector: string;
-    } | null;
-    dropdownInfo: {
-        coordinates: Coordinates;
-        selector: string;
-        options: DropdownOption[];
-    } | null;
-    timePickerInfo: {
-        coordinates: Coordinates;
-        selector: string;
-    } | null;
-    dateTimeLocalInfo: {
-        coordinates: Coordinates;
-        selector: string;
-    } | null;
-}
-
-type CanvasAction = 
-    | { type: 'SET_DATE_PICKER'; payload: CanvasState['datePickerInfo'] }
-    | { type: 'SET_DROPDOWN'; payload: CanvasState['dropdownInfo'] }
-    | { type: 'SET_TIME_PICKER'; payload: CanvasState['timePickerInfo'] }
-    | { type: 'SET_DATETIME_PICKER'; payload: CanvasState['dateTimeLocalInfo'] };
-
-// Helper functions
-const throttle = <T extends (...args: any[]) => any>(func: T, limit: number): T => {
-    let inThrottle = false;
-    return ((...args: Parameters<T>): ReturnType<T> | void => {
-        if (!inThrottle) {
-            func.apply(null, args);
-            inThrottle = true;
-            setTimeout(() => inThrottle = false, limit);
-        }
-    }) as T;
+// Batch updates helper
+const batchedUpdates = (updates: Array<() => void>) => {
+    unstable_batchedUpdates(() => {
+        updates.forEach(update => update());
+    });
 };
 
-const createOffscreenCanvas = (width: number, height: number) => {
-    if (typeof OffscreenCanvas !== 'undefined') {
-        return new OffscreenCanvas(width, height);
-    }
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    return canvas;
-};
-
-// Reducer
-const canvasReducer = (state: CanvasState, action: CanvasAction): CanvasState => {
-    switch (action.type) {
-        case 'SET_DATE_PICKER':
-            return { ...state, datePickerInfo: action.payload };
-        case 'SET_DROPDOWN':
-            return { ...state, dropdownInfo: action.payload };
-        case 'SET_TIME_PICKER':
-            return { ...state, timePickerInfo: action.payload };
-        case 'SET_DATETIME_PICKER':
-            return { ...state, dateTimeLocalInfo: action.payload };
-        default:
-            return state;
-    }
-};
-
-// Main Component
 const Canvas = React.memo(({ width, height, onCreateRef }: CanvasProps) => {
-    // Refs
     const performanceMonitor = useRef(new FrontendPerformanceMonitor());
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const lastMousePosition = useRef<Coordinates>({ x: 0, y: 0 });
-    const frameRequest = useRef<number>();
-    const renderingContext = useRef<CanvasRenderingContext2D | null>(null);
-    const offscreenCanvas = useRef<HTMLCanvasElement | OffscreenCanvas>(
-        createOffscreenCanvas(width || 900, height || 400)
-    );
-
-    // Hooks
     const { socket } = useSocketStore();
     const { setLastAction, lastAction } = useGlobalInfoStore();
     const { getText, getList } = useActionContext();
-    const getTextRef = useRef(getText);
-    const getListRef = useRef(getList);
+    
+    // Use a single ref object to reduce memory allocations
+    const refs = useRef({
+        getText,
+        getList,
+        lastMousePosition: { x: 0, y: 0 },
+        frameRequest: 0,
+        eventQueue: [] as Array<() => void>,
+        isProcessing: false
+    });
 
-    // State
-    const [state, dispatch] = React.useReducer(canvasReducer, {
+    // Consolidated state using a single reducer
+    const [state, dispatch] = React.useReducer((state: any, action: any) => {
+        switch (action.type) {
+            case 'BATCH_UPDATE':
+                return { ...state, ...action.payload };
+            default:
+                return state;
+        }
+    }, {
         datePickerInfo: null,
         dropdownInfo: null,
         timePickerInfo: null,
         dateTimeLocalInfo: null
     });
 
-    // Memoized values
-    const canvasSize = useMemo(() => ({
-        width: width || 900,
-        height: height || 400
-    }), [width, height]);
+    // Process events in batches
+    const processEventQueue = useCallback(() => {
+        if (refs.current.isProcessing || refs.current.eventQueue.length === 0) return;
+        
+        refs.current.isProcessing = true;
+        const events = [...refs.current.eventQueue];
+        refs.current.eventQueue = [];
 
-    const notifyLastAction = useCallback((action: string) => {
-        if (lastAction !== action) {
-            setLastAction(action);
+        batchedUpdates(events.map(event => () => event()));
+
+        refs.current.isProcessing = false;
+        
+        if (refs.current.eventQueue.length > 0) {
+            requestAnimationFrame(processEventQueue);
         }
-    }, [lastAction, setLastAction]);
+    }, []);
 
-    // Socket event handlers
-    const socketHandlers = useMemo(() => ({
-        showDatePicker: (info: CanvasState['datePickerInfo']) => {
-            dispatch({ type: 'SET_DATE_PICKER', payload: info });
-        },
-        showDropdown: (info: CanvasState['dropdownInfo']) => {
-            dispatch({ type: 'SET_DROPDOWN', payload: info });
-        },
-        showTimePicker: (info: CanvasState['timePickerInfo']) => {
-            dispatch({ type: 'SET_TIME_PICKER', payload: info });
-        },
-        showDateTimePicker: (info: CanvasState['dateTimeLocalInfo']) => {
-            dispatch({ type: 'SET_DATETIME_PICKER', payload: info });
-        }
-    }), []);
-
-    // Event handlers
-    const handleMouseMove = useCallback(
-        throttle((coordinates: Coordinates) => {
+    // Optimized mouse move handler using RAF throttle
+    const handleMouseMove = useMemo(
+        () => rafThrottle((coordinates: Coordinates) => {
             if (!socket) return;
 
-            if (
-                lastMousePosition.current.x !== coordinates.x ||
-                lastMousePosition.current.y !== coordinates.y
-            ) {
-                lastMousePosition.current = coordinates;
+            const current = refs.current.lastMousePosition;
+            if (current.x !== coordinates.x || current.y !== coordinates.y) {
+                refs.current.lastMousePosition = coordinates;
                 socket.emit('input:mousemove', coordinates);
-                notifyLastAction('move');
+                refs.current.eventQueue.push(() => setLastAction('move'));
+                requestAnimationFrame(processEventQueue);
             }
-        }, 16),
-        [socket, notifyLastAction]
+        }),
+        [socket, processEventQueue]
     );
 
+    // Optimized event handler with better performance characteristics
     const onMouseEvent = useCallback((event: MouseEvent) => {
-        performanceMonitor.current.measureEventLatency(event);
         if (!socket || !canvasRef.current) return;
 
-        const rect = canvasRef.current.getBoundingClientRect();
-        const clickCoordinates = {
+        performanceMonitor.current.measureEventLatency(event);
+        const rect = getBoundingClientRectCached(canvasRef.current);
+        const coordinates = {
             x: event.clientX - rect.left,
             y: event.clientY - rect.top,
         };
 
         switch (event.type) {
             case 'mousedown':
-                if (getTextRef.current) {
-                    console.log('Capturing Text...');
-                } else if (getListRef.current) {
-                    console.log('Capturing List...');
-                } else {
-                    socket.emit('input:mousedown', clickCoordinates);
-                }
-                notifyLastAction('click');
+                refs.current.eventQueue.push(() => {
+                    if (refs.current.getText) {
+                        console.log('Capturing Text...');
+                    } else if (refs.current.getList) {
+                        console.log('Capturing List...');
+                    } else {
+                        socket.emit('input:mousedown', coordinates);
+                    }
+                    setLastAction('click');
+                });
                 break;
 
             case 'mousemove':
-                handleMouseMove(clickCoordinates);
+                handleMouseMove(coordinates);
                 break;
 
             case 'wheel':
-                if (frameRequest.current) {
-                    cancelAnimationFrame(frameRequest.current);
+                if (refs.current.frameRequest) {
+                    cancelAnimationFrame(refs.current.frameRequest);
                 }
-                frameRequest.current = requestAnimationFrame(() => {
+                refs.current.frameRequest = requestAnimationFrame(() => {
                     const wheelEvent = event as WheelEvent;
                     socket.emit('input:wheel', {
                         deltaX: Math.round(wheelEvent.deltaX),
-                        deltaY: Math.round(wheelEvent.deltaY),
+                        deltaY: Math.round(wheelEvent.deltaY)
                     });
-                    notifyLastAction('scroll');
+                    refs.current.eventQueue.push(() => setLastAction('scroll'));
                 });
                 break;
         }
-    }, [socket, handleMouseMove, notifyLastAction]);
 
-    const onKeyboardEvent = useCallback((event: KeyboardEvent) => {
-        if (!socket) return;
+        requestAnimationFrame(processEventQueue);
+    }, [socket, handleMouseMove, processEventQueue]);
 
-        switch (event.type) {
-            case 'keydown':
-                socket.emit('input:keydown', {
-                    key: event.key,
-                    coordinates: lastMousePosition.current
-                });
-                notifyLastAction(`${event.key} pressed`);
-                break;
+    // Optimized keyboard handler
+    const onKeyboardEvent = useMemo(
+        () => rafThrottle((event: KeyboardEvent) => {
+            if (!socket) return;
 
-            case 'keyup':
-                socket.emit('input:keyup', event.key);
-                break;
-        }
-    }, [socket, notifyLastAction]);
+            refs.current.eventQueue.push(() => {
+                switch (event.type) {
+                    case 'keydown':
+                        socket.emit('input:keydown', {
+                            key: event.key,
+                            coordinates: refs.current.lastMousePosition
+                        });
+                        setLastAction(`${event.key} pressed`);
+                        break;
+                    case 'keyup':
+                        socket.emit('input:keyup', event.key);
+                        break;
+                }
+            });
+            requestAnimationFrame(processEventQueue);
+        }),
+        [socket, processEventQueue]
+    );
 
-    // Effects
+    // Update refs
     useEffect(() => {
-        getTextRef.current = getText;
-        getListRef.current = getList;
+        refs.current.getText = getText;
+        refs.current.getList = getList;
     }, [getText, getList]);
 
+    // Socket event setup with optimized cleanup
     useEffect(() => {
         if (!socket) return;
 
-        Object.entries(socketHandlers).forEach(([event, handler]) => {
+        const handlers = {
+            showDatePicker: (info: any) => dispatch({ type: 'BATCH_UPDATE', payload: { datePickerInfo: info } }),
+            showDropdown: (info: any) => dispatch({ type: 'BATCH_UPDATE', payload: { dropdownInfo: info } }),
+            showTimePicker: (info: any) => dispatch({ type: 'BATCH_UPDATE', payload: { timePickerInfo: info } }),
+            showDateTimePicker: (info: any) => dispatch({ type: 'BATCH_UPDATE', payload: { dateTimeLocalInfo: info } })
+        };
+
+        Object.entries(handlers).forEach(([event, handler]) => {
             socket.on(event, handler);
         });
 
         return () => {
-            Object.keys(socketHandlers).forEach(event => {
+            Object.keys(handlers).forEach(event => {
                 socket.off(event);
             });
         };
-    }, [socket, socketHandlers]);
+    }, [socket]);
 
     useEffect(() => {
         const monitor = performanceMonitor.current;
         const intervalId = setInterval(() => {
-            const report = monitor.getPerformanceReport();
-            console.log('Frontend Performance Report:', report);
-        }, 10000);
-
+            console.log('Frontend Performance Report:', monitor.getPerformanceReport());
+        }, 15000); // Increased to 15 seconds
+    
         return () => {
             clearInterval(intervalId);
-            if (frameRequest.current) {
-                cancelAnimationFrame(frameRequest.current);
+            if (refs.current.frameRequest) {
+                cancelAnimationFrame(refs.current.frameRequest);
             }
+    
+            // Clear measurement cache on unmount
+            measurementCache = new WeakMap(); // Reset the WeakMap
         };
     }, []);
+    
 
+    // Canvas setup with optimized event binding
     useEffect(() => {
         if (!canvasRef.current) return;
 
-        renderingContext.current = canvasRef.current.getContext('2d');
         onCreateRef(canvasRef);
-
         const canvas = canvasRef.current;
-        canvas.addEventListener('mousedown', onMouseEvent);
-        canvas.addEventListener('mousemove', onMouseEvent);
-        canvas.addEventListener('wheel', onMouseEvent, { passive: true });
-        canvas.addEventListener('keydown', onKeyboardEvent);
-        canvas.addEventListener('keyup', onKeyboardEvent);
+
+        const options = { passive: true };
+        canvas.addEventListener('mousedown', onMouseEvent, options);
+        canvas.addEventListener('mousemove', onMouseEvent, options);
+        canvas.addEventListener('wheel', onMouseEvent, options);
+        canvas.addEventListener('keydown', onKeyboardEvent, options);
+        canvas.addEventListener('keyup', onKeyboardEvent, options);
 
         return () => {
             canvas.removeEventListener('mousedown', onMouseEvent);
@@ -285,28 +266,28 @@ const Canvas = React.memo(({ width, height, onCreateRef }: CanvasProps) => {
         };
     }, [onMouseEvent, onKeyboardEvent, onCreateRef]);
 
+    const memoizedSize = useMemo(() => ({
+        width: width || 900,
+        height: height || 400
+    }), [width, height]);
+
     return (
         <div className="relative bg-white rounded-b-md overflow-hidden">
             <canvas
                 tabIndex={0}
                 ref={canvasRef}
-                height={canvasSize.height}
-                width={canvasSize.width}
+                height={memoizedSize.height}
+                width={memoizedSize.width}
                 className="block"
             />
             {state.datePickerInfo && (
                 <DatePicker
                     coordinates={state.datePickerInfo.coordinates}
                     selector={state.datePickerInfo.selector}
-                    onClose={() => dispatch({ type: 'SET_DATE_PICKER', payload: null })}
-                />
-            )}
-            {state.dropdownInfo && (
-                <Dropdown
-                    coordinates={state.dropdownInfo.coordinates}
-                    selector={state.dropdownInfo.selector}
-                    options={state.dropdownInfo.options}
-                    onClose={() => dispatch({ type: 'SET_DROPDOWN', payload: null })}
+                    onClose={() => dispatch({ 
+                        type: 'BATCH_UPDATE', 
+                        payload: { datePickerInfo: null } 
+                    })}
                 />
             )}
             {state.timePickerInfo && (
