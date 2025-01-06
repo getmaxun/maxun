@@ -127,6 +127,29 @@ export class RemoteBrowser {
         }, MEMORY_CONFIG.gcInterval);
     }
 
+    private async performMemoryCleanup(): Promise<void> {
+        this.screenshotQueue = [];
+        this.isProcessingScreenshot = false;
+        
+        if (global.gc) {
+            global.gc();
+        }
+        
+        // Reset CDP session if needed
+        if (this.client) {
+            try {
+                await this.stopScreencast();
+                this.client = null;
+                if (this.currentPage) {
+                    this.client = await this.currentPage.context().newCDPSession(this.currentPage);
+                    await this.startScreencast();
+                }
+            } catch (error) {
+                logger.error('Error resetting CDP session:', error);
+            }
+        }
+    }
+
     /**
      * Normalizes URLs to prevent navigation loops while maintaining consistent format
      */
