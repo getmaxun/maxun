@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useRef, useMemo, Suspense } from 'react'
 import { useSocketStore } from '../../context/socket';
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { useActionContext } from '../../context/browserActions';
-import { FrontendPerformanceMonitor } from '../../../perf/performance';
 const DatePicker = React.lazy(() => import('./DatePicker'));
 const Dropdown = React.lazy(() => import('./Dropdown'));
 const TimePicker = React.lazy(() => import('./TimePicker'));
@@ -162,7 +161,7 @@ const Canvas = React.memo(({ width, height, onCreateRef }: CanvasProps) => {
     const scheduler = useRef(new RAFScheduler());
     const debouncer = useRef(new EventDebouncer(scheduler.current));
     const measurementCache = useRef(new MeasurementCache(50));
-    const performanceMonitor = useRef(new FrontendPerformanceMonitor());
+    //const performanceMonitor = useRef(new FrontendPerformanceMonitor());
 
     const refs = useRef({
         getText,
@@ -204,7 +203,7 @@ const Canvas = React.memo(({ width, height, onCreateRef }: CanvasProps) => {
     const handleMouseEvent = useCallback((event: MouseEvent) => {
         if (!socket || !canvasRef.current) return;
 
-        performanceMonitor.current.measureEventLatency(event);
+        //performanceMonitor.current.measureEventLatency(event);
         const coordinates = getEventCoordinates(event);
 
         switch (event.type) {
@@ -297,13 +296,13 @@ const Canvas = React.memo(({ width, height, onCreateRef }: CanvasProps) => {
     }, [handleMouseEvent, handleKeyboardEvent, onCreateRef]);
 
     // Performance monitoring
-    useEffect(() => {
-        const intervalId = setInterval(() => {
-            console.log('Performance Report:', performanceMonitor.current.getPerformanceReport());
-        }, 20000);
+    // useEffect(() => {
+    //     const intervalId = setInterval(() => {
+    //         console.log('Performance Report:', performanceMonitor.current.getPerformanceReport());
+    //     }, 20000);
 
-        return () => clearInterval(intervalId);
-    }, []);
+    //     return () => clearInterval(intervalId);
+    // }, []);
 
     useEffect(() => {
         if (!socket) return;
