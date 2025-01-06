@@ -155,7 +155,7 @@ export interface Coordinates {
 const Canvas = React.memo(({ width, height, onCreateRef }: CanvasProps) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const { socket } = useSocketStore();
-    const { setLastAction } = useGlobalInfoStore();
+    const { setLastAction, lastAction } = useGlobalInfoStore();
     const { getText, getList } = useActionContext();
 
     const scheduler = useRef(new RAFScheduler());
@@ -342,6 +342,17 @@ const Canvas = React.memo(({ width, height, onCreateRef }: CanvasProps) => {
                         onClose={() => dispatch({
                             type: 'BATCH_UPDATE',
                             payload: { datePickerInfo: null }
+                        })}
+                    />
+                )}
+                {state.dropdownInfo && (
+                    <Dropdown
+                        coordinates={state.dropdownInfo.coordinates}
+                        selector={state.dropdownInfo.selector}
+                        options={state.dropdownInfo.options}
+                        onClose={() => dispatch({
+                            type: 'BATCH_UPDATE',
+                            payload: { dropdownInfo: null }
                         })}
                     />
                 )}
