@@ -110,6 +110,23 @@ export class RemoteBrowser {
         this.startPerformanceReporting();
     }
 
+    private initializeMemoryManagement(): void {
+        setInterval(() => {
+            const memoryUsage = process.memoryUsage();
+            const heapUsageRatio = memoryUsage.heapUsed / MEMORY_CONFIG.maxHeapSize;
+
+            if (heapUsageRatio > MEMORY_CONFIG.heapUsageThreshold) {
+                logger.warn('High memory usage detected, triggering cleanup');
+                this.performMemoryCleanup();
+            }
+
+            // Clear screenshot queue if it's too large
+            if (this.screenshotQueue.length > SCREENCAST_CONFIG.maxQueueSize) {
+                this.screenshotQueue = this.screenshotQueue.slice(-SCREENCAST_CONFIG.maxQueueSize);
+            }
+        }, MEMORY_CONFIG.gcInterval);
+    }
+
     /**
      * Normalizes URLs to prevent navigation loops while maintaining consistent format
      */
