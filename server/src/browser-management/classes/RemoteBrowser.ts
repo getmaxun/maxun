@@ -21,6 +21,14 @@ import { getInjectableScript } from 'idcac-playwright';
 import { BackendPerformanceMonitor } from '../../../../perf/performance'
 chromium.use(stealthPlugin());
 
+// Memory management configuration
+const MEMORY_CONFIG = {
+    gcInterval: 60000, // 1 minute
+    maxHeapSize: 2048 * 1024 * 1024, // 2GB
+    heapUsageThreshold: 0.85 // 85%
+};
+
+
 
 /**
  * This class represents a remote browser instance.
