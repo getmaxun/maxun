@@ -18,6 +18,7 @@ import { WorkflowGenerator } from "../../workflow-management/classes/Generator";
 import { WorkflowInterpreter } from "../../workflow-management/classes/Interpreter";
 import { getDecryptedProxyConfig } from '../../routes/proxy';
 import { getInjectableScript } from 'idcac-playwright';
+
 chromium.use(stealthPlugin());
 
 const MEMORY_CONFIG = {
@@ -88,7 +89,7 @@ export class RemoteBrowser {
         maxConcurrency: 1,
         maxRepeats: 1,
     };
-
+    
     private lastEmittedUrl: string | null = null;
 
     /**
@@ -101,20 +102,10 @@ export class RemoteBrowser {
      */
     public interpreter: WorkflowInterpreter;
 
-    //private performanceMonitor: BackendPerformanceMonitor;
 
     private screenshotQueue: Buffer[] = [];
     private isProcessingScreenshot = false;
-    private screencastInterval: NodeJS.Timeout | null = null;
-
-    // private startPerformanceReporting() {
-    //     setInterval(() => {
-    //         const report = this.performanceMonitor.getPerformanceReport();
-
-    //         console.log('Backend Performance Report:', report);
-
-    //     }, 5000);
-    // }
+    private screencastInterval: NodeJS.Timeout | null = null
 
     /**
      * Initializes a new instances of the {@link Generator} and {@link WorkflowInterpreter} classes and
@@ -126,8 +117,6 @@ export class RemoteBrowser {
         this.socket = socket;
         this.interpreter = new WorkflowInterpreter(socket);
         this.generator = new WorkflowGenerator(socket);
-        //this.performanceMonitor = new BackendPerformanceMonitor();
-        //this.startPerformanceReporting();
     }
 
     private initializeMemoryManagement(): void {
@@ -422,22 +411,22 @@ export class RemoteBrowser {
     public async switchOff(): Promise<void> {
         try {
             await this.interpreter.stopInterpretation();
-
+            
             if (this.screencastInterval) {
                 clearInterval(this.screencastInterval);
             }
-
+            
             if (this.client) {
                 await this.stopScreencast();
             }
-
+            
             if (this.browser) {
                 await this.browser.close();
             }
-
+            
             this.screenshotQueue = [];
             //this.performanceMonitor.reset();
-
+            
         } catch (error) {
             logger.error('Error during browser shutdown:', error);
         }
@@ -653,37 +642,35 @@ export class RemoteBrowser {
      * @param payload the screenshot binary data
      * @returns void
      */
-    private emitScreenshot = throttle(async (payload: Buffer): Promise<void> => {
+    private emitScreenshot = async (payload: Buffer): Promise<void> => {
         if (this.isProcessingScreenshot) {
             if (this.screenshotQueue.length < SCREENCAST_CONFIG.maxQueueSize) {
                 this.screenshotQueue.push(payload);
             }
             return;
         }
-
+    
         this.isProcessingScreenshot = true;
-
+    
         try {
-                const optimizedScreenshot = await this.optimizeScreenshot(payload);
-                const base64Data = optimizedScreenshot.toString('base64');
-                const dataWithMimeType = `data:image/jpeg;base64,${base64Data}`;
-
-                await new Promise<void>((resolve) => {
-                    this.socket.emit('screencast', dataWithMimeType, () => resolve());
-                });
+            const optimizedScreenshot = await this.optimizeScreenshot(payload);
+            const base64Data = optimizedScreenshot.toString('base64');
+            const dataWithMimeType = `data:image/jpeg;base64,${base64Data}`;
+    
+            this.socket.emit('screencast', dataWithMimeType);
+            logger.debug('Screenshot emitted');
         } catch (error) {
             logger.error('Screenshot emission failed:', error);
         } finally {
             this.isProcessingScreenshot = false;
-
-            // Process next screenshot in queue if any
+    
             if (this.screenshotQueue.length > 0) {
                 const nextScreenshot = this.screenshotQueue.shift();
                 if (nextScreenshot) {
-                    this.emitScreenshot(nextScreenshot);
+                    setTimeout(() => this.emitScreenshot(nextScreenshot), 1000 / SCREENCAST_CONFIG.targetFPS);
                 }
             }
         }
-    }, 1000 / SCREENCAST_CONFIG.targetFPS);
+    };
 
 }
