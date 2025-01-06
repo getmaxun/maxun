@@ -43,7 +43,6 @@ const SCREENCAST_CONFIG: {
     maxQueueSize: 2
 };
 
-
 /**
  * This class represents a remote browser instance.
  * It is used to allow a variety of interaction with the Playwright's browser instance.
@@ -112,9 +111,9 @@ export class RemoteBrowser {
     private startPerformanceReporting() {
         setInterval(() => {
             const report = this.performanceMonitor.getPerformanceReport();
-            
+
             console.log('Backend Performance Report:', report);
-            
+
         }, 5000);
     }
 
@@ -152,11 +151,11 @@ export class RemoteBrowser {
     private async performMemoryCleanup(): Promise<void> {
         this.screenshotQueue = [];
         this.isProcessingScreenshot = false;
-        
+
         if (global.gc) {
             global.gc();
         }
-        
+
         // Reset CDP session if needed
         if (this.client) {
             try {
@@ -239,7 +238,7 @@ export class RemoteBrowser {
             'Mozilla/5.0 (Windows NT 11.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.5938.62 Safari/537.36',
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:118.0) Gecko/20100101 Firefox/118.0',
         ];
-    
+
         return userAgents[Math.floor(Math.random() * userAgents.length)];
     }
 
@@ -260,7 +259,7 @@ export class RemoteBrowser {
                 "--disable-extensions",
                 "--no-sandbox",
                 "--disable-dev-shm-usage",
-            ], 
+            ],
         }));
         const proxyConfig = await getDecryptedProxyConfig(userId);
         let proxyOptions: { server: string, username?: string, password?: string } = { server: '' };
@@ -333,11 +332,11 @@ export class RemoteBrowser {
             this.client = await this.currentPage.context().newCDPSession(this.currentPage);
             await blocker.disableBlockingInPage(this.currentPage);
             console.log('Adblocker initialized');
-          } catch (error: any) {
+        } catch (error: any) {
             console.warn('Failed to initialize adblocker, continuing without it:', error.message);
             // Still need to set up the CDP session even if blocker fails
             this.client = await this.currentPage.context().newCDPSession(this.currentPage);
-          }
+        }
     };
 
     /**
@@ -657,7 +656,7 @@ export class RemoteBrowser {
                 const optimizedScreenshot = await this.optimizeScreenshot(payload);
                 const base64Data = optimizedScreenshot.toString('base64');
                 const dataWithMimeType = `data:image/jpeg;base64,${base64Data}`;
-                
+
                 await new Promise<void>((resolve) => {
                     this.socket.emit('screencast', dataWithMimeType, () => resolve());
                 });
@@ -666,7 +665,7 @@ export class RemoteBrowser {
             logger.error('Screenshot emission failed:', error);
         } finally {
             this.isProcessingScreenshot = false;
-            
+
             // Process next screenshot in queue if any
             if (this.screenshotQueue.length > 0) {
                 const nextScreenshot = this.screenshotQueue.shift();
