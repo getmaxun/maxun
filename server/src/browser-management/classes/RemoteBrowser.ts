@@ -89,7 +89,7 @@ export class RemoteBrowser {
         maxConcurrency: 1,
         maxRepeats: 1,
     };
-    
+
     private lastEmittedUrl: string | null = null;
 
     /**
@@ -411,22 +411,22 @@ export class RemoteBrowser {
     public async switchOff(): Promise<void> {
         try {
             await this.interpreter.stopInterpretation();
-            
+
             if (this.screencastInterval) {
                 clearInterval(this.screencastInterval);
             }
-            
+
             if (this.client) {
                 await this.stopScreencast();
             }
-            
+
             if (this.browser) {
                 await this.browser.close();
             }
-            
+
             this.screenshotQueue = [];
             //this.performanceMonitor.reset();
-            
+
         } catch (error) {
             logger.error('Error during browser shutdown:', error);
         }
@@ -649,21 +649,21 @@ export class RemoteBrowser {
             }
             return;
         }
-    
+
         this.isProcessingScreenshot = true;
-    
+
         try {
             const optimizedScreenshot = await this.optimizeScreenshot(payload);
             const base64Data = optimizedScreenshot.toString('base64');
             const dataWithMimeType = `data:image/jpeg;base64,${base64Data}`;
-    
+
             this.socket.emit('screencast', dataWithMimeType);
             logger.debug('Screenshot emitted');
         } catch (error) {
             logger.error('Screenshot emission failed:', error);
         } finally {
             this.isProcessingScreenshot = false;
-    
+
             if (this.screenshotQueue.length > 0) {
                 const nextScreenshot = this.screenshotQueue.shift();
                 if (nextScreenshot) {
