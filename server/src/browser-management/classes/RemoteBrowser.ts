@@ -395,7 +395,7 @@ export class RemoteBrowser {
             return;
         }
         this.client.on('Page.screencastFrame', ({ data: base64, sessionId }) => {
-            this.emitScreenshot(base64)
+            this.emitScreenshot(Buffer.from(base64, 'base64'))
             setTimeout(async () => {
                 try {
                     if (!this.client) {
@@ -454,7 +454,7 @@ export class RemoteBrowser {
         try {
             const screenshot = await this.currentPage?.screenshot();
             if (screenshot) {
-                this.emitScreenshot(screenshot.toString('base64'));
+                this.emitScreenshot(screenshot);
             }
         } catch (e) {
             const { message } = e as Error;
@@ -586,28 +586,51 @@ export class RemoteBrowser {
      * Should be called only once after the browser is fully initialized.
      * @returns {Promise<void>}
      */
-    private startScreencast = async (): Promise<void> => {
+    private async startScreencast(): Promise<void> {
         if (!this.client) {
-            logger.log('warn', 'client is not initialized');
+            logger.warn('Client is not initialized');
             return;
         }
-        await this.client.send('Page.startScreencast', { format: 'jpeg', quality: 75 });
-        logger.log('info', `Browser started with screencasting a page.`);
-    };
 
-    /**
-     * Unsubscribes the current page from the screencast session.
-     * @returns {Promise<void>}
-     */
-    private stopScreencast = async (): Promise<void> => {
-        if (!this.client) {
-            logger.log('error', 'client is not initialized');
-            logger.log('error', 'Screencast stop failed');
-        } else {
-            await this.client.send('Page.stopScreencast');
-            logger.log('info', `Browser stopped with screencasting.`);
+        try {
+            await this.client.send('Page.startScreencast', {
+                format: SCREENCAST_CONFIG.format,
+                quality: SCREENCAST_CONFIG.quality
+            });
+
+            // Set up screencast frame handler
+            this.client.on('Page.screencastFrame', async ({ data, sessionId }) => {
+                try {
+                    const buffer = Buffer.from(data, 'base64');
+                    await this.emitScreenshot(buffer);
+                    await this.client?.send('Page.screencastFrameAck', { sessionId });
+                } catch (error) {
+                    logger.error('Screencast frame processing failed:', error);
+                }
+            });
+
+            logger.info('Screencast started successfully');
+        } catch (error) {
+            logger.error('Failed to start screencast:', error);
         }
-    };
+    }
+
+    private async stopScreencast(): Promise<void> {
+        if (!this.client) {
+            logger.error('Client is not initialized');
+            return;
+        }
+
+        try {
+            await this.client.send('Page.stopScreencast');
+            this.screenshotQueue = [];
+            this.isProcessingScreenshot = false;
+            logger.info('Screencast stopped successfully');
+        } catch (error) {
+            logger.error('Failed to stop screencast:', error);
+        }
+    }
+
 
     /**
      * Helper for emitting the screenshot of browser's active page through websocket.
