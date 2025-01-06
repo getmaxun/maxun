@@ -9,6 +9,8 @@ import { chromium } from 'playwright-extra';
 import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { PlaywrightBlocker } from '@cliqz/adblocker-playwright';
 import fetch from 'cross-fetch';
+import { throttle } from 'lodash';
+import sharp from 'sharp';
 
 import logger from '../../logger';
 import { InterpreterSettings, RemoteBrowserOptions } from "../../types";
@@ -80,6 +82,10 @@ export class RemoteBrowser {
     public interpreter: WorkflowInterpreter;
 
     private performanceMonitor: BackendPerformanceMonitor;
+
+    private screenshotQueue: Buffer[] = [];
+    private isProcessingScreenshot = false;
+    private screencastInterval: NodeJS.Timeout | null = null;
 
     private startPerformanceReporting() {
         setInterval(() => {
