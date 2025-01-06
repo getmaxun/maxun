@@ -3,7 +3,6 @@ import { useSocketStore } from '../../context/socket';
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { useActionContext } from '../../context/browserActions';
 import { FrontendPerformanceMonitor } from '../../../perf/performance';
-
 const DatePicker = React.lazy(() => import('./DatePicker'));
 const Dropdown = React.lazy(() => import('./Dropdown'));
 const TimePicker = React.lazy(() => import('./TimePicker'));
@@ -145,6 +144,14 @@ interface CanvasProps {
     height: number;
     onCreateRef: (ref: React.RefObject<HTMLCanvasElement>) => void;
 }
+
+/**
+ * Interface for mouse's x,y coordinates
+ */
+export interface Coordinates {
+    x: number;
+    y: number;
+};
 
 const Canvas = React.memo(({ width, height, onCreateRef }: CanvasProps) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
