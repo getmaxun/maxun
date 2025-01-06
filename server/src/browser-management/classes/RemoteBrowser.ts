@@ -128,7 +128,7 @@ export class RemoteBrowser {
         this.interpreter = new WorkflowInterpreter(socket);
         this.generator = new WorkflowGenerator(socket);
         this.performanceMonitor = new BackendPerformanceMonitor();
-        this.startPerformanceReporting();
+        //this.startPerformanceReporting();
     }
 
     private initializeMemoryManagement(): void {
