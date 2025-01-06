@@ -102,20 +102,20 @@ export class RemoteBrowser {
      */
     public interpreter: WorkflowInterpreter;
 
-    private performanceMonitor: BackendPerformanceMonitor;
+    //private performanceMonitor: BackendPerformanceMonitor;
 
     private screenshotQueue: Buffer[] = [];
     private isProcessingScreenshot = false;
     private screencastInterval: NodeJS.Timeout | null = null;
 
-    private startPerformanceReporting() {
-        setInterval(() => {
-            const report = this.performanceMonitor.getPerformanceReport();
+    // private startPerformanceReporting() {
+    //     setInterval(() => {
+    //         const report = this.performanceMonitor.getPerformanceReport();
 
-            console.log('Backend Performance Report:', report);
+    //         console.log('Backend Performance Report:', report);
 
-        }, 5000);
-    }
+    //     }, 5000);
+    // }
 
     /**
      * Initializes a new instances of the {@link Generator} and {@link WorkflowInterpreter} classes and
@@ -127,7 +127,7 @@ export class RemoteBrowser {
         this.socket = socket;
         this.interpreter = new WorkflowInterpreter(socket);
         this.generator = new WorkflowGenerator(socket);
-        this.performanceMonitor = new BackendPerformanceMonitor();
+        //this.performanceMonitor = new BackendPerformanceMonitor();
         //this.startPerformanceReporting();
     }
 
@@ -665,7 +665,6 @@ export class RemoteBrowser {
         this.isProcessingScreenshot = true;
 
         try {
-            await this.performanceMonitor.measureEmitPerformance(async () => {
                 const optimizedScreenshot = await this.optimizeScreenshot(payload);
                 const base64Data = optimizedScreenshot.toString('base64');
                 const dataWithMimeType = `data:image/jpeg;base64,${base64Data}`;
@@ -673,7 +672,6 @@ export class RemoteBrowser {
                 await new Promise<void>((resolve) => {
                     this.socket.emit('screencast', dataWithMimeType, () => resolve());
                 });
-            });
         } catch (error) {
             logger.error('Screenshot emission failed:', error);
         } finally {
