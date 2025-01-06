@@ -27,7 +27,15 @@ const MEMORY_CONFIG = {
     heapUsageThreshold: 0.85 // 85%
 };
 
-const SCREENCAST_CONFIG = {
+const SCREENCAST_CONFIG: {
+    format: "jpeg" | "png";
+    quality: number;
+    maxWidth: number;
+    maxHeight: number;
+    targetFPS: number;
+    compressionQuality: number;
+    maxQueueSize: number;
+} = {
     format: 'jpeg',
     quality: 75,
     maxWidth: 1280,
