@@ -426,6 +426,26 @@ export class RemoteBrowser {
         }
     };
 
+    private async optimizeScreenshot(screenshot: Buffer): Promise<Buffer> {
+        try {
+            return await sharp(screenshot)
+                .jpeg({
+                    quality: Math.round(SCREENCAST_CONFIG.compressionQuality * 100),
+                    progressive: true
+                })
+                .resize({
+                    width: SCREENCAST_CONFIG.maxWidth,
+                    height: SCREENCAST_CONFIG.maxHeight,
+                    fit: 'inside',
+                    withoutEnlargement: true
+                })
+                .toBuffer();
+        } catch (error) {
+            logger.error('Screenshot optimization failed:', error);
+            return screenshot;
+        }
+    }
+
     /**
      * Makes and emits a single screenshot to the client side.
      * @returns {Promise<void>}
