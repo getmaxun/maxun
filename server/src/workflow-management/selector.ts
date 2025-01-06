@@ -175,6 +175,13 @@ export const getElementInformation = async (
                 info.innerText = targetElement.textContent ?? '';
               } else if (targetElement.tagName === 'IMG') {
                 info.imageUrl = (targetElement as HTMLImageElement).src;
+              } else if (targetElement?.tagName === 'SELECT') {
+                const selectElement = targetElement as HTMLSelectElement;
+                info.innerText = selectElement.options[selectElement.selectedIndex]?.text ?? '';
+                info.attributes = {
+                  ...info.attributes,
+                  selectedValue: selectElement.value,
+                };
               } else {
                 info.hasOnlyText = targetElement.children.length === 0 && 
                   (targetElement.textContent !== null && 
