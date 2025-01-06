@@ -614,11 +614,39 @@ export class RemoteBrowser {
      * @param payload the screenshot binary data
      * @returns void
      */
-    private emitScreenshot = (payload: any): void => {
-        this.performanceMonitor.measureEmitPerformance(() => {
-            const dataWithMimeType = ('data:image/jpeg;base64,').concat(payload);
-            this.socket.emit('screencast', dataWithMimeType);
-            logger.log('debug', `Screenshot emitted`);
-        });
-    };
+    private emitScreenshot = throttle(async (payload: Buffer): Promise<void> => {
+        if (this.isProcessingScreenshot) {
+            if (this.screenshotQueue.length < SCREENCAST_CONFIG.maxQueueSize) {
+                this.screenshotQueue.push(payload);
+            }
+            return;
+        }
+
+        this.isProcessingScreenshot = true;
+
+        try {
+            await this.performanceMonitor.measureEmitPerformance(async () => {
+                const optimizedScreenshot = await this.optimizeScreenshot(payload);
+                const base64Data = optimizedScreenshot.toString('base64');
+                const dataWithMimeType = `data:image/jpeg;base64,${base64Data}`;
+                
+                await new Promise<void>((resolve) => {
+                    this.socket.emit('screencast', dataWithMimeType, () => resolve());
+                });
+            });
+        } catch (error) {
+            logger.error('Screenshot emission failed:', error);
+        } finally {
+            this.isProcessingScreenshot = false;
+            
+            // Process next screenshot in queue if any
+            if (this.screenshotQueue.length > 0) {
+                const nextScreenshot = this.screenshotQueue.shift();
+                if (nextScreenshot) {
+                    this.emitScreenshot(nextScreenshot);
+                }
+            }
+        }
+    }, 1000 / SCREENCAST_CONFIG.targetFPS);
+
 }
