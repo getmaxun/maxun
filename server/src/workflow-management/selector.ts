@@ -182,7 +182,10 @@ export const getElementInformation = async (
                   ...info.attributes,
                   selectedValue: selectElement.value,
                 };
-              } else {
+              } else if (targetElement?.tagName === 'INPUT' && (targetElement as HTMLInputElement).type === 'time' || (targetElement as HTMLInputElement).type === 'date') {
+                info.innerText = (targetElement as HTMLInputElement).value;
+              }
+              else {
                 info.hasOnlyText = targetElement.children.length === 0 && 
                   (targetElement.textContent !== null && 
                    targetElement.textContent.trim().length > 0);
