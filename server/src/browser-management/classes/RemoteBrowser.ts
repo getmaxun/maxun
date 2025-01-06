@@ -29,7 +29,6 @@ const MEMORY_CONFIG = {
 
 const SCREENCAST_CONFIG: {
     format: "jpeg" | "png";
-    quality: number;
     maxWidth: number;
     maxHeight: number;
     targetFPS: number;
@@ -37,9 +36,8 @@ const SCREENCAST_CONFIG: {
     maxQueueSize: number;
 } = {
     format: 'jpeg',
-    quality: 75,
-    maxWidth: 1280,
-    maxHeight: 720,
+    maxWidth: 900,
+    maxHeight: 400,
     targetFPS: 30,
     compressionQuality: 0.8,
     maxQueueSize: 2
@@ -603,7 +601,6 @@ export class RemoteBrowser {
         try {
             await this.client.send('Page.startScreencast', {
                 format: SCREENCAST_CONFIG.format,
-                quality: SCREENCAST_CONFIG.quality
             });
 
             // Set up screencast frame handler
