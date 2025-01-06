@@ -89,7 +89,7 @@ export class RemoteBrowser {
         maxConcurrency: 1,
         maxRepeats: 1,
     };
-
+    
     private lastEmittedUrl: string | null = null;
 
     /**
@@ -420,16 +420,29 @@ export class RemoteBrowser {
      * If an interpretation was running it will be stopped.
      * @returns {Promise<void>}
      */
-    public switchOff = async (): Promise<void> => {
-        await this.interpreter.stopInterpretation();
-        if (this.browser) {
-            await this.stopScreencast();
-            await this.browser.close();
-        } else {
-            logger.log('error', 'Browser wasn\'t initialized');
-            logger.log('error', 'Switching off the browser failed');
+    public async switchOff(): Promise<void> {
+        try {
+            await this.interpreter.stopInterpretation();
+            
+            if (this.screencastInterval) {
+                clearInterval(this.screencastInterval);
+            }
+            
+            if (this.client) {
+                await this.stopScreencast();
+            }
+            
+            if (this.browser) {
+                await this.browser.close();
+            }
+            
+            this.screenshotQueue = [];
+            //this.performanceMonitor.reset();
+            
+        } catch (error) {
+            logger.error('Error during browser shutdown:', error);
         }
-    };
+    }
 
     private async optimizeScreenshot(screenshot: Buffer): Promise<Buffer> {
         try {
