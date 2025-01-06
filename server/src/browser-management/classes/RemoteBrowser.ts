@@ -89,7 +89,7 @@ export class RemoteBrowser {
         maxConcurrency: 1,
         maxRepeats: 1,
     };
-    
+
     private lastEmittedUrl: string | null = null;
 
     /**
@@ -423,22 +423,22 @@ export class RemoteBrowser {
     public async switchOff(): Promise<void> {
         try {
             await this.interpreter.stopInterpretation();
-            
+
             if (this.screencastInterval) {
                 clearInterval(this.screencastInterval);
             }
-            
+
             if (this.client) {
                 await this.stopScreencast();
             }
-            
+
             if (this.browser) {
                 await this.browser.close();
             }
-            
+
             this.screenshotQueue = [];
             //this.performanceMonitor.reset();
-            
+
         } catch (error) {
             logger.error('Error during browser shutdown:', error);
         }
