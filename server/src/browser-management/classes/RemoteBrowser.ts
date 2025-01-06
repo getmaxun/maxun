@@ -18,7 +18,6 @@ import { WorkflowGenerator } from "../../workflow-management/classes/Generator";
 import { WorkflowInterpreter } from "../../workflow-management/classes/Interpreter";
 import { getDecryptedProxyConfig } from '../../routes/proxy';
 import { getInjectableScript } from 'idcac-playwright';
-import { BackendPerformanceMonitor } from '../../../../perf/performance'
 chromium.use(stealthPlugin());
 
 const MEMORY_CONFIG = {
