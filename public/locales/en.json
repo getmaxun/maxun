@@ -1,7 +1,7 @@
 {
     "login": {
       "title": "Welcome Back!",
-      "email": "Email",
+      "email": "Enter Work Email",
       "password": "Password",
       "button": "Login",
       "loading": "Loading",
@@ -12,7 +12,7 @@
     },
     "register": {
       "title": "Register Account",
-      "email": "Email",
+      "email": "Enter Work Email",
       "password": "Password",
       "button": "Register",
       "loading": "Loading",
@@ -159,11 +159,13 @@
         "confirm": "Confirm",
         "discard": "Discard",
         "confirm_capture": "Confirm Capture",
-        "confirm_pagination": "Confirm Pagination",
-        "confirm_limit": "Confirm Limit",
+        "confirm_pagination": "Confirm",
+        "confirm_limit": "Confirm",
         "finish_capture": "Finish Capture",
+        "back": "Back",
         "finish": "Finish",
-        "cancel": "Cancel"
+        "cancel": "Cancel",
+        "delete": "Delete"
       },
       "screenshot": {
         "capture_fullpage": "Capture Fullpage",
@@ -345,7 +347,7 @@
     },
     "robot_edit": {
       "title": "Edit Robot",
-      "change_name": "Change Robot Name",
+      "change_name": "Robot Name",
       "robot_limit": "Robot Limit",
       "save": "Save Changes",
       "cancel": "Cancel",
@@ -400,24 +402,24 @@
     },
     "browser_window": {
       "attribute_modal": {
-        "title": "属性を選択",
-        "notifications": {
-          "list_select_success": "リストが正常に選択されました。抽出するテキストデータを選択してください。",
-          "pagination_select_success": "ページネーション要素が正常に選択されました。"
-        }
+          "title": "Select Attribute",
+          "notifications": {
+              "list_select_success": "List has been successfully selected. Please select the text data to extract.",
+              "pagination_select_success": "Pagination element has been successfully selected."
+          }
       },
       "attribute_options": {
-        "anchor": {
-          "text": "テキスト: {{text}}",
-          "url": "URL: {{url}}"
-        },
-        "image": {
-          "alt_text": "代替テキスト: {{altText}}",
-          "image_url": "画像URL: {{imageUrl}}"
-        },
-        "default": {
-          "text": "テキスト: {{text}}"
-        }
+          "anchor": {
+              "text": "Text: {{text}}",
+              "url": "URL: {{url}}"
+          },
+          "image": {
+              "alt_text": "Alt Text: {{altText}}",
+              "image_url": "Image URL: {{imageUrl}}"
+          },
+          "default": {
+              "text": "Text: {{text}}"
+          }
       }
     },
     "runs_table": {

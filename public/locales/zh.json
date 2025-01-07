@@ -1,7 +1,7 @@
 {
   "login": {
     "title": "欢迎回来！",
-    "email": "电子邮箱",
+    "email": "输入工作电子邮箱",
     "password": "密码",
     "button": "登录",
     "loading": "加载中",
@@ -12,7 +12,7 @@
   },
   "register": {
     "title": "注册账号",
-    "email": "电子邮箱",
+    "email": "输入工作电子邮箱",
     "password": "密码",
     "button": "注册",
     "loading": "加载中",
@@ -159,11 +159,13 @@
       "confirm": "确认",
       "discard": "放弃",
       "confirm_capture": "确认捕获",
-      "confirm_pagination": "确认分页",
-      "confirm_limit": "确认限制",
+      "confirm_pagination": "确认",
+      "confirm_limit": "确认",
       "finish_capture": "完成捕获",
+      "back": "返回",
       "finish": "完成",
-      "cancel": "取消"
+      "cancel": "取消",
+      "delete": "删除"
     },
     "screenshot": {
       "capture_fullpage": "捕获整页",
