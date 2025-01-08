@@ -47,10 +47,7 @@ const BrowserRecordingSave = () => {
               marginLeft: '25px',
               color: 'red !important',
               borderColor: 'red !important',
-              '&:hover': {
-                borderColor: 'red !important',
-                backgroundColor: 'whitesmoke !important',
-              }
+              backgroundColor: 'whitesmoke !important',
             }} 
             size="small"
           >
