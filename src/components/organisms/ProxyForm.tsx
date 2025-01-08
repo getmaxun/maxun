@@ -207,10 +207,10 @@ const ProxyForm: React.FC = () => {
                     />
                 </CustomTabs>
 
-<!--                 <Tabs value={tabIndex} onChange={handleTabChange}>
+                 {/* <Tabs value={tabIndex} onChange={handleTabChange}>
                     <Tab label={t('proxy.tab_standard')} />
                     <Tab label={t('proxy.tab_rotation')} />
-                </Tabs> -->
+                </Tabs>  */}
 
                 {tabIndex === 0 && (
                     isProxyConfigured ? (
@@ -305,8 +305,8 @@ const ProxyForm: React.FC = () => {
                                 {t('proxy.coming_soon')}
                             </Typography>
 
-<!--                             <Button variant="contained" color="primary" sx={{ marginTop: '20px',backgroundColor: '#ff00c3' }}>
-                                <a style={{ color: 'white', textDecoration: 'none' }} href="https://forms.gle/hXjgqDvkEhPcaBW76">Join Maxun Cloud Waitlist</a> -->
+                             {/* <Button variant="contained" color="primary" sx={{ marginTop: '20px',backgroundColor: '#ff00c3' }}>
+                                <a style={{ color: 'white', textDecoration: 'none' }} href="https://forms.gle/hXjgqDvkEhPcaBW76">Join Maxun Cloud Waitlist</a>  */}
 
                             <Button variant="contained" color="primary" sx={{ marginTop: '20px' }}>
                                 <a style={{ color: 'white', textDecoration: 'none' }} href="https://forms.gle/hXjgqDvkEhPcaBW76">{t('proxy.join_waitlist')}</a>
