@@ -403,6 +403,14 @@ export const BrowserWindow = () => {
                                             overflow: 'hidden',
                                             padding: '5px 10px',
                                         }}
+                                        sx={{ 
+                                            color: '#ff00c3 !important',
+                                            borderColor: '#ff00c3 !important',
+                                            '&:hover': {
+                                                borderColor: '#ff00c3 !important',
+                                                backgroundColor: 'whitesmoke !important',
+                                            }
+                                        }}
                                     >
                                         <span style={{
                                             display: 'block',
