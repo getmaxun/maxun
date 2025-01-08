@@ -32,6 +32,7 @@ export interface SelectorObject {
     selector: string;
     tag?: string;
     attribute?: string;
+    shadow?: boolean;
     [key: string]: any;
 }
 

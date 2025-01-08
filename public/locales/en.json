@@ -159,11 +159,13 @@
         "confirm": "Confirm",
         "discard": "Discard",
         "confirm_capture": "Confirm Capture",
-        "confirm_pagination": "Confirm Pagination",
-        "confirm_limit": "Confirm Limit",
+        "confirm_pagination": "Confirm",
+        "confirm_limit": "Confirm",
         "finish_capture": "Finish Capture",
+        "back": "Back",
         "finish": "Finish",
-        "cancel": "Cancel"
+        "cancel": "Cancel",
+        "delete": "Delete"
       },
       "screenshot": {
         "capture_fullpage": "Capture Fullpage",
