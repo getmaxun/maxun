@@ -468,15 +468,16 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   return (
     <Paper
       sx={{
-        borderRadius: '8px 8px 0px 0px', // Slightly more rounded corners for a smoother look
+        // borderRadius: '8px 8px 0px 0px', // Slightly more rounded corners for a smoother look
         height: '520px',
         width: 'auto',
         alignItems: "center",
-        padding: '16px', // Add padding for spacing inside the component
-        background: isDarkMode
-          ? 'linear-gradient(135deg, #1E2124 0%, #292C2F 100%)'  // Subtle gradient for dark mode
-          : 'linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%)', // Subtle gradient for light mode
-        color: isDarkMode ? '#E0E0E0' : '#333333', // Adjusted color for better contrast
+        background: 'inherit'
+        // padding: '16px', // Add padding for spacing inside the component
+        // background: isDarkMode
+        //   ? 'linear-gradient(135deg, #1E2124 0%, #292C2F 100%)'  // Subtle gradient for dark mode
+        //   : 'linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%)', // Subtle gradient for light mode
+        // color: isDarkMode ? '#E0E0E0' : '#333333', // Adjusted color for better contrast
         // Smooth transition for shadows and background changes
       }}
       id="browser-actions"
@@ -486,11 +487,11 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         <Typography sx={{ padding: '10px' }}>Last action: {` ${lastAction}`}</Typography>
       </SimpleBox> */}
       <ActionDescriptionBox  isDarkMode={isDarkMode} />
-      <Box display="flex" flexDirection="column" gap={2} style={{ margin: '13px',background: isDarkMode?'#1E2124': 'inherit',color: isDarkMode ? 'white' : 'inherit' }}>
-        {!getText && !getScreenshot && !getList && showCaptureList && <Button variant="contained" sx={{backgroundColor:"#ff00c3",color:`${isDarkMode?'white':'black'}`}}  onClick={startGetList}>{t('right_panel.buttons.capture_list')}</Button>}
-       {/* <ActionDescriptionBox />
-      <Box display="flex" flexDirection="column" gap={2} style={{ margin: '13px' }}>
-        {!getText && !getScreenshot && !getList && showCaptureList && <Button variant="contained" onClick={startGetList}>{t('right_panel.buttons.capture_list')}</Button>} */}
+      {/* <Box display="flex" flexDirection="column" gap={2} style={{ margin: '13px',background: isDarkMode?'#1E2124': 'inherit',color: isDarkMode ? 'white' : 'inherit' }}> */}
+        {/* {!getText && !getScreenshot && !getList && showCaptureList && <Button variant="contained" sx={{backgroundColor:"#ff00c3",color:`${isDarkMode?'white':'black'}`}} onClick={startGetList}>{t('right_panel.buttons.capture_list')}</Button>} */}
+        {/* <ActionDescriptionBox /> */}
+      <Box display="flex" flexDirection="column" gap={2} style={{ margin: '13px' }}> 
+        {!getText && !getScreenshot && !getList && showCaptureList && <Button variant="contained" onClick={startGetList}>{t('right_panel.buttons.capture_list')}</Button>} 
         
         {getList && (
           <>
@@ -586,9 +587,9 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
             </RadioGroup>
           </FormControl>
         )}
-        {!getText && !getScreenshot && !getList && showCaptureText && <Button variant="contained" sx={{backgroundColor:"#ff00c3",color:`${isDarkMode?'white':'black'}`}} onClick={startGetText}>{t('right_panel.buttons.capture_text')}</Button>}
+        {/* {!getText && !getScreenshot && !getList && showCaptureText && <Button variant="contained" sx={{backgroundColor:"#ff00c3",color:`${isDarkMode?'white':'black'}`}} onClick={startGetText}>{t('right_panel.buttons.capture_text')}</Button>} */}
 
-//         {!getText && !getScreenshot && !getList && showCaptureText && <Button variant="contained" onClick={handleStartGetText}>{t('right_panel.buttons.capture_text')}</Button>}
+        {!getText && !getScreenshot && !getList && showCaptureText && <Button variant="contained" onClick={handleStartGetText}>{t('right_panel.buttons.capture_text')}</Button>}
         {getText &&
           <>
             <Box display="flex" justifyContent="space-between" gap={2} style={{ margin: '15px' }}>
@@ -597,8 +598,8 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
             </Box>
           </>
         }
-        {!getText && !getScreenshot && !getList && showCaptureScreenshot && <Button variant="contained"  sx={{backgroundColor:"#ff00c3",color:`${isDarkMode?'white':'black'}`}} onClick={startGetScreenshot}>{t('right_panel.buttons.capture_screenshot')}</Button>}
-//         {!getText && !getScreenshot && !getList && showCaptureScreenshot && <Button variant="contained" onClick={startGetScreenshot}>{t('right_panel.buttons.capture_screenshot')}</Button>}
+        {/* {!getText && !getScreenshot && !getList && showCaptureScreenshot && <Button variant="contained"  sx={{backgroundColor:"#ff00c3",color:`${isDarkMode?'white':'black'}`}} onClick={startGetScreenshot}>{t('right_panel.buttons.capture_screenshot')}</Button>} */}
+        {!getText && !getScreenshot && !getList && showCaptureScreenshot && <Button variant="contained" onClick={startGetScreenshot}>{t('right_panel.buttons.capture_screenshot')}</Button>}
         {getScreenshot && (
           <Box display="flex" flexDirection="column" gap={2}>
             <Button variant="contained" onClick={() => captureScreenshot(true)}>{t('right_panel.screenshot.capture_fullpage')}</Button>
