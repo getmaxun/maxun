@@ -69,7 +69,6 @@ const Login = () => {
         mt: 6,
         padding: 4,
         backgroundColor: darkMode ? "#121212" : "#ffffff",
-        
       }}
     >
       <Box
@@ -85,7 +84,7 @@ const Login = () => {
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          maxWidth: 400,
+          maxWidth: 500,
           width: "100%",
         }}
       >
@@ -102,15 +101,6 @@ const Login = () => {
           margin="normal"
           variant="outlined"
           required
-          sx={{
-            input: { color: darkMode ? "#ffffff" : "#000000" },
-            label: { color: darkMode ? "#bbbbbb" : "#000000" },
-            "& .MuiOutlinedInput-root": {
-              "& fieldset": { borderColor: darkMode ? "#555555" : "#cccccc" },
-              "&:hover fieldset": { borderColor: darkMode ? "#ffffff" : "#000000" },
-              "&.Mui-focused fieldset": { borderColor: "#ff33cc" },
-            },
-          }}
         />
         <TextField
           fullWidth
@@ -122,15 +112,6 @@ const Login = () => {
           margin="normal"
           variant="outlined"
           required
-          sx={{
-            input: { color: darkMode ? "#ffffff" : "#000000" },
-            label: { color: darkMode ? "#bbbbbb" : "#000000" },
-            "& .MuiOutlinedInput-root": {
-              "& fieldset": { borderColor: darkMode ? "#555555" : "#cccccc" },
-              "&:hover fieldset": { borderColor: darkMode ? "#ffffff" : "#000000" },
-              "&.Mui-focused fieldset": { borderColor: "#ff33cc" },
-            },
-          }}
         />
         <Button
           type="submit"
@@ -140,10 +121,6 @@ const Login = () => {
           sx={{
             mt: 2,
             mb: 2,
-            backgroundColor: "#ff33cc" ,
-            "&:hover": {
-              backgroundColor: "#e6009e" ,
-            },
           }}
           disabled={loading || !email || !password}
         >

@@ -79,7 +79,7 @@ const Register = () => {
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          maxWidth: 400,
+          maxWidth: 500,
           width: "100%",
         }}
       >
@@ -106,15 +106,6 @@ const Register = () => {
           margin="normal"
           variant="outlined"
           required
-          sx={{
-            input: { color: darkMode ? "#ffffff" : "#000000" },
-            label: { color: darkMode ? "#bbbbbb" : "#000000" },
-            "& .MuiOutlinedInput-root": {
-              "& fieldset": { borderColor: darkMode ? "#555555" : "#cccccc" },
-              "&:hover fieldset": { borderColor: darkMode ? "#ffffff" : "#000000" },
-              "&.Mui-focused fieldset": { borderColor: "#ff33cc" },
-            },
-          }}
         />
         <TextField
           fullWidth
@@ -126,15 +117,6 @@ const Register = () => {
           margin="normal"
           variant="outlined"
           required
-          sx={{
-            input: { color: darkMode ? "#ffffff" : "#000000" },
-            label: { color: darkMode ? "#bbbbbb" : "#000000" },
-            "& .MuiOutlinedInput-root": {
-              "& fieldset": { borderColor: darkMode ? "#555555" : "#cccccc" },
-              "&:hover fieldset": { borderColor: darkMode ? "#ffffff" : "#000000" },
-              "&.Mui-focused fieldset": { borderColor: "#ff33cc" },
-            },
-          }}
         />
         <Button
           type="submit"
@@ -144,16 +126,12 @@ const Register = () => {
           sx={{
             mt: 2,
             mb: 2,
-            backgroundColor: "#ff33cc",
-            "&:hover": {
-              backgroundColor:"#e6009e", 
-            },
           }}
           disabled={loading || !email || !password}
         >
           {loading ? (
             <>
-              <CircularProgress size={20} sx={{ mr: 2, color: "#ffffff" }} />
+              <CircularProgress size={20} sx={{ mr: 2 }} />
               Loading
             </>
           ) : (
