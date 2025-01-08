@@ -466,30 +466,11 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const theme = useThemeMode();
   const isDarkMode = theme.darkMode;
   return (
-    <Paper
-      sx={{
-        // borderRadius: '8px 8px 0px 0px', // Slightly more rounded corners for a smoother look
-        height: '520px',
-        width: 'auto',
-        alignItems: "center",
-        background: 'inherit'
-        // padding: '16px', // Add padding for spacing inside the component
-        // background: isDarkMode
-        //   ? 'linear-gradient(135deg, #1E2124 0%, #292C2F 100%)'  // Subtle gradient for dark mode
-        //   : 'linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%)', // Subtle gradient for light mode
-        // color: isDarkMode ? '#E0E0E0' : '#333333', // Adjusted color for better contrast
-        // Smooth transition for shadows and background changes
-      }}
-      id="browser-actions"
-      elevation={0}
-    >
+    <Paper sx={{ height: '520px', width: 'auto', alignItems: "center", background: 'inherit' }} id="browser-actions" elevation={0}>
       {/* <SimpleBox height={60} width='100%' background='lightGray' radius='0%'>
         <Typography sx={{ padding: '10px' }}>Last action: {` ${lastAction}`}</Typography>
       </SimpleBox> */}
       <ActionDescriptionBox  isDarkMode={isDarkMode} />
-      {/* <Box display="flex" flexDirection="column" gap={2} style={{ margin: '13px',background: isDarkMode?'#1E2124': 'inherit',color: isDarkMode ? 'white' : 'inherit' }}> */}
-        {/* {!getText && !getScreenshot && !getList && showCaptureList && <Button variant="contained" sx={{backgroundColor:"#ff00c3",color:`${isDarkMode?'white':'black'}`}} onClick={startGetList}>{t('right_panel.buttons.capture_list')}</Button>} */}
-        {/* <ActionDescriptionBox /> */}
       <Box display="flex" flexDirection="column" gap={2} style={{ margin: '13px' }}> 
         {!getText && !getScreenshot && !getList && showCaptureList && <Button variant="contained" onClick={startGetList}>{t('right_panel.buttons.capture_list')}</Button>} 
         
@@ -503,10 +484,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                   sx={{ 
                     color: '#ff00c3 !important',
                     borderColor: '#ff00c3 !important',
-                    '&:hover': {
-                      borderColor: '#ff00c3 !important',
-                      backgroundColor: 'whitesmoke !important',
-                    }
+                    backgroundColor: 'whitesmoke !important',
                   }} 
                 >
                   {t('right_panel.buttons.back')}
@@ -519,10 +497,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                 sx={{ 
                   color: '#ff00c3 !important',
                   borderColor: '#ff00c3 !important',
-                  '&:hover': {
-                    borderColor: '#ff00c3 !important',
-                    backgroundColor: 'whitesmoke !important',
-                  }
+                  backgroundColor: 'whitesmoke !important',
                 }} 
               >
                 {captureStage === 'initial' ? t('right_panel.buttons.confirm_capture') :
@@ -537,11 +512,8 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                 sx={{ 
                   color: 'red !important',
                   borderColor: 'red !important',
-                  '&:hover': {
-                    borderColor: 'red !important',
-                    backgroundColor: 'whitesmoke !important',
-                  }
-              }} >
+                  backgroundColor: 'whitesmoke !important',
+                }} >
                 {t('right_panel.buttons.discard')}
               </Button>
             </Box>
@@ -554,27 +526,19 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
               variant={paginationType === 'clickNext' ? "contained" : "outlined"} 
               onClick={() => handlePaginationSettingSelect('clickNext')} 
               sx={{ 
-                color: '#ff00c3 !important',
+                color: paginationType === 'clickNext' ? 'whitesmoke !important' : '#ff00c3 !important',
                 borderColor: '#ff00c3 !important',
-                backgroundColor: paginationType === 'clickNext' ? 'whitesmoke !important' : 'transparent !important',
-                '&:hover': {
-                  borderColor: '#ff00c3 !important',
-                  backgroundColor: 'whitesmoke !important',
-                }
-            }}>
+                backgroundColor: paginationType === 'clickNext' ? '#ff00c3 !important' : 'whitesmoke !important',
+              }}>
               {t('right_panel.pagination.click_next')}
             </Button>
             <Button 
               variant={paginationType === 'clickLoadMore' ? "contained" : "outlined"} 
               onClick={() => handlePaginationSettingSelect('clickLoadMore')}
               sx={{ 
-                color: '#ff00c3 !important',
+                color: paginationType === 'clickLoadMore' ? 'whitesmoke !important' : '#ff00c3 !important',
                 borderColor: '#ff00c3 !important',
-                backgroundColor: paginationType === 'clickLoadMore' ? 'whitesmoke !important' : 'transparent !important',
-                '&:hover': {
-                  borderColor: '#ff00c3 !important',
-                  backgroundColor: 'whitesmoke !important',
-                }
+                backgroundColor: paginationType === 'clickLoadMore' ? '#ff00c3 !important' : 'whitesmoke !important',
               }}>
                 {t('right_panel.pagination.click_load_more')}
             </Button>
@@ -582,13 +546,9 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
               variant={paginationType === 'scrollDown' ? "contained" : "outlined"} 
               onClick={() => handlePaginationSettingSelect('scrollDown')}
               sx={{ 
-                color: '#ff00c3 !important',
+                color: paginationType === 'scrollDown' ? 'whitesmoke !important' : '#ff00c3 !important',
                 borderColor: '#ff00c3 !important',
-                backgroundColor: paginationType === 'scrollDown' ? 'whitesmoke !important' : 'transparent !important',
-                '&:hover': {
-                  borderColor: '#ff00c3 !important',
-                  backgroundColor: 'whitesmoke !important',
-                }
+                backgroundColor: paginationType === 'scrollDown' ? '#ff00c3 !important' : 'whitesmoke !important',
               }}>
               {t('right_panel.pagination.scroll_down')}
             </Button>
@@ -596,13 +556,9 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
               variant={paginationType === 'scrollUp' ? "contained" : "outlined"} 
               onClick={() => handlePaginationSettingSelect('scrollUp')}
               sx={{ 
-                color: '#ff00c3 !important',
+                color: paginationType === 'scrollUp' ? 'whitesmoke !important' : '#ff00c3 !important',
                 borderColor: '#ff00c3 !important',
-                backgroundColor: paginationType === 'scrollUp' ? 'whitesmoke !important' : 'transparent !important',
-                '&:hover': {
-                  borderColor: '#ff00c3 !important',
-                  backgroundColor: 'whitesmoke !important',
-                }
+                backgroundColor: paginationType === 'scrollUp' ? '#ff00c3 !important' : 'whitesmoke !important',
               }}>
               {t('right_panel.pagination.scroll_up')}
             </Button>
@@ -610,23 +566,17 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
               variant={paginationType === 'none' ? "contained" : "outlined"} 
               onClick={() => handlePaginationSettingSelect('none')}
               sx={{ 
-                color: '#ff00c3 !important',
+                color: paginationType === 'none' ? 'whitesmoke !important' : '#ff00c3 !important',
                 borderColor: '#ff00c3 !important',
-                backgroundColor: paginationType === 'none' ? 'whitesmoke !important' : 'transparent !important',
-                '&:hover': {
-                  borderColor: '#ff00c3 !important',
-                  backgroundColor: 'whitesmoke !important',
-                }
+                backgroundColor: paginationType === 'none' ? '#ff00c3 !important' : 'whitesmoke !important',
               }}>
               {t('right_panel.pagination.none')}</Button>
           </Box>
         )}
         {showLimitOptions && (
           <FormControl>
-            <FormLabel style={{ marginBottom: '10px', background: isDarkMode ? "#1E2124" : 'white', color: isDarkMode ? "white" : 'black' }}>
+            <FormLabel>
               <h4>{t('right_panel.limit.title')}</h4>
-             {/* <FormLabel>
-              <h4>{t('right_panel.limit.title')}</h4>  */}
             </FormLabel>
             <RadioGroup
               value={limitType}
@@ -684,8 +634,27 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         {getText &&
           <>
             <Box display="flex" justifyContent="space-between" gap={2} style={{ margin: '15px' }}>
-              <Button variant="outlined" onClick={stopCaptureAndEmitGetTextSettings} >{t('right_panel.buttons.confirm')}</Button>
-              <Button variant="outlined" color="error" onClick={discardGetText} >{t('right_panel.buttons.discard')}</Button>
+              <Button 
+                variant="outlined" 
+                onClick={stopCaptureAndEmitGetTextSettings} 
+                sx={{ 
+                  color: '#ff00c3 !important',
+                  borderColor: '#ff00c3 !important',
+                  backgroundColor: 'whitesmoke !important',
+                }}>
+                  {t('right_panel.buttons.confirm')}
+              </Button>
+              <Button 
+                variant="outlined" 
+                color="error" 
+                onClick={discardGetText} 
+                sx={{ 
+                  color: '#ff00c3 !important',
+                  borderColor: '#ff00c3 !important',
+                  backgroundColor: 'whitesmoke !important',
+                }}>
+                  {t('right_panel.buttons.discard')}
+              </Button>
             </Box>
           </>
         }
@@ -695,7 +664,17 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
           <Box display="flex" flexDirection="column" gap={2}>
             <Button variant="contained" onClick={() => captureScreenshot(true)}>{t('right_panel.screenshot.capture_fullpage')}</Button>
             <Button variant="contained" onClick={() => captureScreenshot(false)}>{t('right_panel.screenshot.capture_visible')}</Button>
-            <Button variant="outlined" color="error" onClick={stopGetScreenshot}>{t('right_panel.buttons.discard')}</Button>
+            <Button 
+              variant="outlined" 
+              color="error" 
+              onClick={stopGetScreenshot}
+              sx={{ 
+                color: '#ff00c3 !important',
+                borderColor: '#ff00c3 !important',
+                backgroundColor: 'whitesmoke !important',
+              }}>
+                {t('right_panel.buttons.discard')}
+            </Button>
           </Box>
         )}
       </Box>
@@ -771,7 +750,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
               <>
                 <Typography>{t('right_panel.messages.list_selected')}</Typography>
                 {Object.entries(step.fields).map(([key, field]) => (
-                  <Box key={key} sx={{ padding: '10px', margin: '11px', borderRadius: '5px', position: 'relative', background: `${isDarkMode ? "#1E2124" : 'white'}` }}>
+                  <Box key={key} sx={{background: `${isDarkMode ? "#1E2124" : 'white'}` }}>
                     <TextField
                       label={t('right_panel.fields.field_label')}
                       value={field.label || ''}
@@ -785,9 +764,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                             <EditIcon />
                           </InputAdornment>
                         )
-                      }}
-
-                      
+                      }} 
                     />
                     <TextField
                       label={t('right_panel.fields.field_data')}
