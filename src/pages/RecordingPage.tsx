@@ -66,10 +66,12 @@ export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
 
     } else {
       document.body.style.background = 'radial-gradient(circle, rgba(255, 255, 255, 1) 0%, rgba(232, 191, 222, 1) 100%, rgba(255, 255, 255, 1) 100%)';
+      document.body.style.filter = 'progid:DXImageTransform.Microsoft.gradient(startColorstr="#ffffff",endColorstr="#ffffff",GradientType=1);'
     }
 
     return () => {
       document.body.style.background = '';
+      document.body.style.filter = '';
     };
   }, [darkMode]);
 
@@ -166,5 +168,4 @@ const RecordingPageWrapper = styled.div`
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  
 `;
