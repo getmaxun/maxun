@@ -273,7 +273,19 @@ export const ScheduleSettingsModal = ({ isOpen, handleStart, handleClose, initia
                 <Button onClick={() => handleStart(settings)} variant="contained" color="primary">
                   {t('schedule_settings.buttons.save_schedule')}
                 </Button>
-                <Button onClick={handleClose} color="primary" variant="outlined" style={{ marginLeft: '10px' }}>
+                <Button 
+                  onClick={handleClose} 
+                  color="primary" 
+                  variant="outlined" 
+                  style={{ marginLeft: '10px' }}
+                  sx={{ 
+                    color: '#ff00c3 !important',
+                    borderColor: '#ff00c3 !important',
+                    '&:hover': {
+                      borderColor: '#ff00c3 !important',
+                      backgroundColor: 'whitesmoke !important',
+                    }
+                  }}>
                   {t('schedule_settings.buttons.cancel')}
                 </Button>
               </Box>
