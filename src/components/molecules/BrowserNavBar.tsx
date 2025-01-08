@@ -13,18 +13,6 @@ import { getCurrentUrl } from "../../api/recording";
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { useThemeMode } from '../../context/theme-provider';
 
-// const StyledNavBar = styled.div<{ browserWidth: number; isDarkMode: boolean }>`
-//   display: flex;
-//   align-items: center;
-//   padding: 10px 20px;
-//   background-color: ${({ isDarkMode }) => (isDarkMode ? '#2C2F33' : '#F5F5F5')};
-//   width: ${({ browserWidth }) => `${browserWidth}px`};
-//   border-radius: 0px 0px 8px 8px;
-//   box-shadow: ${({ isDarkMode }) => (isDarkMode ? '0px 2px 10px rgba(0, 0, 0, 0.2)' : '0px 2px 10px rgba(0, 0, 0, 0.1)')};
-//   transition: background-color 0.3s ease, box-shadow 0.3s ease;
-//   margin-bottom: 15px;
-// `;
-
 const StyledNavBar = styled.div<{ browserWidth: number; isDarkMode: boolean }>`
     display: flex;
     padding: 12px 0px;
