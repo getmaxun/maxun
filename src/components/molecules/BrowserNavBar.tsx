@@ -13,36 +13,33 @@ import { getCurrentUrl } from "../../api/recording";
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { useThemeMode } from '../../context/theme-provider';
 
+// const StyledNavBar = styled.div<{ browserWidth: number; isDarkMode: boolean }>`
+//   display: flex;
+//   align-items: center;
+//   padding: 10px 20px;
+//   background-color: ${({ isDarkMode }) => (isDarkMode ? '#2C2F33' : '#F5F5F5')};
+//   width: ${({ browserWidth }) => `${browserWidth}px`};
+//   border-radius: 0px 0px 8px 8px;
+//   box-shadow: ${({ isDarkMode }) => (isDarkMode ? '0px 2px 10px rgba(0, 0, 0, 0.2)' : '0px 2px 10px rgba(0, 0, 0, 0.1)')};
+//   transition: background-color 0.3s ease, box-shadow 0.3s ease;
+//   margin-bottom: 15px;
+// `;
+
 const StyledNavBar = styled.div<{ browserWidth: number; isDarkMode: boolean }>`
-  display: flex;
-  align-items: center;
-  padding: 10px 20px;
-  background-color: ${({ isDarkMode }) => (isDarkMode ? '#2C2F33' : '#F5F5F5')};
-  width: ${({ browserWidth }) => `${browserWidth}px`};
-  border-radius: 0px 0px 8px 8px;
-  box-shadow: ${({ isDarkMode }) => (isDarkMode ? '0px 2px 10px rgba(0, 0, 0, 0.2)' : '0px 2px 10px rgba(0, 0, 0, 0.1)')};
-  transition: background-color 0.3s ease, box-shadow 0.3s ease;
-  margin-bottom: 15px;
+    display: flex;
+    padding: 12px 0px;
+    background-color: ${({ isDarkMode }) => (isDarkMode ? '#2C2F33' : '#f6f6f6')};
+    width: ${({ browserWidth }) => browserWidth}px;
+    border-radius: 0px 5px 0px 0px;
 `;
 
 const IconButton = styled(NavBarButton)<{ mode: string }>`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
-  margin-right: 12px;
-  background-color: ${({ mode }) => (mode === 'dark' ? '#40444B' : '#E0E0E0')};
-  border-radius: 50%;
+  background-color: ${({ mode }) => (mode === 'dark' ? '#2C2F33' : '#f6f6f6')};
   transition: background-color 0.3s ease, transform 0.1s ease;
   color: ${({ mode }) => (mode === 'dark' ? '#FFFFFF' : '#333')};
   cursor: pointer;
-
   &:hover {
     background-color: ${({ mode }) => (mode === 'dark' ? '#586069' : '#D0D0D0')};
-  }
-
-  &:active {
-    transform: scale(0.95);
   }
 `;
 
