@@ -19,6 +19,7 @@ import styled from 'styled-components';
 import axios from 'axios';
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { apiUrl } from '../../apiConfig';
+import { useTranslation } from 'react-i18next';
 
 const Container = styled(Box)`
   display: flex;
@@ -29,16 +30,13 @@ const Container = styled(Box)`
 `;
 
 const ApiKeyManager = () => {
+  const { t } = useTranslation();
   const [apiKey, setApiKey] = useState<string | null>(null);
-  const [apiKeyName, setApiKeyName] = useState<string>('Maxun API Key');
+  const [apiKeyName, setApiKeyName] = useState<string>(t('apikey.default_name'));
   const [loading, setLoading] = useState<boolean>(true);
   const [showKey, setShowKey] = useState<boolean>(false);
   const [copySuccess, setCopySuccess] = useState<boolean>(false);
   const { notify } = useGlobalInfoStore();
-
-
-
-
 
   useEffect(() => {
     const fetchApiKey = async () => {
@@ -46,7 +44,7 @@ const ApiKeyManager = () => {
         const { data } = await axios.get(`${apiUrl}/auth/api-key`);
         setApiKey(data.api_key);
       } catch (error: any) {
-        notify('error', `Failed to fetch API Key - ${error.message}`);
+        notify('error', t('apikey.notifications.fetch_error', { error: error.message }));
       } finally {
         setLoading(false);
       }
@@ -62,9 +60,9 @@ const ApiKeyManager = () => {
       const { data } = await axios.post(`${apiUrl}/auth/generate-api-key`);
       setApiKey(data.api_key);
 
-      notify('success', `Generated API Key successfully`);
+      notify('success', t('apikey.notifications.generate_success'));
     } catch (error: any) {
-      notify('error', `Failed to generate API Key - ${error.message}`);
+      notify('error', t('apikey.notifications.generate_error', { error: error.message }));
     } finally {
       setLoading(false);
     }
@@ -75,9 +73,9 @@ const ApiKeyManager = () => {
     try {
       await axios.delete(`${apiUrl}/auth/delete-api-key`);
       setApiKey(null);
-      notify('success', 'API Key deleted successfully');
+      notify('success', t('apikey.notifications.delete_success'));
     } catch (error: any) {
-      notify('error', `Failed to delete API Key - ${error.message}`);
+      notify('error', t('apikey.notifications.delete_error', { error: error.message }));
     } finally {
       setLoading(false);
     }
@@ -88,7 +86,7 @@ const ApiKeyManager = () => {
       navigator.clipboard.writeText(apiKey);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
-      notify('info', 'Copied API Key successfully');
+      notify('info', t('apikey.notifications.copy_success'));
     }
   };
 
@@ -111,34 +109,38 @@ const ApiKeyManager = () => {
   return (
     <Container sx={{ alignSelf: 'flex-start' }}>
       <Typography variant="h6" gutterBottom component="div" style={{ marginBottom: '20px' }}>
-        Manage Your API Key
+        {t('apikey.title')}
       </Typography>
       {apiKey ? (
         <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden' }}>
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>API Key Name</TableCell>
-                <TableCell>API Key</TableCell>
-                <TableCell>Actions</TableCell>
+                <TableCell>{t('apikey.table.name')}</TableCell>
+                <TableCell>{t('apikey.table.key')}</TableCell>
+                <TableCell>{t('apikey.table.actions')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               <TableRow>
                 <TableCell>{apiKeyName}</TableCell>
-                <TableCell>{showKey ? `${apiKey?.substring(0, 10)}...` : '***************'}</TableCell>
                 <TableCell>
-                  <Tooltip title="Copy">
+                  <Box sx={{ fontFamily: 'monospace', width: '10ch' }}>
+                    {showKey ? `${apiKey?.substring(0, 10)}...` : '**********'}
+                  </Box>
+                </TableCell>
+                <TableCell>
+                  <Tooltip title={t('apikey.actions.copy')}>
                     <IconButton onClick={copyToClipboard}>
                       <ContentCopy />
                     </IconButton>
                   </Tooltip>
-                  <Tooltip title={showKey ? 'Hide' : 'Show'}>
+                  <Tooltip title={showKey ? t('apikey.actions.hide') : t('apikey.actions.show')}>
                     <IconButton onClick={() => setShowKey(!showKey)}>
                       <Visibility />
                     </IconButton>
                   </Tooltip>
-                  <Tooltip title="Delete">
+                  <Tooltip title={t('apikey.actions.delete')}>
                     <IconButton onClick={deleteApiKey} color="error">
                       <Delete />
                     </IconButton>
@@ -150,9 +152,9 @@ const ApiKeyManager = () => {
         </TableContainer>
       ) : (
         <>
-          <Typography>You haven't generated an API key yet.</Typography>
+          <Typography>{t('apikey.no_key_message')}</Typography>
           <Button onClick={generateApiKey} variant="contained" color="primary" sx={{ marginTop: '15px' }}>
-            Generate API Key
+            {t('apikey.generate_button')}
           </Button>
         </>
       )}

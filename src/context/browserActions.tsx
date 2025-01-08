@@ -14,8 +14,8 @@ interface ActionContextProps {
     paginationType: PaginationType;
     limitType: LimitType;
     customLimit: string;
-    captureStage: CaptureStage; // New captureStage property
-    setCaptureStage: (stage: CaptureStage) => void; // Setter for captureStage
+    captureStage: CaptureStage;
+    setCaptureStage: (stage: CaptureStage) => void;
     startPaginationMode: () => void;
     startGetText: () => void;
     stopGetText: () => void;
@@ -53,6 +53,7 @@ export const ActionProvider = ({ children }: { children: ReactNode }) => {
     const startPaginationMode = () => {
         setPaginationMode(true);
         setCaptureStage('pagination');
+        socket?.emit('setGetList', { getList: false });
     };
 
     const stopPaginationMode = () => setPaginationMode(false);
@@ -75,7 +76,6 @@ export const ActionProvider = ({ children }: { children: ReactNode }) => {
 
     const stopGetList = () => {
         setGetList(false);
-        socket?.emit('setGetList', { getList: false });
         setPaginationType('');
         setLimitType('');
         setCustomLimit('');

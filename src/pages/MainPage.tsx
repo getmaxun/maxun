@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MainMenu } from "../components/organisms/MainMenu";
 import { Stack } from "@mui/material";
 import { Recordings } from "../components/organisms/Recordings";
@@ -30,7 +31,7 @@ export interface ScheduleRunResponse {
 }
 
 export const MainPage = ({ handleEditRecording }: MainPageProps) => {
-
+  const { t } = useTranslation();
   const [content, setContent] = React.useState('recordings');
   const [sockets, setSockets] = React.useState<Socket[]>([]);
   const [runningRecordingId, setRunningRecordingId] = React.useState('');
@@ -49,10 +50,10 @@ export const MainPage = ({ handleEditRecording }: MainPageProps) => {
     aborted = true;
     notifyAboutAbort(runId).then(async (response) => {
       if (response) {
-        notify('success', `Interpretation of robot ${runningRecordingName} aborted successfully`);
+        notify('success', t('main_page.notifications.abort_success', { name: runningRecordingName }));
         await stopRecording(ids.browserId);
       } else {
-        notify('error', `Failed to abort the interpretation of ${runningRecordingName} robot`);
+        notify('error', t('main_page.notifications.abort_failed', { name: runningRecordingName }));
       }
     })
   }
@@ -67,9 +68,9 @@ export const MainPage = ({ handleEditRecording }: MainPageProps) => {
     interpretStoredRecording(runId).then(async (interpretation: boolean) => {
       if (!aborted) {
         if (interpretation) {
-          notify('success', `Interpretation of robot ${runningRecordingName} succeeded`);
+          notify('success', t('main_page.notifications.interpretation_success', { name: runningRecordingName }));
         } else {
-          notify('success', `Failed to interpret ${runningRecordingName} robot`);
+          notify('success', t('main_page.notifications.interpretation_failed', { name: runningRecordingName }));
           // destroy the created browser
           await stopRecording(browserId);
         }
@@ -98,9 +99,9 @@ export const MainPage = ({ handleEditRecording }: MainPageProps) => {
       socket.on('debugMessage', debugMessageHandler);
       setContent('runs');
       if (browserId) {
-        notify('info', `Running robot: ${runningRecordingName}`);
+        notify('info', t('main_page.notifications.run_started', { name: runningRecordingName }));
       } else {
-        notify('error', `Failed to run robot: ${runningRecordingName}`);
+        notify('error', t('main_page.notifications.run_start_failed', { name: runningRecordingName }));
       }
     })
     return (socket: Socket, browserId: string, runId: string) => {
@@ -113,9 +114,9 @@ export const MainPage = ({ handleEditRecording }: MainPageProps) => {
     scheduleStoredRecording(runningRecordingId, settings)
       .then(({ message, runId }: ScheduleRunResponse) => {
         if (message === 'success') {
-          notify('success', `Robot ${runningRecordingName} scheduled successfully`);
+          notify('success', t('main_page.notifications.schedule_success', { name: runningRecordingName }));
         } else {
-          notify('error', `Failed to schedule robot ${runningRecordingName}`);
+          notify('error', t('main_page.notifications.schedule_failed', { name: runningRecordingName }));
         }
       });
   }

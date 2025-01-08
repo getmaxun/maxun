@@ -7,11 +7,13 @@ import { GenericModal } from '../atoms/GenericModal';
 import { useActionContext } from '../../context/browserActions';
 import { useBrowserSteps, TextStep } from '../../context/browserSteps';
 import { useGlobalInfoStore } from '../../context/globalInfo';
-
+import { useTranslation } from 'react-i18next';
 
 interface ElementInfo {
     tagName: string;
     hasOnlyText?: boolean;
+    isIframeContent?: boolean;
+    isShadowRoot?: boolean;
     innerText?: string;
     url?: string;
     imageUrl?: string;
@@ -52,6 +54,7 @@ const getAttributeOptions = (tagName: string, elementInfo: ElementInfo | null): 
 };
 
 export const BrowserWindow = () => {
+    const { t } = useTranslation();
     const [canvasRef, setCanvasReference] = useState<React.RefObject<HTMLCanvasElement> | undefined>(undefined);
     const [screenShot, setScreenShot] = useState<string>("");
     const [highlighterData, setHighlighterData] = useState<{ rect: DOMRect, selector: string, elementInfo: ElementInfo | null, childSelectors?: string[] } | null>(null);
@@ -66,7 +69,7 @@ export const BrowserWindow = () => {
 
     const { socket } = useSocketStore();
     const { notify } = useGlobalInfoStore();
-    const { getText, getList, paginationMode, paginationType, limitMode } = useActionContext();
+    const { getText, getList, paginationMode, paginationType, limitMode, captureStage } = useActionContext();
     const { addTextStep, addListStep } = useBrowserSteps();
 
     const onMouseMove = (e: MouseEvent) => {
@@ -115,34 +118,81 @@ export const BrowserWindow = () => {
     }, [screenShot, canvasRef, socket, screencastHandler]);
 
     const highlighterHandler = useCallback((data: { rect: DOMRect, selector: string, elementInfo: ElementInfo | null, childSelectors?: string[] }) => {
+        console.log("LIST SELECTOR", listSelector);
+        console.log("DATA SELECTOR", data.selector);
+        console.log("CHILD SELECTORS", data.childSelectors);
         if (getList === true) {
             if (listSelector) {
                 socket?.emit('listSelector', { selector: listSelector });
+                const hasValidChildSelectors = Array.isArray(data.childSelectors) && data.childSelectors.length > 0;
+
                 if (limitMode) {
                     setHighlighterData(null);
                 } else if (paginationMode) {
-                    // only set highlighterData if type is not empty, 'none', 'scrollDown', or 'scrollUp'
+                    // Only set highlighterData if type is not empty, 'none', 'scrollDown', or 'scrollUp'
                     if (paginationType !== '' && !['none', 'scrollDown', 'scrollUp'].includes(paginationType)) {
                         setHighlighterData(data);
                     } else {
                         setHighlighterData(null);
                     }
                 } else if (data.childSelectors && data.childSelectors.includes(data.selector)) {
-                    // highlight only valid child elements within the listSelector
+                    // Highlight only valid child elements within the listSelector
                     setHighlighterData(data);
-                } else {
+                } else if (data.elementInfo?.isIframeContent && data.childSelectors) {
+                    // Handle pure iframe elements - similar to previous shadow DOM logic but using iframe syntax
+                    // Check if the selector matches any iframe child selectors
+                    const isIframeChild = data.childSelectors.some(childSelector => 
+                        data.selector.includes(':>>') && // Iframe uses :>> for traversal
+                        childSelector.split(':>>').some(part => 
+                            data.selector.includes(part.trim())
+                        )
+                    );
+                    setHighlighterData(isIframeChild ? data : null);
+                } else if (data.selector.includes(':>>') && hasValidChildSelectors) {
+                    // Handle mixed DOM cases with iframes
+                    // Split the selector into parts and check each against child selectors
+                    const selectorParts = data.selector.split(':>>').map(part => part.trim());
+                    const isValidMixedSelector = selectorParts.some(part => 
+                        // We know data.childSelectors is defined due to hasValidChildSelectors check
+                        data.childSelectors!.some(childSelector => 
+                            childSelector.includes(part)
+                        )
+                    );
+                    setHighlighterData(isValidMixedSelector ? data : null);
+                } else if (data.elementInfo?.isShadowRoot && data.childSelectors) {
+                    // New case: Handle pure Shadow DOM elements
+                    // Check if the selector matches any shadow root child selectors
+                    const isShadowChild = data.childSelectors.some(childSelector => 
+                        data.selector.includes('>>') && // Shadow DOM uses >> for piercing
+                        childSelector.split('>>').some(part => 
+                            data.selector.includes(part.trim())
+                        )
+                    );
+                    setHighlighterData(isShadowChild ? data : null);
+                 } else if (data.selector.includes('>>') && hasValidChildSelectors) {
+                    // New case: Handle mixed DOM cases
+                    // Split the selector into parts and check each against child selectors
+                    const selectorParts = data.selector.split('>>').map(part => part.trim());
+                    const isValidMixedSelector = selectorParts.some(part => 
+                        // Now we know data.childSelectors is defined
+                        data.childSelectors!.some(childSelector => 
+                            childSelector.includes(part)
+                        )
+                    );
+                    setHighlighterData(isValidMixedSelector ? data : null);
+                  } else {
                     // if !valid child in normal mode, clear the highlighter
                     setHighlighterData(null);
-                }
-            } else {
-                // set highlighterData for the initial listSelector selection
+                  }
+              } else {
+                // Set highlighterData for the initial listSelector selection
                 setHighlighterData(data);
-            }
-        } else {
-            // for non-list steps
+              }
+          } else {
+            // For non-list steps
             setHighlighterData(data);
-        }
-    }, [highlighterData, getList, socket, listSelector, paginationMode, paginationType]);
+          }
+    }, [highlighterData, getList, socket, listSelector, paginationMode, paginationType, captureStage]);
 
 
     useEffect(() => {
@@ -155,6 +205,13 @@ export const BrowserWindow = () => {
             socket?.off("highlighter", highlighterHandler);
         };
     }, [socket, onMouseMove]);
+
+    useEffect(() => {
+        if (captureStage === 'initial' && listSelector) {
+            socket?.emit('setGetList', { getList: true });
+            socket?.emit('listSelector', { selector: listSelector });
+        }
+    }, [captureStage, listSelector, socket]);
 
     const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
         if (highlighterData && canvasRef?.current) {
@@ -183,6 +240,7 @@ export const BrowserWindow = () => {
                         addTextStep('', data, {
                             selector: highlighterData.selector,
                             tag: highlighterData.elementInfo?.tagName,
+                            shadow: highlighterData.elementInfo?.isShadowRoot,
                             attribute
                         });
                     } else {
@@ -190,7 +248,7 @@ export const BrowserWindow = () => {
                         setAttributeOptions(options);
                         setSelectedElement({
                             selector: highlighterData.selector,
-                            info: highlighterData.elementInfo
+                            info: highlighterData.elementInfo,
                         });
                         setShowAttributeModal(true);
                     }
@@ -200,7 +258,7 @@ export const BrowserWindow = () => {
                     // Only allow selection in pagination mode if type is not empty, 'scrollDown', or 'scrollUp'
                     if (paginationType !== '' && paginationType !== 'scrollDown' && paginationType !== 'scrollUp' && paginationType !== 'none') {
                         setPaginationSelector(highlighterData.selector);
-                        notify(`info`, `Pagination element selected successfully.`);
+                        notify(`info`, t('browser_window.attribute_modal.notifications.pagination_select_success'));
                         addListStep(listSelector!, fields, currentListId || 0, { type: paginationType, selector: highlighterData.selector });
                     }
                     return;
@@ -208,7 +266,7 @@ export const BrowserWindow = () => {
 
                 if (getList === true && !listSelector) {
                     setListSelector(highlighterData.selector);
-                    notify(`info`, `List selected succesfully. Select the text data for extraction.`)
+                    notify(`info`, t('browser_window.attribute_modal.notifications.list_select_success'));
                     setCurrentListId(Date.now());
                     setFields({});
                 } else if (getList === true && listSelector && currentListId) {
@@ -227,6 +285,7 @@ export const BrowserWindow = () => {
                             selectorObj: {
                                 selector: highlighterData.selector,
                                 tag: highlighterData.elementInfo?.tagName,
+                                shadow: highlighterData.elementInfo?.isShadowRoot,
                                 attribute
                             }
                         };
@@ -274,6 +333,7 @@ export const BrowserWindow = () => {
                     addTextStep('', data, {
                         selector: selectedElement.selector,
                         tag: selectedElement.info?.tagName,
+                        shadow: selectedElement.info?.isShadowRoot,
                         attribute: attribute
                     });
                 }
@@ -286,6 +346,7 @@ export const BrowserWindow = () => {
                         selectorObj: {
                             selector: selectedElement.selector,
                             tag: selectedElement.info?.tagName,
+                            shadow: selectedElement.info?.isShadowRoot,
                             attribute: attribute
                         }
                     };
@@ -317,7 +378,6 @@ export const BrowserWindow = () => {
         }
     }, [paginationMode, resetPaginationSelector]);
 
-  
     return (
         <div onClick={handleClick} style={{ width: '900px', height: "400px" , borderRadius: '8px 8px 0px 0px '}} id="browser-window">
             {

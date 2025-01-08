@@ -5,8 +5,10 @@ import { useGlobalInfoStore } from '../../context/globalInfo';
 import { stopRecording } from "../../api/recording";
 import { useNavigate } from 'react-router-dom';
 import { GenericModal } from "../atoms/GenericModal";
+import { useTranslation } from 'react-i18next';
 
 const BrowserRecordingSave = () => {
+  const { t } = useTranslation();
   const [openModal, setOpenModal] = useState<boolean>(false);
   const { recordingName, browserId, setBrowserId, notify } = useGlobalInfoStore();
   const navigate = useNavigate();
@@ -14,7 +16,7 @@ const BrowserRecordingSave = () => {
   const goToMainMenu = async () => {
     if (browserId) {
       await stopRecording(browserId);
-      notify('warning', 'Current Recording was terminated');
+      notify('warning', t('browser_recording.notifications.terminated'));
       setBrowserId(null);
     }
     navigate('/');
@@ -24,32 +26,31 @@ const BrowserRecordingSave = () => {
     <Grid container>
       <Grid item xs={12} md={3} lg={3}>
         <div style={{
-          
-          //  marginLeft: '10px',
+          marginTop: '12px',
           color: 'white',
           position: 'absolute',
           background: '#ff00c3',
           border: 'none',
           borderRadius: '0px 0px 8px 8px',
           padding: '7.5px',
-          width: '100%',  // Ensure it takes full width but with padding
+          width: 'calc(100% - 20px)',
           overflow: 'hidden',
           display: 'flex',
           justifyContent: 'space-between',
           height:"48px"
         }}>
           <Button onClick={() => setOpenModal(true)} variant="outlined" style={{ marginLeft: "25px" }} size="small" color="error">
-            Discard
+            {t('right_panel.buttons.discard')}
           </Button>
           <GenericModal isOpen={openModal} onClose={() => setOpenModal(false)} modalStyle={modalStyle}>
             <Box p={2}>
-              <Typography variant="h6">Are you sure you want to discard the recording?</Typography>
+              <Typography variant="h6">{t('browser_recording.modal.confirm_discard')}</Typography>
               <Box display="flex" justifyContent="space-between" mt={2}>
                 <Button onClick={goToMainMenu} variant="contained" color="error">
-                  Discard
+                  {t('right_panel.buttons.discard')}
                 </Button>
                 <Button onClick={() => setOpenModal(false)} variant="outlined">
-                  Cancel
+                  {t('right_panel.buttons.cancel')}
                 </Button>
               </Box>
             </Box>
@@ -61,7 +62,7 @@ const BrowserRecordingSave = () => {
   );
 }
 
-export default BrowserRecordingSave
+export default BrowserRecordingSave;
 
 const modalStyle = {
   top: '25%',

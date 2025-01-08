@@ -5,10 +5,20 @@ import { AuthContext } from "../context/auth";
 import { Box, Typography, TextField, Button, CircularProgress } from "@mui/material";
 import { useGlobalInfoStore } from "../context/globalInfo";
 import { apiUrl } from "../apiConfig";
+import { useTranslation } from 'react-i18next';
+import i18n from '../i18n';
 import { useThemeMode } from "../context/theme-provider";
 
 const Login = () => {
-  const [form, setForm] = useState({ email: "", password: "" });
+  const { t } = useTranslation();
+  // just don't remove these logs - god knows why it's not working without them
+  console.log(i18n)
+  console.log(t)
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+  });
+
   const [loading, setLoading] = useState(false);
   const { notify } = useGlobalInfoStore();
   const { email, password } = form;
@@ -40,11 +50,11 @@ const Login = () => {
         { withCredentials: true }
       );
       dispatch({ type: "LOGIN", payload: data });
-      notify("success", "Welcome to Maxun!");
+      notify("success", t('login.welcome_notification'));
       window.localStorage.setItem("user", JSON.stringify(data));
       navigate("/");
     } catch (err) {
-      notify("error", "Login Failed. Please try again.");
+      notify("error", t('login.error_notification'));
       setLoading(false);
     }
   };
@@ -79,23 +89,13 @@ const Login = () => {
           width: "100%",
         }}
       >
-        <img
-          src="../src/assets/maxunlogo.png"
-          alt="logo"
-          height={55}
-          width={60}
-          style={{
-            marginBottom: 20,
-            borderRadius: "20%",
-            alignItems: "center",
-          }}
-        />
+        <img src="../src/assets/maxunlogo.png" alt="logo" height={55} width={60} style={{ marginBottom: 20, borderRadius: "20%", alignItems: "center" }} />
         <Typography variant="h4" gutterBottom>
-          Welcome Back!
+          {t('login.title')}
         </Typography>
         <TextField
           fullWidth
-          label="Email"
+          label={t('login.email')}
           name="email"
           value={email}
           onChange={handleChange}
@@ -114,7 +114,7 @@ const Login = () => {
         />
         <TextField
           fullWidth
-          label="Password"
+          label={t('login.password')}
           name="password"
           type="password"
           value={password}
@@ -149,17 +149,17 @@ const Login = () => {
         >
           {loading ? (
             <>
-              <CircularProgress size={20} sx={{ mr: 2, color: "#ffffff" }} />
-              Loading
+              <CircularProgress size={20} sx={{ mr: 2 }} />
+              {t('login.loading')}
             </>
           ) : (
-            "Login"
+            t('login.button')
           )}
         </Button>
-        <Typography variant="body2" align="center" sx={{ color: darkMode ? "#ffffff" : "#333333" }}>
-          Don’t have an account?{" "}
+        <Typography variant="body2" align="center">
+          {t('login.register_prompt')}{" "}
           <Link to="/register" style={{ textDecoration: "none", color: "#ff33cc" }}>
-            Register
+            {t('login.register_link')}
           </Link>
         </Typography>
       </Box>

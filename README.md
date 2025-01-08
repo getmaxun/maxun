@@ -1,6 +1,6 @@
 <h1 align="center">
     <div>
-        <a href="https://maxun-website.vercel.app/">
+        <a href="https://maxun-website.vercel.app/?ref=ghread">
             <img src="/src/assets/maxunlogo.png" width="50" />
             <br>
             Maxun
@@ -15,11 +15,11 @@ Maxun lets you train a robot in 2 minutes and scrape the web on auto-pilot. Web 
 
 
 <p align="center">
-    <a href="https://maxun-website.vercel.app/"><b>Website</b></a> |
+    <a href="https://www.maxun.dev/?ref=ghread"><b>Website</b></a> |
     <a href="https://discord.gg/5GbPjBUkws"><b>Discord</b></a> |
-    <a href="https://x.com/maxun_io"><b>Twitter</b></a> |
+    <a href="https://x.com/maxun_io?ref=ghread"><b>Twitter</b></a> |
     <a href="https://docs.google.com/forms/d/e/1FAIpQLSdbD2uhqC4sbg4eLZ9qrFbyrfkXZ2XsI6dQ0USRCQNZNn5pzg/viewform"><b>Join Maxun Cloud</b></a> | 
-    <a href="https://www.youtube.com/@MaxunOSS"><b>Watch Tutorials</b></a>
+    <a href="https://www.youtube.com/@MaxunOSS?ref=ghread"><b>Watch Tutorials</b></a>
     <br />
     <br />
 <a href="https://trendshift.io/repositories/12113" target="_blank"><img src="https://trendshift.io/api/badge/repositories/12113" alt="getmaxun%2Fmaxun | Trendshift" style="width: 250px; height: 55px; margin-top: 10px;" width="250" height="55"/></a>
@@ -29,12 +29,17 @@ Maxun lets you train a robot in 2 minutes and scrape the web on auto-pilot. Web 
 
 <img src="https://static.scarf.sh/a.png?x-pxid=c12a77cc-855e-4602-8a0f-614b2d0da56a" />
 
-> Note: Maxun is in its early stages of development and currently does not support self-hosting. However, you can run Maxun locally. Self-hosting capabilities are planned for a future release and will be available soon.
+# Installation
+1. Create a root folder for your project (e.g. 'maxun')
+2. Create a file named `.env` in the root folder of the project
+3. Example env file can be viewed [here](https://github.com/getmaxun/maxun/blob/master/ENVEXAMPLE). Copy all content of example env to your `.env` file.
+4. Choose your installation method below
 
-# Local Installation
 ### Docker Compose
+1. Copy paste the [docker-compose.yml file](https://github.com/getmaxun/maxun/blob/master/docker-compose.yml) into your root folder 
+2. Ensure you have setup the `.env` file in that same folder
+3. Run the command below from a terminal
 ```
-git clone https://github.com/getmaxun/maxun
 docker-compose up -d
 ```
 You can access the frontend at http://localhost:5173/ and backend at http://localhost:8080/

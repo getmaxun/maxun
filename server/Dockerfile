@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/playwright:v1.40.0-jammy
+FROM mcr.microsoft.com/playwright:v1.46.0-noble
 
 # Set working directory
 WORKDIR /app
@@ -7,13 +7,14 @@ WORKDIR /app
 COPY package*.json ./
 COPY maxun-core ./maxun-core
 COPY src ./src
+COPY public ./public 
 COPY server ./server
 COPY tsconfig.json ./
 COPY server/tsconfig.json ./server/
 # COPY server/start.sh ./  
 
 # Install dependencies
-RUN npm install
+RUN npm install --legacy-peer-deps
 
 # Install Playwright browsers and dependencies
 RUN npx playwright install --with-deps chromium
@@ -50,7 +51,7 @@ RUN apt-get update && apt-get install -y \
 # RUN chmod +x ./start.sh
 
 # Expose the backend port
-EXPOSE 8080
+EXPOSE ${BACKEND_PORT:-8080}
 
 # Start the backend using the start script
 CMD ["npm", "run", "server"]

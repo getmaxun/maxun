@@ -8,6 +8,9 @@ import { AutoAwesome, FormatListBulleted, VpnKey, Usb, Article, CloudQueue,Code,
 
 
 import { apiUrl } from "../../apiConfig";
+import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n';
+
 
 
 interface MainMenuProps {
@@ -17,6 +20,7 @@ interface MainMenuProps {
 
 export const MainMenu = ({ value = 'recordings', handleChangeContent }: MainMenuProps) => {
   const theme = useTheme();
+  const {t} = useTranslation();
 
   const handleChange = (event: React.SyntheticEvent, newValue: string) => {
     handleChangeContent(newValue);
@@ -70,28 +74,28 @@ export const MainMenu = ({ value = 'recordings', handleChangeContent }: MainMenu
         >
           <Tab
             value="recordings"
-            label="Robots"
+            label={t('mainmenu.recordings')}
             icon={<AutoAwesome />}
             iconPosition="start"
             
           />
           <Tab
             value="runs"
-            label="Runs"
+            label={t('mainmenu.runs')}
             icon={<FormatListBulleted />}
             iconPosition="start"
            
           />
           <Tab
             value="proxy"
-            label="Proxy"
+            label={t('mainmenu.proxy')}
             icon={<Usb />}
             iconPosition="start"
             
           />
           <Tab
             value="apikey"
-            label="API Key"
+            label={t('mainmenu.apikey')}
             icon={<VpnKey />}
             iconPosition="start"
             
@@ -99,13 +103,11 @@ export const MainMenu = ({ value = 'recordings', handleChangeContent }: MainMenu
         </Tabs>
         <hr />
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: '1rem', textAlign: 'left' }}>
-
-          <Button href="/api-docs" target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<Article />}>
-            API Docs
-
+          <Button href={`${apiUrl}/api-docs/`} target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<Code />}>
+            {t('mainmenu.apidocs')}
           </Button>
           <Button href="https://forms.gle/hXjgqDvkEhPcaBW76" target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<CloudQueue />}>
-            Join Maxun Cloud
+            {t('mainmenu.feedback')}
           </Button>
         </Box>
       </Box>

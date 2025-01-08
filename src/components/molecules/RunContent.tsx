@@ -13,6 +13,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import 'highlight.js/styles/github.css';
+import { useTranslation } from "react-i18next";
 
 interface RunContentProps {
   row: Data,
@@ -23,6 +24,7 @@ interface RunContentProps {
 }
 
 export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRef, abortRunHandler }: RunContentProps) => {
+  const { t } = useTranslation();
   const [tab, setTab] = React.useState<string>('log');
   const [tableData, setTableData] = useState<any[]>([]);
   const [columns, setColumns] = useState<string[]>([]);
@@ -76,49 +78,49 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
       <TabContext value={tab}>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Tabs 
-  value={tab} 
-  onChange={(e, newTab) => setTab(newTab)} 
-  aria-label="run-content-tabs"
-  sx={{
-    // Remove the default blue indicator
-    '& .MuiTabs-indicator': {
-      backgroundColor: '#FF00C3',  // Change to pink
-    },
-    // Remove default transition effects
-    '& .MuiTab-root': {
-      '&.Mui-selected': {
-        color: '#FF00C3',
-      },
-    }
-  }}
->
-  <Tab 
-    label="Output Data" 
-    value='output' 
-    sx={{
-      color: (theme) => theme.palette.mode === 'dark' ? '#fff' : '#000',
-      '&:hover': {
-        color: '#FF00C3'
-      },
-      '&.Mui-selected': {
-        color: '#FF00C3',
-      }
-    }} 
-  />
-  <Tab 
-    label="Log" 
-    value='log' 
-    sx={{
-      color: (theme) => theme.palette.mode === 'dark' ? '#fff' : '#000',
-      '&:hover': {
-        color: '#FF00C3'
-      },
-      '&.Mui-selected': {
-        color: '#FF00C3',
-      }
-    }} 
-  />
-</Tabs>
+          value={tab} 
+          onChange={(e, newTab) => setTab(newTab)} 
+          aria-label="run-content-tabs"
+          sx={{
+            // Remove the default blue indicator
+            '& .MuiTabs-indicator': {
+              backgroundColor: '#FF00C3',  // Change to pink
+            },
+            // Remove default transition effects
+            '& .MuiTab-root': {
+              '&.Mui-selected': {
+                color: '#FF00C3',
+              },
+            }
+          }}
+        >
+          <Tab 
+            label={t('run_content.tabs.output_data')} 
+            value='output'
+            sx={{
+              color: (theme) => theme.palette.mode === 'dark' ? '#fff' : '#000',
+              '&:hover': {
+                color: '#FF00C3'
+              },
+              '&.Mui-selected': {
+                color: '#FF00C3',
+              }
+            }} 
+          />
+          <Tab 
+            label={t('run_content.tabs.log')}
+            value='log' 
+            sx={{
+              color: (theme) => theme.palette.mode === 'dark' ? '#fff' : '#000',
+              '&:hover': {
+                color: '#FF00C3'
+              },
+              '&.Mui-selected': {
+                color: '#FF00C3',
+              }
+            }} 
+          />
+        </Tabs>
         </Box>
         <TabPanel value='log'>
           <Box sx={{
@@ -142,32 +144,32 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
             color="error"
             onClick={abortRunHandler}
           >
-            Stop
+            {t('run_content.buttons.stop')}
           </Button> : null}
         </TabPanel>
         <TabPanel value='output' sx={{ width: '700px' }}>
           {!row || !row.serializableOutput || !row.binaryOutput
             || (Object.keys(row.serializableOutput).length === 0 && Object.keys(row.binaryOutput).length === 0)
-            ? <Typography>The output is empty.</Typography> : null}
+            ? <Typography>{t('run_content.empty_output')}</Typography> : null}
 
           {row.serializableOutput &&
             Object.keys(row.serializableOutput).length !== 0 &&
             <div>
               <Typography variant='h6' sx={{ display: 'flex', alignItems: 'center' }}>
                 <ArticleIcon sx={{ marginRight: '15px' }} />
-                Captured Data
+                {t('run_content.captured_data.title')}
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 2 }}>
                 <Typography>
                   <a style={{ textDecoration: 'none' }} href={`data:application/json;utf8,${JSON.stringify(row.serializableOutput, null, 2)}`}
                     download="data.json">
-                    Download as JSON
+                    {t('run_content.captured_data.download_json')}
                   </a>
                 </Typography>
                 <Typography
                   onClick={downloadCSV}
                 >
-                  <a style={{ textDecoration: 'none', cursor: 'pointer' }}>Download as CSV</a>
+                  <a style={{ textDecoration: 'none', cursor: 'pointer' }}>{t('run_content.captured_data.download_csv')}</a>
                 </Typography>
               </Box>
               {tableData.length > 0 ? (
@@ -212,7 +214,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
             <div>
               <Typography variant='h6' sx={{ display: 'flex', alignItems: 'center' }}>
                 <ImageIcon sx={{ marginRight: '15px' }} />
-                Captured Screenshot
+                {t('run_content.captured_screenshot.title')}
               </Typography>
               {Object.keys(row.binaryOutput).map((key) => {
                 try {
@@ -222,7 +224,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                       width: 'max-content',
                     }}>
                       <Typography sx={{ margin: '20px 0px' }}>
-                        <a href={imageUrl} download={key} style={{ textDecoration: 'none' }}>Download Screenshot</a>
+                        <a href={imageUrl} download={key} style={{ textDecoration: 'none' }}>{t('run_content.captured_screenshot.download')}</a>
                       </Typography>
                       <img src={imageUrl} alt={key} height='auto' width='700px' />
                     </Box>
@@ -230,7 +232,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 } catch (e) {
                   console.log(e)
                   return <Typography key={`number-of-binary-output-${key}`}>
-                    {key}: The image failed to render
+                    {key}: {t('run_content.captured_screenshot.render_failed')}
                   </Typography>
                 }
               })}

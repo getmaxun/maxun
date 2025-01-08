@@ -1,13 +1,25 @@
 import swaggerJSDoc from 'swagger-jsdoc';
 import path from 'path';
+import fs from 'fs';
+
+// Dynamically determine API file paths
+const jsFiles = [path.join(__dirname, '../api/*.js')]
+const tsFiles = [path.join(__dirname, '../api/*.ts')]
+
+let apis = fs.existsSync(jsFiles[0]) ? jsFiles : tsFiles;
+
+if (!apis) {
+  throw new Error('No valid API files found! Ensure either .js or .ts files exist in the ../api/ directory.');
+}
 
 const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Maxun API Documentation',
+      title: 'Website to API',
       version: '1.0.0',
-      description: 'API documentation for Maxun (https://github.com/getmaxun/maxun)',
+      description:
+        'Maxun lets you get the data your robot extracted and run robots via API. All you need to do is input the Maxun API key by clicking Authorize below.',
     },
     components: {
       securitySchemes: {
@@ -15,7 +27,8 @@ const options = {
           type: 'apiKey',
           in: 'header',
           name: 'x-api-key',
-          description: 'API key for authorization. You can find your API key in the "API Key" section on Maxun Dashboard.',
+          description:
+            'API key for authorization. You can find your API key in the "API Key" section on Maxun Dashboard.',
         },
       },
     },
@@ -25,7 +38,7 @@ const options = {
       },
     ],
   },
-  apis: process.env.NODE_ENV === 'production' ? [path.join(__dirname, '../api/*.js')] : [path.join(__dirname, '../api/*.ts')]
+  apis,
 };
 
 const swaggerSpec = swaggerJSDoc(options);

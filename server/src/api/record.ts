@@ -15,6 +15,8 @@ import { io, Socket } from "socket.io-client";
 import { BinaryOutputService } from "../storage/mino";
 import { AuthenticatedRequest } from "../routes/record"
 import {capture} from "../utils/analytics";
+import { Page } from "playwright";
+import { WorkflowFile } from "maxun-core";
 chromium.use(stealthPlugin());
 
 const formatRecording = (recordingData: any) => {
@@ -533,6 +535,17 @@ function resetRecordingState(browserId: string, id: string) {
     id = '';
 }
 
+function AddGeneratedFlags(workflow: WorkflowFile) {
+    const copy = JSON.parse(JSON.stringify(workflow));
+    for (let i = 0; i < workflow.workflow.length; i++) {
+      copy.workflow[i].what.unshift({
+        action: 'flag',
+        args: ['generated'],
+      });
+    }
+    return copy;
+};
+
 async function executeRun(id: string) {
     try {
         const run = await Run.findOne({ where: { runId: id } });
@@ -560,13 +573,14 @@ async function executeRun(id: string) {
             throw new Error('Could not access browser');
         }
 
-        const currentPage = await browser.getCurrentPage();
+        let currentPage = await browser.getCurrentPage();
         if (!currentPage) {
             throw new Error('Could not create a new page');
         }
 
+        const workflow = AddGeneratedFlags(recording.recording);
         const interpretationInfo = await browser.interpreter.InterpretRecording(
-            recording.recording, currentPage, plainRun.interpreterSettings
+            workflow, currentPage, (newPage: Page) => currentPage = newPage, plainRun.interpreterSettings
         );
 
         const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');

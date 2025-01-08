@@ -9,14 +9,39 @@ import { chromium } from 'playwright-extra';
 import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { PlaywrightBlocker } from '@cliqz/adblocker-playwright';
 import fetch from 'cross-fetch';
+import { throttle } from 'lodash';
+import sharp from 'sharp';
 
 import logger from '../../logger';
 import { InterpreterSettings, RemoteBrowserOptions } from "../../types";
 import { WorkflowGenerator } from "../../workflow-management/classes/Generator";
 import { WorkflowInterpreter } from "../../workflow-management/classes/Interpreter";
 import { getDecryptedProxyConfig } from '../../routes/proxy';
+import { getInjectableScript } from 'idcac-playwright';
+
 chromium.use(stealthPlugin());
 
+const MEMORY_CONFIG = {
+    gcInterval: 60000, // 1 minute
+    maxHeapSize: 2048 * 1024 * 1024, // 2GB
+    heapUsageThreshold: 0.85 // 85%
+};
+
+const SCREENCAST_CONFIG: {
+    format: "jpeg" | "png";
+    maxWidth: number;
+    maxHeight: number;
+    targetFPS: number;
+    compressionQuality: number;
+    maxQueueSize: number;
+} = {
+    format: 'jpeg',
+    maxWidth: 900,
+    maxHeight: 400,
+    targetFPS: 30,
+    compressionQuality: 0.8,
+    maxQueueSize: 2
+};
 
 /**
  * This class represents a remote browser instance.
@@ -65,6 +90,8 @@ export class RemoteBrowser {
         maxRepeats: 1,
     };
 
+    private lastEmittedUrl: string | null = null;
+
     /**
      * {@link WorkflowGenerator} instance specific to the remote browser.
      */
@@ -74,6 +101,11 @@ export class RemoteBrowser {
      * {@link WorkflowInterpreter} instance specific to the remote browser.
      */
     public interpreter: WorkflowInterpreter;
+
+
+    private screenshotQueue: Buffer[] = [];
+    private isProcessingScreenshot = false;
+    private screencastInterval: NodeJS.Timeout | null = null
 
     /**
      * Initializes a new instances of the {@link Generator} and {@link WorkflowInterpreter} classes and
@@ -87,6 +119,117 @@ export class RemoteBrowser {
         this.generator = new WorkflowGenerator(socket);
     }
 
+    private initializeMemoryManagement(): void {
+        setInterval(() => {
+            const memoryUsage = process.memoryUsage();
+            const heapUsageRatio = memoryUsage.heapUsed / MEMORY_CONFIG.maxHeapSize;
+
+            if (heapUsageRatio > MEMORY_CONFIG.heapUsageThreshold) {
+                logger.warn('High memory usage detected, triggering cleanup');
+                this.performMemoryCleanup();
+            }
+
+            // Clear screenshot queue if it's too large
+            if (this.screenshotQueue.length > SCREENCAST_CONFIG.maxQueueSize) {
+                this.screenshotQueue = this.screenshotQueue.slice(-SCREENCAST_CONFIG.maxQueueSize);
+            }
+        }, MEMORY_CONFIG.gcInterval);
+    }
+
+    private async performMemoryCleanup(): Promise<void> {
+        this.screenshotQueue = [];
+        this.isProcessingScreenshot = false;
+
+        if (global.gc) {
+            global.gc();
+        }
+
+        // Reset CDP session if needed
+        if (this.client) {
+            try {
+                await this.stopScreencast();
+                this.client = null;
+                if (this.currentPage) {
+                    this.client = await this.currentPage.context().newCDPSession(this.currentPage);
+                    await this.startScreencast();
+                }
+            } catch (error) {
+                logger.error('Error resetting CDP session:', error);
+            }
+        }
+    }
+
+    /**
+     * Normalizes URLs to prevent navigation loops while maintaining consistent format
+     */
+    private normalizeUrl(url: string): string {
+        try {
+            const parsedUrl = new URL(url);
+            // Remove trailing slashes except for root path
+            parsedUrl.pathname = parsedUrl.pathname.replace(/\/+$/, '') || '/';
+            // Ensure consistent protocol handling
+            parsedUrl.protocol = parsedUrl.protocol.toLowerCase();
+            return parsedUrl.toString();
+        } catch {
+            return url;
+        }
+    }
+
+    /**
+     * Determines if a URL change is significant enough to emit
+     */
+    private shouldEmitUrlChange(newUrl: string): boolean {
+        if (!this.lastEmittedUrl) {
+            return true;
+        }
+        const normalizedNew = this.normalizeUrl(newUrl);
+        const normalizedLast = this.normalizeUrl(this.lastEmittedUrl);
+        return normalizedNew !== normalizedLast;
+    }
+
+    private async setupPageEventListeners(page: Page) {
+        page.on('framenavigated', async (frame) => {
+            if (frame === page.mainFrame()) {
+                const currentUrl = page.url();
+                if (this.shouldEmitUrlChange(currentUrl)) {
+                    this.lastEmittedUrl = currentUrl;
+                    this.socket.emit('urlChanged', currentUrl);
+                }
+            }
+        });
+
+        // Handle page load events with retry mechanism
+        page.on('load', async () => {
+            const injectScript = async (): Promise<boolean> => {
+                try {
+                    await page.waitForLoadState('networkidle', { timeout: 5000 });
+
+                    await page.evaluate(getInjectableScript());
+                    return true;
+                } catch (error: any) {
+                    logger.log('warn', `Script injection attempt failed: ${error.message}`);
+                    return false;
+                }
+            };
+
+            const success = await injectScript();
+            console.log("Script injection result:", success);
+        });
+    }
+
+    private getUserAgent() {
+        const userAgents = [
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.5845.140 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) Gecko/20100101 Firefox/117.0',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.1938.81 Safari/537.36 Edg/116.0.1938.81',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.5845.96 Safari/537.36 OPR/101.0.4843.25',
+            'Mozilla/5.0 (Windows NT 11.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.5938.62 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:118.0) Gecko/20100101 Firefox/118.0',
+        ];
+
+        return userAgents[Math.floor(Math.random() * userAgents.length)];
+    }
+
     /**
      * An asynchronous constructor for asynchronously initialized properties.
      * Must be called right after creating an instance of RemoteBrowser class.
@@ -94,37 +237,17 @@ export class RemoteBrowser {
      * @returns {Promise<void>}
      */
     public initialize = async (userId: string): Promise<void> => {
-        // const launchOptions = {
-        //     headless: true,
-        //     proxy: options.launchOptions?.proxy,
-        //     chromiumSandbox: false,
-        //     args: [
-        //         '--no-sandbox',
-        //         '--disable-setuid-sandbox',
-        //         '--headless=new',
-        //         '--disable-gpu',
-        //         '--disable-dev-shm-usage',
-        //         '--disable-software-rasterizer',
-        //         '--in-process-gpu',
-        //         '--disable-infobars',
-        //         '--single-process', 
-        //         '--no-zygote',
-        //         '--disable-notifications',
-        //         '--disable-extensions',
-        //         '--disable-background-timer-throttling',
-        //         ...(options.launchOptions?.args || [])
-        //     ],
-        //     env: {
-        //         ...process.env,
-        //         CHROMIUM_FLAGS: '--disable-gpu --no-sandbox --headless=new'
-        //     }
-        // };
-        // console.log('Launch options before:', options.launchOptions);
-        // this.browser = <Browser>(await options.browser.launch(launchOptions));
-
-        // console.log('Launch options after:', options.launchOptions)
         this.browser = <Browser>(await chromium.launch({
             headless: true,
+            args: [
+                "--disable-blink-features=AutomationControlled",
+                "--disable-web-security",
+                "--disable-features=IsolateOrigins,site-per-process",
+                "--disable-site-isolation-trials",
+                "--disable-extensions",
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+            ],
         }));
         const proxyConfig = await getDecryptedProxyConfig(userId);
         let proxyOptions: { server: string, username?: string, password?: string } = { server: '' };
@@ -140,7 +263,7 @@ export class RemoteBrowser {
         const contextOptions: any = {
             viewport: { height: 400, width: 900 },
             // recordVideo: { dir: 'videos/' }
-             // Force reduced motion to prevent animation issues
+            // Force reduced motion to prevent animation issues
             reducedMotion: 'reduce',
             // Force JavaScript to be enabled
             javaScriptEnabled: true,
@@ -149,7 +272,8 @@ export class RemoteBrowser {
             // Disable hardware acceleration
             forcedColors: 'none',
             isMobile: false,
-            hasTouch: false
+            hasTouch: false,
+            userAgent: this.getUserAgent(),
         };
 
         if (proxyOptions.server) {
@@ -159,26 +283,48 @@ export class RemoteBrowser {
                 password: proxyOptions.password ? proxyOptions.password : undefined,
             };
         }
-        const browserUserAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.5481.38 Safari/537.36";
 
-
-        contextOptions.userAgent = browserUserAgent;
         this.context = await this.browser.newContext(contextOptions);
+        await this.context.addInitScript(
+            `const defaultGetter = Object.getOwnPropertyDescriptor(
+              Navigator.prototype,
+              "webdriver"
+            ).get;
+            defaultGetter.apply(navigator);
+            defaultGetter.toString();
+            Object.defineProperty(Navigator.prototype, "webdriver", {
+              set: undefined,
+              enumerable: true,
+              configurable: true,
+              get: new Proxy(defaultGetter, {
+                apply: (target, thisArg, args) => {
+                  Reflect.apply(target, thisArg, args);
+                  return false;
+                },
+              }),
+            });
+            const patchedGetter = Object.getOwnPropertyDescriptor(
+              Navigator.prototype,
+              "webdriver"
+            ).get;
+            patchedGetter.apply(navigator);
+            patchedGetter.toString();`
+        );
         this.currentPage = await this.context.newPage();
 
-        this.currentPage.on('framenavigated', (frame) => {
-            if (frame === this.currentPage?.mainFrame()) {
-                this.socket.emit('urlChanged', this.currentPage.url());
-            }
-        });
+        await this.setupPageEventListeners(this.currentPage);
 
-        // await this.currentPage.setExtraHTTPHeaders({
-        //     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
-        // });
-        const blocker = await PlaywrightBlocker.fromPrebuiltAdsAndTracking(fetch);
-        await blocker.enableBlockingInPage(this.currentPage);
-        this.client = await this.currentPage.context().newCDPSession(this.currentPage);
-        await blocker.disableBlockingInPage(this.currentPage);
+        try {
+            const blocker = await PlaywrightBlocker.fromLists(fetch, ['https://easylist.to/easylist/easylist.txt']);
+            await blocker.enableBlockingInPage(this.currentPage);
+            this.client = await this.currentPage.context().newCDPSession(this.currentPage);
+            await blocker.disableBlockingInPage(this.currentPage);
+            console.log('Adblocker initialized');
+        } catch (error: any) {
+            console.warn('Failed to initialize adblocker, continuing without it:', error.message);
+            // Still need to set up the CDP session even if blocker fails
+            this.client = await this.currentPage.context().newCDPSession(this.currentPage);
+        }
     };
 
     /**
@@ -242,7 +388,7 @@ export class RemoteBrowser {
             return;
         }
         this.client.on('Page.screencastFrame', ({ data: base64, sessionId }) => {
-            this.emitScreenshot(base64)
+            this.emitScreenshot(Buffer.from(base64, 'base64'))
             setTimeout(async () => {
                 try {
                     if (!this.client) {
@@ -262,16 +408,49 @@ export class RemoteBrowser {
      * If an interpretation was running it will be stopped.
      * @returns {Promise<void>}
      */
-    public switchOff = async (): Promise<void> => {
-        await this.interpreter.stopInterpretation();
-        if (this.browser) {
-            await this.stopScreencast();
-            await this.browser.close();
-        } else {
-            logger.log('error', 'Browser wasn\'t initialized');
-            logger.log('error', 'Switching off the browser failed');
+    public async switchOff(): Promise<void> {
+        try {
+            await this.interpreter.stopInterpretation();
+
+            if (this.screencastInterval) {
+                clearInterval(this.screencastInterval);
+            }
+
+            if (this.client) {
+                await this.stopScreencast();
+            }
+
+            if (this.browser) {
+                await this.browser.close();
+            }
+
+            this.screenshotQueue = [];
+            //this.performanceMonitor.reset();
+
+        } catch (error) {
+            logger.error('Error during browser shutdown:', error);
         }
-    };
+    }
+
+    private async optimizeScreenshot(screenshot: Buffer): Promise<Buffer> {
+        try {
+            return await sharp(screenshot)
+                .jpeg({
+                    quality: Math.round(SCREENCAST_CONFIG.compressionQuality * 100),
+                    progressive: true
+                })
+                .resize({
+                    width: SCREENCAST_CONFIG.maxWidth,
+                    height: SCREENCAST_CONFIG.maxHeight,
+                    fit: 'inside',
+                    withoutEnlargement: true
+                })
+                .toBuffer();
+        } catch (error) {
+            logger.error('Screenshot optimization failed:', error);
+            return screenshot;
+        }
+    }
 
     /**
      * Makes and emits a single screenshot to the client side.
@@ -281,7 +460,7 @@ export class RemoteBrowser {
         try {
             const screenshot = await this.currentPage?.screenshot();
             if (screenshot) {
-                this.emitScreenshot(screenshot.toString('base64'));
+                this.emitScreenshot(screenshot);
             }
         } catch (e) {
             const { message } = e as Error;
@@ -370,11 +549,7 @@ export class RemoteBrowser {
             await this.stopScreencast();
             this.currentPage = page;
 
-            this.currentPage.on('framenavigated', (frame) => {
-                if (frame === this.currentPage?.mainFrame()) {
-                    this.socket.emit('urlChanged', this.currentPage.url());
-                }
-            });
+            await this.setupPageEventListeners(this.currentPage);
 
             //await this.currentPage.setViewportSize({ height: 400, width: 900 })
             this.client = await this.currentPage.context().newCDPSession(this.currentPage);
@@ -402,14 +577,8 @@ export class RemoteBrowser {
         await this.currentPage?.close();
         this.currentPage = newPage;
         if (this.currentPage) {
-            this.currentPage.on('framenavigated', (frame) => {
-                if (frame === this.currentPage?.mainFrame()) {
-                    this.socket.emit('urlChanged', this.currentPage.url());
-                }
-            });
-            // this.currentPage.on('load', (page) => {
-            //     this.socket.emit('urlChanged', page.url());
-            // })
+            await this.setupPageEventListeners(this.currentPage);
+
             this.client = await this.currentPage.context().newCDPSession(this.currentPage);
             await this.subscribeToScreencast();
         } else {
@@ -423,37 +592,85 @@ export class RemoteBrowser {
      * Should be called only once after the browser is fully initialized.
      * @returns {Promise<void>}
      */
-    private startScreencast = async (): Promise<void> => {
+    private async startScreencast(): Promise<void> {
         if (!this.client) {
-            logger.log('warn', 'client is not initialized');
+            logger.warn('Client is not initialized');
             return;
         }
-        await this.client.send('Page.startScreencast', { format: 'jpeg', quality: 75 });
-        logger.log('info', `Browser started with screencasting a page.`);
-    };
 
-    /**
-     * Unsubscribes the current page from the screencast session.
-     * @returns {Promise<void>}
-     */
-    private stopScreencast = async (): Promise<void> => {
-        if (!this.client) {
-            logger.log('error', 'client is not initialized');
-            logger.log('error', 'Screencast stop failed');
-        } else {
-            await this.client.send('Page.stopScreencast');
-            logger.log('info', `Browser stopped with screencasting.`);
+        try {
+            await this.client.send('Page.startScreencast', {
+                format: SCREENCAST_CONFIG.format,
+            });
+
+            // Set up screencast frame handler
+            this.client.on('Page.screencastFrame', async ({ data, sessionId }) => {
+                try {
+                    const buffer = Buffer.from(data, 'base64');
+                    await this.emitScreenshot(buffer);
+                    await this.client?.send('Page.screencastFrameAck', { sessionId });
+                } catch (error) {
+                    logger.error('Screencast frame processing failed:', error);
+                }
+            });
+
+            logger.info('Screencast started successfully');
+        } catch (error) {
+            logger.error('Failed to start screencast:', error);
         }
-    };
+    }
+
+    private async stopScreencast(): Promise<void> {
+        if (!this.client) {
+            logger.error('Client is not initialized');
+            return;
+        }
+
+        try {
+            await this.client.send('Page.stopScreencast');
+            this.screenshotQueue = [];
+            this.isProcessingScreenshot = false;
+            logger.info('Screencast stopped successfully');
+        } catch (error) {
+            logger.error('Failed to stop screencast:', error);
+        }
+    }
+
 
     /**
      * Helper for emitting the screenshot of browser's active page through websocket.
      * @param payload the screenshot binary data
      * @returns void
      */
-    private emitScreenshot = (payload: any): void => {
-        const dataWithMimeType = ('data:image/jpeg;base64,').concat(payload);
-        this.socket.emit('screencast', dataWithMimeType);
-        logger.log('debug', `Screenshot emitted`);
+    private emitScreenshot = async (payload: Buffer): Promise<void> => {
+        if (this.isProcessingScreenshot) {
+            if (this.screenshotQueue.length < SCREENCAST_CONFIG.maxQueueSize) {
+                this.screenshotQueue.push(payload);
+            }
+            return;
+        }
+
+        this.isProcessingScreenshot = true;
+
+        try {
+            const optimizedScreenshot = await this.optimizeScreenshot(payload);
+            const base64Data = optimizedScreenshot.toString('base64');
+            const dataWithMimeType = `data:image/jpeg;base64,${base64Data}`;
+
+            this.socket.emit('screencast', dataWithMimeType);
+            logger.debug('Screenshot emitted');
+        } catch (error) {
+            logger.error('Screenshot emission failed:', error);
+        } finally {
+            this.isProcessingScreenshot = false;
+
+            if (this.screenshotQueue.length > 0) {
+                const nextScreenshot = this.screenshotQueue.shift();
+                if (nextScreenshot) {
+                    setTimeout(() => this.emitScreenshot(nextScreenshot), 1000 / SCREENCAST_CONFIG.targetFPS);
+                }
+            }
+        }
     };
+
 }

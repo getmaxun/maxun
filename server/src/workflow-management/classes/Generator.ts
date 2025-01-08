@@ -1,4 +1,4 @@
-import { Action, ActionType, Coordinates, TagName } from "../../types";
+import { Action, ActionType, Coordinates, TagName, DatePickerEventData } from "../../types";
 import { WhereWhatPair, WorkflowFile } from 'maxun-core';
 import logger from "../../logger";
 import { Socket } from "socket.io";
@@ -140,19 +140,22 @@ export class WorkflowGenerator {
     socket.on('decision', async ({ pair, actionType, decision }) => {
       const id = browserPool.getActiveBrowserId();
       if (id) {
-        const activeBrowser = browserPool.getRemoteBrowser(id);
-        const currentPage = activeBrowser?.getCurrentPage();
-        if (decision) {
+        // const activeBrowser = browserPool.getRemoteBrowser(id);
+        // const currentPage = activeBrowser?.getCurrentPage();
+        if (!decision) {
           switch (actionType) {
             case 'customAction':
-              pair.where.selectors = [this.generatedData.lastUsedSelector];
+              // pair.where.selectors = [this.generatedData.lastUsedSelector];
+              pair.where.selectors = pair.where.selectors.filter(
+                (selector: string) => selector !== this.generatedData.lastUsedSelector
+              );
               break;
             default: break;
           }
         }
-        if (currentPage) {
-          await this.addPairToWorkflowAndNotifyClient(pair, currentPage);
-        }
+        // if (currentPage) {
+        //   await this.addPairToWorkflowAndNotifyClient(pair, currentPage);
+        // }
       }
     })
     socket.on('updatePair', (data) => {
@@ -252,6 +255,85 @@ export class WorkflowGenerator {
     logger.log('info', `Workflow emitted`);
   };
   
+  public onDateSelection = async (page: Page, data: DatePickerEventData) => {
+    const { selector, value } = data;
+
+    try {
+      await page.fill(selector, value);
+    } catch (error) {
+        console.error("Failed to fill date value:", error);
+    }
+    
+    const pair: WhereWhatPair = {
+        where: { url: this.getBestUrl(page.url()) },
+        what: [{
+            action: 'fill',
+            args: [selector, value],
+        }],
+    };
+
+    await this.addPairToWorkflowAndNotifyClient(pair, page);
+  };
+
+  public onDropdownSelection = async (page: Page, data: { selector: string, value: string }) => {
+    const { selector, value } = data;
+
+    try {
+      await page.selectOption(selector, value);
+    } catch (error) {
+        console.error("Failed to fill date value:", error);
+    }
+    
+    const pair: WhereWhatPair = {
+        where: { url: this.getBestUrl(page.url()) },
+        what: [{
+            action: 'selectOption',
+            args: [selector, value],
+        }],
+    };
+
+    await this.addPairToWorkflowAndNotifyClient(pair, page);
+  };
+
+  public onTimeSelection = async (page: Page, data: { selector: string, value: string }) => {
+    const { selector, value } = data;
+
+    try {
+        await page.fill(selector, value);
+    } catch (error) {
+        console.error("Failed to set time value:", error);
+    }
+    
+    const pair: WhereWhatPair = {
+        where: { url: this.getBestUrl(page.url()) },
+        what: [{
+            action: 'fill',
+            args: [selector, value],
+        }],
+    };
+
+    await this.addPairToWorkflowAndNotifyClient(pair, page);
+  };
+
+  public onDateTimeLocalSelection = async (page: Page, data: { selector: string, value: string }) => {
+    const { selector, value } = data;
+    
+    try {
+        await page.fill(selector, value);
+    } catch (error) {
+        console.error("Failed to fill datetime-local value:", error);
+    }
+    
+    const pair: WhereWhatPair = {
+        where: { url: this.getBestUrl(page.url()) },
+        what: [{
+            action: 'fill',
+            args: [selector, value],
+        }],
+    };
+
+    await this.addPairToWorkflowAndNotifyClient(pair, page);
+  };
 
   /**
    * Generates a pair for the click event.
@@ -263,6 +345,81 @@ export class WorkflowGenerator {
     let where: WhereWhatPair["where"] = { url: this.getBestUrl(page.url()) };
     const selector = await this.generateSelector(page, coordinates, ActionType.Click);
     logger.log('debug', `Element's selector: ${selector}`);
+
+    const elementInfo = await getElementInformation(page, coordinates, '', false);
+    console.log("Element info: ", elementInfo);
+
+    // Check if clicked element is a select dropdown
+    const isDropdown = elementInfo?.tagName === 'SELECT';
+    
+    if (isDropdown && elementInfo.innerHTML) {
+      // Parse options from innerHTML
+      const options = elementInfo.innerHTML
+        .split('<option')
+        .slice(1) // Remove first empty element
+        .map(optionHtml => {
+          const valueMatch = optionHtml.match(/value="([^"]*)"/);
+          const disabledMatch = optionHtml.includes('disabled="disabled"');
+          const selectedMatch = optionHtml.includes('selected="selected"');
+          
+          // Extract text content between > and </option>
+          const textMatch = optionHtml.match(/>([^<]*)</);
+          const text = textMatch 
+            ? textMatch[1]
+                .replace(/\n/g, '') // Remove all newlines
+                .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+                .trim()
+            : '';
+          
+          return {
+              value: valueMatch ? valueMatch[1] : '',
+              text,
+              disabled: disabledMatch,
+              selected: selectedMatch
+          };
+        });
+
+      // Notify client to show dropdown overlay
+      this.socket.emit('showDropdown', {
+          coordinates,
+          selector,
+          options
+      });
+      return;
+    }
+
+    // Check if clicked element is a date input
+    const isDateInput = elementInfo?.tagName === 'INPUT' && elementInfo?.attributes?.type === 'date';
+
+    if (isDateInput) {
+      // Notify client to show datepicker overlay
+      this.socket.emit('showDatePicker', {
+          coordinates,
+          selector
+      });
+      return; 
+    }
+
+    const isTimeInput = elementInfo?.tagName === 'INPUT' && elementInfo?.attributes?.type === 'time';
+
+    if (isTimeInput) {
+      this.socket.emit('showTimePicker', {
+          coordinates,
+          selector
+      });
+      return;
+    }
+
+    const isDateTimeLocal = elementInfo?.tagName === 'INPUT' && elementInfo?.attributes?.type === 'datetime-local';
+
+    if (isDateTimeLocal) {
+      this.socket.emit('showDateTimePicker', {
+          coordinates,
+          selector
+      });
+      return;
+    }
+
     //const element = await getElementMouseIsOver(page, coordinates);
     //logger.log('debug', `Element: ${JSON.stringify(element, null, 2)}`);
     if (selector) {
@@ -360,6 +517,8 @@ export class WorkflowGenerator {
       }],
     }
 
+    await this.addPairToWorkflowAndNotifyClient(pair, page);
+
     if (this.generatedData.lastUsedSelector) {
       const elementInfo = await this.getLastUsedSelectorInfo(page, this.generatedData.lastUsedSelector);
 
@@ -372,9 +531,7 @@ export class WorkflowGenerator {
           innerText: elementInfo.innerText,
         }
       });
-    } else {
-      await this.addPairToWorkflowAndNotifyClient(pair, page);
-    }
+    } 
   };
 
   /**
@@ -541,10 +698,9 @@ export class WorkflowGenerator {
    * @returns {Promise<string|null>}
    */
   private generateSelector = async (page: Page, coordinates: Coordinates, action: ActionType) => {
-    const elementInfo = await getElementInformation(page, coordinates);
-
+    const elementInfo = await getElementInformation(page, coordinates, this.listSelector, this.getList);
     const selectorBasedOnCustomAction = (this.getList === true)
-      ? await getNonUniqueSelectors(page, coordinates)
+      ? await getNonUniqueSelectors(page, coordinates, this.listSelector)
       : await getSelectors(page, coordinates);
 
     const bestSelector = getBestSelectorForAction(
@@ -570,21 +726,30 @@ export class WorkflowGenerator {
    * @returns {Promise<void>}
    */
   public generateDataForHighlighter = async (page: Page, coordinates: Coordinates) => {
-    const rect = await getRect(page, coordinates);
+    const rect = await getRect(page, coordinates, this.listSelector, this.getList);
     const displaySelector = await this.generateSelector(page, coordinates, ActionType.Click);
-    const elementInfo = await getElementInformation(page, coordinates);
+    const elementInfo = await getElementInformation(page, coordinates, this.listSelector, this.getList);
     if (rect) {
+      const highlighterData = {
+        rect,
+        selector: displaySelector,
+        elementInfo,
+        // Include shadow DOM specific information
+        shadowInfo: elementInfo?.isShadowRoot ? {
+          mode: elementInfo.shadowRootMode,
+          content: elementInfo.shadowRootContent
+        } : null
+      };
+
       if (this.getList === true) {
         if (this.listSelector !== '') {
           const childSelectors = await getChildSelectors(page, this.listSelector || '');
-          this.socket.emit('highlighter', { rect, selector: displaySelector, elementInfo, childSelectors })
-          console.log(`Child Selectors: ${childSelectors}`)
-          console.log(`Parent Selector: ${this.listSelector}`)
+          this.socket.emit('highlighter', { ...highlighterData, childSelectors })
         } else {
-          this.socket.emit('highlighter', { rect, selector: displaySelector, elementInfo });
+          this.socket.emit('highlighter', { ...highlighterData });
         }
       } else {
-        this.socket.emit('highlighter', { rect, selector: displaySelector, elementInfo });
+        this.socket.emit('highlighter', { ...highlighterData });
       }
     }
   }

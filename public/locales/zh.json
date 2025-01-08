@@ -1,0 +1,493 @@
+{
+  "login": {
+    "title": "欢迎回来！",
+    "email": "输入工作电子邮箱",
+    "password": "密码",
+    "button": "登录",
+    "loading": "加载中",
+    "register_prompt": "还没有账号？",
+    "register_link": "注册",
+    "welcome_notification": "欢迎使用 Maxun！",
+    "error_notification": "登录失败。请重试。"
+  },
+  "register": {
+    "title": "注册账号",
+    "email": "输入工作电子邮箱",
+    "password": "密码",
+    "button": "注册",
+    "loading": "加载中",
+    "register_prompt": "已有账号？",
+    "login_link": "登录",
+    "welcome_notification": "欢迎使用 Maxun！",
+    "error_notification": "注册失败。请重试。"
+  },
+  "recordingtable": {
+    "run": "运行",
+    "name": "名称",
+    "schedule": "计划",
+    "integrate": "集成",
+    "settings": "设置",
+    "options": "选项",
+    "heading": "我的机器人",
+    "new": "创建机器人",
+    "modal": {
+      "title": "输入URL",
+      "label": "URL",
+      "button": "开始录制"
+    },
+    "edit": "编辑",
+    "delete": "删除",
+    "duplicate": "复制",
+    "search": "搜索机器人...",
+    "notifications": {
+      "delete_warning": "无法删除机器人，因为它有关联的运行记录",
+      "delete_success": "机器人删除成功"
+    }
+  },
+  "mainmenu": {
+    "recordings": "机器人",
+    "runs": "运行记录",
+    "proxy": "代理",
+    "apikey": "API密钥",
+    "feedback": "加入 Maxun Cloud",
+    "apidocs": "网站转API"
+  },
+  "runstable": {
+    "runs": "所有运行记录",
+    "runStatus": "状态",
+    "runName": "名称",
+    "startedAt": "开始时间",
+    "finishedAt": "结束时间",
+    "delete": "删除",
+    "settings": "设置",
+    "search": "搜索运行记录...",
+    "notifications": {
+      "no_runs": "未找到运行记录。请重试。",
+      "delete_success": "运行记录删除成功"
+    }
+  },
+  "proxy": {
+    "title": "代理设置",
+    "tab_standard": "标准代理",
+    "tab_rotation": "自动代理轮换",
+    "server_url": "代理服务器URL",
+    "server_url_helper": "用于所有机器人的代理。支持HTTP和SOCKS代理。示例 http://myproxy.com:3128 或 socks5://myproxy.com:3128。简短形式 myproxy.com:3128 被视为HTTP代理。",
+    "requires_auth": "需要认证？",
+    "username": "用户名",
+    "password": "密码",
+    "add_proxy": "添加代理",
+    "test_proxy": "测试代理",
+    "remove_proxy": "删除代理",
+    "table": {
+      "proxy_url": "代理URL",
+      "requires_auth": "需要认证"
+    },
+    "coming_soon": "即将推出 - 开源版（基础轮换）和云版（高级轮换）。如果您不想管理基础设施，请加入我们的云服务等候名单以获得早期访问权限。",
+    "join_waitlist": "加入Maxun Cloud等候名单",
+    "alert": {
+      "title": "如果您的代理需要用户名和密码，请务必将它们与代理URL分开提供。",
+      "right_way": "正确方式",
+      "wrong_way": "错误方式",
+      "proxy_url": "代理URL：",
+      "username": "用户名：",
+      "password": "密码："
+    },
+    "notifications": {
+      "config_success": "代理配置提交成功",
+      "config_error": "提交代理配置失败。请重试。",
+      "test_success": "代理配置运行正常",
+      "test_error": "测试代理配置失败。请重试。",
+      "fetch_success": "成功获取代理配置",
+      "remove_success": "成功删除代理配置",
+      "remove_error": "删除代理配置失败。请重试。"
+    }
+  },
+  "apikey": {
+    "title": "管理API密钥",
+    "default_name": "Maxun API密钥",
+    "table": {
+      "name": "API密钥名称",
+      "key": "API密钥",
+      "actions": "操作"
+    },
+    "actions": {
+      "copy": "复制",
+      "show": "显示",
+      "hide": "隐藏",
+      "delete": "删除"
+    },
+    "no_key_message": "您还未生成API密钥。",
+    "generate_button": "生成API密钥",
+    "notifications": {
+      "fetch_error": "获取API密钥失败 - ${error}",
+      "generate_success": "API密钥生成成功",
+      "generate_error": "生成API密钥失败 - ${error}",
+      "delete_success": "API密钥删除成功",
+      "delete_error": "删除API密钥失败 - ${error}",
+      "copy_success": "API密钥复制成功"
+    }
+  },
+  "action_description": {
+    "text": {
+      "title": "捕获文本",
+      "description": "将鼠标悬停在要提取的文本上并点击选择"
+    },
+    "screenshot": {
+      "title": "捕获截图",
+      "description": "捕获当前页面的部分或全部截图。"
+    },
+    "list": {
+      "title": "捕获列表",
+      "description": "将鼠标悬停在要提取的列表上。选择后，您可以将鼠标悬停在所选列表中的所有文本上。点击选择它们。"
+    },
+    "default": {
+      "title": "您想提取什么数据？",
+      "description": "机器人设计为一次执行一个操作。您可以选择以下任何选项。"
+    },
+    "list_stages": {
+      "initial": "选择要提取的列表及其中的文本",
+      "pagination": "选择机器人如何捕获列表的其余部分",
+      "limit": "选择要提取的项目数量",
+      "complete": "捕获完成"
+    }
+  },
+  "right_panel": {
+    "buttons": {
+      "capture_list": "捕获列表",
+      "capture_text": "捕获文本",
+      "capture_screenshot": "捕获截图",
+      "confirm": "确认",
+      "discard": "放弃",
+      "confirm_capture": "确认捕获",
+      "confirm_pagination": "确认",
+      "confirm_limit": "确认",
+      "finish_capture": "完成捕获",
+      "back": "返回",
+      "finish": "完成",
+      "cancel": "取消",
+      "delete": "删除"
+    },
+    "screenshot": {
+      "capture_fullpage": "捕获整页",
+      "capture_visible": "捕获可见部分",
+      "display_fullpage": "获取整页截图",
+      "display_visible": "获取可见部分截图"
+    },
+    "pagination": {
+      "title": "如何在页面上找到下一个列表项？",
+      "click_next": "点击下一页导航到下一页",
+      "click_load_more": "点击加载更多来加载更多项目",
+      "scroll_down": "向下滚动加载更多项目",
+      "scroll_up": "向上滚动加载更多项目",
+      "none": "没有更多项目可加载"
+    },
+    "limit": {
+      "title": "您想要提取的最大行数是多少？",
+      "custom": "自定义",
+      "enter_number": "输入数字"
+    },
+    "fields": {
+      "label": "标签",
+      "data": "数据",
+      "field_label": "字段标签",
+      "field_data": "字段数据"
+    },
+    "messages": {
+      "list_selected": "列表选择成功"
+    },
+    "errors": {
+      "select_pagination": "请选择分页类型。",
+      "select_pagination_element": "请先选择分页元素。",
+      "select_limit": "请选择限制或输入自定义限制。",
+      "invalid_limit": "请输入有效的限制。",
+      "confirm_text_fields": "请确认所有文本字段",
+      "unable_create_settings": "无法创建列表设置。请确保您已为列表定义了字段。",
+      "capture_text_discarded": "文本捕获已放弃",
+      "capture_list_discarded": "列表捕获已放弃"
+    }
+  },
+  "save_recording": {
+    "title": "保存机器人",
+    "robot_name": "机器人名称",
+    "buttons": {
+      "save": "保存",
+      "confirm": "确认"
+    },
+    "notifications": {
+      "save_success": "机器人保存成功"
+    },
+    "errors": {
+      "user_not_logged": "用户未登录。无法保存录制。",
+      "exists_warning": "已存在同名机器人，请确认是否覆盖机器人。"
+    },
+    "tooltips": {
+      "saving": "正在优化并保存工作流程"
+    }
+  },
+  "browser_recording": {
+    "modal": {
+      "confirm_discard": "您确定要放弃录制吗？"
+    },
+    "notifications": {
+      "terminated": "当前录制已终止"
+    }
+  },
+  "interpretation_log": {
+    "titles": {
+      "output_preview": "输出数据预览",
+      "screenshot": "截图"
+    },
+    "messages": {
+      "additional_rows": "完成录制后将提取更多数据行。",
+      "successful_training": "您已成功训练机器人执行操作！点击下方按钮预览机器人将提取的数据。",
+      "no_selection": "看起来您还没有选择要提取的内容。选择后，机器人将在此处显示您的选择预览。"
+    },
+    "data_sections": {
+      "binary_received": "---------- 已接收二进制输出数据 ----------",
+      "serializable_received": "---------- 已接收可序列化输出数据 ----------",
+      "mimetype": "MIME类型：",
+      "image_below": "图片显示如下：",
+      "separator": "--------------------------------------------------"
+    },
+    "notifications": {
+      "reset_success": "输出预览已成功重置"
+    }
+  },
+  "interpretation_buttons": {
+    "buttons": {
+      "preview": "获取输出数据预览",
+      "reset": "重置",
+      "yes": "是",
+      "no": "否"
+    },
+    "messages": {
+      "extracting": "正在提取数据...请等待10秒到1分钟",
+      "restart_required": "更新录制后请重新启动解释",
+      "run_finished": "运行完成",
+      "run_failed": "运行启动失败"
+    },
+    "modal": {
+      "use_previous": "您要将之前的选择用作执行此操作的条件吗？",
+      "previous_action": "您之前的操作是：",
+      "element_text": "在文本元素上 "
+    }
+  },
+  "recording_page": {
+    "loader": {
+      "browser_startup": "正在启动浏览器...正在导航至{{url}}"
+    }
+  },
+  "integration_settings": {
+    "title": "与Google Sheet集成",
+    "descriptions": {
+      "sync_info": "如果启用此选项，每次机器人成功运行任务时，捕获的数据都会追加到您的Google Sheet中。",
+      "authenticated_as": "已验证身份: {{email}}"
+    },
+    "alerts": {
+      "success": {
+        "title": "Google Sheet集成成功。",
+        "content": "每次此机器人创建成功运行时，捕获的数据都会追加到您的Google Sheet {{sheetName}}中。您可以查看数据更新",
+        "here": "在此处",
+        "note": "注意：",
+        "sync_limitation": "与Google Sheets集成之前提取的数据将不会同步到Google Sheet中。只有集成后提取的数据才会同步。"
+      }
+    },
+    "buttons": {
+      "authenticate": "使用Google验证",
+      "fetch_sheets": "获取Google Sheets",
+      "remove_integration": "移除集成",
+      "submit": "提交"
+    },
+    "fields": {
+      "select_sheet": "选择Google Sheet",
+      "selected_sheet": "已选择表格: {{name}} (ID: {{id}})"
+    }
+  },
+  "robot_duplication": {
+    "title": "复制机器人",
+    "descriptions": {
+      "purpose": "机器人复制功能用于从具有相同结构的页面提取数据。",
+      "example": "示例：如果您已经为{{url1}}创建了机器人，您可以复制它来抓取类似的页面（如{{url2}}），而无需从头开始训练机器人。",
+      "warning": "⚠️ 确保新页面与原始页面具有相同的结构。"
+    },
+    "fields": {
+      "target_url": "机器人目标URL"
+    },
+    "buttons": {
+      "duplicate": "复制机器人",
+      "cancel": "取消"
+    },
+    "notifications": {
+      "robot_not_found": "找不到机器人详细信息。请重试。",
+      "url_required": "需要目标URL。",
+      "duplicate_success": "机器人复制成功。",
+      "duplicate_error": "更新目标URL失败。请重试。",
+      "unknown_error": "更新目标URL时发生错误。"
+    }
+  },
+  "robot_settings": {
+    "title": "机器人设置",
+    "target_url": "机器人目标URL",
+    "robot_id": "机器人ID",
+    "robot_limit": "机器人限制",
+    "created_by_user": "由用户创建",
+    "created_at": "机器人创建时间",
+    "errors": {
+      "robot_not_found": "无法找到机器人详细信息。请重试。"
+    }
+  },
+  "robot_edit": {
+    "title": "编辑机器人",
+    "change_name": "更改机器人名称",
+    "robot_limit": "机器人限制",
+    "save": "保存更改",
+    "cancel": "取消",
+    "notifications": {
+      "update_success": "机器人更新成功。",
+      "update_failed": "无法更新机器人。请重试。",
+      "update_error": "更新机器人时发生错误。"
+    }
+  },
+  "schedule_settings": {
+    "title": "计划设置",
+    "run_every": "每次运行",
+    "start_from": "开始于",
+    "on_day": "在日",
+    "at_around": "大约在",
+    "timezone": "时区",
+    "buttons": {
+      "delete_schedule": "删除计划",
+      "save_schedule": "保存计划",
+      "cancel": "取消"
+    },
+    "labels": {
+      "in_between": "之间",
+      "run_once_every": "每次运行",
+      "start_from_label": "开始于",
+      "on_day_of_month": "月份日期",
+      "on_day": {
+        "st": "日",
+        "nd": "日",
+        "rd": "日",
+        "th": "日"
+      }
+    }
+  },
+  "main_page": {
+    "notifications": {
+      "interpretation_success": "机器人{{name}}解释成功",
+      "interpretation_failed": "机器人{{name}}解释失败",
+      "run_started": "正在运行机器人：{{name}}",
+      "run_start_failed": "机器人运行失败：{{name}}",
+      "schedule_success": "机器人{{name}}调度成功",
+      "schedule_failed": "机器人{{name}}调度失败",
+      "abort_success": "成功中止机器人{{name}}的解释",
+      "abort_failed": "中止机器人{{name}}的解释失败"
+    },
+    "menu": {
+      "recordings": "机器人",
+      "runs": "运行",
+      "proxy": "代理",
+      "apikey": "API密钥"
+    }
+  },
+  "browser_window": {
+    "attribute_modal": {
+      "title": "选择属性",
+      "notifications": {
+        "list_select_success": "列表选择成功。选择要提取的文本数据。",
+        "pagination_select_success": "分页元素选择成功。"
+      }
+    },
+    "attribute_options": {
+      "anchor": {
+        "text": "文本: {{text}}",
+        "url": "URL: {{url}}"
+      },
+      "image": {
+        "alt_text": "替代文本: {{altText}}",
+        "image_url": "图像URL: {{imageUrl}}"
+      },
+      "default": {
+        "text": "文本: {{text}}"
+      }
+    }
+  },
+  "runs_table": {
+    "run_type_chips": {
+      "manual_run": "手动运行",
+      "scheduled_run": "计划运行",
+      "api": "API",
+      "unknown_run_type": "未知运行类型"
+    },
+    "run_status_chips": {
+      "success": "成功",
+      "running": "运行中",
+      "scheduled": "已计划",
+      "failed": "失败"
+    },
+    "run_settings_modal": {
+      "title": "运行设置",
+      "labels": {
+        "run_id": "运行ID",
+        "run_by_user": "由用户运行",
+        "run_by_schedule": "按计划ID运行",
+        "run_by_api": "由API运行",
+        "run_type": "运行类型"
+      }
+    }
+  },
+  "run_content": {
+    "tabs": {
+      "output_data": "输出数据",
+      "log": "日志"
+    },
+    "empty_output": "输出为空。",
+    "captured_data": {
+      "title": "捕获的数据",
+      "download_json": "下载为JSON",
+      "download_csv": "下载为CSV"
+    },
+    "captured_screenshot": {
+      "title": "捕获的截图",
+      "download": "下载截图",
+      "render_failed": "图像渲染失败"
+    },
+    "buttons": {
+      "stop": "停止"
+    }
+  },
+  "navbar": {
+    "project_name": "Maxun",
+    "upgrade": {
+      "button": "升级",
+      "modal": {
+        "up_to_date": "🎉 您已是最新版本！",
+        "new_version_available": "新版本已可用：{{version}}。升级到最新版本以获取错误修复、增强和新功能！",
+        "view_updates": "查看所有新更新",
+        "view_updates_link": "此处",
+        "tabs": {
+          "manual_setup": "手动设置升级",
+          "docker_setup": "Docker Compose设置升级"
+        }
+      }
+    },
+    "menu_items": {
+      "logout": "退出登录",
+      "discord": "Discord",
+      "youtube": "YouTube",
+      "twitter": "Twitter (X)",
+      "language": "语言"
+    },
+    "recording": {
+      "discard": "丢弃"
+    }
+  },
+  "language_menu": {
+    "en": "英语",
+    "es": "西班牙语",
+    "ja": "日语",
+    "zh": "中文",
+    "de": "德语"
+  }
+}

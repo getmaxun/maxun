@@ -43,7 +43,7 @@ services:
     #build:
       #context: .
       #dockerfile: server/Dockerfile
-    image: getmaxun/maxun-backend:v0.0.5
+    image: getmaxun/maxun-backend:v0.0.10
     ports:
       - "${BACKEND_PORT:-8080}:${BACKEND_PORT:-8080}"
     env_file: .env
@@ -64,24 +64,19 @@ services:
       - redis
       - minio
     volumes:
-      - ./server:/app/server      # Mount server source code for hot reloading
-      - ./maxun-core:/app/maxun-core  # Mount maxun-core for any shared code updates
       - /var/run/dbus:/var/run/dbus
 
   frontend:
       #build:
       #context: .
       #dockerfile: Dockerfile
-    image: getmaxun/maxun-frontend:v0.0.2
+    image: getmaxun/maxun-frontend:v0.0.6
     ports:
       - "${FRONTEND_PORT:-5173}:${FRONTEND_PORT:-5173}"
     env_file: .env
     environment:
       PUBLIC_URL: ${PUBLIC_URL}
       BACKEND_URL: ${BACKEND_URL}
-    volumes:
-      - ./:/app             # Mount entire frontend app directory for hot reloading
-      - /app/node_modules   # Anonymous volume to prevent overwriting node_modules
     depends_on:
       - backend
 
