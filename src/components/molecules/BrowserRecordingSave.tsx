@@ -39,7 +39,21 @@ const BrowserRecordingSave = () => {
           justifyContent: 'space-between',
           height:"48px"
         }}>
-          <Button onClick={() => setOpenModal(true)} variant="outlined" style={{ marginLeft: "25px" }} size="small" color="error">
+          <Button 
+            onClick={() => setOpenModal(true)} 
+            variant="outlined" 
+            color="error"  
+            sx={{ 
+              marginLeft: '25px',
+              color: 'red !important',
+              borderColor: 'red !important',
+              '&:hover': {
+                borderColor: 'red !important',
+                backgroundColor: 'whitesmoke !important',
+              }
+            }} 
+            size="small"
+          >
             {t('right_panel.buttons.discard')}
           </Button>
           <GenericModal isOpen={openModal} onClose={() => setOpenModal(false)} modalStyle={modalStyle}>
