@@ -27,12 +27,10 @@ interface StyledParagraphProps {
 }
 
 const StyledParagraph = styled.p<StyledParagraphProps>`
-  font-size: medium;
-  font-weight: 700;
+  font-size: large;
   font-family: inherit;
-  color: ${({ darkMode }) => (darkMode ? 'white' : 'black')};
+  color: ${({ darkMode }) => (darkMode ? 'white' : '#333')};
   margin-top: 20px;
-  flex-wrap: wrap;
 `;
 
 const DotsContainer = styled.div`
