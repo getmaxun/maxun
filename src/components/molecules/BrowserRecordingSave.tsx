@@ -66,11 +66,8 @@ const BrowserRecordingSave = () => {
                   sx={{ 
                     color: '#ff00c3 !important',
                     borderColor: '#ff00c3 !important',
-                    '&:hover': {
-                      borderColor: '#ff00c3 !important',
-                      backgroundColor: 'whitesmoke !important',
-                    }
-                  }}>
+                    backgroundColor: 'whitesmoke !important',
+                  }} >
                   {t('right_panel.buttons.cancel')}
                 </Button>
               </Box>

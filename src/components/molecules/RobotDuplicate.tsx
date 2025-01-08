@@ -160,11 +160,8 @@ export const RobotDuplicationModal = ({ isOpen, handleStart, handleClose, initia
                                         sx={{ 
                                             color: '#ff00c3 !important',
                                             borderColor: '#ff00c3 !important',
-                                            '&:hover': {
-                                              borderColor: '#ff00c3 !important',
-                                              backgroundColor: 'whitesmoke !important',
-                                            }
-                                        }}>
+                                            backgroundColor: 'whitesmoke !important',
+                                          }} >
                                         {t('robot_duplication.buttons.cancel')}
                                     </Button>
                                 </Box>
