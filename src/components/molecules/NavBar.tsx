@@ -4,8 +4,8 @@ import axios from 'axios';
 import styled from "styled-components";
 import { stopRecording } from "../../api/recording";
 import { useGlobalInfoStore } from "../../context/globalInfo";
-import { IconButton, Menu, MenuItem, Typography, Chip, Button, Modal, Tabs, Tab, Box, Snackbar } from "@mui/material";
-import { AccountCircle, Logout, Clear, YouTube, X, Update, Close, Language } from "@mui/icons-material";
+import { IconButton, Menu, MenuItem, Typography, Chip, Button, Modal, Tabs, Tab, Box, Snackbar, Tooltip } from "@mui/material";
+import { AccountCircle, Logout, Clear, YouTube, X, Update, Close, Language, Brightness7, Brightness4 } from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/auth';
 import { SaveRecording } from '../molecules/SaveRecording';
@@ -176,21 +176,21 @@ export const NavBar: React.FC<NavBarProps> = ({
 //     </>
 //   );
 
-//   const renderThemeToggle = () => (
-//     <Tooltip title="Toggle light/dark theme">
-//       <IconButton 
-//         onClick={toggleTheme} 
-//         sx={{
-//           color: darkMode ? '#ffffff' : '#333333',
-//           '&:hover': {
-//             color: '#ff00c3'
-//           }
-//         }}
-//       >
-//         {darkMode ? <Brightness7 /> : <Brightness4 />}
-//       </IconButton>
-//     </Tooltip>
-//   );
+  const renderThemeToggle = () => (
+    <Tooltip title="Toggle light/dark theme">
+      <IconButton 
+        onClick={toggleTheme} 
+        sx={{
+          color: darkMode ? '#ffffff' : '#333333',
+          '&:hover': {
+            color: '#ff00c3'
+          }
+        }}
+      >
+        {darkMode ? <Brightness7 /> : <Brightness4 />}
+      </IconButton>
+    </Tooltip>
+  );
 
 //   const renderRecordingControls = () => (
 //     <>
@@ -502,6 +502,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                       </MenuItem>
                     </Menu>
                   </Menu>
+                  {renderThemeToggle()}
                 </>
               ) : (
                 <>
@@ -587,7 +588,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                   Deutsch
                 </MenuItem>
               </Menu></>
-          )}
+          )}  
       </NavBarWrapper>
     </>
   );
