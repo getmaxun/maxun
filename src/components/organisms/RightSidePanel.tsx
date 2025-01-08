@@ -556,7 +556,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
               sx={{ 
                 color: '#ff00c3 !important',
                 borderColor: '#ff00c3 !important',
-                backgroundColor: paginationType === 'clickNext' && isDarkMode ? 'whitesmoke !important' : 'transparent !important',
+                backgroundColor: paginationType === 'clickNext' ? 'whitesmoke !important' : 'transparent !important',
                 '&:hover': {
                   borderColor: '#ff00c3 !important',
                   backgroundColor: 'whitesmoke !important',
@@ -570,7 +570,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
               sx={{ 
                 color: '#ff00c3 !important',
                 borderColor: '#ff00c3 !important',
-                backgroundColor: paginationType === 'clickLoadMore' && isDarkMode ? 'whitesmoke !important' : 'transparent !important',
+                backgroundColor: paginationType === 'clickLoadMore' ? 'whitesmoke !important' : 'transparent !important',
                 '&:hover': {
                   borderColor: '#ff00c3 !important',
                   backgroundColor: 'whitesmoke !important',
@@ -584,7 +584,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
               sx={{ 
                 color: '#ff00c3 !important',
                 borderColor: '#ff00c3 !important',
-                backgroundColor: paginationType === 'scrollDown' && isDarkMode ? 'whitesmoke !important' : 'transparent !important',
+                backgroundColor: paginationType === 'scrollDown' ? 'whitesmoke !important' : 'transparent !important',
                 '&:hover': {
                   borderColor: '#ff00c3 !important',
                   backgroundColor: 'whitesmoke !important',
@@ -598,7 +598,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
               sx={{ 
                 color: '#ff00c3 !important',
                 borderColor: '#ff00c3 !important',
-                backgroundColor: paginationType === 'scrollUp' && isDarkMode ? 'whitesmoke !important' : 'transparent !important',
+                backgroundColor: paginationType === 'scrollUp' ? 'whitesmoke !important' : 'transparent !important',
                 '&:hover': {
                   borderColor: '#ff00c3 !important',
                   backgroundColor: 'whitesmoke !important',
@@ -612,7 +612,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
               sx={{ 
                 color: '#ff00c3 !important',
                 borderColor: '#ff00c3 !important',
-                backgroundColor: paginationType === 'none' && isDarkMode ? 'whitesmoke !important' : 'transparent !important',
+                backgroundColor: paginationType === 'none' ? 'whitesmoke !important' : 'transparent !important',
                 '&:hover': {
                   borderColor: '#ff00c3 !important',
                   backgroundColor: 'whitesmoke !important',
