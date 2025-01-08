@@ -28,7 +28,20 @@ export const MainMenu = ({ value = 'recordings', handleChangeContent }: MainMenu
 
   // Define colors based on theme mode
   const defaultcolor = theme.palette.mode === 'light' ? 'black' : 'white';
-  const selectedPink = '#FF00C3';
+
+  const buttonStyles = {
+    justifyContent: 'flex-start',
+    textAlign: 'left',
+    fontSize: 'medium',
+    padding: '6px 16px 6px 22px',
+    minHeight: '48px',
+    minWidth: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    textTransform: 'none',
+    color: theme.palette.mode === 'light' ? '#6C6C6C' : 'inherit',
+  };
+  
 
   return (
     <Paper
@@ -46,59 +59,54 @@ export const MainMenu = ({ value = 'recordings', handleChangeContent }: MainMenu
         <Tabs
           value={value}
           onChange={handleChange}
+          textColor="primary"
+          indicatorColor="primary"
           orientation="vertical"
-          TabIndicatorProps={{
-            style: {
-              backgroundColor: '#ff00c3', // Set the custom color for the indicator here
-              width: '2px',               // Ensure the indicator width is 2px as per your requirement
-              right: 0,                   // Position it on the right if needed
-            },
-          }}
-          sx={{
-            alignItems: 'flex-start',
-            '& .MuiTab-root': {
-              color: defaultcolor, 
-              textTransform: 'none', // Non-capitalized text
-              fontSize: 'medium',
-              justifyContent: 'flex-start',
-              textAlign: 'left',
-              '&.Mui-selected': {
-                color: selectedPink, // Darker pink for selected tab
-              },
-              '& .MuiTabs-indicator': {
-                backgroundColor: '#ff00c3', // Custom color for the indicator
-              },
-
-            },
-          }}
+          sx={{ alignItems: 'flex-start' }}
         >
           <Tab
+            sx={{
+              justifyContent: 'flex-start',
+              textAlign: 'left',
+              fontSize: 'medium',
+            }}
             value="recordings"
             label={t('mainmenu.recordings')}
             icon={<AutoAwesome />}
             iconPosition="start"
-            
           />
           <Tab
+            sx={{
+              justifyContent: 'flex-start',
+              textAlign: 'left',
+              fontSize: 'medium',
+            }}
             value="runs"
             label={t('mainmenu.runs')}
             icon={<FormatListBulleted />}
             iconPosition="start"
-           
           />
           <Tab
+            sx={{
+              justifyContent: 'flex-start',
+              textAlign: 'left',
+              fontSize: 'medium',
+            }}
             value="proxy"
             label={t('mainmenu.proxy')}
             icon={<Usb />}
             iconPosition="start"
-            
           />
           <Tab
+            sx={{
+              justifyContent: 'flex-start',
+              textAlign: 'left',
+              fontSize: 'medium',
+            }}
             value="apikey"
             label={t('mainmenu.apikey')}
             icon={<VpnKey />}
             iconPosition="start"
-            
           />
         </Tabs>
         <hr />
@@ -113,22 +121,4 @@ export const MainMenu = ({ value = 'recordings', handleChangeContent }: MainMenu
       </Box>
     </Paper>
   );
-};
-
-const buttonStyles = {
-  justifyContent: 'flex-start',
-  textAlign: 'left',
-  fontSize: 'medium',
-  padding: '6px 16px 6px 22px',
-  minHeight: '48px',
-  minWidth: '100%',
-  display: 'flex',
-  alignItems: 'center',
-  textTransform: 'none',
-  color: 'inherit',
-  backgroundColor: 'transparent',
-  '&:hover': {
-    backgroundColor: 'rgba(255, 0, 195, 0.1)',
-    color: '#ff00c3',
-  },
 };
