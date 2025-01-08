@@ -63,7 +63,17 @@ const BrowserRecordingSave = () => {
                 <Button onClick={goToMainMenu} variant="contained" color="error">
                   {t('right_panel.buttons.discard')}
                 </Button>
-                <Button onClick={() => setOpenModal(false)} variant="outlined">
+                <Button 
+                  onClick={() => setOpenModal(false)} 
+                  variant="outlined"
+                  sx={{ 
+                    color: '#ff00c3 !important',
+                    borderColor: '#ff00c3 !important',
+                    '&:hover': {
+                      borderColor: '#ff00c3 !important',
+                      backgroundColor: 'whitesmoke !important',
+                    }
+                  }}>
                   {t('right_panel.buttons.cancel')}
                 </Button>
               </Box>
