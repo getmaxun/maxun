@@ -103,79 +103,6 @@ export const NavBar: React.FC<NavBarProps> = ({
     localStorage.setItem("language", lang);
   };
 
-//   const renderBrandSection = () => (
-//     <BrandContainer>
-//       <LogoImage src={MaxunLogo} alt="Maxun Logo" />
-//       <ProjectName mode={darkMode ? 'dark' : 'light'}>Maxun</ProjectName>
-//       <Chip 
-//         label="beta" 
-//         variant="outlined" 
-//         sx={{ 
-//           marginTop: '10px',
-//           borderColor: '#ff00c3',
-//           color: '#ff00c3'
-//         }} 
-//       />
-//     </BrandContainer>
-//   );
-
-//   const renderSocialButtons = () => (
-//     <>
-//       <IconButton
-//         component="a"
-//         href="https://discord.gg/5GbPjBUkws"
-//         target="_blank"
-//         rel="noopener noreferrer"
-//         sx={{
-//           ...styles.socialButton,
-//           color: darkMode ? '#ffffff' : '#333333',
-//           '&:hover': {
-//             color: '#ff00c3'
-//           }
-//         }}
-//       >
-//         <DiscordIcon sx={{ marginRight: '5px' }} />
-//       </IconButton>
-//       <iframe 
-//         src="https://ghbtns.com/github-btn.html?user=getmaxun&repo=maxun&type=star&count=true&size=large" 
-//         frameBorder="0" 
-//         scrolling="0" 
-//         width="170" 
-//         height="30" 
-//         title="GitHub"
-//       />
-//     </>
-//   );
-
-//   const renderUserMenu = () => (
-//     <>
-//       <IconButton 
-//         onClick={handleMenuOpen} 
-//         sx={styles.userButton(darkMode)}
-//       >
-//         <AccountCircle sx={{ marginRight: '5px' }} />
-//         <Typography variant="body1">{user?.email}</Typography>
-//       </IconButton>
-//       <Menu
-//         anchorEl={anchorEl}
-//         open={Boolean(anchorEl)}
-//         onClose={handleMenuClose}
-//         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-//         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-//         PaperProps={{
-//           sx: {
-//             backgroundColor: darkMode ? '#1e2124' : '#ffffff',
-//             color: darkMode ? '#ffffff' : '#333333'
-//           }
-//         }}
-//       >
-//         <MenuItem onClick={() => { handleMenuClose(); logout(); }}>
-//           <Logout sx={{ marginRight: '5px' }} /> Logout
-//         </MenuItem>
-//       </Menu>
-//     </>
-//   );
-
   const renderThemeToggle = () => (
     <Tooltip title="Toggle light/dark theme">
       <IconButton 
@@ -191,40 +118,6 @@ export const NavBar: React.FC<NavBarProps> = ({
       </IconButton>
     </Tooltip>
   );
-
-//   const renderRecordingControls = () => (
-//     <>
-//       <IconButton 
-//         onClick={goToMainMenu} 
-//         sx={styles.discardButton}
-//       >
-//         <Clear sx={{ marginRight: '5px' }} />
-//         Discard
-//       </IconButton>
-//       <SaveRecording fileName={recordingName} />
-//     </>
-//   );
-
-//   return (
-
-//     <NavBarWrapper mode={darkMode ? 'dark' : 'light'}>
-//       {renderBrandSection()}
-//       {user && (
-//         <ControlsContainer>
-//           {!isRecording ? (
-//             <>
-//               {renderSocialButtons()}
-//               {renderUserMenu()}
-//               {renderThemeToggle()}
-//             </>
-//           ) : (
-//             renderRecordingControls()
-//           )}
-//         </ControlsContainer>
-//       )}
-
-   
-//     </NavBarWrapper>
 
   useEffect(() => {
     const checkForUpdates = async () => {
@@ -522,14 +415,15 @@ export const NavBar: React.FC<NavBarProps> = ({
               )}
             </div>
           ) : (
-            <><IconButton
+            <NavBarRight>
+              <IconButton
               onClick={handleLangMenuOpen}
               sx={{
                 display: "flex",
                 alignItems: "center",
                 borderRadius: "5px",
                 padding: "8px",
-                marginRight: "10px",
+                marginRight: "8px",
               }}
             >
               <Language sx={{ marginRight: '5px' }} /><Typography variant="body1">{t("Language")}</Typography>
@@ -587,49 +481,13 @@ export const NavBar: React.FC<NavBarProps> = ({
                 >
                   Deutsch
                 </MenuItem>
-              </Menu></>
+              </Menu>
+              {renderThemeToggle()}
+            </NavBarRight>
           )}  
       </NavBarWrapper>
     </>
   );
-};
-
-// Styles
-const styles = {
-  socialButton: {
-    display: 'flex',
-    alignItems: 'center',
-    borderRadius: '5px',
-    padding: '8px',
-    marginRight: '30px',
-    color: '#333333',
-    '&:hover': {
-      color: '#ff00c3'
-    }
-  },
-  userButton: (darkMode: boolean) => ({
-    display: 'flex',
-    alignItems: 'center',
-    borderRadius: '5px',
-    padding: '8px',
-    marginRight: '10px',
-    color: darkMode ? '#ffffff' : '#333333',
-    '&:hover': { 
-      backgroundColor: darkMode ? '#333' : '#F5F5F5', 
-      color: '#ff00c3' 
-    }
-  }),
-  discardButton: {
-    borderRadius: '5px',
-    padding: '8px',
-    background: 'red',
-    color: 'white',
-    marginRight: '10px',
-    '&:hover': { 
-      color: 'white', 
-      backgroundColor: '#ff0000' 
-    }
-  }
 };
 
 // Styled Components
@@ -642,27 +500,15 @@ const NavBarWrapper = styled.div<{ mode: 'light' | 'dark' }>`
   border-bottom: 1px solid ${({ mode }) => (mode === 'dark' ? '#333' : '#e0e0e0')};
 `;
 
-const BrandContainer = styled.div`
-  display: flex;
-  justify-content: flex-start;
-`;
-
-const LogoImage = styled.img.attrs({
-  width: 45,
-  height: 40,
-})`
-  border-radius: 5px;
-  margin: 5px 0px 5px 15px;
-`;
-
 const ProjectName = styled.b<{ mode: 'light' | 'dark' }>`
-  color: ${({ mode }) => (mode === 'dark' ? 'white' : '#333333')};
+  color: ${({ mode }) => (mode === 'dark' ? '#ffffff' : '#3f4853')};
   font-size: 1.3em;
-  padding: 11px;
 `;
 
-const ControlsContainer = styled.div`
+const NavBarRight = styled.div`
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  margin-left: auto;
 `;
+
