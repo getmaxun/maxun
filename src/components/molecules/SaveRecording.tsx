@@ -87,6 +87,7 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
         sx={{ 
           marginRight: '20px',
           color: '#00c853 !important',
+          borderColor: '#00c853 !important',
           '&:hover': {
             borderColor: '#00c853 !important',
           }
