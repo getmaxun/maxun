@@ -488,10 +488,10 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
       <ActionDescriptionBox  isDarkMode={isDarkMode} />
       <Box display="flex" flexDirection="column" gap={2} style={{ margin: '13px',background: isDarkMode?'#1E2124': 'inherit',color: isDarkMode ? 'white' : 'inherit' }}>
         {!getText && !getScreenshot && !getList && showCaptureList && <Button variant="contained" sx={{backgroundColor:"#ff00c3",color:`${isDarkMode?'white':'black'}`}}  onClick={startGetList}>{t('right_panel.buttons.capture_list')}</Button>}
-      <!-- <ActionDescriptionBox />
+       {/* <ActionDescriptionBox />
       <Box display="flex" flexDirection="column" gap={2} style={{ margin: '13px' }}>
-        {!getText && !getScreenshot && !getList && showCaptureList && <Button variant="contained" onClick={startGetList}>{t('right_panel.buttons.capture_list')}</Button>}
-        --!>
+        {!getText && !getScreenshot && !getList && showCaptureList && <Button variant="contained" onClick={startGetList}>{t('right_panel.buttons.capture_list')}</Button>} */}
+        
         {getList && (
           <>
             <Box display="flex" justifyContent="space-between" gap={2} style={{ margin: '15px' }}>
@@ -533,8 +533,8 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
           <FormControl>
             <FormLabel style={{ marginBottom: '10px', background: isDarkMode ? "#1E2124" : 'white', color: isDarkMode ? "white" : 'black' }}>
               <h4>{t('right_panel.limit.title')}</h4>
-<!--             <FormLabel>
-              <h4>{t('right_panel.limit.title')}</h4> -->
+             {/* <FormLabel>
+              <h4>{t('right_panel.limit.title')}</h4>  */}
             </FormLabel>
             <RadioGroup
               value={limitType}
