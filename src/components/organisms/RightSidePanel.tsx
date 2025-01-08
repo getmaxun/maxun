@@ -500,6 +500,14 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                 <Button
                   variant="outlined"
                   onClick={handleBackCaptureList}
+                  sx={{ 
+                    color: '#ff00c3 !important',
+                    borderColor: '#ff00c3 !important',
+                    '&:hover': {
+                      borderColor: '#ff00c3 !important',
+                      backgroundColor: 'whitesmoke !important',
+                    }
+                  }} 
                 >
                   {t('right_panel.buttons.back')}
                 </Button>
@@ -508,13 +516,32 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                 variant="outlined"
                 onClick={handleConfirmListCapture}
                 disabled={captureStage === 'initial' ? isConfirmCaptureDisabled : hasUnconfirmedListTextFields}
+                sx={{ 
+                  color: '#ff00c3 !important',
+                  borderColor: '#ff00c3 !important',
+                  '&:hover': {
+                    borderColor: '#ff00c3 !important',
+                    backgroundColor: 'whitesmoke !important',
+                  }
+                }} 
               >
                 {captureStage === 'initial' ? t('right_panel.buttons.confirm_capture') :
                 captureStage === 'pagination' ? t('right_panel.buttons.confirm_pagination') :
                 captureStage === 'limit' ? t('right_panel.buttons.confirm_limit') : 
                 t('right_panel.buttons.finish_capture')}
               </Button>
-              <Button variant="outlined" color="error" onClick={discardGetList}>
+              <Button 
+                variant="outlined" 
+                color="error" 
+                onClick={discardGetList} 
+                sx={{ 
+                  color: 'red !important',
+                  borderColor: 'red !important',
+                  '&:hover': {
+                    borderColor: 'red !important',
+                    backgroundColor: 'whitesmoke !important',
+                  }
+              }} >
                 {t('right_panel.buttons.discard')}
               </Button>
             </Box>
@@ -523,11 +550,75 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         {showPaginationOptions && (
           <Box display="flex" flexDirection="column" gap={2} style={{ margin: '13px' }}>
             <Typography>{t('right_panel.pagination.title')}</Typography>
-            <Button variant={paginationType === 'clickNext' ? "contained" : "outlined"} onClick={() => handlePaginationSettingSelect('clickNext')}>{t('right_panel.pagination.click_next')}</Button>
-            <Button variant={paginationType === 'clickLoadMore' ? "contained" : "outlined"} onClick={() => handlePaginationSettingSelect('clickLoadMore')}>{t('right_panel.pagination.click_load_more')}</Button>
-            <Button variant={paginationType === 'scrollDown' ? "contained" : "outlined"} onClick={() => handlePaginationSettingSelect('scrollDown')}>{t('right_panel.pagination.scroll_down')}</Button>
-            <Button variant={paginationType === 'scrollUp' ? "contained" : "outlined"} onClick={() => handlePaginationSettingSelect('scrollUp')}>{t('right_panel.pagination.scroll_up')}</Button>
-            <Button variant={paginationType === 'none' ? "contained" : "outlined"} onClick={() => handlePaginationSettingSelect('none')}>{t('right_panel.pagination.none')}</Button>
+            <Button 
+              variant={paginationType === 'clickNext' ? "contained" : "outlined"} 
+              onClick={() => handlePaginationSettingSelect('clickNext')} 
+              sx={{ 
+                color: '#ff00c3 !important',
+                borderColor: '#ff00c3 !important',
+                backgroundColor: paginationType === 'clickNext' && isDarkMode ? 'whitesmoke !important' : 'transparent !important',
+                '&:hover': {
+                  borderColor: '#ff00c3 !important',
+                  backgroundColor: 'whitesmoke !important',
+                }
+            }}>
+              {t('right_panel.pagination.click_next')}
+            </Button>
+            <Button 
+              variant={paginationType === 'clickLoadMore' ? "contained" : "outlined"} 
+              onClick={() => handlePaginationSettingSelect('clickLoadMore')}
+              sx={{ 
+                color: '#ff00c3 !important',
+                borderColor: '#ff00c3 !important',
+                backgroundColor: paginationType === 'clickLoadMore' && isDarkMode ? 'whitesmoke !important' : 'transparent !important',
+                '&:hover': {
+                  borderColor: '#ff00c3 !important',
+                  backgroundColor: 'whitesmoke !important',
+                }
+              }}>
+                {t('right_panel.pagination.click_load_more')}
+            </Button>
+            <Button 
+              variant={paginationType === 'scrollDown' ? "contained" : "outlined"} 
+              onClick={() => handlePaginationSettingSelect('scrollDown')}
+              sx={{ 
+                color: '#ff00c3 !important',
+                borderColor: '#ff00c3 !important',
+                backgroundColor: paginationType === 'scrollDown' && isDarkMode ? 'whitesmoke !important' : 'transparent !important',
+                '&:hover': {
+                  borderColor: '#ff00c3 !important',
+                  backgroundColor: 'whitesmoke !important',
+                }
+              }}>
+              {t('right_panel.pagination.scroll_down')}
+            </Button>
+            <Button 
+              variant={paginationType === 'scrollUp' ? "contained" : "outlined"} 
+              onClick={() => handlePaginationSettingSelect('scrollUp')}
+              sx={{ 
+                color: '#ff00c3 !important',
+                borderColor: '#ff00c3 !important',
+                backgroundColor: paginationType === 'scrollUp' && isDarkMode ? 'whitesmoke !important' : 'transparent !important',
+                '&:hover': {
+                  borderColor: '#ff00c3 !important',
+                  backgroundColor: 'whitesmoke !important',
+                }
+              }}>
+              {t('right_panel.pagination.scroll_up')}
+            </Button>
+            <Button 
+              variant={paginationType === 'none' ? "contained" : "outlined"} 
+              onClick={() => handlePaginationSettingSelect('none')}
+              sx={{ 
+                color: '#ff00c3 !important',
+                borderColor: '#ff00c3 !important',
+                backgroundColor: paginationType === 'none' && isDarkMode ? 'whitesmoke !important' : 'transparent !important',
+                '&:hover': {
+                  borderColor: '#ff00c3 !important',
+                  backgroundColor: 'whitesmoke !important',
+                }
+              }}>
+              {t('right_panel.pagination.none')}</Button>
           </Box>
         )}
         {showLimitOptions && (
