@@ -94,15 +94,15 @@ function App() {
       </GlobalInfoProvider>
     </ThemeModeProvider>
 
-<!--     <ThemeProvider theme={theme}>
+    //  <ThemeProvider theme={theme}>
       
-        <GlobalInfoProvider>
-          <Routes>
-            <Route path="/*" element={<PageWrapper />} />
-          </Routes>
-        </GlobalInfoProvider>
+    //     <GlobalInfoProvider>
+    //       <Routes>
+    //         <Route path="/*" element={<PageWrapper />} />
+    //       </Routes>
+    //     </GlobalInfoProvider>
      
-    </ThemeProvider> -->
+    // </ThemeProvider> 
   );
 }
 
