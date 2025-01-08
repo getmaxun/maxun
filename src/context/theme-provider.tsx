@@ -4,33 +4,74 @@ import CssBaseline from '@mui/material/CssBaseline';
 
 const lightTheme = createTheme({
   palette: {
-    mode: 'light',
     primary: {
-      main: '#ff00c3', // Pink as the primary color
-    },
-    background: {
-      default: '#ffffff',
-      paper: '#f5f5f5',
-    },
-    text: {
-      primary: '#000000',
+      main: "#ff00c3",
+      contrastText: "#ffffff",
     },
   },
   components: {
-    MuiTabs: {
-      styleOverrides: {
-        indicator: {
-          backgroundColor: '#ff00c3', // Pink for tab indicators
-        },
-      },
-    },
     MuiButton: {
       styleOverrides: {
         root: {
-          backgroundColor: '#ff00c3', // Pink button background
-          color: '#ffffff',
-          '&:hover': {
-            backgroundColor: '#e600b3', // Slightly darker pink on hover
+          // Default styles for all buttons (optional)
+          textTransform: "none",
+        },
+        containedPrimary: {
+          // Styles for 'contained' variant with 'primary' color
+          "&:hover": {
+            backgroundColor: "#ff66d9",
+          },
+        },
+        outlined: {
+          // Apply white background for all 'outlined' variant buttons
+          backgroundColor: "#ffffff",
+          "&:hover": {
+            backgroundColor: "#f0f0f0", // Optional lighter background on hover
+          },
+        },
+      },
+    },
+    MuiLink: {
+      styleOverrides: {
+        root: {
+          "&:hover": {
+            color: "#ff00c3",
+          },
+        },
+      },
+    },
+    MuiIconButton: {
+      styleOverrides: {
+        root: {
+          // '&:hover': {
+          //   color: "#ff66d9",
+          // },
+        },
+      },
+    },
+    MuiTab: {
+      styleOverrides: {
+        root: {
+          textTransform: "none",
+        },
+      },
+    },
+    MuiAlert: {
+      styleOverrides: {
+        standardInfo: {
+          backgroundColor: "#fce1f4",
+          color: "#ff00c3",
+          "& .MuiAlert-icon": {
+            color: "#ff00c3",
+          },
+        },
+      },
+    },
+    MuiAlertTitle: {
+      styleOverrides: {
+        root: {
+          "& .MuiAlert-icon": {
+            color: "#ffffff",
           },
         },
       },
