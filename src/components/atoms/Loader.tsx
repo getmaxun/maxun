@@ -1,11 +1,14 @@
 import styled from "styled-components";
 import { Stack } from "@mui/material";
+import { useThemeMode } from "../../context/theme-provider";
 
 interface LoaderProps {
   text: string;
 }
 
 export const Loader: React.FC<LoaderProps> = ({ text }) => {
+  const { darkMode } = useThemeMode();
+
   return (
     <Stack direction="column" sx={{ margin: "30px 0px", alignItems: "center" }}>
       <DotsContainer>
@@ -14,15 +17,19 @@ export const Loader: React.FC<LoaderProps> = ({ text }) => {
         <Dot />
         <Dot />
       </DotsContainer>
-      <StyledParagraph>{text}</StyledParagraph>
+      <StyledParagraph darkMode={darkMode}>{text}</StyledParagraph>
     </Stack>
   );
 };
 
-const StyledParagraph = styled.p`
+interface StyledParagraphProps {
+  darkMode: boolean;
+}
+
+const StyledParagraph = styled.p<StyledParagraphProps>`
   font-size: large;
   font-family: inherit;
-  color: #333;
+  color: ${({ darkMode }) => (darkMode ? 'white' : '#333')};
   margin-top: 20px;
 `;
 

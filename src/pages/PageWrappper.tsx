@@ -12,6 +12,7 @@ import Login from './Login';
 import Register from './Register';
 import UserRoute from '../routes/userRoute';
 import { Routes, Route, useNavigate } from 'react-router-dom';
+import { AppBar } from '@mui/material';
 
 export const PageWrapper = () => {
   const [open, setOpen] = useState(false);
@@ -50,7 +51,9 @@ export const PageWrapper = () => {
       <AuthProvider>
         <SocketProvider>
           <React.Fragment>
+         
             {!browserId && <NavBar recordingName={recordingName} isRecording={!!browserId} />}
+           
             <Routes>
               <Route element={<UserRoute />}>
                 <Route path="/" element={<MainPage handleEditRecording={handleEditRecording} />} />

@@ -4,16 +4,16 @@ import axios from 'axios';
 import styled from "styled-components";
 import { stopRecording } from "../../api/recording";
 import { useGlobalInfoStore } from "../../context/globalInfo";
-import { IconButton, Menu, MenuItem, Typography, Chip, Button, Modal, Tabs, Tab, Box, Snackbar } from "@mui/material";
-import { AccountCircle, Logout, Clear, YouTube, X, Update, Close, Language } from "@mui/icons-material";
+import { IconButton, Menu, MenuItem, Typography, Chip, Button, Modal, Tabs, Tab, Box, Snackbar, Tooltip } from "@mui/material";
+import { AccountCircle, Logout, Clear, YouTube, X, Update, Close, Language, Brightness7, Brightness4 } from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/auth';
 import { SaveRecording } from '../molecules/SaveRecording';
 import DiscordIcon from '../atoms/DiscordIcon';
 import { apiUrl } from '../../apiConfig';
 import MaxunLogo from "../../assets/maxunlogo.png";
+import { useThemeMode } from '../../context/theme-provider';
 import packageJson from "../../../package.json"
-
 
 interface NavBarProps {
   recordingName: string;
@@ -28,6 +28,7 @@ export const NavBar: React.FC<NavBarProps> = ({
   const { state, dispatch } = useContext(AuthContext);
   const { user } = state;
   const navigate = useNavigate();
+  const { darkMode, toggleTheme } = useThemeMode();
   const { t, i18n } = useTranslation();
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -102,6 +103,22 @@ export const NavBar: React.FC<NavBarProps> = ({
     localStorage.setItem("language", lang);
   };
 
+  const renderThemeToggle = () => (
+    <Tooltip title="Toggle light/dark theme">
+      <IconButton 
+        onClick={toggleTheme} 
+        sx={{
+          color: darkMode ? '#ffffff' : '#333333',
+          '&:hover': {
+            color: '#ff00c3'
+          }
+        }}
+      >
+        {darkMode ? <Brightness7 /> : <Brightness4 />}
+      </IconButton>
+    </Tooltip>
+  );
+
   useEffect(() => {
     const checkForUpdates = async () => {
       const latestVersion = await fetchLatestVersion();
@@ -158,13 +175,13 @@ export const NavBar: React.FC<NavBarProps> = ({
           }}
         />
       )}
-      <NavBarWrapper>
+      <NavBarWrapper mode={darkMode ? 'dark' : 'light'}>
         <div style={{
           display: 'flex',
           justifyContent: 'flex-start',
         }}>
           <img src={MaxunLogo} width={45} height={40} style={{ borderRadius: '5px', margin: '5px 0px 5px 15px' }} />
-          <div style={{ padding: '11px' }}><ProjectName>{t('navbar.project_name')}</ProjectName></div>
+          <div style={{ padding: '11px' }}><ProjectName mode={darkMode ? 'dark' : 'light'}>{t('navbar.project_name')}</ProjectName></div>
           <Chip
             label={`${currentVersion}`}
             color="primary"
@@ -288,7 +305,6 @@ export const NavBar: React.FC<NavBarProps> = ({
                     borderRadius: '5px',
                     padding: '8px',
                     marginRight: '10px',
-                    '&:hover': { backgroundColor: 'white', color: '#ff00c3' }
                   }}>
                     <AccountCircle sx={{ marginRight: '5px' }} />
                     <Typography variant="body1">{user.email}</Typography>
@@ -383,6 +399,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                       </MenuItem>
                     </Menu>
                   </Menu>
+                  {renderThemeToggle()}
                 </>
               ) : (
                 <>
@@ -402,14 +419,15 @@ export const NavBar: React.FC<NavBarProps> = ({
               )}
             </div>
           ) : (
-            <><IconButton
+            <NavBarRight>
+              <IconButton
               onClick={handleLangMenuOpen}
               sx={{
                 display: "flex",
                 alignItems: "center",
                 borderRadius: "5px",
                 padding: "8px",
-                marginRight: "10px",
+                marginRight: "8px",
               }}
             >
               <Language sx={{ marginRight: '5px' }} /><Typography variant="body1">{t("Language")}</Typography>
@@ -467,23 +485,34 @@ export const NavBar: React.FC<NavBarProps> = ({
                 >
                   Deutsch
                 </MenuItem>
-              </Menu></>
-          )}
+              </Menu>
+              {renderThemeToggle()}
+            </NavBarRight>
+          )}  
       </NavBarWrapper>
     </>
   );
 };
 
-const NavBarWrapper = styled.div`
+// Styled Components
+const NavBarWrapper = styled.div<{ mode: 'light' | 'dark' }>`
   grid-area: navbar;
-  background-color: white;
+  background-color: ${({ mode }) => (mode === 'dark' ? '#1e2124' : '#ffffff')};
   padding: 5px;
   display: flex;
   justify-content: space-between;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid ${({ mode }) => (mode === 'dark' ? '#333' : '#e0e0e0')};
 `;
 
-const ProjectName = styled.b`
-  color: #3f4853;
+const ProjectName = styled.b<{ mode: 'light' | 'dark' }>`
+  color: ${({ mode }) => (mode === 'dark' ? '#ffffff' : '#3f4853')};
   font-size: 1.3em;
 `;
+
+const NavBarRight = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-left: auto;
+`;
+

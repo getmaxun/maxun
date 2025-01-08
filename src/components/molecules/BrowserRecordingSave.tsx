@@ -31,14 +31,26 @@ const BrowserRecordingSave = () => {
           position: 'absolute',
           background: '#ff00c3',
           border: 'none',
-          borderRadius: '5px',
+          borderRadius: '0px 0px 8px 8px',
           padding: '7.5px',
           width: 'calc(100% - 20px)',
           overflow: 'hidden',
           display: 'flex',
           justifyContent: 'space-between',
+          height:"48px"
         }}>
-          <Button onClick={() => setOpenModal(true)} variant="outlined" style={{ marginLeft: "25px" }} size="small" color="error">
+          <Button 
+            onClick={() => setOpenModal(true)} 
+            variant="outlined" 
+            color="error"  
+            sx={{ 
+              marginLeft: '25px',
+              color: 'red !important',
+              borderColor: 'red !important',
+              backgroundColor: 'whitesmoke !important',
+            }} 
+            size="small"
+          >
             {t('right_panel.buttons.discard')}
           </Button>
           <GenericModal isOpen={openModal} onClose={() => setOpenModal(false)} modalStyle={modalStyle}>
@@ -48,7 +60,14 @@ const BrowserRecordingSave = () => {
                 <Button onClick={goToMainMenu} variant="contained" color="error">
                   {t('right_panel.buttons.discard')}
                 </Button>
-                <Button onClick={() => setOpenModal(false)} variant="outlined">
+                <Button 
+                  onClick={() => setOpenModal(false)} 
+                  variant="outlined"
+                  sx={{ 
+                    color: '#ff00c3 !important',
+                    borderColor: '#ff00c3 !important',
+                    backgroundColor: 'whitesmoke !important',
+                  }} >
                   {t('right_panel.buttons.cancel')}
                 </Button>
               </Box>

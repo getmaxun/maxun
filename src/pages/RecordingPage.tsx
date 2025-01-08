@@ -15,6 +15,7 @@ import { editRecordingFromStorage } from "../api/storage";
 import { WhereWhatPair } from "maxun-core";
 import styled from "styled-components";
 import BrowserRecordingSave from '../components/molecules/BrowserRecordingSave';
+import { useThemeMode } from '../context/theme-provider';
 import { useTranslation } from 'react-i18next';
 
 interface RecordingPageProps {
@@ -27,6 +28,7 @@ export interface PairForEdit {
 }
 
 export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
+  const { darkMode } = useThemeMode();
   const { t } = useTranslation();
   const [isLoaded, setIsLoaded] = React.useState(false);
   const [hasScrollbar, setHasScrollbar] = React.useState(false);
@@ -34,6 +36,7 @@ export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
     pair: null,
     index: 0,
   });
+
   const [showOutputData, setShowOutputData] = useState(false);
 
   const browserContentRef = React.useRef<HTMLDivElement>(null);
@@ -57,15 +60,20 @@ export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
   useEffect(() => changeBrowserDimensions(), [isLoaded])
 
   useEffect(() => {
-    document.body.style.background = 'radial-gradient(circle, rgba(255, 255, 255, 1) 0%, rgba(232, 191, 222, 1) 100%, rgba(255, 255, 255, 1) 100%)';
-    document.body.style.filter = 'progid:DXImageTransform.Microsoft.gradient(startColorstr="#ffffff",endColorstr="#ffffff",GradientType=1);'
+    if (darkMode) {
+
+      document.body.style.background = 'rgba(18,18,18,1)';
+
+    } else {
+      document.body.style.background = 'radial-gradient(circle, rgba(255, 255, 255, 1) 0%, rgba(232, 191, 222, 1) 100%, rgba(255, 255, 255, 1) 100%)';
+      document.body.style.filter = 'progid:DXImageTransform.Microsoft.gradient(startColorstr="#ffffff",endColorstr="#ffffff",GradientType=1);'
+    }
 
     return () => {
-      // Cleanup the background when leaving the page
       document.body.style.background = '';
       document.body.style.filter = '';
     };
-  }, []);
+  }, [darkMode]);
 
   useEffect(() => {
     let isCancelled = false;

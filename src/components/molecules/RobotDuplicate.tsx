@@ -152,7 +152,16 @@ export const RobotDuplicationModal = ({ isOpen, handleStart, handleClose, initia
                                     <Button variant="contained" color="primary" onClick={handleSave}>
                                         {t('robot_duplication.buttons.duplicate')}
                                     </Button>
-                                    <Button onClick={handleClose} color="primary" variant="outlined" style={{ marginLeft: '10px' }}>
+                                    <Button 
+                                        onClick={handleClose} 
+                                        color="primary" 
+                                        variant="outlined" 
+                                        style={{ marginLeft: '10px' }}
+                                        sx={{ 
+                                            color: '#ff00c3 !important',
+                                            borderColor: '#ff00c3 !important',
+                                            backgroundColor: 'whitesmoke !important',
+                                          }} >
                                         {t('robot_duplication.buttons.cancel')}
                                     </Button>
                                 </Box>

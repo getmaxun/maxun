@@ -1,12 +1,13 @@
 import axios from "axios";
-import { useState, useContext, useEffect, FormEvent } from "react";
+import { useState, useContext, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { AuthContext } from "../context/auth";
-import { Box, Typography, TextField, Button, CircularProgress, Grid } from "@mui/material";
+import { Box, Typography, TextField, Button, CircularProgress } from "@mui/material";
 import { useGlobalInfoStore } from "../context/globalInfo";
 import { apiUrl } from "../apiConfig";
 import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
+import { useThemeMode } from "../context/theme-provider";
 
 const Login = () => {
   const { t } = useTranslation();
@@ -17,12 +18,14 @@ const Login = () => {
     email: "",
     password: "",
   });
+
   const [loading, setLoading] = useState(false);
   const { notify } = useGlobalInfoStore();
   const { email, password } = form;
 
   const { state, dispatch } = useContext(AuthContext);
   const { user } = state;
+  const { darkMode } = useThemeMode();
 
   const navigate = useNavigate();
 
@@ -41,10 +44,11 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const { data } = await axios.post(`${apiUrl}/auth/login`, {
-        email,
-        password,
-      });
+      const { data } = await axios.post(
+        `${apiUrl}/auth/login`,
+        { email, password },
+        { withCredentials: true }
+      );
       dispatch({ type: "LOGIN", payload: data });
       notify("success", t('login.welcome_notification'));
       window.localStorage.setItem("user", JSON.stringify(data));
@@ -64,6 +68,7 @@ const Login = () => {
         maxHeight: "100vh",
         mt: 6,
         padding: 4,
+        backgroundColor: darkMode ? "#121212" : "#ffffff",
       }}
     >
       <Box
@@ -71,14 +76,15 @@ const Login = () => {
         onSubmit={submitForm}
         sx={{
           textAlign: "center",
-          backgroundColor: "#ffffff",
+          backgroundColor: darkMode ? "#1e1e1e" : "#ffffff",
+          color: darkMode ? "#ffffff" : "#333333",
           padding: 6,
           borderRadius: 5,
           boxShadow: "0px 20px 40px rgba(0, 0, 0, 0.2), 0px -5px 10px rgba(0, 0, 0, 0.15)",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          maxWidth: 400,
+          maxWidth: 500,
           width: "100%",
         }}
       >
@@ -112,7 +118,10 @@ const Login = () => {
           fullWidth
           variant="contained"
           color="primary"
-          sx={{ mt: 2, mb: 2 }}
+          sx={{
+            mt: 2,
+            mb: 2,
+          }}
           disabled={loading || !email || !password}
         >
           {loading ? (

@@ -1,12 +1,16 @@
-import * as React from 'react';
+import React from 'react';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
-import { Paper, Button } from "@mui/material";
-import { AutoAwesome, FormatListBulleted, VpnKey, Usb, CloudQueue, Code } from "@mui/icons-material";
+
+import { Paper, Button, useTheme } from "@mui/material";
+import { AutoAwesome, FormatListBulleted, VpnKey, Usb, Article, CloudQueue,Code, } from "@mui/icons-material";
+
+
 import { apiUrl } from "../../apiConfig";
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
+
 
 
 interface MainMenuProps {
@@ -15,27 +19,43 @@ interface MainMenuProps {
 }
 
 export const MainMenu = ({ value = 'recordings', handleChangeContent }: MainMenuProps) => {
+  const theme = useTheme();
   const {t} = useTranslation();
 
   const handleChange = (event: React.SyntheticEvent, newValue: string) => {
     handleChangeContent(newValue);
   };
 
+  // Define colors based on theme mode
+  const defaultcolor = theme.palette.mode === 'light' ? 'black' : 'white';
+
+  const buttonStyles = {
+    justifyContent: 'flex-start',
+    textAlign: 'left',
+    fontSize: 'medium',
+    padding: '6px 16px 6px 22px',
+    minHeight: '48px',
+    minWidth: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    textTransform: 'none',
+    color: theme.palette.mode === 'light' ? '#6C6C6C' : 'inherit',
+  };
+  
+
   return (
     <Paper
       sx={{
         height: 'auto',
         width: '250px',
-        backgroundColor: 'white',
+        backgroundColor: theme.palette.background.paper,
         paddingTop: '0.5rem',
+        color: defaultcolor,
       }}
       variant="outlined"
       square
     >
-      <Box sx={{
-        width: '100%',
-        paddingBottom: '1rem',
-      }}>
+      <Box sx={{ width: '100%', paddingBottom: '1rem' }}>
         <Tabs
           value={value}
           onChange={handleChange}
@@ -101,17 +121,4 @@ export const MainMenu = ({ value = 'recordings', handleChangeContent }: MainMenu
       </Box>
     </Paper>
   );
-}
-
-const buttonStyles = {
-  justifyContent: 'flex-start',
-  textAlign: 'left',
-  fontSize: 'medium',
-  padding: '6px 16px 6px 22px',
-  minHeight: '48px',
-  minWidth: '100%',
-  display: 'flex',
-  alignItems: 'center',
-  textTransform: 'none',
-  color: '#6C6C6C !important',
 };

@@ -1,6 +1,4 @@
-import type {
-  FC,
-} from 'react';
+import type { FC } from 'react';
 import styled from 'styled-components';
 
 import ReplayIcon from '@mui/icons-material/Replay';
@@ -13,13 +11,24 @@ import { useCallback, useEffect, useState } from "react";
 import { useSocketStore } from "../../context/socket";
 import { getCurrentUrl } from "../../api/recording";
 import { useGlobalInfoStore } from '../../context/globalInfo';
+import { useThemeMode } from '../../context/theme-provider';
 
-const StyledNavBar = styled.div<{ browserWidth: number }>`
+const StyledNavBar = styled.div<{ browserWidth: number; isDarkMode: boolean }>`
     display: flex;
     padding: 12px 0px;
-    background-color: #f6f6f6;
+    background-color: ${({ isDarkMode }) => (isDarkMode ? '#2C2F33' : '#f6f6f6')};
     width: ${({ browserWidth }) => browserWidth}px;
     border-radius: 0px 5px 0px 0px;
+`;
+
+const IconButton = styled(NavBarButton)<{ mode: string }>`
+  background-color: ${({ mode }) => (mode === 'dark' ? '#2C2F33' : '#f6f6f6')};
+  transition: background-color 0.3s ease, transform 0.1s ease;
+  color: ${({ mode }) => (mode === 'dark' ? '#FFFFFF' : '#333')};
+  cursor: pointer;
+  &:hover {
+    background-color: ${({ mode }) => (mode === 'dark' ? '#586069' : '#D0D0D0')};
+  }
 `;
 
 interface NavBarProps {
@@ -31,6 +40,7 @@ const BrowserNavBar: FC<NavBarProps> = ({
   browserWidth,
   handleUrlChanged,
 }) => {
+  const isDarkMode = useThemeMode().darkMode;
 
   const { socket } = useSocketStore();
   const { recordingUrl, setRecordingUrl } = useGlobalInfoStore();
@@ -67,7 +77,7 @@ const BrowserNavBar: FC<NavBarProps> = ({
         socket.off('urlChanged', handleCurrentUrlChange);
       }
     }
-  }, [socket, handleCurrentUrlChange])
+  }, [socket, handleCurrentUrlChange]);
 
   const addAddress = (address: string) => {
     if (socket) {
@@ -78,38 +88,41 @@ const BrowserNavBar: FC<NavBarProps> = ({
   };
 
   return (
-    <StyledNavBar browserWidth={900}>
-      <NavBarButton
+    <StyledNavBar browserWidth={browserWidth} isDarkMode={isDarkMode}>
+      <IconButton
         type="button"
         onClick={() => {
           socket?.emit('input:back');
         }}
         disabled={false}
+        mode={isDarkMode ? 'dark' : 'light'}
       >
         <ArrowBackIcon />
-      </NavBarButton>
+      </IconButton>
 
-      <NavBarButton
+      <IconButton
         type="button"
         onClick={() => {
           socket?.emit('input:forward');
         }}
         disabled={false}
+        mode={isDarkMode ? 'dark' : 'light'}
       >
         <ArrowForwardIcon />
-      </NavBarButton>
+      </IconButton>
 
-      <NavBarButton
+      <IconButton
         type="button"
         onClick={() => {
           if (socket) {
-            handleRefresh()
+            handleRefresh();
           }
         }}
         disabled={false}
+        mode={isDarkMode ? 'dark' : 'light'}
       >
         <ReplayIcon />
-      </NavBarButton>
+      </IconButton>
 
       <UrlForm
         currentAddress={recordingUrl}

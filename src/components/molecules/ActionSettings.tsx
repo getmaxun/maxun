@@ -1,16 +1,15 @@
 import React, { useRef } from 'react';
 import styled from "styled-components";
 import { Button } from "@mui/material";
-//import { ActionDescription } from "../organisms/RightSidePanel";
 import * as Settings from "./action-settings";
 import { useSocketStore } from "../../context/socket";
 
 interface ActionSettingsProps {
   action: string;
+  darkMode?: boolean;
 }
 
-export const ActionSettings = ({ action }: ActionSettingsProps) => {
-
+export const ActionSettings = ({ action, darkMode = false }: ActionSettingsProps) => {
   const settingsRef = useRef<{ getSettings: () => object }>(null);
   const { socket } = useSocketStore();
 
@@ -20,30 +19,27 @@ export const ActionSettings = ({ action }: ActionSettingsProps) => {
         return <Settings.ScreenshotSettings ref={settingsRef} />;
       case 'scroll':
         return <Settings.ScrollSettings ref={settingsRef} />;
-        case 'scrape':
-          return <Settings.ScrapeSettings ref={settingsRef} />;
+      case 'scrape':
+        return <Settings.ScrapeSettings ref={settingsRef} />;
       case 'scrapeSchema':
         return <Settings.ScrapeSchemaSettings ref={settingsRef} />;
       default:
         return null;
     }
-  }
+  };
 
   const handleSubmit = (event: React.SyntheticEvent) => {
     event.preventDefault();
-    //get the data from settings
     const settings = settingsRef.current?.getSettings();
-    //Send notification to the server and generate the pair
     socket?.emit(`action`, {
       action,
       settings
     });
-  }
+  };
 
   return (
     <div>
-      {/* <ActionDescription>Action settings:</ActionDescription> */}
-      <ActionSettingsWrapper action={action}>
+      <ActionSettingsWrapper action={action} darkMode={darkMode}>
         <form onSubmit={handleSubmit}>
           <DisplaySettings />
           <Button
@@ -64,10 +60,13 @@ export const ActionSettings = ({ action }: ActionSettingsProps) => {
   );
 };
 
-const ActionSettingsWrapper = styled.div<{ action: string }>`
+// Ensure that the Wrapper accepts the darkMode prop for styling adjustments.
+const ActionSettingsWrapper = styled.div<{ action: string; darkMode: boolean }>`
   display: flex;
   flex-direction: column;
-  align-items: ${({ action }) => action === 'script' ? 'stretch' : 'center'};;
+  align-items: ${({ action }) => (action === 'script' ? 'stretch' : 'center')};
   justify-content: center;
   margin-top: 20px;
+  background-color: ${({ darkMode }) => (darkMode ? '#1E1E1E' : 'white')};
+  color: ${({ darkMode }) => (darkMode ? 'white' : 'black')};
 `;

@@ -5,19 +5,24 @@ import { useActionContext } from '../../context/browserActions';
 import MaxunLogo from "../../assets/maxunlogo.png";
 import { useTranslation } from 'react-i18next';
 
-const CustomBoxContainer = styled.div`
+interface CustomBoxContainerProps {
+  isDarkMode: boolean;
+}
+
+const CustomBoxContainer = styled.div<CustomBoxContainerProps>`
   position: relative;
   min-width: 250px;
   width: auto;
   min-height: 100px;
   height: auto;
-  // border: 2px solid #ff00c3;
   border-radius: 5px;
-  background-color: white;
+  background-color: ${({ isDarkMode }) => (isDarkMode ? '#313438' : 'white')};
+  color: ${({ isDarkMode }) => (isDarkMode ? 'white' : 'black')};
   margin: 80px 13px 25px 13px;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
 `;
 
-const Triangle = styled.div`
+const Triangle = styled.div<CustomBoxContainerProps>`
   position: absolute;
   top: -15px;
   left: 50%;
@@ -26,7 +31,7 @@ const Triangle = styled.div`
   height: 0;
   border-left: 20px solid transparent;
   border-right: 20px solid transparent;
-  border-bottom: 20px solid white;
+  border-bottom: 20px solid ${({ isDarkMode }) => (isDarkMode ? '#313438' : 'white')};
 `;
 
 const Logo = styled.img`
@@ -44,7 +49,8 @@ const Content = styled.div`
   text-align: left;
 `;
 
-const ActionDescriptionBox = () => {
+
+const ActionDescriptionBox = ({ isDarkMode }: { isDarkMode: boolean }) => {
   const { t } = useTranslation();
   const { getText, getScreenshot, getList, captureStage } = useActionContext() as {
     getText: boolean;
@@ -93,9 +99,19 @@ const ActionDescriptionBox = () => {
                   <Checkbox
                     checked={index < currentStageIndex}
                     disabled
+                    sx={{
+                      color: isDarkMode ? 'white' : 'default',
+                      '&.Mui-checked': {
+                        color: isDarkMode ? '#90caf9' : '#1976d2',
+                      },
+                    }}
                   />
                 }
-                label={<Typography variant="body2" gutterBottom>{text}</Typography>}
+                label={
+                  <Typography variant="body2" gutterBottom color={isDarkMode ? 'white' : 'textPrimary'}>
+                    {text}
+                  </Typography>
+                }
               />
             ))}
           </Box>
@@ -112,9 +128,9 @@ const ActionDescriptionBox = () => {
   };
 
   return (
-    <CustomBoxContainer>
-      <Logo src={MaxunLogo} alt='maxun_logo' />
-      <Triangle />
+    <CustomBoxContainer isDarkMode={isDarkMode}>
+      <Logo src={MaxunLogo} alt="Maxun Logo" />
+      <Triangle isDarkMode={isDarkMode} />
       <Content>
         {renderActionDescription()}
       </Content>

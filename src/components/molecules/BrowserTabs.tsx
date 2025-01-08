@@ -1,8 +1,8 @@
 import * as React from 'react';
 import { Box, IconButton, Tab, Tabs } from "@mui/material";
-import { AddButton } from "../atoms/buttons/AddButton";
 import { useBrowserDimensionsStore } from "../../context/browserDimensions";
 import { Close } from "@mui/icons-material";
+import { useThemeMode } from '../../context/theme-provider';
 
 interface BrowserTabsProp {
   tabs: string[],
@@ -28,15 +28,16 @@ export const BrowserTabs = (
       handleChangeIndex(newValue);
     }
   };
+  const isDarkMode = useThemeMode().darkMode;
 
   return (
     <Box sx={{
-      width: 800,
+      width: 800, // Fixed width
       display: 'flex',
       overflow: 'auto',
       alignItems: 'center',
     }}>
-      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}> {/* Synced border color */}
         <Tabs
           value={tabIndex}
           onChange={handleChange}
@@ -48,7 +49,11 @@ export const BrowserTabs = (
                 id={`tab-${index}`}
                 sx={{
                   background: 'white',
-                  borderRadius: '5px 5px 0px 0px'
+                  borderRadius: '5px 5px 0px 0px',                  
+                  '&.Mui-selected': {
+                    backgroundColor:` ${isDarkMode?"#2a2a2a":"#f5f5f5"}`, // Synced selected tab color
+                    color: '#ff00c3', // Slightly lighter text when selected
+                  },
                 }}
                 icon={<CloseButton closeTab={() => {
                   tabWasClosed = true;
@@ -60,8 +65,7 @@ export const BrowserTabs = (
                   if (!tabWasClosed) {
                     handleTabChange(index)
                   }
-                }
-                }
+                }}
                 label={tab}
               />
             );
