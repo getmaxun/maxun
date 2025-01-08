@@ -379,7 +379,7 @@ export const BrowserWindow = () => {
     }, [paginationMode, resetPaginationSelector]);
 
     return (
-        <div onClick={handleClick} style={{ width: '900px', height: "400px" , borderRadius: '8px 8px 0px 0px '}} id="browser-window">
+        <div onClick={handleClick} style={{ width: '900px' }} id="browser-window">
             {
                 getText === true || getList === true ? (
                     <GenericModal
@@ -406,11 +406,8 @@ export const BrowserWindow = () => {
                                         sx={{ 
                                             color: '#ff00c3 !important',
                                             borderColor: '#ff00c3 !important',
-                                            '&:hover': {
-                                                borderColor: '#ff00c3 !important',
-                                                backgroundColor: 'whitesmoke !important',
-                                            }
-                                        }}
+                                            backgroundColor: 'whitesmoke !important',
+                                          }} 
                                     >
                                         <span style={{
                                             display: 'block',
