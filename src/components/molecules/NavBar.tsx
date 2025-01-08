@@ -1,24 +1,7 @@
 import { useTranslation } from "react-i18next";
 import React, { useState, useContext, useEffect } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
-import { 
-  IconButton, 
-  Menu, 
-  MenuItem, 
-  Typography, 
-  Tooltip,
-  Chip
-} from "@mui/material";
-import { 
-  AccountCircle, 
-  Logout, 
-  Clear, 
-  Brightness4, 
-  Brightness7 
-} from "@mui/icons-material";
 import styled from "styled-components";
-
 import { stopRecording } from "../../api/recording";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { IconButton, Menu, MenuItem, Typography, Chip, Button, Modal, Tabs, Tab, Box, Snackbar } from "@mui/material";
@@ -305,7 +288,7 @@ export const NavBar: React.FC<NavBarProps> = ({
           justifyContent: 'flex-start',
         }}>
           <img src={MaxunLogo} width={45} height={40} style={{ borderRadius: '5px', margin: '5px 0px 5px 15px' }} />
-          <div style={{ padding: '11px' }}><ProjectName>{t('navbar.project_name')}</ProjectName></div>
+          <div style={{ padding: '11px' }}><ProjectName mode={darkMode ? 'dark' : 'light'}>{t('navbar.project_name')}</ProjectName></div>
           <Chip
             label={`${currentVersion}`}
             color="primary"
