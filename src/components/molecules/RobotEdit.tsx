@@ -179,6 +179,14 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                                         color="primary" 
                                         variant="outlined" 
                                         style={{ marginLeft: '10px' }}
+                                        sx={{ 
+                                            color: '#ff00c3 !important',
+                                            borderColor: '#ff00c3 !important',
+                                            '&:hover': {
+                                              borderColor: '#ff00c3 !important',
+                                              backgroundColor: 'whitesmoke !important',
+                                            }
+                                        }} 
                                     >
                                         {t('robot_edit.cancel')}
                                     </Button>
