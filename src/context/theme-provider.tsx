@@ -83,32 +83,134 @@ const darkTheme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main: '#ff00c3', // Pink as the primary color
+      main: "#ff00c3",
+      contrastText: "#ffffff",
     },
     background: {
       default: '#121212',
-      paper: '#1e2124',
+      paper: '#1e1e1e',
     },
     text: {
       primary: '#ffffff',
+      secondary: '#b3b3b3',
     },
   },
   components: {
-    MuiTabs: {
-      styleOverrides: {
-        indicator: {
-          backgroundColor: '#ff00c3', // Pink for tab indicators
-        },
-      },
-    },
     MuiButton: {
       styleOverrides: {
         root: {
-          backgroundColor: '#ff00c3', // Pink button background
+          textTransform: "none",
           color: '#ffffff',
-          '&:hover': {
-            backgroundColor: '#e600b3', // Slightly darker pink on hover
+          '&.MuiButton-outlined': {
+            borderColor: '#ffffff',
+            color: '#ffffff',
+            "&:hover": {
+              borderColor: '#ffffff',
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+            },
           },
+        },
+        containedPrimary: {
+          "&:hover": {
+            backgroundColor: "#ff66d9",
+          },
+        },
+        outlined: {
+          // Dark mode outlined buttons
+          backgroundColor: '#1e1e1e',
+          borderColor: '#ff00c3',
+          color: '#ff00c3',
+          "&:hover": {
+            backgroundColor: 'rgba(255, 0, 195, 0.08)',
+            borderColor: '#ff66d9',
+          },
+        },
+      },
+    },
+    MuiLink: {
+      styleOverrides: {
+        root: {
+          color: '#ff66d9',
+          "&:hover": {
+            color: "#ff00c3",
+          },
+        },
+      },
+    },
+    MuiIconButton: {
+      styleOverrides: {
+        root: {
+          color: '#ffffff',
+          "&:hover": {
+            backgroundColor: 'rgba(255, 0, 195, 0.08)',
+          },
+        },
+      },
+    },
+    MuiTab: {
+      styleOverrides: {
+        root: {
+          textTransform: "none",
+          color: '#ffffff',
+          "&.Mui-selected": {
+            color: '#ff00c3',
+          },
+        },
+      },
+    },
+    MuiAlert: {
+      styleOverrides: {
+        standardInfo: {
+          backgroundColor: "rgba(255, 0, 195, 0.15)",
+          color: "#ff66d9",
+          "& .MuiAlert-icon": {
+            color: "#ff66d9",
+          },
+        },
+      },
+    },
+    MuiAlertTitle: {
+      styleOverrides: {
+        root: {
+          "& .MuiAlert-icon": {
+            color: "#ff66d9",
+          },
+        },
+      },
+    },
+    // Additional dark mode specific components
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundColor: '#1e1e1e',
+        },
+      },
+    },
+    MuiAppBar: {
+      styleOverrides: {
+        root: {
+          backgroundColor: '#121212',
+        },
+      },
+    },
+    MuiDrawer: {
+      styleOverrides: {
+        paper: {
+          backgroundColor: '#121212',
+        },
+      },
+    },
+    MuiTableCell: {
+      styleOverrides: {
+        root: {
+          borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
+        },
+      },
+    },
+    MuiDivider: {
+      styleOverrides: {
+        root: {
+          borderColor: 'rgba(255, 255, 255, 0.12)',
         },
       },
     },
