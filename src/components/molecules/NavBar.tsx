@@ -300,7 +300,6 @@ export const NavBar: React.FC<NavBarProps> = ({
                     borderRadius: '5px',
                     padding: '8px',
                     marginRight: '10px',
-                    '&:hover': { backgroundColor: 'white', color: '#ff00c3' }
                   }}>
                     <AccountCircle sx={{ marginRight: '5px' }} />
                     <Typography variant="body1">{user.email}</Typography>
