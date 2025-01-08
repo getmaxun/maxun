@@ -70,7 +70,7 @@ services:
       #build:
       #context: .
       #dockerfile: Dockerfile
-    image: getmaxun/maxun-frontend:v0.0.6
+    image: getmaxun/maxun-frontend:v0.0.7
     ports:
       - "${FRONTEND_PORT:-5173}:${FRONTEND_PORT:-5173}"
     env_file: .env
