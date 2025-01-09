@@ -118,7 +118,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
             if (success) {
                 notify('success', t('robot_edit.notifications.update_success'));
                 handleStart(robot); // Inform parent about the updated robot
-                handleClose(); 
+                handleClose();
 
                 setTimeout(() => {
                     window.location.reload();
@@ -159,11 +159,11 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                                         label={t('robot_edit.robot_limit')}
                                         type="number"
                                         value={robot.recording.workflow[0].what[0].args[0].limit || ''}
-                                        onChange={(e) =>{
+                                        onChange={(e) => {
                                             const value = parseInt(e.target.value, 10);
                                             if (value >= 1) {
                                                 handleLimitChange(value);
-                                            }   
+                                            }
                                         }}
                                         inputProps={{ min: 1 }}
                                         style={{ marginBottom: '20px' }}
@@ -174,12 +174,12 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                                     <Button variant="contained" color="primary" onClick={handleSave}>
                                         {t('robot_edit.save')}
                                     </Button>
-                                    <Button 
-                                        onClick={handleClose} 
-                                        color="primary" 
-                                        variant="outlined" 
+                                    <Button
+                                        onClick={handleClose}
+                                        color="primary"
+                                        variant="outlined"
                                         style={{ marginLeft: '10px' }}
-                                        sx={{ 
+                                        sx={{
                                             color: '#ff00c3 !important',
                                             borderColor: '#ff00c3 !important',
                                             backgroundColor: 'whitesmoke !important',
