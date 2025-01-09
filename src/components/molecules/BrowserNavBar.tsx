@@ -5,7 +5,7 @@ import ReplayIcon from '@mui/icons-material/Replay';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 
-import { NavBarButton } from '../atoms/buttons/buttons';
+import { NavBarButton } from '../ui/buttons/buttons';
 import { UrlForm } from './UrlForm';
 import { useCallback, useEffect, useState } from "react";
 import { useSocketStore } from "../../context/socket";

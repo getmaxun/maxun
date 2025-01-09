@@ -1,7 +1,7 @@
 import React, { forwardRef, useImperativeHandle, useRef } from 'react';
 import { KeyValuePair } from "../atoms/KeyValuePair";
-import { AddButton } from "../atoms/buttons/AddButton";
-import { RemoveButton } from "../atoms/buttons/RemoveButton";
+import { AddButton } from "../ui/buttons/AddButton";
+import { RemoveButton } from "../ui/buttons/RemoveButton";
 
 export const KeyValueForm = forwardRef((props, ref) => {
   const [numberOfPairs, setNumberOfPairs] = React.useState<number>(1);

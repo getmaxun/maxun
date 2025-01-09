@@ -5,7 +5,7 @@ import { Button, MenuItem, TextField, Typography } from "@mui/material";
 import React, { useRef } from "react";
 import { Dropdown as MuiDropdown } from "../atoms/DropdownMui";
 import { KeyValueForm } from "./KeyValueForm";
-import { ClearButton } from "../atoms/buttons/ClearButton";
+import { ClearButton } from "../ui/buttons/ClearButton";
 import { useSocketStore } from "../../context/socket";
 
 interface AddWhatCondModalProps {

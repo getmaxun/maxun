@@ -5,7 +5,7 @@ import { WhereWhatPair, WorkflowFile } from "maxun-core";
 import { useSocketStore } from "../../context/socket";
 import { Add } from "@mui/icons-material";
 import { Socket } from "socket.io-client";
-import { AddButton } from "../atoms/buttons/AddButton";
+import { AddButton } from "../ui/buttons/AddButton";
 import { AddPair } from "../../api/workflow";
 import { GenericModal } from "../atoms/GenericModal";
 import { PairEditForm } from "./PairEditForm";
