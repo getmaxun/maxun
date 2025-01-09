@@ -79,7 +79,7 @@ export const InterpretationButtons = ({ enableStepping }: InterpretationButtonsP
           </Typography>
           <Box style={{ marginTop: '4px' }}>
             <Typography>
-              {t('interpretation_buttons.modal.previous_action')} <b>{decisionModal.action}</b>, 
+              {t('interpretation_buttons.modal.previous_action')} <b>{decisionModal.action}</b>,
               {t('interpretation_buttons.modal.element_text')} <b>{decisionModal.innerText}</b>
             </Typography>
           </Box>
