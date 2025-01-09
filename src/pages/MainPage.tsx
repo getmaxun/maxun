@@ -2,7 +2,7 @@ import React, { useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MainMenu } from "../components/organisms/MainMenu";
 import { Stack } from "@mui/material";
-import { Recordings } from "../components/organisms/Recordings";
+import { Recordings } from "../components/robot/Recordings";
 import { Runs } from "../components/organisms/Runs";
 import ProxyForm from '../components/proxy/ProxyForm';
 import ApiKey from '../components/api/ApiKey';
@@ -13,7 +13,7 @@ import { stopRecording } from "../api/recording";
 import { RunSettings } from "../components/molecules/RunSettings";
 import { ScheduleSettings } from "../components/molecules/ScheduleSettings";
 import { IntegrationSettings } from "../components/integration/IntegrationSettings";
-import { RobotSettings } from "../components/molecules/RobotSettings";
+import { RobotSettings } from "../components/robot/RobotSettings";
 import { apiUrl } from "../apiConfig";
 
 interface MainPageProps {

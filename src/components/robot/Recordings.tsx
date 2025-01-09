@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { RecordingsTable } from "../molecules/RecordingsTable";
+import { RecordingsTable } from "./RecordingsTable";
 import { Grid } from "@mui/material";
 import { RunSettings, RunSettingsModal } from "../molecules/RunSettings";
 import { ScheduleSettings, ScheduleSettingsModal } from "../molecules/ScheduleSettings";
 import { IntegrationSettings, IntegrationSettingsModal } from "../integration/IntegrationSettings";
-import { RobotSettings, RobotSettingsModal } from "../molecules/RobotSettings";
-import { RobotEditModal } from '../molecules/RobotEdit';
-import { RobotDuplicationModal } from '../molecules/RobotDuplicate';
+import { RobotSettings, RobotSettingsModal } from "./RobotSettings";
+import { RobotEditModal } from './RobotEdit';
+import { RobotDuplicationModal } from './RobotDuplicate';
 
 interface RecordingsProps {
   handleEditRecording: (id: string, fileName: string) => void;

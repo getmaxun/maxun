@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GenericModal } from "../ui/GenericModal";
 import { TextField, Typography, Box, Button } from "@mui/material";
-import { modalStyle } from "./AddWhereCondModal";
+import { modalStyle } from "../molecules/AddWhereCondModal";
 import { useGlobalInfoStore } from '../../context/globalInfo';
-import { duplicateRecording, getStoredRecording } from '../../api/storage';
+import { getStoredRecording, updateRecording } from '../../api/storage';
 import { WhereWhatPair } from 'maxun-core';
-import { getUserById } from "../../api/auth";
-import { useTranslation } from 'react-i18next';
 
 interface RobotMeta {
     name: string;
@@ -19,6 +18,11 @@ interface RobotMeta {
 
 interface RobotWorkflow {
     workflow: WhereWhatPair[];
+}
+
+interface RobotEditOptions {
+    name: string;
+    limit?: number;
 }
 
 interface ScheduleConfig {
@@ -51,13 +55,11 @@ interface RobotSettingsProps {
     handleStart: (settings: RobotSettings) => void;
     handleClose: () => void;
     initialSettings?: RobotSettings | null;
-
 }
 
-export const RobotDuplicationModal = ({ isOpen, handleStart, handleClose, initialSettings }: RobotSettingsProps) => {
+export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettings }: RobotSettingsProps) => {
     const { t } = useTranslation();
     const [robot, setRobot] = useState<RobotSettings | null>(null);
-    const [targetUrl, setTargetUrl] = useState<string | undefined>('');
     const { recordingId, notify } = useGlobalInfoStore();
 
     useEffect(() => {
@@ -66,50 +68,67 @@ export const RobotDuplicationModal = ({ isOpen, handleStart, handleClose, initia
         }
     }, [isOpen]);
 
-    useEffect(() => {
-        if (robot) {
-            const lastPair = robot?.recording.workflow[robot?.recording.workflow.length - 1];
-            const url = lastPair?.what.find(action => action.action === "goto")?.args?.[0];
-            setTargetUrl(url);
-        }
-    }, [robot]);
-
     const getRobot = async () => {
         if (recordingId) {
             const robot = await getStoredRecording(recordingId);
             setRobot(robot);
         } else {
-            notify('error', t('robot_duplication.notifications.robot_not_found'));
+            notify('error', t('robot_edit.notifications.update_failed'));
         }
     }
 
-    const handleTargetUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setTargetUrl(e.target.value);
+    const handleRobotNameChange = (newName: string) => {
+        setRobot((prev) =>
+            prev ? { ...prev, recording_meta: { ...prev.recording_meta, name: newName } } : prev
+        );
+    };
+
+    const handleLimitChange = (newLimit: number) => {
+        setRobot((prev) => {
+            if (!prev) return prev;
+
+            const updatedWorkflow = [...prev.recording.workflow];
+
+            if (
+                updatedWorkflow.length > 0 &&
+                updatedWorkflow[0]?.what &&
+                updatedWorkflow[0].what.length > 0 &&
+                updatedWorkflow[0].what[0].args &&
+                updatedWorkflow[0].what[0].args.length > 0 &&
+                updatedWorkflow[0].what[0].args[0]
+            ) {
+                updatedWorkflow[0].what[0].args[0].limit = newLimit;
+            }
+
+            return { ...prev, recording: { ...prev.recording, workflow: updatedWorkflow } };
+        });
     };
 
     const handleSave = async () => {
-        if (!robot || !targetUrl) {
-            notify('error', t('robot_duplication.notifications.url_required'));
-            return;
-        }
+        if (!robot) return;
 
         try {
-            const success = await duplicateRecording(robot.recording_meta.id, targetUrl);
+            const payload = {
+                name: robot.recording_meta.name,
+                limit: robot.recording.workflow[0]?.what[0]?.args?.[0]?.limit,
+            };
+
+            const success = await updateRecording(robot.recording_meta.id, payload);
 
             if (success) {
-                notify('success', t('robot_duplication.notifications.duplicate_success'));
-                handleStart(robot);
+                notify('success', t('robot_edit.notifications.update_success'));
+                handleStart(robot); // Inform parent about the updated robot
                 handleClose();
 
                 setTimeout(() => {
                     window.location.reload();
                 }, 1000);
             } else {
-                notify('error', t('robot_duplication.notifications.duplicate_error'));
+                notify('error', t('robot_edit.notifications.update_failed'));
             }
         } catch (error) {
-            notify('error', t('robot_duplication.notifications.unknown_error'));
-            console.error('Error updating Target URL:', error);
+            notify('error', t('robot_edit.notifications.update_error'));
+            console.error('Error updating robot:', error);
         }
     };
 
@@ -121,36 +140,39 @@ export const RobotDuplicationModal = ({ isOpen, handleStart, handleClose, initia
         >
             <>
                 <Typography variant="h5" style={{ marginBottom: '20px' }}>
-                    {t('robot_duplication.title')}
+                    {t('robot_edit.title')}
                 </Typography>
                 <Box style={{ display: 'flex', flexDirection: 'column' }}>
                     {
                         robot && (
                             <>
-                                <span>
-                                    {t('robot_duplication.descriptions.purpose')}
-                                </span>
-                                <br />
-                                <span dangerouslySetInnerHTML={{
-                                    __html: t('robot_duplication.descriptions.example', {
-                                        url1: '<code>producthunt.com/topics/api</code>',
-                                        url2: '<code>producthunt.com/topics/database</code>'
-                                    })
-                                }} />
-                                <br />
-                                <span>
-                                    <b>{t('robot_duplication.descriptions.warning')}</b>
-                                </span>
                                 <TextField
-                                    label={t('robot_duplication.fields.target_url')}
-                                    key={t('robot_duplication.fields.target_url')}
-                                    value={targetUrl}
-                                    onChange={handleTargetUrlChange}
-                                    style={{ marginBottom: '20px', marginTop: '30px' }}
+                                    label={t('robot_edit.change_name')}
+                                    key="Robot Name"
+                                    type='text'
+                                    value={robot.recording_meta.name}
+                                    onChange={(e) => handleRobotNameChange(e.target.value)}
+                                    style={{ marginBottom: '20px' }}
                                 />
+                                {robot.recording.workflow?.[0]?.what?.[0]?.args?.[0]?.limit !== undefined && (
+                                    <TextField
+                                        label={t('robot_edit.robot_limit')}
+                                        type="number"
+                                        value={robot.recording.workflow[0].what[0].args[0].limit || ''}
+                                        onChange={(e) => {
+                                            const value = parseInt(e.target.value, 10);
+                                            if (value >= 1) {
+                                                handleLimitChange(value);
+                                            }
+                                        }}
+                                        inputProps={{ min: 1 }}
+                                        style={{ marginBottom: '20px' }}
+                                    />
+                                )}
+
                                 <Box mt={2} display="flex" justifyContent="flex-end">
                                     <Button variant="contained" color="primary" onClick={handleSave}>
-                                        {t('robot_duplication.buttons.duplicate')}
+                                        {t('robot_edit.save')}
                                     </Button>
                                     <Button
                                         onClick={handleClose}
@@ -161,8 +183,8 @@ export const RobotDuplicationModal = ({ isOpen, handleStart, handleClose, initia
                                             color: '#ff00c3 !important',
                                             borderColor: '#ff00c3 !important',
                                             backgroundColor: 'whitesmoke !important',
-                                        }} >
-                                        {t('robot_duplication.buttons.cancel')}
+                                        }}>
+                                        {t('robot_edit.cancel')}
                                     </Button>
                                 </Box>
                             </>
