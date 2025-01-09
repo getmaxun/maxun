@@ -69,7 +69,7 @@ const TimePicker = ({ coordinates, selector, onClose }: TimePickerProps) => {
     const getOptionStyle = (value: number, isHour: boolean): React.CSSProperties => {
         const isHovered = isHour ? hoveredHour === value : hoveredMinute === value;
         const isSelected = isHour ? selectedHour === value : selectedMinute === value;
-        
+
         return {
             fontSize: '13.333px',
             lineHeight: '18px',
@@ -85,11 +85,11 @@ const TimePicker = ({ coordinates, selector, onClose }: TimePickerProps) => {
     const minutes = Array.from({ length: 60 }, (_, i) => i);
 
     return (
-        <div 
-            className="fixed inset-0" 
+        <div
+            className="fixed inset-0"
             onClick={onClose}
         >
-            <div 
+            <div
                 style={containerStyle}
                 onClick={e => e.stopPropagation()}
             >
@@ -109,7 +109,7 @@ const TimePicker = ({ coordinates, selector, onClose }: TimePickerProps) => {
                 </div>
 
                 {/* Minutes column */}
-                <div style={{...columnStyle, borderRight: 'none'}}>
+                <div style={{ ...columnStyle, borderRight: 'none' }}>
                     {minutes.map((minute) => (
                         <div
                             key={minute}
