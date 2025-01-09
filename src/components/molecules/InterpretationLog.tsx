@@ -82,7 +82,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
     setLog((prevState) =>
       prevState + '\n' + t('interpretation_log.data_sections.binary_received') + '\n'
-      + t('interpretation_log.data_sections.mimetype') + mimetype + '\n' 
+      + t('interpretation_log.data_sections.mimetype') + mimetype + '\n'
       + t('interpretation_log.data_sections.image_below') + '\n'
       + t('interpretation_log.data_sections.separator'));
 
@@ -125,7 +125,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     }
   }, [hasScrapeListAction, hasScrapeSchemaAction, hasScreenshotAction, setIsOpen]);
 
-  const { darkMode} = useThemeMode();
+  const { darkMode } = useThemeMode();
 
   return (
     <Grid container>
@@ -135,7 +135,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
           variant="contained"
           color="primary"
           sx={{
-            marginTop: '10px',           
+            marginTop: '10px',
             color: 'white',
             position: 'absolute',
             background: '#ff00c3',
@@ -150,7 +150,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
             },
           }}
         >
-          <ArrowUpwardIcon fontSize="inherit" sx={{ marginRight: '10px'}} /> 
+          <ArrowUpwardIcon fontSize="inherit" sx={{ marginRight: '10px' }} />
           {t('interpretation_log.titles.output_preview')}
         </Button>
         <SwipeableDrawer
@@ -171,7 +171,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
           }}
         >
           <Typography variant="h6" gutterBottom style={{ display: 'flex', alignItems: 'center' }}>
-            <StorageIcon style={{ marginRight: '8px' }} /> 
+            <StorageIcon style={{ marginRight: '8px' }} />
             {t('interpretation_log.titles.output_preview')}
           </Typography>
           <div
