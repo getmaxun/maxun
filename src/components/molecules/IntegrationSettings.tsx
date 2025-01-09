@@ -187,11 +187,11 @@ export const IntegrationSettingsModal = ({
   return (
     <GenericModal isOpen={isOpen} onClose={handleClose} modalStyle={modalStyle}>
       <div style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "flex-start",
-          marginLeft: "65px",
-        }}>
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-start",
+        marginLeft: "65px",
+      }}>
         <Typography variant="h6">
           {t('integration_settings.title')}
         </Typography>
@@ -235,8 +235,8 @@ export const IntegrationSettingsModal = ({
               <>
                 {recording.google_sheet_email && (
                   <Typography sx={{ margin: "20px 0px 30px 0px" }}>
-                    {t('integration_settings.descriptions.authenticated_as', { 
-                      email: recording.google_sheet_email 
+                    {t('integration_settings.descriptions.authenticated_as', {
+                      email: recording.google_sheet_email
                     })}
                   </Typography>
                 )}
