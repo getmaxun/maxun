@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { GenericModal } from "../atoms/GenericModal";
+import { GenericModal } from "../ui/GenericModal";
 import { MenuItem, TextField, Typography, Switch, FormControlLabel } from "@mui/material";
 import { Dropdown } from "../ui/DropdownMui";
 import Button from "@mui/material/Button";

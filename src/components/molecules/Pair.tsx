@@ -3,7 +3,7 @@ import { Stack, Button, IconButton, Tooltip, Badge } from "@mui/material";
 import { AddPair, deletePair, UpdatePair } from "../../api/workflow";
 import { WorkflowFile } from "maxun-core";
 import { ClearButton } from "../ui/buttons/ClearButton";
-import { GenericModal } from "../atoms/GenericModal";
+import { GenericModal } from "../ui/GenericModal";
 import { PairEditForm } from "./PairEditForm";
 import { PairDisplayDiv } from "../atoms/PairDisplayDiv";
 import { EditButton } from "../ui/buttons/EditButton";

@@ -1,5 +1,5 @@
 import { WhereWhatPair } from "maxun-core";
-import { GenericModal } from "../atoms/GenericModal";
+import { GenericModal } from "../ui/GenericModal";
 import { modalStyle } from "./AddWhereCondModal";
 import { Button, MenuItem, TextField, Typography } from "@mui/material";
 import React, { useRef } from "react";

@@ -7,7 +7,7 @@ import { RecordingPage } from "./RecordingPage";
 import { MainPage } from "./MainPage";
 import { useGlobalInfoStore } from "../context/globalInfo";
 import { getActiveBrowserId } from "../api/recording";
-import { AlertSnackbar } from "../components/atoms/AlertSnackbar";
+import { AlertSnackbar } from "../components/ui/AlertSnackbar";
 import Login from './Login';
 import Register from './Register';
 import UserRoute from '../routes/userRoute';

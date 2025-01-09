@@ -4,7 +4,7 @@ import { SaveRecording } from "./SaveRecording";
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { stopRecording } from "../../api/recording";
 import { useNavigate } from 'react-router-dom';
-import { GenericModal } from "../atoms/GenericModal";
+import { GenericModal } from "../ui/GenericModal";
 import { useTranslation } from 'react-i18next';
 
 const BrowserRecordingSave = () => {

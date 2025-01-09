@@ -18,7 +18,7 @@ import { checkRunsForRecording, deleteRecordingFromStorage, getStoredRecordings 
 import { Add } from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
 import { stopRecording } from "../../api/recording";
-import { GenericModal } from '../atoms/GenericModal';
+import { GenericModal } from '../ui/GenericModal';
 
 
 /** TODO:

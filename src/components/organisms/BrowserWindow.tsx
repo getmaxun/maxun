@@ -3,7 +3,7 @@ import { useSocketStore } from '../../context/socket';
 import { Button } from '@mui/material';
 import Canvas from "../atoms/canvas";
 import { Highlighter } from "../atoms/Highlighter";
-import { GenericModal } from '../atoms/GenericModal';
+import { GenericModal } from '../ui/GenericModal';
 import { useActionContext } from '../../context/browserActions';
 import { useBrowserSteps, TextStep } from '../../context/browserSteps';
 import { useGlobalInfoStore } from '../../context/globalInfo';

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { GenericModal } from "../atoms/GenericModal";
+import { GenericModal } from "../ui/GenericModal";
 import {
   MenuItem,
   Typography,

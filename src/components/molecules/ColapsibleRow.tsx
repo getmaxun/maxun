@@ -7,7 +7,7 @@ import { DeleteForever, KeyboardArrowDown, KeyboardArrowUp, Settings } from "@mu
 import { deleteRunFromStorage } from "../../api/storage";
 import { columns, Data } from "./RunsTable";
 import { RunContent } from "./RunContent";
-import { GenericModal } from "../atoms/GenericModal";
+import { GenericModal } from "../ui/GenericModal";
 import { modalStyle } from "./AddWhereCondModal";
 import { getUserById } from "../../api/auth";
 import { useTranslation } from "react-i18next";

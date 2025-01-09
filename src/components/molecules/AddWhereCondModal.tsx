@@ -5,7 +5,7 @@ import {
   Typography
 } from "@mui/material";
 import React, { useRef } from "react";
-import { GenericModal } from "../atoms/GenericModal";
+import { GenericModal } from "../ui/GenericModal";
 import { WhereWhatPair } from "maxun-core";
 import { SelectChangeEvent } from "@mui/material/Select/Select";
 import { DisplayConditionSettings } from "./DisplayWhereConditionSettings";

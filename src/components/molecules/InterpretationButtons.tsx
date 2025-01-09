@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { interpretCurrentRecording, stopCurrentInterpretation } from "../../api/recording";
 import { useSocketStore } from "../../context/socket";
 import { useGlobalInfoStore } from "../../context/globalInfo";
-import { GenericModal } from "../atoms/GenericModal";
+import { GenericModal } from "../ui/GenericModal";
 import { WhereWhatPair } from "maxun-core";
 import HelpIcon from '@mui/icons-material/Help';
 import { useTranslation } from "react-i18next";

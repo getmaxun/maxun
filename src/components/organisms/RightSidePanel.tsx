@@ -3,7 +3,7 @@ import { Button, Paper, Box, TextField, IconButton } from "@mui/material";
 import EditIcon from '@mui/icons-material/Edit';
 import TextFieldsIcon from '@mui/icons-material/TextFields';
 import DocumentScannerIcon from '@mui/icons-material/DocumentScanner';
-import { SimpleBox } from "../atoms/Box";
+import { SimpleBox } from "../ui/Box";
 import { WorkflowFile } from "maxun-core";
 import Typography from "@mui/material/Typography";
 import { useGlobalInfoStore } from "../../context/globalInfo";

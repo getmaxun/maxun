@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { GenericModal } from "../atoms/GenericModal";
+import { GenericModal } from "../ui/GenericModal";
 import { MenuItem, TextField, Typography, Box } from "@mui/material";
 import { Dropdown } from "../ui/DropdownMui";
 import Button from "@mui/material/Button";
