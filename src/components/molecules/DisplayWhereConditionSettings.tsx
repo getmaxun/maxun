@@ -12,15 +12,15 @@ interface DisplayConditionSettingsProps {
   setAdditionalSettings: (value: any) => void;
   newValue: any;
   setNewValue: (value: any) => void;
-  keyValueFormRef: React.RefObject<{getObject: () => object}>;
+  keyValueFormRef: React.RefObject<{ getObject: () => object }>;
   whereKeys: string[];
   checked: boolean[];
   setChecked: (value: boolean[]) => void;
 }
 
 export const DisplayConditionSettings = (
-  {whereProp, setAdditionalSettings, additionalSettings,
-    setNewValue, newValue, keyValueFormRef, whereKeys, checked, setChecked}
+  { whereProp, setAdditionalSettings, additionalSettings,
+    setNewValue, newValue, keyValueFormRef, whereKeys, checked, setChecked }
     : DisplayConditionSettingsProps) => {
   switch (whereProp) {
     case 'url':
@@ -34,7 +34,7 @@ export const DisplayConditionSettings = (
             <MenuItem value="string">string</MenuItem>
             <MenuItem value="regex">regex</MenuItem>
           </MuiDropdown>
-          { additionalSettings ? <TextField
+          {additionalSettings ? <TextField
             size='small'
             type="string"
             onChange={(e) => setNewValue(e.target.value)}
@@ -56,20 +56,20 @@ export const DisplayConditionSettings = (
                     ...newValue.slice(0, index),
                     e.target.value,
                     ...newValue.slice(index + 1)
-                  ])}/>
+                  ])} />
               })
             }
           </Stack>
-          <AddButton handleClick={() => setNewValue([...newValue, ''])}/>
-          <RemoveButton handleClick={()=> {
+          <AddButton handleClick={() => setNewValue([...newValue, ''])} />
+          <RemoveButton handleClick={() => {
             const arr = newValue;
             arr.splice(-1);
             setNewValue([...arr]);
-          }}/>
+          }} />
         </React.Fragment>
       )
     case 'cookies':
-      return <KeyValueForm ref={keyValueFormRef}/>
+      return <KeyValueForm ref={keyValueFormRef} />
     case 'before':
       return <TextField
         label='pair id'
@@ -96,23 +96,23 @@ export const DisplayConditionSettings = (
             <MenuItem value="or">or</MenuItem>
           </MuiDropdown>
           <FormGroup>
-          {
-            whereKeys.map((key: string, index: number) => {
-              return (
-                <FormControlLabel control={
-                  <Checkbox
-                    checked={checked[index]}
-                    onChange={() => setChecked([
-                      ...checked.slice(0, index),
-                      !checked[index],
-                      ...checked.slice(index + 1)
-                    ])}
-                    key={`checkbox-${key}-${index}`}
-                  />
-                } label={key} key={`control-label-form-${key}-${index}`}/>
-              )
-            })
-          }
+            {
+              whereKeys.map((key: string, index: number) => {
+                return (
+                  <FormControlLabel control={
+                    <Checkbox
+                      checked={checked[index]}
+                      onChange={() => setChecked([
+                        ...checked.slice(0, index),
+                        !checked[index],
+                        ...checked.slice(index + 1)
+                      ])}
+                      key={`checkbox-${key}-${index}`}
+                    />
+                  } label={key} key={`control-label-form-${key}-${index}`} />
+                )
+              })
+            }
           </FormGroup>
           <WarningText>
             Choose at least 2 where conditions. Nesting of boolean operators
