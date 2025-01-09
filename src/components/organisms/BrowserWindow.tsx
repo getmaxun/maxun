@@ -260,6 +260,7 @@ export const BrowserWindow = () => {
                         setPaginationSelector(highlighterData.selector);
                         notify(`info`, t('browser_window.attribute_modal.notifications.pagination_select_success'));
                         addListStep(listSelector!, fields, currentListId || 0, { type: paginationType, selector: highlighterData.selector });
+                        socket?.emit('setPaginationMode', { pagination: false });
                     }
                     return;
                 }
