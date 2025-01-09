@@ -103,7 +103,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, currentLog, abortRun
           } else {
             switch (column.id) {
               case 'runStatus':
-                return (  
+                return (
                   <TableCell key={column.id} align={column.align}>
                     {row.status === 'success' && <Chip label={t('runs_table.run_status_chips.success')} color="success" variant="outlined" />}
                     {row.status === 'running' && <Chip label={t('runs_table.run_status_chips.running')} color="warning" variant="outlined" />}
@@ -148,11 +148,11 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, currentLog, abortRun
                           />
                           <TextField
                             label={
-                              row.runByUserId 
-                                ? t('runs_table.run_settings_modal.labels.run_by_user') 
-                                : row.runByScheduleId 
-                                ? t('runs_table.run_settings_modal.labels.run_by_schedule') 
-                                : t('runs_table.run_settings_modal.labels.run_by_api')
+                              row.runByUserId
+                                ? t('runs_table.run_settings_modal.labels.run_by_user')
+                                : row.runByScheduleId
+                                  ? t('runs_table.run_settings_modal.labels.run_by_schedule')
+                                  : t('runs_table.run_settings_modal.labels.run_by_api')
                             }
                             value={runByLabel}
                             InputProps={{ readOnly: true }}
@@ -161,10 +161,10 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, currentLog, abortRun
                             <Typography variant="body1">
                               {t('runs_table.run_settings_modal.labels.run_type')}:
                             </Typography>
-                            <RunTypeChip 
-                              runByUserId={row.runByUserId} 
-                              runByScheduledId={row.runByScheduleId} 
-                              runByAPI={row.runByAPI ?? false} 
+                            <RunTypeChip
+                              runByUserId={row.runByUserId}
+                              runByScheduledId={row.runByScheduleId}
+                              runByAPI={row.runByAPI ?? false}
                             />
                           </Box>
                         </Box>
