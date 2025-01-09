@@ -20,6 +20,7 @@ export const MainMenu = ({ value = 'recordings', handleChangeContent }: MainMenu
   const navigate = useNavigate();
 
   const handleChange = (event: React.SyntheticEvent, newValue: string) => {
+    navigate(`/${newValue}`);
     handleChangeContent(newValue);
   };
 
