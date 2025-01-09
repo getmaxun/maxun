@@ -33,7 +33,7 @@ export interface ScheduleRunResponse {
 
 export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps) => {
   const { t } = useTranslation();
-  const [content, setContent] = React.useState('recordings');
+  const [content, setContent] = React.useState(initialContent);
   const [sockets, setSockets] = React.useState<Socket[]>([]);
   const [runningRecordingId, setRunningRecordingId] = React.useState('');
   const [runningRecordingName, setRunningRecordingName] = React.useState('');
