@@ -3,10 +3,10 @@ import { useSocketStore } from '../../context/socket';
 import { getMappedCoordinates } from "../../helpers/inputHelpers";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { useActionContext } from '../../context/browserActions';
-import DatePicker from './DatePicker';
-import Dropdown from './Dropdown';
-import TimePicker from './TimePicker';
-import DateTimeLocalPicker from './DateTimeLocalPicker';
+import DatePicker from '../pickers/DatePicker';
+import Dropdown from '../pickers/Dropdown';
+import TimePicker from '../pickers/TimePicker';
+import DateTimeLocalPicker from '../pickers/DateTimeLocalPicker';
 
 interface CreateRefCallback {
     (ref: React.RefObject<HTMLCanvasElement>): void;
