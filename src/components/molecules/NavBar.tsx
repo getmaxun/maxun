@@ -9,7 +9,7 @@ import { AccountCircle, Logout, Clear, YouTube, X, Update, Close, Language, Brig
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/auth';
 import { SaveRecording } from '../molecules/SaveRecording';
-import DiscordIcon from '../atoms/DiscordIcon';
+import DiscordIcon from '../icons/DiscordIcon';
 import { apiUrl } from '../../apiConfig';
 import MaxunLogo from "../../assets/maxunlogo.png";
 import { useThemeMode } from '../../context/theme-provider';
