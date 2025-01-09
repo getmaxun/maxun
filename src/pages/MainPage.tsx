@@ -124,7 +124,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
 
   const DisplayContent = () => {
     switch (content) {
-      case 'recordings':
+      case 'robots':
         return <Recordings
           handleEditRecording={handleEditRecording}
           handleRunRecording={handleRunRecording}
