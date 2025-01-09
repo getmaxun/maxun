@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Grid } from '@mui/material';
-import { BrowserContent } from "../components/organisms/BrowserContent";
-import { InterpretationLog } from "../components/molecules/InterpretationLog";
+import { BrowserContent } from "../components/browser/BrowserContent";
+import { InterpretationLog } from "../components/run/InterpretationLog";
 import { startRecording, getActiveBrowserId } from "../api/recording";
-import { LeftSidePanel } from "../components/organisms/LeftSidePanel";
-import { RightSidePanel } from "../components/organisms/RightSidePanel";
-import { Loader } from "../components/atoms/Loader";
+import { LeftSidePanel } from "../components/recorder/LeftSidePanel";
+import { RightSidePanel } from "../components/recorder/RightSidePanel";
+import { Loader } from "../components/ui/Loader";
 import { useSocketStore } from "../context/socket";
 import { useBrowserDimensionsStore } from "../context/browserDimensions";
 import { ActionProvider } from "../context/browserActions"
@@ -14,7 +14,7 @@ import { useGlobalInfoStore } from "../context/globalInfo";
 import { editRecordingFromStorage } from "../api/storage";
 import { WhereWhatPair } from "maxun-core";
 import styled from "styled-components";
-import BrowserRecordingSave from '../components/molecules/BrowserRecordingSave';
+import BrowserRecordingSave from '../components/browser/BrowserRecordingSave';
 import { useThemeMode } from '../context/theme-provider';
 import { useTranslation } from 'react-i18next';
 
