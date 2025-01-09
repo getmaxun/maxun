@@ -34,7 +34,7 @@ export const PairDetail = ({ pair, index }: PairDetailProps) => {
   const { socket } = useSocketStore();
 
   const handleCollapseWhere = () => {
-      setCollapseWhere(!collapseWhere);
+    setCollapseWhere(!collapseWhere);
   }
 
   const handleCollapseWhat = () => {
@@ -51,26 +51,26 @@ export const PairDetail = ({ pair, index }: PairDetailProps) => {
     }
   }, [pair])
 
-  const handleChangeValue = (value: any, where: boolean, keys: (string|number)[]) => {
+  const handleChangeValue = (value: any, where: boolean, keys: (string | number)[]) => {
     // a moving reference to internal objects within pair.where or pair.what
     let schema: any = where ? pair?.where : pair?.what;
     const length = keys.length;
-    for(let i = 0; i < length-1; i++) {
+    for (let i = 0; i < length - 1; i++) {
       const elem = keys[i];
-      if( !schema[elem] ) schema[elem] = {}
+      if (!schema[elem]) schema[elem] = {}
       schema = schema[elem];
     }
 
-    schema[keys[length-1]] = value;
+    schema[keys[length - 1]] = value;
     if (pair && socket) {
-      socket.emit('updatePair', {index: index-1, pair: pair});
+      socket.emit('updatePair', { index: index - 1, pair: pair });
     }
     setRerender(!rerender);
   }
 
 
-    const DisplayValueContent = (value: any, keys: (string|number)[], where: boolean = true) => {
-    switch (typeof(value)) {
+  const DisplayValueContent = (value: any, keys: (string | number)[], where: boolean = true) => {
+    switch (typeof (value)) {
       case 'string':
         return <TextField
           size='small'
@@ -105,26 +105,26 @@ export const PairDetail = ({ pair, index }: PairDetailProps) => {
               <React.Fragment>
                 {
                   value.map((element, index) => {
-                  return DisplayValueContent(element, [...keys, index], where);
+                    return DisplayValueContent(element, [...keys, index], where);
                   })
                 }
-                <AddButton handleClick={()=> {
-                  let prevValue:any = where ? pair?.where : pair?.what;
+                <AddButton handleClick={() => {
+                  let prevValue: any = where ? pair?.where : pair?.what;
                   for (const key of keys) {
                     prevValue = prevValue[key];
                   }
                   handleChangeValue([...prevValue, ''], where, keys);
                   setRerender(!rerender);
-                }} hoverEffect={false}/>
-                <RemoveButton handleClick={()=> {
-                  let prevValue:any = where ? pair?.where : pair?.what;
+                }} hoverEffect={false} />
+                <RemoveButton handleClick={() => {
+                  let prevValue: any = where ? pair?.where : pair?.what;
                   for (const key of keys) {
                     prevValue = prevValue[key];
                   }
                   prevValue.splice(-1);
                   handleChangeValue(prevValue, where, keys);
                   setRerender(!rerender);
-                }}/>
+                }} />
               </React.Fragment>
             )
           } else {
@@ -136,11 +136,10 @@ export const PairDetail = ({ pair, index }: PairDetailProps) => {
                 key={`tree-view-nested-${keys.join('-')}-${where}`}
               >
                 {
-                  Object.keys(value).map((key2, index) =>
-                  {
+                  Object.keys(value).map((key2, index) => {
                     return (
                       <TreeItem nodeId={`${key2}-${index}`} label={`${key2}:`} key={`${key2}-${index}`}>
-                        { DisplayValueContent(value[key2], [...keys, key2], where) }
+                        {DisplayValueContent(value[key2], [...keys, key2], where)}
                       </TreeItem>
                     )
                   })
@@ -157,132 +156,132 @@ export const PairDetail = ({ pair, index }: PairDetailProps) => {
 
   return (
     <React.Fragment>
-      { pair &&
+      {pair &&
         <React.Fragment>
           <AddWhatCondModal isOpen={addWhatCondOpen} onClose={() => setAddWhatCondOpen(false)}
-                            pair={pair} index={index}/>
+            pair={pair} index={index} />
           <AddWhereCondModal isOpen={addWhereCondOpen} onClose={() => setAddWhereCondOpen(false)}
-                         pair={pair} index={index}/>
+            pair={pair} index={index} />
         </React.Fragment>
       }
-    {
-      pairIsSelected
-        ? (
-          <div style={{padding: '10px', overflow: 'hidden'}}>
-            <Typography>Pair number: {index}</Typography>
-             <TextField
-              size='small'
-              label='id'
-              onChange={(e) => {
-                if (pair && socket) {
-                  socket.emit('updatePair', {index: index-1, pair: pair});
-                  pair.id = e.target.value;
-                }
-              }}
-              value={pair ? pair.id ? pair.id : '' : ''}
-            />
-            <Stack spacing={0} direction='row' sx={{
-              display: 'flex',
-              alignItems: 'center',
-              background: 'lightGray',
-            }}>
-              <CollapseButton
-                handleClick={handleCollapseWhere}
-                isCollapsed={collapseWhere}
+      {
+        pairIsSelected
+          ? (
+            <div style={{ padding: '10px', overflow: 'hidden' }}>
+              <Typography>Pair number: {index}</Typography>
+              <TextField
+                size='small'
+                label='id'
+                onChange={(e) => {
+                  if (pair && socket) {
+                    socket.emit('updatePair', { index: index - 1, pair: pair });
+                    pair.id = e.target.value;
+                  }
+                }}
+                value={pair ? pair.id ? pair.id : '' : ''}
               />
-              <Typography>Where</Typography>
-              <Tooltip title='Add where condition' placement='right'>
-                <div>
-                  <AddButton handleClick={()=> {
-                    setAddWhereCondOpen(true);
-                  }} style={{color:'rgba(0, 0, 0, 0.54)', background:'transparent'}}/>
-                </div>
-              </Tooltip>
-            </Stack>
+              <Stack spacing={0} direction='row' sx={{
+                display: 'flex',
+                alignItems: 'center',
+                background: 'lightGray',
+              }}>
+                <CollapseButton
+                  handleClick={handleCollapseWhere}
+                  isCollapsed={collapseWhere}
+                />
+                <Typography>Where</Typography>
+                <Tooltip title='Add where condition' placement='right'>
+                  <div>
+                    <AddButton handleClick={() => {
+                      setAddWhereCondOpen(true);
+                    }} style={{ color: 'rgba(0, 0, 0, 0.54)', background: 'transparent' }} />
+                  </div>
+                </Tooltip>
+              </Stack>
               {(collapseWhere && pair && pair.where)
                 ?
                 <React.Fragment>
-                    { Object.keys(pair.where).map((key, index) => {
-                  return (
-                    <TreeView
-                      expanded={expanded}
-                      defaultCollapseIcon={<ExpandMoreIcon />}
-                      defaultExpandIcon={<ChevronRightIcon />}
-                      sx={{ flexGrow: 1, overflowY: 'auto' }}
-                      onNodeToggle={handleToggle}
-                      key={`tree-view-${key}-${index}`}
-                    >
-                      <TreeItem nodeId={`${key}-${index}`} label={`${key}:`} key={`${key}-${index}`}>
-                        {
-                          // @ts-ignore
-                          DisplayValueContent(pair.where[key], [key])
-                        }
-                      </TreeItem>
-                    </TreeView>
+                  {Object.keys(pair.where).map((key, index) => {
+                    return (
+                      <TreeView
+                        expanded={expanded}
+                        defaultCollapseIcon={<ExpandMoreIcon />}
+                        defaultExpandIcon={<ChevronRightIcon />}
+                        sx={{ flexGrow: 1, overflowY: 'auto' }}
+                        onNodeToggle={handleToggle}
+                        key={`tree-view-${key}-${index}`}
+                      >
+                        <TreeItem nodeId={`${key}-${index}`} label={`${key}:`} key={`${key}-${index}`}>
+                          {
+                            // @ts-ignore
+                            DisplayValueContent(pair.where[key], [key])
+                          }
+                        </TreeItem>
+                      </TreeView>
                     );
-                })}
+                  })}
                 </React.Fragment>
                 : null
               }
-            <Stack spacing={0} direction='row' sx={{
-              display: 'flex',
-              alignItems: 'center',
-              background: 'lightGray',
-            }}>
-              <CollapseButton
-                handleClick={handleCollapseWhat}
-                isCollapsed={collapseWhat}
-              />
-              <Typography>What</Typography>
+              <Stack spacing={0} direction='row' sx={{
+                display: 'flex',
+                alignItems: 'center',
+                background: 'lightGray',
+              }}>
+                <CollapseButton
+                  handleClick={handleCollapseWhat}
+                  isCollapsed={collapseWhat}
+                />
+                <Typography>What</Typography>
 
-              <Tooltip title='Add what condition' placement='right'>
-                <div>
-                  <AddButton handleClick={()=> {
-                    setAddWhatCondOpen(true);
-                  }} style={{color:'rgba(0, 0, 0, 0.54)', background:'transparent'}}/>
-                </div>
-              </Tooltip>
-            </Stack>
-            {(collapseWhat && pair && pair.what)
-              ?(
-              <React.Fragment>
-              { Object.keys(pair.what).map((key, index) => {
-                return (
-                  <TreeView
-                    defaultCollapseIcon={<ExpandMoreIcon />}
-                    defaultExpandIcon={<ChevronRightIcon />}
-                    sx={{ flexGrow: 1, overflowY: 'auto' }}
-                    key={`tree-view-2-${key}-${index}`}
-                  >
-                    <TreeItem nodeId={`${key}-${index}`} label={`${pair.what[index].action}`}>
-                      {
-                        // @ts-ignore
-                        DisplayValueContent(pair.what[key], [key], false)
-                      }
-                      <Tooltip title='remove action' placement='left'>
-                      <div style={{float:'right'}}>
-                      <CloseButton handleClick={() => {
-                        //@ts-ignore
-                        pair.what.splice(key, 1);
-                        setRerender(!rerender);
-                      }}/>
-                      </div>
-                      </Tooltip>
-                    </TreeItem>
-                  </TreeView>
-                );
-              })}
-              </React.Fragment>
-              )
-              : null
-            }
-          </div>
-        )
-        : <WarningText>
-          <NotificationImportantIcon color="warning"/>
-          No pair from the left side panel was selected.
+                <Tooltip title='Add what condition' placement='right'>
+                  <div>
+                    <AddButton handleClick={() => {
+                      setAddWhatCondOpen(true);
+                    }} style={{ color: 'rgba(0, 0, 0, 0.54)', background: 'transparent' }} />
+                  </div>
+                </Tooltip>
+              </Stack>
+              {(collapseWhat && pair && pair.what)
+                ? (
+                  <React.Fragment>
+                    {Object.keys(pair.what).map((key, index) => {
+                      return (
+                        <TreeView
+                          defaultCollapseIcon={<ExpandMoreIcon />}
+                          defaultExpandIcon={<ChevronRightIcon />}
+                          sx={{ flexGrow: 1, overflowY: 'auto' }}
+                          key={`tree-view-2-${key}-${index}`}
+                        >
+                          <TreeItem nodeId={`${key}-${index}`} label={`${pair.what[index].action}`}>
+                            {
+                              // @ts-ignore
+                              DisplayValueContent(pair.what[key], [key], false)
+                            }
+                            <Tooltip title='remove action' placement='left'>
+                              <div style={{ float: 'right' }}>
+                                <CloseButton handleClick={() => {
+                                  //@ts-ignore
+                                  pair.what.splice(key, 1);
+                                  setRerender(!rerender);
+                                }} />
+                              </div>
+                            </Tooltip>
+                          </TreeItem>
+                        </TreeView>
+                      );
+                    })}
+                  </React.Fragment>
+                )
+                : null
+              }
+            </div>
+          )
+          : <WarningText>
+            <NotificationImportantIcon color="warning" />
+            No pair from the left side panel was selected.
           </WarningText>
-    }
+      }
     </React.Fragment>
   );
 }
@@ -292,19 +291,19 @@ interface CollapseButtonProps {
   isCollapsed?: boolean;
 }
 
-const CollapseButton = ({handleClick, isCollapsed } : CollapseButtonProps) => {
+const CollapseButton = ({ handleClick, isCollapsed }: CollapseButtonProps) => {
   return (
     <IconButton aria-label="add" size={"small"} onClick={handleClick}>
-      { isCollapsed ?  <KeyboardArrowDown/> : <KeyboardArrowUp/>}
+      {isCollapsed ? <KeyboardArrowDown /> : <KeyboardArrowUp />}
     </IconButton>
   );
 }
 
-const CloseButton = ({handleClick } : CollapseButtonProps) => {
+const CloseButton = ({ handleClick }: CollapseButtonProps) => {
   return (
     <IconButton aria-label="add" size={"small"} onClick={handleClick}
-                sx={{'&:hover': { color: '#1976d2', backgroundColor: 'white' }}}>
-      <Close/>
+      sx={{ '&:hover': { color: '#1976d2', backgroundColor: 'white' } }}>
+      <Close />
     </IconButton>
   );
 }
