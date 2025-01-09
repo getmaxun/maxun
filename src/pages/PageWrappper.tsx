@@ -12,7 +12,6 @@ import Login from './Login';
 import Register from './Register';
 import UserRoute from '../routes/userRoute';
 import { Routes, Route, useNavigate } from 'react-router-dom';
-import { AppBar } from '@mui/material';
 
 export const PageWrapper = () => {
   const [open, setOpen] = useState(false);
