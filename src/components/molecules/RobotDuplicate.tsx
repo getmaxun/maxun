@@ -99,7 +99,7 @@ export const RobotDuplicationModal = ({ isOpen, handleStart, handleClose, initia
             if (success) {
                 notify('success', t('robot_duplication.notifications.duplicate_success'));
                 handleStart(robot);
-                handleClose(); 
+                handleClose();
 
                 setTimeout(() => {
                     window.location.reload();
@@ -136,7 +136,7 @@ export const RobotDuplicationModal = ({ isOpen, handleStart, handleClose, initia
                                         url1: '<code>producthunt.com/topics/api</code>',
                                         url2: '<code>producthunt.com/topics/database</code>'
                                     })
-                                }}/>
+                                }} />
                                 <br />
                                 <span>
                                     <b>{t('robot_duplication.descriptions.warning')}</b>
@@ -152,16 +152,16 @@ export const RobotDuplicationModal = ({ isOpen, handleStart, handleClose, initia
                                     <Button variant="contained" color="primary" onClick={handleSave}>
                                         {t('robot_duplication.buttons.duplicate')}
                                     </Button>
-                                    <Button 
-                                        onClick={handleClose} 
-                                        color="primary" 
-                                        variant="outlined" 
+                                    <Button
+                                        onClick={handleClose}
+                                        color="primary"
+                                        variant="outlined"
                                         style={{ marginLeft: '10px' }}
-                                        sx={{ 
+                                        sx={{
                                             color: '#ff00c3 !important',
                                             borderColor: '#ff00c3 !important',
                                             backgroundColor: 'whitesmoke !important',
-                                          }} >
+                                        }} >
                                         {t('robot_duplication.buttons.cancel')}
                                     </Button>
                                 </Box>
