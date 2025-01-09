@@ -105,8 +105,8 @@ export const NavBar: React.FC<NavBarProps> = ({
 
   const renderThemeToggle = () => (
     <Tooltip title="Toggle Mode">
-      <IconButton 
-        onClick={toggleTheme} 
+      <IconButton
+        onClick={toggleTheme}
         sx={{
           color: darkMode ? '#ffffff' : '#333333',
           '&:hover': {
@@ -426,17 +426,17 @@ export const NavBar: React.FC<NavBarProps> = ({
           ) : (
             <NavBarRight>
               <IconButton
-              onClick={handleLangMenuOpen}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                borderRadius: "5px",
-                padding: "8px",
-                marginRight: "8px",
-              }}
-            >
-              <Language sx={{ marginRight: '5px' }} /><Typography variant="body1">{t("Language")}</Typography>
-            </IconButton>
+                onClick={handleLangMenuOpen}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  borderRadius: "5px",
+                  padding: "8px",
+                  marginRight: "8px",
+                }}
+              >
+                <Language sx={{ marginRight: '5px' }} /><Typography variant="body1">{t("Language")}</Typography>
+              </IconButton>
               <Menu
                 anchorEl={langAnchorEl}
                 open={Boolean(langAnchorEl)}
@@ -493,7 +493,7 @@ export const NavBar: React.FC<NavBarProps> = ({
               </Menu>
               {renderThemeToggle()}
             </NavBarRight>
-          )}  
+          )}
       </NavBarWrapper>
     </>
   );
