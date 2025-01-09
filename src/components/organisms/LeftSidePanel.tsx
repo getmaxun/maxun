@@ -10,7 +10,7 @@ import { useBrowserDimensionsStore } from "../../context/browserDimensions";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { TabContext, TabPanel } from "@mui/lab";
 import { LeftSidePanelSettings } from "../molecules/LeftSidePanelSettings";
-import { RunSettings } from "../molecules/RunSettings";
+import { RunSettings } from "../run/RunSettings";
 
 const fetchWorkflow = (id: string, callback: (response: WorkflowFile) => void) => {
   getActiveWorkflow(id).then(

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Grid } from "@mui/material";
-import { RunsTable } from "../molecules/RunsTable";
+import { RunsTable } from "./RunsTable";
 
 interface RunsProps {
   currentInterpretationLog: string;
