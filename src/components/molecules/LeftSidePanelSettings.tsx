@@ -10,39 +10,39 @@ interface LeftSidePanelSettingsProps {
   setSettings: (setting: RunSettings) => void
 }
 
-export const LeftSidePanelSettings = ({params, settings, setSettings}: LeftSidePanelSettingsProps) => {
+export const LeftSidePanelSettings = ({ params, settings, setSettings }: LeftSidePanelSettingsProps) => {
   const { socket } = useSocketStore();
 
   return (
-    <div style={{ display: 'flex', flexDirection:'column', alignItems: 'flex-start'}}>
-      { params.length !== 0 && (
-          <React.Fragment>
-            <Typography>Parameters:</Typography>
-            { params?.map((item: string, index: number) => {
-              return <TextField
-                sx={{margin: '15px 0px'}}
-                value={settings.params ? settings.params[item] : ''}
-                key={`param-${index}`}
-                type="string"
-                label={item}
-                required
-                onChange={(e) => setSettings(
-                  {
-                    ...settings,
-                    params: settings.params
-                      ? {
-                        ...settings.params,
-                        [item]: e.target.value,
-                      }
-                      : {
-                        [item]: e.target.value,
-                      },
-                  })}
-              />
-            }) }
-          </React.Fragment>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+      {params.length !== 0 && (
+        <React.Fragment>
+          <Typography>Parameters:</Typography>
+          {params?.map((item: string, index: number) => {
+            return <TextField
+              sx={{ margin: '15px 0px' }}
+              value={settings.params ? settings.params[item] : ''}
+              key={`param-${index}`}
+              type="string"
+              label={item}
+              required
+              onChange={(e) => setSettings(
+                {
+                  ...settings,
+                  params: settings.params
+                    ? {
+                      ...settings.params,
+                      [item]: e.target.value,
+                    }
+                    : {
+                      [item]: e.target.value,
+                    },
+                })}
+            />
+          })}
+        </React.Fragment>
       )}
-      <Typography sx={{margin: '15px 0px'}}>Interpreter:</Typography>
+      <Typography sx={{ margin: '15px 0px' }}>Interpreter:</Typography>
       <TextField
         type="number"
         label="maxConcurrency"
@@ -55,7 +55,7 @@ export const LeftSidePanelSettings = ({params, settings, setSettings}: LeftSideP
         defaultValue={settings.maxConcurrency}
       />
       <TextField
-        sx={{margin: '15px 0px'}}
+        sx={{ margin: '15px 0px' }}
         type="number"
         label="maxRepeats"
         required
@@ -79,8 +79,8 @@ export const LeftSidePanelSettings = ({params, settings, setSettings}: LeftSideP
         <MenuItem value="true">true</MenuItem>
         <MenuItem value="false">false</MenuItem>
       </Dropdown>
-      <Button sx={{margin: '15px 0px'}} variant='contained'
-              onClick={() => socket?.emit('settings', settings)}>change</Button>
+      <Button sx={{ margin: '15px 0px' }} variant='contained'
+        onClick={() => socket?.emit('settings', settings)}>change</Button>
     </div>
   );
 }
