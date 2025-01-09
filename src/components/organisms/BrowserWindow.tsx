@@ -141,9 +141,9 @@ export const BrowserWindow = () => {
                 } else if (data.elementInfo?.isIframeContent && data.childSelectors) {
                     // Handle pure iframe elements - similar to previous shadow DOM logic but using iframe syntax
                     // Check if the selector matches any iframe child selectors
-                    const isIframeChild = data.childSelectors.some(childSelector => 
+                    const isIframeChild = data.childSelectors.some(childSelector =>
                         data.selector.includes(':>>') && // Iframe uses :>> for traversal
-                        childSelector.split(':>>').some(part => 
+                        childSelector.split(':>>').some(part =>
                             data.selector.includes(part.trim())
                         )
                     );
@@ -152,9 +152,9 @@ export const BrowserWindow = () => {
                     // Handle mixed DOM cases with iframes
                     // Split the selector into parts and check each against child selectors
                     const selectorParts = data.selector.split(':>>').map(part => part.trim());
-                    const isValidMixedSelector = selectorParts.some(part => 
+                    const isValidMixedSelector = selectorParts.some(part =>
                         // We know data.childSelectors is defined due to hasValidChildSelectors check
-                        data.childSelectors!.some(childSelector => 
+                        data.childSelectors!.some(childSelector =>
                             childSelector.includes(part)
                         )
                     );
@@ -162,36 +162,36 @@ export const BrowserWindow = () => {
                 } else if (data.elementInfo?.isShadowRoot && data.childSelectors) {
                     // New case: Handle pure Shadow DOM elements
                     // Check if the selector matches any shadow root child selectors
-                    const isShadowChild = data.childSelectors.some(childSelector => 
+                    const isShadowChild = data.childSelectors.some(childSelector =>
                         data.selector.includes('>>') && // Shadow DOM uses >> for piercing
-                        childSelector.split('>>').some(part => 
+                        childSelector.split('>>').some(part =>
                             data.selector.includes(part.trim())
                         )
                     );
                     setHighlighterData(isShadowChild ? data : null);
-                 } else if (data.selector.includes('>>') && hasValidChildSelectors) {
+                } else if (data.selector.includes('>>') && hasValidChildSelectors) {
                     // New case: Handle mixed DOM cases
                     // Split the selector into parts and check each against child selectors
                     const selectorParts = data.selector.split('>>').map(part => part.trim());
-                    const isValidMixedSelector = selectorParts.some(part => 
+                    const isValidMixedSelector = selectorParts.some(part =>
                         // Now we know data.childSelectors is defined
-                        data.childSelectors!.some(childSelector => 
+                        data.childSelectors!.some(childSelector =>
                             childSelector.includes(part)
                         )
                     );
                     setHighlighterData(isValidMixedSelector ? data : null);
-                  } else {
+                } else {
                     // if !valid child in normal mode, clear the highlighter
                     setHighlighterData(null);
-                  }
-              } else {
+                }
+            } else {
                 // Set highlighterData for the initial listSelector selection
                 setHighlighterData(data);
-              }
-          } else {
+            }
+        } else {
             // For non-list steps
             setHighlighterData(data);
-          }
+        }
     }, [highlighterData, getList, socket, listSelector, paginationMode, paginationType, captureStage]);
 
 
@@ -403,11 +403,11 @@ export const BrowserWindow = () => {
                                             overflow: 'hidden',
                                             padding: '5px 10px',
                                         }}
-                                        sx={{ 
+                                        sx={{
                                             color: '#ff00c3 !important',
                                             borderColor: '#ff00c3 !important',
                                             backgroundColor: 'whitesmoke !important',
-                                          }} 
+                                        }}
                                     >
                                         <span style={{
                                             display: 'block',
