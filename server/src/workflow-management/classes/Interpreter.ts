@@ -6,14 +6,26 @@ import { InterpreterSettings } from "../../types";
 import { decrypt } from "../../utils/auth";
 
 /**
- * Decrypts any encrypted inputs in the workflow.
+ * Decrypts any encrypted inputs in the workflow. If checkLimit is true, it will also handle the limit validation for scrapeList action.
  * @param workflow The workflow to decrypt.
+ * @param checkLimit If true, it will handle the limit validation for scrapeList action.
  */
-function decryptWorkflow(workflow: WorkflowFile): WorkflowFile {
-  const decryptedWorkflow = JSON.parse(JSON.stringify(workflow)) as WorkflowFile;
+function processWorkflow(workflow: WorkflowFile, checkLimit: boolean = false): WorkflowFile {
+  const processedWorkflow = JSON.parse(JSON.stringify(workflow)) as WorkflowFile;
 
-  decryptedWorkflow.workflow.forEach((pair) => {
+  processedWorkflow.workflow.forEach((pair) => {
     pair.what.forEach((action) => {
+      // Handle limit validation for scrapeList action
+      if (action.action === 'scrapeList' && checkLimit && Array.isArray(action.args) && action.args.length > 0) {
+        const scrapeConfig = action.args[0];
+        if (scrapeConfig && typeof scrapeConfig === 'object' && 'limit' in scrapeConfig) {
+          if (typeof scrapeConfig.limit === 'number' && scrapeConfig.limit > 5) {
+            scrapeConfig.limit = 5;
+          }
+        }
+      }
+
+      // Handle decryption for type and press actions
       if ((action.action === 'type' || action.action === 'press') && Array.isArray(action.args) && action.args.length > 1) {
         try {
           const encryptedValue = action.args[1];
@@ -33,7 +45,7 @@ function decryptWorkflow(workflow: WorkflowFile): WorkflowFile {
     });
   });
 
-  return decryptedWorkflow;
+  return processedWorkflow;
 }
 
 /**
@@ -156,7 +168,7 @@ export class WorkflowInterpreter {
     const params = settings.params ? settings.params : null;
     delete settings.params;
 
-    const decryptedWorkflow = decryptWorkflow(workflow);
+    const processedWorkflow = processWorkflow(workflow, true);
 
     const options = {
       ...settings,
@@ -178,7 +190,7 @@ export class WorkflowInterpreter {
       }
     }
 
-    const interpreter = new Interpreter(decryptedWorkflow, options);
+    const interpreter = new Interpreter(processedWorkflow, options);
     this.interpreter = interpreter;
 
     interpreter.on('flag', async (page, resume) => {
@@ -253,7 +265,7 @@ export class WorkflowInterpreter {
     const params = settings.params ? settings.params : null;
     delete settings.params;
 
-    const decryptedWorkflow = decryptWorkflow(workflow);
+    const processedWorkflow = processWorkflow(workflow);
 
     const options = {
       ...settings,
@@ -277,7 +289,7 @@ export class WorkflowInterpreter {
       }
     }
 
-    const interpreter = new Interpreter(decryptedWorkflow, options);
+    const interpreter = new Interpreter(processedWorkflow, options);
     this.interpreter = interpreter;
 
     interpreter.on('flag', async (page, resume) => {
