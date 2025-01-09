@@ -53,7 +53,7 @@ interface RecordingsTableProps {
 }
 
 export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handleScheduleRecording, handleIntegrateRecording, handleSettingsRecording, handleEditRobot, handleDuplicateRobot }: RecordingsTableProps) => {
-  const {t} = useTranslation();
+  const { t } = useTranslation();
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
   const [rows, setRows] = React.useState<Data[]>([]);
@@ -401,7 +401,7 @@ const OptionsButton = ({ handleEdit, handleDelete, handleDuplicate }: OptionsBut
     setAnchorEl(null);
   };
 
-  const {t} = useTranslation();
+  const { t } = useTranslation();
 
   return (
     <>
