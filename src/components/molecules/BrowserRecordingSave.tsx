@@ -37,18 +37,18 @@ const BrowserRecordingSave = () => {
           overflow: 'hidden',
           display: 'flex',
           justifyContent: 'space-between',
-          height:"48px"
+          height: "48px"
         }}>
-          <Button 
-            onClick={() => setOpenModal(true)} 
-            variant="outlined" 
-            color="error"  
-            sx={{ 
+          <Button
+            onClick={() => setOpenModal(true)}
+            variant="outlined"
+            color="error"
+            sx={{
               marginLeft: '25px',
               color: 'red !important',
               borderColor: 'red !important',
               backgroundColor: 'whitesmoke !important',
-            }} 
+            }}
             size="small"
           >
             {t('right_panel.buttons.discard')}
@@ -60,10 +60,10 @@ const BrowserRecordingSave = () => {
                 <Button onClick={goToMainMenu} variant="contained" color="error">
                   {t('right_panel.buttons.discard')}
                 </Button>
-                <Button 
-                  onClick={() => setOpenModal(false)} 
+                <Button
+                  onClick={() => setOpenModal(false)}
                   variant="outlined"
-                  sx={{ 
+                  sx={{
                     color: '#ff00c3 !important',
                     borderColor: '#ff00c3 !important',
                     backgroundColor: 'whitesmoke !important',
