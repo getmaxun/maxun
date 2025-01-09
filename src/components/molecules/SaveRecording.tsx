@@ -77,19 +77,19 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
 
   return (
     <div>
-       {/* <Button onClick={() => setOpenModal(true)} variant='contained'  sx={{ marginRight: '20px',backgroundColor: '#ff00c3',color: 'white' }} size="small" color="success">
+      {/* <Button onClick={() => setOpenModal(true)} variant='contained'  sx={{ marginRight: '20px',backgroundColor: '#ff00c3',color: 'white' }} size="small" color="success">
         Finish  */}
 
-      <Button 
-        onClick={() => setOpenModal(true)} 
-        variant="outlined" 
-        color="success" 
-        sx={{ 
+      <Button
+        onClick={() => setOpenModal(true)}
+        variant="outlined"
+        color="success"
+        sx={{
           marginRight: '20px',
           color: '#00c853 !important',
           borderColor: '#00c853 !important',
           backgroundColor: 'whitesmoke !important',
-        }} 
+        }}
         size="small"
       >
         {t('right_panel.buttons.finish')}
@@ -119,8 +119,8 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
               </WarningText>
             </React.Fragment>)
             : <Button type="submit" variant="contained" sx={{ marginTop: '10px' }}>
-                {t('save_recording.buttons.save')}
-              </Button>
+              {t('save_recording.buttons.save')}
+            </Button>
           }
           {waitingForSave &&
             <Tooltip title={t('save_recording.tooltips.optimizing')} placement={"bottom"}>
