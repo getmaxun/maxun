@@ -1,8 +1,6 @@
 import styled from 'styled-components';
 import { useThemeMode } from '../../../context/theme-provider';
 
-
-
 export const NavBarButton = styled.button<{ disabled: boolean, mode: 'light' | 'dark' }>`
     margin-left: 10px;
     margin-right: 5px;
@@ -15,9 +13,6 @@ export const NavBarButton = styled.button<{ disabled: boolean, mode: 'light' | '
     border-radius: 12px;
     outline: none;
     color: ${mode => mode ? '#ffffff' : '#333333'};
-
-    
-
 `;
 
 export const UrlFormButton = styled.button`
