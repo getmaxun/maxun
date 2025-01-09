@@ -4,7 +4,7 @@ import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
 
 import { Paper, Button, useTheme } from "@mui/material";
-import { AutoAwesome, FormatListBulleted, VpnKey, Usb, Article, CloudQueue,Code, } from "@mui/icons-material";
+import { AutoAwesome, FormatListBulleted, VpnKey, Usb, Article, CloudQueue, Code, } from "@mui/icons-material";
 
 
 import { apiUrl } from "../../apiConfig";
@@ -20,7 +20,7 @@ interface MainMenuProps {
 
 export const MainMenu = ({ value = 'recordings', handleChangeContent }: MainMenuProps) => {
   const theme = useTheme();
-  const {t} = useTranslation();
+  const { t } = useTranslation();
 
   const handleChange = (event: React.SyntheticEvent, newValue: string) => {
     handleChangeContent(newValue);
@@ -41,7 +41,7 @@ export const MainMenu = ({ value = 'recordings', handleChangeContent }: MainMenu
     textTransform: 'none',
     color: theme.palette.mode === 'light' ? '#6C6C6C' : 'inherit',
   };
-  
+
 
   return (
     <Paper
