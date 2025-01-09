@@ -12,7 +12,7 @@ import { io, Socket } from "socket.io-client";
 import { stopRecording } from "../api/recording";
 import { RunSettings } from "../components/molecules/RunSettings";
 import { ScheduleSettings } from "../components/molecules/ScheduleSettings";
-import { IntegrationSettings } from "../components/molecules/IntegrationSettings";
+import { IntegrationSettings } from "../components/integration/IntegrationSettings";
 import { RobotSettings } from "../components/molecules/RobotSettings";
 import { apiUrl } from "../apiConfig";
 

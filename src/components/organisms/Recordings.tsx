@@ -3,7 +3,7 @@ import { RecordingsTable } from "../molecules/RecordingsTable";
 import { Grid } from "@mui/material";
 import { RunSettings, RunSettingsModal } from "../molecules/RunSettings";
 import { ScheduleSettings, ScheduleSettingsModal } from "../molecules/ScheduleSettings";
-import { IntegrationSettings, IntegrationSettingsModal } from "../molecules/IntegrationSettings";
+import { IntegrationSettings, IntegrationSettingsModal } from "../integration/IntegrationSettings";
 import { RobotSettings, RobotSettingsModal } from "../molecules/RobotSettings";
 import { RobotEditModal } from '../molecules/RobotEdit';
 import { RobotDuplicationModal } from '../molecules/RobotDuplicate';
