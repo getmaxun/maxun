@@ -5,7 +5,7 @@ import styled from "styled-components";
 import { stopRecording } from "../../api/recording";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { IconButton, Menu, MenuItem, Typography, Chip, Button, Modal, Tabs, Tab, Box, Snackbar, Tooltip } from "@mui/material";
-import { AccountCircle, Logout, Clear, YouTube, X, Update, Close, Language, Brightness7, Brightness4 } from "@mui/icons-material";
+import { AccountCircle, Logout, Clear, YouTube, X, Update, Close, Language, Brightness7, Brightness4, Description } from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/auth';
 import { SaveRecording } from '../molecules/SaveRecording';
@@ -105,8 +105,8 @@ export const NavBar: React.FC<NavBarProps> = ({
 
   const renderThemeToggle = () => (
     <Tooltip title="Toggle Mode">
-      <IconButton 
-        onClick={toggleTheme} 
+      <IconButton
+        onClick={toggleTheme}
         sx={{
           color: darkMode ? '#ffffff' : '#333333',
           '&:hover': {
@@ -327,6 +327,11 @@ export const NavBar: React.FC<NavBarProps> = ({
                       <Logout sx={{ marginRight: '5px' }} /> {t('navbar.menu_items.logout')}
                     </MenuItem>
                     <MenuItem onClick={() => {
+                      window.open('https://docs.maxun.dev', '_blank');
+                    }}>
+                      <Description sx={{ marginRight: '5px' }} /> Docs
+                    </MenuItem>
+                    <MenuItem onClick={() => {
                       window.open('https://discord.gg/5GbPjBUkws', '_blank');
                     }}>
                       <DiscordIcon sx={{ marginRight: '5px' }} /> Discord
@@ -421,17 +426,17 @@ export const NavBar: React.FC<NavBarProps> = ({
           ) : (
             <NavBarRight>
               <IconButton
-              onClick={handleLangMenuOpen}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                borderRadius: "5px",
-                padding: "8px",
-                marginRight: "8px",
-              }}
-            >
-              <Language sx={{ marginRight: '5px' }} /><Typography variant="body1">{t("Language")}</Typography>
-            </IconButton>
+                onClick={handleLangMenuOpen}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  borderRadius: "5px",
+                  padding: "8px",
+                  marginRight: "8px",
+                }}
+              >
+                <Language sx={{ marginRight: '5px' }} /><Typography variant="body1">{t("Language")}</Typography>
+              </IconButton>
               <Menu
                 anchorEl={langAnchorEl}
                 open={Boolean(langAnchorEl)}
@@ -488,7 +493,7 @@ export const NavBar: React.FC<NavBarProps> = ({
               </Menu>
               {renderThemeToggle()}
             </NavBarRight>
-          )}  
+          )}
       </NavBarWrapper>
     </>
   );
