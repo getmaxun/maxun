@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
 import styled from "styled-components";
-import BrowserNavBar from "../molecules/BrowserNavBar";
+import BrowserNavBar from "./BrowserNavBar";
 import { BrowserWindow } from "./BrowserWindow";
 import { useBrowserDimensionsStore } from "../../context/browserDimensions";
-import { BrowserTabs } from "../molecules/BrowserTabs";
+import { BrowserTabs } from "./BrowserTabs";
 import { useSocketStore } from "../../context/socket";
 import {
   getCurrentTabs,

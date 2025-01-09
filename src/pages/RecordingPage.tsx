@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Grid } from '@mui/material';
-import { BrowserContent } from "../components/organisms/BrowserContent";
+import { BrowserContent } from "../components/browser/BrowserContent";
 import { InterpretationLog } from "../components/run/InterpretationLog";
 import { startRecording, getActiveBrowserId } from "../api/recording";
 import { LeftSidePanel } from "../components/recorder/LeftSidePanel";
@@ -14,7 +14,7 @@ import { useGlobalInfoStore } from "../context/globalInfo";
 import { editRecordingFromStorage } from "../api/storage";
 import { WhereWhatPair } from "maxun-core";
 import styled from "styled-components";
-import BrowserRecordingSave from '../components/molecules/BrowserRecordingSave';
+import BrowserRecordingSave from '../components/browser/BrowserRecordingSave';
 import { useThemeMode } from '../context/theme-provider';
 import { useTranslation } from 'react-i18next';
 
