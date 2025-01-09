@@ -8,7 +8,7 @@ import { deleteRunFromStorage } from "../../api/storage";
 import { columns, Data } from "./RunsTable";
 import { RunContent } from "./RunContent";
 import { GenericModal } from "../ui/GenericModal";
-import { modalStyle } from "../molecules/AddWhereCondModal";
+import { modalStyle } from "../recorder/AddWhereCondModal";
 import { getUserById } from "../../api/auth";
 import { useTranslation } from "react-i18next";
 

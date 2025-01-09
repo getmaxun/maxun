@@ -5,11 +5,11 @@ import { useSocketStore } from '../../context/socket';
 import { WhereWhatPair, WorkflowFile } from "maxun-core";
 import { SidePanelHeader } from "./SidePanelHeader";
 import { emptyWorkflow } from "../../shared/constants";
-import { LeftSidePanelContent } from "../molecules/LeftSidePanelContent";
+import { LeftSidePanelContent } from "./LeftSidePanelContent";
 import { useBrowserDimensionsStore } from "../../context/browserDimensions";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { TabContext, TabPanel } from "@mui/lab";
-import { LeftSidePanelSettings } from "../molecules/LeftSidePanelSettings";
+import { LeftSidePanelSettings } from "./LeftSidePanelSettings";
 import { RunSettings } from "../run/RunSettings";
 
 const fetchWorkflow = (id: string, callback: (response: WorkflowFile) => void) => {

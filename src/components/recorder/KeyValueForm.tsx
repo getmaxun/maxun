@@ -1,5 +1,5 @@
 import React, { forwardRef, useImperativeHandle, useRef } from 'react';
-import { KeyValuePair } from "../atoms/KeyValuePair";
+import { KeyValuePair } from "./KeyValuePair";
 import { AddButton } from "../ui/buttons/AddButton";
 import { RemoveButton } from "../ui/buttons/RemoveButton";
 
