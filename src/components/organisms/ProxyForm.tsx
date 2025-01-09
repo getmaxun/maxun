@@ -1,23 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { styled } from '@mui/system';
-import { 
-    Alert, 
-    AlertTitle, 
-    TextField, 
-    Button, 
-    Switch, 
-    FormControlLabel, 
-    Box, 
-    Typography, 
-    Tabs, 
-    Tab, 
-    Table, 
-    TableContainer, 
-    TableHead, 
-    TableRow, 
-    TableBody, 
-    TableCell, 
-    Paper 
+import {
+    Alert,
+    AlertTitle,
+    TextField,
+    Button,
+    Switch,
+    FormControlLabel,
+    Box,
+    Typography,
+    Tabs,
+    Tab,
+    Table,
+    TableContainer,
+    TableHead,
+    TableRow,
+    TableBody,
+    TableCell,
+    Paper
 } from '@mui/material';
 import { sendProxyConfig, getProxyConfig, testProxyConfig, deleteProxyConfig } from '../../api/proxy';
 import { useGlobalInfoStore } from '../../context/globalInfo';
@@ -162,10 +162,10 @@ const ProxyForm: React.FC = () => {
                 <Typography variant="h6" gutterBottom component="div" style={{ marginTop: '20px' }}>
                     {t('proxy.title')}
                 </Typography>
-                 <Tabs value={tabIndex} onChange={handleTabChange}>
+                <Tabs value={tabIndex} onChange={handleTabChange}>
                     <Tab label={t('proxy.tab_standard')} />
                     <Tab label={t('proxy.tab_rotation')} />
-                </Tabs> 
+                </Tabs>
 
                 {tabIndex === 0 && (
                     isProxyConfigured ? (
@@ -260,7 +260,7 @@ const ProxyForm: React.FC = () => {
                                 {t('proxy.coming_soon')}
                             </Typography>
 
-                             {/* <Button variant="contained" color="primary" sx={{ marginTop: '20px',backgroundColor: '#ff00c3' }}>
+                            {/* <Button variant="contained" color="primary" sx={{ marginTop: '20px',backgroundColor: '#ff00c3' }}>
                                 <a style={{ color: 'white', textDecoration: 'none' }} href="https://forms.gle/hXjgqDvkEhPcaBW76">Join Maxun Cloud Waitlist</a>  */}
 
                             <Button variant="contained" color="primary" sx={{ marginTop: '20px' }}>
