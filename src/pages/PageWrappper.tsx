@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { NavBar } from "../components/molecules/NavBar";
+import { NavBar } from "../components/dashboard/NavBar";
 import { SocketProvider } from "../context/socket";
 import { BrowserDimensionsProvider } from "../context/browserDimensions";
 import { AuthProvider } from '../context/auth';

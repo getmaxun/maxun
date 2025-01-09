@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MainMenu } from "../components/organisms/MainMenu";
+import { MainMenu } from "../components/dashboard/MainMenu";
 import { Stack } from "@mui/material";
 import { Recordings } from "../components/robot/Recordings";
 import { Runs } from "../components/run/Runs";
