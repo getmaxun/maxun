@@ -5,7 +5,7 @@ import { RemoveButton } from "../atoms/buttons/RemoveButton";
 
 export const KeyValueForm = forwardRef((props, ref) => {
   const [numberOfPairs, setNumberOfPairs] = React.useState<number>(1);
-  const keyValuePairRefs = useRef<{getKeyValuePair: () => { key: string, value: string }}[]>([]);
+  const keyValuePairRefs = useRef<{ getKeyValuePair: () => { key: string, value: string } }[]>([]);
 
   useImperativeHandle(ref, () => ({
     getObject() {
@@ -28,12 +28,12 @@ export const KeyValueForm = forwardRef((props, ref) => {
       {
         new Array(numberOfPairs).fill(1).map((_, index) => {
           return <KeyValuePair keyLabel={`key ${index + 1}`} valueLabel={`value ${index + 1}`} key={`keyValuePair-${index}`}
-         //@ts-ignore
-          ref={el => keyValuePairRefs.current[index] = el}/>
+            //@ts-ignore
+            ref={el => keyValuePairRefs.current[index] = el} />
         })
       }
-      <AddButton handleClick={() => setNumberOfPairs(numberOfPairs + 1)} hoverEffect={false}/>
-      <RemoveButton handleClick={() => setNumberOfPairs(numberOfPairs - 1)}/>
+      <AddButton handleClick={() => setNumberOfPairs(numberOfPairs + 1)} hoverEffect={false} />
+      <RemoveButton handleClick={() => setNumberOfPairs(numberOfPairs - 1)} />
     </div>
   );
 });
