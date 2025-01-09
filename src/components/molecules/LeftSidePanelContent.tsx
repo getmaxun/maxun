@@ -18,7 +18,7 @@ interface LeftSidePanelContentProps {
   handleSelectPairForEdit: (pair: WhereWhatPair, index: number) => void;
 }
 
-export const LeftSidePanelContent = ({ workflow, updateWorkflow, recordingName, handleSelectPairForEdit}: LeftSidePanelContentProps) => {
+export const LeftSidePanelContent = ({ workflow, updateWorkflow, recordingName, handleSelectPairForEdit }: LeftSidePanelContentProps) => {
   const [activeId, setActiveId] = React.useState<number>(0);
   const [breakpoints, setBreakpoints] = React.useState<boolean[]>([]);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -67,12 +67,12 @@ export const LeftSidePanelContent = ({ workflow, updateWorkflow, recordingName, 
   return (
     <div>
       <Tooltip title='Add pair' placement='left' arrow>
-        <div style={{ float: 'right'}}>
+        <div style={{ float: 'right' }}>
           <AddButton
             handleClick={handleAddPair}
             title=''
             hoverEffect={false}
-            style={{color: 'white', background: '#1976d2'}}
+            style={{ color: 'white', background: '#1976d2' }}
           />
         </div>
       </Tooltip>
@@ -86,20 +86,20 @@ export const LeftSidePanelContent = ({ workflow, updateWorkflow, recordingName, 
         />
       </GenericModal>
       <div>
-      {
-        workflow.workflow.map((pair, i, workflow, ) =>
-          <Pair
-            handleBreakpoint={() => handleBreakpointClick(i)}
-            isActive={ activeId === i + 1}
-            key={workflow.length - i}
-            index={workflow.length - i}
-            pair={pair}
-            updateWorkflow={updateWorkflow}
-            numberOfPairs={workflow.length}
-            handleSelectPairForEdit={handleSelectPairForEdit}
-          />)
-      }
-    </div>
+        {
+          workflow.workflow.map((pair, i, workflow,) =>
+            <Pair
+              handleBreakpoint={() => handleBreakpointClick(i)}
+              isActive={activeId === i + 1}
+              key={workflow.length - i}
+              index={workflow.length - i}
+              pair={pair}
+              updateWorkflow={updateWorkflow}
+              numberOfPairs={workflow.length}
+              handleSelectPairForEdit={handleSelectPairForEdit}
+            />)
+        }
+      </div>
     </div>
   );
 };
