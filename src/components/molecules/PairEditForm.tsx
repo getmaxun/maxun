@@ -56,30 +56,30 @@ export const PairEditForm: FC<PairEditFormProps> = (
     event.preventDefault();
     let whereFromPair, whatFromPair;
     // validate where
-      whereFromPair = {
-        where: pairProps.where && pairProps.where !== '{"url":"","selectors":[""] }'
-          ? JSON.parse(pairProps.where)
-          : {},
-        what: [],
-      };
-      const validationError = Preprocessor.validateWorkflow({workflow: [whereFromPair]});
-      setErrors({ ...errors, where: null });
+    whereFromPair = {
+      where: pairProps.where && pairProps.where !== '{"url":"","selectors":[""] }'
+        ? JSON.parse(pairProps.where)
+        : {},
+      what: [],
+    };
+    const validationError = Preprocessor.validateWorkflow({ workflow: [whereFromPair] });
+    setErrors({ ...errors, where: null });
     if (validationError) {
       setErrors({ ...errors, where: validationError.message });
       return;
     }
     // validate what
-      whatFromPair = {
-        where: {},
-        what: pairProps.what && pairProps.what !== '[{"action":"","args":[""] }]'
-          ? JSON.parse(pairProps.what): [],
-      };
-      const validationErrorWhat = Preprocessor.validateWorkflow({workflow: [whatFromPair]});
-      setErrors({ ...errors, "what": null });
-      if (validationErrorWhat) {
-        setErrors({ ...errors, what: validationErrorWhat.message });
-        return;
-      }
+    whatFromPair = {
+      where: {},
+      what: pairProps.what && pairProps.what !== '[{"action":"","args":[""] }]'
+        ? JSON.parse(pairProps.what) : [],
+    };
+    const validationErrorWhat = Preprocessor.validateWorkflow({ workflow: [whatFromPair] });
+    setErrors({ ...errors, "what": null });
+    if (validationErrorWhat) {
+      setErrors({ ...errors, what: validationErrorWhat.message });
+      return;
+    }
     //validate index
     const index = parseInt(pairProps?.index, 10);
     if (index > (numberOfPairs + 1)) {
@@ -99,18 +99,18 @@ export const PairEditForm: FC<PairEditFormProps> = (
     } else {
       setErrors({ ...errors, index: '' });
     }
-      // submit the pair
-      onSubmitOfPair(pairProps.id
+    // submit the pair
+    onSubmitOfPair(pairProps.id
       ? {
         id: pairProps.id,
         where: whereFromPair?.where || {},
         what: whatFromPair?.what || [],
       }
       : {
-          where: whereFromPair?.where || {},
-          what: whatFromPair?.what || [],
-        }
-        , index);
+        where: whereFromPair?.where || {},
+        what: whatFromPair?.what || [],
+      }
+      , index);
   };
 
   return (
@@ -122,33 +122,33 @@ export const PairEditForm: FC<PairEditFormProps> = (
         marginTop: "36px",
       }}
     >
-      <Typography sx={{marginBottom:'30px'}} variant='h5'>Raw pair edit form:</Typography>
+      <Typography sx={{ marginBottom: '30px' }} variant='h5'>Raw pair edit form:</Typography>
       <TextField sx={{
-        display:"block",
+        display: "block",
         marginBottom: "20px"
       }} id="index" label="Index" type="number"
-                 InputProps={{ inputProps: { min: 1 } }}
-                 InputLabelProps={{
+        InputProps={{ inputProps: { min: 1 } }}
+        InputLabelProps={{
           shrink: true,
         }} defaultValue={pairProps.index}
-                 onChange={handleInputChange}
-                 error={!!errors.index} helperText={errors.index}
-                 required
+        onChange={handleInputChange}
+        error={!!errors.index} helperText={errors.index}
+        required
       />
       <TextField sx={{
         marginBottom: "20px"
       }} id="id" label="Id" type="string"
-                 defaultValue={pairProps.id}
-                 onChange={handleInputChange}
+        defaultValue={pairProps.id}
+        onChange={handleInputChange}
       />
-      <TextField multiline sx={{marginBottom: "20px"}}
-                 id="where" label="Where" variant="outlined" onChange={handleInputChange}
-                 defaultValue={ where || '{"url":"","selectors":[""]}' }
-                 error={!!errors.where} helperText={errors.where}/>
-      <TextField multiline sx={{marginBottom: "20px"}}
-                 id="what" label="What" variant="outlined" onChange={handleInputChange}
-                 defaultValue={ what || '[{"action":"","args":[""]}]' }
-                 error={!!errors.what} helperText={errors.what}/>
+      <TextField multiline sx={{ marginBottom: "20px" }}
+        id="where" label="Where" variant="outlined" onChange={handleInputChange}
+        defaultValue={where || '{"url":"","selectors":[""]}'}
+        error={!!errors.where} helperText={errors.where} />
+      <TextField multiline sx={{ marginBottom: "20px" }}
+        id="what" label="What" variant="outlined" onChange={handleInputChange}
+        defaultValue={what || '[{"action":"","args":[""]}]'}
+        error={!!errors.what} helperText={errors.what} />
       <Button
         type="submit"
         variant="contained"
