@@ -27,7 +27,7 @@ const DateTimeLocalPicker: React.FC<DateTimeLocalPickerProps> = ({ coordinates, 
   };
 
   return (
-    <div 
+    <div
       style={{
         position: 'absolute',
         left: `${coordinates.x}px`,
@@ -48,20 +48,19 @@ const DateTimeLocalPicker: React.FC<DateTimeLocalPickerProps> = ({ coordinates, 
           autoFocus
         />
         <div className="flex justify-end space-x-2">
-          <button 
+          <button
             onClick={onClose}
             className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 border rounded"
           >
             Cancel
           </button>
-          <button 
+          <button
             onClick={handleConfirm}
             disabled={!selectedDateTime}
-            className={`px-3 py-1 text-sm rounded ${
-              selectedDateTime 
-                ? 'bg-blue-500 text-white hover:bg-blue-600' 
+            className={`px-3 py-1 text-sm rounded ${selectedDateTime
+                ? 'bg-blue-500 text-white hover:bg-blue-600'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
+              }`}
           >
             Confirm
           </button>
