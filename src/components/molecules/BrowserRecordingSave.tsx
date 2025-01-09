@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Grid, Button, Box, Typography } from '@mui/material';
+import { Grid, Button, Box, Typography, IconButton, Menu, MenuItem, ListItemText } from '@mui/material';
 import { SaveRecording } from "./SaveRecording";
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { useActionContext } from '../../context/browserActions';
@@ -10,11 +10,13 @@ import { GenericModal } from "../atoms/GenericModal";
 import { useTranslation } from 'react-i18next';
 import { emptyWorkflow } from '../../shared/constants';
 import { useSocketStore } from '../../context/socket';
+import { MoreHoriz } from '@mui/icons-material';
 
 const BrowserRecordingSave = () => {
   const { t } = useTranslation();
   const [openDiscardModal, setOpenDiscardModal] = useState<boolean>(false);
   const [openResetModal, setOpenResetModal] = useState<boolean>(false);
+  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const { recordingName, browserId, initialUrl, setRecordingUrl, setBrowserId, notify, setCurrentWorkflowActionsState, resetInterpretationLog } = useGlobalInfoStore();
   const navigate = useNavigate();
 
@@ -90,6 +92,14 @@ const BrowserRecordingSave = () => {
     notify('info', t('browser_recording.notifications.environment_reset'));
   };
 
+  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
+      setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
   return (
     <Grid container>
       <Grid item xs={12} md={3} lg={3}>
@@ -117,18 +127,25 @@ const BrowserRecordingSave = () => {
           </Button>
 
           {/* Reset Button */}
-          <Button
-            onClick={() => setOpenResetModal(true)}
-            variant="outlined"
+          <IconButton
+            aria-label="options"
             size="small"
-            style={{ 
-              backgroundColor: 'white',
-              marginLeft: '10px',
-              marginRight: '10px'
+            onClick={handleClick}
+            style={{
+              color: 'whitesmoke',
             }}
           >
-            {t('right_panel.buttons.reset')}
-          </Button>
+            <MoreHoriz />
+          </IconButton>
+          <Menu
+            anchorEl={anchorEl}
+            open={Boolean(anchorEl)}
+            onClose={handleClose}
+          >
+            <MenuItem onClick={() => { setOpenResetModal(true); handleClose(); }}>
+              <ListItemText>{t('right_panel.buttons.reset')}</ListItemText>
+            </MenuItem>
+          </Menu>
 
           <SaveRecording fileName={recordingName} />
 
