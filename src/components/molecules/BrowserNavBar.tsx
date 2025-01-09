@@ -21,7 +21,7 @@ const StyledNavBar = styled.div<{ browserWidth: number; isDarkMode: boolean }>`
     border-radius: 0px 5px 0px 0px;
 `;
 
-const IconButton = styled(NavBarButton)<{ mode: string }>`
+const IconButton = styled(NavBarButton) <{ mode: string }>`
   background-color: ${({ mode }) => (mode === 'dark' ? '#2C2F33' : '#f6f6f6')};
   transition: background-color 0.3s ease, transform 0.1s ease;
   color: ${({ mode }) => (mode === 'dark' ? '#FFFFFF' : '#333')};
