@@ -5,7 +5,7 @@ import { Stack } from "@mui/material";
 import { Recordings } from "../components/organisms/Recordings";
 import { Runs } from "../components/organisms/Runs";
 import ProxyForm from '../components/proxy/ProxyForm';
-import ApiKey from '../components/organisms/ApiKey';
+import ApiKey from '../components/api/ApiKey';
 import { useGlobalInfoStore } from "../context/globalInfo";
 import { createRunForStoredRecording, interpretStoredRecording, notifyAboutAbort, scheduleStoredRecording } from "../api/storage";
 import { io, Socket } from "socket.io-client";
