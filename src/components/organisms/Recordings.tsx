@@ -15,7 +15,7 @@ interface RecordingsProps {
   setRecordingInfo: (id: string, name: string) => void;
 }
 
-export const Recordings = ({ handleEditRecording, handleRunRecording, setRecordingInfo, handleScheduleRecording}: RecordingsProps) => {
+export const Recordings = ({ handleEditRecording, handleRunRecording, setRecordingInfo, handleScheduleRecording }: RecordingsProps) => {
   const [runSettingsAreOpen, setRunSettingsAreOpen] = useState(false);
   const [scheduleSettingsAreOpen, setScheduleSettingsAreOpen] = useState(false);
   const [integrateSettingsAreOpen, setIntegrateSettingsAreOpen] = useState(false);
@@ -24,10 +24,10 @@ export const Recordings = ({ handleEditRecording, handleRunRecording, setRecordi
   const [robotDuplicateAreOpen, setRobotDuplicateAreOpen] = useState(false);
   const [params, setParams] = useState<string[]>([]);
   const [selectedRecordingId, setSelectedRecordingId] = useState<string>('');
-  const handleIntegrateRecording = (id: string, settings: IntegrationSettings) => {};
-  const handleSettingsRecording = (id: string, settings: RobotSettings) => {};
-  const handleEditRobot = (id: string, settings: RobotSettings) => {};
-  const handleDuplicateRobot = (id: string, settings: RobotSettings) => {};
+  const handleIntegrateRecording = (id: string, settings: IntegrationSettings) => { };
+  const handleSettingsRecording = (id: string, settings: RobotSettings) => { };
+  const handleEditRobot = (id: string, settings: RobotSettings) => { };
+  const handleDuplicateRobot = (id: string, settings: RobotSettings) => { };
 
   const handleSettingsAndIntegrate = (id: string, name: string, params: string[]) => {
     if (params.length === 0) {
@@ -169,9 +169,9 @@ export const Recordings = ({ handleEditRecording, handleRunRecording, setRecordi
         handleClose={handleRobotSettingsClose}
         handleStart={(settings) => handleSettingsRecording(selectedRecordingId, settings)}
       />
-      <RobotEditModal isOpen={robotEditAreOpen} 
+      <RobotEditModal isOpen={robotEditAreOpen}
         handleClose={handleRobotEditClose}
-        handleStart={(settings) => handleEditRobot(selectedRecordingId,settings)} 
+        handleStart={(settings) => handleEditRobot(selectedRecordingId, settings)}
       />
       <RobotDuplicationModal isOpen={robotDuplicateAreOpen}
         handleClose={handleRobotDuplicateClose}
