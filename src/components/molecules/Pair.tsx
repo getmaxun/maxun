@@ -54,19 +54,19 @@ export const Pair: FC<PairProps> = (
   };
 
   const handleEdit = (pair: WhereWhatPair, newIndex: number) => {
-  if (newIndex !== index){
-    AddPair((newIndex - 1), pair).then((updatedWorkflow) => {
-      updateWorkflow(updatedWorkflow);
-    }).catch((error) => {
-      console.error(error);
-    });
-  } else {
-    UpdatePair((index - 1), pair).then((updatedWorkflow) => {
-      updateWorkflow(updatedWorkflow);
-    }).catch((error) => {
-      console.error(error);
-    });
-  }
+    if (newIndex !== index) {
+      AddPair((newIndex - 1), pair).then((updatedWorkflow) => {
+        updateWorkflow(updatedWorkflow);
+      }).catch((error) => {
+        console.error(error);
+      });
+    } else {
+      UpdatePair((index - 1), pair).then((updatedWorkflow) => {
+        updateWorkflow(updatedWorkflow);
+      }).catch((error) => {
+        console.error(error);
+      });
+    }
     handleClose();
   };
 
@@ -78,10 +78,10 @@ export const Pair: FC<PairProps> = (
   return (
     <PairWrapper isActive={isActive}>
       <Stack direction="row">
-        <div style={{display: 'flex', maxWidth:'20px', alignItems:'center', justifyContent: 'center', }}>
-          {isActive ? <LoadingButton loading variant="text"/>
-            : breakpoint ? <BreakpointButton changeColor={true} handleClick={handleBreakpointClick}/>
-              : <BreakpointButton handleClick={handleBreakpointClick}/>
+        <div style={{ display: 'flex', maxWidth: '20px', alignItems: 'center', justifyContent: 'center', }}>
+          {isActive ? <LoadingButton loading variant="text" />
+            : breakpoint ? <BreakpointButton changeColor={true} handleClick={handleBreakpointClick} />
+              : <BreakpointButton handleClick={handleBreakpointClick} />
           }
         </div>
         <Badge badgeContent={pair.what.length} color="primary">
@@ -92,53 +92,53 @@ export const Pair: FC<PairProps> = (
             fontSize: '1rem',
             textTransform: 'none',
           }} variant='text' key={`pair-${index}`}
-          onClick={() => handleSelectPairForEdit(pair, index)}>
+            onClick={() => handleSelectPairForEdit(pair, index)}>
             index: {index}
           </Button>
         </Badge>
         <Stack direction="row" spacing={0}
-        sx={{
-          color: 'inherit',
-          "&:hover": {
+          sx={{
             color: 'inherit',
-          }
-        }}>
+            "&:hover": {
+              color: 'inherit',
+            }
+          }}>
           <Tooltip title="View" placement='right' arrow>
-          <div>
-          <ViewButton
-            handleClick={handleOpen}
-          />
-          </div>
+            <div>
+              <ViewButton
+                handleClick={handleOpen}
+              />
+            </div>
           </Tooltip>
 
           <Tooltip title="Raw edit" placement='right' arrow>
             <div>
-          <EditButton
-            handleClick={() => {
-              enableEdit();
-              handleOpen();
-            }}
-          />
+              <EditButton
+                handleClick={() => {
+                  enableEdit();
+                  handleOpen();
+                }}
+              />
             </div>
-            </Tooltip>
+          </Tooltip>
           <Tooltip title="Delete" placement='right' arrow>
             <div>
-              <ClearButton handleClick={handleDelete}/>
+              <ClearButton handleClick={handleDelete} />
             </div>
           </Tooltip>
         </Stack>
       </Stack>
       <GenericModal isOpen={open} onClose={handleClose}>
-        { edit
+        {edit
           ?
-            <PairEditForm
-              onSubmitOfPair={handleEdit}
-              numberOfPairs={numberOfPairs}
-              index={index.toString()}
-              where={pair.where ? JSON.stringify(pair.where) : undefined}
-              what={pair.what ? JSON.stringify(pair.what) : undefined}
-              id={pair.id}
-            />
+          <PairEditForm
+            onSubmitOfPair={handleEdit}
+            numberOfPairs={numberOfPairs}
+            index={index.toString()}
+            where={pair.where ? JSON.stringify(pair.where) : undefined}
+            what={pair.what ? JSON.stringify(pair.what) : undefined}
+            id={pair.id}
+          />
           :
           <div>
             <PairDisplayDiv
@@ -149,26 +149,26 @@ export const Pair: FC<PairProps> = (
         }
       </GenericModal>
     </PairWrapper>
-    );
+  );
 };
 
 interface ViewButtonProps {
   handleClick: () => void;
 }
 
-const ViewButton = ({handleClick}: ViewButtonProps) => {
+const ViewButton = ({ handleClick }: ViewButtonProps) => {
   return (
     <IconButton aria-label="add" size={"small"} onClick={handleClick}
-                sx={{color: 'inherit', '&:hover': { color: '#1976d2', backgroundColor: 'transparent' }}}>
-      <VisibilityIcon/>
+      sx={{ color: 'inherit', '&:hover': { color: '#1976d2', backgroundColor: 'transparent' } }}>
+      <VisibilityIcon />
     </IconButton>
   );
 }
 
 
 const PairWrapper = styled.div<{ isActive: boolean }>`
-  background-color: ${({ isActive }) => isActive ? 'rgba(255, 0, 0, 0.1)' : 'transparent' };
-  border: ${({ isActive }) => isActive ? 'solid 2px red' : 'none' };
+  background-color: ${({ isActive }) => isActive ? 'rgba(255, 0, 0, 0.1)' : 'transparent'};
+  border: ${({ isActive }) => isActive ? 'solid 2px red' : 'none'};
   display: flex;
   flex-direction: row;
   flex-grow: 1;
@@ -176,6 +176,6 @@ const PairWrapper = styled.div<{ isActive: boolean }>`
   color: gray;
   &:hover { 
     color: dimgray; 
-    background: ${({ isActive }) => isActive ? 'rgba(255, 0, 0, 0.1)' : 'transparent' };
+    background: ${({ isActive }) => isActive ? 'rgba(255, 0, 0, 0.1)' : 'transparent'};
   }
 `;
