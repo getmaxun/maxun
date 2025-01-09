@@ -11,7 +11,7 @@ import {
   interpretCurrentRecording,
 } from "../../api/recording";
 import { Box } from "@mui/material";
-import { InterpretationLog } from "../molecules/InterpretationLog";
+import { InterpretationLog } from "../run/InterpretationLog";
 
 // TODO: Tab !show currentUrl after recordingUrl global state
 export const BrowserContent = () => {

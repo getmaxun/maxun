@@ -1,5 +1,5 @@
 import React, { FC, useState } from 'react';
-import { InterpretationButtons } from "./InterpretationButtons";
+import { InterpretationButtons } from "../run/InterpretationButtons";
 import { useSocketStore } from "../../context/socket";
 
 export const SidePanelHeader = () => {

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Grid } from '@mui/material';
 import { BrowserContent } from "../components/organisms/BrowserContent";
-import { InterpretationLog } from "../components/molecules/InterpretationLog";
+import { InterpretationLog } from "../components/run/InterpretationLog";
 import { startRecording, getActiveBrowserId } from "../api/recording";
 import { LeftSidePanel } from "../components/organisms/LeftSidePanel";
 import { RightSidePanel } from "../components/organisms/RightSidePanel";
