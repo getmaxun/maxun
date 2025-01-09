@@ -404,7 +404,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                       </MenuItem>
                       <MenuItem
                         onClick={() => {
-                          changeLanguage("de");
+                          window.open('https://docs.maxun.dev/development/i18n', '_blank');
                           handleMenuClose();
                         }}
                       >
@@ -500,7 +500,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                 </MenuItem>
                 <MenuItem
                   onClick={() => {
-                    changeLanguage("de");
+                    window.open('https://docs.maxun.dev/development/i18n', '_blank');
                     handleMenuClose();
                   }}
                 >
