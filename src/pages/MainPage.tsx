@@ -18,6 +18,7 @@ import { apiUrl } from "../apiConfig";
 
 interface MainPageProps {
   handleEditRecording: (id: string, fileName: string) => void;
+  initialContent: string;
 }
 
 export interface CreateRunResponse {
