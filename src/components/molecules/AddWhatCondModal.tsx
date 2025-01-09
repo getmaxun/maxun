@@ -15,17 +15,17 @@ interface AddWhatCondModalProps {
   index: number;
 }
 
-export const AddWhatCondModal = ({isOpen, onClose, pair, index}: AddWhatCondModalProps) => {
+export const AddWhatCondModal = ({ isOpen, onClose, pair, index }: AddWhatCondModalProps) => {
   const [action, setAction] = React.useState<string>('');
   const [objectIndex, setObjectIndex] = React.useState<number>(0);
-  const [args, setArgs] = React.useState<({type: string, value: (string|number|object|unknown)})[]>([]);
+  const [args, setArgs] = React.useState<({ type: string, value: (string | number | object | unknown) })[]>([]);
 
-  const objectRefs = useRef<({getObject: () => object}|unknown)[]>([]);
+  const objectRefs = useRef<({ getObject: () => object } | unknown)[]>([]);
 
-  const {socket} = useSocketStore();
+  const { socket } = useSocketStore();
 
   const handleSubmit = () => {
-    const argsArray: (string|number|object|unknown)[] = [];
+    const argsArray: (string | number | object | unknown)[] = [];
     args.map((arg, index) => {
       switch (arg.type) {
         case 'string':
@@ -44,7 +44,7 @@ export const AddWhatCondModal = ({isOpen, onClose, pair, index}: AddWhatCondModa
       action,
       args: argsArray,
     })
-    socket?.emit('updatePair', {index: index-1, pair: pair});
+    socket?.emit('updatePair', { index: index - 1, pair: pair });
   }
 
   return (
@@ -53,8 +53,8 @@ export const AddWhatCondModal = ({isOpen, onClose, pair, index}: AddWhatCondModa
       onClose();
     }} modalStyle={modalStyle}>
       <div>
-        <Typography sx={{margin: '20px 0px'}}>Add what condition:</Typography>
-        <div style={{margin:'8px'}}>
+        <Typography sx={{ margin: '20px 0px' }}>Add what condition:</Typography>
+        <div style={{ margin: '8px' }}>
           <Typography>Action:</Typography>
           <TextField
             size='small'
@@ -64,56 +64,57 @@ export const AddWhatCondModal = ({isOpen, onClose, pair, index}: AddWhatCondModa
             label='action'
           />
           <div>
-          <Typography>Add new argument of type:</Typography>
-            <Button onClick={() => setArgs([...args,{type: 'string', value: null}]) }>string</Button>
-            <Button onClick={() => setArgs([...args,{type: 'number', value: null}]) }>number</Button>
+            <Typography>Add new argument of type:</Typography>
+            <Button onClick={() => setArgs([...args, { type: 'string', value: null }])}>string</Button>
+            <Button onClick={() => setArgs([...args, { type: 'number', value: null }])}>number</Button>
             <Button onClick={() => {
-              setArgs([...args,{type: 'object', value: objectIndex}])
-              setObjectIndex(objectIndex+1);
-            } }>object</Button>
+              setArgs([...args, { type: 'object', value: objectIndex }])
+              setObjectIndex(objectIndex + 1);
+            }}>object</Button>
           </div>
           <Typography>args:</Typography>
           {args.map((arg, index) => {
             // @ts-ignore
             return (
-              <div style={{border:'solid 1px gray', padding: '10px', display:'flex', flexDirection:'row', alignItems:'center' }}
-                   key={`wrapper-for-${arg.type}-${index}`}>
+              <div style={{ border: 'solid 1px gray', padding: '10px', display: 'flex', flexDirection: 'row', alignItems: 'center' }}
+                key={`wrapper-for-${arg.type}-${index}`}>
                 <ClearButton handleClick={() => {
-                  args.splice(index,1);
+                  args.splice(index, 1);
                   setArgs([...args]);
-                }}/>
-            <Typography sx={{margin: '5px'}} key={`number-argument-${arg.type}-${index}`}>{index}: </Typography>
-              {arg.type === 'string' ?
-                <TextField
-                  size='small'
-                  type="string"
-                  onChange={(e) => setArgs([
-                    ...args.slice(0, index),
-                    {type: arg.type, value: e.target.value},
-                    ...args.slice(index + 1)
-                  ])}
-                  value={args[index].value || ''}
-                  label="string"
-                  key={`arg-${arg.type}-${index}`}
-                /> : arg.type === 'number' ?
+                }} />
+                <Typography sx={{ margin: '5px' }} key={`number-argument-${arg.type}-${index}`}>{index}: </Typography>
+                {arg.type === 'string' ?
                   <TextField
-                    key={`arg-${arg.type}-${index}`}
                     size='small'
-                    type="number"
+                    type="string"
                     onChange={(e) => setArgs([
                       ...args.slice(0, index),
-                      {type: arg.type, value: Number(e.target.value)},
+                      { type: arg.type, value: e.target.value },
                       ...args.slice(index + 1)
                     ])}
                     value={args[index].value || ''}
-                    label="number"
-                  /> :
-                  <KeyValueForm ref={el =>
-                    //@ts-ignore
-                    objectRefs.current[arg.value] = el} key={`arg-${arg.type}-${index}`}/>
-              }
-            </div>
-            )})}
+                    label="string"
+                    key={`arg-${arg.type}-${index}`}
+                  /> : arg.type === 'number' ?
+                    <TextField
+                      key={`arg-${arg.type}-${index}`}
+                      size='small'
+                      type="number"
+                      onChange={(e) => setArgs([
+                        ...args.slice(0, index),
+                        { type: arg.type, value: Number(e.target.value) },
+                        ...args.slice(index + 1)
+                      ])}
+                      value={args[index].value || ''}
+                      label="number"
+                    /> :
+                    <KeyValueForm ref={el =>
+                      //@ts-ignore
+                      objectRefs.current[arg.value] = el} key={`arg-${arg.type}-${index}`} />
+                }
+              </div>
+            )
+          })}
           <Button
             onClick={handleSubmit}
             variant="outlined"
@@ -127,7 +128,7 @@ export const AddWhatCondModal = ({isOpen, onClose, pair, index}: AddWhatCondModa
             {"Add Condition"}
           </Button>
         </div>
-        </div>
+      </div>
     </GenericModal>
   )
 }
