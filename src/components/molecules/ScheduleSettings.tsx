@@ -123,12 +123,12 @@ export const ScheduleSettingsModal = ({ isOpen, handleStart, handleClose, initia
     if (!day) return '';
     const lastDigit = day.slice(-1);
     const lastTwoDigits = day.slice(-2);
-    
+
     // Special cases for 11, 12, 13
     if (['11', '12', '13'].includes(lastTwoDigits)) {
       return t('schedule_settings.labels.on_day.th');
     }
-    
+
     // Other cases
     switch (lastDigit) {
       case '1': return t('schedule_settings.labels.on_day.st');
@@ -273,12 +273,12 @@ export const ScheduleSettingsModal = ({ isOpen, handleStart, handleClose, initia
                 <Button onClick={() => handleStart(settings)} variant="contained" color="primary">
                   {t('schedule_settings.buttons.save_schedule')}
                 </Button>
-                <Button 
-                  onClick={handleClose} 
-                  color="primary" 
-                  variant="outlined" 
+                <Button
+                  onClick={handleClose}
+                  color="primary"
+                  variant="outlined"
                   style={{ marginLeft: '10px' }}
-                  sx={{ 
+                  sx={{
                     color: '#ff00c3 !important',
                     borderColor: '#ff00c3 !important',
                     backgroundColor: 'whitesmoke !important',
