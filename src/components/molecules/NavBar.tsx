@@ -327,6 +327,11 @@ export const NavBar: React.FC<NavBarProps> = ({
                       <Logout sx={{ marginRight: '5px' }} /> {t('navbar.menu_items.logout')}
                     </MenuItem>
                     <MenuItem onClick={() => {
+                      window.open('https://docs.maxun.dev', '_blank');
+                    }}>
+                      <DiscordIcon sx={{ marginRight: '5px' }} /> Docs
+                    </MenuItem>
+                    <MenuItem onClick={() => {
                       window.open('https://discord.gg/5GbPjBUkws', '_blank');
                     }}>
                       <DiscordIcon sx={{ marginRight: '5px' }} /> Discord
