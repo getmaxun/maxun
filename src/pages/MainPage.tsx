@@ -11,7 +11,7 @@ import { createRunForStoredRecording, interpretStoredRecording, notifyAboutAbort
 import { io, Socket } from "socket.io-client";
 import { stopRecording } from "../api/recording";
 import { RunSettings } from "../components/run/RunSettings";
-import { ScheduleSettings } from "../components/molecules/ScheduleSettings";
+import { ScheduleSettings } from "../components/robot/ScheduleSettings";
 import { IntegrationSettings } from "../components/integration/IntegrationSettings";
 import { RobotSettings } from "../components/robot/RobotSettings";
 import { apiUrl } from "../apiConfig";
