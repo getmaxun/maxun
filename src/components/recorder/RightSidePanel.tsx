@@ -21,7 +21,7 @@ import RadioGroup from '@mui/material/RadioGroup';
 import { emptyWorkflow } from "../../shared/constants";
 import { getActiveWorkflow } from "../../api/workflow";
 import DeleteIcon from '@mui/icons-material/Delete';
-import ActionDescriptionBox from '../molecules/ActionDescriptionBox';
+import ActionDescriptionBox from '../action/ActionDescriptionBox';
 import { useThemeMode } from '../../context/theme-provider';
 import { useTranslation } from 'react-i18next';
 
