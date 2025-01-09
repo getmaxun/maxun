@@ -546,6 +546,9 @@ export default class Interpreter extends EventEmitter {
     // track unique items per page to avoid re-scraping
     let scrapedItems: Set<string> = new Set<string>();
 
+    let availableSelectors = config.pagination.selector.split(',');
+    console.log("Initial selectors:", availableSelectors);
+
     while (true) {
       switch (config.pagination.type) {
         case 'scrollDown':
@@ -575,6 +578,7 @@ export default class Interpreter extends EventEmitter {
           previousHeight = currentTopHeight;
           break;
         case 'clickNext':
+          console.log("PAGE URL:", page.url());
           const pageResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
 
           // console.log("Page results:", pageResults);
@@ -593,16 +597,46 @@ export default class Interpreter extends EventEmitter {
             return allResults.slice(0, config.limit);
           }
 
-          const nextButton = await page.$(config.pagination.selector);
+          let checkButton = null;
+          let workingSelector = null;
+
+          for (let i = 0; i < availableSelectors.length; i++) {
+            const selector = availableSelectors[i];
+            try {
+              // Wait for selector with a short timeout
+              checkButton = await page.waitForSelector(selector, { state: 'attached', timeout: 10000 });
+              if (checkButton) {
+                workingSelector = selector;
+                break;
+              }
+            } catch (error) {
+              console.log(`Selector failed: ${selector}`);
+              continue;
+            }
+          }
+
+          const nextButton = await page.$(workingSelector);
           if (!nextButton) {
             return allResults; // No more pages to scrape
           }
-          await Promise.all([
-            nextButton.dispatchEvent('click'),
-            page.waitForNavigation({ waitUntil: 'networkidle' })
-          ]);
 
-          await page.waitForTimeout(1000);
+          const selectorIndex = availableSelectors.indexOf(workingSelector!);
+          availableSelectors = availableSelectors.slice(selectorIndex);
+          console.log("Updated selectors:", availableSelectors);
+
+          try {
+            await Promise.all([
+              nextButton.click(),
+              page.waitForNavigation({ waitUntil: 'networkidle' })
+            ]);
+
+            await page.waitForTimeout(1000);
+          } catch (navigationError) {
+            console.log(`Navigation failed with selector ${workingSelector}:`, navigationError);
+            availableSelectors.shift();
+            console.log("Updated selectors:", availableSelectors);
+            continue
+          }
           break;
         case 'clickLoadMore':
           while (true) {
