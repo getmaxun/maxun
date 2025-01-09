@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Grid, Button, Box, Typography } from '@mui/material';
-import { SaveRecording } from "./SaveRecording";
+import { SaveRecording } from "../recorder/SaveRecording";
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { stopRecording } from "../../api/recording";
 import { useNavigate } from 'react-router-dom';

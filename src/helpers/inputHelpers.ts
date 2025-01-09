@@ -4,7 +4,7 @@ import {
   VIEWPORT_W,
   VIEWPORT_H,
 } from "../constants/const";
-import { Coordinates } from '../components/atoms/canvas';
+import { Coordinates } from '../components/recorder/canvas';
 
 export const throttle = (callback: any, limit: number) => {
   let wait = false;

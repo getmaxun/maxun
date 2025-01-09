@@ -8,7 +8,7 @@ import { IconButton, Menu, MenuItem, Typography, Chip, Button, Modal, Tabs, Tab,
 import { AccountCircle, Logout, Clear, YouTube, X, Update, Close, Language, Brightness7, Brightness4, Description } from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/auth';
-import { SaveRecording } from '../molecules/SaveRecording';
+import { SaveRecording } from '../recorder/SaveRecording';
 import DiscordIcon from '../icons/DiscordIcon';
 import { apiUrl } from '../../apiConfig';
 import MaxunLogo from "../../assets/maxunlogo.png";
