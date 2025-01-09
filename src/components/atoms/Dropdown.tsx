@@ -47,20 +47,20 @@ const Dropdown = ({ coordinates, selector, options, onClose }: DropdownProps) =>
         lineHeight: '18px',
         padding: '0 3px',
         cursor: option.disabled ? 'default' : 'default',
-        backgroundColor: hoveredIndex === index ? '#0078D7' : 
-                        option.selected ? '#0078D7' : 
-                        option.disabled ? '#f8f8f8' : 'white',
-        color: (hoveredIndex === index || option.selected) ? 'white' : 
-               option.disabled ? '#a0a0a0' : 'black',
+        backgroundColor: hoveredIndex === index ? '#0078D7' :
+            option.selected ? '#0078D7' :
+                option.disabled ? '#f8f8f8' : 'white',
+        color: (hoveredIndex === index || option.selected) ? 'white' :
+            option.disabled ? '#a0a0a0' : 'black',
         userSelect: 'none',
     });
 
     return (
-        <div 
-            className="fixed inset-0" 
+        <div
+            className="fixed inset-0"
             onClick={onClose}
         >
-            <div 
+            <div
                 style={containerStyle}
                 onClick={e => e.stopPropagation()}
             >
