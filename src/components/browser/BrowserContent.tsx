@@ -7,11 +7,7 @@ import { BrowserTabs } from "./BrowserTabs";
 import { useSocketStore } from "../../context/socket";
 import {
   getCurrentTabs,
-  getCurrentUrl,
-  interpretCurrentRecording,
 } from "../../api/recording";
-import { Box } from "@mui/material";
-import { InterpretationLog } from "../run/InterpretationLog";
 
 // TODO: Tab !show currentUrl after recordingUrl global state
 export const BrowserContent = () => {
