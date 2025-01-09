@@ -1,5 +1,5 @@
 import React, { forwardRef, useImperativeHandle } from 'react';
-import { InputLabel, MenuItem, TextField, Select, FormControl } from "@mui/material";
+import { MenuItem, TextField } from "@mui/material";
 import { ScreenshotSettings as Settings } from "../../../shared/types";
 import styled from "styled-components";
 import { SelectChangeEvent } from "@mui/material/Select/Select";
