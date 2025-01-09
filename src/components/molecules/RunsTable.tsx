@@ -61,11 +61,11 @@ interface RunsTableProps {
   runningRecordingName: string;
 }
 
-export const RunsTable: React.FC<RunsTableProps> = ({ 
-  currentInterpretationLog, 
-  abortRunHandler, 
-  runId, 
-  runningRecordingName 
+export const RunsTable: React.FC<RunsTableProps> = ({
+  currentInterpretationLog,
+  abortRunHandler,
+  runId,
+  runningRecordingName
 }) => {
   const { t } = useTranslation();
 
