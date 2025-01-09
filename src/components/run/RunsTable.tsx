@@ -16,7 +16,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { getStoredRuns } from "../../api/storage";
 import { RunSettings } from "./RunSettings";
-import { CollapsibleRow } from "../molecules/ColapsibleRow";
+import { CollapsibleRow } from "./ColapsibleRow";
 
 // Export columns before the component
 export const columns: readonly Column[] = [
