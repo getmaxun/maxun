@@ -5,7 +5,7 @@ import styled from "styled-components";
 import { stopRecording } from "../../api/recording";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { IconButton, Menu, MenuItem, Typography, Chip, Button, Modal, Tabs, Tab, Box, Snackbar, Tooltip } from "@mui/material";
-import { AccountCircle, Logout, Clear, YouTube, X, Update, Close, Language, Brightness7, Brightness4 } from "@mui/icons-material";
+import { AccountCircle, Logout, Clear, YouTube, X, Update, Close, Language, Brightness7, Brightness4, Description } from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/auth';
 import { SaveRecording } from '../molecules/SaveRecording';
@@ -329,7 +329,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                     <MenuItem onClick={() => {
                       window.open('https://docs.maxun.dev', '_blank');
                     }}>
-                      <DiscordIcon sx={{ marginRight: '5px' }} /> Docs
+                      <Description sx={{ marginRight: '5px' }} /> Docs
                     </MenuItem>
                     <MenuItem onClick={() => {
                       window.open('https://discord.gg/5GbPjBUkws', '_blank');
