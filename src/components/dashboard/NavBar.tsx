@@ -515,7 +515,6 @@ export const NavBar: React.FC<NavBarProps> = ({
   );
 };
 
-// Styled Components
 const NavBarWrapper = styled.div<{ mode: 'light' | 'dark' }>`
   grid-area: navbar;
   background-color: ${({ mode }) => (mode === 'dark' ? '#1e2124' : '#ffffff')};
