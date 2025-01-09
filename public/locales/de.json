@@ -158,11 +158,13 @@
             "confirm": "Bestätigen",
             "discard": "Verwerfen",
             "confirm_capture": "Erfassung bestätigen",
-            "confirm_pagination": "Paginierung bestätigen",
-            "confirm_limit": "Limit bestätigen",
+            "confirm_pagination": "Bestätigen",
+            "confirm_limit": "Bestätigen",
             "finish_capture": "Erfassung abschließen",
+            "back": "Zurück",
             "finish": "Fertig",
-            "cancel": "Abbrechen"
+            "cancel": "Abbrechen",
+            "delete": "Löschen"
         },
         "screenshot": {
             "capture_fullpage": "Vollständige Seite erfassen",

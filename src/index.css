@@ -11,6 +11,7 @@ body {
   padding: 0;
   scrollbar-gutter: stable;
   overflow-y: auto;
+  
 }
 
 html {
@@ -43,6 +44,7 @@ code {
   align-items: center;
   overflow: hidden;
   position: relative;
+  
 }
 
 #browser-content {
@@ -52,6 +54,11 @@ code {
   flex-direction: column;
   transform: scale(1); /* Ensure no scaling */
   transform-origin: top left; /* Keep the position fixed */
+}
+
+
+#browser {
+ 
 }
 
 #browser-window {
