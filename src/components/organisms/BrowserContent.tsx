@@ -152,9 +152,9 @@ export const BrowserContent = () => {
         // todo: use width from browser dimension once fixed
         browserWidth={900}
         handleUrlChanged={handleUrlChanged}
-       
+
       />
-      <BrowserWindow  />
+      <BrowserWindow />
     </div>
   );
 };
