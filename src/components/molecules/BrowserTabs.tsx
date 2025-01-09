@@ -49,9 +49,9 @@ export const BrowserTabs = (
                 id={`tab-${index}`}
                 sx={{
                   background: 'white',
-                  borderRadius: '5px 5px 0px 0px',                  
+                  borderRadius: '5px 5px 0px 0px',
                   '&.Mui-selected': {
-                    backgroundColor:` ${isDarkMode?"#2a2a2a":"#f5f5f5"}`, // Synced selected tab color
+                    backgroundColor: ` ${isDarkMode ? "#2a2a2a" : "#f5f5f5"}`, // Synced selected tab color
                     color: '#ff00c3', // Slightly lighter text when selected
                   },
                 }}
