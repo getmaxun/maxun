@@ -76,7 +76,7 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
 
     useEffect(() => {
         if (socket) {
-            socket.on('showDatePicker', (info: {coordinates: Coordinates, selector: string}) => {
+            socket.on('showDatePicker', (info: { coordinates: Coordinates, selector: string }) => {
                 setDatePickerInfo(info);
             });
 
@@ -93,11 +93,11 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
                 setDropdownInfo(info);
             });
 
-            socket.on('showTimePicker', (info: {coordinates: Coordinates, selector: string}) => {
+            socket.on('showTimePicker', (info: { coordinates: Coordinates, selector: string }) => {
                 setTimePickerInfo(info);
             });
 
-            socket.on('showDateTimePicker', (info: {coordinates: Coordinates, selector: string}) => {
+            socket.on('showDateTimePicker', (info: { coordinates: Coordinates, selector: string }) => {
                 setDateTimeLocalInfo(info);
             });
 
