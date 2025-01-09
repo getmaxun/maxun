@@ -625,17 +625,30 @@ export default class Interpreter extends EventEmitter {
           console.log("Updated selectors:", availableSelectors);
 
           try {
+            // First try with regular click
             await Promise.all([
               nextButton.click(),
               page.waitForNavigation({ waitUntil: 'networkidle' })
             ]);
-
+            
             await page.waitForTimeout(1000);
-          } catch (navigationError) {
-            console.log(`Navigation failed with selector ${workingSelector}:`, navigationError);
-            availableSelectors.shift();
-            console.log("Updated selectors:", availableSelectors);
-            continue
+          } catch (clickError) {
+            console.log('Regular click failed, trying dispatchEvent:', clickError);
+            
+            try {
+              // Fallback to dispatchEvent
+              await Promise.all([
+                nextButton.dispatchEvent('click'),
+                page.waitForNavigation({ waitUntil: 'networkidle' })
+              ]);
+              
+              await page.waitForTimeout(1000);
+            } catch (navigationError) {
+              console.log(`Navigation failed with selector ${workingSelector}:`, navigationError);
+              availableSelectors.shift();
+              console.log("Updated selectors:", availableSelectors);
+              continue;
+            }
           }
           break;
         case 'clickLoadMore':
