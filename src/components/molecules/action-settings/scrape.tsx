@@ -1,6 +1,6 @@
 import React, { forwardRef, useImperativeHandle } from 'react';
 import { Stack, TextField } from "@mui/material";
-import { WarningText } from '../../atoms/texts';
+import { WarningText } from '../../ui/texts';
 import InfoIcon from "@mui/icons-material/Info";
 
 export const ScrapeSettings = forwardRef((props, ref) => {

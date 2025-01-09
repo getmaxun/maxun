@@ -5,7 +5,7 @@ import { InterpretationLog } from "../components/molecules/InterpretationLog";
 import { startRecording, getActiveBrowserId } from "../api/recording";
 import { LeftSidePanel } from "../components/organisms/LeftSidePanel";
 import { RightSidePanel } from "../components/organisms/RightSidePanel";
-import { Loader } from "../components/atoms/Loader";
+import { Loader } from "../components/ui/Loader";
 import { useSocketStore } from "../context/socket";
 import { useBrowserDimensionsStore } from "../context/browserDimensions";
 import { ActionProvider } from "../context/browserActions"

@@ -6,7 +6,7 @@ import { useGlobalInfoStore } from "../../context/globalInfo";
 import { AuthContext } from '../../context/auth';
 import { useSocketStore } from "../../context/socket";
 import { TextField, Typography } from "@mui/material";
-import { WarningText } from "../atoms/texts";
+import { WarningText } from "../ui/texts";
 import NotificationImportantIcon from "@mui/icons-material/NotificationImportant";
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';

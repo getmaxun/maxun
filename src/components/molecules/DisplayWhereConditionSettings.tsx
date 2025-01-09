@@ -4,7 +4,7 @@ import { Checkbox, FormControlLabel, FormGroup, MenuItem, Stack, TextField } fro
 import { AddButton } from "../ui/buttons/AddButton";
 import { RemoveButton } from "../ui/buttons/RemoveButton";
 import { KeyValueForm } from "./KeyValueForm";
-import { WarningText } from "../atoms/texts";
+import { WarningText } from "../ui/texts";
 
 interface DisplayConditionSettingsProps {
   whereProp: string;
