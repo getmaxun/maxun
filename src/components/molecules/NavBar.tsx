@@ -108,7 +108,7 @@ export const NavBar: React.FC<NavBarProps> = ({
       <IconButton
         onClick={toggleTheme}
         sx={{
-          color: darkMode ? '#ffffff' : '#333333',
+          color: darkMode ? '#ffffff' : '#0000008A',
           '&:hover': {
             color: '#ff00c3'
           }
