@@ -11,7 +11,8 @@ import { AlertSnackbar } from "../components/ui/AlertSnackbar";
 import Login from './Login';
 import Register from './Register';
 import UserRoute from '../routes/userRoute';
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
+import { Runs } from '../components/run/Runs';
 
 export const PageWrapper = () => {
   const [open, setOpen] = useState(false);
@@ -53,8 +54,12 @@ export const PageWrapper = () => {
             {!browserId && <NavBar recordingName={recordingName} isRecording={!!browserId} />}
             <Routes>
               <Route element={<UserRoute />}>
-                <Route path="/" element={<MainPage handleEditRecording={handleEditRecording} />} />
-              </Route>
+    <Route path="/" element={<Navigate to="/recordings" replace />} />
+    <Route path="/recordings" element={<MainPage handleEditRecording={handleEditRecording} initialContent="recordings" />} />
+    <Route path="/runs" element={<MainPage handleEditRecording={handleEditRecording} initialContent="runs" />} />
+    <Route path="/proxy" element={<MainPage handleEditRecording={handleEditRecording} initialContent="proxy" />} />
+    <Route path="/apikey" element={<MainPage handleEditRecording={handleEditRecording} initialContent="apikey" />} />
+  </Route>
               <Route element={<UserRoute />}>
                 <Route path="/recording" element={
                   <BrowserDimensionsProvider>
