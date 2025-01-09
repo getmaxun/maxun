@@ -2,16 +2,11 @@ import React from 'react';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
-
 import { Paper, Button, useTheme } from "@mui/material";
 import { AutoAwesome, FormatListBulleted, VpnKey, Usb, Article, CloudQueue, Code, } from "@mui/icons-material";
-
-
 import { apiUrl } from "../../apiConfig";
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
-
-
 
 interface MainMenuProps {
   value: string;
