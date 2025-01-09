@@ -8,8 +8,8 @@ interface ToggleButtonProps {
 
 export const ToggleButton: FC<ToggleButtonProps> = ({ isChecked = false, onChange }) => (
   <CheckBoxWrapper>
-    <CheckBox id="checkbox" type="checkbox" onClick={onChange} checked={isChecked}/>
-    <CheckBoxLabel htmlFor="checkbox"/>
+    <CheckBox id="checkbox" type="checkbox" onClick={onChange} checked={isChecked} />
+    <CheckBoxLabel htmlFor="checkbox" />
   </CheckBoxWrapper>
 );
 
