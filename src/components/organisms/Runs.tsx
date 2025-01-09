@@ -13,7 +13,7 @@ export const Runs = (
   { currentInterpretationLog, abortRunHandler, runId, runningRecordingName }: RunsProps) => {
 
   return (
-    <Grid container direction="column" sx={{ padding: '30px'}}>
+    <Grid container direction="column" sx={{ padding: '30px' }}>
       <Grid item xs>
         <RunsTable
           currentInterpretationLog={currentInterpretationLog}
