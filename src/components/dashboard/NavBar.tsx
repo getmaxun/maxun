@@ -402,6 +402,14 @@ export const NavBar: React.FC<NavBarProps> = ({
                       >
                         Deutsch
                       </MenuItem>
+                      <MenuItem
+                        onClick={() => {
+                          window.open('https://docs.maxun.dev/development/i18n', '_blank');
+                          handleMenuClose();
+                        }}
+                      >
+                        Add Language
+                      </MenuItem>
                     </Menu>
                   </Menu>
                   {renderThemeToggle()}
@@ -490,6 +498,14 @@ export const NavBar: React.FC<NavBarProps> = ({
                 >
                   Deutsch
                 </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    window.open('https://docs.maxun.dev/development/i18n', '_blank');
+                    handleMenuClose();
+                  }}
+                >
+                  Add Language
+                </MenuItem>
               </Menu>
               {renderThemeToggle()}
             </NavBarRight>
@@ -499,7 +515,6 @@ export const NavBar: React.FC<NavBarProps> = ({
   );
 };
 
-// Styled Components
 const NavBarWrapper = styled.div<{ mode: 'light' | 'dark' }>`
   grid-area: navbar;
   background-color: ${({ mode }) => (mode === 'dark' ? '#1e2124' : '#ffffff')};
@@ -520,4 +535,3 @@ const NavBarRight = styled.div`
   justify-content: flex-end;
   margin-left: auto;
 `;
-
