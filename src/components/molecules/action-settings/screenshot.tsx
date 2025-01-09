@@ -3,7 +3,7 @@ import { InputLabel, MenuItem, TextField, Select, FormControl } from "@mui/mater
 import { ScreenshotSettings as Settings } from "../../../shared/types";
 import styled from "styled-components";
 import { SelectChangeEvent } from "@mui/material/Select/Select";
-import { Dropdown } from "../../atoms/DropdownMui";
+import { Dropdown } from "../../ui/DropdownMui";
 
 export const ScreenshotSettings = forwardRef((props, ref) => {
   const [settings, setSettings] = React.useState<Settings>({});

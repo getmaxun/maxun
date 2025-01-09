@@ -1,4 +1,4 @@
-import { Dropdown as MuiDropdown } from "../atoms/DropdownMui";
+import { Dropdown as MuiDropdown } from "../ui/DropdownMui";
 import {
   Button,
   MenuItem,

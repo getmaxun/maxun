@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { GenericModal } from "../atoms/GenericModal";
 import { MenuItem, TextField, Typography, Switch, FormControlLabel } from "@mui/material";
-import { Dropdown } from "../atoms/DropdownMui";
+import { Dropdown } from "../ui/DropdownMui";
 import Button from "@mui/material/Button";
 import { modalStyle } from "./AddWhereCondModal";
 

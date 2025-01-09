@@ -1,5 +1,5 @@
 import React from "react";
-import { Dropdown as MuiDropdown } from "../atoms/DropdownMui";
+import { Dropdown as MuiDropdown } from "../ui/DropdownMui";
 import { Checkbox, FormControlLabel, FormGroup, MenuItem, Stack, TextField } from "@mui/material";
 import { AddButton } from "../ui/buttons/AddButton";
 import { RemoveButton } from "../ui/buttons/RemoveButton";

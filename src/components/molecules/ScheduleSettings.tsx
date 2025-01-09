@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GenericModal } from "../atoms/GenericModal";
 import { MenuItem, TextField, Typography, Box } from "@mui/material";
-import { Dropdown } from "../atoms/DropdownMui";
+import { Dropdown } from "../ui/DropdownMui";
 import Button from "@mui/material/Button";
 import { validMomentTimezones } from '../../constants/const';
 import { useGlobalInfoStore } from '../../context/globalInfo';
