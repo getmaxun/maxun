@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import { RecordingsTable } from "./RecordingsTable";
 import { Grid } from "@mui/material";
 import { RunSettings, RunSettingsModal } from "../run/RunSettings";
 import { ScheduleSettings, ScheduleSettingsModal } from "./ScheduleSettings";
 import { IntegrationSettings, IntegrationSettingsModal } from "../integration/IntegrationSettings";
 import { RobotSettings, RobotSettingsModal } from "./RobotSettings";
-import { RobotEditModal } from './RobotEdit';
-import { RobotDuplicationModal } from './RobotDuplicate';
+import { RobotEditModal } from "./RobotEdit";
+import { RobotDuplicationModal } from "./RobotDuplicate";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 
 interface RecordingsProps {
   handleEditRecording: (id: string, fileName: string) => void;
@@ -15,181 +16,115 @@ interface RecordingsProps {
   setRecordingInfo: (id: string, name: string) => void;
 }
 
-export const Recordings = ({ handleEditRecording, handleRunRecording, setRecordingInfo, handleScheduleRecording }: RecordingsProps) => {
-  const [runSettingsAreOpen, setRunSettingsAreOpen] = useState(false);
-  const [scheduleSettingsAreOpen, setScheduleSettingsAreOpen] = useState(false);
-  const [integrateSettingsAreOpen, setIntegrateSettingsAreOpen] = useState(false);
-  const [robotSettingsAreOpen, setRobotSettingsAreOpen] = useState(false);
-  const [robotEditAreOpen, setRobotEditAreOpen] = useState(false);
-  const [robotDuplicateAreOpen, setRobotDuplicateAreOpen] = useState(false);
+export const Recordings = ({
+  handleEditRecording,
+  handleRunRecording,
+  setRecordingInfo,
+  handleScheduleRecording,
+}: RecordingsProps) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { selectedRecordingId } = useParams();
   const [params, setParams] = useState<string[]>([]);
-  const [selectedRecordingId, setSelectedRecordingId] = useState<string>('');
-  const handleIntegrateRecording = (id: string, settings: IntegrationSettings) => { };
-  const handleSettingsRecording = (id: string, settings: RobotSettings) => { };
-  const handleEditRobot = (id: string, settings: RobotSettings) => { };
-  const handleDuplicateRobot = (id: string, settings: RobotSettings) => { };
 
-  const handleSettingsAndIntegrate = (id: string, name: string, params: string[]) => {
-    if (params.length === 0) {
-      setIntegrateSettingsAreOpen(true);
-      setRecordingInfo(id, name);
-      setSelectedRecordingId(id);
-    } else {
-      setParams(params);
-      setIntegrateSettingsAreOpen(true);
-      setRecordingInfo(id, name);
-      setSelectedRecordingId(id);
-    }
-  }
-
-  const handleSettingsAndRun = (id: string, name: string, params: string[]) => {
-    if (params.length === 0) {
-      setRunSettingsAreOpen(true);
-      setRecordingInfo(id, name);
-      setSelectedRecordingId(id);
-    } else {
-      setParams(params);
-      setRunSettingsAreOpen(true);
-      setRecordingInfo(id, name);
-      setSelectedRecordingId(id);
-    }
-  }
-
-  const handleSettingsAndSchedule = (id: string, name: string, params: string[]) => {
-    if (params.length === 0) {
-      setScheduleSettingsAreOpen(true);
-      setRecordingInfo(id, name);
-      setSelectedRecordingId(id);
-    } else {
-      setParams(params);
-      setScheduleSettingsAreOpen(true);
-      setRecordingInfo(id, name);
-      setSelectedRecordingId(id);
-    }
-  }
-
-  const handleRobotSettings = (id: string, name: string, params: string[]) => {
-    if (params.length === 0) {
-      setRobotSettingsAreOpen(true);
-      setRecordingInfo(id, name);
-      setSelectedRecordingId(id);
-    } else {
-      setParams(params);
-      setRobotSettingsAreOpen(true);
-      setRecordingInfo(id, name);
-      setSelectedRecordingId(id);
-    }
-  }
-
-  const handleEditRobotOption = (id: string, name: string, params: string[]) => {
-    if (params.length === 0) {
-      setRobotEditAreOpen(true);
-      setRecordingInfo(id, name);
-      setSelectedRecordingId(id);
-    } else {
-      setParams(params);
-      setRobotEditAreOpen(true);
-      setRecordingInfo(id, name);
-      setSelectedRecordingId(id);
-    }
-  }
-
-  const handleDuplicateRobotOption = (id: string, name: string, params: string[]) => {
-    if (params.length === 0) {
-      setRobotDuplicateAreOpen(true);
-      setRecordingInfo(id, name);
-      setSelectedRecordingId(id);
-    } else {
-      setParams(params);
-      setRobotDuplicateAreOpen(true);
-      setRecordingInfo(id, name);
-      setSelectedRecordingId(id);
-    }
-  }
+  const handleNavigate = (path: string, id: string, name: string, params: string[]) => {
+    setParams(params);
+    setRecordingInfo(id, name);
+    navigate(path);
+  };
 
   const handleClose = () => {
     setParams([]);
-    setRunSettingsAreOpen(false);
-    setRecordingInfo('', '');
-    setSelectedRecordingId('');
-  }
+    setRecordingInfo("", "");
+    navigate("/robots"); // Navigate back to the main robots page
+  };
 
-  const handleIntegrateClose = () => {
-    setParams([]);
-    setIntegrateSettingsAreOpen(false);
-    setRecordingInfo('', '');
-    setSelectedRecordingId('');
-  }
+  // Determine which modal to open based on the current route
+  const getCurrentModal = () => {
+    const currentPath = location.pathname;
 
-  const handleScheduleClose = () => {
-    setParams([]);
-    setScheduleSettingsAreOpen(false);
-    setRecordingInfo('', '');
-    setSelectedRecordingId('');
-  }
-
-  const handleRobotSettingsClose = () => {
-    setParams([]);
-    setRobotSettingsAreOpen(false);
-    setRecordingInfo('', '');
-    setSelectedRecordingId('');
-  }
-
-  const handleRobotEditClose = () => {
-    setParams([]);
-    setRobotEditAreOpen(false);
-    setRecordingInfo('', '');
-    setSelectedRecordingId('');
-  }
-
-  const handleRobotDuplicateClose = () => {
-    setParams([]);
-    setRobotDuplicateAreOpen(false);
-    setRecordingInfo('', '');
-    setSelectedRecordingId('');
-  }
+    if (currentPath.endsWith("/run")) {
+      return (
+        <RunSettingsModal
+          isOpen={true}
+          handleClose={handleClose}
+          handleStart={handleRunRecording}
+          isTask={params.length !== 0}
+          params={params}
+        />
+      );
+    } else if (currentPath.endsWith("/schedule")) {
+      return (
+        <ScheduleSettingsModal
+          isOpen={true}
+          handleClose={handleClose}
+          handleStart={handleScheduleRecording}
+        />
+      );
+    } else if (currentPath.endsWith("/integrate")) {
+      return (
+        <IntegrationSettingsModal
+          isOpen={true}
+          handleClose={handleClose}
+          handleStart={() => {}}
+        />
+      );
+    } else if (currentPath.endsWith("/settings")) {
+      return (
+        <RobotSettingsModal
+          isOpen={true}
+          handleClose={handleClose}
+          handleStart={() => {}}
+        />
+      );
+    } else if (currentPath.endsWith("/edit")) {
+      return (
+        <RobotEditModal
+          isOpen={true}
+          handleClose={handleClose}
+          handleStart={() => {}}
+        />
+      );
+    } else if (currentPath.endsWith("/duplicate")) {
+      return (
+        <RobotDuplicationModal
+          isOpen={true}
+          handleClose={handleClose}
+          handleStart={() => {}}
+        />
+      );
+    }
+    return null;
+  };
 
   return (
     <React.Fragment>
-      <RunSettingsModal isOpen={runSettingsAreOpen}
-        handleClose={handleClose}
-        handleStart={(settings) => handleRunRecording(settings)}
-        isTask={params.length !== 0}
-        params={params}
-      />
-      <ScheduleSettingsModal isOpen={scheduleSettingsAreOpen}
-        handleClose={handleScheduleClose}
-        handleStart={(settings) => handleScheduleRecording(settings)}
-      />
-      <IntegrationSettingsModal isOpen={integrateSettingsAreOpen}
-        handleClose={handleIntegrateClose}
-        handleStart={(settings) => handleIntegrateRecording(selectedRecordingId, settings)}
-      />
-      <RobotSettingsModal isOpen={robotSettingsAreOpen}
-        handleClose={handleRobotSettingsClose}
-        handleStart={(settings) => handleSettingsRecording(selectedRecordingId, settings)}
-      />
-      <RobotEditModal isOpen={robotEditAreOpen}
-        handleClose={handleRobotEditClose}
-        handleStart={(settings) => handleEditRobot(selectedRecordingId, settings)}
-      />
-      <RobotDuplicationModal isOpen={robotDuplicateAreOpen}
-        handleClose={handleRobotDuplicateClose}
-        handleStart={(settings) => handleDuplicateRobot(selectedRecordingId, settings)}
-      />
-      <Grid container direction="column" sx={{ padding: '30px' }}>
+      {getCurrentModal()}
+      <Grid container direction="column" sx={{ padding: "30px" }}>
         <Grid item xs>
           <RecordingsTable
             handleEditRecording={handleEditRecording}
-            handleRunRecording={handleSettingsAndRun}
-            handleScheduleRecording={handleSettingsAndSchedule}
-            handleIntegrateRecording={handleSettingsAndIntegrate}
-            handleSettingsRecording={handleRobotSettings}
-            handleEditRobot={handleEditRobotOption}
-            handleDuplicateRobot={handleDuplicateRobotOption}
+            handleRunRecording={(id, name, params) =>
+              handleNavigate(`/robots/${id}/run`, id, name, params)
+            }
+            handleScheduleRecording={(id, name, params) =>
+              handleNavigate(`/robots/${id}/schedule`, id, name, params)
+            }
+            handleIntegrateRecording={(id, name, params) =>
+              handleNavigate(`/robots/${id}/integrate`, id, name, params)
+            }
+            handleSettingsRecording={(id, name, params) =>
+              handleNavigate(`/robots/${id}/settings`, id, name, params)
+            }
+            handleEditRobot={(id, name, params) =>
+              handleNavigate(`/robots/${id}/edit`, id, name, params)
+            }
+            handleDuplicateRobot={(id, name, params) =>
+              handleNavigate(`/robots/${id}/duplicate`, id, name, params)
+            }
           />
         </Grid>
       </Grid>
     </React.Fragment>
   );
-}
+};

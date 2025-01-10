@@ -12,7 +12,7 @@ import TableRow from '@mui/material/TableRow';
 import { Accordion, AccordionSummary, AccordionDetails, Typography, Box, TextField } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SearchIcon from '@mui/icons-material/Search';
-
+import { useNavigate } from 'react-router-dom';
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { getStoredRuns } from "../../api/storage";
 import { RunSettings } from "./RunSettings";
@@ -68,6 +68,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
   runningRecordingName
 }) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   // Update column labels using translation if needed
   const translatedColumns = columns.map(column => ({
@@ -81,6 +82,14 @@ export const RunsTable: React.FC<RunsTableProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
 
   const { notify, rerenderRuns, setRerenderRuns } = useGlobalInfoStore();
+
+  const handleAccordionChange = (robotMetaId: string, isExpanded: boolean) => {
+    if (isExpanded) {
+      navigate(`/runs/${robotMetaId}`);
+    } else {
+      navigate(`/runs`);
+    }
+  };
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
@@ -155,7 +164,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
       </Box>
       <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden' }}>
         {Object.entries(groupedRows).map(([id, data]) => (
-          <Accordion key={id}>
+          <Accordion key={id} onChange={(event, isExpanded) => handleAccordionChange(id, isExpanded)}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Typography variant="h6">{data[data.length - 1].name}</Typography>
             </AccordionSummary>

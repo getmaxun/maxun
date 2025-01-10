@@ -18,6 +18,7 @@ import { apiUrl } from "../apiConfig";
 
 interface MainPageProps {
   handleEditRecording: (id: string, fileName: string) => void;
+  initialContent: string;
 }
 
 export interface CreateRunResponse {
@@ -30,9 +31,9 @@ export interface ScheduleRunResponse {
   runId: string;
 }
 
-export const MainPage = ({ handleEditRecording }: MainPageProps) => {
+export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps) => {
   const { t } = useTranslation();
-  const [content, setContent] = React.useState('recordings');
+  const [content, setContent] = React.useState(initialContent);
   const [sockets, setSockets] = React.useState<Socket[]>([]);
   const [runningRecordingId, setRunningRecordingId] = React.useState('');
   const [runningRecordingName, setRunningRecordingName] = React.useState('');
@@ -123,7 +124,7 @@ export const MainPage = ({ handleEditRecording }: MainPageProps) => {
 
   const DisplayContent = () => {
     switch (content) {
-      case 'recordings':
+      case 'robots':
         return <Recordings
           handleEditRecording={handleEditRecording}
           handleRunRecording={handleRunRecording}

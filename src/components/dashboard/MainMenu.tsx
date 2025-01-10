@@ -2,6 +2,7 @@ import React from 'react';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
+import { useNavigate } from 'react-router-dom';
 import { Paper, Button, useTheme } from "@mui/material";
 import { AutoAwesome, FormatListBulleted, VpnKey, Usb, Article, CloudQueue, Code, } from "@mui/icons-material";
 import { apiUrl } from "../../apiConfig";
@@ -13,11 +14,13 @@ interface MainMenuProps {
   handleChangeContent: (newValue: string) => void;
 }
 
-export const MainMenu = ({ value = 'recordings', handleChangeContent }: MainMenuProps) => {
+export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProps) => {
   const theme = useTheme();
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const handleChange = (event: React.SyntheticEvent, newValue: string) => {
+    navigate(`/${newValue}`);
     handleChangeContent(newValue);
   };
 
@@ -65,7 +68,7 @@ export const MainMenu = ({ value = 'recordings', handleChangeContent }: MainMenu
               textAlign: 'left',
               fontSize: 'medium',
             }}
-            value="recordings"
+            value="robots"
             label={t('mainmenu.recordings')}
             icon={<AutoAwesome />}
             iconPosition="start"
