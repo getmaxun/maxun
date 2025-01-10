@@ -85,7 +85,9 @@ export const RunsTable: React.FC<RunsTableProps> = ({
 
   const handleAccordionChange = (robotMetaId: string, isExpanded: boolean) => {
     if (isExpanded) {
-      navigate(`/runs/${robotMetaId}`); // Update the route when an accordion is expanded
+      navigate(`/runs/${robotMetaId}`);
+    } else {
+      navigate(`/runs`);
     }
   };
 
