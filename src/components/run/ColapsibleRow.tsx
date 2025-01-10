@@ -11,7 +11,7 @@ import { GenericModal } from "../ui/GenericModal";
 import { modalStyle } from "../recorder/AddWhereCondModal";
 import { getUserById } from "../../api/auth";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 interface RunTypeChipProps {
   runByUserId?: string;
@@ -50,8 +50,6 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, currentLog, abortRun
         ? 'API'
         : 'Unknown';
   
-  const { runId } = useParams();
-
   const logEndRef = useRef<HTMLDivElement | null>(null);
 
   const scrollToLogBottom = () => {
