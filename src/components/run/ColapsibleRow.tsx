@@ -70,12 +70,12 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, currentLog, abortRun
     } else {
       navigate(`/runs/${row.robotMetaId}`);
     }
-    scrollToLogBottom();
+    //scrollToLogBottom();
   };
   
-  useEffect(() => {
-    scrollToLogBottom();
-  }, [currentLog])
+  // useEffect(() => {
+  //   scrollToLogBottom();
+  // }, [currentLog])
 
   useEffect(() => {
     const fetchUserEmail = async () => {
