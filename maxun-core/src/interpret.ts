@@ -651,7 +651,25 @@ export default class Interpreter extends EventEmitter {
           break;
         case 'clickLoadMore':
           while (true) {
-            const loadMoreButton = await page.$(config.pagination.selector);
+            let checkButton = null;
+            let workingSelector = null;
+
+            for (let i = 0; i < availableSelectors.length; i++) {
+              const selector = availableSelectors[i];
+              try {
+                // Wait for selector with a short timeout
+                checkButton = await page.waitForSelector(selector, { state: 'attached', timeout: 10000 });
+                if (checkButton) {
+                  workingSelector = selector;
+                  break;
+                }
+              } catch (error) {
+                console.log(`Selector failed: ${selector}`);
+                continue;
+              }
+            }
+
+            const loadMoreButton = await page.$(workingSelector);
             if (!loadMoreButton) {
               // No more "Load More" button, so scrape the remaining items
               const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
@@ -659,8 +677,14 @@ export default class Interpreter extends EventEmitter {
               return allResults;
             }
             // Click the 'Load More' button to load additional items
-            await loadMoreButton.dispatchEvent('click');
+            try {
+              await loadMoreButton.click();
+            } catch {
+              console.log('Regular click failed, trying dispatchEvent');
+              await loadMoreButton.dispatchEvent('click')
+            }
             await page.waitForTimeout(2000); // Wait for new items to load
+          
             // After clicking 'Load More', scroll down to load more items
             await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
             await page.waitForTimeout(2000);
