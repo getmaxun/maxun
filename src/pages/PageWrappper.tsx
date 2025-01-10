@@ -55,7 +55,7 @@ export const PageWrapper = () => {
             <Routes>
               <Route element={<UserRoute />}>
                 <Route path="/" element={<Navigate to="/robots" replace />} />
-                <Route path="/robots" element={<MainPage handleEditRecording={handleEditRecording} initialContent="robots" />} />
+                <Route path="/robots/*" element={<MainPage handleEditRecording={handleEditRecording} initialContent="robots" />} />
                 <Route path="/runs" element={<MainPage handleEditRecording={handleEditRecording} initialContent="runs" />} />
                 <Route path="/proxy" element={<MainPage handleEditRecording={handleEditRecording} initialContent="proxy" />} />
                 <Route path="/apikey" element={<MainPage handleEditRecording={handleEditRecording} initialContent="apikey" />} />
