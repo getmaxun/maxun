@@ -722,7 +722,6 @@ export class WorkflowGenerator {
         .filter(selector => selector !== null && selector !== undefined)
         .join(',');
   
-      console.log("CHAINED PAGINATION SELECTOR:", selectorChain);
       return selectorChain;
     }
 

@@ -547,7 +547,6 @@ export default class Interpreter extends EventEmitter {
     let scrapedItems: Set<string> = new Set<string>();
 
     let availableSelectors = config.pagination.selector.split(',');
-    console.log("Initial selectors:", availableSelectors);
 
     while (true) {
       switch (config.pagination.type) {
@@ -615,6 +614,7 @@ export default class Interpreter extends EventEmitter {
             }
           }
 
+          // const nextButton = await page.$(config.pagination.selector);
           const nextButton = await page.$(workingSelector);
           if (!nextButton) {
             return allResults; // No more pages to scrape
@@ -622,7 +622,6 @@ export default class Interpreter extends EventEmitter {
 
           const selectorIndex = availableSelectors.indexOf(workingSelector!);
           availableSelectors = availableSelectors.slice(selectorIndex);
-          console.log("Updated selectors:", availableSelectors);
 
           try {
             // First try with regular click
@@ -633,7 +632,7 @@ export default class Interpreter extends EventEmitter {
             
             await page.waitForTimeout(1000);
           } catch (clickError) {
-            console.log('Regular click failed, trying dispatchEvent:', clickError);
+            console.log('Regular click failed, trying dispatchEvent');
             
             try {
               // Fallback to dispatchEvent
@@ -644,9 +643,8 @@ export default class Interpreter extends EventEmitter {
               
               await page.waitForTimeout(1000);
             } catch (navigationError) {
-              console.log(`Navigation failed with selector ${workingSelector}:`, navigationError);
+              console.log(`Navigation failed with selector ${workingSelector}:`);
               availableSelectors.shift();
-              console.log("Updated selectors:", availableSelectors);
               continue;
             }
           }
