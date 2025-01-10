@@ -66,12 +66,13 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, currentLog, abortRun
     const newOpen = !open;
     setOpen(newOpen);
     if (newOpen) {
-      // Navigate to default tab (data) when expanding
       navigate(`/runs/${row.robotMetaId}/run/${row.runId}`);
+    } else {
+      navigate(`/runs/${row.robotMetaId}`);
     }
     scrollToLogBottom();
   };
-
+  
   useEffect(() => {
     scrollToLogBottom();
   }, [currentLog])
