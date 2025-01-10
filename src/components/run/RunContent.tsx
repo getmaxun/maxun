@@ -25,7 +25,7 @@ interface RunContentProps {
 
 export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRef, abortRunHandler }: RunContentProps) => {
   const { t } = useTranslation();
-  const [tab, setTab] = React.useState<string>('log');
+  const [tab, setTab] = React.useState<string>('output');
   const [tableData, setTableData] = useState<any[]>([]);
   const [columns, setColumns] = useState<string[]>([]);
 
