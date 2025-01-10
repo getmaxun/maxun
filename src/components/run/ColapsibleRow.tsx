@@ -50,7 +50,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, currentLog, abortRun
         ? 'API'
         : 'Unknown';
   
-  const { robotMetaId, runId } = useParams();
+  const { runId } = useParams();
 
   const logEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -69,7 +69,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, currentLog, abortRun
     setOpen(newOpen);
     if (newOpen) {
       // Navigate to default tab (data) when expanding
-      navigate(`/runs/${robotMetaId}/run/${row.runId}`);
+      navigate(`/runs/${row.robotMetaId}/run/${row.runId}`);
     }
     scrollToLogBottom();
   };
