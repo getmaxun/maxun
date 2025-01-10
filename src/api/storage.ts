@@ -1,7 +1,7 @@
 import { default as axios } from "axios";
 import { WorkflowFile } from "maxun-core";
-import { RunSettings } from "../components/molecules/RunSettings";
-import { ScheduleSettings } from "../components/molecules/ScheduleSettings";
+import { RunSettings } from "../components/run/RunSettings";
+import { ScheduleSettings } from "../components/robot/ScheduleSettings";
 import { CreateRunResponse, ScheduleRunResponse } from "../pages/MainPage";
 import { apiUrl } from "../apiConfig";
 

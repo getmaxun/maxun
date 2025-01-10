@@ -4,6 +4,7 @@ import { ThemeProvider, createTheme } from "@mui/material/styles";
 import { GlobalInfoProvider } from "./context/globalInfo";
 import { PageWrapper } from "./pages/PageWrappper";
 import i18n from "./i18n";
+import ThemeModeProvider from './context/theme-provider';
 
 
 const theme = createTheme({
@@ -85,15 +86,23 @@ const theme = createTheme({
 
 function App() {
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeModeProvider>
+      <GlobalInfoProvider>
+        <Routes>
+          <Route path="/*" element={<PageWrapper />} />
+        </Routes>
+      </GlobalInfoProvider>
+    </ThemeModeProvider>
+
+    //  <ThemeProvider theme={theme}>
       
-        <GlobalInfoProvider>
-          <Routes>
-            <Route path="/*" element={<PageWrapper />} />
-          </Routes>
-        </GlobalInfoProvider>
+    //     <GlobalInfoProvider>
+    //       <Routes>
+    //         <Route path="/*" element={<PageWrapper />} />
+    //       </Routes>
+    //     </GlobalInfoProvider>
      
-    </ThemeProvider>
+    // </ThemeProvider> 
   );
 }
 
