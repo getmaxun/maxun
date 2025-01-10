@@ -11,6 +11,7 @@ import { GenericModal } from "../ui/GenericModal";
 import { modalStyle } from "../recorder/AddWhereCondModal";
 import { getUserById } from "../../api/auth";
 import { useTranslation } from "react-i18next";
+import { useNavigate, useParams } from "react-router-dom";
 
 interface RunTypeChipProps {
   runByUserId?: string;
@@ -37,6 +38,7 @@ interface CollapsibleRowProps {
 }
 export const CollapsibleRow = ({ row, handleDelete, isOpen, currentLog, abortRunHandler, runningRecordingName }: CollapsibleRowProps) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(isOpen);
   const [openSettingsModal, setOpenSettingsModal] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -47,6 +49,8 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, currentLog, abortRun
       : row.runByAPI
         ? 'API'
         : 'Unknown';
+  
+  const { robotMetaId, runId } = useParams();
 
   const logEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -59,6 +63,16 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, currentLog, abortRun
   const handleAbort = () => {
     abortRunHandler();
   }
+
+  const handleRowExpand = () => {
+    const newOpen = !open;
+    setOpen(newOpen);
+    if (newOpen) {
+      // Navigate to default tab (data) when expanding
+      navigate(`/runs/${robotMetaId}/run/${row.runId}`);
+    }
+    scrollToLogBottom();
+  };
 
   useEffect(() => {
     scrollToLogBottom();
@@ -83,10 +97,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, currentLog, abortRun
           <IconButton
             aria-label="expand row"
             size="small"
-            onClick={() => {
-              setOpen(!open);
-              scrollToLogBottom();
-            }}
+            onClick={handleRowExpand}
           >
             {open ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
           </IconButton>
