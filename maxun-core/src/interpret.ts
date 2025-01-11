@@ -611,8 +611,11 @@ export default class Interpreter extends EventEmitter {
               }
             } catch (error) {
               console.log(`Selector failed: ${selector}`);
-              continue;
             }
+          }
+
+          if (!workingSelector) {
+            return allResults; 
           }
 
           // const nextButton = await page.$(config.pagination.selector);
@@ -673,8 +676,14 @@ export default class Interpreter extends EventEmitter {
                 }
               } catch (error) {
                 console.log(`Selector failed: ${selector}`);
-                continue;
               }
+            }
+
+            if (!workingSelector) {
+              // No more working selectors available, so scrape the remaining items
+              const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
+              allResults = allResults.concat(finalResults);
+              return allResults;
             }
 
             const loadMoreButton = await page.$(workingSelector);
@@ -687,8 +696,9 @@ export default class Interpreter extends EventEmitter {
 
             const selectorIndex = availableSelectors.indexOf(workingSelector!);
             availableSelectors = availableSelectors.slice(selectorIndex);
-
+            
             // Click the 'Load More' button to load additional items
+            // await loadMoreButton.dispatchEvent('click');
             try {
               await Promise.race([
                 loadMoreButton.click(),
@@ -696,13 +706,12 @@ export default class Interpreter extends EventEmitter {
               ]);
             } catch (error) {
               console.log('Both click attempts failed');
-              continue;
             }
             await page.waitForTimeout(2000); // Wait for new items to load
-          
             // After clicking 'Load More', scroll down to load more items
             await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
             await page.waitForTimeout(2000);
+
             // Check if more items are available
             const currentHeight = await page.evaluate(() => document.body.scrollHeight);
             if (currentHeight === previousHeight) {
@@ -712,8 +721,7 @@ export default class Interpreter extends EventEmitter {
               return allResults;
             }
             previousHeight = currentHeight;
-
-            console.log("Results so far:", allResults.length);
+            
             if (config.limit && allResults.length >= config.limit) {
               // If limit is set and reached, return the limited results
               allResults = allResults.slice(0, config.limit);
