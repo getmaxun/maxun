@@ -698,6 +698,10 @@ export default class Interpreter extends EventEmitter {
               allResults = allResults.concat(finalResults);
               return allResults;
             }
+
+            const selectorIndex = availableSelectors.indexOf(workingSelector!);
+            availableSelectors = availableSelectors.slice(selectorIndex);
+
             // Click the 'Load More' button to load additional items
             try {
               await loadMoreButton.click();
@@ -719,6 +723,8 @@ export default class Interpreter extends EventEmitter {
               return allResults;
             }
             previousHeight = currentHeight;
+            
+            console.log("Results so far:", allResults.length);
             if (config.limit && allResults.length >= config.limit) {
               // If limit is set and reached, return the limited results
               allResults = allResults.slice(0, config.limit);
