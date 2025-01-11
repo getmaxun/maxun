@@ -545,6 +545,7 @@ export default class Interpreter extends EventEmitter {
     let previousHeight = 0;
     // track unique items per page to avoid re-scraping
     let scrapedItems: Set<string> = new Set<string>();
+    let visitedUrls: string[] = [];
 
     let availableSelectors = config.pagination.selector.split(',');
 
@@ -633,6 +634,7 @@ export default class Interpreter extends EventEmitter {
           // ]);
 
           const previousUrl = page.url();
+          visitedUrls.push(previousUrl);
 
           try {
             // Try both click methods simultaneously
@@ -651,10 +653,31 @@ export default class Interpreter extends EventEmitter {
             const currentUrl = page.url();
             if (currentUrl === previousUrl) {
               console.log("Previous URL same as current URL. Navigation failed.");
-              continue;
             }
-            // Otherwise, log and continue
-            console.log('Navigation succeeded despite click error');
+          }
+
+          const currentUrl = page.url();
+          if (visitedUrls.includes(currentUrl)) {
+            console.log(`Detected navigation to a previously visited URL: ${currentUrl}`);
+            
+            // Extract the current page number from the URL
+            const match = currentUrl.match(/\d+/);
+            if (match) {
+              const currentNumber = match[0];
+              // Use visitedUrls.length + 1 as the next page number
+              const nextNumber = visitedUrls.length + 1;
+              
+              // Create new URL by replacing the current number with the next number
+              const nextUrl = currentUrl.replace(currentNumber, nextNumber.toString());
+              
+              console.log(`Navigating to constructed URL: ${nextUrl}`);
+              
+              // Navigate to the next page
+              await Promise.all([
+                page.waitForNavigation({ waitUntil: 'networkidle' }),
+                page.goto(nextUrl)
+              ]);
+            }
           }
         
           // Give the page a moment to stabilize after navigation
