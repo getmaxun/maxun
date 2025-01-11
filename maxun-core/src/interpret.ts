@@ -577,9 +577,9 @@ export default class Interpreter extends EventEmitter {
           previousHeight = currentTopHeight;
           break;
         case 'clickNext':
-          console.log("PAGE URL:", page.url());
+          console.log("Page URL:", page.url());
           const pageResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
-
+          
           // console.log("Page results:", pageResults);
           
           // Filter out already scraped items
@@ -591,6 +591,7 @@ export default class Interpreter extends EventEmitter {
           });
           
           allResults = allResults.concat(newResults);
+          console.log("Results so far:", allResults.length);
           
           if (config.limit && allResults.length >= config.limit) {
             return allResults.slice(0, config.limit);
@@ -623,31 +624,52 @@ export default class Interpreter extends EventEmitter {
           const selectorIndex = availableSelectors.indexOf(workingSelector!);
           availableSelectors = availableSelectors.slice(selectorIndex);
 
+          // await Promise.all([
+          //   nextButton.dispatchEvent('click'),
+          //   page.waitForNavigation({ waitUntil: 'networkidle' })
+          // ]);
+
+          const initialUrl = page.url();
+          let navigationSuccessful = false;
+
           try {
-            // First try with regular click
-            await Promise.all([
-              nextButton.click(),
-              page.waitForNavigation({ waitUntil: 'networkidle' })
-            ]);
-            
-            await page.waitForTimeout(1000);
+            // Start watching for navigation before clicking
+            const navigationPromise = page.waitForNavigation({ 
+              waitUntil: 'networkidle', 
+              timeout: 30000 
+            });
+        
+            // Perform the click
+            await nextButton.click();
+        
+            // Wait for navigation to complete
+            await navigationPromise;
+            navigationSuccessful = true;
           } catch (clickError) {
-            console.log('Regular click failed, trying dispatchEvent');
-            
+            console.log('Initial navigation attempt failed:', clickError.message);
+          }
+        
+          if (!navigationSuccessful) {
             try {
-              // Fallback to dispatchEvent
-              await Promise.all([
-                nextButton.dispatchEvent('click'),
-                page.waitForNavigation({ waitUntil: 'networkidle' })
-              ]);
-              
-              await page.waitForTimeout(1000);
-            } catch (navigationError) {
-              console.log(`Navigation failed with selector ${workingSelector}:`);
-              availableSelectors.shift();
-              continue;
+              // Start watching for navigation before the event
+              const navigationPromise = page.waitForNavigation({ 
+                waitUntil: 'networkidle',
+                timeout: 30000
+              });
+        
+              await nextButton.dispatchEvent('click');
+              await navigationPromise;
+            } catch (dispatchError) {
+              console.log(`Navigation failed with selector ${workingSelector}:`, dispatchError.message);
+              // Check if we actually navigated despite the error
+              if (page.url() === initialUrl) {
+                continue; // Only continue if we're still on the same page
+              }
             }
           }
+        
+          // Give the page a moment to stabilize after navigation
+          await page.waitForTimeout(1000);
           break;
         case 'clickLoadMore':
           while (true) {
