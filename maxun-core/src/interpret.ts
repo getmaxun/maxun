@@ -604,7 +604,7 @@ export default class Interpreter extends EventEmitter {
             const selector = availableSelectors[i];
             try {
               // Wait for selector with a short timeout
-              checkButton = await page.waitForSelector(selector, { state: 'attached', timeout: 10000 });
+              checkButton = await page.waitForSelector(selector, { state: 'attached' });
               if (checkButton) {
                 workingSelector = selector;
                 break;
@@ -666,7 +666,7 @@ export default class Interpreter extends EventEmitter {
               const selector = availableSelectors[i];
               try {
                 // Wait for selector with a short timeout
-                checkButton = await page.waitForSelector(selector, { state: 'attached', timeout: 10000 });
+                checkButton = await page.waitForSelector(selector, { state: 'attached' });
                 if (checkButton) {
                   workingSelector = selector;
                   break;
