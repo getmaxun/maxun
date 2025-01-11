@@ -629,43 +629,29 @@ export default class Interpreter extends EventEmitter {
           //   page.waitForNavigation({ waitUntil: 'networkidle' })
           // ]);
 
-          const initialUrl = page.url();
-          let navigationSuccessful = false;
+          const previousUrl = page.url();
 
           try {
-            // Start watching for navigation before clicking
-            const navigationPromise = page.waitForNavigation({ 
-              waitUntil: 'networkidle', 
-              timeout: 30000 
-            });
-        
-            // Perform the click
-            await nextButton.click();
-        
-            // Wait for navigation to complete
-            await navigationPromise;
-            navigationSuccessful = true;
-          } catch (clickError) {
-            console.log('Initial navigation attempt failed:', clickError.message);
-          }
-        
-          if (!navigationSuccessful) {
-            try {
-              // Start watching for navigation before the event
-              const navigationPromise = page.waitForNavigation({ 
-                waitUntil: 'networkidle',
-                timeout: 30000
-              });
-        
-              await nextButton.dispatchEvent('click');
-              await navigationPromise;
-            } catch (dispatchError) {
-              console.log(`Navigation failed with selector ${workingSelector}:`, dispatchError.message);
-              // Check if we actually navigated despite the error
-              if (page.url() === initialUrl) {
-                continue; // Only continue if we're still on the same page
-              }
+            // Try both click methods simultaneously
+            await Promise.race([
+              Promise.all([
+                page.waitForNavigation({ waitUntil: 'networkidle', timeout: 30000 }),
+                nextButton.click()
+              ]),
+              Promise.all([
+                page.waitForNavigation({ waitUntil: 'networkidle', timeout: 30000 }),
+                nextButton.dispatchEvent('click')
+              ])
+            ]);
+          } catch (error) {
+            // Verify if navigation actually succeeded
+            const currentUrl = page.url();
+            if (currentUrl === previousUrl) {
+              console.log("Previous URL same as current URL. Navigation failed.");
+              continue;
             }
+            // Otherwise, log and continue
+            console.log('Navigation succeeded despite click error');
           }
         
           // Give the page a moment to stabilize after navigation
@@ -704,10 +690,13 @@ export default class Interpreter extends EventEmitter {
 
             // Click the 'Load More' button to load additional items
             try {
-              await loadMoreButton.click();
-            } catch {
-              console.log('Regular click failed, trying dispatchEvent');
-              await loadMoreButton.dispatchEvent('click')
+              await Promise.race([
+                loadMoreButton.click(),
+                loadMoreButton.dispatchEvent('click')
+              ]);
+            } catch (error) {
+              console.log('Both click attempts failed');
+              continue;
             }
             await page.waitForTimeout(2000); // Wait for new items to load
           
@@ -723,7 +712,7 @@ export default class Interpreter extends EventEmitter {
               return allResults;
             }
             previousHeight = currentHeight;
-            
+
             console.log("Results so far:", allResults.length);
             if (config.limit && allResults.length >= config.limit) {
               // If limit is set and reached, return the limited results
