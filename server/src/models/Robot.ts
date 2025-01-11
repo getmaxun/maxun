@@ -25,6 +25,10 @@ interface RobotAttributes {
   google_sheet_id?: string | null;
   google_access_token?: string | null;
   google_refresh_token?: string | null;
+  airtable_base_id?: string | null; // Airtable Base ID
+  airtable_table_name?: string | null; // Airtable Table Name
+  airtable_api_key?: string | null; // Airtable API Key
+  airtable_access_token?: string | null; // Airtable OAuth Access Token
   schedule?: ScheduleConfig | null;
 }
 
@@ -41,7 +45,7 @@ interface ScheduleConfig {
   cronExpression?: string;
 }
 
-interface RobotCreationAttributes extends Optional<RobotAttributes, 'id'> { }
+interface RobotCreationAttributes extends Optional<RobotAttributes, 'id'> {}
 
 class Robot extends Model<RobotAttributes, RobotCreationAttributes> implements RobotAttributes {
   public id!: string;
@@ -53,6 +57,10 @@ class Robot extends Model<RobotAttributes, RobotCreationAttributes> implements R
   public google_sheet_id?: string | null;
   public google_access_token!: string | null;
   public google_refresh_token!: string | null;
+  public airtable_base_id!: string | null;
+  public airtable_table_name!: string | null;
+  public airtable_api_key!: string | null;
+  public airtable_access_token!: string | null;
   public schedule!: ScheduleConfig | null;
 }
 
@@ -95,6 +103,22 @@ Robot.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    airtable_base_id: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    airtable_table_name: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    airtable_api_key: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    airtable_access_token: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     schedule: {
       type: DataTypes.JSONB,
       allowNull: true,
@@ -107,6 +131,7 @@ Robot.init(
   }
 );
 
+// Uncomment and define relationships if needed
 // Robot.hasMany(Run, {
 //   foreignKey: 'robotId',
 //   as: 'runs', // Alias for the relation
