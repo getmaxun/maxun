@@ -712,6 +712,8 @@ export class WorkflowGenerator {
       // Chain selectors in specific priority order
       const selectors = selectorBasedOnCustomAction;
       const selectorChain = [
+        selectors?.iframeSelector?.full,
+        selectors?.shadowSelector?.full,
         selectors?.testIdSelector,
         selectors?.id,
         selectors?.hrefSelector,
