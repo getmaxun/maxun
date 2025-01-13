@@ -132,7 +132,6 @@ const BrowserRecordingSave = () => {
             {t('right_panel.buttons.discard')}
           </Button>
 
-          {/* Reset Button */}
           <IconButton
             aria-label="options"
             size="small"
@@ -151,11 +150,13 @@ const BrowserRecordingSave = () => {
             <MenuItem onClick={() => { setOpenResetModal(true); handleClose(); }}>
               <ListItemText>{t('right_panel.buttons.reset')}</ListItemText>
             </MenuItem>
+            <MenuItem onClick={() => { window.open('https://docs.maxun.dev', '_blank'); }}>
+              <ListItemText>Documentation</ListItemText>
+            </MenuItem>
           </Menu>
 
           <SaveRecording fileName={recordingName} />
 
-          {/* Discard Confirmation Modal */}
           <GenericModal isOpen={openDiscardModal} onClose={() => setOpenDiscardModal(false)} modalStyle={modalStyle}>
             <Box p={2}>
               <Typography variant="h6">{t('browser_recording.modal.confirm_discard')}</Typography>
@@ -170,7 +171,6 @@ const BrowserRecordingSave = () => {
             </Box>
           </GenericModal>
 
-          {/* Reset Confirmation Modal */}
           <GenericModal isOpen={openResetModal} onClose={() => setOpenResetModal(false)} modalStyle={modalStyle}>
             <Box p={2}>
               <Typography variant="h6">{t('browser_recording.modal.confirm_reset')}</Typography>
