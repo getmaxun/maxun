@@ -207,69 +207,82 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
     function findAllElements(config) {
       // Regular DOM query if no special delimiters
       if (!config.selector.includes('>>') && !config.selector.includes(':>>')) {
-        return Array.from(document.querySelectorAll(config.selector));
+          return Array.from(document.querySelectorAll(config.selector));
       }
   
-      // Split by both types of delimiters
-      const parts = config.selector.split(/(?:>>|:>>)/).map(s => s.trim());
-      const delimiters = config.selector.match(/(?:>>|:>>)/g) || [];
-      let currentElements = [document];
-  
-      for (let i = 0; i < parts.length; i++) {
-        const part = parts[i];
-        const nextElements = [];
-        const isLast = i === parts.length - 1;
-        const delimiter = delimiters[i] || '';
-        const isIframeTraversal = delimiter === ':>>';
-  
-        for (const element of currentElements) {
-          try {
-            let targets;
-  
-            if (i === 0) {
-              // First selector is queried from main document
-              targets = Array.from(element.querySelectorAll(part))
-                .filter(el => {
-                  if (isLast) return true;
-                  // For iframe traversal, only include iframes
-                  if (isIframeTraversal) return el.tagName === 'IFRAME';
-                  // For shadow DOM traversal, only include elements with shadow root
-                  return el.shadowRoot && el.shadowRoot.mode === 'open';
-                });
-            } else {
-              if (isIframeTraversal) {
-                // Handle iframe traversal
-                const iframeDocument = element.contentDocument || element.contentWindow?.document;
-                if (!iframeDocument) continue;
-  
-                targets = Array.from(iframeDocument.querySelectorAll(part));
-                if (!isLast) {
-                  targets = targets.filter(el => el.tagName === 'IFRAME');
+      // First handle iframe traversal if present
+      if (config.selector.includes(':>>')) {
+        const parts = config.selector.split(':>>').map(s => s.trim());
+        let currentElements = [document];
+
+        // Traverse through each part of the selector
+        for (let i = 0; i < parts.length; i++) {
+            const part = parts[i];
+            const nextElements = [];
+            const isLast = i === parts.length - 1;
+
+            for (const element of currentElements) {
+                try {
+                    // For document or iframe document
+                    const doc = element.contentDocument || element || element.contentWindow?.document;
+                    if (!doc) continue;
+
+                    // Query elements in current context
+                    const found = Array.from(doc.querySelectorAll(part));
+                    
+                    if (isLast) {
+                        // If it's the last part, keep all matching elements
+                        nextElements.push(...found);
+                    } else {
+                        // If not last, only keep iframes for next iteration
+                        const iframes = found.filter(el => el.tagName === 'IFRAME');
+                        nextElements.push(...iframes);
+                    }
+                } catch (error) {
+                    console.warn('Cannot access iframe content:', error, {
+                        part,
+                        element,
+                        index: i
+                    });
                 }
-              } else {
-                // Handle shadow DOM traversal
-                const shadowRoot = element.shadowRoot;
-                if (!shadowRoot || shadowRoot.mode !== 'open') continue;
-  
-                targets = Array.from(shadowRoot.querySelectorAll(part));
-                if (!isLast) {
-                  targets = targets.filter(el => el.shadowRoot && el.shadowRoot.mode === 'open');
-                }
-              }
             }
-  
-            nextElements.push(...targets);
-          } catch (error) {
-            console.warn('Cannot access content:', error);
-            continue;
-          }
+
+            if (nextElements.length === 0) {
+                console.warn('No elements found for part:', part, 'at depth:', i);
+                return [];
+            }
+            currentElements = nextElements;
         }
-  
-        if (nextElements.length === 0) return [];
-        currentElements = nextElements;
+
+        return currentElements;
       }
   
-      return currentElements;
+      // Handle shadow DOM traversal
+      if (config.selector.includes('>>')) {
+          const parts = config.selector.split('>>').map(s => s.trim());
+          let currentElements = [document];
+  
+          for (const part of parts) {
+              const nextElements = [];
+              for (const element of currentElements) {
+                  // Try regular DOM first
+                  const found = Array.from(element.querySelectorAll(part));
+                  
+                  // Then check shadow roots
+                  for (const foundEl of found) {
+                      if (foundEl.shadowRoot) {
+                          nextElements.push(foundEl.shadowRoot);
+                      } else {
+                          nextElements.push(foundEl);
+                      }
+                  }
+              }
+              currentElements = nextElements;
+          }
+          return currentElements.filter(el => !(el instanceof ShadowRoot));
+      }
+  
+      return [];
     }
 
     // Modified to handle iframe context for URL resolution
