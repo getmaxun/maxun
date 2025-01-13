@@ -45,7 +45,7 @@
     }
     ,"delete_confirmation": {
       "title": "Delete Recording",
-      "message": "Are you sure you want to delete the recording \"{name}\"? This action cannot be undone.",
+      "message": "Are you sure you want to delete the recording {{name}}? This action cannot be undone.",
       "cancel": "Cancel",
       "confirm": "Delete"
     }

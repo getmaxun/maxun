@@ -42,6 +42,12 @@
     "notifications": {
       "delete_warning": "No se puede eliminar el robot ya que tiene ejecuciones asociadas",
       "delete_success": "Robot eliminado exitosamente"
+    },
+    "delete_confirmation": {
+      "title": "Eliminar grabación",
+      "message": "¿Está seguro de que desea eliminar la grabación {{name}}? Esta acción no se puede deshacer.",
+      "cancel": "Cancelar",
+      "confirm": "Eliminar"
     }
   },
   "mainmenu": {
