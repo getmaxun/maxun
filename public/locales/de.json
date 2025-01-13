@@ -192,7 +192,8 @@
             "field_data": "Felddaten"
         },
         "messages": {
-            "list_selected": "Liste erfolgreich ausgewählt"
+            "list_selected": "Liste erfolgreich ausgewählt",
+            "list_empty": "Liste ausgewählt. Bitte wählen Sie Felder innerhalb der Liste aus."
         },
         "errors": {
             "select_pagination": "Bitte wählen Sie einen Paginierungstyp aus.",

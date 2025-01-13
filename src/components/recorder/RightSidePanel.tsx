@@ -747,71 +747,64 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
               </Box>
             )}
             {step.type === 'list' && (
-              <>
-                <Typography>{t('right_panel.messages.list_selected')}</Typography>
-                {Object.entries(step.fields).map(([key, field]) => (
-                  <Box key={key} sx={{ background: `${isDarkMode ? "#1E2124" : 'white'}` }}>
-                    <TextField
-                      label={t('right_panel.fields.field_label')}
-                      value={field.label || ''}
-                      onChange={(e) => handleTextLabelChange(field.id, e.target.value, step.id, key)}
-                      fullWidth
-                      margin="normal"
-                      InputProps={{
-                        readOnly: confirmedListTextFields[field.id]?.[key],
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <EditIcon />
-                          </InputAdornment>
-                        )
-                      }}
-                    />
-                    <TextField
-                      label={t('right_panel.fields.field_data')}
-                      value={field.data || ''}
-                      fullWidth
-                      margin="normal"
-                      InputProps={{
-                        readOnly: true,
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <TextFieldsIcon />
-                          </InputAdornment>
-                        )
-                      }}
-
-                    />
-                    {!confirmedListTextFields[step.id]?.[key] ? (
-                      <Box display="flex" justifyContent="space-between" gap={2}>
-                        <Button
-                          variant="contained"
-                          onClick={() => handleListTextFieldConfirm(step.id, key)}
-                          disabled={!field.label?.trim()}
-                        >
-                          {t('right_panel.buttons.confirm')}
-                        </Button>
-                        <Button
-                          variant="contained"
-                          color="error"
-                          onClick={() => handleListTextFieldDiscard(step.id, key)}
-                        >
-                          {t('right_panel.buttons.discard')}
-                        </Button>
-                      </Box>
-                    ) : !isCaptureListConfirmed && (
-                      <Box display="flex" justifyContent="flex-end" gap={2}>
-                        <Button
-                          variant="contained"
-                          color="error"
-                          onClick={() => handleListTextFieldDelete(step.id, key)}
-                        >
-                          {t('right_panel.buttons.delete')}
-                        </Button>
-                      </Box>
-                    )}
-                  </Box>
-                ))}
-              </>
+              Object.entries(step.fields).length === 0 ? (
+                <Typography>{t('right_panel.messages.list_empty')}</Typography>
+              ) : (
+                <>
+                  <Typography>{t('right_panel.messages.list_selected')}</Typography>
+                  {Object.entries(step.fields).map(([key, field]) => (
+                    <Box key={key}>
+                      <TextField
+                        label={t('right_panel.fields.field_label')}
+                        value={field.label || ''}
+                        onChange={(e) => handleTextLabelChange(field.id, e.target.value, step.id, key)}
+                        fullWidth
+                        margin="normal"
+                        InputProps={{
+                          readOnly: confirmedListTextFields[field.id]?.[key],
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <EditIcon />
+                            </InputAdornment>
+                          )
+                        }}
+                      />
+                      <TextField
+                        label={t('right_panel.fields.field_data')}
+                        value={field.data || ''}
+                        fullWidth
+                        margin="normal"
+                        InputProps={{
+                          readOnly: true,
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <TextFieldsIcon />
+                            </InputAdornment>
+                          )
+                        }}
+                      />
+                      {!confirmedListTextFields[step.id]?.[key] && (
+                        <Box display="flex" justifyContent="space-between" gap={2}>
+                          <Button
+                            variant="contained"
+                            onClick={() => handleListTextFieldConfirm(step.id, key)}
+                            disabled={!field.label?.trim()}
+                          >
+                            {t('right_panel.buttons.confirm')}
+                          </Button>
+                          <Button
+                            variant="contained"
+                            color="error"
+                            onClick={() => handleListTextFieldDiscard(step.id, key)}
+                          >
+                            {t('right_panel.buttons.discard')}
+                          </Button>
+                        </Box>
+                      )}
+                    </Box>
+                  ))}
+                </>
+              )
             )}
           </Box>
         ))}

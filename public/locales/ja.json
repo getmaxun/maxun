@@ -193,7 +193,8 @@
             "field_data": "フィールドデータ"
         },
         "messages": {
-            "list_selected": "リストが正常に選択されました"
+            "list_selected": "リストが正常に選択されました",
+            "list_empty": "リストが選択されました。リスト内のフィールドを選択してください。"
         },
         "errors": {
             "select_pagination": "ページネーションタイプを選択してください。",

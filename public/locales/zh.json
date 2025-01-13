@@ -193,7 +193,8 @@
       "field_data": "字段数据"
     },
     "messages": {
-      "list_selected": "列表选择成功"
+      "list_selected": "列表选择成功",
+      "list_empty": "已选择列表。请选择列表内的字段。"
     },
     "errors": {
       "select_pagination": "请选择分页类型。",
