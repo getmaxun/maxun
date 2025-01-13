@@ -77,9 +77,6 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
 
   return (
     <div>
-      {/* <Button onClick={() => setOpenModal(true)} variant='contained'  sx={{ marginRight: '20px',backgroundColor: '#ff00c3',color: 'white' }} size="small" color="success">
-        Finish  */}
-
       <Button
         onClick={() => setOpenModal(true)}
         variant="outlined"
