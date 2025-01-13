@@ -229,7 +229,7 @@
     "modal": {
       "confirm_discard": "¿Está seguro de que desea descartar la grabación?",
       "confirm_reset": "¿Está seguro de que desea reiniciar?",
-      "reset_warning": "Esto borrará todas las capturas actuales y lo devolverá a la página de inicio. Su grabación no se descartará."
+      "reset_warning": "Esto borrará todas las capturas anteriores de la sesión actual. La sesión de grabación se reiniciará para el mismo sitio web."
     },
     "notifications": {
       "terminated": "La grabación actual fue terminada",
