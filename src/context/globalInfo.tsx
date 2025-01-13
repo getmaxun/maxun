@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState } from "react";
-import { AlertSnackbarProps } from "../components/atoms/AlertSnackbar";
+import { AlertSnackbarProps } from "../components/ui/AlertSnackbar";
 
 
 interface GlobalInfo {

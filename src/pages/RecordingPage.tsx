@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Grid } from '@mui/material';
-import { BrowserContent } from "../components/organisms/BrowserContent";
-import { InterpretationLog } from "../components/molecules/InterpretationLog";
+import { BrowserContent } from "../components/browser/BrowserContent";
+import { InterpretationLog } from "../components/run/InterpretationLog";
 import { startRecording, getActiveBrowserId } from "../api/recording";
-import { LeftSidePanel } from "../components/organisms/LeftSidePanel";
-import { RightSidePanel } from "../components/organisms/RightSidePanel";
-import { Loader } from "../components/atoms/Loader";
+import { LeftSidePanel } from "../components/recorder/LeftSidePanel";
+import { RightSidePanel } from "../components/recorder/RightSidePanel";
+import { Loader } from "../components/ui/Loader";
 import { useSocketStore } from "../context/socket";
 import { useBrowserDimensionsStore } from "../context/browserDimensions";
 import { ActionProvider } from "../context/browserActions"
@@ -14,7 +14,8 @@ import { useGlobalInfoStore } from "../context/globalInfo";
 import { editRecordingFromStorage } from "../api/storage";
 import { WhereWhatPair } from "maxun-core";
 import styled from "styled-components";
-import BrowserRecordingSave from '../components/molecules/BrowserRecordingSave';
+import BrowserRecordingSave from '../components/browser/BrowserRecordingSave';
+import { useThemeMode } from '../context/theme-provider';
 import { useTranslation } from 'react-i18next';
 
 interface RecordingPageProps {
@@ -27,6 +28,7 @@ export interface PairForEdit {
 }
 
 export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
+  const { darkMode } = useThemeMode();
   const { t } = useTranslation();
   const [isLoaded, setIsLoaded] = React.useState(false);
   const [hasScrollbar, setHasScrollbar] = React.useState(false);
@@ -34,6 +36,7 @@ export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
     pair: null,
     index: 0,
   });
+
   const [showOutputData, setShowOutputData] = useState(false);
 
   const browserContentRef = React.useRef<HTMLDivElement>(null);
@@ -57,15 +60,20 @@ export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
   useEffect(() => changeBrowserDimensions(), [isLoaded])
 
   useEffect(() => {
-    document.body.style.background = 'radial-gradient(circle, rgba(255, 255, 255, 1) 0%, rgba(232, 191, 222, 1) 100%, rgba(255, 255, 255, 1) 100%)';
-    document.body.style.filter = 'progid:DXImageTransform.Microsoft.gradient(startColorstr="#ffffff",endColorstr="#ffffff",GradientType=1);'
+    if (darkMode) {
+
+      document.body.style.background = 'rgba(18,18,18,1)';
+
+    } else {
+      document.body.style.background = 'radial-gradient(circle, rgba(255, 255, 255, 1) 0%, rgba(232, 191, 222, 1) 100%, rgba(255, 255, 255, 1) 100%)';
+      document.body.style.filter = 'progid:DXImageTransform.Microsoft.gradient(startColorstr="#ffffff",endColorstr="#ffffff",GradientType=1);'
+    }
 
     return () => {
-      // Cleanup the background when leaving the page
       document.body.style.background = '';
       document.body.style.filter = '';
     };
-  }, []);
+  }, [darkMode]);
 
   useEffect(() => {
     let isCancelled = false;
