@@ -194,7 +194,7 @@
     },
     "messages": {
       "list_selected": "列表选择成功",
-      "list_empty": "列表为空。尚未选择任何字段。"
+      "list_empty": "已选择列表。请选择列表内的字段。"
     },
     "errors": {
       "select_pagination": "请选择分页类型。",
