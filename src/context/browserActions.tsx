@@ -65,6 +65,7 @@ export const ActionProvider = ({ children }: { children: ReactNode }) => {
         setPaginationMode(true);
         setCaptureStage('pagination');
         socket?.emit('setGetList', { getList: false });
+        socket?.emit('setPaginationMode', { pagination: true });
     };
 
     const stopPaginationMode = () => setPaginationMode(false);
