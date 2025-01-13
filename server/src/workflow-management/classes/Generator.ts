@@ -64,6 +64,8 @@ export class WorkflowGenerator {
 
   private listSelector: string = '';
 
+  private paginationMode: boolean = false;
+
   /**
    * The public constructor of the WorkflowGenerator.
    * Takes socket for communication as a parameter and registers some important events on it.
@@ -119,6 +121,9 @@ export class WorkflowGenerator {
     });
     this.socket.on('listSelector', (data: { selector: string }) => {
       this.listSelector = data.selector;
+    })
+    this.socket.on('setPaginationMode', (data: { pagination: boolean }) => {
+      this.paginationMode = data.pagination;
     })
   }
 
@@ -702,6 +707,25 @@ export class WorkflowGenerator {
     const selectorBasedOnCustomAction = (this.getList === true)
       ? await getNonUniqueSelectors(page, coordinates, this.listSelector)
       : await getSelectors(page, coordinates);
+    
+    if (this.paginationMode && selectorBasedOnCustomAction) {
+      // Chain selectors in specific priority order
+      const selectors = selectorBasedOnCustomAction;
+      const selectorChain = [
+        selectors?.iframeSelector?.full,
+        selectors?.shadowSelector?.full,
+        selectors?.testIdSelector,
+        selectors?.id,
+        selectors?.hrefSelector,
+        selectors?.accessibilitySelector,
+        selectors?.attrSelector,
+        selectors?.generalSelector
+      ]
+        .filter(selector => selector !== null && selector !== undefined)
+        .join(',');
+  
+      return selectorChain;
+    }
 
     const bestSelector = getBestSelectorForAction(
       {

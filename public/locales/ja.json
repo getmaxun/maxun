@@ -163,6 +163,7 @@
             "confirm_limit": "確認",
             "finish_capture": "取得を完了",
             "back": "戻る",
+            "reset": "リセット",
             "finish": "完了",
             "cancel": "キャンセル",
             "delete": "削除"
@@ -193,7 +194,8 @@
             "field_data": "フィールドデータ"
         },
         "messages": {
-            "list_selected": "リストが正常に選択されました"
+            "list_selected": "リストが正常に選択されました",
+            "list_empty": "リストが選択されました。リスト内のフィールドを選択してください。"
         },
         "errors": {
             "select_pagination": "ページネーションタイプを選択してください。",
@@ -226,10 +228,14 @@
     },
     "browser_recording": {
         "modal": {
-            "confirm_discard": "録画を破棄してもよろしいですか？"
+            "confirm_discard": "録画を破棄してもよろしいですか？",
+            "confirm_reset": "リセットしてもよろしいですか？",
+            "reset_warning": "これにより、現在のセッションの以前のキャプチャがすべてクリアされます。同じ Web サイトの記録セッションが再開されます。"
         },
         "notifications": {
-            "terminated": "現在の録画は終了しました"
+            "terminated": "現在の録画は終了しました",
+            "environment_reset": "ブラウザー環境がリセットされました",
+            "reset_successful": "すべてのキャプチャーを正常にリセットし、初期状態に戻りました"
         }
     },
     "interpretation_log": {

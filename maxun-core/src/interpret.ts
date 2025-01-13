@@ -545,6 +545,9 @@ export default class Interpreter extends EventEmitter {
     let previousHeight = 0;
     // track unique items per page to avoid re-scraping
     let scrapedItems: Set<string> = new Set<string>();
+    let visitedUrls: string[] = [];
+
+    let availableSelectors = config.pagination.selector.split(',');
 
     while (true) {
       switch (config.pagination.type) {
@@ -575,8 +578,9 @@ export default class Interpreter extends EventEmitter {
           previousHeight = currentTopHeight;
           break;
         case 'clickNext':
+          console.log("Page URL:", page.url());
           const pageResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
-
+          
           // console.log("Page results:", pageResults);
           
           // Filter out already scraped items
@@ -588,37 +592,149 @@ export default class Interpreter extends EventEmitter {
           });
           
           allResults = allResults.concat(newResults);
+          console.log("Results so far:", allResults.length);
           
           if (config.limit && allResults.length >= config.limit) {
             return allResults.slice(0, config.limit);
           }
 
-          const nextButton = await page.$(config.pagination.selector);
+          let checkButton = null;
+          let workingSelector = null;
+
+          for (let i = 0; i < availableSelectors.length; i++) {
+            const selector = availableSelectors[i];
+            try {
+              // Wait for selector with a short timeout
+              checkButton = await page.waitForSelector(selector, { state: 'attached' });
+              if (checkButton) {
+                workingSelector = selector;
+                break;
+              }
+            } catch (error) {
+              console.log(`Selector failed: ${selector}`);
+            }
+          }
+
+          if (!workingSelector) {
+            return allResults; 
+          }
+
+          // const nextButton = await page.$(config.pagination.selector);
+          const nextButton = await page.$(workingSelector);
           if (!nextButton) {
             return allResults; // No more pages to scrape
           }
-          await Promise.all([
-            nextButton.dispatchEvent('click'),
-            page.waitForNavigation({ waitUntil: 'networkidle' })
-          ]);
 
+          const selectorIndex = availableSelectors.indexOf(workingSelector!);
+          availableSelectors = availableSelectors.slice(selectorIndex);
+
+          // await Promise.all([
+          //   nextButton.dispatchEvent('click'),
+          //   page.waitForNavigation({ waitUntil: 'networkidle' })
+          // ]);
+
+          const previousUrl = page.url();
+          visitedUrls.push(previousUrl);
+
+          try {
+            // Try both click methods simultaneously
+            await Promise.race([
+              Promise.all([
+                page.waitForNavigation({ waitUntil: 'networkidle', timeout: 30000 }),
+                nextButton.click()
+              ]),
+              Promise.all([
+                page.waitForNavigation({ waitUntil: 'networkidle', timeout: 30000 }),
+                nextButton.dispatchEvent('click')
+              ])
+            ]);
+          } catch (error) {
+            // Verify if navigation actually succeeded
+            const currentUrl = page.url();
+            if (currentUrl === previousUrl) {
+              console.log("Previous URL same as current URL. Navigation failed.");
+            }
+          }
+
+          const currentUrl = page.url();
+          if (visitedUrls.includes(currentUrl)) {
+            console.log(`Detected navigation to a previously visited URL: ${currentUrl}`);
+            
+            // Extract the current page number from the URL
+            const match = currentUrl.match(/\d+/);
+            if (match) {
+              const currentNumber = match[0];
+              // Use visitedUrls.length + 1 as the next page number
+              const nextNumber = visitedUrls.length + 1;
+              
+              // Create new URL by replacing the current number with the next number
+              const nextUrl = currentUrl.replace(currentNumber, nextNumber.toString());
+              
+              console.log(`Navigating to constructed URL: ${nextUrl}`);
+              
+              // Navigate to the next page
+              await Promise.all([
+                page.waitForNavigation({ waitUntil: 'networkidle' }),
+                page.goto(nextUrl)
+              ]);
+            }
+          }
+        
+          // Give the page a moment to stabilize after navigation
           await page.waitForTimeout(1000);
           break;
         case 'clickLoadMore':
           while (true) {
-            const loadMoreButton = await page.$(config.pagination.selector);
+            let checkButton = null;
+            let workingSelector = null;
+
+            for (let i = 0; i < availableSelectors.length; i++) {
+              const selector = availableSelectors[i];
+              try {
+                // Wait for selector with a short timeout
+                checkButton = await page.waitForSelector(selector, { state: 'attached' });
+                if (checkButton) {
+                  workingSelector = selector;
+                  break;
+                }
+              } catch (error) {
+                console.log(`Selector failed: ${selector}`);
+              }
+            }
+
+            if (!workingSelector) {
+              // No more working selectors available, so scrape the remaining items
+              const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
+              allResults = allResults.concat(finalResults);
+              return allResults;
+            }
+
+            const loadMoreButton = await page.$(workingSelector);
             if (!loadMoreButton) {
               // No more "Load More" button, so scrape the remaining items
               const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
               allResults = allResults.concat(finalResults);
               return allResults;
             }
+
+            const selectorIndex = availableSelectors.indexOf(workingSelector!);
+            availableSelectors = availableSelectors.slice(selectorIndex);
+            
             // Click the 'Load More' button to load additional items
-            await loadMoreButton.dispatchEvent('click');
+            // await loadMoreButton.dispatchEvent('click');
+            try {
+              await Promise.race([
+                loadMoreButton.click(),
+                loadMoreButton.dispatchEvent('click')
+              ]);
+            } catch (error) {
+              console.log('Both click attempts failed');
+            }
             await page.waitForTimeout(2000); // Wait for new items to load
             // After clicking 'Load More', scroll down to load more items
             await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
             await page.waitForTimeout(2000);
+
             // Check if more items are available
             const currentHeight = await page.evaluate(() => document.body.scrollHeight);
             if (currentHeight === previousHeight) {
@@ -628,6 +744,7 @@ export default class Interpreter extends EventEmitter {
               return allResults;
             }
             previousHeight = currentHeight;
+            
             if (config.limit && allResults.length >= config.limit) {
               // If limit is set and reached, return the limited results
               allResults = allResults.slice(0, config.limit);
