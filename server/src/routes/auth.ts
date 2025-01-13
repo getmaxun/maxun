@@ -384,7 +384,7 @@ router.get(
         httpOnly: false,
         maxAge: 60000,
       });
-      res.redirect(process.env.PUBLIC_URL as string || "http://localhost:5173");
+      res.redirect(`${process.env.PUBLIC_URL}/robots/${robotId}/integrate` as string || `http://localhost:5173/robots/${robotId}/integrate`);
     } catch (error: any) {
       res.status(500).json({ message: `Google OAuth error: ${error.message}` });
     }

@@ -159,11 +159,13 @@
             "confirm": "確認",
             "discard": "破棄",
             "confirm_capture": "取得を確認",
-            "confirm_pagination": "ページネーションを確認",
-            "confirm_limit": "制限を確認",
+            "confirm_pagination": "確認",
+            "confirm_limit": "確認",
             "finish_capture": "取得を完了",
+            "back": "戻る",
             "finish": "完了",
-            "cancel": "キャンセル"
+            "cancel": "キャンセル",
+            "delete": "削除"
         },
         "screenshot": {
             "capture_fullpage": "フルページを取得",

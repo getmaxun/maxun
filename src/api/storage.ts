@@ -1,14 +1,9 @@
 import { default as axios } from "axios";
 import { WorkflowFile } from "maxun-core";
-import { RunSettings } from "../components/molecules/RunSettings";
-import { ScheduleSettings } from "../components/molecules/ScheduleSettings";
+import { RunSettings } from "../components/run/RunSettings";
+import { ScheduleSettings } from "../components/robot/ScheduleSettings";
 import { CreateRunResponse, ScheduleRunResponse } from "../pages/MainPage";
 import { apiUrl } from "../apiConfig";
-
-
-
-
-
 
 export const getStoredRecordings = async (): Promise<string[] | null> => {
   try {
@@ -82,11 +77,7 @@ export const getStoredRecording = async (id: string) => {
   }
 }
 
-
-
 export const checkRunsForRecording = async (id: string): Promise<boolean> => {
-    
-  
   try {
     const response = await axios.get(`${apiUrl}/storage/recordings/${id}/runs`);
 
@@ -99,32 +90,26 @@ export const checkRunsForRecording = async (id: string): Promise<boolean> => {
   }
 };
 
-
 export const deleteRecordingFromStorage = async (id: string): Promise<boolean> => {
-  
   const hasRuns = await checkRunsForRecording(id);
-  
+
   if (hasRuns) {
-    
+
     return false;
   }
   try {
     const response = await axios.delete(`${apiUrl}/storage/recordings/${id}`);
     if (response.status === 200) {
-      
+
       return true;
     } else {
       throw new Error(`Couldn't delete stored recording ${id}`);
     }
   } catch (error: any) {
     console.log(error);
-    
+
     return false;
   }
-
-  
-
-  
 };
 
 export const deleteRunFromStorage = async (id: string): Promise<boolean> => {
@@ -159,7 +144,7 @@ export const createRunForStoredRecording = async (id: string, settings: RunSetti
   try {
     const response = await axios.put(
       `${apiUrl}/storage/runs/${id}`,
-      { ...settings }); 
+      { ...settings });
     if (response.status === 200) {
       return response.data;
     } else {

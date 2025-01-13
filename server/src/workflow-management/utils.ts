@@ -12,6 +12,16 @@ export const getBestSelectorForAction = (action: Action) => {
     case ActionType.Hover:
     case ActionType.DragAndDrop: {
       const selectors = action.selectors;
+
+
+      if (selectors?.iframeSelector?.full) {
+        return selectors.iframeSelector.full;
+      }
+      
+      if (selectors?.shadowSelector?.full) {
+        return selectors.shadowSelector.full;
+      }
+
       // less than 25 characters, and element only has text inside
       const textSelector =
         selectors?.text?.length != null &&
@@ -75,6 +85,11 @@ export const getBestSelectorForAction = (action: Action) => {
     case ActionType.Input:
     case ActionType.Keydown: {
       const selectors = action.selectors;
+
+      if (selectors?.shadowSelector?.full) {
+        return selectors.shadowSelector.full;
+      }
+
       return (
         selectors.testIdSelector ??
         selectors?.id ??
