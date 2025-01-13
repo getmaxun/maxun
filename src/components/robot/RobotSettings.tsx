@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GenericModal } from "../ui/GenericModal";
 import { TextField, Typography, Box } from "@mui/material";
-import { modalStyle } from "../recorder/AddWhereCondModal";
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { getStoredRecording } from '../../api/storage';
 import { WhereWhatPair } from 'maxun-core';
