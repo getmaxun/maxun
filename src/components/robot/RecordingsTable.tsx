@@ -541,6 +541,7 @@ const OptionsButton = ({
   const { t } = useTranslation();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = React.useState(false);
   const { notify } = useGlobalInfoStore();
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -552,7 +553,7 @@ const OptionsButton = ({
   };
 
   const handleDeleteClick = () => {
-    setDeleteDialogOpen(true);
+    setDeleteModalOpen(true);
     handleClose();
   };
 
@@ -561,7 +562,7 @@ const OptionsButton = ({
        checkRunsForRecording(recordingName).then((result: boolean) => {
         if (result) {
           notify('warning', t('recordingtable.notifications.delete_warning'));
-          setDeleteDialogOpen(false);
+          setDeleteModalOpen(false);
         }
       })
      
@@ -570,12 +571,12 @@ const OptionsButton = ({
 
       // Only proceed with deletion if there are no runs
       handleDelete();
-      setDeleteDialogOpen(false);
+      setDeleteModalOpen(false);
       notify("success", t("recordingtable.notifications.delete_success"));
     } catch (error) {
       console.error('Error during deletion:', error);
       notify("error", t("recordingtable.notifications.delete_error"));
-      setDeleteDialogOpen(false);
+      setDeleteModalOpen(false);
     }
   };
 
@@ -631,29 +632,35 @@ const OptionsButton = ({
         </MenuItem>
       </Menu>
 
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={handleDeleteCancel}
-        aria-labelledby="alert-dialog-title"
-        aria-describedby="alert-dialog-description"
+      <GenericModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        modalStyle={modalStyle}
       >
-        <DialogTitle id="alert-dialog-title">
-          {t('recordingtable.delete_confirmation.title')}
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText id="alert-dialog-description">
+        <div style={{ padding: "20px" }}>
+          <Typography variant="h6" gutterBottom>
+            {t('recordingtable.delete_confirmation.title')}
+          </Typography>
+          <Typography variant="body1" style={{ marginBottom: "20px", marginTop: "20px" }}>
             {t('recordingtable.delete_confirmation.message', { name: recordingName })}
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDeleteCancel} color="primary">
-            {t('recordingtable.delete_confirmation.cancel')}
-          </Button>
-          <Button onClick={handleDeleteConfirm} color="error" autoFocus>
-            {t('recordingtable.delete_confirmation.confirm')}
-          </Button>
-        </DialogActions>
-      </Dialog>
+          </Typography>
+          <Box display="flex" justifyContent="flex-end" gap={2}>
+            <Button 
+              variant="outlined" 
+              onClick={() => setDeleteModalOpen(false)}
+            >
+              {t('recordingtable.delete_confirmation.cancel')}
+            </Button>
+            <Button 
+              variant="contained" 
+              color="error" 
+              onClick={handleDeleteConfirm}
+            >
+              {t('recordingtable.delete_confirmation.confirm')}
+            </Button>
+          </Box>
+        </div>
+      </GenericModal>
     </>
   );
 };
