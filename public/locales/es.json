@@ -194,7 +194,7 @@
     },
     "messages": {
       "list_selected": "Lista seleccionada exitosamente",
-      "list_empty": "La lista está vacía. No se han seleccionado campos."
+      "list_empty": "Lista seleccionada. Seleccione los campos dentro de la lista."
     },
     "errors": {
       "select_pagination": "Por favor seleccione un tipo de paginación.",
