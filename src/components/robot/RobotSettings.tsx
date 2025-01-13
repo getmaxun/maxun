@@ -161,13 +161,13 @@ export const RobotSettingsModal = ({ isOpen, handleStart, handleClose, initialSe
 };
 
 export const modalStyle = {
-    top: "40%",
-    left: "50%",
-    transform: "translate(-50%, -50%)",
-    width: "30%",
-    backgroundColor: "background.paper",
-    p: 4,
-    height: "fit-content",
-    display: "block",
-    padding: "20px",
-  };
+top: "40%",
+left: "50%",
+transform: "translate(-50%, -50%)",
+width: "30%",
+backgroundColor: "background.paper",
+p: 4,
+height: "fit-content",
+display: "block",
+padding: "20px",
+};
