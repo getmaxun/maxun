@@ -31,7 +31,8 @@ import {
 import { Add } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { stopRecording } from "../../api/recording";
-import { GenericModal } from "../atoms/GenericModal";
+import { GenericModal } from '../ui/GenericModal';
+
 
 /** TODO:
  *  1. allow editing existing robot after persisting browser steps
@@ -76,15 +77,7 @@ interface RecordingsTableProps {
   handleDuplicateRobot: (id: string, name: string, params: string[]) => void;
 }
 
-export const RecordingsTable = ({
-  handleEditRecording,
-  handleRunRecording,
-  handleScheduleRecording,
-  handleIntegrateRecording,
-  handleSettingsRecording,
-  handleEditRobot,
-  handleDuplicateRobot,
-}: RecordingsTableProps) => {
+export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handleScheduleRecording, handleIntegrateRecording, handleSettingsRecording, handleEditRobot, handleDuplicateRobot }: RecordingsTableProps) => {
   const { t } = useTranslation();
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
