@@ -193,7 +193,7 @@
         },
         "messages": {
             "list_selected": "Liste erfolgreich ausgewählt",
-            "list_empty": "Liste ist leer. Es wurden keine Felder ausgewählt."
+            "list_empty": "Liste ausgewählt. Bitte wählen Sie Felder innerhalb der Liste aus."
         },
         "errors": {
             "select_pagination": "Bitte wählen Sie einen Paginierungstyp aus.",
