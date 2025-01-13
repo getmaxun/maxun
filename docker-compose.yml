@@ -3,7 +3,6 @@ version: '3.8'
 services:
   postgres:
     image: postgres:13
-    platform: linux/amd64,linux/arm64
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -20,7 +19,6 @@ services:
 
   redis:
     image: redis:6
-    platform: linux/amd64,linux/arm64
     environment:
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: ${REDIS_PORT}
@@ -31,7 +29,6 @@ services:
 
   minio:
     image: minio/minio
-    platform: linux/amd64,linux/arm64
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
@@ -47,7 +44,6 @@ services:
       #context: .
       #dockerfile: server/Dockerfile
     image: getmaxun/maxun-backend:v0.0.10
-    platform: linux/amd64,linux/arm64
     ports:
       - "${BACKEND_PORT:-8080}:${BACKEND_PORT:-8080}"
     env_file: .env
@@ -75,7 +71,6 @@ services:
       #context: .
       #dockerfile: Dockerfile
     image: getmaxun/maxun-frontend:v0.0.7
-    platform: linux/amd64,linux/arm64
     ports:
       - "${FRONTEND_PORT:-5173}:${FRONTEND_PORT:-5173}"
     env_file: .env
