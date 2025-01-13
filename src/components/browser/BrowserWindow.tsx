@@ -118,9 +118,6 @@ export const BrowserWindow = () => {
     }, [screenShot, canvasRef, socket, screencastHandler]);
 
     const highlighterHandler = useCallback((data: { rect: DOMRect, selector: string, elementInfo: ElementInfo | null, childSelectors?: string[] }) => {
-        console.log("LIST SELECTOR", listSelector);
-        console.log("DATA SELECTOR", data.selector);
-        console.log("CHILD SELECTORS", data.childSelectors);
         if (getList === true) {
             if (listSelector) {
                 socket?.emit('listSelector', { selector: listSelector });
