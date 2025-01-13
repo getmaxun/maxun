@@ -9,6 +9,12 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
+import Button from '@mui/material/Button';
 import { Accordion, AccordionSummary, AccordionDetails, Typography, Box, TextField } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SearchIcon from '@mui/icons-material/Search';
@@ -80,6 +86,8 @@ export const RunsTable: React.FC<RunsTableProps> = ({
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [rows, setRows] = useState<Data[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [runToDelete, setRunToDelete] = useState<Data | null>(null);
 
   const { notify, rerenderRuns, setRerenderRuns } = useGlobalInfoStore();
 
@@ -125,10 +133,22 @@ export const RunsTable: React.FC<RunsTableProps> = ({
     }
   }, [rerenderRuns, rows.length, setRerenderRuns]);
 
-  const handleDelete = () => {
+  const handleDeleteClick = (row: Data) => {
+    setRunToDelete(row);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = () => {
     setRows([]);
     notify('success', t('runstable.notifications.delete_success'));
     fetchRuns();
+    setDeleteDialogOpen(false);
+    setRunToDelete(null);
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setRunToDelete(null);
   };
 
   // Filter rows based on search term
@@ -190,7 +210,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
                     .map((row) => (
                       <CollapsibleRow
                         row={row}
-                        handleDelete={handleDelete}
+                        handleDelete={() => handleDeleteClick(row)}
                         key={`row-${row.id}`}
                         isOpen={runId === row.runId && runningRecordingName === row.name}
                         currentLog={currentInterpretationLog}
@@ -213,6 +233,30 @@ export const RunsTable: React.FC<RunsTableProps> = ({
         onPageChange={handleChangePage}
         onRowsPerPageChange={handleChangeRowsPerPage}
       />
+
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteCancel}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">
+          Delete Run
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            Are you sure you want to delete the run "{runToDelete?.name}"? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleDeleteConfirm} color="error" autoFocus>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </React.Fragment>
   );
 };
