@@ -228,7 +228,7 @@
         "modal": {
             "confirm_discard": "Sind Sie sicher, dass Sie die Aufnahme verwerfen möchten?",
             "confirm_reset": "Sind Sie sicher, dass Sie zurücksetzen möchten?",
-            "reset_warning": "Dies wird alle aktuellen Aufnahmen löschen und Sie zur Startseite zurückbringen. Ihre Aufnahme wird nicht verworfen."
+            "reset_warning": "Dadurch werden alle vorherigen Aufnahmen in der aktuellen Sitzung gelöscht. Die Aufnahmesitzung wird für dieselbe Website neu gestartet."
             },
         "notifications": {
             "terminated": "Aktuelle Aufnahme wurde beendet",
