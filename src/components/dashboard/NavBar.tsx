@@ -278,11 +278,6 @@ export const NavBar: React.FC<NavBarProps> = ({
                                 docker-compose down
                                 <br />
                                 <br />
-                                # replace existing docker-compose file with new one by copy pasting the code from
-                                <br />
-                                <a href="https://github.com/getmaxun/maxun/blob/develop/docker-compose.yml">Latest Docker Compose</a>
-                                <br />
-                                <br />
                                 # pull latest docker images
                                 <br />
                                 docker-compose pull
