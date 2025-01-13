@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GenericModal } from "../ui/GenericModal";
 import { TextField, Typography, Box } from "@mui/material";
-import { modalStyle } from "../recorder/AddWhereCondModal";
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { getStoredRecording } from '../../api/storage';
 import { WhereWhatPair } from 'maxun-core';
@@ -159,4 +158,16 @@ export const RobotSettingsModal = ({ isOpen, handleStart, handleClose, initialSe
             </>
         </GenericModal>
     );
+};
+
+export const modalStyle = {
+top: "40%",
+left: "50%",
+transform: "translate(-50%, -50%)",
+width: "30%",
+backgroundColor: "background.paper",
+p: 4,
+height: "fit-content",
+display: "block",
+padding: "20px",
 };
