@@ -150,6 +150,9 @@ const BrowserRecordingSave = () => {
             <MenuItem onClick={() => { setOpenResetModal(true); handleClose(); }}>
               <ListItemText>{t('right_panel.buttons.reset')}</ListItemText>
             </MenuItem>
+            <MenuItem onClick={() => { window.open('https://docs.maxun.dev', '_blank'); }}>
+              <ListItemText>Documentation</ListItemText>
+            </MenuItem>
           </Menu>
 
           <SaveRecording fileName={recordingName} />
