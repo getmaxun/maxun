@@ -229,7 +229,7 @@
     "browser_recording": {
       "modal": {
           "confirm_discard": "Are you sure you want to discard the recording?",
-          "confirm_reset": "Are you sure you want to reset?",
+          "confirm_reset": "Are you sure you want to restart the recording?",
           "reset_warning": "This will clear all current captures and return you to the home page. Your recording will not be discarded."
       },
       "notifications": {
