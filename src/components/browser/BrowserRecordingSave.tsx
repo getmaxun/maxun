@@ -132,7 +132,6 @@ const BrowserRecordingSave = () => {
             {t('right_panel.buttons.discard')}
           </Button>
 
-          {/* Reset Button */}
           <IconButton
             aria-label="options"
             size="small"
@@ -155,7 +154,6 @@ const BrowserRecordingSave = () => {
 
           <SaveRecording fileName={recordingName} />
 
-          {/* Discard Confirmation Modal */}
           <GenericModal isOpen={openDiscardModal} onClose={() => setOpenDiscardModal(false)} modalStyle={modalStyle}>
             <Box p={2}>
               <Typography variant="h6">{t('browser_recording.modal.confirm_discard')}</Typography>
@@ -170,7 +168,6 @@ const BrowserRecordingSave = () => {
             </Box>
           </GenericModal>
 
-          {/* Reset Confirmation Modal */}
           <GenericModal isOpen={openResetModal} onClose={() => setOpenResetModal(false)} modalStyle={modalStyle}>
             <Box p={2}>
               <Typography variant="h6">{t('browser_recording.modal.confirm_reset')}</Typography>
