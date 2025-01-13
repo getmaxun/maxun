@@ -229,7 +229,7 @@
     "modal": {
       "confirm_discard": "您确定要放弃此录制吗？",
       "confirm_reset": "您确定要重置吗？",
-      "reset_warning": "这将清除所有当前捕获并返回首页。您的录制不会被放弃。"
+      "reset_warning": "这将清除当前会话中的所有先前捕获。录制会话将针对同一网站重新启动。"
     },
     "notifications": {
       "terminated": "当前录制已终止",
