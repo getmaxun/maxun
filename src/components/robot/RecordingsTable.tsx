@@ -85,7 +85,7 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
     },
   ];
 
-  const { notify, setRecordings, browserId, setBrowserId, recordingUrl, setRecordingUrl, recordingName, setRecordingName, recordingId, setRecordingId } = useGlobalInfoStore();
+  const { notify, setRecordings, browserId, setBrowserId, setInitialUrl, recordingUrl, setRecordingUrl, recordingName, setRecordingName, recordingId, setRecordingId } = useGlobalInfoStore();
   const navigate = useNavigate();
 
   const handleChangePage = (event: unknown, newPage: number) => {
@@ -141,6 +141,11 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
     setModalOpen(false);
     handleStartRecording();
   };
+
+  const setBrowserRecordingUrl = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setInitialUrl(event.target.value);
+    setRecordingUrl(event.target.value);
+  }
 
   useEffect(() => {
     if (rows.length === 0) {
@@ -307,7 +312,7 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
             variant="outlined"
             fullWidth
             value={recordingUrl}
-            onChange={(e: any) => setRecordingUrl(e.target.value)}
+            onChange={setBrowserRecordingUrl}
             style={{ marginBottom: '20px', marginTop: '20px' }}
           />
           <Button

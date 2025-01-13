@@ -163,6 +163,7 @@
       "confirm_limit": "Confirmar",
       "finish_capture": "Finalizar Captura",
       "back": "Atrás",
+      "reset": "Reiniciar",
       "finish": "Finalizar",
       "cancel": "Cancelar",
       "delete": "Eliminar"
@@ -227,10 +228,14 @@
   },
   "browser_recording": {
     "modal": {
-      "confirm_discard": "¿Está seguro de que desea descartar la grabación?"
+      "confirm_discard": "¿Está seguro de que desea descartar la grabación?",
+      "confirm_reset": "¿Está seguro de que desea reiniciar?",
+      "reset_warning": "Esto borrará todas las capturas anteriores de la sesión actual. La sesión de grabación se reiniciará para el mismo sitio web."
     },
     "notifications": {
-      "terminated": "La grabación actual fue terminada"
+      "terminated": "La grabación actual fue terminada",
+      "environment_reset": "El entorno del navegador ha sido reiniciado",
+      "reset_successful": "Se reiniciaron correctamente todas las capturas y se volvió al estado inicial"
     }
   },
   "interpretation_log": {

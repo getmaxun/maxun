@@ -45,13 +45,12 @@ interface RightSidePanelProps {
 }
 
 export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture }) => {
-  const [workflow, setWorkflow] = useState<WorkflowFile>(emptyWorkflow);
   const [textLabels, setTextLabels] = useState<{ [id: string]: string }>({});
   const [errors, setErrors] = useState<{ [id: string]: string }>({});
   const [confirmedTextSteps, setConfirmedTextSteps] = useState<{ [id: string]: boolean }>({});
   const [confirmedListTextFields, setConfirmedListTextFields] = useState<{ [listId: string]: { [fieldKey: string]: boolean } }>({});
-  const [showPaginationOptions, setShowPaginationOptions] = useState(false);
-  const [showLimitOptions, setShowLimitOptions] = useState(false);
+  // const [showPaginationOptions, setShowPaginationOptions] = useState(false);
+  // const [showLimitOptions, setShowLimitOptions] = useState(false);
   const [showCaptureList, setShowCaptureList] = useState(true);
   const [showCaptureScreenshot, setShowCaptureScreenshot] = useState(true);
   const [showCaptureText, setShowCaptureText] = useState(true);
@@ -61,7 +60,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const [isCaptureListConfirmed, setIsCaptureListConfirmed] = useState(false);
 
   const { lastAction, notify, currentWorkflowActionsState, setCurrentWorkflowActionsState, resetInterpretationLog } = useGlobalInfoStore();
-  const { getText, startGetText, stopGetText, getScreenshot, startGetScreenshot, stopGetScreenshot, getList, startGetList, stopGetList, startPaginationMode, stopPaginationMode, paginationType, updatePaginationType, limitType, customLimit, updateLimitType, updateCustomLimit, stopLimitMode, startLimitMode, captureStage, setCaptureStage } = useActionContext();
+  const { getText, startGetText, stopGetText, getScreenshot, startGetScreenshot, stopGetScreenshot, getList, startGetList, stopGetList, startPaginationMode, stopPaginationMode, paginationType, updatePaginationType, limitType, customLimit, updateLimitType, updateCustomLimit, stopLimitMode, startLimitMode, captureStage, setCaptureStage, showPaginationOptions, setShowPaginationOptions, showLimitOptions, setShowLimitOptions, workflow, setWorkflow } = useActionContext();
   const { browserSteps, updateBrowserTextStepLabel, deleteBrowserStep, addScreenshotStep, updateListTextFieldLabel, removeListTextField } = useBrowserSteps();
   const { id, socket } = useSocketStore();
   const { t } = useTranslation();
@@ -69,7 +68,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const workflowHandler = useCallback((data: WorkflowFile) => {
     setWorkflow(data);
     //setRecordingLength(data.workflow.length);
-  }, [workflow])
+  }, [])
 
   useEffect(() => {
     if (socket) {

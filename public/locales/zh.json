@@ -163,6 +163,7 @@
       "confirm_limit": "确认",
       "finish_capture": "完成捕获",
       "back": "返回",
+      "reset": "重置",
       "finish": "完成",
       "cancel": "取消",
       "delete": "删除"
@@ -227,10 +228,14 @@
   },
   "browser_recording": {
     "modal": {
-      "confirm_discard": "您确定要放弃录制吗？"
+      "confirm_discard": "您确定要放弃此录制吗？",
+      "confirm_reset": "您确定要重置吗？",
+      "reset_warning": "这将清除当前会话中的所有先前捕获。录制会话将针对同一网站重新启动。"
     },
     "notifications": {
-      "terminated": "当前录制已终止"
+      "terminated": "当前录制已终止",
+      "environment_reset": "浏览器环境已重置",
+      "reset_successful": "已成功重置所有捕获并返回初始状态"
     }
   },
   "interpretation_log": {

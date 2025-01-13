@@ -162,6 +162,7 @@
             "confirm_limit": "Bestätigen",
             "finish_capture": "Erfassung abschließen",
             "back": "Zurück",
+            "reset": "Starten Sie die Aufnahme neu",
             "finish": "Fertig",
             "cancel": "Abbrechen",
             "delete": "Löschen"
@@ -226,10 +227,14 @@
     },
     "browser_recording": {
         "modal": {
-            "confirm_discard": "Sind Sie sicher, dass Sie die Aufnahme verwerfen möchten?"
-        },
+            "confirm_discard": "Sind Sie sicher, dass Sie die Aufnahme verwerfen möchten?",
+            "confirm_reset": "Sind Sie sicher, dass Sie zurücksetzen möchten?",
+            "reset_warning": "Dadurch werden alle vorherigen Aufnahmen in der aktuellen Sitzung gelöscht. Die Aufnahmesitzung wird für dieselbe Website neu gestartet."
+            },
         "notifications": {
-            "terminated": "Aktuelle Aufnahme wurde beendet"
+            "terminated": "Aktuelle Aufnahme wurde beendet",
+            "environment_reset": "Browser-Umgebung wurde zurückgesetzt",
+            "reset_successful": "Alle Aufnahmen erfolgreich zurückgesetzt und zum Ausgangszustand zurückgekehrt"
         }
     },
     "interpretation_log": {
