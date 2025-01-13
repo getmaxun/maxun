@@ -194,7 +194,7 @@
       },
       "messages": {
         "list_selected": "List Selected Successfully",
-        "list_empty": "List is empty. No fields have been selected."
+        "list_empty": "List selected. Please select fields inside the list."
       },
       "errors": {
         "select_pagination": "Please select a pagination type.",
