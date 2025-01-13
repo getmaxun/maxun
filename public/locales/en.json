@@ -230,7 +230,7 @@
       "modal": {
           "confirm_discard": "Are you sure you want to discard the recording?",
           "confirm_reset": "Are you sure you want to restart the recording?",
-          "reset_warning": "This will clear all current captures and return you to the home page. Your recording will not be discarded."
+          "reset_warning": "This will clear all previous captures in the current session. The recording session will restart for the same website."
       },
       "notifications": {
           "terminated": "Current Recording was terminated",
