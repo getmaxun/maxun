@@ -42,6 +42,12 @@
         "notifications": {
             "delete_warning": "関連する実行があるため、ロボットを削除できません",
             "delete_success": "ロボットが正常に削除されました"
+        },
+        "delete_confirmation": {
+            "title": "記録を削除",
+            "message": "記録「{{name}}」を削除してもよろしいですか？この操作は取り消せません。",
+            "cancel": "キャンセル",
+            "confirm": "削除"
         }
   },
   "mainmenu": {

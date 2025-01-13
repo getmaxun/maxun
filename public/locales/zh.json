@@ -42,6 +42,12 @@
     "notifications": {
       "delete_warning": "无法删除机器人，因为它有关联的运行记录",
       "delete_success": "机器人删除成功"
+    },
+    "delete_confirmation": {
+      "title": "删除录制",
+      "message": "您确定要删除录制 {{name}} 吗？此操作无法撤消。",
+      "cancel": "取消",
+      "confirm": "删除"
     }
   },
   "mainmenu": {

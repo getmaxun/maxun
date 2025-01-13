@@ -41,6 +41,12 @@
         "notifications": {
             "delete_warning": "Roboter kann nicht gelöscht werden, da zugehörige Ausführungen vorhanden sind",
             "delete_success": "Roboter erfolgreich gelöscht"
+        },
+        "delete_confirmation": {
+            "title": "Aufnahme löschen",
+            "message": "Sind Sie sicher, dass Sie die Aufnahme {{name}} löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+            "cancel": "Abbrechen",
+            "confirm": "Löschen"
         }
     },
     "mainmenu": {
