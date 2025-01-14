@@ -3,7 +3,6 @@ import React, { useCallback, useEffect, useState } from "react";
 import { getActiveWorkflow, getParamsOfActiveWorkflow } from "../../api/workflow";
 import { useSocketStore } from '../../context/socket';
 import { WhereWhatPair, WorkflowFile } from "maxun-core";
-import { SidePanelHeader } from "./SidePanelHeader";
 import { emptyWorkflow } from "../../shared/constants";
 import { LeftSidePanelContent } from "./LeftSidePanelContent";
 import { useBrowserDimensionsStore } from "../../context/browserDimensions";
