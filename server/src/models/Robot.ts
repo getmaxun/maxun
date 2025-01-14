@@ -25,6 +25,10 @@ interface RobotAttributes {
   google_sheet_id?: string | null;
   google_access_token?: string | null;
   google_refresh_token?: string | null;
+  n8n_email?: string | null;
+  n8n_access_token?: string | null;
+  n8n_refresh_token?: string | null;
+  n8n_workflow_id?: string | null;
   schedule?: ScheduleConfig | null;
 }
 
@@ -53,6 +57,10 @@ class Robot extends Model<RobotAttributes, RobotCreationAttributes> implements R
   public google_sheet_id?: string | null;
   public google_access_token!: string | null;
   public google_refresh_token!: string | null;
+  public n8n_email!: string | null;
+  public n8n_access_token!: string | null;
+  public n8n_refresh_token!: string | null;
+  public n8n_workflow_id!: string | null;
   public schedule!: ScheduleConfig | null;
 }
 
@@ -94,6 +102,22 @@ Robot.init(
     google_refresh_token: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    n8n_email: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    n8n_access_token: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    n8n_refresh_token: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    n8n_workflow_id: {
+        type: DataTypes.STRING,
+        allowNull: true,
     },
     schedule: {
       type: DataTypes.JSONB,
