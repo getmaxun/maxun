@@ -12,6 +12,7 @@ import Login from './Login';
 import Register from './Register';
 import UserRoute from '../routes/userRoute';
 import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
+import { NotFoundPage } from '../components/dashboard/NotFound';
 import { Runs } from '../components/run/Runs';
 
 export const PageWrapper = () => {
@@ -75,6 +76,7 @@ export const PageWrapper = () => {
                 path="/register"
                 element={<Register />}
               />
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </React.Fragment>
         </SocketProvider>
