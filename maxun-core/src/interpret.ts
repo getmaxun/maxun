@@ -540,7 +540,7 @@ export default class Interpreter extends EventEmitter {
     }
   }
 
-  private async handlePagination(page: Page, config: { listSelector: string, fields: any, limit?: number, pagination: any }) {
+  private async handleSequentialPagination(page: Page, config: { listSelector: string, fields: any, limit?: number, pagination: any }) {
     let allResults: Record<string, any>[] = [];
     let previousHeight = 0;
     // track unique items per page to avoid re-scraping
@@ -765,6 +765,237 @@ export default class Interpreter extends EventEmitter {
     }
 
     return allResults;
+  }
+
+  private async handlePagination(page: Page, config: { listSelector: string, fields: any, limit?: number, pagination: any }) {
+    // Constants for parallel processing
+    const PARALLEL_THRESHOLD = 1000;
+    const BATCH_SIZE = 100;
+  
+    // If limit is under threshold or no limit specified, use existing sequential logic
+    if (!config.limit || config.limit <= PARALLEL_THRESHOLD) {
+      return await this.handleSequentialPagination(page, config);
+    }
+  
+    // For larger datasets, use parallel processing
+    const batches = [];
+    for (let i = 0; i < config.limit; i += BATCH_SIZE) {
+      batches.push({
+        start: i,
+        end: Math.min(i + BATCH_SIZE, config.limit)
+      });
+    }
+  
+    // Initialize result tracking
+    const results: Record<string, any>[][] = [];
+    const processedItems = new Set<string>();
+    const visitedUrls = new Set<string>();
+  
+    switch (config.pagination.type) {
+      case 'scrollDown':
+      case 'scrollUp': {
+        // Handle parallel scroll-based pagination
+        for (const batch of batches) {
+          this.concurrency.addJob(async () => {
+            const newPage = await page.context().newPage();
+            await newPage.goto(page.url());
+  
+            const batchConfig = {
+              ...config,
+              limit: batch.end - batch.start
+            };
+  
+            // Initialize scroll position based on pagination type
+            if (config.pagination.type === 'scrollDown') {
+              await newPage.evaluate((start) => window.scrollTo(0, start * 100), batch.start);
+            } else {
+              await newPage.evaluate(
+                (start) => window.scrollTo(0, document.body.scrollHeight - start * 100),
+                batch.start
+              );
+            }
+  
+            let previousHeight = await newPage.evaluate(() => document.body.scrollHeight);
+            let batchResults: Record<string, any>[] = [];
+  
+            while (batchResults.length < batchConfig.limit) {
+              // Perform scrolling based on pagination type
+              if (config.pagination.type === 'scrollDown') {
+                await newPage.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+              } else {
+                await newPage.evaluate(() => window.scrollTo(0, 0));
+              }
+              
+              await newPage.waitForTimeout(2000);
+  
+              const currentHeight = await newPage.evaluate(() => document.body.scrollHeight);
+              if (currentHeight === previousHeight) {
+                break;
+              }
+              previousHeight = currentHeight;
+  
+              const newResults = await newPage.evaluate((cfg) => window.scrapeList(cfg), batchConfig);
+              batchResults = newResults;
+            }
+  
+            // Store unique results for this batch
+            const uniqueBatchResults = batchResults.filter(item => {
+              const itemHash = JSON.stringify(item);
+              if (processedItems.has(itemHash)) return false;
+              processedItems.add(itemHash);
+              return true;
+            });
+  
+            results[Math.floor(batch.start / BATCH_SIZE)] = uniqueBatchResults;
+            await newPage.close();
+          });
+        }
+        break;
+      }
+  
+      case 'clickNext': {
+        // Pre-discover navigation sequence
+        const navigationSequence: string[] = [];
+        const mainPage = await page.context().newPage();
+        await mainPage.goto(page.url());
+        navigationSequence.push(mainPage.url());
+  
+        // Map out the navigation path first
+        let currentPage = 1;
+        while (currentPage * BATCH_SIZE < config.limit) {
+          const availableSelectors = config.pagination.selector.split(',');
+          let clicked = false;
+  
+          for (const selector of availableSelectors) {
+            try {
+              const nextButton = await mainPage.waitForSelector(selector, { 
+                state: 'attached',
+                timeout: 5000 
+              });
+              
+              if (nextButton) {
+                try {
+                  await Promise.race([
+                    Promise.all([
+                      mainPage.waitForNavigation({ waitUntil: 'networkidle', timeout: 30000 }),
+                      nextButton.click()
+                    ]),
+                    Promise.all([
+                      mainPage.waitForNavigation({ waitUntil: 'networkidle', timeout: 30000 }),
+                      nextButton.dispatchEvent('click')
+                    ])
+                  ]);
+                  
+                  const newUrl = mainPage.url();
+                  if (!visitedUrls.has(newUrl)) {
+                    navigationSequence.push(newUrl);
+                    visitedUrls.add(newUrl);
+                    clicked = true;
+                    break;
+                  }
+                } catch (error) {
+                  continue;
+                }
+              }
+            } catch (error) {
+              continue;
+            }
+          }
+  
+          if (!clicked) break;
+          currentPage++;
+          await mainPage.waitForTimeout(1000);
+        }
+        await mainPage.close();
+  
+        // Process batches using discovered navigation sequence
+        for (const batch of batches) {
+          this.concurrency.addJob(async () => {
+            const newPage = await page.context().newPage();
+            const targetPageIndex = Math.floor(batch.start / BATCH_SIZE);
+            
+            if (targetPageIndex < navigationSequence.length) {
+              await newPage.goto(navigationSequence[targetPageIndex]);
+              
+              const batchConfig = {
+                ...config,
+                limit: batch.end - batch.start
+              };
+  
+              const batchResults = await newPage.evaluate((cfg) => window.scrapeList(cfg), batchConfig);
+              
+              const uniqueBatchResults = batchResults.filter(item => {
+                const itemHash = JSON.stringify(item);
+                if (processedItems.has(itemHash)) return false;
+                processedItems.add(itemHash);
+                return true;
+              });
+  
+              results[targetPageIndex] = uniqueBatchResults;
+            }
+            
+            await newPage.close();
+          });
+        }
+        break;
+      }
+  
+      case 'clickLoadMore': {
+        for (const batch of batches) {
+          this.concurrency.addJob(async () => {
+            const newPage = await page.context().newPage();
+            await newPage.goto(page.url());
+  
+            // Click through to reach batch start position
+            for (let i = 0; i < Math.floor(batch.start / BATCH_SIZE); i++) {
+              const availableSelectors = config.pagination.selector.split(',');
+              let clicked = false;
+  
+              for (const selector of availableSelectors) {
+                try {
+                  const loadMoreButton = await newPage.waitForSelector(selector, { timeout: 5000 });
+                  if (loadMoreButton) {
+                    await Promise.race([
+                      loadMoreButton.click(),
+                      loadMoreButton.dispatchEvent('click')
+                    ]);
+                    clicked = true;
+                    break;
+                  }
+                } catch (error) {
+                  continue;
+                }
+              }
+  
+              if (!clicked) break;
+              await newPage.waitForTimeout(1000);
+            }
+  
+            const batchConfig = {
+              ...config,
+              limit: batch.end - batch.start
+            };
+  
+            const batchResults = await newPage.evaluate((cfg) => window.scrapeList(cfg), batchConfig);
+            
+            const uniqueBatchResults = batchResults.filter(item => {
+              const itemHash = JSON.stringify(item);
+              if (processedItems.has(itemHash)) return false;
+              processedItems.add(itemHash);
+              return true;
+            });
+  
+            results[Math.floor(batch.start / BATCH_SIZE)] = uniqueBatchResults;
+            await newPage.close();
+          });
+        }
+        break;
+      }
+    }
+  
+    // Wait for all parallel operations to complete
+    await this.concurrency.waitForCompletion();
+    return results.flat();
   }
 
   private getMatchingActionId(workflow: Workflow, pageState: PageState, usedActions: string[]) {
