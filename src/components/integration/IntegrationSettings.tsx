@@ -14,7 +14,6 @@ import axios from "axios";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { getStoredRecording } from "../../api/storage";
 import { apiUrl } from "../../apiConfig.js";
-import Cookies from 'js-cookie';
 import { useTranslation } from "react-i18next";
 
 
