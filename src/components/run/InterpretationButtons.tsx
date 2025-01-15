@@ -1,7 +1,6 @@
 import { Box, Button, Stack, Typography, CircularProgress } from "@mui/material";
-import { PlayCircle } from "@mui/icons-material";
 import React, { useCallback, useEffect, useState } from "react";
-import { interpretCurrentRecording, stopCurrentInterpretation } from "../../api/recording";
+import { interpretCurrentRecording } from "../../api/recording";
 import { useSocketStore } from "../../context/socket";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { GenericModal } from "../ui/GenericModal";
