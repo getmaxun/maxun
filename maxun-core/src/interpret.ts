@@ -580,189 +580,46 @@ export default class Interpreter extends EventEmitter {
   }
 
   private async handleParallelPagination(page: Page, config: any): Promise<any[]> {
-    // Only use parallel processing for large datasets
-    if (!config.limit || config.limit < 10000) {
-        return this.handlePagination(page, config);
-    }
+    if (config.limit > 10000 && config.pagination.type === 'clickNext') {
+      console.time('parallel-scraping');
+      const context = page.context();
+      const numWorkers = 4; // Number of parallel processes
+      const batchSize = Math.ceil(config.limit / numWorkers);
+      const pageUrls: string[] = [];
 
-    console.time('parallel-scraping');
-    const context = page.context();
-    const numWorkers = 4; // Number of parallel processes
-    const batchSize = Math.ceil(config.limit / numWorkers);
-    const pageUrls: string[] = [];
+      let workers: any = null;
+      let availableSelectors = config.pagination.selector.split(',');
+      let visitedUrls: string[] = [];
 
-    let workers: any = null;
-    let availableSelectors = config.pagination.selector.split(',');
-    let visitedUrls: string[] = [];
+      const sharedState: SharedState = {
+          totalScraped: 0,
+          visitedUrls: new Set<string>(),
+          results: []
+      };
 
-    const sharedState: SharedState = {
-        totalScraped: 0,
-        visitedUrls: new Set<string>(),
-        results: []
-    };
-
-    switch (config.pagination.type) {
-      case "scrollDown":
-      case "scrollUp": {
-        console.log('Calculating total scrollable height...');
-    
-        // Initialize variables to track scroll progress
-        let previousHeight = 0;
-        let totalHeight = await page.evaluate(() => document.body.scrollHeight);
-        let noChangeCount = 0;
-        const maxNoChanges = 3;  // Number of times we'll allow no height change before concluding
-        
-        // Keep scrolling until we stop seeing height changes
-        while (true) {
-            await page.waitForTimeout(2000);
-
-            // Scroll based on direction
-            if (config.pagination.type === 'scrollDown') {
-              await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-            } else {
-                // For scroll up, we start at bottom and scroll up in chunks
-                await page.evaluate((height) => {
-                    window.scrollTo(0, Math.max(0, height - window.innerHeight));  // Using coordinate syntax
-                }, previousHeight);
-            }
-            
-            // Give time for content to load
-            await page.waitForTimeout(2000);
-            
-            // Check new height
-            const currentHeight = await page.evaluate(() => document.body.scrollHeight);
-            console.log(`Current scroll height: ${currentHeight}px`);
-            
-            if (currentHeight === previousHeight) {
-                noChangeCount++;
-                console.log(`No height change detected (attempt ${noChangeCount}/${maxNoChanges})`);
-                
-                if (noChangeCount >= maxNoChanges) {
-                    console.log('Reached stable scroll height');
-                    totalHeight = currentHeight;
-                    break;
-                }
-            } else {
-                // Reset counter if height changed
-                noChangeCount = 0;
-                console.log(`Height increased by ${currentHeight - previousHeight}px`);
-            }
-            
-            previousHeight = currentHeight;
-        }
-        
-        console.log(`Final total scrollable height: ${totalHeight}px`);
-
-        const overlap = 200;  // Pixels of overlap between workers
-        const effectiveHeight = totalHeight + (overlap * (numWorkers - 1));
-        const heightPerWorker = Math.floor(effectiveHeight / numWorkers);
-
-        workers = await Promise.all(Array.from({ length: numWorkers }, async (_, index) => {
-          const workerContext = await context.browser().newContext();
-          const workerPage = await workerContext.newPage();
-          await this.ensureScriptsLoaded(workerPage);
-
-          // Calculate scroll ranges for this worker
-          const startHeight = Math.max(0, index * heightPerWorker - (index > 0 ? overlap : 0));
-          const endHeight = (index === numWorkers - 1) ? totalHeight : (index + 1) * heightPerWorker;
-
-          try {
-            await workerPage.goto(page.url());
-            await workerPage.waitForLoadState('networkidle');
-
-            const workerConfig: WorkerConfig = {
-                ...config,
-                workerIndex: index,
-                startIndex: index * batchSize,
-                endIndex: Math.min((index + 1) * batchSize, config.limit),
-                batchSize,
-                scrollRange: { start: startHeight, end: endHeight }
-            };
-
-            return await this.scrapeScrollWorkerBatch(
-                workerPage,
-                workerConfig,
-                sharedState
-            );
-          } finally {
-            await workerPage.close();
-            await workerContext.close();
-          }
-        }));
-        break;
-    }
-
-    case "clickLoadMore": {
-      // For clickLoadMore, each worker handles a portion of the total clicks
-      const firstPageResults = await page.evaluate((cfg) => window.scrapeList(cfg), {
-          listSelector: config.listSelector,
-          fields: config.fields,
-          pagination: config.pagination
-      });
-
-      const itemsPerLoad = firstPageResults.length;
-      const estimatedLoads = Math.ceil(config.limit / itemsPerLoad);
-      const loadsPerWorker = Math.ceil(estimatedLoads / numWorkers);
-
-      workers = await Promise.all(Array.from({ length: numWorkers }, async (_, index) => {
-          const workerContext = await context.browser().newContext();
-          const workerPage = await workerContext.newPage();
-          await this.ensureScriptsLoaded(workerPage);
-
-          try {
-              await workerPage.goto(page.url());
-              await workerPage.waitForLoadState('networkidle');
-
-              const workerConfig: WorkerConfig = {
-                  ...config,
-                  workerIndex: index,
-                  startIndex: index * batchSize,
-                  endIndex: Math.min((index + 1) * batchSize, config.limit),
-                  batchSize,
-                  loadMoreConfig: {
-                      totalLoads: loadsPerWorker,
-                      startLoad: index * loadsPerWorker,
-                      endLoad: Math.min((index + 1) * loadsPerWorker, estimatedLoads)
-                  }
-              };
-
-              return await this.scrapeLoadMoreWorkerBatch(
-                  workerPage,
-                  workerConfig,
-                  sharedState
-              );
-          } finally {
-              await workerPage.close();
-              await workerContext.close();
-          }
-      }));
-      break;
-    }
-
-    case "clickNext":
       const firstPageResults = await page.evaluate((cfg) => window.scrapeList(cfg), {
         listSelector: config.listSelector,
         fields: config.fields,
         pagination: config.pagination
       });
-  
+
       const itemsPerPage = firstPageResults.length;
       const estimatedPages = Math.ceil(config.limit / itemsPerPage);
       console.log(`Items per page: ${itemsPerPage}`);
       console.log(`Estimated pages needed: ${estimatedPages}`);
-  
+
       try {
         while (true) {
           pageUrls.push(page.url())    
-  
+
           if (pageUrls.length >= estimatedPages) {
             console.log('Reached estimated number of pages. Stopping pagination.');
             break;
           }
-  
+
           let checkButton = null;
           let workingSelector = null;
-  
+
           for (let i = 0; i < availableSelectors.length; i++) {
             const selector = availableSelectors[i];
             try {
@@ -780,18 +637,18 @@ export default class Interpreter extends EventEmitter {
           if(!workingSelector) {
             break;
           }
-  
+
           const nextButton = await page.$(workingSelector);
           if (!nextButton) {
             break;
           }
-  
+
           const selectorIndex = availableSelectors.indexOf(workingSelector!);
           availableSelectors = availableSelectors.slice(selectorIndex);
-  
+
           const previousUrl = page.url();
           visitedUrls.push(previousUrl);
-  
+
           try {
             // Try both click methods simultaneously
             await Promise.race([
@@ -811,7 +668,7 @@ export default class Interpreter extends EventEmitter {
               console.log("Previous URL same as current URL. Navigation failed.");
             }
           }
-  
+
           const currentUrl = page.url();
           if (visitedUrls.includes(currentUrl)) {
             console.log(`Detected navigation to a previously visited URL: ${currentUrl}`);
@@ -841,9 +698,9 @@ export default class Interpreter extends EventEmitter {
       } catch (error) {
           console.error('Error collecting page URLs:', error);
       }
-  
+
       console.log(`Collected ${pageUrls.length} unique page URLs`);
-  
+
       // Distribute pages among workers
       const pagesPerWorker = Math.ceil(pageUrls.length / numWorkers);
       const workerPageAssignments = Array.from({ length: numWorkers }, (_, i) => {
@@ -853,16 +710,16 @@ export default class Interpreter extends EventEmitter {
       });
       
       // Create shared state for coordination
-  
+
       console.log(`Starting parallel scraping with ${numWorkers} workers`);
       console.log(`Each worker will handle ${batchSize} items`);
-  
+
       // Create worker processes
       workers = await Promise.all(Array.from({ length: numWorkers }, async (_, index) => {
           // Each worker gets its own browser context
           const workerContext = await context.browser().newContext();
           const workerPage = await workerContext.newPage();
-  
+
           await this.ensureScriptsLoaded(workerPage);
           
           // Calculate this worker's range
@@ -885,296 +742,106 @@ export default class Interpreter extends EventEmitter {
                   batchSize,
                   pageUrls: workerPageAssignments[index]
               };
-  
+
               console.log(`Worker ${index} URLs: ${workerPageAssignments[index]}`);
-  
+
               // Perform scraping for this worker's portion
               const workerResults = await this.scrapeClickNextWorkerBatch(
                   workerPage, 
                   workerConfig, 
                   sharedState
               );
-  
+
               return workerResults;
           } finally {
               await workerPage.close();
               await workerContext.close();
           }
       }));
-      break;
 
-      default:
-        return this.handlePagination(page, config);
+      // Combine and process results from all workers
+      const allResults = workers.flat().sort((a, b) => {
+          // Sort by any unique identifier in your data
+          // This example assumes items have an index or id field
+          return (a.index || 0) - (b.index || 0);
+      });
+
+      console.timeEnd('parallel-scraping');
+      console.log(`Total items scraped: ${allResults.length}`);
+
+      return allResults.slice(0, config.limit);
     }
 
-  // Combine and process results from all workers
-  const allResults = workers.flat().sort((a, b) => {
-      // Sort by any unique identifier in your data
-      // This example assumes items have an index or id field
-      return (a.index || 0) - (b.index || 0);
-  });
-
-  console.timeEnd('parallel-scraping');
-  console.log(`Total items scraped: ${allResults.length}`);
-
-  return allResults.slice(0, config.limit);
-}
-
-private async scrapeScrollWorkerBatch(
-  page: Page,
-  config: WorkerConfig,
-  sharedState: SharedState
-): Promise<any[]> {
-  const results: any[] = [];
-  const scrapedItems = new Set<string>();
-  
-  console.log(`Worker ${config.workerIndex + 1}: Starting to process scroll range ${config.scrollRange.start} to ${config.scrollRange.end}`);
-
-  // First, ensure the page is loaded and ready
-  await page.waitForLoadState('networkidle');
-
-  // Initialize scrolling parameters with smaller steps for better coverage
-  const scrollStep = Math.floor(await page.evaluate(() => window.innerHeight * 0.8)); // 80% of viewport height
-  let currentPosition = config.pagination.type === 'scrollDown' 
-      ? config.scrollRange.start 
-      : config.scrollRange.end;
-
-  // Wait for page to be ready
-  await page.waitForTimeout(2000);
-
-  // First, scroll to the worker's starting position
-  await page.evaluate((position) => {
-      window.scrollTo(0, position);
-  }, currentPosition);
-
-  // Allow time for initial content to load
-  await page.waitForTimeout(2000);
-
-  let previousHeight = await page.evaluate(() => document.body.scrollHeight);
-  let noChangeCount = 0;
-  const maxNoChanges = 3;
-
-  while (true) {
-      // Calculate next scroll position based on direction
-      const nextPosition = config.pagination.type === 'scrollDown'
-          ? Math.min(currentPosition + scrollStep, config.scrollRange.end)
-          : Math.max(currentPosition - scrollStep, config.scrollRange.start);
-
-      // Perform scroll
-      await page.evaluate((scrollTo) => {
-          window.scrollTo(0, scrollTo);
-      }, nextPosition);
-
-      // Allow time for new content to load
-      await page.waitForTimeout(2000);
-
-      // Check if the page height has changed
-      const currentHeight = await page.evaluate(() => document.body.scrollHeight);
-      
-      // Scrape the entire visible range, not just the viewport
-      const pageResults = await page.evaluate((cfg) => {
-          // Ensure we capture all items in the current scroll range
-          return window.scrapeList({...cfg});
-      }, {
-          ...config,
-          limit: config.endIndex - config.startIndex - results.length
-      });
-
-      // Process new results
-      const newResults = pageResults.filter(item => {
-          const uniqueKey = JSON.stringify(item);
-          if (!scrapedItems.has(uniqueKey)) {
-              scrapedItems.add(uniqueKey);
-              return true;
-          }
-          return false;
-      });
-
-      if (newResults.length > 0) {
-          console.log(`Worker ${config.workerIndex + 1}: Found ${newResults.length} new items at position ${nextPosition}`);
-      }
-
-      results.push(...newResults);
-      sharedState.totalScraped += newResults.length;
-
-      // Check if we've reached content boundaries
-      if (currentHeight === previousHeight) {
-          noChangeCount++;
-          if (noChangeCount >= maxNoChanges) {
-              console.log(`Worker ${config.workerIndex + 1}: No new content after ${maxNoChanges} attempts`);
-              break;
-          }
-      } else {
-          noChangeCount = 0;
-          previousHeight = currentHeight;
-      }
-
-      // Update position and check boundaries
-      currentPosition = nextPosition;
-      
-      const reachedBoundary = config.pagination.type === 'scrollDown'
-          ? currentPosition >= config.scrollRange.end
-          : currentPosition <= config.scrollRange.start;
-
-      if (reachedBoundary) {
-          console.log(`Worker ${config.workerIndex + 1}: Reached assigned boundary`);
-          break;
-      }
-
-      // Check if we've reached our batch limit
-      if (results.length >= config.batchSize || 
-          sharedState.totalScraped >= config.limit) {
-          console.log(`Worker ${config.workerIndex + 1}: Reached item limit`);
-          break;
-      }
+    return this.handlePagination(page, config);
   }
 
-  console.log(`Worker ${config.workerIndex + 1}: Completed with ${results.length} items`);
-  return results;
-}
+  private async scrapeClickNextWorkerBatch(
+    page: Page, 
+    config: WorkerConfig, 
+    sharedState: SharedState
+  ): Promise<any[]> {
+    const results: any[] = [];
+    const scrapedItems = new Set<string>();
+    
+    // Now we can access the page URLs directly from the config
+    console.log(`Worker ${config.workerIndex + 1}: Processing ${config.pageUrls.length} assigned pages`);
 
-private async scrapeLoadMoreWorkerBatch(
-  page: Page,
-  config: WorkerConfig,
-  sharedState: SharedState
-): Promise<any[]> {
-  const results: any[] = [];
-  const scrapedItems = new Set<string>();
-  let loadCount = 0;
-  let availableSelectors = config.pagination.selector.split(',');
-
-  console.log(`Worker ${config.workerIndex + 1}: Processing loads ${config.loadMoreConfig.startLoad} to ${config.loadMoreConfig.endLoad}`);
-
-  while (loadCount < config.loadMoreConfig.totalLoads) {
-      let workingSelector = null;
-      for (const selector of availableSelectors) {
-          try {
-              const checkButton = await page.waitForSelector(selector, { 
-                  state: 'attached',
-                  timeout: 5000 
-              });
-              if (checkButton) {
-                  workingSelector = selector;
-                  break;
-              }
-          } catch (error) {
-              continue;
-          }
-      }
-
-      if (!workingSelector) {
-          break;
-      }
-
-      const loadMoreButton = await page.$(workingSelector);
-      if (!loadMoreButton) {
-          break;
-      }
-
+    // Process each assigned URL
+    for (const [pageIndex, pageUrl] of config.pageUrls.entries()) {
       try {
-          await Promise.race([
-              loadMoreButton.click(),
-              loadMoreButton.dispatchEvent('click')
-          ]);
-      } catch (error) {
-          console.log(`Worker ${config.workerIndex + 1}: Click failed, trying next selector`);
-          continue;
-      }
+        const navigationResult = await page.goto(pageUrl, {
+          waitUntil: 'networkidle',
+          timeout: 30000
+        }).catch(error => {
+            console.error(
+                `Worker ${config.workerIndex + 1}: Navigation failed for ${pageUrl}:`,
+                error
+            );
+            return null;
+        });
 
-      await page.waitForTimeout(2000);
-      loadCount++;
+        if (!navigationResult) {
+            continue;
+        }
 
-      const pageResults = await page.evaluate((cfg) => window.scrapeList(cfg), {
-          ...config,
-          limit: config.endIndex - config.startIndex - results.length
-      });
+        await page.waitForLoadState('networkidle').catch(() => {});
 
-      const newResults = pageResults.filter(item => {
-          const uniqueKey = JSON.stringify(item);
-          if (scrapedItems.has(uniqueKey)) return false;
-          scrapedItems.add(uniqueKey);
-          return true;
-      });
+        const scrapeConfig = {
+            listSelector: config.listSelector,
+            fields: config.fields,
+            pagination: config.pagination,
+            limit: config.endIndex - config.startIndex - results.length
+        };
 
-      results.push(...newResults);
-      sharedState.totalScraped += newResults.length;
+        console.log(`Worker ${config.workerIndex + 1}, Config limit: ${scrapeConfig.limit}`);
 
-      if (results.length >= config.batchSize) {
-          break;
-      }
-  }
+        const pageResults = await page.evaluate((cfg) => window.scrapeList(cfg), scrapeConfig);
 
-  console.log(`Worker ${config.workerIndex + 1}: Completed with ${results.length} items scraped`);
-  return results;
-}
+        // Process and filter results
+        const newResults = pageResults
+            .filter(item => {
+                const uniqueKey = JSON.stringify(item);
+                if (scrapedItems.has(uniqueKey)) return false;
+                scrapedItems.add(uniqueKey);
+                return true;
+            })
 
-private async scrapeClickNextWorkerBatch(
-  page: Page, 
-  config: WorkerConfig, 
-  sharedState: SharedState
-): Promise<any[]> {
-  const results: any[] = [];
-  const scrapedItems = new Set<string>();
-  
-  // Now we can access the page URLs directly from the config
-  console.log(`Worker ${config.workerIndex + 1}: Processing ${config.pageUrls.length} assigned pages`);
+        results.push(...newResults);
+        sharedState.totalScraped += newResults.length;
+        sharedState.visitedUrls.add(pageUrl);
 
-  // Process each assigned URL
-  for (const [pageIndex, pageUrl] of config.pageUrls.entries()) {
-      try {
-          const navigationResult = await page.goto(pageUrl, {
-              waitUntil: 'networkidle',
-              timeout: 30000
-          }).catch(error => {
-              console.error(
-                  `Worker ${config.workerIndex + 1}: Navigation failed for ${pageUrl}:`,
-                  error
-              );
-              return null;
-          });
+        console.log(
+            `Worker ${config.workerIndex + 1}: ` +
+            `Completed page ${pageIndex + 1}/${config.pageUrls.length} - ` +
+            `Total items: ${results.length}/${config.batchSize}`
+        );
 
-          if (!navigationResult) {
-              continue;
-          }
+        if (results.length >= config.batchSize) {
+            console.log(`Worker ${config.workerIndex + 1}: Reached batch limit of ${config.batchSize}`);
+            break;
+        }
 
-          await page.waitForLoadState('networkidle').catch(() => {});
-
-          const scrapeConfig = {
-              listSelector: config.listSelector,
-              fields: config.fields,
-              pagination: config.pagination,
-              limit: config.endIndex - config.startIndex - results.length
-          };
-
-          console.log(`Worker ${config.workerIndex + 1}, Config limit: ${scrapeConfig.limit}`);
-
-          const pageResults = await page.evaluate((cfg) => window.scrapeList(cfg), scrapeConfig);
-
-          // Process and filter results
-          const newResults = pageResults
-              .filter(item => {
-                  const uniqueKey = JSON.stringify(item);
-                  if (scrapedItems.has(uniqueKey)) return false;
-                  scrapedItems.add(uniqueKey);
-                  return true;
-              })
-
-          results.push(...newResults);
-          sharedState.totalScraped += newResults.length;
-          sharedState.visitedUrls.add(pageUrl);
-
-          console.log(
-              `Worker ${config.workerIndex + 1}: ` +
-              `Completed page ${pageIndex + 1}/${config.pageUrls.length} - ` +
-              `Total items: ${results.length}/${config.batchSize}`
-          );
-
-          if (results.length >= config.batchSize) {
-              console.log(`Worker ${config.workerIndex + 1}: Reached batch limit of ${config.batchSize}`);
-              break;
-          }
-
-          await page.waitForTimeout(1000);
+        await page.waitForTimeout(1000);
 
       } catch (error) {
           console.error(
@@ -1184,7 +851,6 @@ private async scrapeClickNextWorkerBatch(
           continue;
       }
   }
-
     console.log(`Worker ${config.workerIndex + 1}: Completed with ${results.length} items scraped`);
     return results;
   }
