@@ -597,14 +597,17 @@ export default class Interpreter extends EventEmitter {
           results: []
       };
 
-      const firstPageResults = await page.evaluate((cfg) => window.scrapeList(cfg), {
-        listSelector: config.listSelector,
-        fields: config.fields,
-        pagination: config.pagination
-      });
-
-      const itemsPerPage = firstPageResults.length;
-      const estimatedPages = Math.ceil(config.limit / itemsPerPage);
+      const { itemsPerPage, estimatedPages } = await page.evaluate(
+        ({ listSelector, limit }) => {
+          const items = document.querySelectorAll(listSelector).length;
+          return {
+            itemsPerPage: items,
+            estimatedPages: Math.ceil(limit / items)
+          };
+        },
+        { listSelector: config.listSelector, limit: config.limit }
+      );
+      
       console.log(`Items per page: ${itemsPerPage}`);
       console.log(`Estimated pages needed: ${estimatedPages}`);
 
