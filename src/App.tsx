@@ -2,7 +2,7 @@ import React from "react";
 import { Routes, Route } from "react-router-dom";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import { GlobalInfoProvider } from "./context/globalInfo";
-import { PageWrapper } from "./pages/PageWrappper";
+import { PageWrapper } from "./pages/PageWrapper";
 import i18n from "./i18n";
 import ThemeModeProvider from './context/theme-provider';
 
