@@ -18,7 +18,6 @@ import { getStoredRuns } from "../../api/storage";
 import { RunSettings } from "./RunSettings";
 import { CollapsibleRow } from "./ColapsibleRow";
 
-// Export columns before the component
 export const columns: readonly Column[] = [
   { id: 'runStatus', label: 'Status', minWidth: 80 },
   { id: 'name', label: 'Name', minWidth: 80 },
@@ -70,7 +69,6 @@ export const RunsTable: React.FC<RunsTableProps> = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
 
-  // Update column labels using translation if needed
   const translatedColumns = columns.map(column => ({
     ...column,
     label: t(`runstable.${column.id}`, column.label)
