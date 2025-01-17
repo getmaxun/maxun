@@ -160,6 +160,11 @@ export const RunsTable: React.FC<RunsTableProps> = ({
           sx={{ width: '250px' }}
         />
       </Box>
+      {rows.length === 0 ? (
+        <Box display="flex" justifyContent="center" alignItems="center" height="100%">
+          <CircularProgress />
+        </Box>
+      ) : (
       <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden' }}>
         {Object.entries(groupedRows).map(([id, data]) => (
           <Accordion key={id} onChange={(event, isExpanded) => handleAccordionChange(id, isExpanded)}>
@@ -202,6 +207,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
           </Accordion>
         ))}
       </TableContainer>
+      )}
       <TablePagination
         rowsPerPageOptions={[10, 25, 50]}
         component="div"
