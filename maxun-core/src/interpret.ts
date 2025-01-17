@@ -16,9 +16,7 @@ import Concurrency from './utils/concurrency';
 import Preprocessor from './preprocessor';
 import log, { Level } from './utils/logger';
 
-import { WorkerConfig } from './types/worker';
-import { WorkerPool } from './utils/worker-pool';
-import os from 'os';
+import os from 'os'; 
 
 /**
  * Extending the Window interface for custom scraping functions.
@@ -43,7 +41,6 @@ declare global {
 interface InterpreterOptions {
   maxRepeats: number;
   maxConcurrency: number;
-  maxWorkers: number;
   serializableCallback: (output: any) => (void | Promise<void>);
   binaryCallback: (output: any, mimeType: string) => (void | Promise<void>);
   debug: boolean;
@@ -73,8 +70,6 @@ export default class Interpreter extends EventEmitter {
 
   private cumulativeResults: Record<string, any>[] = [];
 
-  private workerPool: WorkerPool;
-
   constructor(workflow: WorkflowFile, options?: Partial<InterpreterOptions>) {
     super();
     this.workflow = workflow.workflow;
@@ -82,7 +77,6 @@ export default class Interpreter extends EventEmitter {
     this.options = {
       maxRepeats: 5,
       maxConcurrency: 5,
-      maxWorkers: Math.max(1, Math.min(os.cpus().length - 1, 4)),
       serializableCallback: (data) => { 
         log(JSON.stringify(data), Level.WARN);
       },
@@ -93,7 +87,6 @@ export default class Interpreter extends EventEmitter {
     };
     this.concurrency = new Concurrency(this.options.maxConcurrency);
     this.log = (...args) => log(...args);
-    this.workerPool = new WorkerPool(this.options.maxWorkers);
 
     const error = Preprocessor.validateWorkflow(workflow);
     if (error) {
@@ -555,7 +548,6 @@ export default class Interpreter extends EventEmitter {
 
       const numWorkers = Math.max(1, Math.min(os.cpus().length - 1, 4));
       const batchSize = Math.ceil(config.limit / numWorkers);
-      const workerPool = new WorkerPool(numWorkers);
       const pageUrls: string[] = [];
 
       let workers: any = null;
@@ -669,52 +661,7 @@ export default class Interpreter extends EventEmitter {
 
       console.log(`Collected ${pageUrls.length} unique page URLs`);
 
-      workerPool.on('progress', (progress) => {
-        console.log(
-            `Worker ${progress.workerId}: ` +
-            `${progress.percentage.toFixed(2)}% complete, ` +
-            `${progress.scrapedItems} items scraped, ` +
-            `ETA: ${Math.round(progress.estimatedTimeRemaining / 1000)}s`
-        );
-      });
-
-      workerPool.on('globalProgress', (metrics) => {
-        // Global progress is automatically logged by the worker pool
-      });
-
-      try {
-        // Distribute pages among workers
-        const pagesPerWorker = Math.ceil(pageUrls.length / numWorkers);      
-        const workerConfigs: WorkerConfig[] = Array.from(
-          { length: numWorkers },
-          (_, i) => ({
-              workerIndex: i,
-              startIndex: i * batchSize,
-              endIndex: Math.min((i + 1) * batchSize, config.limit),
-              batchSize,
-              pageUrls: pageUrls.slice(
-                  i * pagesPerWorker,
-                  Math.min((i + 1) * pagesPerWorker, pageUrls.length)
-              ),
-              listSelector: config.listSelector,
-              fields: config.fields,
-              pagination: config.pagination
-          })
-        );
-
-        const results = await workerPool.runWorkers(workerConfigs);
-
-        // Process and sort results
-        const sortedResults = results.sort((a, b) => {
-          return (a.index || 0) - (b.index || 0);
-        });
-
-        console.timeEnd('parallel-scraping');
-        return sortedResults.slice(0, config.limit);
-      } catch (error) {
-        console.error('Parallel scraping failed!');
-        return this.handlePagination(page, config);
-      }
+      
     }
 
     return this.handlePagination(page, config);
