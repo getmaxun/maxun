@@ -161,7 +161,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
         />
       </Box>
       {rows.length === 0 ? (
-        <Box display="flex" justifyContent="center" alignItems="center" height="100%">
+        <Box display="flex" justifyContent="center" alignItems="center" height="50%">
           <CircularProgress />
         </Box>
       ) : (
