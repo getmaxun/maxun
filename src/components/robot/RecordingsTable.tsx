@@ -200,6 +200,11 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
           </IconButton>
         </Box>
       </Box>
+          {rows.length === 0 ? (
+            <Box display="flex" justifyContent="center" alignItems="center" height="50%">
+              <CircularProgress />
+            </Box>
+          ) : (
       <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden', marginTop: '15px' }}>
         <Table stickyHeader aria-label="sticky table">
           <TableHead>
@@ -295,6 +300,7 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
           </TableBody>
         </Table>
       </TableContainer>
+          )}
       <TablePagination
         rowsPerPageOptions={[10, 25, 50]}
         component="div"
