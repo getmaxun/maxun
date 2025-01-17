@@ -165,48 +165,48 @@ export const RunsTable: React.FC<RunsTableProps> = ({
           <CircularProgress />
         </Box>
       ) : (
-      <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden' }}>
-        {Object.entries(groupedRows).map(([id, data]) => (
-          <Accordion key={id} onChange={(event, isExpanded) => handleAccordionChange(id, isExpanded)}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography variant="h6">{data[data.length - 1].name}</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Table stickyHeader aria-label="sticky table">
-                <TableHead>
-                  <TableRow>
-                    <TableCell />
-                    {translatedColumns.map((column) => (
-                      <TableCell
-                        key={column.id}
-                        align={column.align}
-                        style={{ minWidth: column.minWidth }}
-                      >
-                        {column.label}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {data
-                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                    .map((row) => (
-                      <CollapsibleRow
-                        row={row}
-                        handleDelete={handleDelete}
-                        key={`row-${row.id}`}
-                        isOpen={runId === row.runId && runningRecordingName === row.name}
-                        currentLog={currentInterpretationLog}
-                        abortRunHandler={abortRunHandler}
-                        runningRecordingName={runningRecordingName}
-                      />
-                    ))}
-                </TableBody>
-              </Table>
-            </AccordionDetails>
-          </Accordion>
-        ))}
-      </TableContainer>
+        <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden' }}>
+          {Object.entries(groupedRows).map(([id, data]) => (
+            <Accordion key={id} onChange={(event, isExpanded) => handleAccordionChange(id, isExpanded)}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="h6">{data[data.length - 1].name}</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Table stickyHeader aria-label="sticky table">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell />
+                      {translatedColumns.map((column) => (
+                        <TableCell
+                          key={column.id}
+                          align={column.align}
+                          style={{ minWidth: column.minWidth }}
+                        >
+                          {column.label}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {data
+                      .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                      .map((row) => (
+                        <CollapsibleRow
+                          row={row}
+                          handleDelete={handleDelete}
+                          key={`row-${row.id}`}
+                          isOpen={runId === row.runId && runningRecordingName === row.name}
+                          currentLog={currentInterpretationLog}
+                          abortRunHandler={abortRunHandler}
+                          runningRecordingName={runningRecordingName}
+                        />
+                      ))}
+                  </TableBody>
+                </Table>
+              </AccordionDetails>
+            </Accordion>
+          ))}
+        </TableContainer>
       )}
       <TablePagination
         rowsPerPageOptions={[10, 25, 50]}
