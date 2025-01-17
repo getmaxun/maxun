@@ -16,6 +16,10 @@ import Concurrency from './utils/concurrency';
 import Preprocessor from './preprocessor';
 import log, { Level } from './utils/logger';
 
+import { WorkerConfig } from './types/worker';
+import { WorkerPool } from './utils/worker-pool';
+import os from 'os';
+
 /**
  * Extending the Window interface for custom scraping functions.
  */
@@ -39,6 +43,7 @@ declare global {
 interface InterpreterOptions {
   maxRepeats: number;
   maxConcurrency: number;
+  maxWorkers: number;
   serializableCallback: (output: any) => (void | Promise<void>);
   binaryCallback: (output: any, mimeType: string) => (void | Promise<void>);
   debug: boolean;
@@ -46,45 +51,6 @@ interface InterpreterOptions {
     activeId: Function,
     debugMessage: Function,
   }>
-}
-
-interface SharedState {
-  totalScraped: number;
-  visitedUrls: Set<string>;
-  results: any[];
-}
-
-interface ScrapeListConfig {
-  listSelector: string;
-  fields: any;
-  limit?: number;
-  pagination: any;
-}
-
-interface ScrollRange {
-  start: number;  
-  end: number;    
-}
-
-interface LoadMoreConfig {
-  totalLoads: number;     
-  startLoad: number;      
-  endLoad: number;        
-}
-
-interface WorkerConfig extends ScrapeListConfig {
-  workerIndex: number;
-  startIndex: number;
-  endIndex: number;
-  batchSize: number;
-  pagination: {
-      type: 'scrollDown' | 'scrollUp' | 'clickNext' | 'clickLoadMore';
-      selector: string;
-  };
-
-  pageUrls?: string[];
-  scrollRange?: ScrollRange;
-  loadMoreConfig?: LoadMoreConfig;
 }
 
 /**
@@ -107,6 +73,8 @@ export default class Interpreter extends EventEmitter {
 
   private cumulativeResults: Record<string, any>[] = [];
 
+  private workerPool: WorkerPool;
+
   constructor(workflow: WorkflowFile, options?: Partial<InterpreterOptions>) {
     super();
     this.workflow = workflow.workflow;
@@ -114,6 +82,7 @@ export default class Interpreter extends EventEmitter {
     this.options = {
       maxRepeats: 5,
       maxConcurrency: 5,
+      maxWorkers: Math.max(1, Math.min(os.cpus().length - 1, 4)),
       serializableCallback: (data) => { 
         log(JSON.stringify(data), Level.WARN);
       },
@@ -124,6 +93,7 @@ export default class Interpreter extends EventEmitter {
     };
     this.concurrency = new Concurrency(this.options.maxConcurrency);
     this.log = (...args) => log(...args);
+    this.workerPool = new WorkerPool(this.options.maxWorkers);
 
     const error = Preprocessor.validateWorkflow(workflow);
     if (error) {
@@ -582,20 +552,15 @@ export default class Interpreter extends EventEmitter {
   private async handleParallelPagination(page: Page, config: any): Promise<any[]> {
     if (config.limit > 10000 && config.pagination.type === 'clickNext') {
       console.time('parallel-scraping');
-      const context = page.context();
-      const numWorkers = 4; // Number of parallel processes
+
+      const numWorkers = Math.max(1, Math.min(os.cpus().length - 1, 4));
       const batchSize = Math.ceil(config.limit / numWorkers);
+      const workerPool = new WorkerPool(numWorkers);
       const pageUrls: string[] = [];
 
       let workers: any = null;
       let availableSelectors = config.pagination.selector.split(',');
       let visitedUrls: string[] = [];
-
-      const sharedState: SharedState = {
-          totalScraped: 0,
-          visitedUrls: new Set<string>(),
-          results: []
-      };
 
       const { itemsPerPage, estimatedPages } = await page.evaluate(
         ({ listSelector, limit }) => {
@@ -704,158 +669,55 @@ export default class Interpreter extends EventEmitter {
 
       console.log(`Collected ${pageUrls.length} unique page URLs`);
 
-      // Distribute pages among workers
-      const pagesPerWorker = Math.ceil(pageUrls.length / numWorkers);
-      const workerPageAssignments = Array.from({ length: numWorkers }, (_, i) => {
-          const start = i * pagesPerWorker;
-          const end = Math.min(start + pagesPerWorker, pageUrls.length);
-          return pageUrls.slice(start, end);
+      workerPool.on('progress', (progress) => {
+        console.log(
+            `Worker ${progress.workerId}: ` +
+            `${progress.percentage.toFixed(2)}% complete, ` +
+            `${progress.scrapedItems} items scraped, ` +
+            `ETA: ${Math.round(progress.estimatedTimeRemaining / 1000)}s`
+        );
       });
-      
-      // Create shared state for coordination
 
-      console.log(`Starting parallel scraping with ${numWorkers} workers`);
-      console.log(`Each worker will handle ${batchSize} items`);
+      workerPool.on('globalProgress', (metrics) => {
+        // Global progress is automatically logged by the worker pool
+      });
 
-      // Create worker processes
-      workers = await Promise.all(Array.from({ length: numWorkers }, async (_, index) => {
-          // Each worker gets its own browser context
-          const workerContext = await context.browser().newContext();
-          const workerPage = await workerContext.newPage();
+      try {
+        // Distribute pages among workers
+        const pagesPerWorker = Math.ceil(pageUrls.length / numWorkers);      
+        const workerConfigs: WorkerConfig[] = Array.from(
+          { length: numWorkers },
+          (_, i) => ({
+              workerIndex: i,
+              startIndex: i * batchSize,
+              endIndex: Math.min((i + 1) * batchSize, config.limit),
+              batchSize,
+              pageUrls: pageUrls.slice(
+                  i * pagesPerWorker,
+                  Math.min((i + 1) * pagesPerWorker, pageUrls.length)
+              ),
+              listSelector: config.listSelector,
+              fields: config.fields,
+              pagination: config.pagination
+          })
+        );
 
-          await this.ensureScriptsLoaded(workerPage);
-          
-          // Calculate this worker's range
-          const startIndex = index * batchSize;
-          const endIndex = Math.min((index + 1) * batchSize, config.limit);
-          
-          console.log(`Worker ${index + 1} starting: Items ${startIndex} to ${endIndex}`);
-          
-          try {
-              // Navigate to the same URL
-              await workerPage.goto(page.url());
-              await workerPage.waitForLoadState('networkidle');
-              
-              // Create worker-specific config
-              const workerConfig: WorkerConfig = {
-                  ...config,
-                  workerIndex: index,
-                  startIndex,
-                  endIndex,
-                  batchSize,
-                  pageUrls: workerPageAssignments[index]
-              };
+        const results = await workerPool.runWorkers(workerConfigs);
 
-              console.log(`Worker ${index} URLs: ${workerPageAssignments[index]}`);
-
-              // Perform scraping for this worker's portion
-              const workerResults = await this.scrapeClickNextWorkerBatch(
-                  workerPage, 
-                  workerConfig, 
-                  sharedState
-              );
-
-              return workerResults;
-          } finally {
-              await workerPage.close();
-              await workerContext.close();
-          }
-      }));
-
-      // Combine and process results from all workers
-      const allResults = workers.flat().sort((a, b) => {
-          // Sort by any unique identifier in your data
-          // This example assumes items have an index or id field
+        // Process and sort results
+        const sortedResults = results.sort((a, b) => {
           return (a.index || 0) - (b.index || 0);
-      });
+        });
 
-      console.timeEnd('parallel-scraping');
-      console.log(`Total items scraped: ${allResults.length}`);
-
-      return allResults.slice(0, config.limit);
+        console.timeEnd('parallel-scraping');
+        return sortedResults.slice(0, config.limit);
+      } catch (error) {
+        console.error('Parallel scraping failed!');
+        return this.handlePagination(page, config);
+      }
     }
 
     return this.handlePagination(page, config);
-  }
-
-  private async scrapeClickNextWorkerBatch(
-    page: Page, 
-    config: WorkerConfig, 
-    sharedState: SharedState
-  ): Promise<any[]> {
-    const results: any[] = [];
-    const scrapedItems = new Set<string>();
-    
-    // Now we can access the page URLs directly from the config
-    console.log(`Worker ${config.workerIndex + 1}: Processing ${config.pageUrls.length} assigned pages`);
-
-    // Process each assigned URL
-    for (const [pageIndex, pageUrl] of config.pageUrls.entries()) {
-      try {
-        const navigationResult = await page.goto(pageUrl, {
-          waitUntil: 'networkidle',
-          timeout: 30000
-        }).catch(error => {
-            console.error(
-                `Worker ${config.workerIndex + 1}: Navigation failed for ${pageUrl}:`,
-                error
-            );
-            return null;
-        });
-
-        if (!navigationResult) {
-            continue;
-        }
-
-        await page.waitForLoadState('networkidle').catch(() => {});
-
-        const scrapeConfig = {
-            listSelector: config.listSelector,
-            fields: config.fields,
-            pagination: config.pagination,
-            limit: config.endIndex - config.startIndex - results.length
-        };
-
-        console.log(`Worker ${config.workerIndex + 1}, Config limit: ${scrapeConfig.limit}`);
-
-        const pageResults = await page.evaluate((cfg) => window.scrapeList(cfg), scrapeConfig);
-
-        // Process and filter results
-        const newResults = pageResults
-            .filter(item => {
-                const uniqueKey = JSON.stringify(item);
-                if (scrapedItems.has(uniqueKey)) return false;
-                scrapedItems.add(uniqueKey);
-                return true;
-            })
-
-        results.push(...newResults);
-        sharedState.totalScraped += newResults.length;
-        sharedState.visitedUrls.add(pageUrl);
-
-        console.log(
-            `Worker ${config.workerIndex + 1}: ` +
-            `Completed page ${pageIndex + 1}/${config.pageUrls.length} - ` +
-            `Total items: ${results.length}/${config.batchSize}`
-        );
-
-        if (results.length >= config.batchSize) {
-            console.log(`Worker ${config.workerIndex + 1}: Reached batch limit of ${config.batchSize}`);
-            break;
-        }
-
-        await page.waitForTimeout(1000);
-
-      } catch (error) {
-          console.error(
-              `Worker ${config.workerIndex + 1}: Error processing page ${pageUrl}:`,
-              error
-          );
-          continue;
-      }
-  }
-    console.log(`Worker ${config.workerIndex + 1}: Completed with ${results.length} items scraped`);
-    return results;
   }
 
   private async handlePagination(page: Page, config: { listSelector: string, fields: any, limit?: number, pagination: any }) {
