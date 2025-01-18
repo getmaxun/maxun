@@ -11,7 +11,7 @@ import TableRow from '@mui/material/TableRow';
 import { useEffect } from "react";
 import { WorkflowFile } from "maxun-core";
 import SearchIcon from '@mui/icons-material/Search';
-import { IconButton, Button, Box, Typography, TextField, MenuItem, Menu, ListItemIcon, ListItemText } from "@mui/material";
+import { IconButton, Button, Box, Typography, TextField, MenuItem, Menu, ListItemIcon, ListItemText, CircularProgress } from "@mui/material";
 import { Schedule, DeleteForever, Edit, PlayCircle, Settings, Power, ContentCopy, MoreHoriz } from "@mui/icons-material";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { checkRunsForRecording, deleteRecordingFromStorage, getStoredRecordings } from "../../api/storage";
@@ -200,101 +200,107 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
           </IconButton>
         </Box>
       </Box>
-      <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden', marginTop: '15px' }}>
-        <Table stickyHeader aria-label="sticky table">
-          <TableHead>
-            <TableRow>
-              {columns.map((column) => (
-                <TableCell
-                  key={column.id}
-                  align={column.align}
-                  style={{ minWidth: column.minWidth }}
-                >
-                  {column.label}
-                </TableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredRows.length !== 0 ? filteredRows
-              .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-              .map((row) => {
-                return (
-                  <TableRow hover role="checkbox" tabIndex={-1} key={row.id}>
-                    {columns.map((column) => {
-                      // @ts-ignore
-                      const value: any = row[column.id];
-                      if (value !== undefined) {
-                        return (
-                          <TableCell key={column.id} align={column.align}>
-                            {value}
-                          </TableCell>
-                        );
-                      } else {
-                        switch (column.id) {
-                          case 'interpret':
-                            return (
-                              <TableCell key={column.id} align={column.align}>
-                                <InterpretButton handleInterpret={() => handleRunRecording(row.id, row.name, row.params || [])} />
-                              </TableCell>
-                            );
-                          case 'schedule':
-                            return (
-                              <TableCell key={column.id} align={column.align}>
-                                <ScheduleButton handleSchedule={() => handleScheduleRecording(row.id, row.name, row.params || [])} />
-                              </TableCell>
-                            );
-                          case 'integrate':
-                            return (
-                              <TableCell key={column.id} align={column.align}>
-                                <IntegrateButton handleIntegrate={() => handleIntegrateRecording(row.id, row.name, row.params || [])} />
-                              </TableCell>
-                            );
-                          case 'options':
-                            return (
-                              <TableCell key={column.id} align={column.align}>
-                                <OptionsButton
-                                  handleEdit={() => handleEditRobot(row.id, row.name, row.params || [])}
-                                  handleDuplicate={() => {
-                                    handleDuplicateRobot(row.id, row.name, row.params || []);
-                                  }}
-                                  handleDelete={() => {
+      {rows.length === 0 ? (
+        <Box display="flex" justifyContent="center" alignItems="center" height="50%">
+          <CircularProgress />
+        </Box>
+      ) : (
+        <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden', marginTop: '15px' }}>
+          <Table stickyHeader aria-label="sticky table">
+            <TableHead>
+              <TableRow>
+                {columns.map((column) => (
+                  <TableCell
+                    key={column.id}
+                    align={column.align}
+                    style={{ minWidth: column.minWidth }}
+                  >
+                    {column.label}
+                  </TableCell>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredRows.length !== 0 ? filteredRows
+                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                .map((row) => {
+                  return (
+                    <TableRow hover role="checkbox" tabIndex={-1} key={row.id}>
+                      {columns.map((column) => {
+                        // @ts-ignore
+                        const value: any = row[column.id];
+                        if (value !== undefined) {
+                          return (
+                            <TableCell key={column.id} align={column.align}>
+                              {value}
+                            </TableCell>
+                          );
+                        } else {
+                          switch (column.id) {
+                            case 'interpret':
+                              return (
+                                <TableCell key={column.id} align={column.align}>
+                                  <InterpretButton handleInterpret={() => handleRunRecording(row.id, row.name, row.params || [])} />
+                                </TableCell>
+                              );
+                            case 'schedule':
+                              return (
+                                <TableCell key={column.id} align={column.align}>
+                                  <ScheduleButton handleSchedule={() => handleScheduleRecording(row.id, row.name, row.params || [])} />
+                                </TableCell>
+                              );
+                            case 'integrate':
+                              return (
+                                <TableCell key={column.id} align={column.align}>
+                                  <IntegrateButton handleIntegrate={() => handleIntegrateRecording(row.id, row.name, row.params || [])} />
+                                </TableCell>
+                              );
+                            case 'options':
+                              return (
+                                <TableCell key={column.id} align={column.align}>
+                                  <OptionsButton
+                                    handleEdit={() => handleEditRobot(row.id, row.name, row.params || [])}
+                                    handleDuplicate={() => {
+                                      handleDuplicateRobot(row.id, row.name, row.params || []);
+                                    }}
+                                    handleDelete={() => {
 
-                                    checkRunsForRecording(row.id).then((result: boolean) => {
-                                      if (result) {
-                                        notify('warning', t('recordingtable.notifications.delete_warning'));
-                                      }
-                                    })
+                                      checkRunsForRecording(row.id).then((result: boolean) => {
+                                        if (result) {
+                                          notify('warning', t('recordingtable.notifications.delete_warning'));
+                                        }
+                                      })
 
-                                    deleteRecordingFromStorage(row.id).then((result: boolean) => {
-                                      if (result) {
-                                        setRows([]);
-                                        notify('success', t('recordingtable.notifications.delete_success'));
-                                        fetchRecordings();
-                                      }
-                                    })
-                                  }}
-                                />
-                              </TableCell>
-                            );
-                          case 'settings':
-                            return (
-                              <TableCell key={column.id} align={column.align}>
-                                <SettingsButton handleSettings={() => handleSettingsRecording(row.id, row.name, row.params || [])} />
-                              </TableCell>
-                            );
-                          default:
-                            return null;
+                                      deleteRecordingFromStorage(row.id).then((result: boolean) => {
+                                        if (result) {
+                                          setRows([]);
+                                          notify('success', t('recordingtable.notifications.delete_success'));
+                                          fetchRecordings();
+                                        }
+                                      })
+                                    }}
+                                  />
+                                </TableCell>
+                              );
+                            case 'settings':
+                              return (
+                                <TableCell key={column.id} align={column.align}>
+                                  <SettingsButton handleSettings={() => handleSettingsRecording(row.id, row.name, row.params || [])} />
+                                </TableCell>
+                              );
+                            default:
+                              return null;
+                          }
                         }
-                      }
-                    })}
-                  </TableRow>
-                );
-              })
-              : null}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                      })}
+                    </TableRow>
+                  );
+                })
+                : null}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
       <TablePagination
         rowsPerPageOptions={[10, 25, 50]}
         component="div"
