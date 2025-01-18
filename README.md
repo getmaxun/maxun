@@ -1,6 +1,6 @@
 <h1 align="center">
     <div>
-        <a href="https://maxun-website.vercel.app/?ref=ghread">
+        <a href="https://www.maxun.dev/?ref=ghread">
             <img src="/src/assets/maxunlogo.png" width="50" />
             <br>
             Maxun
