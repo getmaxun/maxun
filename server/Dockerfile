@@ -44,9 +44,6 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /tmp/.X11-unix && chmod 1777 /tmp/.X11-unix
 
-# Make the script executable
-# RUN chmod +x ./start.sh
-
 # Expose the backend port
 EXPOSE ${BACKEND_PORT:-8080}
 
