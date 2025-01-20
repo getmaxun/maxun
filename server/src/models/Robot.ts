@@ -26,7 +26,7 @@ interface RobotAttributes {
   google_access_token?: string | null;
   google_refresh_token?: string | null;
   schedule?: ScheduleConfig | null;
-  isLogin: boolean;
+  isLogin?: boolean;
 }
 
 interface ScheduleConfig {
