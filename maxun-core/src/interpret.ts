@@ -702,7 +702,7 @@ export default class Interpreter extends EventEmitter {
             listSelector: config.listSelector,
             fields: config.fields,
             pagination: config.pagination,
-            batchSize: endIndex - startIndex,
+            limit: endIndex - startIndex,
             startIndex,
             endIndex
           }
