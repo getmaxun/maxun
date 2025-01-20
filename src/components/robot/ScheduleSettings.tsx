@@ -265,7 +265,7 @@ export const ScheduleSettingsModal = ({ isOpen, handleStart, handleClose, initia
                   sx={dropDownStyle}
                 >
                   {validMomentTimezones.map((tz) => (
-                    <MenuItem key={tz} value={tz}>{tz.toLowerCase()}</MenuItem>
+                    <MenuItem key={tz} value={tz}>{tz.charAt(0).toUpperCase() + tz.slice(1).toLowerCase()}</MenuItem>
                   ))}
                 </Dropdown>
               </Box>
