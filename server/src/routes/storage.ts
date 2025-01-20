@@ -248,6 +248,7 @@ router.post('/recordings/:id/duplicate', requireSignIn, async (req: Authenticate
         updatedAt: currentTimestamp, 
       }, 
       recording: { ...originalRobot.recording, workflow }, 
+      isLogin: originalRobot.isLogin,
       google_sheet_email: null, 
       google_sheet_name: null,
       google_sheet_id: null,
