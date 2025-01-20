@@ -16,6 +16,9 @@ import Concurrency from './utils/concurrency';
 import Preprocessor from './preprocessor';
 import log, { Level } from './utils/logger';
 
+import { Kafka } from 'kafkajs';
+import { kafkaConfig } from './config/kafka';
+
 import os from 'os'; 
 
 /**
@@ -41,6 +44,7 @@ declare global {
 interface InterpreterOptions {
   maxRepeats: number;
   maxConcurrency: number;
+  maxWorkers: number;
   serializableCallback: (output: any) => (void | Promise<void>);
   binaryCallback: (output: any, mimeType: string) => (void | Promise<void>);
   debug: boolean;
@@ -70,13 +74,31 @@ export default class Interpreter extends EventEmitter {
 
   private cumulativeResults: Record<string, any>[] = [];
 
+  private kafka: Kafka;
+
+  private producer: any;
+
+  private async initializeKafka() {
+    this.producer = this.kafka.producer({
+      allowAutoTopicCreation: true,
+      idempotent: true
+    });
+    await this.producer.connect();
+  }
+
   constructor(workflow: WorkflowFile, options?: Partial<InterpreterOptions>) {
     super();
     this.workflow = workflow.workflow;
     this.initializedWorkflow = null;
+    this.kafka = new Kafka({
+      clientId: kafkaConfig.clientId,
+      brokers: kafkaConfig.brokers
+    });
+    this.initializeKafka();
     this.options = {
       maxRepeats: 5,
       maxConcurrency: 5,
+      maxWorkers: Math.max(1, Math.min(os.cpus().length - 1, 4)),
       serializableCallback: (data) => { 
         log(JSON.stringify(data), Level.WARN);
       },
@@ -546,11 +568,14 @@ export default class Interpreter extends EventEmitter {
     if (config.limit > 10000 && config.pagination.type === 'clickNext') {
       console.time('parallel-scraping');
 
+      const workflowId = `workflow-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      console.log(`Starting workflow with ID: ${workflowId}`);
+
       const numWorkers = Math.max(1, Math.min(os.cpus().length - 1, 4));
       const batchSize = Math.ceil(config.limit / numWorkers);
+      const tasks = [];
       const pageUrls: string[] = [];
 
-      let workers: any = null;
       let availableSelectors = config.pagination.selector.split(',');
       let visitedUrls: string[] = [];
 
@@ -661,10 +686,152 @@ export default class Interpreter extends EventEmitter {
 
       console.log(`Collected ${pageUrls.length} unique page URLs`);
 
-      
+      for (let i = 0; i < numWorkers; i++) {
+        const startIndex = i * batchSize;
+        const endIndex = Math.min((i + 1) * batchSize, config.limit);
+        const workerUrls = pageUrls.slice(
+          i * Math.ceil(pageUrls.length / numWorkers),
+          (i + 1) * Math.ceil(pageUrls.length / numWorkers)
+        );
+
+        const task = {
+          taskId: `${workflowId}-task-${i}`,
+          workflowId,
+          urls: workerUrls,
+          config: {
+            listSelector: config.listSelector,
+            fields: config.fields,
+            pagination: config.pagination,
+            batchSize: endIndex - startIndex,
+            startIndex,
+            endIndex
+          }
+        };
+
+        await this.producer.send({
+          topic: kafkaConfig.topics.SCRAPING_TASKS,
+          messages: [{
+            key: task.taskId,
+            value: JSON.stringify(task),
+            headers: {
+              'workflow-id': workflowId,
+              'retry-count': '0',
+              'total-tasks': numWorkers.toString()
+            }
+          }]
+        });
+
+        tasks.push(task);
+      }
+
+      console.log("TASKS SENT TO KAFKA (Not stringified)", tasks);
+
+      // Wait for results from Kafka
+      const results = await this.waitForScrapingResults(tasks);
+      console.timeEnd('parallel-scraping');
+      return results;
     }
 
     return this.handlePagination(page, config);
+  }
+
+  private async waitForScrapingResults(tasks: any[]): Promise<any[]> {
+    // Create a map to store our workflow's results
+    const resultsMap = new Map<string, any[]>();
+    
+    // Extract the workflow ID from the first task - all tasks in this batch will share the same workflow ID
+    const workflowId = tasks[0].workflowId;
+    console.log(`Waiting for results from workflow: ${workflowId}`);
+    
+    // Create a Set of task IDs for quick lookup - these are the only tasks we care about
+    const expectedTaskIds = new Set(tasks.map(task => task.taskId));
+    
+    // Create a consumer specifically for this workflow
+    const resultConsumer = this.kafka.consumer({ 
+        groupId: `scraping-group-results-${workflowId}`,
+        maxWaitTimeInMs: 1000,
+        maxBytesPerPartition: 2097152 // 2MB
+    });
+
+    try {
+        await resultConsumer.connect();
+        console.log('Result consumer connected successfully');
+        
+        await resultConsumer.subscribe({ 
+            topic: kafkaConfig.topics.SCRAPING_RESULTS,
+            fromBeginning: true 
+        });
+        console.log('Result consumer subscribed to topic successfully');
+
+        return new Promise((resolve, reject) => {
+            let isRunning = true;
+
+            resultConsumer.run({
+                eachMessage: async ({ topic, partition, message }) => {
+                    if (!isRunning) return;
+                    
+                    try {
+                        const result = JSON.parse(message.value!.toString());
+                        
+                        // Verify both task ID and workflow ID match
+                        if (result.workflowId === workflowId && expectedTaskIds.has(result.taskId)) {
+                            // Store this task's results
+                            if (!resultsMap.has(result.taskId)) {
+                                resultsMap.set(result.taskId, result.data);
+                                console.log(`Received results for task ${result.taskId}. ` + 
+                                          `Got ${resultsMap.size} of ${tasks.length} tasks from workflow ${workflowId}`);
+                            }
+
+                            // Check if we have all our workflow's results
+                            if (resultsMap.size === tasks.length) {
+                                isRunning = false;
+                                
+                                // Sort tasks by their numeric index (extract number from task ID)
+                                const sortedTasks = [...tasks].sort((a, b) => {
+                                    const aIndex = parseInt(a.taskId.split('-').pop() || '0');
+                                    const bIndex = parseInt(b.taskId.split('-').pop() || '0');
+                                    return aIndex - bIndex;
+                                });
+
+                                // Combine results in the sorted task order
+                                const allResults = sortedTasks
+                                    .map(task => {
+                                        const taskResults = resultsMap.get(task.taskId);
+                                        if (!taskResults) {
+                                            console.warn(`Missing results for task ${task.taskId} in workflow ${workflowId}`);
+                                            return [];
+                                        }
+                                        return taskResults;
+                                    })
+                                    .flat();
+
+                                console.log(`Successfully collected all results from workflow ${workflowId}`);
+                                
+                                resolve(allResults);
+                            }
+                        }
+                    } catch (error) {
+                        console.error(`Error processing message in workflow ${workflowId}:`, error);
+                        reject(error);
+                    }
+                }
+            });
+
+            // // Add a timeout to prevent hanging
+            // const timeout = setTimeout(() => {
+            //     if (isRunning) {
+            //         isRunning = false;
+            //         console.error(`Timeout waiting for results from workflow ${workflowId}. ` +
+            //                     `Received ${resultsMap.size} of ${tasks.length} expected results.`);
+            //         reject(new Error(`Timeout waiting for results from workflow ${workflowId}`));
+            //     }
+            // }, 30000); // 30 second timeout
+        });
+
+    } catch (error) {
+        console.error(`Fatal error in waitForScrapingResults for workflow ${workflowId}:`, error);
+        throw error;
+    }
   }
 
   private async handlePagination(page: Page, config: { listSelector: string, fields: any, limit?: number, pagination: any }) {
