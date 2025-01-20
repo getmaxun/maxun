@@ -207,7 +207,7 @@ export const ScheduleSettingsModal = ({ isOpen, handleStart, handleClose, initia
                   sx={dropDownStyle}
                 >
                   {days.map((day) => (
-                    <MenuItem key={day} value={day}>{day}</MenuItem>
+                    <MenuItem key={day} value={day}>{day.toLowerCase()}</MenuItem>
                   ))}
                 </Dropdown>
               </Box>
