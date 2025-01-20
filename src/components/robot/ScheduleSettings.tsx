@@ -190,7 +190,7 @@ export const ScheduleSettingsModal = ({ isOpen, handleStart, handleClose, initia
                   sx={dropDownStyle}
                 >
                   {units.map((unit) => (
-                    <MenuItem key={unit} value={unit}>{unit.toLocaleLowerCase()}</MenuItem>
+                    <MenuItem key={unit} value={unit}> {unit.charAt(0).toUpperCase() + unit.slice(1).toLowerCase()}</MenuItem>
                   ))}
                 </Dropdown>
               </Box>
