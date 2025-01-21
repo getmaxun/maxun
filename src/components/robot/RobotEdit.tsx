@@ -93,11 +93,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
           const selectors = findCredentialSelectors(robot.recording.workflow);
           setCredentialSelectors(selectors);
           
-          // Initialize credentials state
-          const initialCredentials: Record<string, string> = {};
-          selectors.forEach(selector => {
-            initialCredentials[selector] = '';
-          });
+          const initialCredentials = extractInitialCredentials(robot.recording.workflow);
           setCredentials(initialCredentials);
         }
     }, [robot]);
@@ -108,7 +104,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
         workflow?.forEach(step => {
           step.what?.forEach(action => {
             if (
-              (action.action === 'type' || action.action === 'press') && 
+              (action.action === 'type') && 
               action.args && 
               action.args[0] && 
               typeof action.args[0] === 'string'
@@ -121,9 +117,43 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
         return Array.from(selectors);
     };
 
+    const extractInitialCredentials = (workflow: any[]): Record<string, string> => {
+        const credentials: Record<string, string> = {};
+
+        const isPrintableCharacter = (char: string): boolean => {
+            return char.length === 1 && !!char.match(/^[\x20-\x7E]$/);
+        };
+        
+        workflow.forEach(step => {
+            if (!step.what) return;
+            
+            step.what.forEach((action: any) => {
+                if (
+                    (action.action === 'type' || action.action === 'press') && 
+                    action.args?.length >= 2 && 
+                    typeof action.args[1] === 'string'
+                ) {
+                    let currentSelector: string = action.args[0];
+                    let character: string = action.args[1];
+                    
+                    if (!credentials.hasOwnProperty(currentSelector)) {
+                        credentials[currentSelector] = '';
+                    }
+                    
+                    if (isPrintableCharacter(character)) {
+                        credentials[currentSelector] += character;
+                    }
+                }
+            });
+        });
+        
+        return credentials;
+    };
+
     const getRobot = async () => {
         if (recordingId) {
             const robot = await getStoredRecording(recordingId);
+            console.log('Robot:', robot);
             setRobot(robot);
         } else {
             notify('error', t('robot_edit.notifications.update_failed'));
