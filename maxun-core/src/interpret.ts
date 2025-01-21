@@ -547,221 +547,225 @@ export default class Interpreter extends EventEmitter {
     let scrapedItems: Set<string> = new Set<string>();
     let visitedUrls: string[] = [];
 
+    // Debug logging helper
+    const debugLog = (message: string, ...args: any[]) => {
+        console.log(`[Page ${visitedUrls.length + 1}] ${message}`, ...args);
+    };
+
     let availableSelectors = config.pagination.selector.split(',');
 
     while (true) {
-      switch (config.pagination.type) {
-        case 'scrollDown':
-          await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-          await page.waitForTimeout(2000);
+        switch (config.pagination.type) {
+            case 'scrollDown':
+                await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+                await page.waitForTimeout(2000);
 
-          const currentHeight = await page.evaluate(() => document.body.scrollHeight);
-          if (currentHeight === previousHeight) {
-            const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
-            allResults = allResults.concat(finalResults);
-            return allResults;
-          }
+                const currentHeight = await page.evaluate(() => document.body.scrollHeight);
+                if (currentHeight === previousHeight) {
+                    const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
+                    allResults = allResults.concat(finalResults);
+                    return allResults;
+                }
 
-          previousHeight = currentHeight;
-          break;
-        case 'scrollUp':
-          await page.evaluate(() => window.scrollTo(0, 0));
-          await page.waitForTimeout(2000);
-
-          const currentTopHeight = await page.evaluate(() => document.documentElement.scrollTop);
-          if (currentTopHeight === 0) {
-            const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
-            allResults = allResults.concat(finalResults);
-            return allResults;
-          }
-
-          previousHeight = currentTopHeight;
-          break;
-        case 'clickNext':
-          console.log("Page URL:", page.url());
-          const pageResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
-          
-          // console.log("Page results:", pageResults);
-          
-          // Filter out already scraped items
-          const newResults = pageResults.filter(item => {
-            const uniqueKey = JSON.stringify(item);
-            if (scrapedItems.has(uniqueKey)) return false; // Ignore if already scraped
-            scrapedItems.add(uniqueKey); // Mark as scraped
-            return true;
-          });
-          
-          allResults = allResults.concat(newResults);
-          console.log("Results so far:", allResults.length);
-          
-          if (config.limit && allResults.length >= config.limit) {
-            return allResults.slice(0, config.limit);
-          }
-
-          let checkButton = null;
-          let workingSelector = null;
-
-          for (let i = 0; i < availableSelectors.length; i++) {
-            const selector = availableSelectors[i];
-            try {
-              // Wait for selector with a short timeout
-              checkButton = await page.waitForSelector(selector, { state: 'attached' });
-              if (checkButton) {
-                workingSelector = selector;
+                previousHeight = currentHeight;
                 break;
+
+            case 'scrollUp':
+                await page.evaluate(() => window.scrollTo(0, 0));
+                await page.waitForTimeout(2000);
+
+                const currentTopHeight = await page.evaluate(() => document.documentElement.scrollTop);
+                if (currentTopHeight === 0) {
+                    const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
+                    allResults = allResults.concat(finalResults);
+                    return allResults;
+                }
+
+                previousHeight = currentTopHeight;
+                break;
+
+            case 'clickNext':
+              debugLog("Current URL:", page.url());
+              const pageResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
+              
+              // Filter out already scraped items
+              const newResults = pageResults.filter(item => {
+                const uniqueKey = JSON.stringify(item);
+                if (scrapedItems.has(uniqueKey)) return false;
+                scrapedItems.add(uniqueKey);
+                return true;
+              });
+              
+              allResults = allResults.concat(newResults);
+              debugLog("Results collected so far:", allResults.length);
+              
+              if (config.limit && allResults.length >= config.limit) {
+                return allResults.slice(0, config.limit);
               }
-            } catch (error) {
-              console.log(`Selector failed: ${selector}`);
-            }
-          }
 
-          if (!workingSelector) {
-            return allResults; 
-          }
+              await page.waitForLoadState('networkidle', { timeout: 30000 });  
+              await page.waitForTimeout(2000);
 
-          // const nextButton = await page.$(config.pagination.selector);
-          const nextButton = await page.$(workingSelector);
-          if (!nextButton) {
-            return allResults; // No more pages to scrape
-          }
+              let checkButton = null;
+              let workingSelector = null;
 
-          const selectorIndex = availableSelectors.indexOf(workingSelector!);
-          availableSelectors = availableSelectors.slice(selectorIndex);
+              // Try each selector with explicit waiting
+              for (const selector of availableSelectors) {
+                try {
+                  checkButton = await page.waitForSelector(selector, { 
+                    state: 'attached',
+                    timeout: 30000
+                  });
+                  if (checkButton) {
+                    workingSelector = selector;
+                    debugLog('Found working selector:', selector);
+                    break;
+                  }
+                } catch (error) {
+                  debugLog(`Selector failed: ${selector} - ${error.message}`);
+                }
+              }
 
-          // await Promise.all([
-          //   nextButton.dispatchEvent('click'),
-          //   page.waitForNavigation({ waitUntil: 'networkidle' })
-          // ]);
+              if (!workingSelector) {
+                  debugLog('No working selector found after trying all options');
+                  return allResults;
+              }
 
-          const previousUrl = page.url();
-          visitedUrls.push(previousUrl);
+              const nextButton = await page.$(workingSelector);
+              if (!nextButton) {
+                debugLog('Next button not found');
+                return allResults;
+              }
 
-          try {
-            // Try both click methods simultaneously
-            await Promise.race([
-              Promise.all([
-                page.waitForNavigation({ waitUntil: 'networkidle', timeout: 30000 }),
-                nextButton.click()
-              ]),
-              Promise.all([
-                page.waitForNavigation({ waitUntil: 'networkidle', timeout: 30000 }),
-                nextButton.dispatchEvent('click')
-              ])
-            ]);
-          } catch (error) {
-            // Verify if navigation actually succeeded
-            const currentUrl = page.url();
-            if (currentUrl === previousUrl) {
-              console.log("Previous URL same as current URL. Navigation failed.");
-            }
-          }
+              const selectorIndex = availableSelectors.indexOf(workingSelector);
+              availableSelectors = availableSelectors.slice(selectorIndex);
 
-          const currentUrl = page.url();
-          if (visitedUrls.includes(currentUrl)) {
-            console.log(`Detected navigation to a previously visited URL: ${currentUrl}`);
-            
-            // Extract the current page number from the URL
-            const match = currentUrl.match(/\d+/);
-            if (match) {
-              const currentNumber = match[0];
-              // Use visitedUrls.length + 1 as the next page number
-              const nextNumber = visitedUrls.length + 1;
-              
-              // Create new URL by replacing the current number with the next number
-              const nextUrl = currentUrl.replace(currentNumber, nextNumber.toString());
-              
-              console.log(`Navigating to constructed URL: ${nextUrl}`);
-              
-              // Navigate to the next page
-              await Promise.all([
-                page.waitForNavigation({ waitUntil: 'networkidle' }),
-                page.goto(nextUrl)
-              ]);
-            }
-          }
-        
-          // Give the page a moment to stabilize after navigation
-          await page.waitForTimeout(1000);
-          break;
-        case 'clickLoadMore':
-          while (true) {
-            let checkButton = null;
-            let workingSelector = null;
-
-            for (let i = 0; i < availableSelectors.length; i++) {
-              const selector = availableSelectors[i];
               try {
-                // Wait for selector with a short timeout
-                checkButton = await page.waitForSelector(selector, { state: 'attached' });
-                if (checkButton) {
-                  workingSelector = selector;
+                // Store current URL to check if navigation succeeded
+                const previousUrl = page.url();
+                visitedUrls.push(previousUrl);
+
+                // Try both click methods in sequence
+                try {
+                  await Promise.all([
+                    page.waitForNavigation({ 
+                        waitUntil: 'networkidle',
+                        timeout: 15000
+                    }),
+                    nextButton.click()
+                  ]);
+                } catch (error) {                        
+                  // If we're still on the same URL, try dispatch event
+                  if (page.url() === previousUrl) {
+                    await Promise.all([
+                      page.waitForNavigation({ 
+                        waitUntil: 'networkidle',
+                        timeout: 15000 
+                      }),
+                      nextButton.dispatchEvent('click')
+                    ]);
+                  }
+                }
+
+                await page.waitForLoadState('domcontentloaded');
+                await page.waitForLoadState('networkidle', { timeout: 30000 });
+                
+                const currentUrl = page.url();
+                if (visitedUrls.includes(currentUrl)) {
+                  debugLog(`Navigation failed/Detected navigation to previously visited URL: ${currentUrl}`);
+                  return allResults;
+                }
+
+                // Give the page a moment to stabilize after navigation
+                await page.waitForTimeout(1000);
+
+              } catch (error) {
+                debugLog(`Navigation failed completely: ${error.message}`);
+                return allResults;
+              }
+              break;
+
+            case 'clickLoadMore':
+              while (true) {
+                let checkButton = null;
+                let workingSelector = null;
+
+                for (const selector of availableSelectors) {
+                  try {
+                    checkButton = await page.waitForSelector(selector, { 
+                      state: 'attached',
+                      timeout: 30000
+                    });
+                    if (checkButton) {
+                      workingSelector = selector;
+                      debugLog('Found working selector:', selector);
+                      break;
+                    }
+                  } catch (error) {
+                    debugLog(`Load More selector failed: ${selector}`);
+                  }
+                }
+
+                if (!workingSelector) {
+                  debugLog('No working Load More selector found');
+                  const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
+                  allResults = allResults.concat(finalResults);
+                  return allResults;
+                }
+
+                const loadMoreButton = await page.$(workingSelector);
+                if (!loadMoreButton) {
+                  debugLog('Load More button not found');
+                  const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
+                  allResults = allResults.concat(finalResults);
+                  return allResults;
+                }
+
+                const selectorIndex = availableSelectors.indexOf(workingSelector);
+                availableSelectors = availableSelectors.slice(selectorIndex);
+                
+                try {
+                  try {
+                    await loadMoreButton.click();
+                  } catch (error) {
+                    await loadMoreButton.dispatchEvent('click');
+                  }
+                } catch (error) {
+                  const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
+                  allResults = allResults.concat(finalResults);
+                  return allResults;
+                }
+
+                await page.waitForTimeout(2000);
+                await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+                await page.waitForTimeout(2000);
+
+                const currentHeight = await page.evaluate(() => document.body.scrollHeight);
+                if (currentHeight === previousHeight) {
+                  debugLog('No more items loaded after Load More');
+                  const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
+                  allResults = allResults.concat(finalResults);
+                  return allResults;
+                }
+                previousHeight = currentHeight;
+                
+                if (config.limit && allResults.length >= config.limit) {
+                  allResults = allResults.slice(0, config.limit);
                   break;
                 }
-              } catch (error) {
-                console.log(`Selector failed: ${selector}`);
               }
-            }
-
-            if (!workingSelector) {
-              // No more working selectors available, so scrape the remaining items
-              const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
-              allResults = allResults.concat(finalResults);
-              return allResults;
-            }
-
-            const loadMoreButton = await page.$(workingSelector);
-            if (!loadMoreButton) {
-              // No more "Load More" button, so scrape the remaining items
-              const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
-              allResults = allResults.concat(finalResults);
-              return allResults;
-            }
-
-            const selectorIndex = availableSelectors.indexOf(workingSelector!);
-            availableSelectors = availableSelectors.slice(selectorIndex);
-            
-            // Click the 'Load More' button to load additional items
-            // await loadMoreButton.dispatchEvent('click');
-            try {
-              await Promise.race([
-                loadMoreButton.click(),
-                loadMoreButton.dispatchEvent('click')
-              ]);
-            } catch (error) {
-              console.log('Both click attempts failed');
-            }
-            await page.waitForTimeout(2000); // Wait for new items to load
-            // After clicking 'Load More', scroll down to load more items
-            await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-            await page.waitForTimeout(2000);
-
-            // Check if more items are available
-            const currentHeight = await page.evaluate(() => document.body.scrollHeight);
-            if (currentHeight === previousHeight) {
-              // No more items loaded, return the scraped results
-              const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
-              allResults = allResults.concat(finalResults);
-              return allResults;
-            }
-            previousHeight = currentHeight;
-            
-            if (config.limit && allResults.length >= config.limit) {
-              // If limit is set and reached, return the limited results
-              allResults = allResults.slice(0, config.limit);
               break;
-            }
-          }
-          break;
-        default:
-          const results = await page.evaluate((cfg) => window.scrapeList(cfg), config);
-          allResults = allResults.concat(results);
-          return allResults;
-      }
 
-      if (config.limit && allResults.length >= config.limit) {
-        allResults = allResults.slice(0, config.limit);
-        break;
-      }
+            default:
+              const results = await page.evaluate((cfg) => window.scrapeList(cfg), config);
+              allResults = allResults.concat(results);
+              return allResults;
+        }
+
+        if (config.limit && allResults.length >= config.limit) {
+            allResults = allResults.slice(0, config.limit);
+            break;
+        }
     }
 
     return allResults;
