@@ -18,6 +18,7 @@ import { AuthenticatedRequest } from './record';
 import { computeNextRun } from '../utils/schedule';
 import { capture } from "../utils/analytics";
 import { tryCatch } from 'bullmq';
+import { encrypt } from '../utils/auth';
 import { WorkflowFile } from 'maxun-core';
 import { Page } from 'playwright';
 chromium.use(stealthPlugin());
@@ -116,13 +117,70 @@ function formatRunResponse(run: any) {
   return formattedRun;
 }
 
+interface CredentialUpdate {
+  [selector: string]: string;
+}
+
+function updateTypeActionsInWorkflow(workflow: any[], credentials: CredentialUpdate) {
+  return workflow.map(step => {
+      if (!step.what) return step;
+
+      // First pass: mark indices to remove
+      const indicesToRemove = new Set<number>();
+      step.what.forEach((action: any, index: any) => {
+          if (!action.action || !action.args?.[0]) return;
+          
+          // If it's a type/press action for a credential
+          if ((action.action === 'type' || action.action === 'press') && credentials[action.args[0]]) {
+              indicesToRemove.add(index);
+              // Check if next action is waitForLoadState
+              if (step.what[index + 1]?.action === 'waitForLoadState') {
+                  indicesToRemove.add(index + 1);
+              }
+          }
+      });
+
+      // Filter out marked indices and create new what array
+      const filteredWhat = step.what.filter((_: any, index: any) => !indicesToRemove.has(index));
+
+      // Add new type actions after click actions
+      Object.entries(credentials).forEach(([selector, credential]) => {
+          const clickIndex = filteredWhat.findIndex((action: any) => 
+              action.action === 'click' && action.args?.[0] === selector
+          );
+
+          if (clickIndex !== -1) {
+              const chars = credential.split('').reverse();
+              chars.forEach((char, i) => {
+                  // Add type action
+                  filteredWhat.splice(clickIndex + 1 + (i * 2), 0, {
+                      action: 'type',
+                      args: [selector, char]  // This would be encrypted in practice
+                  });
+                  
+                  // Add waitForLoadState
+                  filteredWhat.splice(clickIndex + 2 + (i * 2), 0, {
+                      action: 'waitForLoadState',
+                      args: ['networkidle']
+                  });
+              });
+          }
+      });
+
+      return {
+          ...step,
+          what: filteredWhat
+      };
+  });
+}
+
 /**
  * PUT endpoint to update the name and limit of a robot.
  */
 router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
-    const { name, limit } = req.body;
+    const { name, limit, credentials } = req.body;
 
     // Validate input
     if (!name && limit === undefined) {
@@ -141,17 +199,21 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       robot.set('recording_meta', { ...robot.recording_meta, name });
     }
 
+    let workflow = [...robot.recording.workflow]; // Create a copy of the workflow
+
+    if (credentials) {
+      workflow = updateTypeActionsInWorkflow(workflow, credentials);
+    }
+
     // Update the limit
     if (limit !== undefined) {
-      const workflow = [...robot.recording.workflow]; // Create a copy of the workflow
-
       // Ensure the workflow structure is valid before updating
       if (
         workflow.length > 0 &&
         workflow[0]?.what?.[0]
       ) {
         // Create a new workflow object with the updated limit
-        const updatedWorkflow = workflow.map((step, index) => {
+        workflow = workflow.map((step, index) => {
           if (index === 0) { // Assuming you want to update the first step
             return {
               ...step,
@@ -173,13 +235,12 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
           }
           return step;
         });
-
-        // Replace the workflow in the recording object
-        robot.set('recording', { ...robot.recording, workflow: updatedWorkflow });
       } else {
         return res.status(400).json({ error: 'Invalid workflow structure for updating limit.' });
       }
     }
+
+    robot.set('recording', { ...robot.recording, workflow });
 
     await robot.save();
 
