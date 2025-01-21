@@ -18,12 +18,42 @@ import { AuthenticatedRequest } from './record';
 import { computeNextRun } from '../utils/schedule';
 import { capture } from "../utils/analytics";
 import { tryCatch } from 'bullmq';
-import { encrypt } from '../utils/auth';
+import { encrypt, decrypt } from '../utils/auth';
 import { WorkflowFile } from 'maxun-core';
 import { Page } from 'playwright';
 chromium.use(stealthPlugin());
 
 export const router = Router();
+
+export const decryptWorkflowActions = async (workflow: any[],): Promise<any[]> => {
+  // Create a deep copy to avoid mutating the original workflow
+  const processedWorkflow = JSON.parse(JSON.stringify(workflow));
+
+  // Process each step in the workflow
+  for (const step of processedWorkflow) {
+    if (!step.what) continue;
+
+    // Process each action in the step
+    for (const action of step.what) {
+      // Only process type and press actions
+      if ((action.action === 'type' || action.action === 'press') && Array.isArray(action.args) && action.args.length > 1) {        
+        // The second argument contains the encrypted value
+        const encryptedValue = action.args[1];
+        if (typeof encryptedValue === 'string') {
+          try {
+            // Decrypt the value and update the args array
+            action.args[1] = await decrypt(encryptedValue);
+          } catch (error) {
+            console.error('Failed to decrypt value:', error);
+            // Keep the encrypted value if decryption fails
+          }
+        }
+      }
+    }
+  }
+
+  return processedWorkflow;
+};
 
 /**
  * Logs information about recordings API.
@@ -56,6 +86,13 @@ router.get('/recordings/:id', requireSignIn, async (req, res) => {
       raw: true
     }
     );
+
+    if (data?.recording?.workflow) {
+      data.recording.workflow = await decryptWorkflowActions(
+        data.recording.workflow,
+      );
+    }
+
     return res.send(data);
   } catch (e) {
     logger.log('info', 'Error while reading robots');
