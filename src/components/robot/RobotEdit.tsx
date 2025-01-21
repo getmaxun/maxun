@@ -231,7 +231,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                                     />
                                 )}
 
-                                {(robot.isLogin && credentialSelectors.length > 0) && (
+                                {(robot.isLogin || credentialSelectors.length > 0) && (
                                     <>
                                         <Typography variant="h6" style={{ marginBottom: '20px' }}>
                                             {t('Login Credentials')}
