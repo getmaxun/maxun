@@ -190,7 +190,7 @@ export const ScheduleSettingsModal = ({ isOpen, handleStart, handleClose, initia
                   sx={dropDownStyle}
                 >
                   {units.map((unit) => (
-                    <MenuItem key={unit} value={unit}>{unit}</MenuItem>
+                    <MenuItem key={unit} value={unit}> {unit.charAt(0).toUpperCase() + unit.slice(1).toLowerCase()}</MenuItem>
                   ))}
                 </Dropdown>
               </Box>
@@ -207,7 +207,9 @@ export const ScheduleSettingsModal = ({ isOpen, handleStart, handleClose, initia
                   sx={dropDownStyle}
                 >
                   {days.map((day) => (
-                    <MenuItem key={day} value={day}>{day}</MenuItem>
+                    <MenuItem key={day} value={day}>
+                      {day.charAt(0).toUpperCase() + day.slice(1).toLowerCase()}
+                    </MenuItem>
                   ))}
                 </Dropdown>
               </Box>
@@ -265,7 +267,7 @@ export const ScheduleSettingsModal = ({ isOpen, handleStart, handleClose, initia
                   sx={dropDownStyle}
                 >
                   {validMomentTimezones.map((tz) => (
-                    <MenuItem key={tz} value={tz}>{tz}</MenuItem>
+                    <MenuItem key={tz} value={tz}>{tz.charAt(0).toUpperCase() + tz.slice(1).toLowerCase()}</MenuItem>
                   ))}
                 </Dropdown>
               </Box>
