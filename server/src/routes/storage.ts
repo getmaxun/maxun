@@ -150,7 +150,7 @@ function updateTypeActionsInWorkflow(workflow: any[], credentials: CredentialUpd
           );
 
           if (clickIndex !== -1) {
-              const chars = credential.split('').reverse();
+              const chars = credential.split('');
               chars.forEach((char, i) => {
                   // Add type action
                   filteredWhat.splice(clickIndex + 1 + (i * 2), 0, {
