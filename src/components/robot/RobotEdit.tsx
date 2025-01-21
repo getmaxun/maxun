@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GenericModal } from "../ui/GenericModal";
-import { TextField, Typography, Box, Button } from "@mui/material";
+import { TextField, Typography, Box, Button, IconButton, InputAdornment } from "@mui/material";
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { modalStyle } from "../recorder/AddWhereCondModal";
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { getStoredRecording, updateRecording } from '../../api/storage';
@@ -23,6 +24,14 @@ interface RobotWorkflow {
 interface RobotEditOptions {
     name: string;
     limit?: number;
+}
+
+interface Credentials {
+    [key: string]: string;
+}
+
+interface CredentialVisibility {
+    [key: string]: boolean;
 }
 
 interface ScheduleConfig {
@@ -48,6 +57,7 @@ export interface RobotSettings {
     google_access_token?: string | null;
     google_refresh_token?: string | null;
     schedule?: ScheduleConfig | null;
+    isLogin?: boolean;
 }
 
 interface RobotSettingsProps {
@@ -60,13 +70,56 @@ interface RobotSettingsProps {
 export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettings }: RobotSettingsProps) => {
     const { t } = useTranslation();
     const [robot, setRobot] = useState<RobotSettings | null>(null);
+    const [credentials, setCredentials] = useState<Credentials>({});
     const { recordingId, notify } = useGlobalInfoStore();
+    const [credentialSelectors, setCredentialSelectors] = useState<string[]>([]);
+    const [showPasswords, setShowPasswords] = useState<CredentialVisibility>({});
+
+    const handleClickShowPassword = (selector: string) => {
+        setShowPasswords(prev => ({
+            ...prev,
+            [selector]: !prev[selector]
+        }));
+    };
 
     useEffect(() => {
         if (isOpen) {
             getRobot();
         }
     }, [isOpen]);
+
+    useEffect(() => {
+        if (robot?.recording?.workflow) {
+          const selectors = findCredentialSelectors(robot.recording.workflow);
+          setCredentialSelectors(selectors);
+          
+          // Initialize credentials state
+          const initialCredentials: Record<string, string> = {};
+          selectors.forEach(selector => {
+            initialCredentials[selector] = '';
+          });
+          setCredentials(initialCredentials);
+        }
+    }, [robot]);
+
+    const findCredentialSelectors = (workflow: WhereWhatPair[]): string[] => {
+        const selectors = new Set<string>();
+        
+        workflow?.forEach(step => {
+          step.what?.forEach(action => {
+            if (
+              (action.action === 'type' || action.action === 'press') && 
+              action.args && 
+              action.args[0] && 
+              typeof action.args[0] === 'string'
+            ) {
+              selectors.add(action.args[0]);
+            }
+          });
+        });
+        
+        return Array.from(selectors);
+    };
 
     const getRobot = async () => {
         if (recordingId) {
@@ -81,6 +134,13 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
         setRobot((prev) =>
             prev ? { ...prev, recording_meta: { ...prev.recording_meta, name: newName } } : prev
         );
+    };
+
+    const handleCredentialChange = (selector: string, value: string) => {
+        setCredentials(prev => ({
+          ...prev,
+          [selector]: value
+        }));
     };
 
     const handleLimitChange = (newLimit: number) => {
@@ -111,6 +171,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
             const payload = {
                 name: robot.recording_meta.name,
                 limit: robot.recording.workflow[0]?.what[0]?.args?.[0]?.limit,
+                credentials: credentials,
             };
 
             const success = await updateRecording(robot.recording_meta.id, payload);
@@ -168,6 +229,38 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                                         inputProps={{ min: 1 }}
                                         style={{ marginBottom: '20px' }}
                                     />
+                                )}
+
+                                {(robot.isLogin && credentialSelectors.length > 0) && (
+                                    <>
+                                        <Typography variant="h6" style={{ marginBottom: '20px' }}>
+                                            {t('Login Credentials')}
+                                        </Typography>
+                                        
+                                        {credentialSelectors.map((selector) => (
+                                            <TextField
+                                                key={selector}
+                                                type={showPasswords[selector] ? 'text' : 'password'}
+                                                label={`Credential for ${selector}`}
+                                                value={credentials[selector] || ''}
+                                                onChange={(e) => handleCredentialChange(selector, e.target.value)}
+                                                style={{ marginBottom: '20px' }}
+                                                InputProps={{
+                                                    endAdornment: (
+                                                        <InputAdornment position="end">
+                                                            <IconButton
+                                                                aria-label="toggle password visibility"
+                                                                onClick={() => handleClickShowPassword(selector)}
+                                                                edge="end"
+                                                            >
+                                                                {showPasswords[selector] ? <Visibility /> : <VisibilityOff />}
+                                                            </IconButton>
+                                                        </InputAdornment>
+                                                    ),
+                                                }}
+                                            />
+                                        ))}
+                                    </>
                                 )}
 
                                 <Box mt={2} display="flex" justifyContent="flex-end">
