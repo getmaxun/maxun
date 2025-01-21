@@ -155,7 +155,7 @@ function updateTypeActionsInWorkflow(workflow: any[], credentials: CredentialUpd
                   // Add type action
                   filteredWhat.splice(clickIndex + 1 + (i * 2), 0, {
                       action: 'type',
-                      args: [selector, char]  // This would be encrypted in practice
+                      args: [selector, encrypt(char)]  
                   });
                   
                   // Add waitForLoadState
