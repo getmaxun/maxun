@@ -32,6 +32,7 @@
         "new": "ロボットを作成",
         "modal": {
             "title": "URLを入力してください",
+            "login_title": "このサイトはログインが必要ですか?",
             "label": "URL",
             "button": "録画を開始"
         },

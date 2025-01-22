@@ -32,6 +32,7 @@
         "new": "Roboter erstellen",
         "modal": {
             "title": "Geben Sie die URL ein",
+            "login_title": "Erfordert diese Seite eine Anmeldung?",
             "label": "URL",
             "button": "Aufnahme starten"
         },
