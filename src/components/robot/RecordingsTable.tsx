@@ -346,9 +346,6 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
             style={{ marginBottom: '20px', marginTop: '20px' }}
           />
 
-          <Typography variant="h6" gutterBottom>
-            {t('recordingtable.modal.login_title')}
-          </Typography>
           <FormControlLabel
             control={
               <Checkbox
