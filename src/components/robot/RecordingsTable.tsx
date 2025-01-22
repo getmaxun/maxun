@@ -335,7 +335,7 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
         onRowsPerPageChange={handleChangeRowsPerPage}
       />
       <GenericModal isOpen={isModalOpen} onClose={() => setModalOpen(false)} modalStyle={modalStyle}>
-        <div style={{ padding: '20px' }}>
+        <div style={{ padding: '10px' }}>
           <Typography variant="h6" gutterBottom>{t('recordingtable.modal.title')}</Typography>
           <TextField
             label={t('recordingtable.modal.label')}
