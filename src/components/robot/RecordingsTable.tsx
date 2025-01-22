@@ -358,6 +358,7 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
             style={{ marginBottom: '20px' }}
           />;
 
+          <br />
           <Button
             variant="contained"
             color="primary"
