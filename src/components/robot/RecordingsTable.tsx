@@ -11,8 +11,31 @@ import TableRow from '@mui/material/TableRow';
 import { useEffect } from "react";
 import { WorkflowFile } from "maxun-core";
 import SearchIcon from '@mui/icons-material/Search';
-import { IconButton, Button, Box, Typography, TextField, MenuItem, Menu, ListItemIcon, ListItemText, CircularProgress, RadioGroup, FormControlLabel, Radio } from "@mui/material";
-import { Schedule, DeleteForever, Edit, PlayCircle, Settings, Power, ContentCopy, MoreHoriz } from "@mui/icons-material";
+import {
+  IconButton,
+  Button,
+  Box,
+  Typography,
+  TextField,
+  MenuItem,
+  Menu,
+  ListItemIcon,
+  ListItemText,
+  CircularProgress,
+  RadioGroup,
+  FormControlLabel,
+  Radio
+} from "@mui/material";
+import {
+  Schedule,
+  DeleteForever,
+  Edit,
+  PlayCircle,
+  Settings,
+  Power,
+  ContentCopy,
+  MoreHoriz
+} from "@mui/icons-material";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { checkRunsForRecording, deleteRecordingFromStorage, getStoredRecordings } from "../../api/storage";
 import { Add } from "@mui/icons-material";
