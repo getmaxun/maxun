@@ -346,20 +346,20 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
             style={{ marginBottom: '20px', marginTop: '20px' }}
           />
 
-<Typography variant="h6" gutterBottom>
-  {t('recordingtable.modal.login_title')}
-</Typography>
-<FormControlLabel
-  control={
-    <Checkbox
-      checked={isLogin}
-      onChange={(e) => setIsLogin(e.target.checked)}
-      color="primary"
-    />
-  }
-  label={t('recordingtable.modal.login_title')}
-  style={{ marginBottom: '20px' }}
-/>;
+          <Typography variant="h6" gutterBottom>
+            {t('recordingtable.modal.login_title')}
+          </Typography>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={isLogin}
+                onChange={(e) => setIsLogin(e.target.checked)}
+                color="primary"
+              />
+            }
+            label={t('recordingtable.modal.login_title')}
+            style={{ marginBottom: '20px' }}
+          />;
 
           <Button
             variant="contained"
