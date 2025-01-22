@@ -343,7 +343,7 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
             fullWidth
             value={recordingUrl}
             onChange={setBrowserRecordingUrl}
-            style={{ marginBottom: '20px', marginTop: '20px' }}
+            style={{ marginBottom: '10px', marginTop: '20px' }}
           />
 
           <FormControlLabel
@@ -355,7 +355,7 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
               />
             }
             label={t('recordingtable.modal.login_title')}
-            style={{ marginBottom: '20px' }}
+            style={{ marginBottom: '10px' }}
           />
 
           <br />
