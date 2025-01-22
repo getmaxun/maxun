@@ -474,6 +474,10 @@ export class WorkflowGenerator {
   public onKeyboardInput = async (key: string, coordinates: Coordinates, page: Page) => {
     let where: WhereWhatPair["where"] = { url: this.getBestUrl(page.url()) };
     const selector = await this.generateSelector(page, coordinates, ActionType.Keydown);
+
+    const elementInfo = await getElementInformation(page, coordinates, '', false);
+    const inputType = elementInfo?.attributes?.type || "text";
+
     if (selector) {
       where.selectors = [selector];
     }
@@ -481,7 +485,7 @@ export class WorkflowGenerator {
       where,
       what: [{
         action: 'press',
-        args: [selector, encrypt(key)],
+        args: [selector, encrypt(key), inputType],
       }],
     }
     if (selector) {
@@ -992,6 +996,7 @@ export class WorkflowGenerator {
     let input = {
       selector: '',
       value: '',
+      type: '',
       actionCounter: 0,
     };
 
@@ -1006,7 +1011,7 @@ export class WorkflowGenerator {
         // when more than one press action is present, add a type action
         pair.what.splice(index - input.actionCounter, input.actionCounter, {
           action: 'type',
-          args: [input.selector, encrypt(input.value)],
+          args: [input.selector, encrypt(input.value), input.type],
         }, {
           action: 'waitForLoadState',
           args: ['networkidle'],
@@ -1034,13 +1039,14 @@ export class WorkflowGenerator {
                   action: 'waitForLoadState',
                   args: ['networkidle'],
                 })
-                input = { selector: '', value: '', actionCounter: 0 };
+                input = { selector: '', value: '', type: '', actionCounter: 0 };
               }
             } else {
               pushTheOptimizedAction(pair, index);
               input = {
                 selector: condition.args[0],
                 value: condition.args[1],
+                type: condition.args[2],
                 actionCounter: 1,
               };
             }
@@ -1049,7 +1055,7 @@ export class WorkflowGenerator {
           if (input.value.length !== 0) {
             pushTheOptimizedAction(pair, index);
             // clear the input
-            input = { selector: '', value: '', actionCounter: 0 };
+            input = { selector: '', value: '', type: '', actionCounter: 0 };
           }
         }
       });
