@@ -11,7 +11,7 @@ import TableRow from '@mui/material/TableRow';
 import { useEffect } from "react";
 import { WorkflowFile } from "maxun-core";
 import SearchIcon from '@mui/icons-material/Search';
-import { IconButton, Button, Box, Typography, TextField, MenuItem, Menu, ListItemIcon, ListItemText, CircularProgress } from "@mui/material";
+import { IconButton, Button, Box, Typography, TextField, MenuItem, Menu, ListItemIcon, ListItemText, CircularProgress, RadioGroup, FormControlLabel, Radio } from "@mui/material";
 import { Schedule, DeleteForever, Edit, PlayCircle, Settings, Power, ContentCopy, MoreHoriz } from "@mui/icons-material";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { checkRunsForRecording, deleteRecordingFromStorage, getStoredRecordings } from "../../api/storage";
@@ -85,7 +85,7 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
     },
   ];
 
-  const { notify, setRecordings, browserId, setBrowserId, setInitialUrl, recordingUrl, setRecordingUrl, recordingName, setRecordingName, recordingId, setRecordingId } = useGlobalInfoStore();
+  const { notify, setRecordings, browserId, setBrowserId, setInitialUrl, recordingUrl, setRecordingUrl, isLogin, setIsLogin, recordingName, setRecordingName, recordingId, setRecordingId } = useGlobalInfoStore();
   const navigate = useNavigate();
 
   const handleChangePage = (event: unknown, newPage: number) => {
@@ -321,6 +321,19 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
             onChange={setBrowserRecordingUrl}
             style={{ marginBottom: '20px', marginTop: '20px' }}
           />
+
+          <Typography variant="h6" gutterBottom>{t('recordingtable.modal.login_title')}</Typography>
+          <RadioGroup
+            aria-labelledby="login-requirement-radio-group"
+            name="login-requirement"
+            value={isLogin ? 'yes' : 'no'}
+            onChange={(e) => setIsLogin(e.target.value === 'yes')}
+            style={{ marginBottom: '20px' }}
+          >
+            <FormControlLabel value="yes" control={<Radio />} label="Yes" />
+            <FormControlLabel value="no" control={<Radio />} label="No" />
+          </RadioGroup>
+
           <Button
             variant="contained"
             color="primary"

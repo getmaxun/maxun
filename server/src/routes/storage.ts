@@ -18,11 +18,42 @@ import { AuthenticatedRequest } from './record';
 import { computeNextRun } from '../utils/schedule';
 import { capture } from "../utils/analytics";
 import { tryCatch } from 'bullmq';
+import { encrypt, decrypt } from '../utils/auth';
 import { WorkflowFile } from 'maxun-core';
 import { Page } from 'playwright';
 chromium.use(stealthPlugin());
 
 export const router = Router();
+
+export const decryptWorkflowActions = async (workflow: any[],): Promise<any[]> => {
+  // Create a deep copy to avoid mutating the original workflow
+  const processedWorkflow = JSON.parse(JSON.stringify(workflow));
+
+  // Process each step in the workflow
+  for (const step of processedWorkflow) {
+    if (!step.what) continue;
+
+    // Process each action in the step
+    for (const action of step.what) {
+      // Only process type and press actions
+      if ((action.action === 'type' || action.action === 'press') && Array.isArray(action.args) && action.args.length > 1) {        
+        // The second argument contains the encrypted value
+        const encryptedValue = action.args[1];
+        if (typeof encryptedValue === 'string') {
+          try {
+            // Decrypt the value and update the args array
+            action.args[1] = await decrypt(encryptedValue);
+          } catch (error) {
+            console.error('Failed to decrypt value:', error);
+            // Keep the encrypted value if decryption fails
+          }
+        }
+      }
+    }
+  }
+
+  return processedWorkflow;
+};
 
 /**
  * Logs information about recordings API.
@@ -55,6 +86,13 @@ router.get('/recordings/:id', requireSignIn, async (req, res) => {
       raw: true
     }
     );
+
+    if (data?.recording?.workflow) {
+      data.recording.workflow = await decryptWorkflowActions(
+        data.recording.workflow,
+      );
+    }
+
     return res.send(data);
   } catch (e) {
     logger.log('info', 'Error while reading robots');
@@ -116,13 +154,70 @@ function formatRunResponse(run: any) {
   return formattedRun;
 }
 
+interface CredentialUpdate {
+  [selector: string]: string;
+}
+
+function updateTypeActionsInWorkflow(workflow: any[], credentials: CredentialUpdate) {
+  return workflow.map(step => {
+      if (!step.what) return step;
+
+      // First pass: mark indices to remove
+      const indicesToRemove = new Set<number>();
+      step.what.forEach((action: any, index: any) => {
+          if (!action.action || !action.args?.[0]) return;
+          
+          // If it's a type/press action for a credential
+          if ((action.action === 'type' || action.action === 'press') && credentials[action.args[0]]) {
+              indicesToRemove.add(index);
+              // Check if next action is waitForLoadState
+              if (step.what[index + 1]?.action === 'waitForLoadState') {
+                  indicesToRemove.add(index + 1);
+              }
+          }
+      });
+
+      // Filter out marked indices and create new what array
+      const filteredWhat = step.what.filter((_: any, index: any) => !indicesToRemove.has(index));
+
+      // Add new type actions after click actions
+      Object.entries(credentials).forEach(([selector, credential]) => {
+          const clickIndex = filteredWhat.findIndex((action: any) => 
+              action.action === 'click' && action.args?.[0] === selector
+          );
+
+          if (clickIndex !== -1) {
+              const chars = credential.split('');
+              chars.forEach((char, i) => {
+                  // Add type action
+                  filteredWhat.splice(clickIndex + 1 + (i * 2), 0, {
+                      action: 'type',
+                      args: [selector, encrypt(char)]  
+                  });
+                  
+                  // Add waitForLoadState
+                  filteredWhat.splice(clickIndex + 2 + (i * 2), 0, {
+                      action: 'waitForLoadState',
+                      args: ['networkidle']
+                  });
+              });
+          }
+      });
+
+      return {
+          ...step,
+          what: filteredWhat
+      };
+  });
+}
+
 /**
  * PUT endpoint to update the name and limit of a robot.
  */
 router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
-    const { name, limit } = req.body;
+    const { name, limit, credentials } = req.body;
 
     // Validate input
     if (!name && limit === undefined) {
@@ -141,17 +236,21 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       robot.set('recording_meta', { ...robot.recording_meta, name });
     }
 
+    let workflow = [...robot.recording.workflow]; // Create a copy of the workflow
+
+    if (credentials) {
+      workflow = updateTypeActionsInWorkflow(workflow, credentials);
+    }
+
     // Update the limit
     if (limit !== undefined) {
-      const workflow = [...robot.recording.workflow]; // Create a copy of the workflow
-
       // Ensure the workflow structure is valid before updating
       if (
         workflow.length > 0 &&
         workflow[0]?.what?.[0]
       ) {
         // Create a new workflow object with the updated limit
-        const updatedWorkflow = workflow.map((step, index) => {
+        workflow = workflow.map((step, index) => {
           if (index === 0) { // Assuming you want to update the first step
             return {
               ...step,
@@ -173,13 +272,12 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
           }
           return step;
         });
-
-        // Replace the workflow in the recording object
-        robot.set('recording', { ...robot.recording, workflow: updatedWorkflow });
       } else {
         return res.status(400).json({ error: 'Invalid workflow structure for updating limit.' });
       }
     }
+
+    robot.set('recording', { ...robot.recording, workflow });
 
     await robot.save();
 
@@ -248,6 +346,7 @@ router.post('/recordings/:id/duplicate', requireSignIn, async (req: Authenticate
         updatedAt: currentTimestamp, 
       }, 
       recording: { ...originalRobot.recording, workflow }, 
+      isLogin: originalRobot.isLogin,
       google_sheet_email: null, 
       google_sheet_name: null,
       google_sheet_id: null,

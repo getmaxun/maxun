@@ -32,6 +32,7 @@
     "new": "创建机器人",
     "modal": {
       "title": "输入URL",
+      "login_title": "此网站需要登录吗？",
       "label": "URL",
       "button": "开始录制"
     },

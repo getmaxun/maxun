@@ -32,6 +32,7 @@
       "new":"Create Robot",
       "modal":{
         "title":"Enter the URL",
+        "login_title": "Does this site require login?",
         "label":"URL",
         "button":"Start Recording"
       },
