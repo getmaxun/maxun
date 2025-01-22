@@ -104,7 +104,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
         workflow?.forEach(step => {
           step.what?.forEach(action => {
             if (
-              (action.action === 'type') && 
+              (action.action === 'type' || action.action === 'press') && 
               action.args && 
               action.args[0] && 
               typeof action.args[0] === 'string'
