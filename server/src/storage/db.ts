@@ -29,6 +29,7 @@ export const connectDB = async () => {
 export const syncDB = async () => {
     try {
         //setupAssociations();
+        const isDevelopment = process.env.NODE_ENV === 'development';
         await sequelize.sync({ force: false, alter: true });  // force: true will drop and recreate tables on every run
         console.log('Database synced successfully!');
     } catch (error) {
