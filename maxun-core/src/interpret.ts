@@ -490,6 +490,14 @@ export default class Interpreter extends EventEmitter {
 
     const executeAction = async (invokee: any, methodName: string, args: any) => {
       console.log("Executing action:", methodName, args);
+
+      if (methodName === 'press' || methodName === 'type') {
+        // Extract only the first two arguments for these methods
+        const limitedArgs = Array.isArray(args) ? args.slice(0, 2) : [args];
+        await (<any>invokee[methodName])(...limitedArgs);
+        return;
+      }
+
       if (!args || Array.isArray(args)) {
         await (<any>invokee[methodName])(...(args ?? []));
       } else {
