@@ -31,6 +31,7 @@ export const syncDB = async () => {
         //setupAssociations();
         const isDevelopment = process.env.NODE_ENV === 'development';
         // force: true will drop and recreate tables on every run
+        // Use `alter: true` only in development mode
         await sequelize.sync({ 
             force: false, 
             alter: isDevelopment 
