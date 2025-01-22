@@ -356,7 +356,7 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
             }
             label={t('recordingtable.modal.login_title')}
             style={{ marginBottom: '20px' }}
-          />;
+          />
 
           <br />
           <Button
