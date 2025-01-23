@@ -1,23 +1,24 @@
 import React, { useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MainMenu } from "../components/organisms/MainMenu";
+import { MainMenu } from "../components/dashboard/MainMenu";
 import { Stack } from "@mui/material";
-import { Recordings } from "../components/organisms/Recordings";
-import { Runs } from "../components/organisms/Runs";
-import ProxyForm from '../components/organisms/ProxyForm';
-import ApiKey from '../components/organisms/ApiKey';
+import { Recordings } from "../components/robot/Recordings";
+import { Runs } from "../components/run/Runs";
+import ProxyForm from '../components/proxy/ProxyForm';
+import ApiKey from '../components/api/ApiKey';
 import { useGlobalInfoStore } from "../context/globalInfo";
 import { createRunForStoredRecording, interpretStoredRecording, notifyAboutAbort, scheduleStoredRecording } from "../api/storage";
 import { io, Socket } from "socket.io-client";
 import { stopRecording } from "../api/recording";
-import { RunSettings } from "../components/molecules/RunSettings";
-import { ScheduleSettings } from "../components/molecules/ScheduleSettings";
-import { IntegrationSettings } from "../components/molecules/IntegrationSettings";
-import { RobotSettings } from "../components/molecules/RobotSettings";
+import { RunSettings } from "../components/run/RunSettings";
+import { ScheduleSettings } from "../components/robot/ScheduleSettings";
+import { IntegrationSettings } from "../components/integration/IntegrationSettings";
+import { RobotSettings } from "../components/robot/RobotSettings";
 import { apiUrl } from "../apiConfig";
 
 interface MainPageProps {
   handleEditRecording: (id: string, fileName: string) => void;
+  initialContent: string;
 }
 
 export interface CreateRunResponse {
@@ -30,9 +31,9 @@ export interface ScheduleRunResponse {
   runId: string;
 }
 
-export const MainPage = ({ handleEditRecording }: MainPageProps) => {
+export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps) => {
   const { t } = useTranslation();
-  const [content, setContent] = React.useState('recordings');
+  const [content, setContent] = React.useState(initialContent);
   const [sockets, setSockets] = React.useState<Socket[]>([]);
   const [runningRecordingId, setRunningRecordingId] = React.useState('');
   const [runningRecordingName, setRunningRecordingName] = React.useState('');
@@ -123,7 +124,7 @@ export const MainPage = ({ handleEditRecording }: MainPageProps) => {
 
   const DisplayContent = () => {
     switch (content) {
-      case 'recordings':
+      case 'robots':
         return <Recordings
           handleEditRecording={handleEditRecording}
           handleRunRecording={handleRunRecording}

@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/playwright:v1.46.0-noble
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/playwright:v1.46.0-noble
 
 # Set working directory
 WORKDIR /app

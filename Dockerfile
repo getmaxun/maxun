@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM --platform=$BUILDPLATFORM node:18-alpine AS builder
 
 WORKDIR /app
 
