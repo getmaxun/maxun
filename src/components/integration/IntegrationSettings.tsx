@@ -17,7 +17,6 @@ import { apiUrl } from "../../apiConfig.js";
 import Cookies from 'js-cookie';
 import { useTranslation } from "react-i18next";
 
-
 interface IntegrationProps {
   isOpen: boolean;
   handleStart: (data: IntegrationSettings) => void;
@@ -27,6 +26,8 @@ interface IntegrationProps {
 export interface IntegrationSettings {
   spreadsheetId: string;
   spreadsheetName: string;
+  airtableBaseId: string; // New field for Airtable Base ID
+  airtableTableName: string; // New field for Airtable Table Name
   data: string;
 }
 
@@ -53,20 +54,26 @@ export const IntegrationSettingsModal = ({
   const [settings, setSettings] = useState<IntegrationSettings>({
     spreadsheetId: "",
     spreadsheetName: "",
+    airtableBaseId: "", // Initialize Airtable fields
+    airtableTableName: "",
     data: "",
   });
 
-  const [spreadsheets, setSpreadsheets] = useState<
-    { id: string; name: string }[]
-  >([]);
+  const [spreadsheets, setSpreadsheets] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const { recordingId, notify } = useGlobalInfoStore();
   const [recording, setRecording] = useState<any>(null);
 
+  // Google Sheets Authentication
   const authenticateWithGoogle = () => {
     window.location.href = `${apiUrl}/auth/google?robotId=${recordingId}`;
+  };
+
+  // Airtable Authentication
+  const authenticateWithAirtable = () => {
+    window.location.href = `${apiUrl}/auth/airtable?robotId=${recordingId}`;
   };
 
   const handleOAuthCallback = async () => {
@@ -82,9 +89,7 @@ export const IntegrationSettingsModal = ({
     try {
       const response = await axios.get(
         `${apiUrl}/auth/gsheets/files?robotId=${recordingId}`,
-        {
-          withCredentials: true,
-        }
+        { withCredentials: true }
       );
       setSpreadsheets(response.data);
     } catch (error: any) {
@@ -135,20 +140,47 @@ export const IntegrationSettingsModal = ({
     }
   };
 
-  const removeIntegration = async () => {
+  const updateAirtableConfig = async () => {
+    try {
+      const response = await axios.post(
+        `${apiUrl}/auth/airtable/update`,
+        {
+          airtableBaseId: settings.airtableBaseId,
+          airtableTableName: settings.airtableTableName,
+          robotId: recordingId,
+        },
+        { withCredentials: true }
+      );
+      notify(`success`, t('integration_settings.notifications.airtable_updated'));
+      console.log("Airtable configuration updated:", response.data);
+    } catch (error: any) {
+      console.error(
+        "Error updating Airtable configuration:",
+        error.response?.data?.message || error.message
+      );
+    }
+  };
+
+  const removeIntegration = async (integrationType: 'google' | 'airtable') => {
     try {
       await axios.post(
-        `${apiUrl}/auth/gsheets/remove`,
+        `${apiUrl}/auth/${integrationType}/remove`,
         { robotId: recordingId },
         { withCredentials: true }
       );
 
       setRecording(null);
       setSpreadsheets([]);
-      setSettings({ spreadsheetId: "", spreadsheetName: "", data: "" });
+      setSettings({
+        spreadsheetId: "",
+        spreadsheetName: "",
+        airtableBaseId: "",
+        airtableTableName: "",
+        data: "",
+      });
     } catch (error: any) {
       console.error(
-        "Error removing Google Sheets integration:",
+        `Error removing ${integrationType} integration:`,
         error.response?.data?.message || error.message
       );
     }
@@ -196,6 +228,7 @@ export const IntegrationSettingsModal = ({
           {t('integration_settings.title')}
         </Typography>
 
+        {/* Google Sheets Integration */}
         {recording && recording.google_sheet_id ? (
           <>
             <Alert severity="info" sx={{ marginTop: '10px', border: '1px solid #ff00c3' }}>
@@ -212,7 +245,7 @@ export const IntegrationSettingsModal = ({
             <Button
               variant="outlined"
               color="error"
-              onClick={removeIntegration}
+              onClick={() => removeIntegration('google')}
               style={{ marginTop: "15px" }}
             >
               {t('integration_settings.buttons.remove_integration')}
@@ -258,7 +291,7 @@ export const IntegrationSettingsModal = ({
                       <Button
                         variant="outlined"
                         color="error"
-                        onClick={removeIntegration}
+                        onClick={() => removeIntegration('google')}
                       >
                         {t('integration_settings.buttons.remove_integration')}
                       </Button>
@@ -305,6 +338,73 @@ export const IntegrationSettingsModal = ({
                     </Button>
                   </>
                 )}
+              </>
+            )}
+          </>
+        )}
+
+        {/* Airtable Integration */}
+        <Typography variant="h6" sx={{ marginTop: "30px" }}>
+          {t('integration_settings.airtable.title')}
+        </Typography>
+
+        {recording && recording.airtable_base_id ? (
+          <>
+            <Alert severity="info" sx={{ marginTop: '10px', border: '1px solid #00ffc3' }}>
+              <AlertTitle>{t('integration_settings.airtable.alerts.success.title')}</AlertTitle>
+              {t('integration_settings.airtable.alerts.success.content', {
+                baseId: recording.airtable_base_id,
+                tableName: recording.airtable_table_name,
+              })}
+            </Alert>
+            <Button
+              variant="outlined"
+              color="error"
+              onClick={() => removeIntegration('airtable')}
+              style={{ marginTop: "15px" }}
+            >
+              {t('integration_settings.buttons.remove_integration')}
+            </Button>
+          </>
+        ) : (
+          <>
+            <p>{t('integration_settings.airtable.descriptions.sync_info')}</p>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={authenticateWithAirtable}
+            >
+              {t('integration_settings.airtable.buttons.authenticate')}
+            </Button>
+
+            {recording?.airtable_access_token && (
+              <>
+                <TextField
+                  sx={{ marginTop: "15px" }}
+                  label={t('integration_settings.airtable.fields.base_id')}
+                  value={settings.airtableBaseId}
+                  onChange={(e) => setSettings({ ...settings, airtableBaseId: e.target.value })}
+                  fullWidth
+                />
+                <TextField
+                  sx={{ marginTop: "15px" }}
+                  label={t('integration_settings.airtable.fields.table_name')}
+                  value={settings.airtableTableName}
+                  onChange={(e) => setSettings({ ...settings, airtableTableName: e.target.value })}
+                  fullWidth
+                />
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={() => {
+                    updateAirtableConfig();
+                    handleStart(settings);
+                  }}
+                  style={{ marginTop: "10px" }}
+                  disabled={!settings.airtableBaseId || !settings.airtableTableName || loading}
+                >
+                  {t('integration_settings.airtable.buttons.submit')}
+                </Button>
               </>
             )}
           </>

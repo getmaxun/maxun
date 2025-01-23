@@ -6,6 +6,7 @@ import { createRemoteBrowserForRun, destroyRemoteBrowser } from '../../browser-m
 import logger from '../../logger';
 import { browserPool } from "../../server";
 import { googleSheetUpdateTasks, processGoogleSheetUpdates } from "../integrations/gsheet";
+import { airtableUpdateTasks, processAirtableUpdates } from "../integrations/airtableintegration"; // Import Airtable functions
 import Robot from "../../models/Robot";
 import Run from "../../models/Run";
 import { getDecryptedProxyConfig } from "../../routes/proxy";
@@ -44,7 +45,7 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string) {
       };
     }
 
-    const browserId = createRemoteBrowserForRun( userId);
+    const browserId = createRemoteBrowserForRun(userId);
     const runId = uuid();
 
     const run = await Run.create({
@@ -177,6 +178,7 @@ async function executeRun(id: string) {
       }
     );
 
+    // Add task for Google Sheets update
     googleSheetUpdateTasks[id] = {
       robotId: plainRun.robotMetaId,
       runId: id,
@@ -184,6 +186,16 @@ async function executeRun(id: string) {
       retries: 5,
     };
     processGoogleSheetUpdates();
+
+    // Add task for Airtable update
+    airtableUpdateTasks[id] = {
+      robotId: plainRun.robotMetaId,
+      runId: id,
+      status: 'pending',
+      retries: 5,
+    };
+    processAirtableUpdates();
+
     return true;
   } catch (error: any) {
     logger.log('info', `Error while running a robot with id: ${id} - ${error.message}`);
