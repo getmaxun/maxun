@@ -320,30 +320,37 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                 <Typography variant="h6" style={{ marginBottom: '20px'}}>
                     {headerText}
                 </Typography>
-                {selectors.map((selector) => (
-                    <TextField
-                        key={selector}
-                        type={showPasswords[selector] ? 'text' : defaultType}
-                        label={`Credential for ${selector}`}
-                        value={credentials[selector]?.value || ''}
-                        onChange={(e) => handleCredentialChange(selector, e.target.value)}
-                        style={{ marginBottom: '20px' }}
-                        InputProps={{
-                            // Only show visibility toggle for password fields
-                            endAdornment: defaultType === 'password' ? (
-                                <InputAdornment position="end">
-                                    <IconButton
-                                        aria-label="toggle password visibility"
-                                        onClick={() => handleClickShowPassword(selector)}
-                                        edge="end"
-                                    >
-                                        {showPasswords[selector] ? <Visibility /> : <VisibilityOff />}
-                                    </IconButton>
-                                </InputAdornment>
-                            ) : undefined,
-                        }}
-                    />
-                ))}
+                {selectors.map((selector) => {
+                    const isVisible = showPasswords[selector];
+                    
+                    return (
+                        <TextField
+                            key={selector}
+                            // The type changes based on visibility state
+                            type={isVisible ? 'text' : 'password'}
+                            label={`Credential for ${selector}`}
+                            value={credentials[selector]?.value || ''}
+                            onChange={(e) => handleCredentialChange(selector, e.target.value)}
+                            style={{ marginBottom: '20px' }}
+                            InputProps={{
+                                // Now showing visibility toggle for all fields
+                                endAdornment: (
+                                    <InputAdornment position="end">
+                                        <IconButton
+                                            aria-label="toggle credential visibility"
+                                            onClick={() => handleClickShowPassword(selector)}
+                                            edge="end"
+                                            // Optional: disable if field is empty
+                                            disabled={!credentials[selector]?.value}
+                                        >
+                                            {isVisible ? <Visibility /> : <VisibilityOff />}
+                                        </IconButton>
+                                    </InputAdornment>
+                                ),
+                            }}
+                        />
+                    );
+                })}
             </>
         );
     };
