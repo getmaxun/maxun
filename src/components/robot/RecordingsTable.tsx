@@ -116,7 +116,20 @@ export const RecordingsTable = ({
     },
   ];
 
-  const { notify, setRecordings, browserId, setBrowserId, setInitialUrl, recordingUrl, setRecordingUrl, isLogin, setIsLogin, recordingName, setRecordingName, recordingId, setRecordingId } = useGlobalInfoStore();
+  const {
+    notify,
+    setRecordings,
+    browserId,
+    setBrowserId,
+    setInitialUrl,
+    recordingUrl,
+    setRecordingUrl,
+    isLogin,
+    setIsLogin,
+    recordingName,
+    setRecordingName,
+    recordingId,
+    setRecordingId } = useGlobalInfoStore();
   const navigate = useNavigate();
 
   const handleChangePage = (event: unknown, newPage: number) => {
