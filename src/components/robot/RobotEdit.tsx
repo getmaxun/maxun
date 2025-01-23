@@ -113,7 +113,6 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
             return 'username';
         }
         
-        // If no specific pattern is matched, classify as other
         return 'other';
     };
     
