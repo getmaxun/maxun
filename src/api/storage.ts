@@ -5,8 +5,13 @@ import { ScheduleSettings } from "../components/robot/ScheduleSettings";
 import { CreateRunResponse, ScheduleRunResponse } from "../pages/MainPage";
 import { apiUrl } from "../apiConfig";
 
+interface CredentialInfo {
+  value: string;
+  type: string;
+}
+
 interface Credentials {
-  [key: string]: string;
+  [key: string]: CredentialInfo;
 }
 
 export const getStoredRecordings = async (): Promise<string[] | null> => {
