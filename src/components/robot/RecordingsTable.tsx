@@ -225,8 +225,8 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
 
   // Filter rows based on search term
   const filteredRows = useMemo(() => {
-    const searchLower = searchTerm.toLowerCase();
-    return searchTerm
+    const searchLower = debouncedSearchTerm.toLowerCase();
+    return debouncedSearchTerm
       ? rows.filter(row => row.name.toLowerCase().includes(searchLower))
       : rows;
   }, [rows, debouncedSearchTerm]);
