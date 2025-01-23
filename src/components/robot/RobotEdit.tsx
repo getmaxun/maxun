@@ -8,7 +8,6 @@ import { useGlobalInfoStore } from '../../context/globalInfo';
 import { getStoredRecording, updateRecording } from '../../api/storage';
 import { WhereWhatPair } from 'maxun-core';
 
-// Base interfaces for robot data structure
 interface RobotMeta {
     name: string;
     id: string;
