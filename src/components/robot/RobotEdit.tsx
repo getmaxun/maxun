@@ -54,7 +54,6 @@ interface RobotSettingsProps {
     initialSettings?: RobotSettings | null;
 }
 
-// Enhanced interfaces for credential handling
 interface CredentialInfo {
     value: string;
     type: string;
