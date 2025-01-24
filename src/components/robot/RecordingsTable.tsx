@@ -11,8 +11,32 @@ import TableRow from '@mui/material/TableRow';
 import { useEffect } from "react";
 import { WorkflowFile } from "maxun-core";
 import SearchIcon from '@mui/icons-material/Search';
-import { IconButton, Button, Box, Typography, TextField, MenuItem, Menu, ListItemIcon, ListItemText } from "@mui/material";
-import { Schedule, DeleteForever, Edit, PlayCircle, Settings, Power, ContentCopy, MoreHoriz } from "@mui/icons-material";
+import {
+  IconButton,
+  Button,
+  Box,
+  Typography,
+  TextField,
+  MenuItem,
+  Menu,
+  ListItemIcon,
+  ListItemText,
+  CircularProgress,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+  Checkbox,
+} from "@mui/material";
+import {
+  Schedule,
+  DeleteForever,
+  Edit,
+  PlayCircle,
+  Settings,
+  Power,
+  ContentCopy,
+  MoreHoriz
+} from "@mui/icons-material";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { checkRunsForRecording, deleteRecordingFromStorage, getStoredRecordings } from "../../api/storage";
 import { Add } from "@mui/icons-material";
@@ -85,7 +109,7 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
     },
   ];
 
-  const { notify, setRecordings, browserId, setBrowserId, setInitialUrl, recordingUrl, setRecordingUrl, recordingName, setRecordingName, recordingId, setRecordingId } = useGlobalInfoStore();
+  const { notify, setRecordings, browserId, setBrowserId, setInitialUrl, recordingUrl, setRecordingUrl, isLogin, setIsLogin, recordingName, setRecordingName, recordingId, setRecordingId } = useGlobalInfoStore();
   const navigate = useNavigate();
 
   const handleChangePage = (event: unknown, newPage: number) => {
@@ -200,101 +224,107 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
           </IconButton>
         </Box>
       </Box>
-      <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden', marginTop: '15px' }}>
-        <Table stickyHeader aria-label="sticky table">
-          <TableHead>
-            <TableRow>
-              {columns.map((column) => (
-                <TableCell
-                  key={column.id}
-                  align={column.align}
-                  style={{ minWidth: column.minWidth }}
-                >
-                  {column.label}
-                </TableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredRows.length !== 0 ? filteredRows
-              .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-              .map((row) => {
-                return (
-                  <TableRow hover role="checkbox" tabIndex={-1} key={row.id}>
-                    {columns.map((column) => {
-                      // @ts-ignore
-                      const value: any = row[column.id];
-                      if (value !== undefined) {
-                        return (
-                          <TableCell key={column.id} align={column.align}>
-                            {value}
-                          </TableCell>
-                        );
-                      } else {
-                        switch (column.id) {
-                          case 'interpret':
-                            return (
-                              <TableCell key={column.id} align={column.align}>
-                                <InterpretButton handleInterpret={() => handleRunRecording(row.id, row.name, row.params || [])} />
-                              </TableCell>
-                            );
-                          case 'schedule':
-                            return (
-                              <TableCell key={column.id} align={column.align}>
-                                <ScheduleButton handleSchedule={() => handleScheduleRecording(row.id, row.name, row.params || [])} />
-                              </TableCell>
-                            );
-                          case 'integrate':
-                            return (
-                              <TableCell key={column.id} align={column.align}>
-                                <IntegrateButton handleIntegrate={() => handleIntegrateRecording(row.id, row.name, row.params || [])} />
-                              </TableCell>
-                            );
-                          case 'options':
-                            return (
-                              <TableCell key={column.id} align={column.align}>
-                                <OptionsButton
-                                  handleEdit={() => handleEditRobot(row.id, row.name, row.params || [])}
-                                  handleDuplicate={() => {
-                                    handleDuplicateRobot(row.id, row.name, row.params || []);
-                                  }}
-                                  handleDelete={() => {
+      {rows.length === 0 ? (
+        <Box display="flex" justifyContent="center" alignItems="center" height="50%">
+          <CircularProgress />
+        </Box>
+      ) : (
+        <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden', marginTop: '15px' }}>
+          <Table stickyHeader aria-label="sticky table">
+            <TableHead>
+              <TableRow>
+                {columns.map((column) => (
+                  <TableCell
+                    key={column.id}
+                    align={column.align}
+                    style={{ minWidth: column.minWidth }}
+                  >
+                    {column.label}
+                  </TableCell>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredRows.length !== 0 ? filteredRows
+                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                .map((row) => {
+                  return (
+                    <TableRow hover role="checkbox" tabIndex={-1} key={row.id}>
+                      {columns.map((column) => {
+                        // @ts-ignore
+                        const value: any = row[column.id];
+                        if (value !== undefined) {
+                          return (
+                            <TableCell key={column.id} align={column.align}>
+                              {value}
+                            </TableCell>
+                          );
+                        } else {
+                          switch (column.id) {
+                            case 'interpret':
+                              return (
+                                <TableCell key={column.id} align={column.align}>
+                                  <InterpretButton handleInterpret={() => handleRunRecording(row.id, row.name, row.params || [])} />
+                                </TableCell>
+                              );
+                            case 'schedule':
+                              return (
+                                <TableCell key={column.id} align={column.align}>
+                                  <ScheduleButton handleSchedule={() => handleScheduleRecording(row.id, row.name, row.params || [])} />
+                                </TableCell>
+                              );
+                            case 'integrate':
+                              return (
+                                <TableCell key={column.id} align={column.align}>
+                                  <IntegrateButton handleIntegrate={() => handleIntegrateRecording(row.id, row.name, row.params || [])} />
+                                </TableCell>
+                              );
+                            case 'options':
+                              return (
+                                <TableCell key={column.id} align={column.align}>
+                                  <OptionsButton
+                                    handleEdit={() => handleEditRobot(row.id, row.name, row.params || [])}
+                                    handleDuplicate={() => {
+                                      handleDuplicateRobot(row.id, row.name, row.params || []);
+                                    }}
+                                    handleDelete={() => {
 
-                                    checkRunsForRecording(row.id).then((result: boolean) => {
-                                      if (result) {
-                                        notify('warning', t('recordingtable.notifications.delete_warning'));
-                                      }
-                                    })
+                                      checkRunsForRecording(row.id).then((result: boolean) => {
+                                        if (result) {
+                                          notify('warning', t('recordingtable.notifications.delete_warning'));
+                                        }
+                                      })
 
-                                    deleteRecordingFromStorage(row.id).then((result: boolean) => {
-                                      if (result) {
-                                        setRows([]);
-                                        notify('success', t('recordingtable.notifications.delete_success'));
-                                        fetchRecordings();
-                                      }
-                                    })
-                                  }}
-                                />
-                              </TableCell>
-                            );
-                          case 'settings':
-                            return (
-                              <TableCell key={column.id} align={column.align}>
-                                <SettingsButton handleSettings={() => handleSettingsRecording(row.id, row.name, row.params || [])} />
-                              </TableCell>
-                            );
-                          default:
-                            return null;
+                                      deleteRecordingFromStorage(row.id).then((result: boolean) => {
+                                        if (result) {
+                                          setRows([]);
+                                          notify('success', t('recordingtable.notifications.delete_success'));
+                                          fetchRecordings();
+                                        }
+                                      })
+                                    }}
+                                  />
+                                </TableCell>
+                              );
+                            case 'settings':
+                              return (
+                                <TableCell key={column.id} align={column.align}>
+                                  <SettingsButton handleSettings={() => handleSettingsRecording(row.id, row.name, row.params || [])} />
+                                </TableCell>
+                              );
+                            default:
+                              return null;
+                          }
                         }
-                      }
-                    })}
-                  </TableRow>
-                );
-              })
-              : null}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                      })}
+                    </TableRow>
+                  );
+                })
+                : null}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
       <TablePagination
         rowsPerPageOptions={[10, 25, 50]}
         component="div"
@@ -305,7 +335,7 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
         onRowsPerPageChange={handleChangeRowsPerPage}
       />
       <GenericModal isOpen={isModalOpen} onClose={() => setModalOpen(false)} modalStyle={modalStyle}>
-        <div style={{ padding: '20px' }}>
+        <div style={{ padding: '10px' }}>
           <Typography variant="h6" gutterBottom>{t('recordingtable.modal.title')}</Typography>
           <TextField
             label={t('recordingtable.modal.label')}
@@ -313,8 +343,22 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
             fullWidth
             value={recordingUrl}
             onChange={setBrowserRecordingUrl}
-            style={{ marginBottom: '20px', marginTop: '20px' }}
+            style={{ marginBottom: '10px', marginTop: '20px' }}
           />
+
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={isLogin}
+                onChange={(e) => setIsLogin(e.target.checked)}
+                color="primary"
+              />
+            }
+            label={t('recordingtable.modal.login_title')}
+            style={{ marginBottom: '10px' }}
+          />
+
+          <br />
           <Button
             variant="contained"
             color="primary"

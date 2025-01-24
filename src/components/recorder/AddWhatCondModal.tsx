@@ -3,7 +3,6 @@ import { GenericModal } from "../ui/GenericModal";
 import { modalStyle } from "./AddWhereCondModal";
 import { Button, MenuItem, TextField, Typography } from "@mui/material";
 import React, { useRef } from "react";
-import { Dropdown as MuiDropdown } from "../ui/DropdownMui";
 import { KeyValueForm } from "./KeyValueForm";
 import { ClearButton } from "../ui/buttons/ClearButton";
 import { useSocketStore } from "../../context/socket";

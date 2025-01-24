@@ -32,6 +32,7 @@
     "new": "创建机器人",
     "modal": {
       "title": "输入URL",
+      "login_title": "此网站需要登录吗？",
       "label": "URL",
       "button": "开始录制"
     },
@@ -205,7 +206,8 @@
       "confirm_text_fields": "请确认所有文本字段",
       "unable_create_settings": "无法创建列表设置。请确保您已为列表定义了字段。",
       "capture_text_discarded": "文本捕获已放弃",
-      "capture_list_discarded": "列表捕获已放弃"
+      "capture_list_discarded": "列表捕获已放弃",
+      "label_required": "标签不能为空"
     }
   },
   "save_recording": {

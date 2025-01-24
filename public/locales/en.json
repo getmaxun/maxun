@@ -32,6 +32,7 @@
       "new":"Create Robot",
       "modal":{
         "title":"Enter the URL",
+        "login_title": "Does this website require login?",
         "label":"URL",
         "button":"Start Recording"
       },
@@ -206,7 +207,8 @@
         "confirm_text_fields": "Please confirm all text fields",
         "unable_create_settings": "Unable to create list settings. Make sure you have defined a field for the list.",
         "capture_text_discarded": "Capture Text Discarded",
-        "capture_list_discarded": "Capture List Discarded"
+        "capture_list_discarded": "Capture List Discarded",
+        "label_required": "Label cannot be empty"
       }
     },
     "save_recording": {

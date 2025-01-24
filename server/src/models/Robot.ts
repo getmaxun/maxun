@@ -30,6 +30,7 @@ interface RobotAttributes {
   airtable_personal_access_token?: string | null; // Airtable Personal Access Token
   airtable_access_token?: string | null; // Airtable OAuth Access Token (if using OAuth)
   schedule?: ScheduleConfig | null;
+  isLogin?: boolean;
 }
 
 interface ScheduleConfig {
@@ -62,6 +63,7 @@ class Robot extends Model<RobotAttributes, RobotCreationAttributes> implements R
   public airtable_personal_access_token!: string | null; // Airtable Personal Access Token
   public airtable_access_token!: string | null; // Airtable OAuth Access Token
   public schedule!: ScheduleConfig | null;
+  public isLogin!: boolean;
 }
 
 Robot.init(
@@ -122,6 +124,11 @@ Robot.init(
     schedule: {
       type: DataTypes.JSONB,
       allowNull: true,
+    },
+    isLogin: {              
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {

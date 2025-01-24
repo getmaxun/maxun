@@ -10,6 +10,8 @@ interface GlobalInfo {
   notification: AlertSnackbarProps;
   notify: (severity: 'error' | 'warning' | 'info' | 'success', message: string) => void;
   closeNotify: () => void;
+  isLogin: boolean;
+  setIsLogin: (isLogin: boolean) => void;
   recordings: string[];
   setRecordings: (recordings: string[]) => void;
   rerenderRuns: boolean;
@@ -53,6 +55,7 @@ class GlobalInfoStore implements Partial<GlobalInfo> {
   recordingName = '';
   initialUrl = 'https://';
   recordingUrl = 'https://';
+  isLogin = false;
   currentWorkflowActionsState = {
     hasScrapeListAction: false,
     hasScreenshotAction: false,
@@ -75,6 +78,7 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
   const [recordingLength, setRecordingLength] = useState<number>(globalInfoStore.recordingLength);
   const [recordingId, setRecordingId] = useState<string | null>(globalInfoStore.recordingId);
   const [recordingName, setRecordingName] = useState<string>(globalInfoStore.recordingName);
+  const [isLogin, setIsLogin] = useState<boolean>(globalInfoStore.isLogin);
   const [initialUrl, setInitialUrl] = useState<string>(globalInfoStore.initialUrl);
   const [recordingUrl, setRecordingUrl] = useState<string>(globalInfoStore.recordingUrl);
   const [currentWorkflowActionsState, setCurrentWorkflowActionsState] = useState(globalInfoStore.currentWorkflowActionsState);
@@ -127,6 +131,8 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
         setInitialUrl,
         recordingUrl,
         setRecordingUrl,
+        isLogin,
+        setIsLogin,
         currentWorkflowActionsState,
         setCurrentWorkflowActionsState,
         shouldResetInterpretationLog,
