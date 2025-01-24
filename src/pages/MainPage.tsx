@@ -68,13 +68,14 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
   const readyForRunHandler = useCallback((browserId: string, runId: string) => {
     interpretStoredRecording(runId).then(async (interpretation: boolean) => {
       if (!aborted) {
-        if (interpretation) {
-          notify('success', t('main_page.notifications.interpretation_success', { name: runningRecordingName }));
-        } else {
-          notify('success', t('main_page.notifications.interpretation_failed', { name: runningRecordingName }));
-          // destroy the created browser
-          await stopRecording(browserId);
-        }
+        // if (interpretation) {
+        //   notify('success', t('main_page.notifications.interpretation_success', { name: runningRecordingName }));
+        // } else {
+        //   notify('success', t('main_page.notifications.interpretation_failed', { name: runningRecordingName }));
+        //   // destroy the created browser
+        //   await stopRecording(browserId);
+        // }
+        if (!interpretation) await stopRecording(browserId);
       }
       setRunningRecordingName('');
       setCurrentInterpretationLog('');
@@ -89,6 +90,12 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
 
   const handleRunRecording = useCallback((settings: RunSettings) => {
     createRunForStoredRecording(runningRecordingId, settings).then(({ browserId, runId }: CreateRunResponse) => {
+      localStorage.setItem('runInfo', JSON.stringify({
+        browserId,
+        runId,
+        recordingName: runningRecordingName
+      }));
+
       setIds({ browserId, runId });
       const socket =
         io(`${apiUrl}/${browserId}`, {
@@ -98,6 +105,18 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
       setSockets(sockets => [...sockets, socket]);
       socket.on('ready-for-run', () => readyForRunHandler(browserId, runId));
       socket.on('debugMessage', debugMessageHandler);
+
+      socket.on('run-completed', (status) => {
+        if (status === 'success') {
+            notify('success', t('main_page.notifications.interpretation_success', { name: runningRecordingName }));
+        } else {
+            notify('error', t('main_page.notifications.interpretation_failed', { name: runningRecordingName }));
+        }
+        setRunningRecordingName('');
+        setCurrentInterpretationLog('');
+        setRerenderRuns(true);
+      });
+
       setContent('runs');
       if (browserId) {
         notify('info', t('main_page.notifications.run_started', { name: runningRecordingName }));
@@ -108,6 +127,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
     return (socket: Socket, browserId: string, runId: string) => {
       socket.off('ready-for-run', () => readyForRunHandler(browserId, runId));
       socket.off('debugMessage', debugMessageHandler);
+      socket.off('run-completed');
     }
   }, [runningRecordingName, sockets, ids, readyForRunHandler, debugMessageHandler])
 
@@ -121,6 +141,49 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
         }
       });
   }
+
+  useEffect(() => {
+    const storedRunInfo = localStorage.getItem('runInfo');
+    console.log('storedRunInfo', storedRunInfo);
+
+    if (storedRunInfo) {
+      // Parse the stored info
+      const { browserId, runId, recordingName } = JSON.parse(storedRunInfo);
+      
+      // Reconnect to the specific browser's namespace
+      setIds({ browserId, runId });
+      const socket = io(`${apiUrl}/${browserId}`, {
+          transports: ["websocket"],
+          rejectUnauthorized: false
+      });
+
+      // Update component state with stored info
+      setRunningRecordingName(recordingName);
+      setSockets(sockets => [...sockets, socket]);
+
+      // Set up event listeners
+      socket.on('ready-for-run', () => readyForRunHandler(browserId, runId));
+      socket.on('debugMessage', debugMessageHandler);
+      socket.on('run-completed', (status) => {
+          if (status === 'success') {
+              notify('success', t('main_page.notifications.interpretation_success', { name: recordingName }));
+          } else {
+              notify('error', t('main_page.notifications.interpretation_failed', { name: recordingName }));
+          }
+          setRunningRecordingName('');
+          setCurrentInterpretationLog('');
+          setRerenderRuns(true);
+          localStorage.removeItem('runInfo'); // Clean up stored info
+      });
+
+      // Cleanup function
+      return () => {
+          socket.off('ready-for-run', () => readyForRunHandler(browserId, runId));
+          socket.off('debugMessage', debugMessageHandler);
+          socket.off('run-completed');
+      };
+    }
+  }, []);
 
   const DisplayContent = () => {
     switch (content) {
