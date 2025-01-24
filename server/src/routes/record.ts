@@ -16,6 +16,7 @@ import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import logger from "../logger";
 import { getDecryptedProxyConfig } from './proxy';
 import { requireSignIn } from '../middlewares/auth';
+import { browserPool } from '../server';
 
 export const router = Router();
 chromium.use(stealthPlugin());
@@ -32,6 +33,17 @@ router.all('/', requireSignIn, (req, res, next) => {
     logger.log('debug', `The record API was invoked: ${req.url}`)
     next() // pass control to the next handler
 })
+
+router.use('/', requireSignIn, (req: AuthenticatedRequest, res: Response, next) => {
+    if (browserPool.hasActiveRobotRun()) {
+        logger.log('debug', 'Preventing browser initialization - robot run in progress');
+        return res.status(403).json({
+            error: 'Cannot initialize recording browser while a robot run is in progress'
+        });
+    }
+    next();
+});
+
 
 /**
  * GET endpoint for starting the remote browser recording session.
