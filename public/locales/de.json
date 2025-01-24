@@ -205,7 +205,8 @@
             "confirm_text_fields": "Bitte bestätigen Sie alle Textfelder",
             "unable_create_settings": "Listeneinstellungen können nicht erstellt werden. Stellen Sie sicher, dass Sie ein Feld für die Liste definiert haben.",
             "capture_text_discarded": "Texterfassung verworfen",
-            "capture_list_discarded": "Listenerfassung verworfen"
+            "capture_list_discarded": "Listenerfassung verworfen",
+            "label_required": "Beschriftung darf nicht leer sein"
         }
     },
     "save_recording": {
