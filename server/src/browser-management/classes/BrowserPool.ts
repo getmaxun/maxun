@@ -15,8 +15,6 @@ interface BrowserPoolInfo {
      * @default false
      */
     active: boolean,
-
-    isRobotRun?: boolean;
 }
 
 /**
@@ -48,28 +46,16 @@ export class BrowserPool {
      * @param browser remote browser instance
      * @param active states if the browser's instance is being actively used
      */
-    public addRemoteBrowser = (id: string, browser: RemoteBrowser, active: boolean = false, isRobotRun: boolean = false): void => {
+    public addRemoteBrowser = (id: string, browser: RemoteBrowser, active: boolean = false): void => {
         this.pool = {
             ...this.pool,
             [id]: {
                 browser,
                 active,
-                isRobotRun
             },
         }
         logger.log('debug', `Remote browser with id: ${id} added to the pool`);
     };
-
-    public hasActiveRobotRun(): boolean {
-        return Object.values(this.pool).some(info => info.isRobotRun);
-    }
-
-    public clearRobotRunState(id: string): void {
-        if (this.pool[id]) {
-            this.pool[id].isRobotRun = false;
-            logger.log('debug', `Robot run state cleared for browser ${id}`);
-        }
-    }
 
     /**
      * Removes the remote browser instance from the pool.
@@ -81,8 +67,6 @@ export class BrowserPool {
             logger.log('warn', `Remote browser with id: ${id} does not exist in the pool`);
             return false;
         }
-
-        this.clearRobotRunState(id);
         delete (this.pool[id]);
         logger.log('debug', `Remote browser with id: ${id} deleted from the pool`);
         return true;
