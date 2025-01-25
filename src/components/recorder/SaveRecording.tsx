@@ -22,7 +22,7 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
   const [recordingName, setRecordingName] = useState<string>(fileName);
   const [waitingForSave, setWaitingForSave] = useState<boolean>(false);
 
-  const { browserId, setBrowserId, notify, recordings, isLogin } = useGlobalInfoStore();
+  const { browserId, setBrowserId, notify, recordings } = useGlobalInfoStore();
   const { socket } = useSocketStore();
   const { state, dispatch } = useContext(AuthContext);
   const { user } = state;
@@ -59,7 +59,7 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
   // releases resources and changes the view for main page by clearing the global browserId
   const saveRecording = async () => {
     if (user) {
-      const payload = { fileName: recordingName, userId: user.id, isLogin: isLogin };
+      const payload = { fileName: recordingName, userId: user.id };
       socket?.emit('save', payload);
       setWaitingForSave(true);
       console.log(`Saving the recording as ${recordingName} for userId ${user.id}`);
