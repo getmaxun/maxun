@@ -423,9 +423,9 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
 
                             {(robot.isLogin || Object.keys(credentials).length > 0) && (
                                 <>
-                                <Typography variant="body1" style={{ marginBottom: '20px' }}>
-                                    {t('Input Texts')}
-                                </Typography>
+                                    <Typography variant="body1" style={{ marginBottom: '20px' }}>
+                                        {t('Input Texts')}
+                                    </Typography>
                                     {renderAllCredentialFields()}
                                 </>
                             )}
