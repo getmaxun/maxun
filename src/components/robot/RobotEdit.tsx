@@ -158,6 +158,11 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                     const character: string = action.args[1];
                     const inputType: string = action.args[2] || '';
 
+                    // Detect `input[type="password"]`
+                    if (!currentType && inputType.toLowerCase() === 'password') {
+                        currentType = 'password';
+                    }
+                    
                     // If we're dealing with a new selector, store the previous one
                     if (currentSelector && selector !== currentSelector) {
                         if (!credentials[currentSelector]) {
