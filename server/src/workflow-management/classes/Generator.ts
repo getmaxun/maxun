@@ -39,6 +39,7 @@ interface MetaData {
   pairs: number;
   updatedAt: string;
   params: string[],
+  isLogin?: boolean;
 }
 
 /**
@@ -97,6 +98,7 @@ export class WorkflowGenerator {
     pairs: 0,
     updatedAt: '',
     params: [],
+    isLogin: false,
   }
 
   /**
@@ -134,9 +136,9 @@ export class WorkflowGenerator {
    */
   private registerEventHandlers = (socket: Socket) => {
     socket.on('save', (data) => {
-      const { fileName, userId } = data;
+      const { fileName, userId, isLogin } = data;
       logger.log('debug', `Saving workflow ${fileName} for user ID ${userId}`);
-      this.saveNewWorkflow(fileName, userId);
+      this.saveNewWorkflow(fileName, userId, isLogin);
   });
     socket.on('new-recording', () => this.workflowRecord = {
       workflow: [],
@@ -698,7 +700,7 @@ export class WorkflowGenerator {
    * @param fileName The name of the file.
    * @returns {Promise<void>}
    */
-  public saveNewWorkflow = async (fileName: string, userId: number) => {
+  public saveNewWorkflow = async (fileName: string, userId: number, isLogin: boolean) => {
     const recording = this.optimizeWorkflow(this.workflowRecord);
     try {
       this.recordingMeta = {
@@ -708,6 +710,7 @@ export class WorkflowGenerator {
         pairs: recording.workflow.length,
         updatedAt: new Date().toLocaleString(),
         params: this.getParams() || [],
+        isLogin: isLogin,
       }
       const robot = await Robot.create({
         userId,
