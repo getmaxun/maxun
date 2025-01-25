@@ -98,21 +98,15 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
     };
 
     const determineCredentialType = (selector: string, info: CredentialInfo): 'password' | 'email' | 'username' | 'other' => {
-        // Check for password type first
         if (info.type === 'password' || selector.toLowerCase().includes('password')) {
             return 'password';
         }
-
-        // Check for email patterns in the value or selector
         if (isEmailPattern(info.value) || selector.toLowerCase().includes('email')) {
             return 'email';
         }
-
-        // Check for username patterns in the selector
         if (isUsernameSelector(selector)) {
             return 'username';
         }
-
         return 'other';
     };
 
