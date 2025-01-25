@@ -134,9 +134,9 @@ export class WorkflowGenerator {
    */
   private registerEventHandlers = (socket: Socket) => {
     socket.on('save', (data) => {
-      const { fileName, userId, isLogin } = data;
+      const { fileName, userId } = data;
       logger.log('debug', `Saving workflow ${fileName} for user ID ${userId}`);
-      this.saveNewWorkflow(fileName, userId, isLogin);
+      this.saveNewWorkflow(fileName, userId);
   });
     socket.on('new-recording', () => this.workflowRecord = {
       workflow: [],
@@ -698,7 +698,7 @@ export class WorkflowGenerator {
    * @param fileName The name of the file.
    * @returns {Promise<void>}
    */
-  public saveNewWorkflow = async (fileName: string, userId: number, isLogin: boolean) => {
+  public saveNewWorkflow = async (fileName: string, userId: number) => {
     const recording = this.optimizeWorkflow(this.workflowRecord);
     try {
       this.recordingMeta = {
@@ -713,7 +713,6 @@ export class WorkflowGenerator {
         userId,
         recording_meta: this.recordingMeta,
         recording: recording,
-        isLogin: isLogin,
       });
       capture(
         'maxun-oss-robot-created',
