@@ -318,22 +318,18 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                     return (
                         <TextField
                             key={selector}
-                            // The type changes based on visibility state
                             type={isVisible ? 'text' : 'password'}
-                            // label={`Text ${selector}`}
                             label={headerText === 'Other' ? `${`Input`} ${index + 1}` : headerText}
                             value={credentials[selector]?.value || ''}
                             onChange={(e) => handleCredentialChange(selector, e.target.value)}
                             style={{ marginBottom: '20px' }}
                             InputProps={{
-                                // Now showing visibility toggle for all fields
                                 endAdornment: (
                                     <InputAdornment position="end">
                                         <IconButton
                                             aria-label="Show input"
                                             onClick={() => handleClickShowPassword(selector)}
                                             edge="end"
-                                            // Optional: disable if field is empty
                                             disabled={!credentials[selector]?.value}
                                         >
                                             {isVisible ? <Visibility /> : <VisibilityOff />}
