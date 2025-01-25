@@ -9,6 +9,7 @@ import { RobotEditModal } from "./RobotEdit";
 import { RobotDuplicationModal } from "./RobotDuplicate";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useGlobalInfoStore } from "../../context/globalInfo";
+import { useTranslation } from "react-i18next";
 
 interface RecordingsProps {
   handleEditRecording: (id: string, fileName: string) => void;
@@ -28,6 +29,7 @@ export const Recordings = ({
   const { selectedRecordingId } = useParams();
   const [params, setParams] = useState<string[]>([]);
   const { notify } = useGlobalInfoStore();
+  const { t } = useTranslation();
 
   const handleNavigate = (path: string, id: string, name: string, params: string[]) => {
     setParams(params);
@@ -60,7 +62,7 @@ export const Recordings = ({
     const robotId = getAndClearCookie('robot_auth_robotId');
 
     if (authStatus === 'success' && robotId) {
-      notify(authStatus, "Robot successfully authenticated");
+      notify(authStatus, t("recordingtable.notifications.auth_success"));
 
       handleNavigate(`/robots/${robotId}/integrate`, robotId, "", []);''  
     }
