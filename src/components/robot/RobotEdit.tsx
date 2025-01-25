@@ -281,7 +281,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                 {/* Render username credentials */}
                 {renderCredentialFields(
                     credentialGroups.usernames, 
-                    t('Username Credentials'),
+                    t('Username'),
                     'text'  // Always show usernames as text
                 )}
                 
