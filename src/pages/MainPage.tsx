@@ -103,7 +103,6 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
           rejectUnauthorized: false
         });
       setSockets(sockets => [...sockets, socket]);
-      socket.on('ready-for-run', () => readyForRunHandler(browserId, runId));
       socket.on('debugMessage', debugMessageHandler);
 
       socket.on('run-completed', (status) => {
@@ -125,11 +124,10 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
       }
     })
     return (socket: Socket, browserId: string, runId: string) => {
-      socket.off('ready-for-run', () => readyForRunHandler(browserId, runId));
       socket.off('debugMessage', debugMessageHandler);
       socket.off('run-completed');
     }
-  }, [runningRecordingName, sockets, ids, readyForRunHandler, debugMessageHandler])
+  }, [runningRecordingName, sockets, ids, debugMessageHandler])
 
   const handleScheduleRecording = (settings: ScheduleSettings) => {
     scheduleStoredRecording(runningRecordingId, settings)
@@ -162,7 +160,6 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
       setSockets(sockets => [...sockets, socket]);
 
       // Set up event listeners
-      socket.on('ready-for-run', () => readyForRunHandler(browserId, runId));
       socket.on('debugMessage', debugMessageHandler);
       socket.on('run-completed', (status) => {
           if (status === 'success') {
@@ -178,7 +175,6 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
 
       // Cleanup function
       return () => {
-          socket.off('ready-for-run', () => readyForRunHandler(browserId, runId));
           socket.off('debugMessage', debugMessageHandler);
           socket.off('run-completed');
       };
