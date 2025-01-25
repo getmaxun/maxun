@@ -42,7 +42,8 @@
         "search": "ロボットを検索...",
         "notifications": {
             "delete_warning": "関連する実行があるため、ロボットを削除できません",
-            "delete_success": "ロボットが正常に削除されました"
+            "delete_success": "ロボットが正常に削除されました",
+            "auth_success": "ロボットの認証に成功しました"
         }
   },
   "mainmenu": {
