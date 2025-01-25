@@ -99,7 +99,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
 
     const determineCredentialType = (selector: string, info: CredentialInfo): 'password' | 'email' | 'username' | 'other' => {
         // Check for password type first
-        if (info.type === 'password') {
+        if (info.type === 'password' || selector.toLowerCase().includes('password')) {
             return 'password';
         }
 
@@ -162,7 +162,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                     if (!currentType && inputType.toLowerCase() === 'password') {
                         currentType = 'password';
                     }
-                    
+
                     // If we're dealing with a new selector, store the previous one
                     if (currentSelector && selector !== currentSelector) {
                         if (!credentials[currentSelector]) {
