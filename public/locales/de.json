@@ -41,7 +41,8 @@
         "duplicate": "Duplizieren",
         "notifications": {
             "delete_warning": "Roboter kann nicht gelöscht werden, da zugehörige Ausführungen vorhanden sind",
-            "delete_success": "Roboter erfolgreich gelöscht"
+            "delete_success": "Roboter erfolgreich gelöscht",
+            "auth_success": "Roboter erfolgreich authentifiziert"
         }
     },
     "mainmenu": {

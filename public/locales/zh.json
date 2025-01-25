@@ -42,7 +42,8 @@
     "search": "搜索机器人...",
     "notifications": {
       "delete_warning": "无法删除机器人，因为它有关联的运行记录",
-      "delete_success": "机器人删除成功"
+      "delete_success": "机器人删除成功",
+      "auth_success": "机器人认证成功"
     }
   },
   "mainmenu": {
