@@ -1,7 +1,8 @@
 import { Queue, Worker } from 'bullmq';
 import IORedis from 'ioredis';
 import logger from './logger';
-import { handleRunRecording } from "./workflow-management/scheduler";
+import { handleRunRecording as handleScheduledRunRecording } from "./workflow-management/scheduler";
+import { handleRunRecording } from './api/record';
 import Robot from './models/Robot';
 import { computeNextRun } from './utils/schedule';
 
@@ -22,9 +23,11 @@ connection.on('error', (err) => {
 const workflowQueue = new Queue('workflow', { connection });
 
 const worker = new Worker('workflow', async job => {
-    const { runId, userId, id } = job.data;
+    const { runId, userId, id, isScheduled = true } = job.data;
     try {
-        const result = await handleRunRecording(id, userId);
+        const result = isScheduled ? 
+            await handleScheduledRunRecording(id, userId) : 
+            await handleRunRecording(id, userId);
         return result;
     } catch (error) {
         logger.error('Error running workflow:', error);
@@ -34,23 +37,26 @@ const worker = new Worker('workflow', async job => {
 
 worker.on('completed', async (job: any) => {
     logger.log(`info`, `Job ${job.id} completed for ${job.data.runId}`);
-    const robot = await Robot.findOne({ where: { 'recording_meta.id': job.data.id } });
-    if (robot) {
-        // Update `lastRunAt` to the current time
-        const lastRunAt = new Date();
+    
+    if (job.data.isScheduled) {
+        const robot = await Robot.findOne({ where: { 'recording_meta.id': job.data.id } });
+        if (robot) {
+            // Update `lastRunAt` to the current time
+            const lastRunAt = new Date();
 
-        // Compute the next run date
-        if (robot.schedule && robot.schedule.cronExpression && robot.schedule.timezone) {
-            const nextRunAt = computeNextRun(robot.schedule.cronExpression, robot.schedule.timezone) || undefined;
-            await robot.update({
-                schedule: {
-                    ...robot.schedule,
-                    lastRunAt,
-                    nextRunAt,
-                },
-            });
-        } else {
-            logger.error('Robot schedule, cronExpression, or timezone is missing.');
+            // Compute the next run date
+            if (robot.schedule && robot.schedule.cronExpression && robot.schedule.timezone) {
+                const nextRunAt = computeNextRun(robot.schedule.cronExpression, robot.schedule.timezone) || undefined;
+                await robot.update({
+                    schedule: {
+                        ...robot.schedule,
+                        lastRunAt,
+                        nextRunAt,
+                    },
+                });
+            } else {
+                logger.error('Robot schedule, cronExpression, or timezone is missing.');
+            }
         }
     }
 });
