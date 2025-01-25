@@ -32,6 +32,7 @@
         "new": "ロボットを作成",
         "modal": {
             "title": "URLを入力してください",
+            "login_title": "このサイトはログインが必要ですか?",
             "label": "URL",
             "button": "録画を開始"
         },
@@ -41,7 +42,8 @@
         "search": "ロボットを検索...",
         "notifications": {
             "delete_warning": "関連する実行があるため、ロボットを削除できません",
-            "delete_success": "ロボットが正常に削除されました"
+            "delete_success": "ロボットが正常に削除されました",
+            "auth_success": "ロボットの認証に成功しました"
         }
   },
   "mainmenu": {
@@ -205,7 +207,8 @@
             "confirm_text_fields": "すべてのテキストフィールドを確認してください",
             "unable_create_settings": "リスト設定を作成できません。リストのフィールドを定義したことを確認してください。",
             "capture_text_discarded": "テキスト取得が破棄されました",
-            "capture_list_discarded": "リスト取得が破棄されました"
+            "capture_list_discarded": "リスト取得が破棄されました",
+            "label_required": "ラベルは空にできません"
         }
     },
     "save_recording": {

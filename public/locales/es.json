@@ -32,6 +32,7 @@
     "new": "Crear Robot",
     "modal": {
       "title": "Ingresa la URL",
+      "login_title": "¿Este sitio requiere inicio de sesión?",
       "label": "URL",
       "button": "Comenzar grabación"
     },
@@ -41,7 +42,8 @@
     "search": "Buscar robots...",
     "notifications": {
       "delete_warning": "No se puede eliminar el robot ya que tiene ejecuciones asociadas",
-      "delete_success": "Robot eliminado exitosamente"
+      "delete_success": "Robot eliminado exitosamente",
+      "auth_success": "Robot autenticado exitosamente"
     }
   },
   "mainmenu": {
@@ -205,7 +207,8 @@
       "confirm_text_fields": "Por favor confirme todos los campos de texto",
       "unable_create_settings": "No se pueden crear las configuraciones de la lista. Asegúrese de haber definido un campo para la lista.",
       "capture_text_discarded": "Captura de texto descartada",
-      "capture_list_discarded": "Captura de lista descartada"
+      "capture_list_discarded": "Captura de lista descartada",
+      "label_required": "La etiqueta no puede estar vacía"
     }
   },
   "save_recording": {

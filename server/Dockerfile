@@ -25,7 +25,7 @@ RUN mkdir -p /tmp/chromium-data-dir && \
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
-    libgbm-dev \
+    libgbm1 \
     libnss3 \
     libatk1.0-0 \
     libatk-bridge2.0-0 \
@@ -43,12 +43,6 @@ RUN apt-get update && apt-get install -y \
     libxtst6 \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /tmp/.X11-unix && chmod 1777 /tmp/.X11-unix
-
-# Add a dbus configuration to prevent connection errors
-# RUN mkdir -p /var/run/dbus
-
-# Make the script executable
-# RUN chmod +x ./start.sh
 
 # Expose the backend port
 EXPOSE ${BACKEND_PORT:-8080}

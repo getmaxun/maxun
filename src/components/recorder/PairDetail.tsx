@@ -1,6 +1,6 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { WhereWhatPair } from "maxun-core";
-import { Box, Button, IconButton, MenuItem, Stack, TextField, Tooltip, Typography } from "@mui/material";
+import { IconButton, Stack, TextField, Tooltip, Typography } from "@mui/material";
 import { Close, KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import TreeView from '@mui/lab/TreeView';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -11,7 +11,6 @@ import { WarningText } from "../ui/texts";
 import NotificationImportantIcon from '@mui/icons-material/NotificationImportant';
 import { RemoveButton } from "../ui/buttons/RemoveButton";
 import { AddWhereCondModal } from "./AddWhereCondModal";
-import { UpdatePair } from "../../api/workflow";
 import { useSocketStore } from "../../context/socket";
 import { AddWhatCondModal } from "./AddWhatCondModal";
 

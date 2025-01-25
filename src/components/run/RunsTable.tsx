@@ -9,7 +9,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
-import { Accordion, AccordionSummary, AccordionDetails, Typography, Box, TextField } from '@mui/material';
+import { Accordion, AccordionSummary, AccordionDetails, Typography, Box, TextField, CircularProgress } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SearchIcon from '@mui/icons-material/Search';
 import { useNavigate } from 'react-router-dom';
@@ -18,7 +18,6 @@ import { getStoredRuns } from "../../api/storage";
 import { RunSettings } from "./RunSettings";
 import { CollapsibleRow } from "./ColapsibleRow";
 
-// Export columns before the component
 export const columns: readonly Column[] = [
   { id: 'runStatus', label: 'Status', minWidth: 80 },
   { id: 'name', label: 'Name', minWidth: 80 },
@@ -70,7 +69,6 @@ export const RunsTable: React.FC<RunsTableProps> = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
 
-  // Update column labels using translation if needed
   const translatedColumns = columns.map(column => ({
     ...column,
     label: t(`runstable.${column.id}`, column.label)
@@ -162,48 +160,54 @@ export const RunsTable: React.FC<RunsTableProps> = ({
           sx={{ width: '250px' }}
         />
       </Box>
-      <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden' }}>
-        {Object.entries(groupedRows).map(([id, data]) => (
-          <Accordion key={id} onChange={(event, isExpanded) => handleAccordionChange(id, isExpanded)}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography variant="h6">{data[data.length - 1].name}</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Table stickyHeader aria-label="sticky table">
-                <TableHead>
-                  <TableRow>
-                    <TableCell />
-                    {translatedColumns.map((column) => (
-                      <TableCell
-                        key={column.id}
-                        align={column.align}
-                        style={{ minWidth: column.minWidth }}
-                      >
-                        {column.label}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {data
-                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                    .map((row) => (
-                      <CollapsibleRow
-                        row={row}
-                        handleDelete={handleDelete}
-                        key={`row-${row.id}`}
-                        isOpen={runId === row.runId && runningRecordingName === row.name}
-                        currentLog={currentInterpretationLog}
-                        abortRunHandler={abortRunHandler}
-                        runningRecordingName={runningRecordingName}
-                      />
-                    ))}
-                </TableBody>
-              </Table>
-            </AccordionDetails>
-          </Accordion>
-        ))}
-      </TableContainer>
+      {rows.length === 0 ? (
+        <Box display="flex" justifyContent="center" alignItems="center" height="50%">
+          <CircularProgress />
+        </Box>
+      ) : (
+        <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden' }}>
+          {Object.entries(groupedRows).map(([id, data]) => (
+            <Accordion key={id} onChange={(event, isExpanded) => handleAccordionChange(id, isExpanded)}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="h6">{data[data.length - 1].name}</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Table stickyHeader aria-label="sticky table">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell />
+                      {translatedColumns.map((column) => (
+                        <TableCell
+                          key={column.id}
+                          align={column.align}
+                          style={{ minWidth: column.minWidth }}
+                        >
+                          {column.label}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {data
+                      .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                      .map((row) => (
+                        <CollapsibleRow
+                          row={row}
+                          handleDelete={handleDelete}
+                          key={`row-${row.id}`}
+                          isOpen={runId === row.runId && runningRecordingName === row.name}
+                          currentLog={currentInterpretationLog}
+                          abortRunHandler={abortRunHandler}
+                          runningRecordingName={runningRecordingName}
+                        />
+                      ))}
+                  </TableBody>
+                </Table>
+              </AccordionDetails>
+            </Accordion>
+          ))}
+        </TableContainer>
+      )}
       <TablePagination
         rowsPerPageOptions={[10, 25, 50]}
         component="div"

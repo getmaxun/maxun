@@ -14,7 +14,6 @@ import axios from "axios";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { getStoredRecording } from "../../api/storage";
 import { apiUrl } from "../../apiConfig.js";
-import Cookies from 'js-cookie';
 import { useTranslation } from "react-i18next";
 
 
@@ -29,20 +28,6 @@ export interface IntegrationSettings {
   spreadsheetName: string;
   data: string;
 }
-
-// Helper functions to replace js-cookie functionality
-const getCookie = (name: string): string | null => {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) {
-    return parts.pop()?.split(';').shift() || null;
-  }
-  return null;
-};
-
-const removeCookie = (name: string): void => {
-  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
-};
 
 export const IntegrationSettingsModal = ({
   isOpen,
@@ -155,17 +140,6 @@ export const IntegrationSettingsModal = ({
   };
 
   useEffect(() => {
-    // Check if there is a success message in cookies
-    const status = getCookie("robot_auth_status");
-    const message = getCookie("robot_auth_message");
-
-    if (status === "success" && message) {
-      notify("success", message);
-      // Clear the cookies after reading
-      removeCookie("robot_auth_status");
-      removeCookie("robot_auth_message");
-    }
-
     // Check if we're on the callback URL
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get("code");
