@@ -295,7 +295,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                 {/* Render password credentials */}
                 {renderCredentialFields(
                     credentialGroups.passwords, 
-                    t('Password Credentials'),
+                    t('Password'),
                     'password'  // Use password masking
                 )}
                 
