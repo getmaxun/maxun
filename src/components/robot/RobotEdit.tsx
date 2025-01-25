@@ -44,7 +44,6 @@ export interface RobotSettings {
     google_access_token?: string | null;
     google_refresh_token?: string | null;
     schedule?: ScheduleConfig | null;
-    isLogin?: boolean;
 }
 
 interface RobotSettingsProps {
@@ -421,7 +420,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                                 />
                             )}
 
-                            {(robot.isLogin || Object.keys(credentials).length > 0) && (
+                            {(Object.keys(credentials).length > 0) && (
                                 <>
                                     <Typography variant="body1" style={{ marginBottom: '20px' }}>
                                         {t('Input Texts')}

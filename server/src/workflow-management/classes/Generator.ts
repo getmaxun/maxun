@@ -39,6 +39,7 @@ interface MetaData {
   pairs: number;
   updatedAt: string;
   params: string[],
+  isLogin?: boolean;
 }
 
 /**
@@ -97,6 +98,7 @@ export class WorkflowGenerator {
     pairs: 0,
     updatedAt: '',
     params: [],
+    isLogin: false,
   }
 
   /**
@@ -708,12 +710,12 @@ export class WorkflowGenerator {
         pairs: recording.workflow.length,
         updatedAt: new Date().toLocaleString(),
         params: this.getParams() || [],
+        isLogin: isLogin,
       }
       const robot = await Robot.create({
         userId,
         recording_meta: this.recordingMeta,
         recording: recording,
-        isLogin: isLogin,
       });
       capture(
         'maxun-oss-robot-created',
