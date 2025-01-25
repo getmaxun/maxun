@@ -76,7 +76,14 @@ interface RecordingsTableProps {
   handleDuplicateRobot: (id: string, name: string, params: string[]) => void;
 }
 
-export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handleScheduleRecording, handleIntegrateRecording, handleSettingsRecording, handleEditRobot, handleDuplicateRobot }: RecordingsTableProps) => {
+export const RecordingsTable = ({
+  handleEditRecording,
+  handleRunRecording,
+  handleScheduleRecording,
+  handleIntegrateRecording,
+  handleSettingsRecording,
+  handleEditRobot,
+  handleDuplicateRobot }: RecordingsTableProps) => {
   const { t } = useTranslation();
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
@@ -109,7 +116,20 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
     },
   ];
 
-  const { notify, setRecordings, browserId, setBrowserId, setInitialUrl, recordingUrl, setRecordingUrl, isLogin, setIsLogin, recordingName, setRecordingName, recordingId, setRecordingId } = useGlobalInfoStore();
+  const {
+    notify,
+    setRecordings,
+    browserId,
+    setBrowserId,
+    setInitialUrl,
+    recordingUrl,
+    setRecordingUrl,
+    isLogin,
+    setIsLogin,
+    recordingName,
+    setRecordingName,
+    recordingId,
+    setRecordingId } = useGlobalInfoStore();
   const navigate = useNavigate();
 
   const handleChangePage = (event: unknown, newPage: number) => {
