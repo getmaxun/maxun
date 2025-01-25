@@ -79,22 +79,22 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
     const [robot, setRobot] = useState<RobotSettings | null>(null);
     const [credentials, setCredentials] = useState<Credentials>({});
     const { recordingId, notify } = useGlobalInfoStore();
-    const [credentialGroups, setCredentialGroups] = useState<GroupedCredentials>({ 
-        passwords: [], 
+    const [credentialGroups, setCredentialGroups] = useState<GroupedCredentials>({
+        passwords: [],
         emails: [],
         usernames: [],
-        others: [] 
+        others: []
     });
     const [showPasswords, setShowPasswords] = useState<CredentialVisibility>({});
 
     const isEmailPattern = (value: string): boolean => {
         return value.includes('@');
     };
-    
+
     const isUsernameSelector = (selector: string): boolean => {
-        return selector.toLowerCase().includes('username') || 
-               selector.toLowerCase().includes('user') ||
-               selector.toLowerCase().includes('email');
+        return selector.toLowerCase().includes('username') ||
+            selector.toLowerCase().includes('user') ||
+            selector.toLowerCase().includes('email');
     };
 
     const determineCredentialType = (selector: string, info: CredentialInfo): 'password' | 'email' | 'username' | 'other' => {
@@ -102,20 +102,20 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
         if (info.type === 'password') {
             return 'password';
         }
-        
+
         // Check for email patterns in the value or selector
         if (isEmailPattern(info.value) || selector.toLowerCase().includes('email')) {
             return 'email';
         }
-        
+
         // Check for username patterns in the selector
         if (isUsernameSelector(selector)) {
             return 'username';
         }
-        
+
         return 'other';
     };
-    
+
     useEffect(() => {
         if (isOpen) {
             getRobot();
@@ -132,32 +132,32 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
 
     const extractInitialCredentials = (workflow: any[]): Credentials => {
         const credentials: Credentials = {};
-    
+
         // Helper function to check if a character is printable
         const isPrintableCharacter = (char: string): boolean => {
             return char.length === 1 && !!char.match(/^[\x20-\x7E]$/);
         };
-    
+
         // Process each step in the workflow
         workflow.forEach(step => {
             if (!step.what) return;
-    
+
             // Keep track of the current input field being processed
             let currentSelector = '';
             let currentValue = '';
             let currentType = '';
-    
+
             // Process actions in sequence to maintain correct text state
             step.what.forEach((action: any) => {
                 if (
-                    (action.action === 'type' || action.action === 'press') && 
-                    action.args?.length >= 2 && 
+                    (action.action === 'type' || action.action === 'press') &&
+                    action.args?.length >= 2 &&
                     typeof action.args[1] === 'string'
                 ) {
                     const selector: string = action.args[0];
                     const character: string = action.args[1];
                     const inputType: string = action.args[2] || '';
-    
+
                     // If we're dealing with a new selector, store the previous one
                     if (currentSelector && selector !== currentSelector) {
                         if (!credentials[currentSelector]) {
@@ -169,14 +169,14 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                             credentials[currentSelector].value = currentValue;
                         }
                     }
-    
+
                     // Update current tracking variables
                     if (selector !== currentSelector) {
                         currentSelector = selector;
                         currentValue = credentials[selector]?.value || '';
                         currentType = inputType || credentials[selector]?.type || '';
                     }
-    
+
                     // Handle different types of key actions
                     if (character === 'Backspace') {
                         // Remove the last character when backspace is pressed
@@ -188,7 +188,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                     // Note: We ignore other special keys like 'Shift', 'Enter', etc.
                 }
             });
-    
+
             // Store the final state of the last processed selector
             if (currentSelector) {
                 credentials[currentSelector] = {
@@ -197,14 +197,14 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                 };
             }
         });
-    
+
         return credentials;
     };
 
     const groupCredentialsByType = (credentials: Credentials): GroupedCredentials => {
         return Object.entries(credentials).reduce((acc: GroupedCredentials, [selector, info]) => {
             const credentialType = determineCredentialType(selector, info);
-            
+
             switch (credentialType) {
                 case 'password':
                     acc.passwords.push(selector);
@@ -218,7 +218,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                 default:
                     acc.others.push(selector);
             }
-            
+
             return acc;
         }, { passwords: [], emails: [], usernames: [], others: [] });
     };
@@ -279,25 +279,25 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
         return (
             <>
                 {renderCredentialFields(
-                    credentialGroups.usernames, 
+                    credentialGroups.usernames,
                     t('Username'),
                     'text'
                 )}
-                
+
                 {renderCredentialFields(
-                    credentialGroups.emails, 
+                    credentialGroups.emails,
                     t('Email'),
                     'text'
                 )}
-                
+
                 {renderCredentialFields(
-                    credentialGroups.passwords, 
+                    credentialGroups.passwords,
                     t('Password'),
                     'password'
                 )}
-                
+
                 {renderCredentialFields(
-                    credentialGroups.others, 
+                    credentialGroups.others,
                     t('Other'),
                     'text'
                 )}
@@ -307,15 +307,15 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
 
     const renderCredentialFields = (selectors: string[], headerText: string, defaultType: 'text' | 'password' = 'text') => {
         if (selectors.length === 0) return null;
-    
+
         return (
             <>
-                <Typography variant="h6" style={{ marginBottom: '20px'}}>
+                <Typography variant="h6" style={{ marginBottom: '20px' }}>
                     {headerText}
                 </Typography>
                 {selectors.map((selector, index) => {
                     const isVisible = showPasswords[selector];
-                    
+
                     return (
                         <TextField
                             key={selector}
@@ -408,7 +408,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                                 onChange={(e) => handleRobotNameChange(e.target.value)}
                                 style={{ marginBottom: '20px' }}
                             />
-                            
+
                             {robot.recording.workflow?.[0]?.what?.[0]?.args?.[0]?.limit !== undefined && (
                                 <TextField
                                     label={t('robot_edit.robot_limit')}
