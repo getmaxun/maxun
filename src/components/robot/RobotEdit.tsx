@@ -302,7 +302,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                 {/* Render other credentials */}
                 {renderCredentialFields(
                     credentialGroups.others, 
-                    t('Other Credentials'),
+                    t('Other'),
                     'text'  // Show other credentials as text
                 )}
             </>
