@@ -124,8 +124,6 @@ export const RecordingsTable = ({
     setInitialUrl,
     recordingUrl,
     setRecordingUrl,
-    isLogin,
-    setIsLogin,
     recordingName,
     setRecordingName,
     recordingId,
@@ -364,18 +362,6 @@ export const RecordingsTable = ({
             value={recordingUrl}
             onChange={setBrowserRecordingUrl}
             style={{ marginBottom: '10px', marginTop: '20px' }}
-          />
-
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={isLogin}
-                onChange={(e) => setIsLogin(e.target.checked)}
-                color="primary"
-              />
-            }
-            label={t('recordingtable.modal.login_title')}
-            style={{ marginBottom: '10px' }}
           />
 
           <br />
