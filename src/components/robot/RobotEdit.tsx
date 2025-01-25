@@ -278,32 +278,28 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
     const renderAllCredentialFields = () => {
         return (
             <>
-                {/* Render username credentials */}
                 {renderCredentialFields(
                     credentialGroups.usernames, 
                     t('Username'),
-                    'text'  // Always show usernames as text
+                    'text'
                 )}
                 
-                {/* Render email credentials */}
                 {renderCredentialFields(
                     credentialGroups.emails, 
                     t('Email'),
-                    'text'  // Always show emails as text
+                    'text'
                 )}
                 
-                {/* Render password credentials */}
                 {renderCredentialFields(
                     credentialGroups.passwords, 
                     t('Password'),
-                    'password'  // Use password masking
+                    'password'
                 )}
                 
-                {/* Render other credentials */}
                 {renderCredentialFields(
                     credentialGroups.others, 
                     t('Other'),
-                    'text'  // Show other credentials as text
+                    'text'
                 )}
             </>
         );
