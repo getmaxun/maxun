@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { RecordingsTable } from "./RecordingsTable";
 import { Grid } from "@mui/material";
 import { RunSettings, RunSettingsModal } from "../run/RunSettings";
@@ -8,6 +8,7 @@ import { RobotSettingsModal } from "./RobotSettings";
 import { RobotEditModal } from "./RobotEdit";
 import { RobotDuplicationModal } from "./RobotDuplicate";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
+import { useGlobalInfoStore } from "../../context/globalInfo";
 
 interface RecordingsProps {
   handleEditRecording: (id: string, fileName: string) => void;
@@ -26,6 +27,7 @@ export const Recordings = ({
   const location = useLocation();
   const { selectedRecordingId } = useParams();
   const [params, setParams] = useState<string[]>([]);
+  const { notify } = useGlobalInfoStore();
 
   const handleNavigate = (path: string, id: string, name: string, params: string[]) => {
     setParams(params);
@@ -38,6 +40,31 @@ export const Recordings = ({
     setRecordingInfo("", "");
     navigate("/robots"); // Navigate back to the main robots page
   };
+
+  useEffect(() => {
+    // Helper function to get and clear a cookie
+    const getAndClearCookie = (name: string) => {
+      const value = document.cookie
+        .split('; ')
+        .find(row => row.startsWith(`${name}=`))
+        ?.split('=')[1];
+      
+      if (value) {
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+      }
+      
+      return value;
+    };
+
+    const authStatus = getAndClearCookie('robot_auth_status');
+    const robotId = getAndClearCookie('robot_auth_robotId');
+
+    if (authStatus === 'success' && robotId) {
+      notify(authStatus, "Robot successfully authenticated");
+
+      handleNavigate(`/robots/${robotId}/integrate`, robotId, "", []);''  
+    }
+  }, []);
 
   // Determine which modal to open based on the current route
   const getCurrentModal = () => {
