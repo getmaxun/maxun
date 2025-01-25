@@ -288,7 +288,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                 {/* Render email credentials */}
                 {renderCredentialFields(
                     credentialGroups.emails, 
-                    t('Email Credentials'),
+                    t('Email'),
                     'text'  // Always show emails as text
                 )}
                 
