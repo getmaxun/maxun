@@ -321,7 +321,8 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                             key={selector}
                             // The type changes based on visibility state
                             type={isVisible ? 'text' : 'password'}
-                            label={`Text ${selector}`}
+                            // label={`Text ${selector}`}
+                            label={`${headerText}`}
                             value={credentials[selector]?.value || ''}
                             onChange={(e) => handleCredentialChange(selector, e.target.value)}
                             style={{ marginBottom: '20px' }}
