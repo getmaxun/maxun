@@ -330,7 +330,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                                 endAdornment: (
                                     <InputAdornment position="end">
                                         <IconButton
-                                            aria-label="toggle credential visibility"
+                                            aria-label="Show input"
                                             onClick={() => handleClickShowPassword(selector)}
                                             edge="end"
                                             // Optional: disable if field is empty
