@@ -42,7 +42,8 @@
     "search": "Buscar robots...",
     "notifications": {
       "delete_warning": "No se puede eliminar el robot ya que tiene ejecuciones asociadas",
-      "delete_success": "Robot eliminado exitosamente"
+      "delete_success": "Robot eliminado exitosamente",
+      "auth_success": "Robot autenticado exitosamente"
     }
   },
   "mainmenu": {

@@ -42,7 +42,8 @@
       "search":"Search Robots...",
       "notifications": {
         "delete_warning": "Cannot delete robot as it has associated runs",
-        "delete_success": "Robot deleted successfully"
+        "delete_success": "Robot deleted successfully",
+        "auth_success": "Robot successfully authenticated"
       }
     },
     "mainmenu":{
