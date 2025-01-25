@@ -313,7 +313,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                 <Typography variant="h6" style={{ marginBottom: '20px'}}>
                     {headerText}
                 </Typography>
-                {selectors.map((selector) => {
+                {selectors.map((selector, index) => {
                     const isVisible = showPasswords[selector];
                     
                     return (
@@ -321,7 +321,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                             key={selector}
                             // The type changes based on visibility state
                             type={isVisible ? 'text' : 'password'}
-                            label={`Credential for ${selector}`}
+                            label={`Input ${index + 1}`}
                             value={credentials[selector]?.value || ''}
                             onChange={(e) => handleCredentialChange(selector, e.target.value)}
                             style={{ marginBottom: '20px' }}
