@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { GenericModal } from "../ui/GenericModal";
 import { MenuItem, TextField, Typography, Switch, FormControlLabel } from "@mui/material";
 import { Dropdown } from "../ui/DropdownMui";
@@ -29,12 +29,17 @@ export const RunSettingsModal = ({ isOpen, handleStart, handleClose, isTask, par
 
   const [showInterpreterSettings, setShowInterpreterSettings] = useState(false);
 
-  const startImmediately = () => {
-    handleStart(settings); 
-  };
+  // Run immediately without modal if settings don't need to be shown
+  useEffect(() => {
+    if (!showInterpreterSettings) {
+      handleStart(settings); // Start the run
+    }
+    // Ensure this runs only when the component mounts or settings change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showInterpreterSettings]);
 
+  // Do not render the modal if settings are not shown
   if (!showInterpreterSettings) {
-    startImmediately();
     return null;
   }
 
