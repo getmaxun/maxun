@@ -573,11 +573,6 @@ router.post(
 
 import crypto from 'crypto';
 
-// Add these environment variables to your .env file
-// AIRTABLE_CLIENT_ID=your_client_id
-// AIRTABLE_CLIENT_SECRET=your_client_secret
-// AIRTABLE_REDIRECT_URI=http://localhost:8080/auth/airtable/callback
-
 // Airtable OAuth Routes
 router.get("/airtable", (req, res) => {
   const { robotId } = req.query;
@@ -668,6 +663,7 @@ router.get("/airtable/callback", async (req, res) => {
     await robot.update({
       airtable_access_token: tokens.access_token,
       airtable_refresh_token: tokens.refresh_token,
+
       
     });
 
@@ -689,7 +685,7 @@ router.get("/airtable/callback", async (req, res) => {
 });
 
 // Get Airtable bases
-router.get("/airtable/bases", requireSignIn, async (req: AuthenticatedRequest, res) => {
+router.get("/airtable/bases", async (req: AuthenticatedRequest, res) => {
   try {
     const { robotId } = req.query;
     if (!robotId) {
@@ -697,7 +693,7 @@ router.get("/airtable/bases", requireSignIn, async (req: AuthenticatedRequest, r
     }
 
     const robot = await Robot.findOne({
-      where: { "recording_meta.id": robotId },
+      where: { "recording_meta.id": robotId.toString() },
       raw: true,
     });
 
