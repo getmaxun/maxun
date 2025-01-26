@@ -71,62 +71,62 @@ export const IntegrationSettingsModal = ({
     const redirectUri = `${window.location.origin}/google/callback`;
     window.location.href = `${apiUrl}/auth/google?robotId=${recordingId}&redirect_uri=${encodeURIComponent(redirectUri)}`;
   };
-  
+
+  // Authenticate with Airtable
   const authenticateWithAirtable = () => {
     const redirectUri = `${window.location.origin}/airtable/callback`;
     window.location.href = `${apiUrl}/auth/airtable?robotId=${recordingId}&redirect_uri=${encodeURIComponent(redirectUri)}`;
   };
 
-  // Handle OAuth callback
+  // Handle Google OAuth callback
   const handleGoogleCallback = async () => {
     try {
       const urlParams = new URLSearchParams(window.location.search);
-      const code = urlParams.get('code');
-      
+      const code = urlParams.get("code");
+
       if (!code) {
         setError(t("integration_settings.errors.no_auth_code"));
         return;
       }
-  
+
       const response = await axios.get(
         `${apiUrl}/auth/google/callback?code=${code}&robotId=${recordingId}`
       );
-      
+
       if (response.data.accessToken) {
         notify("success", t("integration_settings.notifications.google_auth_success"));
         await fetchSpreadsheetFiles();
       }
-      
+
       // Clear URL parameters
       window.history.replaceState({}, document.title, window.location.pathname);
-  
     } catch (error) {
       setError(t("integration_settings.errors.google_auth_error"));
     }
   };
 
+  // Handle Airtable OAuth callback
   const handleAirtableCallback = async () => {
     try {
       const urlParams = new URLSearchParams(window.location.search);
-      const code = urlParams.get('code');
-      
+      const code = urlParams.get("code");
+
       if (!code) {
         setError(t("integration_settings.errors.no_auth_code"));
         return;
       }
-  
+
       const response = await axios.get(
         `${apiUrl}/auth/airtable/callback?code=${code}&robotId=${recordingId}`
       );
-      
+
       if (response.data.accessToken) {
         notify("success", t("integration_settings.notifications.airtable_auth_success"));
         await fetchAirtableBases();
       }
-      
+
       // Clear URL parameters
       window.history.replaceState({}, document.title, window.location.pathname);
-  
     } catch (error) {
       setError(t("integration_settings.errors.airtable_auth_error"));
     }
@@ -135,6 +135,7 @@ export const IntegrationSettingsModal = ({
   // Fetch Google Sheets
   const fetchSpreadsheetFiles = async () => {
     try {
+      setLoading(true);
       const response = await axios.get(`${apiUrl}/auth/gsheets/files?robotId=${recordingId}`, {
         withCredentials: true,
       });
@@ -142,12 +143,15 @@ export const IntegrationSettingsModal = ({
     } catch (error: any) {
       console.error("Error fetching spreadsheet files:", error.response?.data?.message || error.message);
       notify("error", t("integration_settings.errors.fetch_error", { message: error.response?.data?.message || error.message }));
+    } finally {
+      setLoading(false);
     }
   };
 
   // Fetch Airtable Bases
   const fetchAirtableBases = async () => {
     try {
+      setLoading(true);
       const response = await axios.get(`${apiUrl}/auth/airtable/bases?robotId=${recordingId}`, {
         withCredentials: true,
       });
@@ -155,6 +159,8 @@ export const IntegrationSettingsModal = ({
     } catch (error: any) {
       console.error("Error fetching Airtable bases:", error.response?.data?.message || error.message);
       notify("error", t("integration_settings.errors.fetch_error", { message: error.response?.data?.message || error.message }));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -185,6 +191,7 @@ export const IntegrationSettingsModal = ({
   // Update Google Sheet ID
   const updateGoogleSheetId = async () => {
     try {
+      setLoading(true);
       const response = await axios.post(
         `${apiUrl}/auth/gsheets/update`,
         {
@@ -198,12 +205,15 @@ export const IntegrationSettingsModal = ({
       console.log("Google Sheet ID updated:", response.data);
     } catch (error: any) {
       console.error("Error updating Google Sheet ID:", error.response?.data?.message || error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   // Update Airtable Base ID
   const updateAirtableBaseId = async () => {
     try {
+      setLoading(true);
       const response = await axios.post(
         `${apiUrl}/auth/airtable/update`,
         {
@@ -217,12 +227,15 @@ export const IntegrationSettingsModal = ({
       console.log("Airtable Base ID updated:", response.data);
     } catch (error: any) {
       console.error("Error updating Airtable Base ID:", error.response?.data?.message || error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   // Remove Integration
   const removeIntegration = async () => {
     try {
+      setLoading(true);
       await axios.post(
         `${apiUrl}/auth/gsheets/remove`,
         { robotId: recordingId },
@@ -232,9 +245,18 @@ export const IntegrationSettingsModal = ({
       setRecording(null);
       setSpreadsheets([]);
       setAirtableBases([]);
-      setSettings({ spreadsheetId: "", spreadsheetName: "", airtableBaseId: "", airtableBaseName: "", data: "" });
+      setSettings({
+        spreadsheetId: "",
+        spreadsheetName: "",
+        airtableBaseId: "",
+        airtableBaseName: "",
+        data: "",
+      });
+      notify("success", t("integration_settings.notifications.integration_removed"));
     } catch (error: any) {
       console.error("Error removing integration:", error.response?.data?.message || error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -242,24 +264,36 @@ export const IntegrationSettingsModal = ({
     const checkAuthCallback = () => {
       const path = window.location.pathname;
       const urlParams = new URLSearchParams(window.location.search);
-      const code = urlParams.get('code');
-  
+      const code = urlParams.get("code");
+
       if (code) {
-        if (path.includes('/google/callback')) {
+        if (path.includes("/google/callback")) {
           handleGoogleCallback();
-        } else if (path.includes('/airtable/callback')) {
+        } else if (path.includes("/airtable/callback")) {
           handleAirtableCallback();
         }
       }
     };
-  
+
     checkAuthCallback();
-    
+
     // Cleanup function
     return () => {
       window.history.replaceState({}, document.title, window.location.pathname);
     };
   }, []);
+
+  useEffect(() => {
+    const fetchRecordingInfo = async () => {
+      if (!recordingId) return;
+      const recording = await getStoredRecording(recordingId);
+      if (recording) {
+        setRecording(recording);
+      }
+    };
+
+    fetchRecordingInfo();
+  }, [recordingId]);
 
   return (
     <GenericModal isOpen={isOpen} onClose={handleClose} modalStyle={modalStyle}>
