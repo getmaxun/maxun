@@ -451,6 +451,7 @@
             "log": "Protokoll"
         },
         "empty_output": "Die Ausgabe ist leer.",
+        "loading": "Ausführung läuft. Extrahierte Daten werden nach Abschluss des Durchlaufs hier angezeigt.",
         "captured_data": {
             "title": "Erfasste Daten",
             "download_json": "Als JSON herunterladen",
