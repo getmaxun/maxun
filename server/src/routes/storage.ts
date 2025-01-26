@@ -154,48 +154,52 @@ function formatRunResponse(run: any) {
   return formattedRun;
 }
 
-interface CredentialUpdate {
-  [selector: string]: string;
+interface CredentialInfo {
+  value: string;
+  type: string;
 }
 
-function updateTypeActionsInWorkflow(workflow: any[], credentials: CredentialUpdate) {
+interface Credentials {
+  [key: string]: CredentialInfo;
+}
+
+function updateTypeActionsInWorkflow(workflow: any[], credentials: Credentials) {
   return workflow.map(step => {
       if (!step.what) return step;
 
-      // First pass: mark indices to remove
       const indicesToRemove = new Set<number>();
-      step.what.forEach((action: any, index: any) => {
+      step.what.forEach((action: any, index: number) => {
           if (!action.action || !action.args?.[0]) return;
           
-          // If it's a type/press action for a credential
           if ((action.action === 'type' || action.action === 'press') && credentials[action.args[0]]) {
               indicesToRemove.add(index);
-              // Check if next action is waitForLoadState
+
               if (step.what[index + 1]?.action === 'waitForLoadState') {
                   indicesToRemove.add(index + 1);
               }
           }
       });
 
-      // Filter out marked indices and create new what array
-      const filteredWhat = step.what.filter((_: any, index: any) => !indicesToRemove.has(index));
+      const filteredWhat = step.what.filter((_: any, index: number) => !indicesToRemove.has(index));
 
-      // Add new type actions after click actions
-      Object.entries(credentials).forEach(([selector, credential]) => {
+      Object.entries(credentials).forEach(([selector, credentialInfo]) => {
           const clickIndex = filteredWhat.findIndex((action: any) => 
               action.action === 'click' && action.args?.[0] === selector
           );
 
           if (clickIndex !== -1) {
-              const chars = credential.split('');
+              const chars = credentialInfo.value.split('');
+              
               chars.forEach((char, i) => {
-                  // Add type action
                   filteredWhat.splice(clickIndex + 1 + (i * 2), 0, {
                       action: 'type',
-                      args: [selector, encrypt(char)]  
+                      args: [
+                          selector,
+                          encrypt(char),
+                          credentialInfo.type 
+                      ]
                   });
                   
-                  // Add waitForLoadState
                   filteredWhat.splice(clickIndex + 2 + (i * 2), 0, {
                       action: 'waitForLoadState',
                       args: ['networkidle']
@@ -346,7 +350,6 @@ router.post('/recordings/:id/duplicate', requireSignIn, async (req: Authenticate
         updatedAt: currentTimestamp, 
       }, 
       recording: { ...originalRobot.recording, workflow }, 
-      isLogin: originalRobot.isLogin,
       google_sheet_email: null, 
       google_sheet_name: null,
       google_sheet_id: null,

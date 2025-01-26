@@ -11,8 +11,32 @@ import TableRow from '@mui/material/TableRow';
 import { memo, useCallback, useEffect, useMemo } from "react";
 import { WorkflowFile } from "maxun-core";
 import SearchIcon from '@mui/icons-material/Search';
-import { IconButton, Button, Box, Typography, TextField, MenuItem, Menu, ListItemIcon, ListItemText, CircularProgress, RadioGroup, FormControlLabel, Radio } from "@mui/material";
-import { Schedule, DeleteForever, Edit, PlayCircle, Settings, Power, ContentCopy, MoreHoriz } from "@mui/icons-material";
+import {
+  IconButton,
+  Button,
+  Box,
+  Typography,
+  TextField,
+  MenuItem,
+  Menu,
+  ListItemIcon,
+  ListItemText,
+  CircularProgress,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+  Checkbox,
+} from "@mui/material";
+import {
+  Schedule,
+  DeleteForever,
+  Edit,
+  PlayCircle,
+  Settings,
+  Power,
+  ContentCopy,
+  MoreHoriz
+} from "@mui/icons-material";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { checkRunsForRecording, deleteRecordingFromStorage, getStoredRecordings } from "../../api/storage";
 import { Add } from "@mui/icons-material";
@@ -110,7 +134,14 @@ const TableRowMemoized = memo(({ row, columns, handlers }: any) => {
 });
 
 
-export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handleScheduleRecording, handleIntegrateRecording, handleSettingsRecording, handleEditRobot, handleDuplicateRobot }: RecordingsTableProps) => {
+export const RecordingsTable = ({
+  handleEditRecording,
+  handleRunRecording,
+  handleScheduleRecording,
+  handleIntegrateRecording,
+  handleSettingsRecording,
+  handleEditRobot,
+  handleDuplicateRobot }: RecordingsTableProps) => {
   const { t } = useTranslation();
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
@@ -128,7 +159,20 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
     { id: 'options', label: t('recordingtable.options'), minWidth: 80 },
   ], [t]);
 
-  const { notify, setRecordings, browserId, setBrowserId, setInitialUrl, recordingUrl, setRecordingUrl, isLogin, setIsLogin, recordingName, setRecordingName, recordingId, setRecordingId } = useGlobalInfoStore();
+  const {
+    notify,
+    setRecordings,
+    browserId,
+    setBrowserId,
+    setInitialUrl,
+    recordingUrl,
+    setRecordingUrl,
+    isLogin,
+    setIsLogin,
+    recordingName,
+    setRecordingName,
+    recordingId,
+    setRecordingId } = useGlobalInfoStore();
   const navigate = useNavigate();
 
   const handleChangePage = useCallback((event: unknown, newPage: number) => {
@@ -343,7 +387,7 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
         onRowsPerPageChange={handleChangeRowsPerPage}
       />
       <GenericModal isOpen={isModalOpen} onClose={() => setModalOpen(false)} modalStyle={modalStyle}>
-        <div style={{ padding: '20px' }}>
+        <div style={{ padding: '10px' }}>
           <Typography variant="h6" gutterBottom>{t('recordingtable.modal.title')}</Typography>
           <TextField
             label={t('recordingtable.modal.label')}
@@ -351,21 +395,22 @@ export const RecordingsTable = ({ handleEditRecording, handleRunRecording, handl
             fullWidth
             value={recordingUrl}
             onChange={setBrowserRecordingUrl}
-            style={{ marginBottom: '20px', marginTop: '20px' }}
+            style={{ marginBottom: '10px', marginTop: '20px' }}
           />
 
-          <Typography variant="h6" gutterBottom>{t('recordingtable.modal.login_title')}</Typography>
-          <RadioGroup
-            aria-labelledby="login-requirement-radio-group"
-            name="login-requirement"
-            value={isLogin ? 'yes' : 'no'}
-            onChange={(e) => setIsLogin(e.target.value === 'yes')}
-            style={{ marginBottom: '20px' }}
-          >
-            <FormControlLabel value="yes" control={<Radio />} label="Yes" />
-            <FormControlLabel value="no" control={<Radio />} label="No" />
-          </RadioGroup>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={isLogin}
+                onChange={(e) => setIsLogin(e.target.checked)}
+                color="primary"
+              />
+            }
+            label={t('recordingtable.modal.login_title')}
+            style={{ marginBottom: '10px' }}
+          />
 
+          <br />
           <Button
             variant="contained"
             color="primary"

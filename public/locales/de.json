@@ -41,7 +41,8 @@
         "duplicate": "Duplizieren",
         "notifications": {
             "delete_warning": "Roboter kann nicht gelöscht werden, da zugehörige Ausführungen vorhanden sind",
-            "delete_success": "Roboter erfolgreich gelöscht"
+            "delete_success": "Roboter erfolgreich gelöscht",
+            "auth_success": "Roboter erfolgreich authentifiziert"
         }
     },
     "mainmenu": {
@@ -205,7 +206,8 @@
             "confirm_text_fields": "Bitte bestätigen Sie alle Textfelder",
             "unable_create_settings": "Listeneinstellungen können nicht erstellt werden. Stellen Sie sicher, dass Sie ein Feld für die Liste definiert haben.",
             "capture_text_discarded": "Texterfassung verworfen",
-            "capture_list_discarded": "Listenerfassung verworfen"
+            "capture_list_discarded": "Listenerfassung verworfen",
+            "label_required": "Beschriftung darf nicht leer sein"
         }
     },
     "save_recording": {

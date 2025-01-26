@@ -39,6 +39,7 @@ interface MetaData {
   pairs: number;
   updatedAt: string;
   params: string[],
+  isLogin?: boolean;
 }
 
 /**
@@ -97,6 +98,7 @@ export class WorkflowGenerator {
     pairs: 0,
     updatedAt: '',
     params: [],
+    isLogin: false,
   }
 
   /**
@@ -425,6 +427,40 @@ export class WorkflowGenerator {
       return;
     }
 
+    if ((elementInfo?.tagName === 'INPUT' || elementInfo?.tagName === 'TEXTAREA') && selector) {
+      // Calculate the exact position within the element
+      const elementPos = await page.evaluate((selector) => {
+        const element = document.querySelector(selector);
+        if (!element) return null;
+        const rect = element.getBoundingClientRect();
+        return {
+            x: rect.left,
+            y: rect.top
+        };
+      }, selector);
+
+      if (elementPos) {
+        const relativeX = coordinates.x - elementPos.x;
+        const relativeY = coordinates.y - elementPos.y;
+
+        const pair: WhereWhatPair = {
+            where,
+            what: [{
+                action: 'click',
+                args: [selector, { position: { x: relativeX, y: relativeY } }]
+            }]
+        };
+
+        if (selector) {
+            this.generatedData.lastUsedSelector = selector;
+            this.generatedData.lastAction = 'click';
+        }
+
+        await this.addPairToWorkflowAndNotifyClient(pair, page);
+        return;
+      }
+    }
+
     //const element = await getElementMouseIsOver(page, coordinates);
     //logger.log('debug', `Element: ${JSON.stringify(element, null, 2)}`);
     if (selector) {
@@ -474,6 +510,10 @@ export class WorkflowGenerator {
   public onKeyboardInput = async (key: string, coordinates: Coordinates, page: Page) => {
     let where: WhereWhatPair["where"] = { url: this.getBestUrl(page.url()) };
     const selector = await this.generateSelector(page, coordinates, ActionType.Keydown);
+
+    const elementInfo = await getElementInformation(page, coordinates, '', false);
+    const inputType = elementInfo?.attributes?.type || "text";
+
     if (selector) {
       where.selectors = [selector];
     }
@@ -481,7 +521,7 @@ export class WorkflowGenerator {
       where,
       what: [{
         action: 'press',
-        args: [selector, encrypt(key)],
+        args: [selector, encrypt(key), inputType],
       }],
     }
     if (selector) {
@@ -670,12 +710,12 @@ export class WorkflowGenerator {
         pairs: recording.workflow.length,
         updatedAt: new Date().toLocaleString(),
         params: this.getParams() || [],
+        isLogin: isLogin,
       }
       const robot = await Robot.create({
         userId,
         recording_meta: this.recordingMeta,
         recording: recording,
-        isLogin: isLogin,
       });
       capture(
         'maxun-oss-robot-created',
@@ -992,6 +1032,7 @@ export class WorkflowGenerator {
     let input = {
       selector: '',
       value: '',
+      type: '',
       actionCounter: 0,
     };
 
@@ -1006,7 +1047,7 @@ export class WorkflowGenerator {
         // when more than one press action is present, add a type action
         pair.what.splice(index - input.actionCounter, input.actionCounter, {
           action: 'type',
-          args: [input.selector, encrypt(input.value)],
+          args: [input.selector, encrypt(input.value), input.type],
         }, {
           action: 'waitForLoadState',
           args: ['networkidle'],
@@ -1034,13 +1075,14 @@ export class WorkflowGenerator {
                   action: 'waitForLoadState',
                   args: ['networkidle'],
                 })
-                input = { selector: '', value: '', actionCounter: 0 };
+                input = { selector: '', value: '', type: '', actionCounter: 0 };
               }
             } else {
               pushTheOptimizedAction(pair, index);
               input = {
                 selector: condition.args[0],
                 value: condition.args[1],
+                type: condition.args[2],
                 actionCounter: 1,
               };
             }
@@ -1049,7 +1091,7 @@ export class WorkflowGenerator {
           if (input.value.length !== 0) {
             pushTheOptimizedAction(pair, index);
             // clear the input
-            input = { selector: '', value: '', actionCounter: 0 };
+            input = { selector: '', value: '', type: '', actionCounter: 0 };
           }
         }
       });

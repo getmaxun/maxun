@@ -42,7 +42,8 @@
     "search": "搜索机器人...",
     "notifications": {
       "delete_warning": "无法删除机器人，因为它有关联的运行记录",
-      "delete_success": "机器人删除成功"
+      "delete_success": "机器人删除成功",
+      "auth_success": "机器人认证成功"
     }
   },
   "mainmenu": {
@@ -206,7 +207,8 @@
       "confirm_text_fields": "请确认所有文本字段",
       "unable_create_settings": "无法创建列表设置。请确保您已为列表定义了字段。",
       "capture_text_discarded": "文本捕获已放弃",
-      "capture_list_discarded": "列表捕获已放弃"
+      "capture_list_discarded": "列表捕获已放弃",
+      "label_required": "标签不能为空"
     }
   },
   "save_recording": {
