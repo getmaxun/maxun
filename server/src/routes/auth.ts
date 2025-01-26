@@ -1,4 +1,6 @@
 import { Router, Request, Response } from "express";
+import Airtable from "airtable";
+
 import User from "../models/User";
 import Robot from "../models/Robot";
 import jwt from "jsonwebtoken";
@@ -7,6 +9,16 @@ import { requireSignIn } from "../middlewares/auth";
 import { genAPIKey } from "../utils/api";
 import { google } from "googleapis";
 import { capture } from "../utils/analytics";
+
+
+
+declare module "express-session" {
+  interface SessionData {
+    code_verifier: string;
+    robotId: string;
+  }
+}
+
 export const router = Router();
 
 interface AuthenticatedRequest extends Request {
@@ -555,3 +567,234 @@ router.post(
     }
   }
 );
+
+
+
+
+import crypto from 'crypto';
+
+// Add these environment variables to your .env file
+// AIRTABLE_CLIENT_ID=your_client_id
+// AIRTABLE_CLIENT_SECRET=your_client_secret
+// AIRTABLE_REDIRECT_URI=http://localhost:8080/auth/airtable/callback
+
+// Airtable OAuth Routes
+router.get("/airtable", (req, res) => {
+  const { robotId } = req.query;
+  if (!robotId) {
+    return res.status(400).json({ message: "Robot ID is required" });
+  }
+
+  // Generate PKCE codes
+  const code_verifier = crypto.randomBytes(64).toString('base64url');
+  const code_challenge = crypto.createHash('sha256')
+    .update(code_verifier)
+    .digest('base64url');
+
+  // Store in session
+  req.session.code_verifier = code_verifier;
+  req.session.robotId = robotId.toString();
+
+  const params = new URLSearchParams({
+    client_id: process.env.AIRTABLE_CLIENT_ID!,
+    redirect_uri: process.env.AIRTABLE_REDIRECT_URI!,
+   
+    response_type: 'code',
+    state: robotId.toString(),
+    scope: 'data.records:read data.records:write schema.bases:read',
+    code_challenge: code_challenge,
+    code_challenge_method: 'S256'
+  });
+
+  res.redirect(`https://airtable.com/oauth2/v1/authorize?${params}`);
+});
+
+router.get("/airtable/callback", async (req, res) => {
+  try {
+    const { code, state, error } = req.query;
+
+    if (error) {
+      return res.redirect(
+        `${process.env.PUBLIC_URL}/robots/${state}/integrate?error=${encodeURIComponent(error.toString())}`
+      );
+    }
+
+    if (!code || !state) {
+      return res.status(400).json({ message: "Missing authorization code or state" });
+    }
+
+    // Verify session data
+    if (!req.session?.code_verifier || req.session.robotId !== state.toString()) {
+      return res.status(400).json({ 
+        message: "Session expired - please restart the OAuth flow"
+      });
+    }
+
+    // Exchange code for tokens
+    const tokenResponse = await fetch("https://airtable.com/oauth2/v1/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        code: code.toString(),
+        client_id: process.env.AIRTABLE_CLIENT_ID!,
+        
+        redirect_uri: process.env.AIRTABLE_REDIRECT_URI!,
+        code_verifier: req.session.code_verifier
+      }),
+    });
+
+    if (!tokenResponse.ok) {
+      const errorData = await tokenResponse.json();
+      console.error('Token exchange failed:', errorData);
+      return res.redirect(
+        `${process.env.PUBLIC_URL}/robots/${state}/integrate?error=${encodeURIComponent(errorData.error_description || 'Authentication failed')}`
+      );
+    }
+
+    const tokens = await tokenResponse.json();
+
+    // Update robot with credentials
+    const robot = await Robot.findOne({
+      where: { "recording_meta.id": req.session.robotId }
+    });
+
+    if (!robot) {
+      return res.status(404).json({ message: "Robot not found" });
+    }
+
+    await robot.update({
+      airtable_access_token: tokens.access_token,
+      airtable_refresh_token: tokens.refresh_token,
+      
+    });
+
+    // Clear session data
+    req.session.destroy((err) => {
+      if (err) console.error('Session cleanup error:', err);
+    });
+
+    res.redirect(
+      `${process.env.PUBLIC_URL}/robots/${state}/integrate?success=true`
+    );
+
+  } catch (error: any) {
+    console.error('Airtable callback error:', error);
+    res.redirect(
+      `${process.env.PUBLIC_URL}/robots/${req.session.robotId}/integrate?error=${encodeURIComponent(error.message)}`
+    );
+  }
+});
+
+// Get Airtable bases
+router.get("/airtable/bases", requireSignIn, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { robotId } = req.query;
+    if (!robotId) {
+      return res.status(400).json({ message: "Robot ID is required" });
+    }
+
+    const robot = await Robot.findOne({
+      where: { "recording_meta.id": robotId },
+      raw: true,
+    });
+
+    if (!robot?.airtable_access_token) {
+      return res.status(400).json({ message: "Robot not authenticated with Airtable" });
+    }
+
+    const response = await fetch('https://api.airtable.com/v0/meta/bases', {
+      headers: {
+        'Authorization': `Bearer ${robot.airtable_access_token}`
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error.message || 'Failed to fetch bases');
+    }
+
+    const data = await response.json();
+    res.json(data.bases.map((base: any) => ({
+      id: base.id,
+      name: base.name
+    })));
+
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Update robot with selected base
+router.post("/airtable/update", requireSignIn, async (req: AuthenticatedRequest, res) => {
+  const { baseId, baseName, robotId } = req.body;
+
+  if (!baseId || !robotId) {
+    return res.status(400).json({ message: "Base ID and Robot ID are required" });
+  }
+
+  try {
+    const robot = await Robot.findOne({
+      where: { "recording_meta.id": robotId }
+    });
+
+    if (!robot) {
+      return res.status(404).json({ message: "Robot not found" });
+    }
+
+    await robot.update({
+      airtable_base_id: baseId,
+      airtable_table_name: baseName,
+    });
+
+    capture("maxun-oss-airtable-integration-created", {
+      user_id: req.user?.id,
+      robot_id: robotId,
+      created_at: new Date().toISOString(),
+    });
+
+    res.json({ message: "Airtable base updated successfully" });
+
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Remove Airtable integration
+router.post("/airtable/remove", requireSignIn, async (req: AuthenticatedRequest, res) => {
+  const { robotId } = req.body;
+  if (!robotId) {
+    return res.status(400).json({ message: "Robot ID is required" });
+  }
+
+  try {
+    const robot = await Robot.findOne({
+      where: { "recording_meta.id": robotId }
+    });
+
+    if (!robot) {
+      return res.status(404).json({ message: "Robot not found" });
+    }
+
+    await robot.update({
+      airtable_access_token: null,
+      airtable_refresh_token: null,
+      airtable_base_id: null,
+   
+    });
+
+    capture("maxun-oss-airtable-integration-removed", {
+      user_id: req.user?.id,
+      robot_id: robotId,
+      deleted_at: new Date().toISOString(),
+    });
+
+    res.json({ message: "Airtable integration removed successfully" });
+
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+

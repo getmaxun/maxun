@@ -1,0 +1,26 @@
+{
+    "development": {
+      "username": "postgres",
+      "password": "postgres",
+      "database": "maxun",
+      "host": "localhost",
+      "port": 5432,
+      "dialect": "postgres"
+    },
+    "test": {
+      "username": "postgres",
+      "password": "postgres",
+      "database": "maxun_test",
+      "host": "localhost",
+      "port": 5432,
+      "dialect": "postgres"
+    },
+    "production": {
+      "username": "postgres",
+      "password": "postgres",
+      "database": "maxun_prod",
+      "host": "localhost",
+      "port": 5432,
+      "dialect": "postgres"
+    }
+  }
