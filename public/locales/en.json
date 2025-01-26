@@ -41,7 +41,7 @@
       "duplicate":"Duplicate",
       "search":"Search Robots...",
       "notifications": {
-        "delete_warning": "Cannot delete robot as it has associated runs",
+        "delete_warning": "The robot has associated runs. First delete runs to delete the robot",
         "delete_success": "Robot deleted successfully",
         "auth_success": "Robot successfully authenticated"
       }
