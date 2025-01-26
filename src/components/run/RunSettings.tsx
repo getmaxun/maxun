@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import { GenericModal } from "../ui/GenericModal";
 import { MenuItem, TextField, Typography, Switch, FormControlLabel } from "@mui/material";
 import { Dropdown } from "../ui/DropdownMui";
@@ -29,24 +29,38 @@ export const RunSettingsModal = ({ isOpen, handleStart, handleClose, isTask, par
 
   const [showInterpreterSettings, setShowInterpreterSettings] = useState(false);
 
+  const startImmediately = () => {
+    handleStart(settings); // Start functionality directly
+  };
+
+  // Start directly without opening the modal
+  if (!showInterpreterSettings) {
+    startImmediately();
+    return null; // Do not render the modal
+  }
+
   return (
     <GenericModal
       isOpen={isOpen}
       onClose={handleClose}
       modalStyle={modalStyle}
     >
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'flex-start',
-        marginLeft: '65px',
-      }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "flex-start",
+          marginLeft: "65px",
+        }}
+      >
         {isTask && (
           <React.Fragment>
-            <Typography sx={{ margin: '20px 0px' }}>Recording parameters:</Typography>
+            <Typography sx={{ margin: "20px 0px" }}>
+              Recording parameters:
+            </Typography>
             {params?.map((item, index) => (
               <TextField
-                sx={{ marginBottom: '15px' }}
+                sx={{ marginBottom: "15px" }}
                 key={`param-${index}`}
                 type="string"
                 label={item}
@@ -65,15 +79,22 @@ export const RunSettingsModal = ({ isOpen, handleStart, handleClose, isTask, par
         )}
 
         <FormControlLabel
-          control={<Switch checked={showInterpreterSettings} onChange={() => setShowInterpreterSettings(!showInterpreterSettings)} />}
+          control={
+            <Switch
+              checked={showInterpreterSettings}
+              onChange={() =>
+                setShowInterpreterSettings(!showInterpreterSettings)
+              }
+            />
+          }
           label="Developer Mode Settings"
-          sx={{ margin: '20px 0px' }}
+          sx={{ margin: "20px 0px" }}
         />
 
         {showInterpreterSettings && (
           <React.Fragment>
             <TextField
-              sx={{ marginBottom: '15px' }}
+              sx={{ marginBottom: "15px" }}
               type="number"
               label="Max Concurrency"
               required
@@ -86,7 +107,7 @@ export const RunSettingsModal = ({ isOpen, handleStart, handleClose, isTask, par
               defaultValue={settings.maxConcurrency}
             />
             <TextField
-              sx={{ marginBottom: '15px' }}
+              sx={{ marginBottom: "15px" }}
               type="number"
               label="Max Repeats"
               required
@@ -115,7 +136,13 @@ export const RunSettingsModal = ({ isOpen, handleStart, handleClose, isTask, par
           </React.Fragment>
         )}
 
-        <Button variant="contained" onClick={() => handleStart(settings)} sx={{ marginTop: '20px' }}>Run Robot</Button>
+        <Button
+          variant="contained"
+          onClick={() => handleStart(settings)}
+          sx={{ marginTop: "20px" }}
+        >
+          Run Robot
+        </Button>
       </div>
     </GenericModal>
   );
