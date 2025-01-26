@@ -30,13 +30,12 @@ export const RunSettingsModal = ({ isOpen, handleStart, handleClose, isTask, par
   const [showInterpreterSettings, setShowInterpreterSettings] = useState(false);
 
   const startImmediately = () => {
-    handleStart(settings); // Start functionality directly
+    handleStart(settings); 
   };
 
-  // Start directly without opening the modal
   if (!showInterpreterSettings) {
     startImmediately();
-    return null; // Do not render the modal
+    return null;
   }
 
   return (
