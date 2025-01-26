@@ -29,16 +29,13 @@ export const RunSettingsModal = ({ isOpen, handleStart, handleClose, isTask, par
 
   const [showInterpreterSettings, setShowInterpreterSettings] = useState(false);
 
-  // Run immediately without modal if settings don't need to be shown
   useEffect(() => {
     if (!showInterpreterSettings) {
-      handleStart(settings); // Start the run
+      handleStart(settings);
     }
-    // Ensure this runs only when the component mounts or settings change
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showInterpreterSettings]);
 
-  // Do not render the modal if settings are not shown
   if (!showInterpreterSettings) {
     return null;
   }
