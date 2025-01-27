@@ -477,7 +477,7 @@ router.put('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res) =>
 
     console.log(`Proxy config for run: ${JSON.stringify(proxyOptions)}`)
 
-    // const id = createRemoteBrowserForRun(req.user.id);
+    const id = createRemoteBrowserForRun(req.user.id);
 
     const runId = uuid();
 
@@ -488,7 +488,7 @@ router.put('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res) =>
       robotMetaId: recording.recording_meta.id,
       startedAt: new Date().toLocaleString(),
       finishedAt: '',
-      browserId: req.params.id,
+      browserId: id,
       interpreterSettings: req.body,
       log: '',
       runId,
@@ -499,13 +499,13 @@ router.put('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res) =>
 
     const job = await workflowQueue.add(
       'run workflow',
-      { id: req.params.id, runId, userId: req.user.id, isScheduled: false },
+      { id, runId, userId: req.user.id, isScheduled: false },
     );
 
     const plainRun = run.toJSON();
 
     return res.send({
-      browserId: req.params.id,
+      browserId: id,
       runId: plainRun.runId,
     });
   } catch (e) {
