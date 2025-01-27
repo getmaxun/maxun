@@ -130,6 +130,14 @@ const darkTheme = createTheme({
             backgroundColor: 'rgba(255, 0, 195, 0.08)',
             borderColor: '#ff66d9',
           },
+          '&.MuiButton-outlinedError': {
+            borderColor: '#f44336',
+            color: '#f44336',
+            "&:hover": {
+              backgroundColor: 'rgba(244, 67, 54, 0.08)',
+              borderColor: '#d32f2f',
+            },
+          },
         },
       },
     },
