@@ -153,18 +153,18 @@ const darkTheme = createTheme({
     },
     MuiIconButton: {
       styleOverrides: {
-      root: {
-        color: '#ffffff',
-        "&:hover": {
-        backgroundColor: 'rgba(255, 0, 195, 0.08)',
+        root: {
+          color: '#ffffff',
+          "&:hover": {
+            backgroundColor: 'rgba(255, 0, 195, 0.08)',
+          },
+          '&.MuiIconButton-colorError': {
+            color: '#f44336',
+            "&:hover": {
+              backgroundColor: 'rgba(244, 67, 54, 0.08)',
+            },
+          },
         },
-        '&.MuiIconButton-colorError': {
-        color: '#f44336',
-        "&:hover": {
-          backgroundColor: 'rgba(244, 67, 54, 0.08)',
-        },
-        },
-      },
       },
     },
     MuiTab: {
