@@ -462,6 +462,7 @@
         "log": "Log"
       },
       "empty_output": "The output is empty.",
+      "loading": "Run in progress. Extracted data will appear here once run completes.",
       "captured_data": {
         "title": "Captured Data",
         "download_json": "Download as JSON",

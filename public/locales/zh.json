@@ -452,6 +452,7 @@
       "log": "日志"
     },
     "empty_output": "输出为空。",
+    "loading": "运行中。运行完成后，提取的数据将显示在此处。",
     "captured_data": {
       "title": "捕获的数据",
       "download_json": "下载为JSON",

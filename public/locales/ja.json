@@ -452,6 +452,7 @@
             "log": "ログ"
         },
         "empty_output": "出力は空です。",
+        "loading": "実行中です。実行が完了すると、抽出されたデータがここに表示されます。",
         "captured_data": {
             "title": "キャプチャされたデータ",
             "download_json": "JSONとしてダウンロード",

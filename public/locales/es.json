@@ -452,6 +452,7 @@
       "log": "Registro"
     },
     "empty_output": "La salida está vacía.",
+    "loading": "Ejecución en curso. Los datos extraídos aparecerán aquí una vez que se complete la ejecución.",
     "captured_data": {
       "title": "Datos Capturados",
       "download_json": "Descargar como JSON",
