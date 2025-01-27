@@ -41,7 +41,7 @@
     "duplicate": "Duplicar",
     "search": "Buscar robots...",
     "notifications": {
-      "delete_warning": "No se puede eliminar el robot ya que tiene ejecuciones asociadas",
+      "delete_warning": "El robot tiene ejecuciones asociadas. Primero elimine las ejecuciones para eliminar el robot",
       "delete_success": "Robot eliminado exitosamente",
       "auth_success": "Robot autenticado exitosamente"
     }

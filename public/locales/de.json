@@ -40,7 +40,7 @@
         "delete": "Löschen",
         "duplicate": "Duplizieren",
         "notifications": {
-            "delete_warning": "Roboter kann nicht gelöscht werden, da zugehörige Ausführungen vorhanden sind",
+            "delete_warning": "Der Roboter hat zugehörige Ausführungen. Löschen Sie zuerst die Ausführungen, um den Roboter zu löschen",
             "delete_success": "Roboter erfolgreich gelöscht",
             "auth_success": "Roboter erfolgreich authentifiziert"
         }
