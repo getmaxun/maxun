@@ -63,6 +63,7 @@
     "delete": "Eliminar",
     "settings": "Ajustes",
     "search": "Buscar ejecuciones...",
+    "sort_tooltip": "Haga clic para ordenar",
     "notifications": {
       "no_runs": "No se encontraron ejecuciones. Por favor, inténtelo de nuevo.",
       "delete_success": "Ejecución eliminada con éxito"

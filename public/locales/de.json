@@ -62,6 +62,7 @@
         "delete": "Löschen",
         "settings": "Einstellungen",
         "search": "Ausführungen suchen...",
+        "sort_tooltip": "Zum Sortieren klicken",
         "notifications": {
             "no_runs": "Keine Ausführungen gefunden. Bitte versuchen Sie es erneut.",
             "delete_success": "Ausführung erfolgreich gelöscht"

@@ -63,6 +63,7 @@
     "delete": "删除",
     "settings": "设置",
     "search": "搜索运行记录...",
+    "sort_tooltip": "点击排序",
     "notifications": {
       "no_runs": "未找到运行记录。请重试。",
       "delete_success": "运行记录删除成功"
