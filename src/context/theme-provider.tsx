@@ -218,7 +218,7 @@ const darkTheme = createTheme({
 });
 
 const ThemeModeContext = createContext({
-  toggleTheme: () => {},
+  toggleTheme: () => { },
   darkMode: false,
 });
 
