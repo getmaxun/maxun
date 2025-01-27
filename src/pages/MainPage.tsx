@@ -90,12 +90,6 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
 
   const handleRunRecording = useCallback((settings: RunSettings) => {
     createRunForStoredRecording(runningRecordingId, settings).then(({ browserId, runId }: CreateRunResponse) => {
-      localStorage.setItem('runInfo', JSON.stringify({
-        browserId,
-        runId,
-        recordingName: runningRecordingName
-      }));
-
       setIds({ browserId, runId });
       const socket =
         io(`${apiUrl}/${browserId}`, {
@@ -139,47 +133,6 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
         }
       });
   }
-
-  useEffect(() => {
-    const storedRunInfo = localStorage.getItem('runInfo');
-    console.log('storedRunInfo', storedRunInfo);
-
-    if (storedRunInfo) {
-      // Parse the stored info
-      const { browserId, runId, recordingName } = JSON.parse(storedRunInfo);
-      
-      // Reconnect to the specific browser's namespace
-      setIds({ browserId, runId });
-      const socket = io(`${apiUrl}/${browserId}`, {
-          transports: ["websocket"],
-          rejectUnauthorized: false
-      });
-
-      // Update component state with stored info
-      setRunningRecordingName(recordingName);
-      setSockets(sockets => [...sockets, socket]);
-
-      // Set up event listeners
-      socket.on('debugMessage', debugMessageHandler);
-      socket.on('run-completed', (status) => {
-          if (status === 'success') {
-              notify('success', t('main_page.notifications.interpretation_success', { name: recordingName }));
-          } else {
-              notify('error', t('main_page.notifications.interpretation_failed', { name: recordingName }));
-          }
-          setRunningRecordingName('');
-          setCurrentInterpretationLog('');
-          setRerenderRuns(true);
-          localStorage.removeItem('runInfo'); // Clean up stored info
-      });
-
-      // Cleanup function
-      return () => {
-          socket.off('debugMessage', debugMessageHandler);
-          socket.off('run-completed');
-      };
-    }
-  }, []);
 
   const DisplayContent = () => {
     switch (content) {
