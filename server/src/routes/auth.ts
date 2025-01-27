@@ -672,8 +672,17 @@ router.get("/airtable/callback", async (req, res) => {
       if (err) console.error('Session cleanup error:', err);
     });
 
+    res.cookie("airtable_auth_status", "success", {
+      httpOnly: false,
+      maxAge: 60000,
+    }); // 1-minute expiration
+    res.cookie("airtable_auth_message", "Robot successfully authenticated", {
+      httpOnly: false,
+      maxAge: 60000,
+    });
+
     res.redirect(
-      `${process.env.PUBLIC_URL}/robots/${state}/integrate?success=true`
+      `${process.env.PUBLIC_URL}/robots/${state}/integrate || http://localhost:5173/robots/${state}/integrate`
     );
 
   } catch (error: any) {
