@@ -324,7 +324,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
                         <Tooltip 
                           title={
                             (column.id === 'startedAt' || column.id === 'finishedAt')
-                              ? t('runstable.sort_tooltip', 'Click to sort')
+                              ? t('runstable.sort_tooltip')
                               : ''
                           }
                         >
