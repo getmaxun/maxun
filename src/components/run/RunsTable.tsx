@@ -9,7 +9,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
-import { Accordion, AccordionSummary, AccordionDetails, Typography, Box, TextField, CircularProgress } from '@mui/material';
+import { Accordion, AccordionSummary, AccordionDetails, Typography, Box, TextField, CircularProgress, Tooltip } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SearchIcon from '@mui/icons-material/Search';
 import { useNavigate } from 'react-router-dom';
@@ -17,6 +17,7 @@ import { useGlobalInfoStore } from "../../context/globalInfo";
 import { getStoredRuns } from "../../api/storage";
 import { RunSettings } from "./RunSettings";
 import { CollapsibleRow } from "./ColapsibleRow";
+import { ArrowDownward, ArrowUpward, UnfoldMore } from '@mui/icons-material';
 
 export const columns: readonly Column[] = [
   { id: 'runStatus', label: 'Status', minWidth: 80 },
@@ -26,6 +27,15 @@ export const columns: readonly Column[] = [
   { id: 'settings', label: 'Settings', minWidth: 80 },
   { id: 'delete', label: 'Delete', minWidth: 80 },
 ];
+
+type SortDirection = 'asc' | 'desc' | 'none';
+
+interface AccordionSortConfig {
+  [robotMetaId: string]: {
+    field: keyof Data | null;
+    direction: SortDirection;
+  };
+}
 
 interface Column {
   id: 'runStatus' | 'name' | 'startedAt' | 'finishedAt' | 'delete' | 'settings';
@@ -68,6 +78,26 @@ export const RunsTable: React.FC<RunsTableProps> = ({
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+
+  const [accordionSortConfigs, setAccordionSortConfigs] = useState<AccordionSortConfig>({});
+
+  const handleSort = useCallback((columnId: keyof Data, robotMetaId: string) => {
+    setAccordionSortConfigs(prevConfigs => {
+      const currentConfig = prevConfigs[robotMetaId] || { field: null, direction: 'none' };
+      const newDirection: SortDirection = 
+        currentConfig.field !== columnId ? 'asc' :
+        currentConfig.direction === 'none' ? 'asc' :
+        currentConfig.direction === 'asc' ? 'desc' : 'none';
+
+      return {
+        ...prevConfigs,
+        [robotMetaId]: {
+          field: newDirection === 'none' ? null : columnId,
+          direction: newDirection,
+        }
+      };
+    });
+  }, []);
 
   const translatedColumns = useMemo(() => 
     columns.map(column => ({
@@ -157,12 +187,12 @@ export const RunsTable: React.FC<RunsTableProps> = ({
   }, [notify, t, fetchRuns]);
 
   // Filter rows based on search term
-  const filteredRows = useMemo(() => 
-    rows.filter((row) =>
+  const filteredRows = useMemo(() => {
+    let result = rows.filter((row) =>
       row.name.toLowerCase().includes(searchTerm.toLowerCase())
-    ),
-    [rows, searchTerm]
-  );
+    );
+    return result;
+  }, [rows, searchTerm]);
 
   // Group filtered rows by robot meta id
   const groupedRows = useMemo(() => 
@@ -176,11 +206,27 @@ export const RunsTable: React.FC<RunsTableProps> = ({
     [filteredRows]
   );
 
-  const renderTableRows = useCallback((data: Data[]) => {
+  const renderTableRows = useCallback((data: Data[], robotMetaId: string) => {
     const start = page * rowsPerPage;
     const end = start + rowsPerPage;
+
+    let sortedData = [...data];
+    const sortConfig = accordionSortConfigs[robotMetaId];
     
-    return data
+    if (sortConfig?.field === 'startedAt' || sortConfig?.field === 'finishedAt') {
+      if (sortConfig.direction !== 'none') {
+        sortedData.sort((a, b) => {
+          const dateA = new Date(a[sortConfig.field!].replace(/(\d+)\/(\d+)\//, '$2/$1/'));
+          const dateB = new Date(b[sortConfig.field!].replace(/(\d+)\/(\d+)\//, '$2/$1/'));
+          
+          return sortConfig.direction === 'asc' 
+            ? dateA.getTime() - dateB.getTime() 
+            : dateB.getTime() - dateA.getTime();
+        });
+      }
+    }
+    
+    return sortedData
       .slice(start, end)
       .map((row) => (
         <CollapsibleRow
@@ -193,7 +239,33 @@ export const RunsTable: React.FC<RunsTableProps> = ({
           runningRecordingName={runningRecordingName}
         />
       ));
-  }, [page, rowsPerPage, runId, runningRecordingName, currentInterpretationLog, abortRunHandler, handleDelete]);
+  }, [page, rowsPerPage, runId, runningRecordingName, currentInterpretationLog, abortRunHandler, handleDelete, accordionSortConfigs]);
+
+  const renderSortIcon = useCallback((column: Column, robotMetaId: string) => {
+    const sortConfig = accordionSortConfigs[robotMetaId];
+    if (column.id !== 'startedAt' && column.id !== 'finishedAt') return null;
+
+    if (sortConfig?.field !== column.id) {
+      return (
+        <UnfoldMore 
+          fontSize="small" 
+          sx={{ 
+            opacity: 0.3,
+            transition: 'opacity 0.2s',
+            '.MuiTableCell-root:hover &': {
+              opacity: 1
+            }
+          }} 
+        />
+      );
+    }
+
+    return sortConfig.direction === 'asc' 
+      ? <ArrowUpward fontSize="small" />
+      : sortConfig.direction === 'desc'
+        ? <ArrowDownward fontSize="small" />
+        : <UnfoldMore fontSize="small" />;
+  }, [accordionSortConfigs]);
 
   if (isLoading) {
     return (
@@ -221,10 +293,10 @@ export const RunsTable: React.FC<RunsTableProps> = ({
       </Box>
 
       <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden' }}>
-        {Object.entries(groupedRows).map(([id, data]) => (
+        {Object.entries(groupedRows).map(([robotMetaId, data]) => (
           <Accordion 
-            key={id} 
-            onChange={(event, isExpanded) => handleAccordionChange(id, isExpanded)}
+            key={robotMetaId} 
+            onChange={(event, isExpanded) => handleAccordionChange(robotMetaId, isExpanded)}
             TransitionProps={{ unmountOnExit: true }} // Optimize accordion rendering
           >
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -239,15 +311,50 @@ export const RunsTable: React.FC<RunsTableProps> = ({
                       <TableCell
                         key={column.id}
                         align={column.align}
-                        style={{ minWidth: column.minWidth }}
+                        style={{ 
+                          minWidth: column.minWidth,
+                          cursor: column.id === 'startedAt' || column.id === 'finishedAt' ? 'pointer' : 'default'
+                        }}
+                        onClick={() => {
+                          if (column.id === 'startedAt' || column.id === 'finishedAt') {
+                            handleSort(column.id, robotMetaId);
+                          }
+                        }}
                       >
-                        {column.label}
+                        <Tooltip 
+                          title={
+                            (column.id === 'startedAt' || column.id === 'finishedAt')
+                              ? t('runstable.sort_tooltip', 'Click to sort')
+                              : ''
+                          }
+                        >
+                          <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1,
+                            '&:hover': {
+                              '& .sort-icon': {
+                                opacity: 1
+                              }
+                            }
+                          }}>
+                            {column.label}
+                            <Box className="sort-icon" sx={{ 
+                              display: 'flex',
+                              alignItems: 'center',
+                              opacity: accordionSortConfigs[robotMetaId]?.field === column.id ? 1 : 0.3,
+                              transition: 'opacity 0.2s'
+                            }}>
+                              {renderSortIcon(column, robotMetaId)}
+                            </Box>
+                          </Box>
+                        </Tooltip>
                       </TableCell>
                     ))}
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {renderTableRows(data)}
+                  {renderTableRows(data, robotMetaId)}
                 </TableBody>
               </Table>
             </AccordionDetails>
