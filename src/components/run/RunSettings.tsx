@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { GenericModal } from "../ui/GenericModal";
 import { MenuItem, TextField, Typography, Switch, FormControlLabel } from "@mui/material";
 import { Dropdown } from "../ui/DropdownMui";
@@ -28,13 +28,19 @@ export const RunSettingsModal = ({ isOpen, handleStart, handleClose, isTask, par
   });
 
   const [showInterpreterSettings, setShowInterpreterSettings] = useState(false);
+  const hasRun = useRef(false);
 
   useEffect(() => {
-    if (!showInterpreterSettings) {
+    if (!isOpen) {
+      hasRun.current = false;
+      return;
+    }
+
+    if (!showInterpreterSettings && !hasRun.current) {
+      hasRun.current = true;
       handleStart(settings);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showInterpreterSettings]);
+  }, [isOpen, showInterpreterSettings, settings, handleStart]);
 
   if (!showInterpreterSettings) {
     return null;
