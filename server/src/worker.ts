@@ -2,7 +2,7 @@ import { Queue, Worker } from 'bullmq';
 import IORedis from 'ioredis';
 import logger from './logger';
 import { handleRunRecording as handleScheduledRunRecording } from "./workflow-management/scheduler";
-import { handleRunRecording } from './api/record';
+import { handleRunRecording } from './workflow-management/record';
 import Robot from './models/Robot';
 import { computeNextRun } from './utils/schedule';
 
@@ -27,7 +27,7 @@ const worker = new Worker('workflow', async job => {
     try {
         const result = isScheduled ? 
             await handleScheduledRunRecording(id, userId) : 
-            await handleRunRecording(id, userId);
+            await handleRunRecording(id, userId, runId);
         return result;
     } catch (error) {
         logger.error('Error running workflow:', error);
