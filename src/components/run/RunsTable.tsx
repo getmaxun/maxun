@@ -206,6 +206,18 @@ export const RunsTable: React.FC<RunsTableProps> = ({
     [filteredRows]
   );
 
+  const parseDateString = (dateStr: string): Date => {
+    try {
+      if (dateStr.includes('PM') || dateStr.includes('AM')) {
+        return new Date(dateStr);
+      }
+      
+      return new Date(dateStr.replace(/(\d+)\/(\d+)\//, '$2/$1/'))
+    } catch {
+      return new Date(0);
+    }
+  };
+
   const renderTableRows = useCallback((data: Data[], robotMetaId: string) => {
     const start = page * rowsPerPage;
     const end = start + rowsPerPage;
@@ -216,8 +228,8 @@ export const RunsTable: React.FC<RunsTableProps> = ({
     if (sortConfig?.field === 'startedAt' || sortConfig?.field === 'finishedAt') {
       if (sortConfig.direction !== 'none') {
         sortedData.sort((a, b) => {
-          const dateA = new Date(a[sortConfig.field!].replace(/(\d+)\/(\d+)\//, '$2/$1/'));
-          const dateB = new Date(b[sortConfig.field!].replace(/(\d+)\/(\d+)\//, '$2/$1/'));
+          const dateA = parseDateString(a[sortConfig.field!]);
+          const dateB = parseDateString(b[sortConfig.field!]);
           
           return sortConfig.direction === 'asc' 
             ? dateA.getTime() - dateB.getTime() 
