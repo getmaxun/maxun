@@ -562,7 +562,7 @@ router.post('/runs/run/:id', requireSignIn, async (req: AuthenticatedRequest, re
     if (browser && currentPage) {
       const workflow = AddGeneratedFlags(recording.recording);
       const interpretationInfo = await browser.interpreter.InterpretRecording(
-        workflow, currentPage, (newPage: Page) => currentPage = newPage, plainRun.interpreterSettings);
+        workflow, currentPage, (newPage: Page) => currentPage = newPage, plainRun.interpreterSettings, plainRun.robotMetaId);
       const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
       const uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, interpretationInfo.binaryOutput);
       await destroyRemoteBrowser(plainRun.browserId);
