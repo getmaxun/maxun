@@ -1340,64 +1340,27 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
         }
       };
 
-      // Helper function to generate selectors for shadow DOM elements
-      const genSelectorForShadowDOM = (element: HTMLElement) => {
-        // Get complete path up to document root
-        const getShadowPath = (el: HTMLElement) => {
-          const path = [];
-          let current = el;
-          let depth = 0;
-          const MAX_DEPTH = 4;
-          
-          while (current && depth < MAX_DEPTH) {
-            const rootNode = current.getRootNode();
-            if (rootNode instanceof ShadowRoot) {
-              path.unshift({
-                host: rootNode.host as HTMLElement,
-                root: rootNode,
-                element: current
-              });
-              current = rootNode.host as HTMLElement;
-              depth++;
-            } else {
-              break;
-            }
-          }
-          return path;
-        };
-
-        const shadowPath = getShadowPath(element);
-        if (shadowPath.length === 0) return null;
-
-        try {
-          const selectorParts: string[] = [];
-          
-          // Generate selector for each shadow DOM boundary
-          shadowPath.forEach((context, index) => {
-            // Get selector for the host element
-            const hostSelector = finder(context.host, {
-              root: index === 0 ? document.body : (shadowPath[index - 1].root as unknown as Element)
+      const getShadowPath = (element: HTMLElement) => {
+        const path = [];
+        let current = element;
+        let depth = 0;
+        const MAX_DEPTH = 4;
+        
+        while (current && depth < MAX_DEPTH) {
+          const rootNode = current.getRootNode();
+          if (rootNode instanceof ShadowRoot) {
+            path.unshift({
+              host: rootNode.host as HTMLElement,
+              root: rootNode,
+              element: current
             });
-
-            // For the last context, get selector for target element
-            if (index === shadowPath.length - 1) {
-              const elementSelector = finder(element, {
-                root: context.root as unknown as Element
-              });
-              selectorParts.push(`${hostSelector} >> ${elementSelector}`);
-            } else {
-              selectorParts.push(hostSelector);
-            }
-          });
-
-          return {
-            fullSelector: selectorParts.join(' >> '),
-            mode: shadowPath[shadowPath.length - 1].root.mode
-          };
-        } catch (e) {
-          console.warn('Error generating shadow DOM selector:', e);
-          return null;
+            current = rootNode.host as HTMLElement;
+            depth++;
+          } else {
+            break;
+          }
         }
+        return path;
       };
 
       const genSelectors = (element: HTMLElement | null) => {
@@ -1406,55 +1369,76 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
         }
 
         const href = element.getAttribute('href');
+        const shadowPath = getShadowPath(element);
+
+        const generateShadowAwareSelector = (elementOptions = {}) => {
+          if (shadowPath.length === 0) {
+            return finder(element, elementOptions);
+          }
+      
+          const selectorParts: string[] = [];
+          
+          shadowPath.forEach((context, index) => {
+            const hostSelector = finder(context.host, {
+              root: index === 0 ? document.body : (shadowPath[index - 1].root as unknown as Element)
+            });
+      
+            if (index === shadowPath.length - 1) {
+              const elementSelector = finder(element, {
+                ...elementOptions,
+                root: context.root as unknown as Element
+              });
+              selectorParts.push(`${hostSelector} >> ${elementSelector}`);
+            } else {
+              selectorParts.push(hostSelector);
+            }
+          });
+      
+          return selectorParts.join(' >> ');
+        };
+
 
         let generalSelector = null;
         try {
-          generalSelector = finder(element);
+          generalSelector = generateShadowAwareSelector();
         } catch (e) {
         }
 
         let attrSelector = null;
         try {
-          attrSelector = finder(element, { attr: () => true });
+          attrSelector = generateShadowAwareSelector({ attr: () => true });
         } catch (e) {
         }
 
-
         const iframeSelector = genSelectorForIframe(element);
-        const shadowSelector = genSelectorForShadowDOM(element);
 
-        const hrefSelector = genSelectorForAttributes(element, ['href']);
-        const formSelector = genSelectorForAttributes(element, [
-          'name',
-          'placeholder',
-          'for',
-        ]);
-        const accessibilitySelector = genSelectorForAttributes(element, [
-          'aria-label',
-          'alt',
-          'title',
-        ]);
+        const hrefSelector = generateShadowAwareSelector({
+          attr: genValidAttributeFilter(element, ['href'])
+        });
+        const formSelector = generateShadowAwareSelector({
+          attr: genValidAttributeFilter(element, ['name', 'placeholder', 'for'])
+        });
+        const accessibilitySelector = generateShadowAwareSelector({
+          attr: genValidAttributeFilter(element, ['aria-label', 'alt', 'title'])
+        });
 
-        const testIdSelector = genSelectorForAttributes(element, [
-          'data-testid',
-          'data-test-id',
-          'data-testing',
-          'data-test',
-          'data-qa',
-          'data-cy',
-        ]);
+        const testIdSelector = generateShadowAwareSelector({
+          attr: genValidAttributeFilter(element, [
+            'data-testid',
+            'data-test-id',
+            'data-testing',
+            'data-test',
+            'data-qa',
+            'data-cy',
+          ])
+        });
 
         // We won't use an id selector if the id is invalid (starts with a number)
         let idSelector = null;
         try {
-          idSelector =
-            isAttributesDefined(element, ['id']) &&
-              !isCharacterNumber(element.id?.[0])
-              ? // Certain apps don't have unique ids (ex. youtube)
-              finder(element, {
-                attr: (name) => name === 'id',
-              })
-              : null;
+          idSelector = isAttributesDefined(element, ['id']) && !isCharacterNumber(element.id?.[0])
+            ? generateShadowAwareSelector({ attr: (name: string) => name === 'id' })
+            : null;
         } catch (e) {
         }
 
@@ -1473,10 +1457,6 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
             full: iframeSelector.fullSelector,
             isIframe: iframeSelector.isFrameContent,
           } : null,
-          shadowSelector: shadowSelector ? {
-            full: shadowSelector.fullSelector,
-            mode: shadowSelector.mode
-          } : null
         };
       }
 
