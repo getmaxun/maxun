@@ -878,6 +878,28 @@ export default class Interpreter extends EventEmitter {
 
     workflowCopy = this.removeSpecialSelectors(workflowCopy);
 
+    if (this.session){
+      const postLoginActionId = this.findFirstPostLoginAction(workflowCopy);
+      if (postLoginActionId !== -1) {
+        const targetUrl = this.getUrlString(workflowCopy[postLoginActionId].where.url);
+        if (targetUrl) {
+          try {
+            await p.goto(targetUrl);
+            await p.waitForLoadState('networkidle');
+            
+            if (!this.isLoginUrl(targetUrl)) {
+              workflowCopy.splice(postLoginActionId + 1);
+              this.log('Successfully skipped login using stored cookies', Level.LOG);
+            } else {
+              this.log('Cookie authentication failed, proceeding with manual login', Level.LOG);
+            }
+          } catch (error) {
+            this.log(`Failed to navigate with stored cookies: ${error}`, Level.ERROR);
+          }
+        }
+      }
+    }
+
     // apply ad-blocker to the current page
     try {
       await this.applyAdBlocker(p);
