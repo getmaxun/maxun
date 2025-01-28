@@ -353,9 +353,6 @@ export class WorkflowGenerator {
     const selector = await this.generateSelector(page, coordinates, ActionType.Click);
     logger.log('debug', `Element's selector: ${selector}`);
 
-    const tempCheck = await getSelectors(page, coordinates)
-    console.log("SPECIFIC SELECTORS: ", tempCheck);
-
     const elementInfo = await getElementInformation(page, coordinates, '', false);
     console.log("Element info: ", elementInfo);
 
