@@ -2,8 +2,9 @@ import Interpreter, { WorkflowFile } from "maxun-core";
 import logger from "../../logger";
 import { Socket } from "socket.io";
 import { Page } from "playwright";
-import { InterpreterSettings } from "../../types";
+import { InterpreterSettings, SessionData } from "../../types";
 import { decrypt } from "../../utils/auth";
+import Robot from "../../models/Robot";
 
 /**
  * Decrypts any encrypted inputs in the workflow. If checkLimit is true, it will also handle the limit validation for scrapeList action.
@@ -260,7 +261,8 @@ export class WorkflowInterpreter {
     workflow: WorkflowFile, 
     page: Page, 
     updatePageOnPause: (page: Page) => void,
-    settings: InterpreterSettings
+    settings: InterpreterSettings,
+    robotMetaId?: string,
   ) => {
     const params = settings.params ? settings.params : null;
     delete settings.params;
@@ -289,7 +291,21 @@ export class WorkflowInterpreter {
       }
     }
 
-    const interpreter = new Interpreter(processedWorkflow, options);
+    let session: SessionData | null = null;
+    if (robotMetaId) {
+      const robot = await Robot.findOne({
+        where: {
+          'recording_meta.id': robotMetaId
+        },
+        raw: true
+      });
+
+      if (robot && robot.recording_meta?.isLogin) {
+        session = robot.session;
+      }
+    }
+
+    const interpreter = new Interpreter(processedWorkflow, options, session);
     this.interpreter = interpreter;
 
     interpreter.on('flag', async (page, resume) => {
@@ -309,7 +325,7 @@ export class WorkflowInterpreter {
       }
     });
 
-    const status = await interpreter.run(page, params);
+    session = await interpreter.run(page, params);
 
     const lastArray = this.serializableData.length > 1
     ? [this.serializableData[this.serializableData.length - 1]]
@@ -317,7 +333,7 @@ export class WorkflowInterpreter {
 
     const result = {
       log: this.debugMessages,
-      result: status,
+      result: session,
       serializableOutput: lastArray.reduce((reducedObject, item, index) => {
         return {
           [`item-${index}`]: item,
