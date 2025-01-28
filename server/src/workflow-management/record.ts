@@ -16,6 +16,7 @@ import Robot from "../models/Robot";
 import Run from "../models/Run";
 import { WorkflowFile } from "maxun-core";
 import { io, Socket } from 'socket.io-client';
+import { io as serverIo } from "../server";
 
 // Enable stealth mode for chromium
 chromium.use(stealthPlugin());
@@ -24,19 +25,12 @@ async function readyForRunHandler(browserId: string, id: string) {
     try {
         const result = await executeRun(id);
 
-        const socket = io(`${process.env.BACKEND_URL ? process.env.BACKEND_URL : 'http://localhost:8080'}/${browserId}`, {
-            transports: ['websocket'],
-            rejectUnauthorized: false
-        });
-
         if (result && result.success) {
             logger.info(`Interpretation of ${id} succeeded`);
-            socket.emit('run-completed', 'success');
             resetRecordingState(browserId, id);
             return result.interpretationInfo;
         } else {
             logger.error(`Interpretation of ${id} failed`);
-            socket.emit('run-completed', 'failed');
             await destroyRemoteBrowser(browserId);
             resetRecordingState(browserId, id);
             return null;
@@ -124,14 +118,15 @@ async function executeRun(id: string) {
             binaryOutput: uploadedBinaryOutput,
         });
 
+        
         let totalRowsExtracted = 0;
         let extractedScreenshotsCount = 0;
         let extractedItemsCount = 0;
-
+        
         if (updatedRun.dataValues.binaryOutput && updatedRun.dataValues.binaryOutput["item-0"]) {
             extractedScreenshotsCount = 1;
         }
-
+        
         if (updatedRun.dataValues.serializableOutput && updatedRun.dataValues.serializableOutput["item-0"]) {
             const itemsArray = updatedRun.dataValues.serializableOutput["item-0"];
             extractedItemsCount = itemsArray.length;
@@ -139,11 +134,12 @@ async function executeRun(id: string) {
                 return total + Object.keys(item).length;
             }, 0);
         }
-
+        
         logger.info(`Extracted Items Count: ${extractedItemsCount}`);
         logger.info(`Extracted Screenshots Count: ${extractedScreenshotsCount}`);
         logger.info(`Total Rows Extracted: ${totalRowsExtracted}`);
 
+        
         capture('maxun-oss-run-created-manual', {
             runId: id,
             created_at: new Date().toISOString(),
@@ -152,7 +148,7 @@ async function executeRun(id: string) {
             totalRowsExtracted,
             extractedScreenshotsCount,
         });
-
+        
         // Handle Google Sheets integration
         try {
             googleSheetUpdateTasks[plainRun.runId] = {
@@ -165,6 +161,8 @@ async function executeRun(id: string) {
         } catch (err: any) {
             logger.error(`Failed to update Google Sheet for run: ${plainRun.runId}: ${err.message}`);
         }
+
+        serverIo.of(plainRun.browserId).emit('run-completed', 'success');
 
         return {
             success: true,
@@ -179,6 +177,9 @@ async function executeRun(id: string) {
                 status: 'failed',
                 finishedAt: new Date().toLocaleString(),
             });
+            
+            const plainRun = run.toJSON();
+            serverIo.of(plainRun.browserId).emit('run-completed', 'failed');
         }
 
         capture('maxun-oss-run-created-manual', {
@@ -187,6 +188,7 @@ async function executeRun(id: string) {
             status: 'failed',
             error_message: error.message,
         });
+
 
         return {
             success: false,
