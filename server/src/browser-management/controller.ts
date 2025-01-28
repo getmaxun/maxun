@@ -59,7 +59,7 @@ export const createRemoteBrowserForRun = (userId: string): string => {
     async (socket: Socket) => {
       const browserSession = new RemoteBrowser(socket);
       await browserSession.initialize(userId);
-      browserPool.addRemoteBrowser(id, browserSession, true);
+      browserPool.addRemoteBrowser(id, browserSession, true, true);
       socket.emit('ready-for-run');
     });
   return id;
