@@ -15,6 +15,7 @@ interface RobotMeta {
     pairs: number;
     updatedAt: string;
     params: any[];
+    isLogin: boolean;
 }
 
 interface RobotWorkflow {
