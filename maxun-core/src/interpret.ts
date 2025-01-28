@@ -287,8 +287,7 @@ export default class Interpreter extends EventEmitter {
 
     if (this.loginSuccessful) {
       const sessionState = await page.context().storageState();
-      // this.session = sessionState;
-      console.log("Session state:", sessionState);
+      this.session = sessionState;
 
       this.loginSuccessful = false;
       this.log('Stored authentication cookies after successful login', Level.LOG);
@@ -1009,7 +1008,33 @@ export default class Interpreter extends EventEmitter {
    */
   public async run(page: Page, params?: ParamType): Promise<SessionData> {
     this.log('Starting the workflow.', Level.LOG);
-    const context = page.context();
+    let context = page.context();
+
+    if (this.session) {
+      try {
+        this.log('Found existing session, creating new context with stored state...', Level.LOG);
+        
+        const newContext = await context.browser().newContext({
+          storageState: {
+            cookies: this.session.cookies,
+            origins: this.session.origins.map(origin => ({
+              origin: origin.origin,
+              localStorage: origin.localStorage.map(storage => ({
+                name: storage.name,
+                value: storage.value
+              }))
+            }))
+          }
+        });
+  
+        const newPage = await newContext.newPage();
+        page = newPage;
+        
+        this.log('Successfully created new page with session state', Level.LOG);
+      } catch (error) {
+        this.log(`Failed to create page with session state: ${error.message}. Falling back to original page...`, Level.ERROR);
+      }
+    }
 
     page.setDefaultNavigationTimeout(100000);
     
