@@ -53,6 +53,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
       if (response) {
         notify('success', t('main_page.notifications.abort_success', { name: runningRecordingName }));
         await stopRecording(ids.browserId);
+        localStorage.removeItem('runningRobot');
       } else {
         notify('error', t('main_page.notifications.abort_failed', { name: runningRecordingName }));
       }
@@ -91,20 +92,29 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
   const handleRunRecording = useCallback((settings: RunSettings) => {
     createRunForStoredRecording(runningRecordingId, settings).then(({ browserId, runId }: CreateRunResponse) => {
       setIds({ browserId, runId });
+
+      localStorage.setItem('runningRobot', JSON.stringify({
+        browserId,
+        runId,
+        recordingName: runningRecordingName
+      }));
+
       const socket =
         io(`${apiUrl}/${browserId}`, {
           transports: ["websocket"],
           rejectUnauthorized: false
         });
       setSockets(sockets => [...sockets, socket]);
+      
       socket.on('debugMessage', debugMessageHandler);
-
       socket.on('run-completed', (status) => {
         if (status === 'success') {
             notify('success', t('main_page.notifications.interpretation_success', { name: runningRecordingName }));
         } else {
             notify('error', t('main_page.notifications.interpretation_failed', { name: runningRecordingName }));
         }
+
+        localStorage.removeItem('runningRobot');
         setRunningRecordingName('');
         setCurrentInterpretationLog('');
         setRerenderRuns(true);
@@ -121,7 +131,52 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
       socket.off('debugMessage', debugMessageHandler);
       socket.off('run-completed');
     }
-  }, [runningRecordingName, sockets, ids, debugMessageHandler])
+  }, [runningRecordingName, sockets, ids, notify, debugMessageHandler])
+
+  useEffect(() => {
+    const storedRobotInfo = localStorage.getItem('runningRobot');
+    
+    if (storedRobotInfo) {
+      try {
+        const { browserId, runId, recordingName } = JSON.parse(storedRobotInfo);
+        
+        setIds({ browserId, runId });
+        setRunningRecordingName(recordingName);
+        setContent('runs'); 
+        
+        const socket = io(`${apiUrl}/${browserId}`, {
+          transports: ["websocket"],
+          rejectUnauthorized: false
+        });
+        
+        socket.on('debugMessage', debugMessageHandler);
+        socket.on('run-completed', (status) => {
+          if (status === 'success') {
+            notify('success', t('main_page.notifications.interpretation_success', { name: recordingName }));
+          } else {
+            notify('error', t('main_page.notifications.interpretation_failed', { name: recordingName }));
+          }
+          
+          localStorage.removeItem('runningRobot');
+          setRunningRecordingName('');
+          setCurrentInterpretationLog('');
+          setRerenderRuns(true);
+        });
+        
+        setSockets(prevSockets => [...prevSockets, socket]);
+      } catch (error) {
+        console.error('Error restoring robot state:', error);
+        localStorage.removeItem('runningRobot');
+      }
+    }
+    
+    return () => {
+      sockets.forEach(socket => {
+        socket.off('debugMessage', debugMessageHandler);
+        socket.off('run-completed');
+      });
+    };
+  }, []);
 
   const handleScheduleRecording = (settings: ScheduleSettings) => {
     scheduleStoredRecording(runningRecordingId, settings)
