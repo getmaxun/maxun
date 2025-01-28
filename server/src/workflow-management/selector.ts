@@ -762,6 +762,22 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
         One,
       }
 
+      type ShadowBoundary = {
+        type: 'shadow';
+        host: HTMLElement;
+        root: ShadowRoot;
+        element: HTMLElement;
+      };
+      
+      type IframeBoundary = {
+        type: 'iframe';
+        frame: HTMLIFrameElement;
+        document: Document;
+        element: HTMLElement;
+      };
+      
+      type Boundary = ShadowBoundary | IframeBoundary;
+
       type Options = {
         root: Element;
         idName: (name: string) => boolean;
@@ -1340,8 +1356,8 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
         }
       };
 
-      const getShadowPath = (element: HTMLElement) => {
-        const path = [];
+      const getBoundaryPath = (element: HTMLElement): Boundary[] => {
+        const path: Boundary[] = [];
         let current = element;
         let depth = 0;
         const MAX_DEPTH = 4;
@@ -1350,15 +1366,31 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
           const rootNode = current.getRootNode();
           if (rootNode instanceof ShadowRoot) {
             path.unshift({
+              type: 'shadow',
               host: rootNode.host as HTMLElement,
               root: rootNode,
               element: current
             });
             current = rootNode.host as HTMLElement;
             depth++;
-          } else {
-            break;
+            continue;
           }
+      
+          const ownerDocument = current.ownerDocument;
+          const frameElement = ownerDocument?.defaultView?.frameElement as HTMLIFrameElement;
+          if (frameElement) {
+            path.unshift({
+              type: 'iframe',
+              frame: frameElement,
+              document: ownerDocument,
+              element: current
+            });
+            current = frameElement;
+            depth++;
+            continue;
+          }
+      
+          break;
         }
         return path;
       };
@@ -1369,60 +1401,91 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
         }
 
         const href = element.getAttribute('href');
-        const shadowPath = getShadowPath(element);
+        const boundaryPath = getBoundaryPath(element);
 
-        const generateShadowAwareSelector = (elementOptions = {}) => {
-          if (shadowPath.length === 0) {
+        const getRootElement = (index: number): Element => {
+          if (index === 0) {
+            return document.body;
+          }
+          
+          const previousBoundary = boundaryPath[index - 1];
+          if (!previousBoundary) {
+            return document.body;
+          }
+      
+          if (previousBoundary.type === 'shadow') {
+            return previousBoundary.root as unknown as Element;
+          }
+          return previousBoundary.document.body as Element;
+        };
+
+        const generateBoundaryAwareSelector = (elementOptions = {}) => {
+          if (boundaryPath.length === 0) {
             return finder(element, elementOptions);
           }
       
           const selectorParts: string[] = [];
           
-          shadowPath.forEach((context, index) => {
-            const hostSelector = finder(context.host, {
-              root: index === 0 ? document.body : (shadowPath[index - 1].root as unknown as Element)
-            });
+          boundaryPath.forEach((context, index) => {
+            const root = getRootElement(index);
       
-            if (index === shadowPath.length - 1) {
-              const elementSelector = finder(element, {
-                ...elementOptions,
-                root: context.root as unknown as Element
-              });
-              selectorParts.push(`${hostSelector} >> ${elementSelector}`);
+            if (context.type === 'shadow') {
+              const hostSelector = finder(context.host, { root });
+      
+              if (index === boundaryPath.length - 1) {
+                const elementSelector = finder(element, {
+                  ...elementOptions,
+                  root: context.root as unknown as Element
+                });
+                selectorParts.push(`${hostSelector} >> ${elementSelector}`);
+              } else {
+                selectorParts.push(hostSelector);
+              }
             } else {
-              selectorParts.push(hostSelector);
+              const frameSelector = finder(context.frame, { root });
+      
+              if (index === boundaryPath.length - 1) {
+                const elementSelector = finder(element, {
+                  ...elementOptions,
+                  root: context.document.body as Element
+                });
+                selectorParts.push(`${frameSelector} :>> ${elementSelector}`);
+              } else {
+                selectorParts.push(frameSelector);
+              }
             }
           });
       
-          return selectorParts.join(' >> ');
+          const lastBoundary = boundaryPath[boundaryPath.length - 1];
+          const delimiter = lastBoundary.type === 'shadow' ? ' >> ' : ' :>> ';
+          return selectorParts.join(delimiter);
         };
-
 
         let generalSelector = null;
         try {
-          generalSelector = generateShadowAwareSelector();
+          generalSelector = generateBoundaryAwareSelector();
         } catch (e) {
         }
 
         let attrSelector = null;
         try {
-          attrSelector = generateShadowAwareSelector({ attr: () => true });
+          attrSelector = generateBoundaryAwareSelector({ attr: () => true });
         } catch (e) {
         }
 
-        const iframeSelector = genSelectorForIframe(element);
+        // const iframeSelector = genSelectorForIframe(element);
 
-        const hrefSelector = generateShadowAwareSelector({
+        const hrefSelector = generateBoundaryAwareSelector({
           attr: genValidAttributeFilter(element, ['href'])
         });
-        const formSelector = generateShadowAwareSelector({
+        const formSelector = generateBoundaryAwareSelector({
           attr: genValidAttributeFilter(element, ['name', 'placeholder', 'for'])
         });
-        const accessibilitySelector = generateShadowAwareSelector({
+        const accessibilitySelector = generateBoundaryAwareSelector({
           attr: genValidAttributeFilter(element, ['aria-label', 'alt', 'title'])
         });
 
-        const testIdSelector = generateShadowAwareSelector({
+        const testIdSelector = generateBoundaryAwareSelector({
           attr: genValidAttributeFilter(element, [
             'data-testid',
             'data-test-id',
@@ -1437,7 +1500,7 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
         let idSelector = null;
         try {
           idSelector = isAttributesDefined(element, ['id']) && !isCharacterNumber(element.id?.[0])
-            ? generateShadowAwareSelector({ attr: (name: string) => name === 'id' })
+            ? generateBoundaryAwareSelector({ attr: (name: string) => name === 'id' })
             : null;
         } catch (e) {
         }
@@ -1453,10 +1516,10 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
           hrefSelector,
           accessibilitySelector,
           formSelector,
-          iframeSelector: iframeSelector ? {
-            full: iframeSelector.fullSelector,
-            isIframe: iframeSelector.isFrameContent,
-          } : null,
+          // iframeSelector: iframeSelector ? {
+          //   full: iframeSelector.fullSelector,
+          //   isIframe: iframeSelector.isFrameContent,
+          // } : null,
         };
       }
 
