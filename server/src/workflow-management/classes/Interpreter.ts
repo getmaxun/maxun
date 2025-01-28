@@ -326,6 +326,16 @@ export class WorkflowInterpreter {
     });
 
     session = await interpreter.run(page, params);
+    if (session && robotMetaId) {
+      await Robot.update(
+        { session: session },
+        {
+          where: {
+            'recording_meta.id': robotMetaId
+          }
+        }
+      );
+    }
 
     const lastArray = this.serializableData.length > 1
     ? [this.serializableData[this.serializableData.length - 1]]
