@@ -200,7 +200,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                     border: "#00000099 1px solid",
                     '&:hover': { color: '#ff00c3', border: '#ff00c3 1px solid' }
                   }}>
-                    <Update sx={{ marginRight: '5px' }} /> {t('navbar.upgrade.button')} Maxun
+                    <Update sx={{ marginRight: '5px' }} /> {t('navbar.upgrade.button')}
                   </Button>
                   <Modal open={open} onClose={handleUpdateClose}>
                     <Box
