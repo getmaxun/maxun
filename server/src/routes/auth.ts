@@ -110,7 +110,7 @@ router.get(
   async (req: Request, res) => {
     const authenticatedReq = req as AuthenticatedRequest;
     try {
-      if (!req.user) {
+      if (!authenticatedReq.user) {
         return res.status(401).json({ ok: false, error: "Unauthorized" });
       }
       const user = await User.findByPk(req.user.id, {
@@ -168,7 +168,7 @@ router.post(
   async (req: Request, res) => {
     const authenticatedReq = req as AuthenticatedRequest;
     try {
-      if (!req.user) {
+      if (!authenticatedReq.user) {
         return res.status(401).json({ ok: false, error: "Unauthorized" });
       }
       const user = await User.findByPk(req.user.id, {
@@ -209,7 +209,7 @@ router.get(
   async (req: Request, res) => {
     const authenticatedReq = req as AuthenticatedRequest;
     try {
-      if (!req.user) {
+      if (!authenticatedReq.user) {
         return res.status(401).json({ ok: false, error: "Unauthorized" });
       }
 
@@ -237,7 +237,7 @@ router.delete(
   requireSignIn,
   async (req: Request, res) => {
     const authenticatedReq = req as AuthenticatedRequest;
-    if (!req.user) {
+    if (!authenticatedReq.user) {
       return res.status(401).send({ error: "Unauthorized" });
     }
 
@@ -325,7 +325,7 @@ router.get(
         return res.status(400).json({ message: "Email not found" });
       }
 
-      if (!req.user) {
+      if (!authenticatedReq.user) {
         return res.status(401).send({ error: "Unauthorized" });
       }
 
@@ -411,7 +411,7 @@ router.post(
   async (req: Request, res) => {
     const authenticatedReq = req as AuthenticatedRequest;
     const { spreadsheetId, robotId } = req.body;
-    if (!req.user) {
+    if (!authenticatedReq.user) {
       return res.status(401).send({ error: "Unauthorized" });
     }
     const user = await User.findByPk(req.user.id, { raw: true });
@@ -533,7 +533,7 @@ router.post(
       return res.status(400).json({ message: "Robot ID is required" });
     }
 
-    if (!req.user) {
+    if (!authenticatedReq.user) {
       return res.status(401).send({ error: "Unauthorized" });
     }
 
