@@ -12,7 +12,7 @@ interface AuthenticatedRequest extends Request {
     user?: { id: string };
 }
 
-router.post('/config', requireSignIn, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/config', requireSignIn, async (req: Request, res: Response) => {
     const { server_url, username, password } = req.body;
 
     try {
@@ -57,7 +57,7 @@ router.post('/config', requireSignIn, async (req: AuthenticatedRequest, res: Res
     }
 });
 
-router.get('/test', requireSignIn, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/test', requireSignIn, async (req: Request, res: Response) => {
     try {
         if (!req.user) {
             return res.status(401).json({ ok: false, error: 'Unauthorized' });
@@ -98,7 +98,7 @@ router.get('/test', requireSignIn, async (req: AuthenticatedRequest, res: Respon
     }
 });
 
-router.get('/config', requireSignIn, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/config', requireSignIn, async (req: Request, res: Response) => {
     try {
         if (!req.user) {
             return res.status(401).json({ ok: false, error: 'Unauthorized' });
@@ -125,7 +125,7 @@ router.get('/config', requireSignIn, async (req: AuthenticatedRequest, res: Resp
     }
 });
 
-router.delete('/config', requireSignIn, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/config', requireSignIn, async (req: Request, res: Response) => {
     if (!req.user) {
         return res.status(401).json({ ok: false, error: 'Unauthorized' });
     }
