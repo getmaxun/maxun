@@ -501,6 +501,7 @@ router.put('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res) =>
     return res.send({
       browserId: id,
       runId: plainRun.runId,
+      robotMetaId: recording.recording_meta.id,
     });
   } catch (e) {
     const { message } = e as Error;
