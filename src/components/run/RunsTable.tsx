@@ -70,6 +70,13 @@ interface RunsTableProps {
   runningRecordingName: string;
 }
 
+interface PaginationState {
+  [robotMetaId: string]: {
+    page: number;
+    rowsPerPage: number;
+  };
+}
+
 export const RunsTable: React.FC<RunsTableProps> = ({
   currentInterpretationLog,
   abortRunHandler,
@@ -107,11 +114,13 @@ export const RunsTable: React.FC<RunsTableProps> = ({
     [t]
   );
 
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  // const [page, setPage] = useState(0);
+  // const [rowsPerPage, setRowsPerPage] = useState(10);
   const [rows, setRows] = useState<Data[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+
+  const [paginationStates, setPaginationStates] = useState<PaginationState>({});
 
   const { notify, rerenderRuns, setRerenderRuns } = useGlobalInfoStore();
 
@@ -119,14 +128,40 @@ export const RunsTable: React.FC<RunsTableProps> = ({
     navigate(isExpanded ? `/runs/${robotMetaId}` : '/runs');
   }, [navigate]);
 
-  const handleChangePage = useCallback((event: unknown, newPage: number) => {
-    setPage(newPage);
+  const handleChangePage = useCallback((robotMetaId: string, newPage: number) => {
+    setPaginationStates(prev => ({
+      ...prev,
+      [robotMetaId]: {
+        ...prev[robotMetaId],
+        page: newPage
+      }
+    }));
   }, []);
 
-  const handleChangeRowsPerPage = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(+event.target.value);
-    setPage(0);
+  const handleChangeRowsPerPage = useCallback((robotMetaId: string, newRowsPerPage: number) => {
+    setPaginationStates(prev => ({
+      ...prev,
+      [robotMetaId]: {
+        page: 0, // Reset to first page when changing rows per page
+        rowsPerPage: newRowsPerPage
+      }
+    }));
   }, []);
+
+  const getPaginationState = useCallback((robotMetaId: string) => {
+    const defaultState = { page: 0, rowsPerPage: 10 };
+    
+    if (!paginationStates[robotMetaId]) {
+      setTimeout(() => {
+        setPaginationStates(prev => ({
+          ...prev,
+          [robotMetaId]: defaultState
+        }));
+      }, 0);
+      return defaultState;
+    }
+    return paginationStates[robotMetaId];
+  }, [paginationStates]);
 
   const debouncedSearch = useCallback((fn: Function, delay: number) => {
     let timeoutId: NodeJS.Timeout;
@@ -139,7 +174,13 @@ export const RunsTable: React.FC<RunsTableProps> = ({
   const handleSearchChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const debouncedSetSearch = debouncedSearch((value: string) => {
       setSearchTerm(value);
-      setPage(0);
+      setPaginationStates(prev => {
+        const reset = Object.keys(prev).reduce((acc, robotId) => ({
+          ...acc,
+          [robotId]: { ...prev[robotId], page: 0 }
+        }), {});
+        return reset;
+      });
     }, 300);
     debouncedSetSearch(event.target.value);
   }, [debouncedSearch]);
@@ -219,6 +260,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
   };
 
   const renderTableRows = useCallback((data: Data[], robotMetaId: string) => {
+    const { page, rowsPerPage } = getPaginationState(robotMetaId);
     const start = page * rowsPerPage;
     const end = start + rowsPerPage;
 
@@ -251,7 +293,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
           runningRecordingName={runningRecordingName}
         />
       ));
-  }, [page, rowsPerPage, runId, runningRecordingName, currentInterpretationLog, abortRunHandler, handleDelete, accordionSortConfigs]);
+  }, [paginationStates, runId, runningRecordingName, currentInterpretationLog, abortRunHandler, handleDelete, accordionSortConfigs]);
 
   const renderSortIcon = useCallback((column: Column, robotMetaId: string) => {
     const sortConfig = accordionSortConfigs[robotMetaId];
@@ -369,20 +411,22 @@ export const RunsTable: React.FC<RunsTableProps> = ({
                   {renderTableRows(data, robotMetaId)}
                 </TableBody>
               </Table>
+
+              <TablePagination
+                component="div"
+                count={data.length}
+                rowsPerPage={getPaginationState(robotMetaId).rowsPerPage}
+                page={getPaginationState(robotMetaId).page}
+                onPageChange={(_, newPage) => handleChangePage(robotMetaId, newPage)}
+                onRowsPerPageChange={(event) => 
+                  handleChangeRowsPerPage(robotMetaId, +event.target.value)
+                }
+                rowsPerPageOptions={[10, 25, 50, 100]}
+              />
             </AccordionDetails>
           </Accordion>
         ))}
       </TableContainer>
-
-      <TablePagination
-        component="div"
-        count={filteredRows.length}
-        rowsPerPage={rowsPerPage}
-        page={page}
-        onPageChange={handleChangePage}
-        onRowsPerPageChange={handleChangeRowsPerPage}
-        rowsPerPageOptions={[10, 25, 50, 100]}
-      />
     </React.Fragment>
   );
 };
