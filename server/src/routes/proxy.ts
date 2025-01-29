@@ -14,6 +14,7 @@ interface AuthenticatedRequest extends Request {
 
 router.post('/config', requireSignIn, async (req: Request, res: Response) => {
     const { server_url, username, password } = req.body;
+    const authenticatedReq = req as AuthenticatedRequest;
 
     try {
 
@@ -58,6 +59,7 @@ router.post('/config', requireSignIn, async (req: Request, res: Response) => {
 });
 
 router.get('/test', requireSignIn, async (req: Request, res: Response) => {
+    const authenticatedReq = req as AuthenticatedRequest;
     try {
         if (!req.user) {
             return res.status(401).json({ ok: false, error: 'Unauthorized' });
@@ -99,6 +101,7 @@ router.get('/test', requireSignIn, async (req: Request, res: Response) => {
 });
 
 router.get('/config', requireSignIn, async (req: Request, res: Response) => {
+    const authenticatedReq = req as AuthenticatedRequest;
     try {
         if (!req.user) {
             return res.status(401).json({ ok: false, error: 'Unauthorized' });
@@ -126,6 +129,7 @@ router.get('/config', requireSignIn, async (req: Request, res: Response) => {
 });
 
 router.delete('/config', requireSignIn, async (req: Request, res: Response) => {
+    const authenticatedReq = req as AuthenticatedRequest;
     if (!req.user) {
         return res.status(401).json({ ok: false, error: 'Unauthorized' });
     }
