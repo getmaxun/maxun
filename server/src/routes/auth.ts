@@ -107,7 +107,7 @@ router.get("/logout", async (req, res) => {
 router.get(
   "/current-user",
   requireSignIn,
-  async (req: AuthenticatedRequest, res) => {
+  async (req: Request, res) => {
     try {
       if (!req.user) {
         return res.status(401).json({ ok: false, error: "Unauthorized" });
@@ -135,7 +135,7 @@ router.get(
 router.get(
   "/user/:id",
   requireSignIn,
-  async (req: AuthenticatedRequest, res) => {
+  async (req: Request, res) => {
     try {
       const { id } = req.params;
       if (!id) {
@@ -164,7 +164,7 @@ router.get(
 router.post(
   "/generate-api-key",
   requireSignIn,
-  async (req: AuthenticatedRequest, res) => {
+  async (req: Request, res) => {
     try {
       if (!req.user) {
         return res.status(401).json({ ok: false, error: "Unauthorized" });
@@ -204,7 +204,7 @@ router.post(
 router.get(
   "/api-key",
   requireSignIn,
-  async (req: AuthenticatedRequest, res) => {
+  async (req: Request, res) => {
     try {
       if (!req.user) {
         return res.status(401).json({ ok: false, error: "Unauthorized" });
@@ -232,7 +232,7 @@ router.get(
 router.delete(
   "/delete-api-key",
   requireSignIn,
-  async (req: AuthenticatedRequest, res) => {
+  async (req: Request, res) => {
     if (!req.user) {
       return res.status(401).send({ error: "Unauthorized" });
     }
@@ -294,7 +294,7 @@ router.get("/google", (req, res) => {
 router.get(
   "/google/callback",
   requireSignIn,
-  async (req: AuthenticatedRequest, res) => {
+  async (req: Request, res) => {
     const { code, state } = req.query;
     try {
       if (!state) {
@@ -403,7 +403,7 @@ router.get(
 router.post(
   "/gsheets/data",
   requireSignIn,
-  async (req: AuthenticatedRequest, res) => {
+  async (req: Request, res) => {
     const { spreadsheetId, robotId } = req.body;
     if (!req.user) {
       return res.status(401).send({ error: "Unauthorized" });
@@ -520,7 +520,7 @@ router.post("/gsheets/update", requireSignIn, async (req, res) => {
 router.post(
   "/gsheets/remove",
   requireSignIn,
-  async (req: AuthenticatedRequest, res) => {
+  async (req: Request, res) => {
     const { robotId } = req.body;
     if (!robotId) {
       return res.status(400).json({ message: "Robot ID is required" });
