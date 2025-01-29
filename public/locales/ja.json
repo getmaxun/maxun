@@ -63,6 +63,7 @@
         "delete": "削除",
         "settings": "設定",
         "search": "実行を検索...",
+        "sort_tooltip": "クリックして並べ替え",
         "notifications": {
             "no_runs": "実行が見つかりません。もう一度お試しください。",
             "delete_success": "実行が正常に削除されました"

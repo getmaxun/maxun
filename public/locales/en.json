@@ -63,6 +63,7 @@
       "delete":"Delete",
       "settings":"Settings",
       "search":"Search Runs...",
+      "sort_tooltip": "Click to sort",
       "notifications": {
         "no_runs": "No runs found. Please try again.",
         "delete_success": "Run deleted successfully"
