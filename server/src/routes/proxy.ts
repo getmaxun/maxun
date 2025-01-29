@@ -18,7 +18,7 @@ router.post('/config', requireSignIn, async (req: Request, res: Response) => {
 
     try {
 
-        if (!req.user) {
+        if (!authenticatedReq.user) {
             return res.status(401).json({ ok: false, error: 'Unauthorized' });
         }
 
@@ -61,7 +61,7 @@ router.post('/config', requireSignIn, async (req: Request, res: Response) => {
 router.get('/test', requireSignIn, async (req: Request, res: Response) => {
     const authenticatedReq = req as AuthenticatedRequest;
     try {
-        if (!req.user) {
+        if (!authenticatedReq.user) {
             return res.status(401).json({ ok: false, error: 'Unauthorized' });
         }
 
@@ -103,7 +103,7 @@ router.get('/test', requireSignIn, async (req: Request, res: Response) => {
 router.get('/config', requireSignIn, async (req: Request, res: Response) => {
     const authenticatedReq = req as AuthenticatedRequest;
     try {
-        if (!req.user) {
+        if (!authenticatedReq.user) {
             return res.status(401).json({ ok: false, error: 'Unauthorized' });
         }
 
@@ -130,7 +130,7 @@ router.get('/config', requireSignIn, async (req: Request, res: Response) => {
 
 router.delete('/config', requireSignIn, async (req: Request, res: Response) => {
     const authenticatedReq = req as AuthenticatedRequest;
-    if (!req.user) {
+    if (!authenticatedReq.user) {
         return res.status(401).json({ ok: false, error: 'Unauthorized' });
     }
 
