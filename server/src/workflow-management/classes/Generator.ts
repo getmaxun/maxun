@@ -22,7 +22,7 @@ import { getBestSelectorForAction } from "../utils";
 import { browserPool } from "../../server";
 import { uuid } from "uuidv4";
 import { capture } from "../../utils/analytics"
-import { encrypt } from "../../utils/auth";
+import { decrypt, encrypt } from "../../utils/auth";
 
 interface PersistedGeneratedData {
   lastUsedSelector: string;
@@ -1062,14 +1062,18 @@ export class WorkflowGenerator {
           if (condition.args && condition.args[1]) {
             if (!input.selector) {
               input.selector = condition.args[0];
+              input.type = condition.args[2]
             }
+
             if (input.selector === condition.args[0]) {
               input.actionCounter++;
-              if (condition.args[1].length === 1) {
-                input.value = input.value + condition.args[1];
-              } else if (condition.args[1] === 'Backspace') {
+              const decryptedKey = decrypt(condition.args[1]);
+
+              if (decryptedKey.length === 1) {
+                input.value += decryptedKey;
+              } else if (decryptedKey === 'Backspace') {
                 input.value = input.value.slice(0, -1);
-              } else if (condition.args[1] !== 'Shift') {
+              } else if (decryptedKey !== 'Shift') {
                 pushTheOptimizedAction(pair, index);
                 pair.what.splice(index + 1, 0, {
                   action: 'waitForLoadState',
@@ -1081,7 +1085,7 @@ export class WorkflowGenerator {
               pushTheOptimizedAction(pair, index);
               input = {
                 selector: condition.args[0],
-                value: condition.args[1],
+                value: decrypt(condition.args[1]),
                 type: condition.args[2],
                 actionCounter: 1,
               };
