@@ -113,7 +113,7 @@ router.get(
       if (!authenticatedReq.user) {
         return res.status(401).json({ ok: false, error: "Unauthorized" });
       }
-      const user = await User.findByPk(req.user.id, {
+      const user = await User.findByPk(authenticatedReq.user.id, {
         attributes: { exclude: ["password"] },
       });
       if (!user) {
@@ -171,7 +171,7 @@ router.post(
       if (!authenticatedReq.user) {
         return res.status(401).json({ ok: false, error: "Unauthorized" });
       }
-      const user = await User.findByPk(req.user.id, {
+      const user = await User.findByPk(authenticatedReq.user.id, {
         attributes: { exclude: ["password"] },
       });
 
@@ -213,7 +213,7 @@ router.get(
         return res.status(401).json({ ok: false, error: "Unauthorized" });
       }
 
-      const user = await User.findByPk(req.user.id, {
+      const user = await User.findByPk(authenticatedReq.user.id, {
         raw: true,
         attributes: ["api_key"],
       });
@@ -242,7 +242,7 @@ router.delete(
     }
 
     try {
-      const user = await User.findByPk(req.user.id, { raw: true });
+      const user = await User.findByPk(authenticatedReq.user.id, { raw: true });
 
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -252,7 +252,7 @@ router.delete(
         return res.status(404).json({ message: "API Key not found" });
       }
 
-      await User.update({ api_key: null }, { where: { id: req.user.id } });
+      await User.update({ api_key: null }, { where: { id: authenticatedReq.user.id } });
 
       capture("maxun-oss-api-key-deleted", {
         user_id: user.id,
@@ -330,7 +330,7 @@ router.get(
       }
 
       // Get the currently authenticated user (from `requireSignIn`)
-      let user = await User.findOne({ where: { id: req.user.id } });
+      let user = await User.findOne({ where: { id: authenticatedReq.user.id } });
 
       if (!user) {
         return res.status(400).json({ message: "User not found" });
@@ -414,7 +414,7 @@ router.post(
     if (!authenticatedReq.user) {
       return res.status(401).send({ error: "Unauthorized" });
     }
-    const user = await User.findByPk(req.user.id, { raw: true });
+    const user = await User.findByPk(authenticatedReq.user.id, { raw: true });
 
     if (!user) {
       return res.status(400).json({ message: "User not found" });
@@ -555,7 +555,7 @@ router.post(
       });
 
       capture("maxun-oss-google-sheet-integration-removed", {
-        user_id: req.user.id,
+        user_id: authenticatedReq.user.id,
         robot_id: robotId,
         deleted_at: new Date().toISOString(),
       });
