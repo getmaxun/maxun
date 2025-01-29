@@ -12,7 +12,7 @@ import TableRow from '@mui/material/TableRow';
 import { Accordion, AccordionSummary, AccordionDetails, Typography, Box, TextField, CircularProgress, Tooltip } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SearchIcon from '@mui/icons-material/Search';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { getStoredRuns } from "../../api/storage";
 import { RunSettings } from "./RunSettings";
@@ -78,6 +78,21 @@ export const RunsTable: React.FC<RunsTableProps> = ({
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const getUrlParams = () => {
+    const match = location.pathname.match(/\/runs\/([^\/]+)(?:\/run\/([^\/]+))?/);
+    return {
+      robotMetaId: match?.[1] || null,
+      urlRunId: match?.[2] || null
+    };
+  };
+
+  const { robotMetaId: urlRobotMetaId, urlRunId } = getUrlParams();
+
+  const isAccordionExpanded = useCallback((currentRobotMetaId: string) => {
+    return currentRobotMetaId === urlRobotMetaId;
+  }, [urlRobotMetaId]);
 
   const [accordionSortConfigs, setAccordionSortConfigs] = useState<AccordionSortConfig>({});
 
@@ -245,13 +260,14 @@ export const RunsTable: React.FC<RunsTableProps> = ({
           key={`row-${row.id}`}
           row={row}
           handleDelete={handleDelete}
-          isOpen={runId === row.runId && runningRecordingName === row.name}
+          isOpen={urlRunId === row.runId || (runId === row.runId && runningRecordingName === row.name)}
           currentLog={currentInterpretationLog}
           abortRunHandler={abortRunHandler}
           runningRecordingName={runningRecordingName}
+          urlRunId={urlRunId}
         />
       ));
-  }, [page, rowsPerPage, runId, runningRecordingName, currentInterpretationLog, abortRunHandler, handleDelete, accordionSortConfigs]);
+  }, [page, rowsPerPage, runId, runningRecordingName, currentInterpretationLog, abortRunHandler, handleDelete, accordionSortConfigs, urlRunId]);
 
   const renderSortIcon = useCallback((column: Column, robotMetaId: string) => {
     const sortConfig = accordionSortConfigs[robotMetaId];
@@ -308,6 +324,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
         {Object.entries(groupedRows).map(([robotMetaId, data]) => (
           <Accordion 
             key={robotMetaId} 
+            expanded={isAccordionExpanded(robotMetaId)}
             onChange={(event, isExpanded) => handleAccordionChange(robotMetaId, isExpanded)}
             TransitionProps={{ unmountOnExit: true }} // Optimize accordion rendering
           >
