@@ -15,6 +15,7 @@ import { getStoredRecording } from "../../api/storage";
 import { apiUrl } from "../../apiConfig.js";
 import Cookies from "js-cookie";
 import { useTranslation } from "react-i18next";
+import { SignalCellularConnectedNoInternet0BarSharp } from "@mui/icons-material";
 
 interface IntegrationProps {
   isOpen: boolean;
@@ -27,8 +28,11 @@ export interface IntegrationSettings {
   spreadsheetName?: string;
   airtableBaseId?: string;
   airtableBaseName?: string;
+  airtableTableName?: string,
+  airtableTableId?: string,
   data: string;
   integrationType: "googleSheets" | "airtable";
+  
 }
 
 // Helper functions to replace js-cookie functionality
@@ -56,12 +60,17 @@ export const IntegrationSettingsModal = ({
     spreadsheetName: "",
     airtableBaseId: "",
     airtableBaseName: "",
+    airtableTableName: "",
+    airtableTableId: "",
+
     data: "",
     integrationType: "googleSheets",
+
   });
 
   const [spreadsheets, setSpreadsheets] = useState<{ id: string; name: string }[]>([]);
   const [airtableBases, setAirtableBases] = useState<{ id: string; name: string }[]>([]);
+  const [airtableTables, setAirtableTables] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -112,6 +121,23 @@ export const IntegrationSettingsModal = ({
     }
   };
 
+
+  const fetchAirtableTables = async (baseId: string, recordingId: string) => {
+    try {
+      const response = await axios.get(
+        `${apiUrl}/auth/airtable/tables?robotId=${recordingId}&baseId=${baseId}`,
+        { withCredentials: true }
+      );
+      setAirtableTables(response.data);
+    }
+    catch (error: any) {
+      console.error("Error fetching Airtable tables:", error);
+      notify("error", t("integration_settings.errors.fetch_error", {
+        message: error.response?.data?.message || error.message,
+      }));
+    }
+  }
+
   // Handle Google Sheets selection
   const handleSpreadsheetSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedSheet = spreadsheets.find((sheet) => sheet.id === e.target.value);
@@ -125,16 +151,73 @@ export const IntegrationSettingsModal = ({
   };
 
   // Handle Airtable base selection
-  const handleAirtableBaseSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAirtableBaseSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedBase = airtableBases.find((base) => base.id === e.target.value);
+    console.log(selectedBase);
+  
     if (selectedBase) {
-      setSettings({
-        ...settings,
+      // Update local state
+      setSettings((prevSettings) => ({
+        ...prevSettings,
         airtableBaseId: selectedBase.id,
         airtableBaseName: selectedBase.name,
-      });
+      }));
+
+      // Fetch tables for the selected base
+      if (recordingId) {
+        await fetchAirtableTables(selectedBase.id, recordingId);
+      } else {
+        console.error("Recording ID is null");
+      }
+
+      
+  
+      // try {
+      //   // Ensure recordingId is available
+      //   if (!recordingId) {
+      //     throw new Error("Recording ID is missing");
+      //   }
+  
+      //   // Make API call to update the base in the database
+      //   const response = await axios.post(
+      //     `${apiUrl}/auth/airtable/update`,
+      //     {
+      //       baseId: selectedBase.id,
+      //       baseName: selectedBase.name,
+      //       robotId: recordingId, // Use recordingId from the global context
+      //     },
+      //     { withCredentials: true }
+      //   );
+  
+      //   if (response.status !== 200) {
+      //     throw new Error("Failed to update Airtable base in the database");
+      //   }
+  
+      //   console.log("Airtable base updated successfully:", response.data);
+      // } catch (error) {
+      //   console.error("Error updating Airtable base:", error);
+      //   notify("error", t("integration_settings.errors.update_error", {
+      //     message: error instanceof Error ? error.message : "Unknown error",
+      //   }));
+      // }
     }
   };
+
+  const handleAirtabletableSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log( e.target.value);
+    const selectedTable = airtableTables.find((table) => table.id === e.target.value);
+    if (selectedTable) {
+      setSettings((prevSettings) => ({
+        ...prevSettings,
+        airtableTableId: e.target.value,
+        
+        airtableTableName: selectedTable?.name||"",
+        
+      }));
+    }
+  };
+
+
 
   // Update Google Sheets integration
   const updateGoogleSheetId = async () => {
@@ -159,6 +242,10 @@ export const IntegrationSettingsModal = ({
 
   // Update Airtable integration
   const updateAirtableBase = async () => {
+    console.log(settings.airtableBaseId);
+    console.log(settings.airtableTableName);
+    console.log(recordingId);
+    console.log(settings.airtableBaseName);
     try {
       await axios.post(
         `${apiUrl}/auth/airtable/update`,
@@ -166,6 +253,7 @@ export const IntegrationSettingsModal = ({
           baseId: settings.airtableBaseId,
           baseName: settings.airtableBaseName,
           robotId: recordingId,
+          tableName: settings.airtableTableName,
         },
         { withCredentials: true }
       );
@@ -206,7 +294,7 @@ export const IntegrationSettingsModal = ({
         { withCredentials: true }
       );
       setAirtableBases([]);
-      setSettings({ ...settings, airtableBaseId: "", airtableBaseName: "" });
+      setSettings({ ...settings, airtableBaseId: "", airtableBaseName: "", airtableTableName:"" });
       notify("success", t("integration_settings.notifications.integration_removed"));
     } catch (error: any) {
       console.error("Error removing Airtable integration:", error);
@@ -239,7 +327,13 @@ export const IntegrationSettingsModal = ({
         if (recording.google_sheet_id) {
           setSettings({ ...settings, integrationType: "googleSheets" });
         } else if (recording.airtable_base_id) {
-          setSettings({ ...settings, integrationType: "airtable" });
+          setSettings(prev => ({
+            ...prev,
+            airtableBaseId: recording.airtable_base_id || "",
+            airtableBaseName: recording.airtable_base_name || "",
+            airtableTableName: recording.airtable_table_name || "",
+            integrationType: recording.airtable_base_id ? "airtable" : "googleSheets"
+          }));
         }
       }
     };
@@ -475,7 +569,7 @@ if (!selectedIntegrationType) {
                   <>
                     <Typography sx={{ margin: "20px 0px 30px 0px" }}>
                       {t("integration_settings.descriptions.authenticated_as", {
-                        email: "hghghg",
+                        email: "amit63390@gmail.com",
                       })}
                     </Typography>
                     {loading ? (
@@ -504,6 +598,21 @@ if (!selectedIntegrationType) {
                           {airtableBases.map((base) => (
                             <MenuItem key={base.id} value={base.id}>
                               {base.name}
+                            </MenuItem>
+                          ))}
+                        </TextField>
+                        <TextField
+                          sx={{ marginBottom: "15px" }}
+                          select
+                          label={t("integration_settings.fields.select_airtable_table")}
+                          required
+                          value={settings.airtableTableId}
+                          onChange={handleAirtabletableSelect}
+                          fullWidth
+                        >
+                          {airtableTables.map((table) => (
+                            <MenuItem key={table.id} value={table.id}>
+                              {table.name}
                             </MenuItem>
                           ))}
                         </TextField>

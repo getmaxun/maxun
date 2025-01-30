@@ -733,8 +733,8 @@ router.get("/airtable/bases", async (req: AuthenticatedRequest, res) => {
 });
 
 // Update robot with selected base
-router.post("/airtable/update", requireSignIn, async (req: AuthenticatedRequest, res) => {
-  const { baseId, baseName, robotId } = req.body;
+router.post("/airtable/update", async (req: AuthenticatedRequest, res) => {
+  const { baseId, robotId , tableName} = req.body;
 
   if (!baseId || !robotId) {
     return res.status(400).json({ message: "Base ID and Robot ID are required" });
@@ -751,7 +751,8 @@ router.post("/airtable/update", requireSignIn, async (req: AuthenticatedRequest,
 
     await robot.update({
       airtable_base_id: baseId,
-      airtable_table_name: baseName,
+      airtable_table_name: tableName,
+      
     });
 
     capture("maxun-oss-airtable-integration-created", {
@@ -803,3 +804,45 @@ router.post("/airtable/remove", requireSignIn, async (req: AuthenticatedRequest,
   }
 });
 
+
+
+// Fetch tables from an Airtable base
+router.get("/airtable/tables", async (req: AuthenticatedRequest, res) => {
+  try {
+    const { baseId, robotId } = req.query;
+
+    if (!baseId || !robotId) {
+      return res.status(400).json({ message: "Base ID and Robot ID are required" });
+    }
+
+    const robot = await Robot.findOne({
+      where: { "recording_meta.id": robotId.toString() },
+      raw: true,
+    });
+
+    if (!robot?.airtable_access_token) {
+      return res.status(400).json({ message: "Robot not authenticated with Airtable" });
+    }
+
+    const response = await fetch(`https://api.airtable.com/v0/meta/bases/${baseId}/tables`, {
+      headers: {
+        'Authorization': `Bearer ${robot.airtable_access_token}`
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error.message || 'Failed to fetch tables');
+    }
+
+    const data = await response.json();
+    res.json(data.tables.map((table: any) => ({
+      id: table.id,
+      name: table.name,
+      fields: table.fields
+    })));
+
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
