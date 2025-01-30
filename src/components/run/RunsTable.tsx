@@ -194,18 +194,6 @@ export const RunsTable: React.FC<RunsTableProps> = ({
     return result;
   }, [rows, searchTerm]);
 
-  // Group filtered rows by robot meta id
-  const groupedRows = useMemo(() => 
-    filteredRows.reduce((acc, row) => {
-      if (!acc[row.robotMetaId]) {
-        acc[row.robotMetaId] = [];
-      }
-      acc[row.robotMetaId].push(row);
-      return acc;
-    }, {} as Record<string, Data[]>),
-    [filteredRows]
-  );
-
   const parseDateString = (dateStr: string): Date => {
     try {
       if (dateStr.includes('PM') || dateStr.includes('AM')) {
@@ -217,6 +205,35 @@ export const RunsTable: React.FC<RunsTableProps> = ({
       return new Date(0);
     }
   };
+
+  const groupedRows = useMemo(() => {
+    const groupedData = filteredRows.reduce((acc, row) => {
+      if (!acc[row.robotMetaId]) {
+        acc[row.robotMetaId] = [];
+      }
+      acc[row.robotMetaId].push(row);
+      return acc;
+    }, {} as Record<string, Data[]>);
+  
+    Object.keys(groupedData).forEach(robotId => {
+      groupedData[robotId].sort((a, b) => 
+        parseDateString(b.startedAt).getTime() - parseDateString(a.startedAt).getTime()
+      );
+    });
+  
+    const robotEntries = Object.entries(groupedData).map(([robotId, runs]) => ({
+      robotId,
+      runs,
+      latestRunDate: parseDateString(runs[0].startedAt).getTime()
+    }));
+  
+    robotEntries.sort((a, b) => b.latestRunDate - a.latestRunDate);
+  
+    return robotEntries.reduce((acc, { robotId, runs }) => {
+      acc[robotId] = runs;
+      return acc;
+    }, {} as Record<string, Data[]>);
+  }, [filteredRows]);
 
   const renderTableRows = useCallback((data: Data[], robotMetaId: string) => {
     const start = page * rowsPerPage;
