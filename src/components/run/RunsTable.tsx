@@ -70,6 +70,13 @@ interface RunsTableProps {
   runningRecordingName: string;
 }
 
+interface PaginationState {
+  [robotMetaId: string]: {
+    page: number;
+    rowsPerPage: number;
+  };
+}
+
 export const RunsTable: React.FC<RunsTableProps> = ({
   currentInterpretationLog,
   abortRunHandler,
@@ -79,6 +86,8 @@ export const RunsTable: React.FC<RunsTableProps> = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
 
+  const [accordionPage, setAccordionPage] = useState(0);
+  const [accordionsPerPage, setAccordionsPerPage] = useState(10);
   const [accordionSortConfigs, setAccordionSortConfigs] = useState<AccordionSortConfig>({});
 
   const handleSort = useCallback((columnId: keyof Data, robotMetaId: string) => {
@@ -107,11 +116,11 @@ export const RunsTable: React.FC<RunsTableProps> = ({
     [t]
   );
 
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [rows, setRows] = useState<Data[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+
+  const [paginationStates, setPaginationStates] = useState<PaginationState>({});
 
   const { notify, rerenderRuns, setRerenderRuns } = useGlobalInfoStore();
 
@@ -119,14 +128,49 @@ export const RunsTable: React.FC<RunsTableProps> = ({
     navigate(isExpanded ? `/runs/${robotMetaId}` : '/runs');
   }, [navigate]);
 
-  const handleChangePage = useCallback((event: unknown, newPage: number) => {
-    setPage(newPage);
+  const handleAccordionPageChange = useCallback((event: unknown, newPage: number) => {
+    setAccordionPage(newPage);
+  }, []);
+  
+  const handleAccordionsPerPageChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    setAccordionsPerPage(+event.target.value);
+    setAccordionPage(0); 
   }, []);
 
-  const handleChangeRowsPerPage = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(+event.target.value);
-    setPage(0);
+  const handleChangePage = useCallback((robotMetaId: string, newPage: number) => {
+    setPaginationStates(prev => ({
+      ...prev,
+      [robotMetaId]: {
+        ...prev[robotMetaId],
+        page: newPage
+      }
+    }));
   }, []);
+
+  const handleChangeRowsPerPage = useCallback((robotMetaId: string, newRowsPerPage: number) => {
+    setPaginationStates(prev => ({
+      ...prev,
+      [robotMetaId]: {
+        page: 0, // Reset to first page when changing rows per page
+        rowsPerPage: newRowsPerPage
+      }
+    }));
+  }, []);
+
+  const getPaginationState = useCallback((robotMetaId: string) => {
+    const defaultState = { page: 0, rowsPerPage: 10 };
+    
+    if (!paginationStates[robotMetaId]) {
+      setTimeout(() => {
+        setPaginationStates(prev => ({
+          ...prev,
+          [robotMetaId]: defaultState
+        }));
+      }, 0);
+      return defaultState;
+    }
+    return paginationStates[robotMetaId];
+  }, [paginationStates]);
 
   const debouncedSearch = useCallback((fn: Function, delay: number) => {
     let timeoutId: NodeJS.Timeout;
@@ -139,7 +183,14 @@ export const RunsTable: React.FC<RunsTableProps> = ({
   const handleSearchChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const debouncedSetSearch = debouncedSearch((value: string) => {
       setSearchTerm(value);
-      setPage(0);
+      setAccordionPage(0);
+      setPaginationStates(prev => {
+        const reset = Object.keys(prev).reduce((acc, robotId) => ({
+          ...acc,
+          [robotId]: { ...prev[robotId], page: 0 }
+        }), {});
+        return reset;
+      });
     }, 300);
     debouncedSetSearch(event.target.value);
   }, [debouncedSearch]);
@@ -219,6 +270,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
   };
 
   const renderTableRows = useCallback((data: Data[], robotMetaId: string) => {
+    const { page, rowsPerPage } = getPaginationState(robotMetaId);
     const start = page * rowsPerPage;
     const end = start + rowsPerPage;
 
@@ -251,7 +303,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
           runningRecordingName={runningRecordingName}
         />
       ));
-  }, [page, rowsPerPage, runId, runningRecordingName, currentInterpretationLog, abortRunHandler, handleDelete, accordionSortConfigs]);
+  }, [paginationStates, runId, runningRecordingName, currentInterpretationLog, abortRunHandler, handleDelete, accordionSortConfigs]);
 
   const renderSortIcon = useCallback((column: Column, robotMetaId: string) => {
     const sortConfig = accordionSortConfigs[robotMetaId];
@@ -305,82 +357,99 @@ export const RunsTable: React.FC<RunsTableProps> = ({
       </Box>
 
       <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden' }}>
-        {Object.entries(groupedRows).map(([robotMetaId, data]) => (
-          <Accordion 
-            key={robotMetaId} 
-            onChange={(event, isExpanded) => handleAccordionChange(robotMetaId, isExpanded)}
-            TransitionProps={{ unmountOnExit: true }} // Optimize accordion rendering
-          >
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography variant="h6">{data[data.length - 1].name}</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Table stickyHeader aria-label="sticky table">
-                <TableHead>
-                  <TableRow>
-                    <TableCell />
-                    {translatedColumns.map((column) => (
-                      <TableCell
-                        key={column.id}
-                        align={column.align}
-                        style={{ 
-                          minWidth: column.minWidth,
-                          cursor: column.id === 'startedAt' || column.id === 'finishedAt' ? 'pointer' : 'default'
-                        }}
-                        onClick={() => {
-                          if (column.id === 'startedAt' || column.id === 'finishedAt') {
-                            handleSort(column.id, robotMetaId);
-                          }
-                        }}
-                      >
-                        <Tooltip 
-                          title={
-                            (column.id === 'startedAt' || column.id === 'finishedAt')
-                              ? t('runstable.sort_tooltip')
-                              : ''
-                          }
-                        >
-                          <Box sx={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: 1,
-                            '&:hover': {
-                              '& .sort-icon': {
-                                opacity: 1
-                              }
+        {Object.entries(groupedRows)
+          .slice(
+            accordionPage * accordionsPerPage,
+            accordionPage * accordionsPerPage + accordionsPerPage
+          )
+          .map(([robotMetaId, data]) => (
+            <Accordion 
+              key={robotMetaId} 
+              onChange={(event, isExpanded) => handleAccordionChange(robotMetaId, isExpanded)}
+              TransitionProps={{ unmountOnExit: true }} // Optimize accordion rendering
+            >
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="h6">{data[data.length - 1].name}</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Table stickyHeader aria-label="sticky table">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell />
+                      {translatedColumns.map((column) => (
+                        <TableCell
+                          key={column.id}
+                          align={column.align}
+                          style={{ 
+                            minWidth: column.minWidth,
+                            cursor: column.id === 'startedAt' || column.id === 'finishedAt' ? 'pointer' : 'default'
+                          }}
+                          onClick={() => {
+                            if (column.id === 'startedAt' || column.id === 'finishedAt') {
+                              handleSort(column.id, robotMetaId);
                             }
-                          }}>
-                            {column.label}
-                            <Box className="sort-icon" sx={{ 
-                              display: 'flex',
-                              alignItems: 'center',
-                              opacity: accordionSortConfigs[robotMetaId]?.field === column.id ? 1 : 0.3,
-                              transition: 'opacity 0.2s'
+                          }}
+                        >
+                          <Tooltip 
+                            title={
+                              (column.id === 'startedAt' || column.id === 'finishedAt')
+                                ? t('runstable.sort_tooltip')
+                                : ''
+                            }
+                          >
+                            <Box sx={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: 1,
+                              '&:hover': {
+                                '& .sort-icon': {
+                                  opacity: 1
+                                }
+                              }
                             }}>
-                              {renderSortIcon(column, robotMetaId)}
+                              {column.label}
+                              <Box className="sort-icon" sx={{ 
+                                display: 'flex',
+                                alignItems: 'center',
+                                opacity: accordionSortConfigs[robotMetaId]?.field === column.id ? 1 : 0.3,
+                                transition: 'opacity 0.2s'
+                              }}>
+                                {renderSortIcon(column, robotMetaId)}
+                              </Box>
                             </Box>
-                          </Box>
-                        </Tooltip>
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {renderTableRows(data, robotMetaId)}
-                </TableBody>
-              </Table>
-            </AccordionDetails>
-          </Accordion>
-        ))}
+                          </Tooltip>
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {renderTableRows(data, robotMetaId)}
+                  </TableBody>
+                </Table>
+
+                <TablePagination
+                  component="div"
+                  count={data.length}
+                  rowsPerPage={getPaginationState(robotMetaId).rowsPerPage}
+                  page={getPaginationState(robotMetaId).page}
+                  onPageChange={(_, newPage) => handleChangePage(robotMetaId, newPage)}
+                  onRowsPerPageChange={(event) => 
+                    handleChangeRowsPerPage(robotMetaId, +event.target.value)
+                  }
+                  rowsPerPageOptions={[10, 25, 50, 100]}
+                />
+              </AccordionDetails>
+            </Accordion>
+          ))}
       </TableContainer>
 
       <TablePagination
         component="div"
-        count={filteredRows.length}
-        rowsPerPage={rowsPerPage}
-        page={page}
-        onPageChange={handleChangePage}
-        onRowsPerPageChange={handleChangeRowsPerPage}
+        count={Object.keys(groupedRows).length}
+        page={accordionPage}
+        rowsPerPage={accordionsPerPage}
+        onPageChange={handleAccordionPageChange}
+        onRowsPerPageChange={handleAccordionsPerPageChange}
         rowsPerPageOptions={[10, 25, 50, 100]}
       />
     </React.Fragment>
