@@ -189,23 +189,39 @@ export const RecordingsTable = ({
     setPage(0);
   }, []);
 
+  const parseDateString = (dateStr: string): Date => {
+    try {
+      if (dateStr.includes('PM') || dateStr.includes('AM')) {
+        return new Date(dateStr);
+      }
+      
+      return new Date(dateStr.replace(/(\d+)\/(\d+)\//, '$2/$1/'))
+    } catch {
+      return new Date(0);
+    }
+  };
+
   const fetchRecordings = useCallback(async () => {
     setIsLoading(true);
     try {
       const recordings = await getStoredRecordings();
       if (recordings) {
         const parsedRows = recordings
-          .map((recording: any, index: number) => {
-            if (recording?.recording_meta) {
-              return {
-                id: index,
-                ...recording.recording_meta,
-                content: recording.recording
-              };
-            }
-            return null;
-          })
-          .filter(Boolean);
+        .map((recording: any, index: number) => {
+          if (recording?.recording_meta) {
+            const parsedDate = parseDateString(recording.recording_meta.createdAt);
+            
+            return {
+              id: index,
+              ...recording.recording_meta,
+              content: recording.recording,
+              parsedDate
+            };
+          }
+          return null;
+        })
+        .filter(Boolean) 
+        .sort((a, b) => b.parsedDate.getTime() - a.parsedDate.getTime());
 
         setRecordings(parsedRows.map((recording) => recording.name));
         setRows(parsedRows);
