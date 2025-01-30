@@ -24,6 +24,7 @@ import {
   Clear,
   YouTube,
   X,
+  GitHub,
   Update,
   Close,
   Language,
