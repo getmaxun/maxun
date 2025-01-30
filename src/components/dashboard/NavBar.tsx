@@ -357,6 +357,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                     <MenuItem onClick={handleLangMenuOpen}>
                       <Language sx={{ marginRight: '5px' }} /> {t('navbar.menu_items.language')}
                     </MenuItem>
+                    <hr />
                     <MenuItem onClick={() => {
                       window.open('https://docs.maxun.dev', '_blank');
                     }}>
