@@ -5,6 +5,15 @@ import { ScheduleSettings } from "../components/robot/ScheduleSettings";
 import { CreateRunResponse, ScheduleRunResponse } from "../pages/MainPage";
 import { apiUrl } from "../apiConfig";
 
+interface CredentialInfo {
+  value: string;
+  type: string;
+}
+
+interface Credentials {
+  [key: string]: CredentialInfo;
+}
+
 export const getStoredRecordings = async (): Promise<string[] | null> => {
   try {
     const response = await axios.get(`${apiUrl}/storage/recordings`);
@@ -19,7 +28,7 @@ export const getStoredRecordings = async (): Promise<string[] | null> => {
   }
 };
 
-export const updateRecording = async (id: string, data: { name?: string; limit?: number }): Promise<boolean> => {
+export const updateRecording = async (id: string, data: { name?: string; limit?: number, credentials?: Credentials }): Promise<boolean> => {
   try {
     const response = await axios.put(`${apiUrl}/storage/recordings/${id}`, data);
     if (response.status === 200) {

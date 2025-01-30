@@ -32,6 +32,7 @@
         "new": "ロボットを作成",
         "modal": {
             "title": "URLを入力してください",
+            "login_title": "このサイトはログインが必要ですか?",
             "label": "URL",
             "button": "録画を開始"
         },
@@ -40,8 +41,9 @@
         "duplicate": "複製",
         "search": "ロボットを検索...",
         "notifications": {
-            "delete_warning": "関連する実行があるため、ロボットを削除できません",
-            "delete_success": "ロボットが正常に削除されました"
+            "delete_warning": "ロボットには関連する実行があります。ロボットを削除するには、まず実行を削除してください",
+            "delete_success": "ロボットが正常に削除されました",
+            "auth_success": "ロボットの認証に成功しました"
         }
   },
   "mainmenu": {
@@ -61,6 +63,7 @@
         "delete": "削除",
         "settings": "設定",
         "search": "実行を検索...",
+        "sort_tooltip": "クリックして並べ替え",
         "notifications": {
             "no_runs": "実行が見つかりません。もう一度お試しください。",
             "delete_success": "実行が正常に削除されました"
@@ -205,7 +208,8 @@
             "confirm_text_fields": "すべてのテキストフィールドを確認してください",
             "unable_create_settings": "リスト設定を作成できません。リストのフィールドを定義したことを確認してください。",
             "capture_text_discarded": "テキスト取得が破棄されました",
-            "capture_list_discarded": "リスト取得が破棄されました"
+            "capture_list_discarded": "リスト取得が破棄されました",
+            "label_required": "ラベルは空にできません"
         }
     },
     "save_recording": {
@@ -449,6 +453,7 @@
             "log": "ログ"
         },
         "empty_output": "出力は空です。",
+        "loading": "実行中です。実行が完了すると、抽出されたデータがここに表示されます。",
         "captured_data": {
             "title": "キャプチャされたデータ",
             "download_json": "JSONとしてダウンロード",

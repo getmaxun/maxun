@@ -18,12 +18,43 @@ import { AuthenticatedRequest } from './record';
 import { computeNextRun } from '../utils/schedule';
 import { capture } from "../utils/analytics";
 import { tryCatch } from 'bullmq';
+import { encrypt, decrypt } from '../utils/auth';
 import { WorkflowFile } from 'maxun-core';
 import { Page } from 'playwright';
 import { airtableUpdateTasks, processAirtableUpdates } from '../workflow-management/integrations/airtable';
 chromium.use(stealthPlugin());
 
 export const router = Router();
+
+export const decryptWorkflowActions = async (workflow: any[],): Promise<any[]> => {
+  // Create a deep copy to avoid mutating the original workflow
+  const processedWorkflow = JSON.parse(JSON.stringify(workflow));
+
+  // Process each step in the workflow
+  for (const step of processedWorkflow) {
+    if (!step.what) continue;
+
+    // Process each action in the step
+    for (const action of step.what) {
+      // Only process type and press actions
+      if ((action.action === 'type' || action.action === 'press') && Array.isArray(action.args) && action.args.length > 1) {        
+        // The second argument contains the encrypted value
+        const encryptedValue = action.args[1];
+        if (typeof encryptedValue === 'string') {
+          try {
+            // Decrypt the value and update the args array
+            action.args[1] = await decrypt(encryptedValue);
+          } catch (error) {
+            console.error('Failed to decrypt value:', error);
+            // Keep the encrypted value if decryption fails
+          }
+        }
+      }
+    }
+  }
+
+  return processedWorkflow;
+};
 
 /**
  * Logs information about recordings API.
@@ -56,6 +87,13 @@ router.get('/recordings/:id', requireSignIn, async (req, res) => {
       raw: true
     }
     );
+
+    if (data?.recording?.workflow) {
+      data.recording.workflow = await decryptWorkflowActions(
+        data.recording.workflow,
+      );
+    }
+
     return res.send(data);
   } catch (e) {
     logger.log('info', 'Error while reading robots');
@@ -117,13 +155,74 @@ function formatRunResponse(run: any) {
   return formattedRun;
 }
 
+interface CredentialInfo {
+  value: string;
+  type: string;
+}
+
+interface Credentials {
+  [key: string]: CredentialInfo;
+}
+
+function updateTypeActionsInWorkflow(workflow: any[], credentials: Credentials) {
+  return workflow.map(step => {
+      if (!step.what) return step;
+
+      const indicesToRemove = new Set<number>();
+      step.what.forEach((action: any, index: number) => {
+          if (!action.action || !action.args?.[0]) return;
+          
+          if ((action.action === 'type' || action.action === 'press') && credentials[action.args[0]]) {
+              indicesToRemove.add(index);
+
+              if (step.what[index + 1]?.action === 'waitForLoadState') {
+                  indicesToRemove.add(index + 1);
+              }
+          }
+      });
+
+      const filteredWhat = step.what.filter((_: any, index: number) => !indicesToRemove.has(index));
+
+      Object.entries(credentials).forEach(([selector, credentialInfo]) => {
+          const clickIndex = filteredWhat.findIndex((action: any) => 
+              action.action === 'click' && action.args?.[0] === selector
+          );
+
+          if (clickIndex !== -1) {
+              const chars = credentialInfo.value.split('');
+              
+              chars.forEach((char, i) => {
+                  filteredWhat.splice(clickIndex + 1 + (i * 2), 0, {
+                      action: 'type',
+                      args: [
+                          selector,
+                          encrypt(char),
+                          credentialInfo.type 
+                      ]
+                  });
+                  
+                  filteredWhat.splice(clickIndex + 2 + (i * 2), 0, {
+                      action: 'waitForLoadState',
+                      args: ['networkidle']
+                  });
+              });
+          }
+      });
+
+      return {
+          ...step,
+          what: filteredWhat
+      };
+  });
+}
+
 /**
  * PUT endpoint to update the name and limit of a robot.
  */
 router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
-    const { name, limit } = req.body;
+    const { name, limit, credentials } = req.body;
 
     // Validate input
     if (!name && limit === undefined) {
@@ -142,17 +241,21 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       robot.set('recording_meta', { ...robot.recording_meta, name });
     }
 
+    let workflow = [...robot.recording.workflow]; // Create a copy of the workflow
+
+    if (credentials) {
+      workflow = updateTypeActionsInWorkflow(workflow, credentials);
+    }
+
     // Update the limit
     if (limit !== undefined) {
-      const workflow = [...robot.recording.workflow]; // Create a copy of the workflow
-
       // Ensure the workflow structure is valid before updating
       if (
         workflow.length > 0 &&
         workflow[0]?.what?.[0]
       ) {
         // Create a new workflow object with the updated limit
-        const updatedWorkflow = workflow.map((step, index) => {
+        workflow = workflow.map((step, index) => {
           if (index === 0) { // Assuming you want to update the first step
             return {
               ...step,
@@ -174,13 +277,12 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
           }
           return step;
         });
-
-        // Replace the workflow in the recording object
-        robot.set('recording', { ...robot.recording, workflow: updatedWorkflow });
       } else {
         return res.status(400).json({ error: 'Invalid workflow structure for updating limit.' });
       }
     }
+
+    robot.set('recording', { ...robot.recording, workflow });
 
     await robot.save();
 

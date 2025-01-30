@@ -13,7 +13,9 @@ import axios from "axios";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { getStoredRecording } from "../../api/storage";
 import { apiUrl } from "../../apiConfig.js";
+
 import Cookies from "js-cookie";
+
 import { useTranslation } from "react-i18next";
 import { SignalCellularConnectedNoInternet0BarSharp } from "@mui/icons-material";
 
@@ -35,7 +37,7 @@ export interface IntegrationSettings {
   
 }
 
-// Helper functions to replace js-cookie functionality
+
 const getCookie = (name: string): string | null => {
   const value = `; ${document.cookie}`;
   const parts = value.split(`; ${name}=`);
@@ -48,6 +50,7 @@ const getCookie = (name: string): string | null => {
 const removeCookie = (name: string): void => {
   document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
 };
+
 
 export const IntegrationSettingsModal = ({
   isOpen,
@@ -285,6 +288,7 @@ export const IntegrationSettingsModal = ({
     }
   };
 
+
   // Remove Airtable integration
   const removeAirtableIntegration = async () => {
     try {
@@ -314,6 +318,7 @@ export const IntegrationSettingsModal = ({
       }
     } catch (error) {
       setError("Error authenticating with Airtable");
+
     }
   };
 

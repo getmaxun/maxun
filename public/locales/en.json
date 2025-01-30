@@ -32,6 +32,7 @@
       "new":"Create Robot",
       "modal":{
         "title":"Enter the URL",
+        "login_title": "Does this website require login?",
         "label":"URL",
         "button":"Start Recording"
       },
@@ -40,8 +41,9 @@
       "duplicate":"Duplicate",
       "search":"Search Robots...",
       "notifications": {
-        "delete_warning": "Cannot delete robot as it has associated runs",
-        "delete_success": "Robot deleted successfully"
+        "delete_warning": "The robot has associated runs. First delete runs to delete the robot",
+        "delete_success": "Robot deleted successfully",
+        "auth_success": "Robot successfully authenticated"
       }
     },
     "mainmenu":{
@@ -61,6 +63,7 @@
       "delete":"Delete",
       "settings":"Settings",
       "search":"Search Runs...",
+      "sort_tooltip": "Click to sort",
       "notifications": {
         "no_runs": "No runs found. Please try again.",
         "delete_success": "Run deleted successfully"
@@ -206,7 +209,8 @@
         "confirm_text_fields": "Please confirm all text fields",
         "unable_create_settings": "Unable to create list settings. Make sure you have defined a field for the list.",
         "capture_text_discarded": "Capture Text Discarded",
-        "capture_list_discarded": "Capture List Discarded"
+        "capture_list_discarded": "Capture List Discarded",
+        "label_required": "Label cannot be empty"
       }
     },
     "save_recording": {
@@ -459,6 +463,7 @@
         "log": "Log"
       },
       "empty_output": "The output is empty.",
+      "loading": "Run in progress. Extracted data will appear here once run completes.",
       "captured_data": {
         "title": "Captured Data",
         "download_json": "Download as JSON",

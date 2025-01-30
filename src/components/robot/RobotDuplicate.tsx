@@ -5,7 +5,6 @@ import { modalStyle } from "../recorder/AddWhereCondModal";
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { duplicateRecording, getStoredRecording } from '../../api/storage';
 import { WhereWhatPair } from 'maxun-core';
-import { getUserById } from "../../api/auth";
 import { useTranslation } from 'react-i18next';
 
 interface RobotMeta {

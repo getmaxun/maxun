@@ -1,6 +1,6 @@
 {
   "name": "maxun-core",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "Core package for Maxun, responsible for data extraction",
   "main": "build/index.js",
   "typings": "build/index.d.ts",

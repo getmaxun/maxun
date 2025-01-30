@@ -119,12 +119,13 @@ router.get("/logout", async (req, res) => {
 router.get(
   "/current-user",
   requireSignIn,
-  async (req: AuthenticatedRequest, res) => {
+  async (req: Request, res) => {
+    const authenticatedReq = req as AuthenticatedRequest;
     try {
-      if (!req.user) {
+      if (!authenticatedReq.user) {
         return res.status(401).json({ ok: false, error: "Unauthorized" });
       }
-      const user = await User.findByPk(req.user.id, {
+      const user = await User.findByPk(authenticatedReq.user.id, {
         attributes: { exclude: ["password"] },
       });
       if (!user) {
@@ -147,7 +148,7 @@ router.get(
 router.get(
   "/user/:id",
   requireSignIn,
-  async (req: AuthenticatedRequest, res) => {
+  async (req: Request, res) => {
     try {
       const { id } = req.params;
       if (!id) {
@@ -176,12 +177,13 @@ router.get(
 router.post(
   "/generate-api-key",
   requireSignIn,
-  async (req: AuthenticatedRequest, res) => {
+  async (req: Request, res) => {
+    const authenticatedReq = req as AuthenticatedRequest;
     try {
-      if (!req.user) {
+      if (!authenticatedReq.user) {
         return res.status(401).json({ ok: false, error: "Unauthorized" });
       }
-      const user = await User.findByPk(req.user.id, {
+      const user = await User.findByPk(authenticatedReq.user.id, {
         attributes: { exclude: ["password"] },
       });
 
@@ -216,13 +218,14 @@ router.post(
 router.get(
   "/api-key",
   requireSignIn,
-  async (req: AuthenticatedRequest, res) => {
+  async (req: Request, res) => {
+    const authenticatedReq = req as AuthenticatedRequest;
     try {
-      if (!req.user) {
+      if (!authenticatedReq.user) {
         return res.status(401).json({ ok: false, error: "Unauthorized" });
       }
 
-      const user = await User.findByPk(req.user.id, {
+      const user = await User.findByPk(authenticatedReq.user.id, {
         raw: true,
         attributes: ["api_key"],
       });
@@ -244,13 +247,14 @@ router.get(
 router.delete(
   "/delete-api-key",
   requireSignIn,
-  async (req: AuthenticatedRequest, res) => {
-    if (!req.user) {
+  async (req: Request, res) => {
+    const authenticatedReq = req as AuthenticatedRequest;
+    if (!authenticatedReq.user) {
       return res.status(401).send({ error: "Unauthorized" });
     }
 
     try {
-      const user = await User.findByPk(req.user.id, { raw: true });
+      const user = await User.findByPk(authenticatedReq.user.id, { raw: true });
 
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -260,7 +264,7 @@ router.delete(
         return res.status(404).json({ message: "API Key not found" });
       }
 
-      await User.update({ api_key: null }, { where: { id: req.user.id } });
+      await User.update({ api_key: null }, { where: { id: authenticatedReq.user.id } });
 
       capture("maxun-oss-api-key-deleted", {
         user_id: user.id,
@@ -306,7 +310,8 @@ router.get("/google", (req, res) => {
 router.get(
   "/google/callback",
   requireSignIn,
-  async (req: AuthenticatedRequest, res) => {
+  async (req: Request, res) => {
+    const authenticatedReq = req as AuthenticatedRequest;
     const { code, state } = req.query;
     try {
       if (!state) {
@@ -332,12 +337,12 @@ router.get(
         return res.status(400).json({ message: "Email not found" });
       }
 
-      if (!req.user) {
+      if (!authenticatedReq.user) {
         return res.status(401).send({ error: "Unauthorized" });
       }
 
       // Get the currently authenticated user (from `requireSignIn`)
-      let user = await User.findOne({ where: { id: req.user.id } });
+      let user = await User.findOne({ where: { id: authenticatedReq.user.id } });
 
       if (!user) {
         return res.status(400).json({ message: "User not found" });
@@ -392,11 +397,19 @@ router.get(
         httpOnly: false,
         maxAge: 60000,
       }); // 1-minute expiration
-      res.cookie("robot_auth_message", "Robot successfully authenticated", {
+      // res.cookie("robot_auth_message", "Robot successfully authenticated", {
+      //   httpOnly: false,
+      //   maxAge: 60000,
+      // });
+      res.cookie('robot_auth_robotId', robotId, {
         httpOnly: false,
         maxAge: 60000,
       });
-      res.redirect(`${process.env.PUBLIC_URL}/robots/${robotId}/integrate` as string || `http://localhost:5173/robots/${robotId}/integrate`);
+
+      const baseUrl = process.env.PUBLIC_URL || "http://localhost:5173";
+      const redirectUrl = `${baseUrl}/robots/`;
+
+      res.redirect(redirectUrl);
     } catch (error: any) {
       res.status(500).json({ message: `Google OAuth error: ${error.message}` });
     }
@@ -407,12 +420,13 @@ router.get(
 router.post(
   "/gsheets/data",
   requireSignIn,
-  async (req: AuthenticatedRequest, res) => {
+  async (req: Request, res) => {
+    const authenticatedReq = req as AuthenticatedRequest;
     const { spreadsheetId, robotId } = req.body;
-    if (!req.user) {
+    if (!authenticatedReq.user) {
       return res.status(401).send({ error: "Unauthorized" });
     }
-    const user = await User.findByPk(req.user.id, { raw: true });
+    const user = await User.findByPk(authenticatedReq.user.id, { raw: true });
 
     if (!user) {
       return res.status(400).json({ message: "User not found" });
@@ -524,13 +538,14 @@ router.post("/gsheets/update", requireSignIn, async (req, res) => {
 router.post(
   "/gsheets/remove",
   requireSignIn,
-  async (req: AuthenticatedRequest, res) => {
+  async (req: Request, res) => {
+    const authenticatedReq = req as AuthenticatedRequest;
     const { robotId } = req.body;
     if (!robotId) {
       return res.status(400).json({ message: "Robot ID is required" });
     }
 
-    if (!req.user) {
+    if (!authenticatedReq.user) {
       return res.status(401).send({ error: "Unauthorized" });
     }
 
@@ -552,7 +567,7 @@ router.post(
       });
 
       capture("maxun-oss-google-sheet-integration-removed", {
-        user_id: req.user.id,
+        user_id: authenticatedReq.user.id,
         robot_id: robotId,
         deleted_at: new Date().toISOString(),
       });

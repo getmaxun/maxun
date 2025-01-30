@@ -1,15 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import Box from "@mui/material/Box";
 import { Pair } from "./Pair";
 import { WhereWhatPair, WorkflowFile } from "maxun-core";
 import { useSocketStore } from "../../context/socket";
-import { Add } from "@mui/icons-material";
 import { Socket } from "socket.io-client";
 import { AddButton } from "../ui/buttons/AddButton";
 import { AddPair } from "../../api/workflow";
 import { GenericModal } from "../ui/GenericModal";
 import { PairEditForm } from "./PairEditForm";
-import { Fab, Tooltip, Typography } from "@mui/material";
+import { Tooltip } from "@mui/material";
 
 interface LeftSidePanelContentProps {
   workflow: WorkflowFile;

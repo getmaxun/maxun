@@ -32,6 +32,7 @@
         "new": "Roboter erstellen",
         "modal": {
             "title": "Geben Sie die URL ein",
+            "login_title": "Erfordert diese Seite eine Anmeldung?",
             "label": "URL",
             "button": "Aufnahme starten"
         },
@@ -39,8 +40,9 @@
         "delete": "Löschen",
         "duplicate": "Duplizieren",
         "notifications": {
-            "delete_warning": "Roboter kann nicht gelöscht werden, da zugehörige Ausführungen vorhanden sind",
-            "delete_success": "Roboter erfolgreich gelöscht"
+            "delete_warning": "Der Roboter hat zugehörige Ausführungen. Löschen Sie zuerst die Ausführungen, um den Roboter zu löschen",
+            "delete_success": "Roboter erfolgreich gelöscht",
+            "auth_success": "Roboter erfolgreich authentifiziert"
         }
     },
     "mainmenu": {
@@ -60,6 +62,7 @@
         "delete": "Löschen",
         "settings": "Einstellungen",
         "search": "Ausführungen suchen...",
+        "sort_tooltip": "Zum Sortieren klicken",
         "notifications": {
             "no_runs": "Keine Ausführungen gefunden. Bitte versuchen Sie es erneut.",
             "delete_success": "Ausführung erfolgreich gelöscht"
@@ -204,7 +207,8 @@
             "confirm_text_fields": "Bitte bestätigen Sie alle Textfelder",
             "unable_create_settings": "Listeneinstellungen können nicht erstellt werden. Stellen Sie sicher, dass Sie ein Feld für die Liste definiert haben.",
             "capture_text_discarded": "Texterfassung verworfen",
-            "capture_list_discarded": "Listenerfassung verworfen"
+            "capture_list_discarded": "Listenerfassung verworfen",
+            "label_required": "Beschriftung darf nicht leer sein"
         }
     },
     "save_recording": {
@@ -448,6 +452,7 @@
             "log": "Protokoll"
         },
         "empty_output": "Die Ausgabe ist leer.",
+        "loading": "Ausführung läuft. Extrahierte Daten werden nach Abschluss des Durchlaufs hier angezeigt.",
         "captured_data": {
             "title": "Erfasste Daten",
             "download_json": "Als JSON herunterladen",
