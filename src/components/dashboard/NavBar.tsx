@@ -362,7 +362,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                     <MenuItem onClick={() => {
                       window.open('https://github.com/getmaxun/maxun', '_blank');
                     }}>
-                      <DiscordIcon sx={{ marginRight: '5px' }} /> GitHub
+                      <GitHub sx={{ marginRight: '5px' }} /> GitHub
                     </MenuItem>
                     <MenuItem onClick={() => {
                       window.open('https://discord.gg/5GbPjBUkws', '_blank');
