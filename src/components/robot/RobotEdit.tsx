@@ -7,6 +7,7 @@ import { modalStyle } from "../recorder/AddWhereCondModal";
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { getStoredRecording, updateRecording } from '../../api/storage';
 import { WhereWhatPair } from 'maxun-core';
+import { useNavigate } from 'react-router-dom';
 
 interface RobotMeta {
     name: string;
@@ -75,9 +76,8 @@ interface GroupedCredentials {
 
 export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettings }: RobotSettingsProps) => {
     const { t } = useTranslation();
-    const [robot, setRobot] = useState<RobotSettings | null>(null);
     const [credentials, setCredentials] = useState<Credentials>({});
-    const { recordingId, notify } = useGlobalInfoStore();
+    const { recordingId, notify, robot, setRobot } = useGlobalInfoStore();
     const [credentialGroups, setCredentialGroups] = useState<GroupedCredentials>({
         passwords: [],
         emails: [],
@@ -85,6 +85,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
         others: []
     });
     const [showPasswords, setShowPasswords] = useState<CredentialVisibility>({});
+    const navigate = useNavigate();
 
     const isEmailPattern = (value: string): boolean => {
         return value.includes('@');
@@ -370,9 +371,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                 handleStart(robot);
                 handleClose();
 
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
+                navigate('/robots');
             } else {
                 notify('error', t('robot_edit.notifications.update_failed'));
             }
