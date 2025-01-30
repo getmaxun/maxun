@@ -268,7 +268,7 @@ export const BrowserWindow = () => {
                         cleanedSelector = cleanedSelector.replace(/:nth-child\(\d+\)/g, '');
                     }
 
-                    setListSelector(highlighterData.selector);
+                    setListSelector(cleanedSelector);
                     notify(`info`, t('browser_window.attribute_modal.notifications.list_select_success'));
                     setCurrentListId(Date.now());
                     setFields({});
