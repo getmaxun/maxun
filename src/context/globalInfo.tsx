@@ -1,6 +1,44 @@
 import React, { createContext, useContext, useState } from "react";
 import { AlertSnackbarProps } from "../components/ui/AlertSnackbar";
+import { WhereWhatPair } from "maxun-core";
 
+interface RobotMeta {
+    name: string;
+    id: string;
+    createdAt: string;
+    pairs: number;
+    updatedAt: string;
+    params: any[];
+}
+
+interface RobotWorkflow {
+    workflow: WhereWhatPair[];
+}
+
+interface ScheduleConfig {
+    runEvery: number;
+    runEveryUnit: 'MINUTES' | 'HOURS' | 'DAYS' | 'WEEKS' | 'MONTHS';
+    startFrom: 'SUNDAY' | 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY';
+    atTimeStart?: string;
+    atTimeEnd?: string;
+    timezone: string;
+    lastRunAt?: Date;
+    nextRunAt?: Date;
+    cronExpression?: string;
+}
+
+export interface RobotSettings {
+    id: string;
+    userId?: number;
+    recording_meta: RobotMeta;
+    recording: RobotWorkflow;
+    google_sheet_email?: string | null;
+    google_sheet_name?: string | null;
+    google_sheet_id?: string | null;
+    google_access_token?: string | null;
+    google_refresh_token?: string | null;
+    schedule?: ScheduleConfig | null;
+}
 
 interface GlobalInfo {
   browserId: string | null;
@@ -12,6 +50,8 @@ interface GlobalInfo {
   closeNotify: () => void;
   isLogin: boolean;
   setIsLogin: (isLogin: boolean) => void;
+  robot: RobotSettings | null;
+  setRobot: (robot: RobotSettings | null | ((prev: RobotSettings | null) => RobotSettings | null)) => void;
   recordings: string[];
   setRecordings: (recordings: string[]) => void;
   rerenderRuns: boolean;
@@ -50,6 +90,7 @@ class GlobalInfoStore implements Partial<GlobalInfo> {
     isOpen: false,
   };
   recordingId = null;
+  robot = null;
   recordings: string[] = [];
   rerenderRuns = false;
   recordingName = '';
@@ -83,6 +124,7 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
   const [recordingUrl, setRecordingUrl] = useState<string>(globalInfoStore.recordingUrl);
   const [currentWorkflowActionsState, setCurrentWorkflowActionsState] = useState(globalInfoStore.currentWorkflowActionsState);
   const [shouldResetInterpretationLog, setShouldResetInterpretationLog] = useState<boolean>(globalInfoStore.shouldResetInterpretationLog);
+  const [robot, setRobot] = useState<RobotSettings | null>(null);
 
   const notify = (severity: 'error' | 'warning' | 'info' | 'success', message: string) => {
     setNotification({ severity, message, isOpen: true });
@@ -117,6 +159,8 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
         notification,
         notify,
         closeNotify,
+        robot,
+        setRobot,
         recordings,
         setRecordings,
         rerenderRuns,
