@@ -221,7 +221,7 @@ export const NavBar: React.FC<NavBarProps> = ({
               {!isRecording ? (
                 <>
                   <Button variant="outlined" onClick={handleUpdateOpen} sx={{
-                    marginRight: '40px',
+                    marginRight: '25px',
                     color: "#00000099",
                     border: "#00000099 1px solid",
                     '&:hover': { color: '#ff00c3', border: '#ff00c3 1px solid' }
