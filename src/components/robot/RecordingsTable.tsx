@@ -148,7 +148,6 @@ export const RecordingsTable = ({
   const [rows, setRows] = React.useState<Data[]>([]);
   const [isModalOpen, setModalOpen] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState('');
-  const [isLoading, setIsLoading] = React.useState(true);
 
   const columns = useMemo(() => [
     { id: 'interpret', label: t('recordingtable.run'), minWidth: 80 },
@@ -202,7 +201,6 @@ export const RecordingsTable = ({
   };
 
   const fetchRecordings = useCallback(async () => {
-    setIsLoading(true);
     try {
       const recordings = await getStoredRecordings();
       if (recordings) {
@@ -222,15 +220,13 @@ export const RecordingsTable = ({
         })
         .filter(Boolean) 
         .sort((a, b) => b.parsedDate.getTime() - a.parsedDate.getTime());
-
+  
         setRecordings(parsedRows.map((recording) => recording.name));
         setRows(parsedRows);
       }
     } catch (error) {
       console.error('Error fetching recordings:', error);
       notify('error', t('recordingtable.notifications.fetch_error'));
-    } finally {
-      setIsLoading(false);
     }
   }, [setRecordings, notify, t]);
 
@@ -359,39 +355,32 @@ export const RecordingsTable = ({
           </IconButton>
         </Box>
       </Box>
-      {isLoading ? (
-        <Box display="flex" justifyContent="center" alignItems="center" height="50%">
-          <CircularProgress />
-        </Box>
-      ) : (
-        <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden', marginTop: '15px' }}>
-          <Table stickyHeader aria-label="sticky table">
-            <TableHead>
-              <TableRow>
-                {columns.map((column) => (
-                  <MemoizedTableCell
-                    key={column.id}
-                    // align={column.align}
-                    style={{ minWidth: column.minWidth }}
-                  >
-                    {column.label}
-                  </MemoizedTableCell>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {visibleRows.map((row) => (
-                <TableRowMemoized
-                  key={row.id}
-                  row={row}
-                  columns={columns}
-                  handlers={handlers}
-                />
+      <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden', marginTop: '15px' }}>
+        <Table stickyHeader aria-label="sticky table">
+          <TableHead>
+            <TableRow>
+              {columns.map((column) => (
+                <MemoizedTableCell
+                  key={column.id}
+                  style={{ minWidth: column.minWidth }}
+                >
+                  {column.label}
+                </MemoizedTableCell>
               ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {visibleRows.map((row) => (
+              <TableRowMemoized
+                key={row.id}
+                row={row}
+                columns={columns}
+                handlers={handlers}
+              />
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
       <TablePagination
         rowsPerPageOptions={[10, 25, 50, 100]}
