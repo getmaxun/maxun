@@ -24,6 +24,7 @@ import {
   Clear,
   YouTube,
   X,
+  GitHub,
   Update,
   Close,
   Language,
@@ -353,10 +354,19 @@ export const NavBar: React.FC<NavBarProps> = ({
                     <MenuItem onClick={() => { handleMenuClose(); logout(); }}>
                       <Logout sx={{ marginRight: '5px' }} /> {t('navbar.menu_items.logout')}
                     </MenuItem>
+                    <MenuItem onClick={handleLangMenuOpen}>
+                      <Language sx={{ marginRight: '5px' }} /> {t('navbar.menu_items.language')}
+                    </MenuItem>
+                    <hr />
                     <MenuItem onClick={() => {
                       window.open('https://docs.maxun.dev', '_blank');
                     }}>
                       <Description sx={{ marginRight: '5px' }} /> Docs
+                    </MenuItem>
+                    <MenuItem onClick={() => {
+                      window.open('https://github.com/getmaxun/maxun', '_blank');
+                    }}>
+                      <GitHub sx={{ marginRight: '5px' }} /> GitHub
                     </MenuItem>
                     <MenuItem onClick={() => {
                       window.open('https://discord.gg/5GbPjBUkws', '_blank');
@@ -372,9 +382,6 @@ export const NavBar: React.FC<NavBarProps> = ({
                       window.open('https://x.com/maxun_io?ref=app', '_blank');
                     }}>
                       <X sx={{ marginRight: '5px' }} /> Twitter (X)
-                    </MenuItem>
-                    <MenuItem onClick={handleLangMenuOpen}>
-                      <Language sx={{ marginRight: '5px' }} /> {t('navbar.menu_items.language')}
                     </MenuItem>
                     <Menu
                       anchorEl={langAnchorEl}
