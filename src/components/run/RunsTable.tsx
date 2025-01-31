@@ -133,7 +133,6 @@ export const RunsTable: React.FC<RunsTableProps> = ({
 
   const [rows, setRows] = useState<Data[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
 
   const [paginationStates, setPaginationStates] = useState<PaginationState>({});
 
@@ -212,7 +211,6 @@ export const RunsTable: React.FC<RunsTableProps> = ({
 
   const fetchRuns = useCallback(async () => {
     try {
-      setIsLoading(true);
       const runs = await getStoredRuns();
       if (runs) {
         const parsedRows: Data[] = runs.map((run: any, index: number) => ({
@@ -225,8 +223,6 @@ export const RunsTable: React.FC<RunsTableProps> = ({
       }
     } catch (error) {
       notify('error', t('runstable.notifications.fetch_error'));
-    } finally {
-      setIsLoading(false);
     }
   }, [notify, t]);
 
@@ -363,14 +359,6 @@ export const RunsTable: React.FC<RunsTableProps> = ({
         ? <ArrowDownward fontSize="small" />
         : <UnfoldMore fontSize="small" />;
   }, [accordionSortConfigs]);
-
-  if (isLoading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" height="50vh">
-        <CircularProgress />
-      </Box>
-    );
-  }
 
   return (
     <React.Fragment>
