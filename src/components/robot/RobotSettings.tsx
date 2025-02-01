@@ -55,7 +55,8 @@ interface RobotSettingsProps {
 export const RobotSettingsModal = ({ isOpen, handleStart, handleClose, initialSettings }: RobotSettingsProps) => {
     const { t } = useTranslation();
     const [userEmail, setUserEmail] = useState<string | null>(null);
-    const { recordingId, notify, robot, setRobot } = useGlobalInfoStore();
+    const [robot, setRobot] = useState<RobotSettings | null>(null);
+    const { recordingId, notify } = useGlobalInfoStore();
 
     useEffect(() => {
         if (isOpen) {
