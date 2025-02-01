@@ -485,7 +485,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                 onClose={handleMenuClose}
                 anchorOrigin={{
                   vertical: "bottom",
-                  horizontal: "right",
+                  horizontal: "center",
                 }}
                 transformOrigin={{
                   vertical: "top",
