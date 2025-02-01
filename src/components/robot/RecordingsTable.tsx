@@ -161,8 +161,6 @@ export const RecordingsTable = ({
 
   const {
     notify,
-    robot,
-    recordings,
     setRecordings,
     browserId,
     setBrowserId,
@@ -171,6 +169,8 @@ export const RecordingsTable = ({
     setRecordingUrl,
     isLogin,
     setIsLogin,
+    rerenderRobots,
+    setRerenderRobots,
     recordingName,
     setRecordingName,
     recordingId,
@@ -262,10 +262,18 @@ export const RecordingsTable = ({
   }
 
   useEffect(() => {
-    if (recordings.length >= 0) {
+    if (rows.length === 0) {
       fetchRecordings();
     }
-  }, [recordings, fetchRecordings]);
+  }, [fetchRecordings]);
+
+  useEffect(() => {
+    if (rerenderRobots) {
+      fetchRecordings().then(() => {
+        setRerenderRobots(false);
+      });
+    }
+  }, [rerenderRobots, fetchRecordings, setRerenderRobots]);
 
   function useDebounce<T>(value: T, delay: number): T {
     const [debouncedValue, setDebouncedValue] = React.useState<T>(value);
