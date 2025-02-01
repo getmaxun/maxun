@@ -489,7 +489,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                 }}
                 transformOrigin={{
                   vertical: "top",
-                  horizontal: "right",
+                  horizontal: "center",
                 }}
               >
                 <MenuItem
