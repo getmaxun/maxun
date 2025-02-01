@@ -56,7 +56,8 @@ interface RobotSettingsProps {
 export const RobotDuplicationModal = ({ isOpen, handleStart, handleClose, initialSettings }: RobotSettingsProps) => {
     const { t } = useTranslation();
     const [targetUrl, setTargetUrl] = useState<string | undefined>('');
-    const { recordingId, notify, robot, setRobot, setRerenderRobots } = useGlobalInfoStore();
+    const [robot, setRobot] = useState<RobotSettings | null>(null);
+    const { recordingId, notify, setRerenderRobots } = useGlobalInfoStore();
 
     useEffect(() => {
         if (isOpen) {
