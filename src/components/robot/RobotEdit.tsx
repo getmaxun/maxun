@@ -77,7 +77,8 @@ interface GroupedCredentials {
 export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettings }: RobotSettingsProps) => {
     const { t } = useTranslation();
     const [credentials, setCredentials] = useState<Credentials>({});
-    const { recordingId, notify, robot, setRobot, setRerenderRobots } = useGlobalInfoStore();
+    const { recordingId, notify, setRerenderRobots } = useGlobalInfoStore();
+    const [robot, setRobot] = useState<RobotSettings | null>(null);
     const [credentialGroups, setCredentialGroups] = useState<GroupedCredentials>({
         passwords: [],
         emails: [],
