@@ -168,6 +168,8 @@ export const RecordingsTable = ({
     setRecordingUrl,
     isLogin,
     setIsLogin,
+    rerenderRobots,
+    setRerenderRobots,
     recordingName,
     setRecordingName,
     recordingId,
@@ -260,6 +262,14 @@ export const RecordingsTable = ({
       fetchRecordings();
     }
   }, [fetchRecordings]);
+
+  useEffect(() => {
+    if (rerenderRobots) {
+      fetchRecordings().then(() => {
+        setRerenderRobots(false);
+      });
+    }
+  }, [rerenderRobots, fetchRecordings, setRerenderRobots]);
 
   function useDebounce<T>(value: T, delay: number): T {
     const [debouncedValue, setDebouncedValue] = React.useState<T>(value);

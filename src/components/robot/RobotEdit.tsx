@@ -7,6 +7,7 @@ import { modalStyle } from "../recorder/AddWhereCondModal";
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { getStoredRecording, updateRecording } from '../../api/storage';
 import { WhereWhatPair } from 'maxun-core';
+import { useNavigate } from 'react-router-dom';
 
 interface RobotMeta {
     name: string;
@@ -75,9 +76,9 @@ interface GroupedCredentials {
 
 export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettings }: RobotSettingsProps) => {
     const { t } = useTranslation();
-    const [robot, setRobot] = useState<RobotSettings | null>(null);
     const [credentials, setCredentials] = useState<Credentials>({});
-    const { recordingId, notify } = useGlobalInfoStore();
+    const { recordingId, notify, setRerenderRobots } = useGlobalInfoStore();
+    const [robot, setRobot] = useState<RobotSettings | null>(null);
     const [credentialGroups, setCredentialGroups] = useState<GroupedCredentials>({
         passwords: [],
         emails: [],
@@ -366,13 +367,11 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
             const success = await updateRecording(robot.recording_meta.id, payload);
 
             if (success) {
+                setRerenderRobots(true);
+
                 notify('success', t('robot_edit.notifications.update_success'));
                 handleStart(robot);
                 handleClose();
-
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
             } else {
                 notify('error', t('robot_edit.notifications.update_failed'));
             }
