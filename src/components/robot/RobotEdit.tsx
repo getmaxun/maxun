@@ -77,7 +77,7 @@ interface GroupedCredentials {
 export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettings }: RobotSettingsProps) => {
     const { t } = useTranslation();
     const [credentials, setCredentials] = useState<Credentials>({});
-    const { recordingId, notify, robot, setRobot } = useGlobalInfoStore();
+    const { recordingId, notify, robot, setRobot, setRerenderRobots } = useGlobalInfoStore();
     const [credentialGroups, setCredentialGroups] = useState<GroupedCredentials>({
         passwords: [],
         emails: [],
@@ -85,7 +85,6 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
         others: []
     });
     const [showPasswords, setShowPasswords] = useState<CredentialVisibility>({});
-    const navigate = useNavigate();
 
     const isEmailPattern = (value: string): boolean => {
         return value.includes('@');
@@ -367,11 +366,11 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
             const success = await updateRecording(robot.recording_meta.id, payload);
 
             if (success) {
+                setRerenderRobots(true);
+
                 notify('success', t('robot_edit.notifications.update_success'));
                 handleStart(robot);
                 handleClose();
-
-                navigate('/robots');
             } else {
                 notify('error', t('robot_edit.notifications.update_failed'));
             }
