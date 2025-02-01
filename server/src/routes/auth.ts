@@ -63,16 +63,35 @@ router.post("/register", async (req, res) => {
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password)
-      return res.status(400).send("Email and password are required");
-    if (password.length < 6)
-      return res.status(400).send("Password must be at least 6 characters");
+    if (!email || !password) {
+      return res.status(400).json({
+        error: "VALIDATION_ERROR",
+        code: "login.validation.required_fields"
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        error: "VALIDATION_ERROR",
+        code: "login.validation.password_length"
+      });
+    }
 
     let user = await User.findOne({ raw: true, where: { email } });
-    if (!user) return res.status(400).send("User does not exist");
+    if (!user) {
+      return res.status(404).json({
+        error: "USER_NOT_FOUND",
+        code: "login.error.user_not_found"
+      });
+    }
 
     const match = await comparePassword(password, user.password);
-    if (!match) return res.status(400).send("Invalid email or password");
+    if (!match) {
+      return res.status(401).json({
+        error: "INVALID_CREDENTIALS",
+        code: "login.error.invalid_credentials"
+      });
+    }
 
     const token = jwt.sign({ id: user?.id }, process.env.JWT_SECRET as string);
 
@@ -90,8 +109,11 @@ router.post("/login", async (req, res) => {
     });
     res.json(user);
   } catch (error: any) {
-    res.status(400).send(`Could not login user - ${error.message}`);
-    console.log(`Could not login user - ${error}`);
+    console.error(`Login error: ${error.message}`);
+    res.status(500).json({
+      error: "SERVER_ERROR",
+      code: "login.error.server_error"
+    });
   }
 });
 
