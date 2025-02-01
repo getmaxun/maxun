@@ -1313,15 +1313,28 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
           const ownerDocument = current.ownerDocument;
           const frameElement = ownerDocument?.defaultView?.frameElement as HTMLIFrameElement;
           if (frameElement) {
-            path.unshift({
-              type: 'iframe',
-              frame: frameElement,
-              document: ownerDocument,
-              element: current
-            });
-            current = frameElement;
-            depth++;
-            continue;
+            try {
+              // Check if we can access the iframe's origin
+              const iframeOrigin = new URL(frameElement.src).origin;
+              const currentOrigin = window.location.origin;
+              if (iframeOrigin !== currentOrigin) {
+                console.warn(`Skipping cross-origin iframe: ${iframeOrigin}`);
+                break;
+              }
+          
+                path.unshift({
+                  type: 'iframe',
+                  frame: frameElement,
+                  document: ownerDocument,
+                  element: current
+                });
+                current = frameElement;
+                depth++;
+                continue;
+            } catch (error) {
+              console.warn('Cannot access iframe origin:', error);
+              break;
+            }
           }
       
           break;
