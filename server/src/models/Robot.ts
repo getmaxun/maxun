@@ -25,6 +25,10 @@ interface RobotAttributes {
   google_sheet_id?: string | null;
   google_access_token?: string | null;
   google_refresh_token?: string | null;
+  airtable_base_id?: string | null; // New field for Airtable base ID
+  airtable_table_name?: string | null; // New field for Airtable table name
+  airtable_access_token?: string | null; // New field for Airtable access token
+  airtable_refresh_token?: string | null; // New field for Airtable refresh token
   schedule?: ScheduleConfig | null;
 }
 
@@ -49,10 +53,14 @@ class Robot extends Model<RobotAttributes, RobotCreationAttributes> implements R
   public recording_meta!: RobotMeta;
   public recording!: RobotWorkflow;
   public google_sheet_email!: string | null;
-  public google_sheet_name?: string | null;
-  public google_sheet_id?: string | null;
+  public google_sheet_name!: string | null;
+  public google_sheet_id!: string | null;
   public google_access_token!: string | null;
   public google_refresh_token!: string | null;
+  public airtable_base_id!: string | null; // New field for Airtable base ID
+  public airtable_table_name!: string | null; // New field for Airtable table name
+  public airtable_access_token!: string | null; // New field for Airtable access token
+  public airtable_refresh_token!: string | null; // New field for Airtable refresh token
   public schedule!: ScheduleConfig | null;
 }
 
@@ -93,6 +101,22 @@ Robot.init(
     },
     google_refresh_token: {
       type: DataTypes.STRING,
+      allowNull: true,
+    },
+    airtable_base_id: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    airtable_table_name: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    airtable_access_token: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    airtable_refresh_token: {
+      type: DataTypes.TEXT,
       allowNull: true,
     },
     schedule: {
