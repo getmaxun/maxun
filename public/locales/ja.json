@@ -8,7 +8,16 @@
         "register_prompt": "アカウントをお持ちでないですか？",
         "register_link": "登録する",
         "welcome_notification": "Maxunへようこそ！",
-        "error_notification": "ユーザーが存在しません。"
+        "validation": {
+            "required_fields": "メールアドレスとパスワードは必須です",
+            "password_length": "パスワードは6文字以上である必要があります"
+        },
+        "error": {
+            "user_not_found": "ユーザーが存在しません",
+            "invalid_credentials": "メールアドレスまたはパスワードが無効です",
+            "server_error": "ログインに失敗しました。後でもう一度お試しください",
+            "generic": "エラーが発生しました。もう一度お試しください"
+        }
   },
   "register": {
         "title": "アカウントを登録する",

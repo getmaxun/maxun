@@ -8,7 +8,16 @@
         "register_prompt": "Noch keinen Account?",
         "register_link": "Registrieren",
         "welcome_notification": "Willkommen bei Maxun!",
-        "error_notification": "Benutzer existiert nicht."
+        "validation": {
+            "required_fields": "E-Mail und Passwort sind erforderlich",
+            "password_length": "Das Passwort muss mindestens 6 Zeichen lang sein"
+            },
+        "error": {
+            "user_not_found": "Benutzer existiert nicht",
+            "invalid_credentials": "Ungültige E-Mail oder Passwort",
+            "server_error": "Anmeldung fehlgeschlagen. Bitte versuchen Sie es später erneut",
+            "generic": "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut"
+        }
     },
     "register": {
         "title": "Konto registrieren",
