@@ -56,6 +56,8 @@ interface GlobalInfo {
   setRecordings: (recordings: string[]) => void;
   rerenderRuns: boolean;
   setRerenderRuns: (rerenderRuns: boolean) => void;
+  rerenderRobots: boolean;
+  setRerenderRobots: (rerenderRuns: boolean) => void;
   recordingLength: number;
   setRecordingLength: (recordingLength: number) => void;
   recordingId: string | null;
@@ -93,6 +95,7 @@ class GlobalInfoStore implements Partial<GlobalInfo> {
   robot = null;
   recordings: string[] = [];
   rerenderRuns = false;
+  rerenderRobots = false;
   recordingName = '';
   initialUrl = 'https://';
   recordingUrl = 'https://';
@@ -116,6 +119,7 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
   const [notification, setNotification] = useState<AlertSnackbarProps>(globalInfoStore.notification);
   const [recordings, setRecordings] = useState<string[]>(globalInfoStore.recordings);
   const [rerenderRuns, setRerenderRuns] = useState<boolean>(globalInfoStore.rerenderRuns);
+  const [rerenderRobots, setRerenderRobots] = useState<boolean>(globalInfoStore.rerenderRobots);
   const [recordingLength, setRecordingLength] = useState<number>(globalInfoStore.recordingLength);
   const [recordingId, setRecordingId] = useState<string | null>(globalInfoStore.recordingId);
   const [recordingName, setRecordingName] = useState<string>(globalInfoStore.recordingName);
@@ -165,6 +169,8 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
         setRecordings,
         rerenderRuns,
         setRerenderRuns,
+        rerenderRobots,
+        setRerenderRobots,
         recordingLength,
         setRecordingLength,
         recordingId,
