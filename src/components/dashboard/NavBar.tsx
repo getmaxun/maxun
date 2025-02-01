@@ -347,7 +347,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                     }}
                     transformOrigin={{
                       vertical: 'top',
-                      horizontal: 'right',
+                      horizontal: 'center',
                     }}
                     PaperProps={{ sx: { width: '180px' } }}
                   >
