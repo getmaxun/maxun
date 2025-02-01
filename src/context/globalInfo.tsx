@@ -50,8 +50,6 @@ interface GlobalInfo {
   closeNotify: () => void;
   isLogin: boolean;
   setIsLogin: (isLogin: boolean) => void;
-  robot: RobotSettings | null;
-  setRobot: (robot: RobotSettings | null | ((prev: RobotSettings | null) => RobotSettings | null)) => void;
   recordings: string[];
   setRecordings: (recordings: string[]) => void;
   rerenderRuns: boolean;
@@ -92,7 +90,6 @@ class GlobalInfoStore implements Partial<GlobalInfo> {
     isOpen: false,
   };
   recordingId = null;
-  robot = null;
   recordings: string[] = [];
   rerenderRuns = false;
   rerenderRobots = false;
@@ -128,7 +125,6 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
   const [recordingUrl, setRecordingUrl] = useState<string>(globalInfoStore.recordingUrl);
   const [currentWorkflowActionsState, setCurrentWorkflowActionsState] = useState(globalInfoStore.currentWorkflowActionsState);
   const [shouldResetInterpretationLog, setShouldResetInterpretationLog] = useState<boolean>(globalInfoStore.shouldResetInterpretationLog);
-  const [robot, setRobot] = useState<RobotSettings | null>(null);
 
   const notify = (severity: 'error' | 'warning' | 'info' | 'success', message: string) => {
     setNotification({ severity, message, isOpen: true });
@@ -163,8 +159,6 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
         notification,
         notify,
         closeNotify,
-        robot,
-        setRobot,
         recordings,
         setRecordings,
         rerenderRuns,
