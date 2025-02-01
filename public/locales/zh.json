@@ -8,7 +8,7 @@
     "register_prompt": "还没有账号？",
     "register_link": "注册",
     "welcome_notification": "欢迎使用 Maxun！",
-    "error_notification": "登录失败。请重试。"
+    "error_notification": "用户不存在。"
   },
   "register": {
     "title": "注册账号",

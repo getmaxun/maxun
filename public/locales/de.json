@@ -8,7 +8,7 @@
         "register_prompt": "Noch keinen Account?",
         "register_link": "Registrieren",
         "welcome_notification": "Willkommen bei Maxun!",
-        "error_notification": "Anmeldung fehlgeschlagen. Bitte versuchen Sie es erneut."
+        "error_notification": "Benutzer existiert nicht."
     },
     "register": {
         "title": "Konto registrieren",

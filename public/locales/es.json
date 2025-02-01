@@ -8,7 +8,7 @@
     "register_prompt": "¿No tienes una cuenta?",
     "register_link": "Registrarse",
     "welcome_notification": "¡Bienvenido a Maxun!",
-    "error_notification": "Error al iniciar sesión. Por favor, inténtalo de nuevo."
+    "error_notification": "El usuario no existe."
   },
   "register": {
     "title": "Crear cuenta",

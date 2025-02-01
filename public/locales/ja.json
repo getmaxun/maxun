@@ -8,7 +8,7 @@
         "register_prompt": "アカウントをお持ちでないですか？",
         "register_link": "登録する",
         "welcome_notification": "Maxunへようこそ！",
-        "error_notification": "ログインに失敗しました。もう一度お試しください。"
+        "error_notification": "ユーザーが存在しません。"
   },
   "register": {
         "title": "アカウントを登録する",
