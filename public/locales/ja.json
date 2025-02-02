@@ -28,7 +28,16 @@
         "register_prompt": "既にアカウントをお持ちですか？",
         "login_link": "ログイン",
         "welcome_notification": "Maxunへようこそ！",
-        "error_notification": "登録に失敗しました。もう一度お試しください。"
+        "validation": {
+            "email_required": "メールアドレスは必須です",
+            "password_requirements": "パスワードは6文字以上である必要があります"
+        },
+        "error": {
+            "user_exists": "このメールアドレスは既に登録されています",
+            "creation_failed": "アカウントを作成できませんでした",
+            "server_error": "サーバーエラーが発生しました",
+            "generic": "登録に失敗しました。もう一度お試しください"
+        }
   },
   "recordingtable": {
         "run": "実行",

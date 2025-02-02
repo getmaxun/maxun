@@ -28,7 +28,16 @@
     "register_prompt": "¿Ya tienes una cuenta?",
     "login_link": "Iniciar sesión",
     "welcome_notification": "¡Bienvenido a Maxun!",
-    "error_notification": "Error en el registro. Por favor, inténtalo de nuevo."
+    "validation": {
+      "email_required": "El correo electrónico es obligatorio",
+      "password_requirements": "La contraseña debe tener al menos 6 caracteres"
+    },
+    "error": {
+      "user_exists": "Ya existe un usuario con este correo electrónico",
+      "creation_failed": "No se pudo crear la cuenta",
+      "server_error": "Ocurrió un error en el servidor",
+      "generic": "Error en el registro. Por favor, inténtelo de nuevo"
+    }
   },
   "recordingtable": {
     "run": "Ejecutar",
