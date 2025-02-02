@@ -343,11 +343,11 @@ export const NavBar: React.FC<NavBarProps> = ({
                     onClose={handleMenuClose}
                     anchorOrigin={{
                       vertical: 'bottom',
-                      horizontal: 'right',
+                      horizontal: 'center',
                     }}
                     transformOrigin={{
                       vertical: 'top',
-                      horizontal: 'right',
+                      horizontal: 'center',
                     }}
                     PaperProps={{ sx: { width: '180px' } }}
                   >
@@ -389,11 +389,11 @@ export const NavBar: React.FC<NavBarProps> = ({
                       onClose={handleMenuClose}
                       anchorOrigin={{
                         vertical: "bottom",
-                        horizontal: "right",
+                        horizontal: "center",
                       }}
                       transformOrigin={{
                         vertical: "top",
-                        horizontal: "right",
+                        horizontal: "center",
                       }}
                     >
                       <MenuItem
@@ -485,11 +485,11 @@ export const NavBar: React.FC<NavBarProps> = ({
                 onClose={handleMenuClose}
                 anchorOrigin={{
                   vertical: "bottom",
-                  horizontal: "right",
+                  horizontal: "center",
                 }}
                 transformOrigin={{
                   vertical: "top",
-                  horizontal: "right",
+                  horizontal: "center",
                 }}
               >
                 <MenuItem
