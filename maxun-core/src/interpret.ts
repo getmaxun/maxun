@@ -637,7 +637,7 @@ export default class Interpreter extends EventEmitter {
         await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
         
         switch (config.pagination.type) {
-          case 'scrollDown':
+          case 'scrollDown': {
             await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
             await page.waitForTimeout(2000);
 
@@ -650,8 +650,9 @@ export default class Interpreter extends EventEmitter {
 
             previousHeight = currentHeight;
             break;
+          }
 
-          case 'scrollUp':
+          case 'scrollUp': {
             await page.evaluate(() => window.scrollTo(0, 0));
             await page.waitForTimeout(2000);
 
@@ -664,6 +665,7 @@ export default class Interpreter extends EventEmitter {
 
             previousHeight = currentTopHeight;
             break;
+          }
 
           case 'clickNext': {
             const currentUrl = page.url();
@@ -759,7 +761,7 @@ export default class Interpreter extends EventEmitter {
             break;
           }
 
-          case 'clickLoadMore':
+          case 'clickLoadMore': {
             while (true) {
               let checkButton = null;
               let workingSelector = null;
@@ -829,10 +831,12 @@ export default class Interpreter extends EventEmitter {
               }
             }
             break;
+          }
 
-          default:
+          default: {
             await scrapeCurrentPage();
             return allResults;
+          }
         }
 
         if (checkLimit()) break;
