@@ -759,55 +759,76 @@ export default class Interpreter extends EventEmitter {
             break;
           }
 
-          case 'clickLoadMore': {
+          case 'clickLoadMore':
             while (true) {
-              const { button, workingSelector } = await findWorkingButton(availableSelectors);
-              if (!button || !workingSelector) {
-                // Final retry for load more when no selectors work
-                const success = await retryOperation(async () => {
-                    await scrapeCurrentPage();
-                    return allResults.length > 0;
-                });
-                
-                if (!success) return allResults;
-                break;
+              let checkButton = null;
+              let workingSelector = null;
+
+              for (const selector of availableSelectors) {
+                try {
+                  checkButton = await page.waitForSelector(selector, { 
+                    state: 'attached',
+                    timeout: 30000
+                  });
+                  if (checkButton) {
+                    workingSelector = selector;
+                    debugLog('Found working selector:', selector);
+                    break;
+                  }
+                } catch (error) {
+                  debugLog(`Load More selector failed: ${selector}`);
+                }
               }
 
-              availableSelectors = availableSelectors.slice(
-                availableSelectors.indexOf(workingSelector)
-              );
+              if (!workingSelector) {
+                debugLog('No working Load More selector found');
+                const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
+                allResults = allResults.concat(finalResults);
+                return allResults;
+              }
 
-              const loadMoreSuccess = await retryOperation(async () => {
+              const loadMoreButton = await page.$(workingSelector);
+              if (!loadMoreButton) {
+                debugLog('Load More button not found');
+                const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
+                allResults = allResults.concat(finalResults);
+                return allResults;
+              }
+
+              const selectorIndex = availableSelectors.indexOf(workingSelector);
+              availableSelectors = availableSelectors.slice(selectorIndex);
+              
+              try {
                 try {
-                  await button.click().catch(() => button.dispatchEvent('click'));
-                  await page.waitForTimeout(1000);
-                  
-                  await page.evaluate(() => 
-                      window.scrollTo(0, document.body.scrollHeight)
-                  );
-                  await page.waitForTimeout(1000);
-
-                  const currentHeight = await page.evaluate(() => 
-                      document.body.scrollHeight
-                  );
-
-                  if (currentHeight === previousHeight) {
-                      await scrapeCurrentPage();
-                      return false;
-                  }
-                  previousHeight = currentHeight;
-                  
-                  return true;
+                  await loadMoreButton.click();
                 } catch (error) {
-                  await scrapeCurrentPage();
-                  return false;
+                  await loadMoreButton.dispatchEvent('click');
                 }
-              });
+              } catch (error) {
+                const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
+                allResults = allResults.concat(finalResults);
+                return allResults;
+              }
 
-              if (!loadMoreSuccess || checkLimit()) return allResults;
+              await page.waitForTimeout(2000);
+              await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+              await page.waitForTimeout(2000);
+
+              const currentHeight = await page.evaluate(() => document.body.scrollHeight);
+              if (currentHeight === previousHeight) {
+                debugLog('No more items loaded after Load More');
+                const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
+                allResults = allResults.concat(finalResults);
+                return allResults;
+              }
+              previousHeight = currentHeight;
+              
+              if (config.limit && allResults.length >= config.limit) {
+                allResults = allResults.slice(0, config.limit);
+                break;
+              }
             }
             break;
-          }
 
           default:
             await scrapeCurrentPage();
