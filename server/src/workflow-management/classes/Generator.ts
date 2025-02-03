@@ -429,28 +429,54 @@ export class WorkflowGenerator {
 
     if ((elementInfo?.tagName === 'INPUT' || elementInfo?.tagName === 'TEXTAREA') && selector) {
       // Calculate the exact position within the element
-      const positionAndCursor = await page.evaluate((selector) => {
-        const element = document.querySelector(selector);
-        if (!element) return null;
+      const positionAndCursor = await page.evaluate(
+        ({ selector, coords }) => {
+            const element = document.querySelector(selector);
+            if (!element) return null;
+            
+            const getCursorPosition = (inputElement: HTMLInputElement | HTMLTextAreaElement, clickCoords: Coordinates) => {
+                const rect = inputElement.getBoundingClientRect();
+                const clickX = clickCoords.x - rect.left;
+                
+                // Get the input's text content
+                const text = inputElement.value;
+                
+                // Create a temporary element to measure text
+                const measurer = document.createElement('span');
+                measurer.style.font = window.getComputedStyle(inputElement).font;
+                measurer.style.position = 'absolute';
+                measurer.style.whiteSpace = 'pre';
+                measurer.style.visibility = 'hidden';
+                document.body.appendChild(measurer);
+                
+                // Find the position where the click occurred
+                let position = 0;
+                for (let i = 0; i <= text.length; i++) {
+                    measurer.textContent = text.slice(0, i);
+                    const width = measurer.getBoundingClientRect().width;
+                    if (width >= clickX) {
+                        position = i;
+                        break;
+                    }
+                }
+                
+                document.body.removeChild(measurer);
+                return position;
+            };
     
-        // Get element position for the relative click coordinates
-        const rect = element.getBoundingClientRect();
-        
-        // Get cursor position index
-        let cursorIndex = 0;
-        if ('selectionStart' in element) {
-          // selectionStart gives us the exact index where the cursor is
-          cursorIndex = (element as HTMLInputElement | HTMLTextAreaElement).selectionStart || 0;
-        }
-        
-        return {
-          rect: {
-            x: rect.left,
-            y: rect.top
-          },
-          cursorIndex  
-        };
-      }, selector);
+            const rect = element.getBoundingClientRect();
+            const cursorIndex = getCursorPosition(element as HTMLInputElement | HTMLTextAreaElement, coords);
+            
+            return {
+                rect: {
+                    x: rect.left,
+                    y: rect.top
+                },
+                cursorIndex
+            };
+        },
+        { selector, coords: coordinates } 
+    );
 
       if (positionAndCursor) {
         const relativeX = coordinates.x - positionAndCursor.rect.x;
