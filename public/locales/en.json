@@ -14,7 +14,7 @@
       },
       "error": {
         "user_not_found": "User does not exist",
-        "invalid_credentials": "Invalid username or password",
+        "invalid_credentials": "Invalid email or password",
         "server_error": "Login failed. Please try again later",
         "generic": "An error occurred. Please try again"
       }
