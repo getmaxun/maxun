@@ -763,59 +763,69 @@ export default class Interpreter extends EventEmitter {
 
           case 'clickLoadMore': {
             while (true) {
-              let checkButton = null;
-              let workingSelector = null;
-
-              for (const selector of availableSelectors) {
+              // Find working button with retry mechanism, consistent with clickNext
+              const { button: loadMoreButton, workingSelector } = await findWorkingButton(availableSelectors);
+              
+              if (!workingSelector || !loadMoreButton) {
+                debugLog('No working Load More selector found after retries');
+                const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
+                allResults = allResults.concat(finalResults);
+                return allResults;
+              }
+          
+              // Update available selectors to start from the working one
+              availableSelectors = availableSelectors.slice(
+                availableSelectors.indexOf(workingSelector)
+              );
+          
+              // Implement retry mechanism for clicking the button
+              let retryCount = 0;
+              let clickSuccess = false;
+          
+              while (retryCount < MAX_RETRIES && !clickSuccess) {
                 try {
-                  checkButton = await page.waitForSelector(selector, { 
-                    state: 'attached',
-                    timeout: 30000
-                  });
-                  if (checkButton) {
-                    workingSelector = selector;
-                    debugLog('Found working selector:', selector);
-                    break;
+                  try {
+                    await loadMoreButton.click();
+                    clickSuccess = true;
+                  } catch (error) {
+                    debugLog(`Regular click failed on attempt ${retryCount + 1}. Trying DispatchEvent`);
+                    
+                    // If regular click fails, try dispatchEvent
+                    try {
+                      await loadMoreButton.dispatchEvent('click');
+                      clickSuccess = true;
+                    } catch (dispatchError) {
+                      debugLog(`DispatchEvent failed on attempt ${retryCount + 1}.`);
+                      throw dispatchError; // Propagate error to trigger retry
+                    }
+                  }
+          
+                  if (clickSuccess) {
+                    await page.waitForTimeout(1000);
                   }
                 } catch (error) {
-                  debugLog(`Load More selector failed: ${selector}`);
+                  debugLog(`Click attempt ${retryCount + 1} failed completely.`);
+                  retryCount++;
+                  
+                  if (retryCount < MAX_RETRIES) {
+                    debugLog(`Retrying click - attempt ${retryCount + 1} of ${MAX_RETRIES}`);
+                    await page.waitForTimeout(RETRY_DELAY);
+                  }
                 }
               }
-
-              if (!workingSelector) {
-                debugLog('No working Load More selector found');
+          
+              if (!clickSuccess) {
+                debugLog(`Load More clicking failed after ${MAX_RETRIES} attempts`);
                 const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
                 allResults = allResults.concat(finalResults);
                 return allResults;
               }
-
-              const loadMoreButton = await page.$(workingSelector);
-              if (!loadMoreButton) {
-                debugLog('Load More button not found');
-                const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
-                allResults = allResults.concat(finalResults);
-                return allResults;
-              }
-
-              const selectorIndex = availableSelectors.indexOf(workingSelector);
-              availableSelectors = availableSelectors.slice(selectorIndex);
-              
-              try {
-                try {
-                  await loadMoreButton.click();
-                } catch (error) {
-                  await loadMoreButton.dispatchEvent('click');
-                }
-              } catch (error) {
-                const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
-                allResults = allResults.concat(finalResults);
-                return allResults;
-              }
-
+          
+              // Wait for content to load and check scroll height
               await page.waitForTimeout(2000);
               await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
               await page.waitForTimeout(2000);
-
+          
               const currentHeight = await page.evaluate(() => document.body.scrollHeight);
               if (currentHeight === previousHeight) {
                 debugLog('No more items loaded after Load More');
