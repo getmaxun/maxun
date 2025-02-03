@@ -429,25 +429,38 @@ export class WorkflowGenerator {
 
     if ((elementInfo?.tagName === 'INPUT' || elementInfo?.tagName === 'TEXTAREA') && selector) {
       // Calculate the exact position within the element
-      const elementPos = await page.evaluate((selector) => {
+      const positionAndCursor = await page.evaluate((selector) => {
         const element = document.querySelector(selector);
         if (!element) return null;
+    
+        // Get element position for the relative click coordinates
         const rect = element.getBoundingClientRect();
+        
+        // Get cursor position index
+        let cursorIndex = 0;
+        if ('selectionStart' in element) {
+          // selectionStart gives us the exact index where the cursor is
+          cursorIndex = (element as HTMLInputElement | HTMLTextAreaElement).selectionStart || 0;
+        }
+        
         return {
+          rect: {
             x: rect.left,
             y: rect.top
+          },
+          cursorIndex  
         };
       }, selector);
 
-      if (elementPos) {
-        const relativeX = coordinates.x - elementPos.x;
-        const relativeY = coordinates.y - elementPos.y;
+      if (positionAndCursor) {
+        const relativeX = coordinates.x - positionAndCursor.rect.x;
+        const relativeY = coordinates.y - positionAndCursor.rect.y;
 
         const pair: WhereWhatPair = {
             where,
             what: [{
                 action: 'click',
-                args: [selector, { position: { x: relativeX, y: relativeY } }]
+                args: [selector, { position: { x: relativeX, y: relativeY } }, { cursorIndex: positionAndCursor.cursorIndex }],
             }]
         };
 
@@ -1027,24 +1040,24 @@ export class WorkflowGenerator {
    * @param workflow The workflow to be optimized.
    */
   private optimizeWorkflow = (workflow: WorkflowFile) => {
-
-    // replace a sequence of press actions by a single fill action
+    // Enhanced input state to include cursor position
     let input = {
       selector: '',
       value: '',
       type: '',
       actionCounter: 0,
+      cursorPosition: -1  // Track cursor position, -1 means end of text
     };
-
+  
     const pushTheOptimizedAction = (pair: WhereWhatPair, index: number) => {
       if (input.value.length === 1) {
-        // when only one press action is present, keep it and add a waitForLoadState action
+        // Single character - keep as is with waitForLoadState
         pair.what.splice(index + 1, 0, {
           action: 'waitForLoadState',
           args: ['networkidle'],
-        })
+        });
       } else {
-        // when more than one press action is present, add a type action
+        // Multiple characters - optimize to type action
         pair.what.splice(index - input.actionCounter, input.actionCounter, {
           action: 'type',
           args: [input.selector, encrypt(input.value), input.type],
@@ -1053,55 +1066,122 @@ export class WorkflowGenerator {
           args: ['networkidle'],
         });
       }
-    }
-
-
+    };
+  
     for (const pair of workflow.workflow) {
-      pair.what.forEach((condition, index) => {
-        if (condition.action === 'press') {
-          if (condition.args && condition.args[1]) {
-            if (!input.selector) {
-              input.selector = condition.args[0];
-              input.type = condition.args[2]
+      for (let i = 0; i < pair.what.length; i++) {
+        const condition = pair.what[i];
+  
+        // Handle click actions that set cursor position
+        if (condition.action === 'click' && condition.args?.[1]) {
+          const cursorIndex = condition.args[1].cursorIndex;
+  
+          // If we have pending input, commit it before processing the click
+          if (input.value.length > 0) {
+            pushTheOptimizedAction(pair, i);
+            input = {
+              selector: '',
+              value: '',
+              type: '',
+              actionCounter: 0,
+              cursorPosition: -1
+            };
+          }
+  
+          // Update cursor position for next operations
+          input.cursorPosition = cursorIndex;
+          continue;
+        }
+  
+        // Handle text input and editing
+        if (condition.action === 'press' && condition.args?.[1]) {
+          const [selector, encryptedKey, type] = condition.args;
+          const key = decrypt(encryptedKey);
+  
+          // Initialize new input state if selector changes
+          if (!input.selector || input.selector !== selector) {
+            if (input.value.length > 0) {
+              pushTheOptimizedAction(pair, i);
             }
-
-            if (input.selector === condition.args[0]) {
-              input.actionCounter++;
-              const decryptedKey = decrypt(condition.args[1]);
-
-              if (decryptedKey.length === 1) {
-                input.value += decryptedKey;
-              } else if (decryptedKey === 'Backspace') {
-                input.value = input.value.slice(0, -1);
-              } else if (decryptedKey !== 'Shift') {
-                pushTheOptimizedAction(pair, index);
-                pair.what.splice(index + 1, 0, {
-                  action: 'waitForLoadState',
-                  args: ['networkidle'],
-                })
-                input = { selector: '', value: '', type: '', actionCounter: 0 };
-              }
+            input = {
+              selector,
+              value: '',
+              type: type || 'text',
+              actionCounter: 0,
+              cursorPosition: -1
+            };
+          }
+  
+          input.actionCounter++;
+  
+          // Handle different key types with cursor awareness
+          if (key.length === 1) {
+            // Insert character at cursor position or append if no cursor set
+            if (input.cursorPosition === -1) {
+              // No cursor position set, append to end
+              input.value += key;
             } else {
-              pushTheOptimizedAction(pair, index);
+              // Insert at cursor position
+              input.value = 
+                input.value.slice(0, input.cursorPosition) +
+                key +
+                input.value.slice(input.cursorPosition);
+              input.cursorPosition++;
+            }
+          } else if (key === 'Backspace') {
+            if (input.cursorPosition > 0) {
+              // Delete character before cursor
+              input.value = 
+                input.value.slice(0, input.cursorPosition - 1) +
+                input.value.slice(input.cursorPosition);
+              input.cursorPosition--;
+            } else if (input.cursorPosition === -1 && input.value.length > 0) {
+              // No cursor position set, delete from end
+              input.value = input.value.slice(0, -1);
+            }
+          } else if (key !== 'Shift') {
+            // Handle other special keys
+            if (input.value.length > 0) {
+              pushTheOptimizedAction(pair, i);
               input = {
-                selector: condition.args[0],
-                value: decrypt(condition.args[1]),
-                type: condition.args[2],
-                actionCounter: 1,
+                selector: '',
+                value: '',
+                type: '',
+                actionCounter: 0,
+                cursorPosition: -1
               };
             }
           }
         } else {
-          if (input.value.length !== 0) {
-            pushTheOptimizedAction(pair, index);
-            // clear the input
-            input = { selector: '', value: '', type: '', actionCounter: 0 };
+          // Handle non-text actions
+          if (input.value.length > 0) {
+            pushTheOptimizedAction(pair, i);
+            input = {
+              selector: '',
+              value: '',
+              type: '',
+              actionCounter: 0,
+              cursorPosition: -1
+            };
           }
         }
-      });
+      }
+  
+      // Clean up any remaining input state
+      if (input.value.length > 0) {
+        pushTheOptimizedAction(pair, pair.what.length);
+        input = {
+          selector: '',
+          value: '',
+          type: '',
+          actionCounter: 0,
+          cursorPosition: -1
+        };
+      }
     }
+  
     return workflow;
-  }
+  };
 
   /**
    * Returns workflow params from the stored metadata.
