@@ -724,6 +724,8 @@ export default class Interpreter extends EventEmitter {
                     } catch (dispatchError) {
                       debugLog(`DispatchEvent failed on attempt ${retryCount + 1}.`);
                     }
+                  } else {
+                    navigationSuccess = true;
                   }
                 }
 
