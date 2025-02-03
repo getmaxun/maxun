@@ -5,6 +5,22 @@ import logger from "../logger";
 
 type Workflow = WorkflowFile["workflow"];
 
+type ShadowBoundary = {
+  type: 'shadow';
+  host: HTMLElement;
+  root: ShadowRoot;
+  element: HTMLElement;
+};
+
+type IframeBoundary = {
+  type: 'iframe';
+  frame: HTMLIFrameElement;
+  document: Document;
+  element: HTMLElement;
+};
+
+type Boundary = ShadowBoundary | IframeBoundary;
+
 /**
  * Checks the basic info about an element and returns a {@link BaseActionInfo} object.
  * If the element is not found, returns undefined.
@@ -1273,131 +1289,57 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
 
         return deepestElement;
       };
-      
-      const genSelectorForIframe = (element: HTMLElement) => {
-        // Helper function to get the complete iframe path up to document root
-        const getIframePath = (el: HTMLElement) => {
-            const path = [];
-            let current = el;
-            let depth = 0;
-            const MAX_DEPTH = 4;
-            
-            while (current && depth < MAX_DEPTH) {
-                // Get the owner document of the current element
-                const ownerDocument = current.ownerDocument;
-                
-                // Check if this document belongs to an iframe
-                const frameElement = ownerDocument?.defaultView?.frameElement as HTMLIFrameElement;
-                
-                if (frameElement) {
-                    path.unshift({
-                        frame: frameElement,
-                        document: ownerDocument,
-                        element: current
-                    });
-                    // Move up to the parent document's element (the iframe)
-                    current = frameElement;
-                    depth++;
-                } else {
-                    break;
-                }
-            }
-            return path;
-        };
-    
-        const iframePath = getIframePath(element);
-        if (iframePath.length === 0) return null;
-    
-        try {
-            const selectorParts: string[] = [];
-            
-            // Generate selector for each iframe boundary
-            iframePath.forEach((context, index) => {
-                // Get selector for the iframe element
-                const frameSelector = finder(context.frame, {
-                    root: index === 0 ? document.body : 
-                          (iframePath[index - 1].document.body as Element)
-                });
-    
-                // For the last context, get selector for target element
-                if (index === iframePath.length - 1) {
-                    const elementSelector = finder(element, {
-                        root: context.document.body as Element
-                    });
-                    selectorParts.push(`${frameSelector} :>> ${elementSelector}`);
-                } else {
-                    selectorParts.push(frameSelector);
-                }
-            });
-    
-            return {
-                fullSelector: selectorParts.join(' :>> '),
-                isFrameContent: true
-            };
-        } catch (e) {
-            console.warn('Error generating iframe selector:', e);
-            return null;
-        }
-      };
 
-      // Helper function to generate selectors for shadow DOM elements
-      const genSelectorForShadowDOM = (element: HTMLElement) => {
-        // Get complete path up to document root
-        const getShadowPath = (el: HTMLElement) => {
-          const path = [];
-          let current = el;
-          let depth = 0;
-          const MAX_DEPTH = 4;
+      const getBoundaryPath = (element: HTMLElement): Boundary[] => {
+        const path: Boundary[] = [];
+        let current = element;
+        let depth = 0;
+        const MAX_DEPTH = 4;
+        
+        while (current && depth < MAX_DEPTH) {
+          const rootNode = current.getRootNode();
+          if (rootNode instanceof ShadowRoot) {
+            path.unshift({
+              type: 'shadow',
+              host: rootNode.host as HTMLElement,
+              root: rootNode,
+              element: current
+            });
+            current = rootNode.host as HTMLElement;
+            depth++;
+            continue;
+          }
+      
+          const ownerDocument = current.ownerDocument;
+          const frameElement = ownerDocument?.defaultView?.frameElement as HTMLIFrameElement;
+          if (frameElement) {
+            try {
+              // Check if we can access the iframe's origin
+              const iframeOrigin = new URL(frameElement.src).origin;
+              const currentOrigin = window.location.origin;
+              if (iframeOrigin !== currentOrigin) {
+                console.warn(`Skipping cross-origin iframe: ${iframeOrigin}`);
+                break;
+              }
           
-          while (current && depth < MAX_DEPTH) {
-            const rootNode = current.getRootNode();
-            if (rootNode instanceof ShadowRoot) {
-              path.unshift({
-                host: rootNode.host as HTMLElement,
-                root: rootNode,
-                element: current
-              });
-              current = rootNode.host as HTMLElement;
-              depth++;
-            } else {
+                path.unshift({
+                  type: 'iframe',
+                  frame: frameElement,
+                  document: ownerDocument,
+                  element: current
+                });
+                current = frameElement;
+                depth++;
+                continue;
+            } catch (error) {
+              console.warn('Cannot access iframe origin:', error);
               break;
             }
           }
-          return path;
-        };
-
-        const shadowPath = getShadowPath(element);
-        if (shadowPath.length === 0) return null;
-
-        try {
-          const selectorParts: string[] = [];
-          
-          // Generate selector for each shadow DOM boundary
-          shadowPath.forEach((context, index) => {
-            // Get selector for the host element
-            const hostSelector = finder(context.host, {
-              root: index === 0 ? document.body : (shadowPath[index - 1].root as unknown as Element)
-            });
-
-            // For the last context, get selector for target element
-            if (index === shadowPath.length - 1) {
-              const elementSelector = finder(element, {
-                root: context.root as unknown as Element
-              });
-              selectorParts.push(`${hostSelector} >> ${elementSelector}`);
-            } else {
-              selectorParts.push(hostSelector);
-            }
-          });
-
-          return {
-            fullSelector: selectorParts.join(' >> '),
-            mode: shadowPath[shadowPath.length - 1].root.mode
-          };
-        } catch (e) {
-          console.warn('Error generating shadow DOM selector:', e);
-          return null;
+      
+          break;
         }
+        return path;
       };
 
       const genSelectors = (element: HTMLElement | null) => {
@@ -1406,55 +1348,107 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
         }
 
         const href = element.getAttribute('href');
+        const boundaryPath = getBoundaryPath(element);
+
+        const getRootElement = (index: number): Element => {
+          if (index === 0) {
+            return document.body;
+          }
+          
+          const previousBoundary = boundaryPath[index - 1];
+          if (!previousBoundary) {
+            return document.body;
+          }
+      
+          if (previousBoundary.type === 'shadow') {
+            return previousBoundary.root as unknown as Element;
+          }
+          return previousBoundary.document.body as Element;
+        };
+
+        const generateBoundaryAwareSelector = (elementOptions = {}) => {
+          if (boundaryPath.length === 0) {
+            return finder(element, elementOptions);
+          }
+      
+          const selectorParts: string[] = [];
+          
+          boundaryPath.forEach((context, index) => {
+            const root = getRootElement(index);
+      
+            if (context.type === 'shadow') {
+              const hostSelector = finder(context.host, { root });
+      
+              if (index === boundaryPath.length - 1) {
+                const elementSelector = finder(element, {
+                  ...elementOptions,
+                  root: context.root as unknown as Element
+                });
+                selectorParts.push(`${hostSelector} >> ${elementSelector}`);
+              } else {
+                selectorParts.push(hostSelector);
+              }
+            } else {
+              const frameSelector = finder(context.frame, { root });
+      
+              if (index === boundaryPath.length - 1) {
+                const elementSelector = finder(element, {
+                  ...elementOptions,
+                  root: context.document.body as Element
+                });
+                selectorParts.push(`${frameSelector} :>> ${elementSelector}`);
+              } else {
+                selectorParts.push(frameSelector);
+              }
+            }
+          });
+      
+          const lastBoundary = boundaryPath[boundaryPath.length - 1];
+          const delimiter = lastBoundary.type === 'shadow' ? ' >> ' : ' :>> ';
+          return selectorParts.join(delimiter);
+        };
 
         let generalSelector = null;
         try {
-          generalSelector = finder(element);
+          generalSelector = generateBoundaryAwareSelector();
         } catch (e) {
         }
 
         let attrSelector = null;
         try {
-          attrSelector = finder(element, { attr: () => true });
+          attrSelector = generateBoundaryAwareSelector({ attr: () => true });
         } catch (e) {
         }
 
+        // const iframeSelector = genSelectorForIframe(element);
 
-        const iframeSelector = genSelectorForIframe(element);
-        const shadowSelector = genSelectorForShadowDOM(element);
+        const hrefSelector = generateBoundaryAwareSelector({
+          attr: genValidAttributeFilter(element, ['href'])
+        });
+        const formSelector = generateBoundaryAwareSelector({
+          attr: genValidAttributeFilter(element, ['name', 'placeholder', 'for'])
+        });
+        const accessibilitySelector = generateBoundaryAwareSelector({
+          attr: genValidAttributeFilter(element, ['aria-label', 'alt', 'title'])
+        });
 
-        const hrefSelector = genSelectorForAttributes(element, ['href']);
-        const formSelector = genSelectorForAttributes(element, [
-          'name',
-          'placeholder',
-          'for',
-        ]);
-        const accessibilitySelector = genSelectorForAttributes(element, [
-          'aria-label',
-          'alt',
-          'title',
-        ]);
-
-        const testIdSelector = genSelectorForAttributes(element, [
-          'data-testid',
-          'data-test-id',
-          'data-testing',
-          'data-test',
-          'data-qa',
-          'data-cy',
-        ]);
+        const testIdSelector = generateBoundaryAwareSelector({
+          attr: genValidAttributeFilter(element, [
+            'data-testid',
+            'data-test-id',
+            'data-testing',
+            'data-test',
+            'data-qa',
+            'data-cy',
+          ])
+        });
 
         // We won't use an id selector if the id is invalid (starts with a number)
         let idSelector = null;
         try {
-          idSelector =
-            isAttributesDefined(element, ['id']) &&
-              !isCharacterNumber(element.id?.[0])
-              ? // Certain apps don't have unique ids (ex. youtube)
-              finder(element, {
-                attr: (name) => name === 'id',
-              })
-              : null;
+          idSelector = isAttributesDefined(element, ['id']) && !isCharacterNumber(element.id?.[0])
+            ? generateBoundaryAwareSelector({ attr: (name: string) => name === 'id' })
+            : null;
         } catch (e) {
         }
 
@@ -1469,14 +1463,10 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
           hrefSelector,
           accessibilitySelector,
           formSelector,
-          iframeSelector: iframeSelector ? {
-            full: iframeSelector.fullSelector,
-            isIframe: iframeSelector.isFrameContent,
-          } : null,
-          shadowSelector: shadowSelector ? {
-            full: shadowSelector.fullSelector,
-            mode: shadowSelector.mode
-          } : null
+          // iframeSelector: iframeSelector ? {
+          //   full: iframeSelector.fullSelector,
+          //   isIframe: iframeSelector.isFrameContent,
+          // } : null,
         };
       }
 
@@ -1557,14 +1547,6 @@ interface SelectorResult {
  */
 
 export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates, listSelector: string): Promise<SelectorResult> => {
-  interface DOMContext {
-    type: 'iframe' | 'shadow';
-    element: HTMLElement;
-    container: HTMLIFrameElement | ShadowRoot;
-    host?: HTMLElement;
-    document?: Document;
-  }
-
   try {
     if (!listSelector) {
       const selectors = await page.evaluate(({ x, y }: { x: number, y: number }) => {
@@ -1683,8 +1665,8 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
         }
 
 
-        function getContextPath(element: HTMLElement): DOMContext[] {
-          const path: DOMContext[] = [];
+        function getContextPath(element: HTMLElement): Boundary[] {
+          const path: Boundary[] = [];
           let current = element;
           let depth = 0;
           const MAX_DEPTH = 4;
@@ -1695,9 +1677,9 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
             if (rootNode instanceof ShadowRoot) {
               path.unshift({
                 type: 'shadow',
-                element: current,
-                container: rootNode,
-                host: rootNode.host as HTMLElement
+                host: rootNode.host as HTMLElement,
+                root: rootNode,
+                element: current
               });
               current = rootNode.host as HTMLElement;
               depth++;
@@ -1709,15 +1691,28 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
             const frameElement = ownerDocument?.defaultView?.frameElement as HTMLIFrameElement;
             
             if (frameElement) {
-              path.unshift({
-                type: 'iframe',
-                element: current,
-                container: frameElement,
-                document: ownerDocument
-              });
-              current = frameElement;
-              depth++;
-              continue;
+              try {
+                // Check if we can access the iframe's origin
+                const iframeOrigin = new URL(frameElement.src).origin;
+                const currentOrigin = window.location.origin;
+                if (iframeOrigin !== currentOrigin) {
+                  console.warn(`Skipping cross-origin iframe: ${iframeOrigin}`);
+                  break;
+                }
+            
+                  path.unshift({
+                    type: 'iframe',
+                    frame: frameElement,
+                    document: ownerDocument,
+                    element: current
+                  });
+                  current = frameElement;
+                  depth++;
+                  continue;
+              } catch (error) {
+                console.warn('Cannot access iframe origin:', error);
+                break;
+              }
             }
 
             break;
@@ -1736,7 +1731,7 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
             
             contextPath.forEach((context, index) => {
               const containerSelector = getNonUniqueSelector(
-                context.type === 'shadow' ? context.host! : context.container as HTMLElement
+                context.type === 'shadow' ? context.host! : context.element as HTMLElement
               );
               
               if (index === contextPath.length - 1) {
@@ -1948,8 +1943,8 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
         }
 
         // Get complete context path (both iframe and shadow DOM)
-        function getContextPath(element: HTMLElement): DOMContext[] {
-          const path: DOMContext[] = [];
+        function getContextPath(element: HTMLElement): Boundary[] {
+          const path: Boundary[] = [];
           let current = element;
           let depth = 0;
           const MAX_DEPTH = 4;
@@ -1960,9 +1955,9 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
             if (rootNode instanceof ShadowRoot) {
               path.unshift({
                 type: 'shadow',
-                element: current,
-                container: rootNode,
-                host: rootNode.host as HTMLElement
+                host: rootNode.host as HTMLElement,
+                root: rootNode,
+                element: current
               });
               current = rootNode.host as HTMLElement;
               depth++;
@@ -1974,15 +1969,28 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
             const frameElement = ownerDocument?.defaultView?.frameElement as HTMLIFrameElement;
             
             if (frameElement) {
-              path.unshift({
-                type: 'iframe',
-                element: current,
-                container: frameElement,
-                document: ownerDocument
-              });
-              current = frameElement;
-              depth++;
-              continue;
+              try {
+                // Check if we can access the iframe's origin
+                const iframeOrigin = new URL(frameElement.src).origin;
+                const currentOrigin = window.location.origin;
+                if (iframeOrigin !== currentOrigin) {
+                  console.warn(`Skipping cross-origin iframe: ${iframeOrigin}`);
+                  break;
+                }
+            
+                  path.unshift({
+                    type: 'iframe',
+                    frame: frameElement,
+                    document: ownerDocument,
+                    element: current
+                  });
+                  current = frameElement;
+                  depth++;
+                  continue;
+              } catch (error) {
+                console.warn('Cannot access iframe origin:', error);
+                break;
+              }
             }
 
             break;
@@ -2001,7 +2009,7 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
             
             contextPath.forEach((context, index) => {
               const containerSelector = getNonUniqueSelector(
-                context.type === 'shadow' ? context.host! : context.container as HTMLElement
+                context.type === 'shadow' ? context.host! : context.element as HTMLElement
               );
               
               if (index === contextPath.length - 1) {
