@@ -806,6 +806,7 @@ export default class Interpreter extends EventEmitter {
 
               if (!loadMoreSuccess || checkLimit()) return allResults;
             }
+            break;
           }
 
           default:
