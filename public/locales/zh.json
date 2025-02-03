@@ -8,7 +8,16 @@
     "register_prompt": "还没有账号？",
     "register_link": "注册",
     "welcome_notification": "欢迎使用 Maxun！",
-    "error_notification": "登录失败。请重试。"
+    "validation": {
+      "required_fields": "邮箱和密码为必填项",
+      "password_length": "密码必须至少6个字符"
+    },
+    "error": {
+      "user_not_found": "用户不存在",
+      "invalid_credentials": "邮箱或密码无效",
+      "server_error": "登录失败，请稍后重试",
+      "generic": "发生错误，请重试"
+    }
   },
   "register": {
     "title": "注册账号",
@@ -19,7 +28,16 @@
     "register_prompt": "已有账号？",
     "login_link": "登录",
     "welcome_notification": "欢迎使用 Maxun！",
-    "error_notification": "注册失败。请重试。"
+    "validation": {
+      "email_required": "邮箱是必填项",
+      "password_requirements": "密码必须至少6个字符"
+    },
+    "error": {
+      "user_exists": "该邮箱已被注册",
+      "creation_failed": "无法创建账户",
+      "server_error": "服务器错误",
+      "generic": "注册失败，请重试"
+    }
   },
   "recordingtable": {
     "run": "运行",

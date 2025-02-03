@@ -17,62 +17,110 @@ router.post("/register", async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    if (!email) return res.status(400).send("Email is required");
-    if (!password || password.length < 6)
-      return res
-        .status(400)
-        .send("Password is required and must be at least 6 characters");
+    // Validation checks with translation codes
+    if (!email) {
+      return res.status(400).json({
+        error: "VALIDATION_ERROR",
+        code: "register.validation.email_required"
+      });
+    }
 
+    if (!password || password.length < 6) {
+      return res.status(400).json({
+        error: "VALIDATION_ERROR",
+        code: "register.validation.password_requirements"
+      });
+    }
+
+    // Check if user exists
     let userExist = await User.findOne({ raw: true, where: { email } });
-    if (userExist) return res.status(400).send("User already exists");
+    if (userExist) {
+      return res.status(400).json({
+        error: "USER_EXISTS",
+        code: "register.error.user_exists"
+      });
+    }
 
     const hashedPassword = await hashPassword(password);
 
+    // Create user
     let user: any;
-
     try {
       user = await User.create({ email, password: hashedPassword });
     } catch (error: any) {
       console.log(`Could not create user - ${error}`);
-      return res.status(500).send(`Could not create user - ${error.message}`);
+      return res.status(500).json({
+        error: "DATABASE_ERROR",
+        code: "register.error.creation_failed"
+      });
     }
 
+    // Check JWT secret
     if (!process.env.JWT_SECRET) {
       console.log("JWT_SECRET is not defined in the environment");
-      return res.status(500).send("Internal Server Error");
+      return res.status(500).json({
+        error: "SERVER_ERROR",
+        code: "register.error.server_error"
+      });
     }
 
+    // Success path
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET as string);
     user.password = undefined as unknown as string;
     res.cookie("token", token, {
       httpOnly: true,
     });
+    
     capture("maxun-oss-user-registered", {
       email: user.email,
       userId: user.id,
       registeredAt: new Date().toISOString(),
     });
+    
     console.log(`User registered`);
     res.json(user);
+    
   } catch (error: any) {
     console.log(`Could not register user - ${error}`);
-    res.status(500).send(`Could not register user - ${error.message}`);
+    return res.status(500).json({
+      error: "SERVER_ERROR",
+      code: "register.error.generic"
+    });
   }
 });
 
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password)
-      return res.status(400).send("Email and password are required");
-    if (password.length < 6)
-      return res.status(400).send("Password must be at least 6 characters");
+    if (!email || !password) {
+      return res.status(400).json({
+        error: "VALIDATION_ERROR",
+        code: "login.validation.required_fields"
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        error: "VALIDATION_ERROR",
+        code: "login.validation.password_length"
+      });
+    }
 
     let user = await User.findOne({ raw: true, where: { email } });
-    if (!user) return res.status(400).send("User does not exist");
+    if (!user) {
+      return res.status(404).json({
+        error: "USER_NOT_FOUND",
+        code: "login.error.user_not_found"
+      });
+    }
 
     const match = await comparePassword(password, user.password);
-    if (!match) return res.status(400).send("Invalid email or password");
+    if (!match) {
+      return res.status(401).json({
+        error: "INVALID_CREDENTIALS",
+        code: "login.error.invalid_credentials"
+      });
+    }
 
     const token = jwt.sign({ id: user?.id }, process.env.JWT_SECRET as string);
 
@@ -90,8 +138,11 @@ router.post("/login", async (req, res) => {
     });
     res.json(user);
   } catch (error: any) {
-    res.status(400).send(`Could not login user - ${error.message}`);
-    console.log(`Could not login user - ${error}`);
+    console.error(`Login error: ${error.message}`);
+    res.status(500).json({
+      error: "SERVER_ERROR",
+      code: "login.error.server_error"
+    });
   }
 });
 

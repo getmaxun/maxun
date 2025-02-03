@@ -53,8 +53,14 @@ const Login = () => {
       notify("success", t('login.welcome_notification'));
       window.localStorage.setItem("user", JSON.stringify(data));
       navigate("/");
-    } catch (err) {
-      notify("error", t('login.error_notification'));
+    } catch (err: any) {
+      const errorResponse = err.response?.data;
+    
+      const errorMessage = errorResponse?.code 
+      ? t(errorResponse.code)
+      : t('login.error.generic');
+      
+      notify("error", errorMessage);
       setLoading(false);
     }
   };
