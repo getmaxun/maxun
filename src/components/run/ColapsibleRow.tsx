@@ -35,8 +35,9 @@ interface CollapsibleRowProps {
   currentLog: string;
   abortRunHandler: () => void;
   runningRecordingName: string;
+  urlRunId: string | null;
 }
-export const CollapsibleRow = ({ row, handleDelete, isOpen, currentLog, abortRunHandler, runningRecordingName }: CollapsibleRowProps) => {
+export const CollapsibleRow = ({ row, handleDelete, isOpen, currentLog, abortRunHandler, runningRecordingName, urlRunId }: CollapsibleRowProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(isOpen);
@@ -62,14 +63,18 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, currentLog, abortRun
     abortRunHandler();
   }
 
+  useEffect(() => {
+    setOpen(urlRunId === row.runId || isOpen);
+  }, [urlRunId, row.runId, isOpen]);
+
   const handleRowExpand = () => {
     const newOpen = !open;
     setOpen(newOpen);
-    if (newOpen) {
-      navigate(`/runs/${row.robotMetaId}/run/${row.runId}`);
-    } else {
-      navigate(`/runs/${row.robotMetaId}`);
-    }
+    navigate(
+      newOpen 
+        ? `/runs/${row.robotMetaId}/run/${row.runId}`
+        : `/runs/${row.robotMetaId}`
+    );
     //scrollToLogBottom();
   };
   

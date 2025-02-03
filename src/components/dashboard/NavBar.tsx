@@ -4,8 +4,34 @@ import axios from 'axios';
 import styled from "styled-components";
 import { stopRecording } from "../../api/recording";
 import { useGlobalInfoStore } from "../../context/globalInfo";
-import { IconButton, Menu, MenuItem, Typography, Chip, Button, Modal, Tabs, Tab, Box, Snackbar, Tooltip } from "@mui/material";
-import { AccountCircle, Logout, Clear, YouTube, X, Update, Close, Language, Description, LightMode, DarkMode } from "@mui/icons-material";
+import {
+  IconButton,
+  Menu,
+  MenuItem,
+  Typography,
+  Chip,
+  Button,
+  Modal,
+  Tabs,
+  Tab,
+  Box,
+  Snackbar,
+  Tooltip
+} from "@mui/material";
+import {
+  AccountCircle,
+  Logout,
+  Clear,
+  YouTube,
+  X,
+  GitHub,
+  Update,
+  Close,
+  Language,
+  Description,
+  LightMode,
+  DarkMode
+} from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/auth';
 import { SaveRecording } from '../recorder/SaveRecording';
@@ -195,12 +221,12 @@ export const NavBar: React.FC<NavBarProps> = ({
               {!isRecording ? (
                 <>
                   <Button variant="outlined" onClick={handleUpdateOpen} sx={{
-                    marginRight: '40px',
+                    marginRight: '25px',
                     color: "#00000099",
                     border: "#00000099 1px solid",
                     '&:hover': { color: '#ff00c3', border: '#ff00c3 1px solid' }
                   }}>
-                    <Update sx={{ marginRight: '5px' }} /> {t('navbar.upgrade.button')} Maxun
+                    <Update sx={{ marginRight: '5px' }} /> {t('navbar.upgrade.button')}
                   </Button>
                   <Modal open={open} onClose={handleUpdateClose}>
                     <Box
@@ -293,7 +319,14 @@ export const NavBar: React.FC<NavBarProps> = ({
                       )}
                     </Box>
                   </Modal>
-                  <iframe src="https://ghbtns.com/github-btn.html?user=getmaxun&repo=maxun&type=star&count=true&size=large" frameBorder="0" scrolling="0" width="170" height="30" title="GitHub"></iframe>
+                  {/* <iframe 
+                  src="https://ghbtns.com/github-btn.html?user=getmaxun&repo=maxun&type=star&count=true&size=large" 
+                  // frameBorder="0" 
+                  // scrolling="0" 
+                  // width="170" 
+                  // height="30" 
+                  // title="GitHub">
+                  // </iframe>*/}
                   <IconButton onClick={handleMenuOpen} sx={{
                     display: 'flex',
                     alignItems: 'center',
@@ -310,21 +343,30 @@ export const NavBar: React.FC<NavBarProps> = ({
                     onClose={handleMenuClose}
                     anchorOrigin={{
                       vertical: 'bottom',
-                      horizontal: 'right',
+                      horizontal: 'center',
                     }}
                     transformOrigin={{
                       vertical: 'top',
-                      horizontal: 'right',
+                      horizontal: 'center',
                     }}
                     PaperProps={{ sx: { width: '180px' } }}
                   >
                     <MenuItem onClick={() => { handleMenuClose(); logout(); }}>
                       <Logout sx={{ marginRight: '5px' }} /> {t('navbar.menu_items.logout')}
                     </MenuItem>
+                    <MenuItem onClick={handleLangMenuOpen}>
+                      <Language sx={{ marginRight: '5px' }} /> {t('navbar.menu_items.language')}
+                    </MenuItem>
+                    <hr />
                     <MenuItem onClick={() => {
                       window.open('https://docs.maxun.dev', '_blank');
                     }}>
                       <Description sx={{ marginRight: '5px' }} /> Docs
+                    </MenuItem>
+                    <MenuItem onClick={() => {
+                      window.open('https://github.com/getmaxun/maxun', '_blank');
+                    }}>
+                      <GitHub sx={{ marginRight: '5px' }} /> GitHub
                     </MenuItem>
                     <MenuItem onClick={() => {
                       window.open('https://discord.gg/5GbPjBUkws', '_blank');
@@ -341,20 +383,17 @@ export const NavBar: React.FC<NavBarProps> = ({
                     }}>
                       <X sx={{ marginRight: '5px' }} /> Twitter (X)
                     </MenuItem>
-                    <MenuItem onClick={handleLangMenuOpen}>
-                      <Language sx={{ marginRight: '5px' }} /> {t('navbar.menu_items.language')}
-                    </MenuItem>
                     <Menu
                       anchorEl={langAnchorEl}
                       open={Boolean(langAnchorEl)}
                       onClose={handleMenuClose}
                       anchorOrigin={{
                         vertical: "bottom",
-                        horizontal: "right",
+                        horizontal: "center",
                       }}
                       transformOrigin={{
                         vertical: "top",
-                        horizontal: "right",
+                        horizontal: "center",
                       }}
                     >
                       <MenuItem
@@ -446,11 +485,11 @@ export const NavBar: React.FC<NavBarProps> = ({
                 onClose={handleMenuClose}
                 anchorOrigin={{
                   vertical: "bottom",
-                  horizontal: "right",
+                  horizontal: "center",
                 }}
                 transformOrigin={{
                   vertical: "top",
-                  horizontal: "right",
+                  horizontal: "center",
                 }}
               >
                 <MenuItem

@@ -18,6 +18,7 @@ import { fork } from 'child_process';
 import { capture } from "./utils/analytics";
 import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './swagger/config';
+import Run from './models/Run';
 
 const app = express();
 app.use(cors({
@@ -113,8 +114,23 @@ server.listen(SERVER_PORT, '0.0.0.0', async () => {
   }
 });
 
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   console.log('Main app shutting down...');
+  try {
+    await Run.update(
+      {
+        status: 'failed',
+        finishedAt: new Date().toLocaleString(),
+        log: 'Process interrupted during execution - worker shutdown'
+      },
+      {
+        where: { status: 'running' }
+      }
+    );
+  } catch (error: any) {
+    console.error('Error updating runs:', error);
+  }
+  
   if (!isProduction) {
     workerProcess.kill();
   }

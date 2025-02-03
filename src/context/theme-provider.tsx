@@ -86,6 +86,12 @@ const darkTheme = createTheme({
       main: "#ff00c3",
       contrastText: "#ffffff",
     },
+    error: {
+      main: '#f44336',
+      light: '#e57373',
+      dark: '#d32f2f',
+      contrastText: '#ffffff',
+    },
     background: {
       default: '#121212',
       paper: '#1e1e1e',
@@ -124,6 +130,14 @@ const darkTheme = createTheme({
             backgroundColor: 'rgba(255, 0, 195, 0.08)',
             borderColor: '#ff66d9',
           },
+          '&.MuiButton-outlinedError': {
+            borderColor: '#f44336',
+            color: '#f44336',
+            "&:hover": {
+              backgroundColor: 'rgba(244, 67, 54, 0.08)',
+              borderColor: '#d32f2f',
+            },
+          },
         },
       },
     },
@@ -143,6 +157,12 @@ const darkTheme = createTheme({
           color: '#ffffff',
           "&:hover": {
             backgroundColor: 'rgba(255, 0, 195, 0.08)',
+          },
+          '&.MuiIconButton-colorError': {
+            color: '#f44336',
+            "&:hover": {
+              backgroundColor: 'rgba(244, 67, 54, 0.08)',
+            },
           },
         },
       },
@@ -218,7 +238,7 @@ const darkTheme = createTheme({
 });
 
 const ThemeModeContext = createContext({
-  toggleTheme: () => {},
+  toggleTheme: () => { },
   darkMode: false,
 });
 

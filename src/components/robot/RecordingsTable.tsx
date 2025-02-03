@@ -8,7 +8,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
-import { useEffect } from "react";
+import { memo, useCallback, useEffect, useMemo } from "react";
 import { WorkflowFile } from "maxun-core";
 import SearchIcon from '@mui/icons-material/Search';
 import {
@@ -76,6 +76,64 @@ interface RecordingsTableProps {
   handleDuplicateRobot: (id: string, name: string, params: string[]) => void;
 }
 
+// Virtualized row component for efficient rendering
+const TableRowMemoized = memo(({ row, columns, handlers }: any) => {
+  return (
+    <TableRow hover role="checkbox" tabIndex={-1}>
+      {columns.map((column: Column) => {
+        const value: any = row[column.id];
+        if (value !== undefined) {
+          return (
+            <MemoizedTableCell key={column.id} align={column.align}>
+              {value}
+            </MemoizedTableCell>
+          );
+        } else {
+          switch (column.id) {
+            case 'interpret':
+              return (
+                <MemoizedTableCell key={column.id} align={column.align}>
+                  <MemoizedInterpretButton handleInterpret={() => handlers.handleRunRecording(row.id, row.name, row.params || [])} />
+                </MemoizedTableCell>
+              );
+            case 'schedule':
+              return (
+                <MemoizedTableCell key={column.id} align={column.align}>
+                  <MemoizedScheduleButton handleSchedule={() => handlers.handleScheduleRecording(row.id, row.name, row.params || [])} />
+                </MemoizedTableCell>
+              );
+            case 'integrate':
+              return (
+                <MemoizedTableCell key={column.id} align={column.align}>
+                  <MemoizedIntegrateButton handleIntegrate={() => handlers.handleIntegrateRecording(row.id, row.name, row.params || [])} />
+                </MemoizedTableCell>
+              );
+            case 'options':
+              return (
+                <MemoizedTableCell key={column.id} align={column.align}>
+                  <MemoizedOptionsButton
+                    handleEdit={() => handlers.handleEditRobot(row.id, row.name, row.params || [])}
+                    handleDuplicate={() => handlers.handleDuplicateRobot(row.id, row.name, row.params || [])}
+                    handleDelete={() => handlers.handleDelete(row.id)}
+                  />
+                </MemoizedTableCell>
+              );
+            case 'settings':
+              return (
+                <MemoizedTableCell key={column.id} align={column.align}>
+                  <MemoizedSettingsButton handleSettings={() => handlers.handleSettingsRecording(row.id, row.name, row.params || [])} />
+                </MemoizedTableCell>
+              );
+            default:
+              return null;
+          }
+        }
+      })}
+    </TableRow>
+  );
+});
+
+
 export const RecordingsTable = ({
   handleEditRecording,
   handleRunRecording,
@@ -91,30 +149,14 @@ export const RecordingsTable = ({
   const [isModalOpen, setModalOpen] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState('');
 
-  const columns: readonly Column[] = [
+  const columns = useMemo(() => [
     { id: 'interpret', label: t('recordingtable.run'), minWidth: 80 },
     { id: 'name', label: t('recordingtable.name'), minWidth: 80 },
-    {
-      id: 'schedule',
-      label: t('recordingtable.schedule'),
-      minWidth: 80,
-    },
-    {
-      id: 'integrate',
-      label: t('recordingtable.integrate'),
-      minWidth: 80,
-    },
-    {
-      id: 'settings',
-      label: t('recordingtable.settings'),
-      minWidth: 80,
-    },
-    {
-      id: 'options',
-      label: t('recordingtable.options'),
-      minWidth: 80,
-    },
-  ];
+    { id: 'schedule', label: t('recordingtable.schedule'), minWidth: 80 },
+    { id: 'integrate', label: t('recordingtable.integrate'), minWidth: 80 },
+    { id: 'settings', label: t('recordingtable.settings'), minWidth: 80 },
+    { id: 'options', label: t('recordingtable.options'), minWidth: 80 },
+  ], [t]);
 
   const {
     notify,
@@ -126,60 +168,84 @@ export const RecordingsTable = ({
     setRecordingUrl,
     isLogin,
     setIsLogin,
+    rerenderRobots,
+    setRerenderRobots,
     recordingName,
     setRecordingName,
     recordingId,
     setRecordingId } = useGlobalInfoStore();
   const navigate = useNavigate();
 
-  const handleChangePage = (event: unknown, newPage: number) => {
+  const handleChangePage = useCallback((event: unknown, newPage: number) => {
     setPage(newPage);
-  };
+  }, []);
 
   const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
     setRowsPerPage(+event.target.value);
     setPage(0);
   };
 
-  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSearchChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(event.target.value);
     setPage(0);
+  }, []);
+
+  const parseDateString = (dateStr: string): Date => {
+    try {
+      if (dateStr.includes('PM') || dateStr.includes('AM')) {
+        return new Date(dateStr);
+      }
+      
+      return new Date(dateStr.replace(/(\d+)\/(\d+)\//, '$2/$1/'))
+    } catch {
+      return new Date(0);
+    }
   };
 
-  const fetchRecordings = async () => {
-    const recordings = await getStoredRecordings();
-    if (recordings) {
-      const parsedRows: Data[] = [];
-      recordings.map((recording: any, index: number) => {
-        if (recording && recording.recording_meta) {
-          parsedRows.push({
-            id: index,
-            ...recording.recording_meta,
-            content: recording.recording
-          });
-        }
-      });
-      setRecordings(parsedRows.map((recording) => recording.name));
-      setRows(parsedRows);
-    } else {
-      console.log('No recordings found.');
+  const fetchRecordings = useCallback(async () => {
+    try {
+      const recordings = await getStoredRecordings();
+      if (recordings) {
+        const parsedRows = recordings
+        .map((recording: any, index: number) => {
+          if (recording?.recording_meta) {
+            const parsedDate = parseDateString(recording.recording_meta.createdAt);
+            
+            return {
+              id: index,
+              ...recording.recording_meta,
+              content: recording.recording,
+              parsedDate
+            };
+          }
+          return null;
+        })
+        .filter(Boolean) 
+        .sort((a, b) => b.parsedDate.getTime() - a.parsedDate.getTime());
+  
+        setRecordings(parsedRows.map((recording) => recording.name));
+        setRows(parsedRows);
+      }
+    } catch (error) {
+      console.error('Error fetching recordings:', error);
+      notify('error', t('recordingtable.notifications.fetch_error'));
     }
-  }
+  }, [setRecordings, notify, t]);
 
-  const handleNewRecording = async () => {
+  const handleNewRecording = useCallback(async () => {
     if (browserId) {
       setBrowserId(null);
       await stopRecording(browserId);
     }
     setModalOpen(true);
-  };
+  }, [browserId]);
 
-  const handleStartRecording = () => {
+  const handleStartRecording = useCallback(() => {
     setBrowserId('new-recording');
     setRecordingName('');
     setRecordingId('');
     navigate('/recording');
-  }
+  }, [navigate]);
 
   const startRecording = () => {
     setModalOpen(false);
@@ -195,14 +261,69 @@ export const RecordingsTable = ({
     if (rows.length === 0) {
       fetchRecordings();
     }
-  }, []);
+  }, [fetchRecordings]);
 
+  useEffect(() => {
+    if (rerenderRobots) {
+      fetchRecordings().then(() => {
+        setRerenderRobots(false);
+      });
+    }
+  }, [rerenderRobots, fetchRecordings, setRerenderRobots]);
+
+  function useDebounce<T>(value: T, delay: number): T {
+    const [debouncedValue, setDebouncedValue] = React.useState<T>(value);
+  
+    useEffect(() => {
+      const handler = setTimeout(() => {
+        setDebouncedValue(value);
+      }, delay);
+  
+      return () => {
+        clearTimeout(handler);
+      };
+    }, [value, delay]);
+  
+    return debouncedValue;
+  }
+
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   // Filter rows based on search term
-  const filteredRows = rows.filter((row) =>
-    row.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredRows = useMemo(() => {
+    const searchLower = debouncedSearchTerm.toLowerCase();
+    return debouncedSearchTerm
+      ? rows.filter(row => row.name.toLowerCase().includes(searchLower))
+      : rows;
+  }, [rows, debouncedSearchTerm]);
 
+  const visibleRows = useMemo(() => {
+    const start = page * rowsPerPage;
+    return filteredRows.slice(start, start + rowsPerPage);
+  }, [filteredRows, page, rowsPerPage]);
+
+  const handlers = useMemo(() => ({
+    handleRunRecording,
+    handleScheduleRecording,
+    handleIntegrateRecording,
+    handleSettingsRecording,
+    handleEditRobot,
+    handleDuplicateRobot,
+    handleDelete: async (id: string) => {
+      const hasRuns = await checkRunsForRecording(id);
+      if (hasRuns) {
+        notify('warning', t('recordingtable.notifications.delete_warning'));
+        return;
+      }
+
+      const success = await deleteRecordingFromStorage(id);
+      if (success) {
+        setRows([]);
+        notify('success', t('recordingtable.notifications.delete_success'));
+        fetchRecordings();
+      }
+    }
+  }), [handleRunRecording, handleScheduleRecording, handleIntegrateRecording, handleSettingsRecording, handleEditRobot, handleDuplicateRobot, notify, t]);
 
   return (
     <React.Fragment>
@@ -244,109 +365,35 @@ export const RecordingsTable = ({
           </IconButton>
         </Box>
       </Box>
-      {rows.length === 0 ? (
-        <Box display="flex" justifyContent="center" alignItems="center" height="50%">
-          <CircularProgress />
-        </Box>
-      ) : (
-        <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden', marginTop: '15px' }}>
-          <Table stickyHeader aria-label="sticky table">
-            <TableHead>
-              <TableRow>
-                {columns.map((column) => (
-                  <TableCell
-                    key={column.id}
-                    align={column.align}
-                    style={{ minWidth: column.minWidth }}
-                  >
-                    {column.label}
-                  </TableCell>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredRows.length !== 0 ? filteredRows
-                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                .map((row) => {
-                  return (
-                    <TableRow hover role="checkbox" tabIndex={-1} key={row.id}>
-                      {columns.map((column) => {
-                        // @ts-ignore
-                        const value: any = row[column.id];
-                        if (value !== undefined) {
-                          return (
-                            <TableCell key={column.id} align={column.align}>
-                              {value}
-                            </TableCell>
-                          );
-                        } else {
-                          switch (column.id) {
-                            case 'interpret':
-                              return (
-                                <TableCell key={column.id} align={column.align}>
-                                  <InterpretButton handleInterpret={() => handleRunRecording(row.id, row.name, row.params || [])} />
-                                </TableCell>
-                              );
-                            case 'schedule':
-                              return (
-                                <TableCell key={column.id} align={column.align}>
-                                  <ScheduleButton handleSchedule={() => handleScheduleRecording(row.id, row.name, row.params || [])} />
-                                </TableCell>
-                              );
-                            case 'integrate':
-                              return (
-                                <TableCell key={column.id} align={column.align}>
-                                  <IntegrateButton handleIntegrate={() => handleIntegrateRecording(row.id, row.name, row.params || [])} />
-                                </TableCell>
-                              );
-                            case 'options':
-                              return (
-                                <TableCell key={column.id} align={column.align}>
-                                  <OptionsButton
-                                    handleEdit={() => handleEditRobot(row.id, row.name, row.params || [])}
-                                    handleDuplicate={() => {
-                                      handleDuplicateRobot(row.id, row.name, row.params || []);
-                                    }}
-                                    handleDelete={() => {
+      <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden', marginTop: '15px' }}>
+        <Table stickyHeader aria-label="sticky table">
+          <TableHead>
+            <TableRow>
+              {columns.map((column) => (
+                <MemoizedTableCell
+                  key={column.id}
+                  style={{ minWidth: column.minWidth }}
+                >
+                  {column.label}
+                </MemoizedTableCell>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {visibleRows.map((row) => (
+              <TableRowMemoized
+                key={row.id}
+                row={row}
+                columns={columns}
+                handlers={handlers}
+              />
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
-                                      checkRunsForRecording(row.id).then((result: boolean) => {
-                                        if (result) {
-                                          notify('warning', t('recordingtable.notifications.delete_warning'));
-                                        }
-                                      })
-
-                                      deleteRecordingFromStorage(row.id).then((result: boolean) => {
-                                        if (result) {
-                                          setRows([]);
-                                          notify('success', t('recordingtable.notifications.delete_success'));
-                                          fetchRecordings();
-                                        }
-                                      })
-                                    }}
-                                  />
-                                </TableCell>
-                              );
-                            case 'settings':
-                              return (
-                                <TableCell key={column.id} align={column.align}>
-                                  <SettingsButton handleSettings={() => handleSettingsRecording(row.id, row.name, row.params || [])} />
-                                </TableCell>
-                              );
-                            default:
-                              return null;
-                          }
-                        }
-                      })}
-                    </TableRow>
-                  );
-                })
-                : null}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
       <TablePagination
-        rowsPerPageOptions={[10, 25, 50]}
+        rowsPerPageOptions={[10, 25, 50, 100]}
         component="div"
         count={filteredRows.length}
         rowsPerPage={rowsPerPage}
@@ -510,6 +557,15 @@ const OptionsButton = ({ handleEdit, handleDelete, handleDuplicate }: OptionsBut
     </>
   );
 };
+
+const MemoizedTableCell = memo(TableCell);
+
+// Memoized action buttons
+const MemoizedInterpretButton = memo(InterpretButton);
+const MemoizedScheduleButton = memo(ScheduleButton);
+const MemoizedIntegrateButton = memo(IntegrateButton);
+const MemoizedSettingsButton = memo(SettingsButton);
+const MemoizedOptionsButton = memo(OptionsButton);
 
 const modalStyle = {
   top: '50%',
