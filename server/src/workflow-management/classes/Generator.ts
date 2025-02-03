@@ -759,8 +759,7 @@ export class WorkflowGenerator {
         selectors?.id,
         selectors?.hrefSelector,
         selectors?.accessibilitySelector,
-        selectors?.attrSelector,
-        selectors?.generalSelector
+        selectors?.attrSelector
       ]
         .filter(selector => selector !== null && selector !== undefined)
         .join(',');
