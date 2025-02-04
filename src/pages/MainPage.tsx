@@ -100,6 +100,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
       localStorage.setItem('runningRobot', JSON.stringify({
         browserId,
         runId,
+        robotMetaId,
         recordingName: runningRecordingName
       }));
   
@@ -144,9 +145,9 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
     
     if (storedRobotInfo) {
       try {
-        const { browserId, runId, recordingName } = JSON.parse(storedRobotInfo);
+        const { browserId, runId, robotMetaId, recordingName } = JSON.parse(storedRobotInfo);
         
-        setIds({ browserId, runId });
+        setIds({ browserId, runId, robotMetaId });
         setRunningRecordingName(recordingName);
         setContent('runs'); 
         
