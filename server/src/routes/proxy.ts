@@ -12,16 +12,17 @@ interface AuthenticatedRequest extends Request {
     user?: { id: string };
 }
 
-router.post('/config', requireSignIn, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/config', requireSignIn, async (req: Request, res: Response) => {
     const { server_url, username, password } = req.body;
+    const authenticatedReq = req as AuthenticatedRequest;
 
     try {
 
-        if (!req.user) {
+        if (!authenticatedReq.user) {
             return res.status(401).json({ ok: false, error: 'Unauthorized' });
         }
 
-        const user = await User.findByPk(req.user.id, {
+        const user = await User.findByPk(authenticatedReq.user.id, {
             attributes: { exclude: ['password'] },
         });
 
@@ -57,13 +58,14 @@ router.post('/config', requireSignIn, async (req: AuthenticatedRequest, res: Res
     }
 });
 
-router.get('/test', requireSignIn, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/test', requireSignIn, async (req: Request, res: Response) => {
+    const authenticatedReq = req as AuthenticatedRequest;
     try {
-        if (!req.user) {
+        if (!authenticatedReq.user) {
             return res.status(401).json({ ok: false, error: 'Unauthorized' });
         }
 
-        const user = await User.findByPk(req.user.id, {
+        const user = await User.findByPk(authenticatedReq.user.id, {
             attributes: ['proxy_url', 'proxy_username', 'proxy_password'],
             raw: true
         });
@@ -98,13 +100,14 @@ router.get('/test', requireSignIn, async (req: AuthenticatedRequest, res: Respon
     }
 });
 
-router.get('/config', requireSignIn, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/config', requireSignIn, async (req: Request, res: Response) => {
+    const authenticatedReq = req as AuthenticatedRequest;
     try {
-        if (!req.user) {
+        if (!authenticatedReq.user) {
             return res.status(401).json({ ok: false, error: 'Unauthorized' });
         }
 
-        const user = await User.findByPk(req.user.id, {
+        const user = await User.findByPk(authenticatedReq.user.id, {
             attributes: ['proxy_url', 'proxy_username', 'proxy_password'],
             raw: true,
         });
@@ -125,12 +128,13 @@ router.get('/config', requireSignIn, async (req: AuthenticatedRequest, res: Resp
     }
 });
 
-router.delete('/config', requireSignIn, async (req: AuthenticatedRequest, res: Response) => {
-    if (!req.user) {
+router.delete('/config', requireSignIn, async (req: Request, res: Response) => {
+    const authenticatedReq = req as AuthenticatedRequest;
+    if (!authenticatedReq.user) {
         return res.status(401).json({ ok: false, error: 'Unauthorized' });
     }
 
-    const user = await User.findByPk(req.user.id);
+    const user = await User.findByPk(authenticatedReq.user.id);
 
     if (!user) {
         return res.status(404).json({ message: 'User not found' });

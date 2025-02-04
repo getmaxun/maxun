@@ -8,7 +8,16 @@
     "register_prompt": "还没有账号？",
     "register_link": "注册",
     "welcome_notification": "欢迎使用 Maxun！",
-    "error_notification": "登录失败。请重试。"
+    "validation": {
+      "required_fields": "邮箱和密码为必填项",
+      "password_length": "密码必须至少6个字符"
+    },
+    "error": {
+      "user_not_found": "用户不存在",
+      "invalid_credentials": "邮箱或密码无效",
+      "server_error": "登录失败，请稍后重试",
+      "generic": "发生错误，请重试"
+    }
   },
   "register": {
     "title": "注册账号",
@@ -19,7 +28,16 @@
     "register_prompt": "已有账号？",
     "login_link": "登录",
     "welcome_notification": "欢迎使用 Maxun！",
-    "error_notification": "注册失败。请重试。"
+    "validation": {
+      "email_required": "邮箱是必填项",
+      "password_requirements": "密码必须至少6个字符"
+    },
+    "error": {
+      "user_exists": "该邮箱已被注册",
+      "creation_failed": "无法创建账户",
+      "server_error": "服务器错误",
+      "generic": "注册失败，请重试"
+    }
   },
   "recordingtable": {
     "run": "运行",
@@ -41,7 +59,7 @@
     "duplicate": "复制",
     "search": "搜索机器人...",
     "notifications": {
-      "delete_warning": "无法删除机器人，因为它有关联的运行记录",
+      "delete_warning": "该机器人有关联的运行记录。请先删除运行记录才能删除机器人",
       "delete_success": "机器人删除成功",
       "auth_success": "机器人认证成功"
     }
@@ -63,6 +81,7 @@
     "delete": "删除",
     "settings": "设置",
     "search": "搜索运行记录...",
+    "sort_tooltip": "点击排序",
     "notifications": {
       "no_runs": "未找到运行记录。请重试。",
       "delete_success": "运行记录删除成功"
@@ -452,6 +471,7 @@
       "log": "日志"
     },
     "empty_output": "输出为空。",
+    "loading": "运行中。运行完成后，提取的数据将显示在此处。",
     "captured_data": {
       "title": "捕获的数据",
       "download_json": "下载为JSON",

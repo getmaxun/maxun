@@ -1,6 +1,44 @@
 import React, { createContext, useContext, useState } from "react";
 import { AlertSnackbarProps } from "../components/ui/AlertSnackbar";
+import { WhereWhatPair } from "maxun-core";
 
+interface RobotMeta {
+    name: string;
+    id: string;
+    createdAt: string;
+    pairs: number;
+    updatedAt: string;
+    params: any[];
+}
+
+interface RobotWorkflow {
+    workflow: WhereWhatPair[];
+}
+
+interface ScheduleConfig {
+    runEvery: number;
+    runEveryUnit: 'MINUTES' | 'HOURS' | 'DAYS' | 'WEEKS' | 'MONTHS';
+    startFrom: 'SUNDAY' | 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY';
+    atTimeStart?: string;
+    atTimeEnd?: string;
+    timezone: string;
+    lastRunAt?: Date;
+    nextRunAt?: Date;
+    cronExpression?: string;
+}
+
+export interface RobotSettings {
+    id: string;
+    userId?: number;
+    recording_meta: RobotMeta;
+    recording: RobotWorkflow;
+    google_sheet_email?: string | null;
+    google_sheet_name?: string | null;
+    google_sheet_id?: string | null;
+    google_access_token?: string | null;
+    google_refresh_token?: string | null;
+    schedule?: ScheduleConfig | null;
+}
 
 interface GlobalInfo {
   browserId: string | null;
@@ -16,6 +54,8 @@ interface GlobalInfo {
   setRecordings: (recordings: string[]) => void;
   rerenderRuns: boolean;
   setRerenderRuns: (rerenderRuns: boolean) => void;
+  rerenderRobots: boolean;
+  setRerenderRobots: (rerenderRuns: boolean) => void;
   recordingLength: number;
   setRecordingLength: (recordingLength: number) => void;
   recordingId: string | null;
@@ -52,6 +92,7 @@ class GlobalInfoStore implements Partial<GlobalInfo> {
   recordingId = null;
   recordings: string[] = [];
   rerenderRuns = false;
+  rerenderRobots = false;
   recordingName = '';
   initialUrl = 'https://';
   recordingUrl = 'https://';
@@ -75,6 +116,7 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
   const [notification, setNotification] = useState<AlertSnackbarProps>(globalInfoStore.notification);
   const [recordings, setRecordings] = useState<string[]>(globalInfoStore.recordings);
   const [rerenderRuns, setRerenderRuns] = useState<boolean>(globalInfoStore.rerenderRuns);
+  const [rerenderRobots, setRerenderRobots] = useState<boolean>(globalInfoStore.rerenderRobots);
   const [recordingLength, setRecordingLength] = useState<number>(globalInfoStore.recordingLength);
   const [recordingId, setRecordingId] = useState<string | null>(globalInfoStore.recordingId);
   const [recordingName, setRecordingName] = useState<string>(globalInfoStore.recordingName);
@@ -121,6 +163,8 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
         setRecordings,
         rerenderRuns,
         setRerenderRuns,
+        rerenderRobots,
+        setRerenderRobots,
         recordingLength,
         setRecordingLength,
         recordingId,

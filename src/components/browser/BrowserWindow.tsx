@@ -263,7 +263,12 @@ export const BrowserWindow = () => {
                 }
 
                 if (getList === true && !listSelector) {
-                    setListSelector(highlighterData.selector);
+                    let cleanedSelector = highlighterData.selector;
+                    if (cleanedSelector.includes('nth-child')) {
+                        cleanedSelector = cleanedSelector.replace(/:nth-child\(\d+\)/g, '');
+                    }
+
+                    setListSelector(cleanedSelector);
                     notify(`info`, t('browser_window.attribute_modal.notifications.list_select_success'));
                     setCurrentListId(Date.now());
                     setFields({});
@@ -275,13 +280,25 @@ export const BrowserWindow = () => {
                     // Add fields to the list
                     if (options.length === 1) {
                         const attribute = options[0].value;
+                        let currentSelector = highlighterData.selector;
+
+                        if (currentSelector.includes('>')) {
+                            const [firstPart, ...restParts] = currentSelector.split('>').map(p => p.trim());
+                            const listSelectorRightPart = listSelector.split('>').pop()?.trim().replace(/:nth-child\(\d+\)/g, '');
+
+                            if (firstPart.includes('nth-child') && 
+                                firstPart.replace(/:nth-child\(\d+\)/g, '') === listSelectorRightPart) {
+                                currentSelector = `${firstPart.replace(/:nth-child\(\d+\)/g, '')} > ${restParts.join(' > ')}`;
+                            }
+                        }
+
                         const newField: TextStep = {
                             id: Date.now(),
                             type: 'text',
                             label: `Label ${Object.keys(fields).length + 1}`,
                             data: data,
                             selectorObj: {
-                                selector: highlighterData.selector,
+                                selector: currentSelector,
                                 tag: highlighterData.elementInfo?.tagName,
                                 shadow: highlighterData.elementInfo?.isShadowRoot,
                                 attribute
