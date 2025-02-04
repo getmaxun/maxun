@@ -8,7 +8,16 @@
     "register_prompt": "¿No tienes una cuenta?",
     "register_link": "Registrarse",
     "welcome_notification": "¡Bienvenido a Maxun!",
-    "error_notification": "Error al iniciar sesión. Por favor, inténtalo de nuevo."
+    "validation": {
+      "required_fields": "El correo electrónico y la contraseña son obligatorios",
+      "password_length": "La contraseña debe tener al menos 6 caracteres"
+    },
+    "error": {
+      "user_not_found": "El usuario no existe",
+      "invalid_credentials": "Correo electrónico o contraseña inválidos",
+      "server_error": "Error al iniciar sesión. Por favor, inténtelo de nuevo más tarde",
+      "generic": "Se produjo un error. Por favor, inténtelo de nuevo"
+    }
   },
   "register": {
     "title": "Crear cuenta",
@@ -19,7 +28,16 @@
     "register_prompt": "¿Ya tienes una cuenta?",
     "login_link": "Iniciar sesión",
     "welcome_notification": "¡Bienvenido a Maxun!",
-    "error_notification": "Error en el registro. Por favor, inténtalo de nuevo."
+    "validation": {
+      "email_required": "El correo electrónico es obligatorio",
+      "password_requirements": "La contraseña debe tener al menos 6 caracteres"
+    },
+    "error": {
+      "user_exists": "Ya existe un usuario con este correo electrónico",
+      "creation_failed": "No se pudo crear la cuenta",
+      "server_error": "Ocurrió un error en el servidor",
+      "generic": "Error en el registro. Por favor, inténtelo de nuevo"
+    }
   },
   "recordingtable": {
     "run": "Ejecutar",
@@ -41,8 +59,9 @@
     "duplicate": "Duplicar",
     "search": "Buscar robots...",
     "notifications": {
-      "delete_warning": "No se puede eliminar el robot ya que tiene ejecuciones asociadas",
-      "delete_success": "Robot eliminado exitosamente"
+      "delete_warning": "El robot tiene ejecuciones asociadas. Primero elimine las ejecuciones para eliminar el robot",
+      "delete_success": "Robot eliminado exitosamente",
+      "auth_success": "Robot autenticado exitosamente"
     }
   },
   "mainmenu": {
@@ -62,6 +81,7 @@
     "delete": "Eliminar",
     "settings": "Ajustes",
     "search": "Buscar ejecuciones...",
+    "sort_tooltip": "Haga clic para ordenar",
     "notifications": {
       "no_runs": "No se encontraron ejecuciones. Por favor, inténtelo de nuevo.",
       "delete_success": "Ejecución eliminada con éxito"
@@ -451,6 +471,7 @@
       "log": "Registro"
     },
     "empty_output": "La salida está vacía.",
+    "loading": "Ejecución en curso. Los datos extraídos aparecerán aquí una vez que se complete la ejecución.",
     "captured_data": {
       "title": "Datos Capturados",
       "download_json": "Descargar como JSON",

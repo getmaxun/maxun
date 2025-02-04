@@ -15,6 +15,7 @@ import { ScheduleSettings } from "../components/robot/ScheduleSettings";
 import { IntegrationSettings } from "../components/integration/IntegrationSettings";
 import { RobotSettings } from "../components/robot/RobotSettings";
 import { apiUrl } from "../apiConfig";
+import { useNavigate } from 'react-router-dom';
 
 interface MainPageProps {
   handleEditRecording: (id: string, fileName: string) => void;
@@ -24,6 +25,7 @@ interface MainPageProps {
 export interface CreateRunResponse {
   browserId: string;
   runId: string;
+  robotMetaId: string;
 }
 
 export interface ScheduleRunResponse {
@@ -40,12 +42,14 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
   const [currentInterpretationLog, setCurrentInterpretationLog] = React.useState('');
   const [ids, setIds] = React.useState<CreateRunResponse>({
     browserId: '',
-    runId: ''
+    runId: '',
+    robotMetaId: ''
   });
 
   let aborted = false;
 
   const { notify, setRerenderRuns, setRecordingId } = useGlobalInfoStore();
+  const navigate  = useNavigate();
 
   const abortRunHandler = (runId: string) => {
     aborted = true;
@@ -90,15 +94,17 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
   }, [currentInterpretationLog])
 
   const handleRunRecording = useCallback((settings: RunSettings) => {
-    createRunForStoredRecording(runningRecordingId, settings).then(({ browserId, runId }: CreateRunResponse) => {
-      setIds({ browserId, runId });
-
+    createRunForStoredRecording(runningRecordingId, settings).then(({ browserId, runId, robotMetaId }: CreateRunResponse) => {
+      setIds({ browserId, runId, robotMetaId });
+  
       localStorage.setItem('runningRobot', JSON.stringify({
         browserId,
         runId,
         recordingName: runningRecordingName
       }));
-
+  
+      navigate(`/runs/${robotMetaId}/run/${runId}`);
+      
       const socket =
         io(`${apiUrl}/${browserId}`, {
           transports: ["websocket"],

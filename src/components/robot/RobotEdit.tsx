@@ -7,8 +7,8 @@ import { modalStyle } from "../recorder/AddWhereCondModal";
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { getStoredRecording, updateRecording } from '../../api/storage';
 import { WhereWhatPair } from 'maxun-core';
+import { useNavigate } from 'react-router-dom';
 
-// Base interfaces for robot data structure
 interface RobotMeta {
     name: string;
     id: string;
@@ -45,7 +45,6 @@ export interface RobotSettings {
     google_access_token?: string | null;
     google_refresh_token?: string | null;
     schedule?: ScheduleConfig | null;
-    isLogin?: boolean;
 }
 
 interface RobotSettingsProps {
@@ -55,7 +54,6 @@ interface RobotSettingsProps {
     initialSettings?: RobotSettings | null;
 }
 
-// Enhanced interfaces for credential handling
 interface CredentialInfo {
     value: string;
     type: string;
@@ -78,47 +76,40 @@ interface GroupedCredentials {
 
 export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettings }: RobotSettingsProps) => {
     const { t } = useTranslation();
-    const [robot, setRobot] = useState<RobotSettings | null>(null);
     const [credentials, setCredentials] = useState<Credentials>({});
-    const { recordingId, notify } = useGlobalInfoStore();
-    const [credentialGroups, setCredentialGroups] = useState<GroupedCredentials>({ 
-        passwords: [], 
+    const { recordingId, notify, setRerenderRobots } = useGlobalInfoStore();
+    const [robot, setRobot] = useState<RobotSettings | null>(null);
+    const [credentialGroups, setCredentialGroups] = useState<GroupedCredentials>({
+        passwords: [],
         emails: [],
         usernames: [],
-        others: [] 
+        others: []
     });
     const [showPasswords, setShowPasswords] = useState<CredentialVisibility>({});
 
     const isEmailPattern = (value: string): boolean => {
         return value.includes('@');
     };
-    
+
     const isUsernameSelector = (selector: string): boolean => {
-        return selector.toLowerCase().includes('username') || 
-               selector.toLowerCase().includes('user') ||
-               selector.toLowerCase().includes('email');
+        return selector.toLowerCase().includes('username') ||
+            selector.toLowerCase().includes('user') ||
+            selector.toLowerCase().includes('email');
     };
 
     const determineCredentialType = (selector: string, info: CredentialInfo): 'password' | 'email' | 'username' | 'other' => {
-        // Check for password type first
-        if (info.type === 'password') {
+        if (info.type === 'password' || selector.toLowerCase().includes('password')) {
             return 'password';
         }
-        
-        // Check for email patterns in the value or selector
         if (isEmailPattern(info.value) || selector.toLowerCase().includes('email')) {
             return 'email';
         }
-        
-        // Check for username patterns in the selector
         if (isUsernameSelector(selector)) {
             return 'username';
         }
-        
-        // If no specific pattern is matched, classify as other
         return 'other';
     };
-    
+
     useEffect(() => {
         if (isOpen) {
             getRobot();
@@ -135,32 +126,37 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
 
     const extractInitialCredentials = (workflow: any[]): Credentials => {
         const credentials: Credentials = {};
-    
+
         // Helper function to check if a character is printable
         const isPrintableCharacter = (char: string): boolean => {
             return char.length === 1 && !!char.match(/^[\x20-\x7E]$/);
         };
-    
+
         // Process each step in the workflow
         workflow.forEach(step => {
             if (!step.what) return;
-    
+
             // Keep track of the current input field being processed
             let currentSelector = '';
             let currentValue = '';
             let currentType = '';
-    
+
             // Process actions in sequence to maintain correct text state
             step.what.forEach((action: any) => {
                 if (
-                    (action.action === 'type' || action.action === 'press') && 
-                    action.args?.length >= 2 && 
+                    (action.action === 'type' || action.action === 'press') &&
+                    action.args?.length >= 2 &&
                     typeof action.args[1] === 'string'
                 ) {
                     const selector: string = action.args[0];
                     const character: string = action.args[1];
                     const inputType: string = action.args[2] || '';
-    
+
+                    // Detect `input[type="password"]`
+                    if (!currentType && inputType.toLowerCase() === 'password') {
+                        currentType = 'password';
+                    }
+
                     // If we're dealing with a new selector, store the previous one
                     if (currentSelector && selector !== currentSelector) {
                         if (!credentials[currentSelector]) {
@@ -172,14 +168,14 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                             credentials[currentSelector].value = currentValue;
                         }
                     }
-    
+
                     // Update current tracking variables
                     if (selector !== currentSelector) {
                         currentSelector = selector;
                         currentValue = credentials[selector]?.value || '';
                         currentType = inputType || credentials[selector]?.type || '';
                     }
-    
+
                     // Handle different types of key actions
                     if (character === 'Backspace') {
                         // Remove the last character when backspace is pressed
@@ -191,7 +187,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                     // Note: We ignore other special keys like 'Shift', 'Enter', etc.
                 }
             });
-    
+
             // Store the final state of the last processed selector
             if (currentSelector) {
                 credentials[currentSelector] = {
@@ -200,14 +196,14 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                 };
             }
         });
-    
+
         return credentials;
     };
 
     const groupCredentialsByType = (credentials: Credentials): GroupedCredentials => {
         return Object.entries(credentials).reduce((acc: GroupedCredentials, [selector, info]) => {
             const credentialType = determineCredentialType(selector, info);
-            
+
             switch (credentialType) {
                 case 'password':
                     acc.passwords.push(selector);
@@ -221,7 +217,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                 default:
                     acc.others.push(selector);
             }
-            
+
             return acc;
         }, { passwords: [], emails: [], usernames: [], others: [] });
     };
@@ -281,32 +277,28 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
     const renderAllCredentialFields = () => {
         return (
             <>
-                {/* Render username credentials */}
                 {renderCredentialFields(
-                    credentialGroups.usernames, 
-                    t('Username Credentials'),
-                    'text'  // Always show usernames as text
+                    credentialGroups.usernames,
+                    t('Username'),
+                    'text'
                 )}
-                
-                {/* Render email credentials */}
+
                 {renderCredentialFields(
-                    credentialGroups.emails, 
-                    t('Email Credentials'),
-                    'text'  // Always show emails as text
+                    credentialGroups.emails,
+                    t('Email'),
+                    'text'
                 )}
-                
-                {/* Render password credentials */}
+
                 {renderCredentialFields(
-                    credentialGroups.passwords, 
-                    t('Password Credentials'),
-                    'password'  // Use password masking
+                    credentialGroups.passwords,
+                    t('Password'),
+                    'password'
                 )}
-                
-                {/* Render other credentials */}
+
                 {renderCredentialFields(
-                    credentialGroups.others, 
-                    t('Other Credentials'),
-                    'text'  // Show other credentials as text
+                    credentialGroups.others,
+                    t('Other'),
+                    'text'
                 )}
             </>
         );
@@ -314,33 +306,30 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
 
     const renderCredentialFields = (selectors: string[], headerText: string, defaultType: 'text' | 'password' = 'text') => {
         if (selectors.length === 0) return null;
-    
+
         return (
             <>
-                <Typography variant="h6" style={{ marginBottom: '20px'}}>
+                {/* <Typography variant="h6" style={{ marginBottom: '20px' }}>
                     {headerText}
-                </Typography>
-                {selectors.map((selector) => {
+                </Typography> */}
+                {selectors.map((selector, index) => {
                     const isVisible = showPasswords[selector];
-                    
+
                     return (
                         <TextField
                             key={selector}
-                            // The type changes based on visibility state
                             type={isVisible ? 'text' : 'password'}
-                            label={`Credential for ${selector}`}
+                            label={headerText === 'Other' ? `${`Input`} ${index + 1}` : headerText}
                             value={credentials[selector]?.value || ''}
                             onChange={(e) => handleCredentialChange(selector, e.target.value)}
                             style={{ marginBottom: '20px' }}
                             InputProps={{
-                                // Now showing visibility toggle for all fields
                                 endAdornment: (
                                     <InputAdornment position="end">
                                         <IconButton
-                                            aria-label="toggle credential visibility"
+                                            aria-label="Show input"
                                             onClick={() => handleClickShowPassword(selector)}
                                             edge="end"
-                                            // Optional: disable if field is empty
                                             disabled={!credentials[selector]?.value}
                                         >
                                             {isVisible ? <Visibility /> : <VisibilityOff />}
@@ -378,13 +367,11 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
             const success = await updateRecording(robot.recording_meta.id, payload);
 
             if (success) {
+                setRerenderRobots(true);
+
                 notify('success', t('robot_edit.notifications.update_success'));
                 handleStart(robot);
                 handleClose();
-
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
             } else {
                 notify('error', t('robot_edit.notifications.update_failed'));
             }
@@ -415,7 +402,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                                 onChange={(e) => handleRobotNameChange(e.target.value)}
                                 style={{ marginBottom: '20px' }}
                             />
-                            
+
                             {robot.recording.workflow?.[0]?.what?.[0]?.args?.[0]?.limit !== undefined && (
                                 <TextField
                                     label={t('robot_edit.robot_limit')}
@@ -432,8 +419,11 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                                 />
                             )}
 
-                            {(robot.isLogin || Object.keys(credentials).length > 0) && (
+                            {(Object.keys(credentials).length > 0) && (
                                 <>
+                                    <Typography variant="body1" style={{ marginBottom: '20px' }}>
+                                        {t('Input Texts')}
+                                    </Typography>
                                     {renderAllCredentialFields()}
                                 </>
                             )}

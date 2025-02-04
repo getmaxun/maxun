@@ -39,6 +39,7 @@ interface MetaData {
   pairs: number;
   updatedAt: string;
   params: string[],
+  isLogin?: boolean;
 }
 
 /**
@@ -97,6 +98,7 @@ export class WorkflowGenerator {
     pairs: 0,
     updatedAt: '',
     params: [],
+    isLogin: false,
   }
 
   /**
@@ -354,40 +356,6 @@ export class WorkflowGenerator {
     const elementInfo = await getElementInformation(page, coordinates, '', false);
     console.log("Element info: ", elementInfo);
 
-    if ((elementInfo?.tagName === 'INPUT' || elementInfo?.tagName === 'TEXTAREA') && selector) {
-      // Calculate the exact position within the element
-      const elementPos = await page.evaluate((selector) => {
-        const element = document.querySelector(selector);
-        if (!element) return null;
-        const rect = element.getBoundingClientRect();
-        return {
-            x: rect.left,
-            y: rect.top
-        };
-      }, selector);
-
-      if (elementPos) {
-        const relativeX = coordinates.x - elementPos.x;
-        const relativeY = coordinates.y - elementPos.y;
-
-        const pair: WhereWhatPair = {
-            where,
-            what: [{
-                action: 'click',
-                args: [selector, { position: { x: relativeX, y: relativeY } }]
-            }]
-        };
-
-        if (selector) {
-            this.generatedData.lastUsedSelector = selector;
-            this.generatedData.lastAction = 'click';
-        }
-
-        await this.addPairToWorkflowAndNotifyClient(pair, page);
-        return;
-      }
-    }
-
     // Check if clicked element is a select dropdown
     const isDropdown = elementInfo?.tagName === 'SELECT';
     
@@ -457,6 +425,40 @@ export class WorkflowGenerator {
           selector
       });
       return;
+    }
+
+    if ((elementInfo?.tagName === 'INPUT' || elementInfo?.tagName === 'TEXTAREA') && selector) {
+      // Calculate the exact position within the element
+      const elementPos = await page.evaluate((selector) => {
+        const element = document.querySelector(selector);
+        if (!element) return null;
+        const rect = element.getBoundingClientRect();
+        return {
+            x: rect.left,
+            y: rect.top
+        };
+      }, selector);
+
+      if (elementPos) {
+        const relativeX = coordinates.x - elementPos.x;
+        const relativeY = coordinates.y - elementPos.y;
+
+        const pair: WhereWhatPair = {
+            where,
+            what: [{
+                action: 'click',
+                args: [selector, { position: { x: relativeX, y: relativeY } }]
+            }]
+        };
+
+        if (selector) {
+            this.generatedData.lastUsedSelector = selector;
+            this.generatedData.lastAction = 'click';
+        }
+
+        await this.addPairToWorkflowAndNotifyClient(pair, page);
+        return;
+      }
     }
 
     //const element = await getElementMouseIsOver(page, coordinates);
@@ -708,12 +710,12 @@ export class WorkflowGenerator {
         pairs: recording.workflow.length,
         updatedAt: new Date().toLocaleString(),
         params: this.getParams() || [],
+        isLogin: isLogin,
       }
       const robot = await Robot.create({
         userId,
         recording_meta: this.recordingMeta,
         recording: recording,
-        isLogin: isLogin,
       });
       capture(
         'maxun-oss-robot-created',
@@ -757,8 +759,7 @@ export class WorkflowGenerator {
         selectors?.id,
         selectors?.hrefSelector,
         selectors?.accessibilitySelector,
-        selectors?.attrSelector,
-        selectors?.generalSelector
+        selectors?.attrSelector
       ]
         .filter(selector => selector !== null && selector !== undefined)
         .join(',');

@@ -350,7 +350,6 @@ router.post('/recordings/:id/duplicate', requireSignIn, async (req: Authenticate
         updatedAt: currentTimestamp, 
       }, 
       recording: { ...originalRobot.recording, workflow }, 
-      isLogin: originalRobot.isLogin,
       google_sheet_email: null, 
       google_sheet_name: null,
       google_sheet_id: null,
@@ -507,6 +506,7 @@ router.put('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res) =>
     return res.send({
       browserId: id,
       runId: plainRun.runId,
+      robotMetaId: recording.recording_meta.id,
     });
   } catch (e) {
     const { message } = e as Error;

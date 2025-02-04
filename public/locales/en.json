@@ -8,7 +8,16 @@
       "register_prompt": "Don't have an account?",
       "register_link": "Register",
       "welcome_notification": "Welcome to Maxun!",
-      "error_notification": "Login Failed. Please try again."
+      "validation": {
+        "required_fields": "Email and password are required",
+        "password_length": "Password must be at least 6 characters"
+      },
+      "error": {
+        "user_not_found": "User does not exist",
+        "invalid_credentials": "Invalid email or password",
+        "server_error": "Login failed. Please try again later",
+        "generic": "An error occurred. Please try again"
+      }
     },
     "register": {
       "title": "Register Account",
@@ -19,7 +28,16 @@
       "register_prompt": "Already have an account?",
       "login_link": "Login",
       "welcome_notification": "Welcome to Maxun!",
-      "error_notification": "Registeration Failed. Please try again."
+      "validation": {
+        "email_required": "Email is required",
+        "password_requirements": "Password must be at least 6 characters"
+      },
+      "error": {
+        "user_exists": "User with this email already exists",
+        "creation_failed": "Could not create account",
+        "server_error": "Server error occurred",
+        "generic": "Registration failed. Please try again"
+      }
     },
     "recordingtable":{
       "run": "Run",
@@ -41,8 +59,9 @@
       "duplicate":"Duplicate",
       "search":"Search Robots...",
       "notifications": {
-        "delete_warning": "Cannot delete robot as it has associated runs",
-        "delete_success": "Robot deleted successfully"
+        "delete_warning": "The robot has associated runs. First delete runs to delete the robot",
+        "delete_success": "Robot deleted successfully",
+        "auth_success": "Robot successfully authenticated"
       }
     },
     "mainmenu":{
@@ -62,6 +81,7 @@
       "delete":"Delete",
       "settings":"Settings",
       "search":"Search Runs...",
+      "sort_tooltip": "Click to sort",
       "notifications": {
         "no_runs": "No runs found. Please try again.",
         "delete_success": "Run deleted successfully"
@@ -461,6 +481,7 @@
         "log": "Log"
       },
       "empty_output": "The output is empty.",
+      "loading": "Run in progress. Extracted data will appear here once run completes.",
       "captured_data": {
         "title": "Captured Data",
         "download_json": "Download as JSON",

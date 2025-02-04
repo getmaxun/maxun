@@ -1,5 +1,5 @@
 /* eslint-disable no-await-in-loop, no-restricted-syntax */
-import { Page, PageScreenshotOptions } from 'playwright';
+import { ElementHandle, Page, PageScreenshotOptions } from 'playwright';
 import { PlaywrightBlocker } from '@cliqz/adblocker-playwright';
 import fetch from 'cross-fetch';
 import path from 'path';
@@ -548,232 +548,312 @@ export default class Interpreter extends EventEmitter {
     }
   }
 
-  private async handlePagination(page: Page, config: { listSelector: string, fields: any, limit?: number, pagination: any }) {
+  private async handlePagination(page: Page, config: { 
+    listSelector: string, 
+    fields: any, 
+    limit?: number, 
+    pagination: any 
+}) {
     let allResults: Record<string, any>[] = [];
     let previousHeight = 0;
-    // track unique items per page to avoid re-scraping
     let scrapedItems: Set<string> = new Set<string>();
-    let visitedUrls: string[] = [];
+    let visitedUrls: Set<string> = new Set<string>();
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY = 1000; // 1 second delay between retries
 
-    // Debug logging helper
     const debugLog = (message: string, ...args: any[]) => {
-        console.log(`[Page ${visitedUrls.length + 1}] ${message}`, ...args);
+        console.log(`[Page ${visitedUrls.size}] [URL: ${page.url()}] ${message}`, ...args);
+    };
+
+    const scrapeCurrentPage = async () => {
+        const results = await page.evaluate((cfg) => window.scrapeList(cfg), config);
+        const newResults = results.filter(item => {
+            const uniqueKey = JSON.stringify(item);
+            if (scrapedItems.has(uniqueKey)) return false;
+            scrapedItems.add(uniqueKey);
+            return true;
+        });
+        allResults = allResults.concat(newResults);
+        debugLog("Results collected:", allResults.length);
+    };
+
+    const checkLimit = () => {
+        if (config.limit && allResults.length >= config.limit) {
+            allResults = allResults.slice(0, config.limit);
+            return true;
+        }
+        return false;
+    };
+
+    // Enhanced button finder with retry mechanism
+    const findWorkingButton = async (selectors: string[], retryCount = 0): Promise<{ 
+        button: ElementHandle | null, 
+        workingSelector: string | null 
+    }> => {
+      for (const selector of selectors) {
+        try {
+          const button = await page.waitForSelector(selector, {
+            state: 'attached',
+            timeout: 10000 // Reduced timeout for faster checks
+          });
+          if (button) {
+            debugLog('Found working selector:', selector);
+            return { button, workingSelector: selector };
+          }
+        } catch (error) {
+          debugLog(`Selector failed: ${selector}`);
+        }
+      }
+
+      // Implement retry mechanism when no selectors work
+      if (selectors.length > 0 && retryCount < MAX_RETRIES) {
+        debugLog(`Retry attempt ${retryCount + 1} of ${MAX_RETRIES}`);
+        await page.waitForTimeout(RETRY_DELAY);
+        return findWorkingButton(selectors, retryCount + 1);
+      }
+
+      return { button: null, workingSelector: null };
+    };
+
+    const retryOperation = async (operation: () => Promise<boolean>, retryCount = 0): Promise<boolean> => {
+        try {
+            return await operation();
+        } catch (error) {
+            if (retryCount < MAX_RETRIES) {
+                debugLog(`Retrying operation. Attempt ${retryCount + 1} of ${MAX_RETRIES}`);
+                await page.waitForTimeout(RETRY_DELAY);
+                return retryOperation(operation, retryCount + 1);
+            }
+            debugLog(`Operation failed after ${MAX_RETRIES} retries`);
+            return false;
+        }
     };
 
     let availableSelectors = config.pagination.selector.split(',');
 
-    while (true) {
+    try {
+      while (true) {
+        // Reduced timeout for faster performance
+        await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+        
         switch (config.pagination.type) {
-            case 'scrollDown':
-                await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-                await page.waitForTimeout(2000);
+          case 'scrollDown': {
+            await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+            await page.waitForTimeout(2000);
 
-                const currentHeight = await page.evaluate(() => document.body.scrollHeight);
-                if (currentHeight === previousHeight) {
-                    const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
-                    allResults = allResults.concat(finalResults);
-                    return allResults;
-                }
+            const currentHeight = await page.evaluate(() => document.body.scrollHeight);
+            if (currentHeight === previousHeight) {
+              const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
+              allResults = allResults.concat(finalResults);
+              return allResults;
+            }
 
-                previousHeight = currentHeight;
-                break;
+            previousHeight = currentHeight;
+            break;
+          }
 
-            case 'scrollUp':
-                await page.evaluate(() => window.scrollTo(0, 0));
-                await page.waitForTimeout(2000);
+          case 'scrollUp': {
+            await page.evaluate(() => window.scrollTo(0, 0));
+            await page.waitForTimeout(2000);
 
-                const currentTopHeight = await page.evaluate(() => document.documentElement.scrollTop);
-                if (currentTopHeight === 0) {
-                    const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
-                    allResults = allResults.concat(finalResults);
-                    return allResults;
-                }
+            const currentTopHeight = await page.evaluate(() => document.documentElement.scrollTop);
+            if (currentTopHeight === 0) {
+              const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
+              allResults = allResults.concat(finalResults);
+              return allResults;
+            }
 
-                previousHeight = currentTopHeight;
-                break;
+            previousHeight = currentTopHeight;
+            break;
+          }
 
-            case 'clickNext':
-              debugLog("Current URL:", page.url());
-              const pageResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
-              
-              // Filter out already scraped items
-              const newResults = pageResults.filter(item => {
-                const uniqueKey = JSON.stringify(item);
-                if (scrapedItems.has(uniqueKey)) return false;
-                scrapedItems.add(uniqueKey);
-                return true;
-              });
-              
-              allResults = allResults.concat(newResults);
-              debugLog("Results collected so far:", allResults.length);
-              
-              if (config.limit && allResults.length >= config.limit) {
-                return allResults.slice(0, config.limit);
-              }
+          case 'clickNext': {
+            const currentUrl = page.url();
+            visitedUrls.add(currentUrl);
+            
+            await scrapeCurrentPage();
+            if (checkLimit()) return allResults;
 
-              await page.waitForLoadState('networkidle', { timeout: 30000 });  
-              await page.waitForTimeout(2000);
-
-              let checkButton = null;
-              let workingSelector = null;
-
-              // Try each selector with explicit waiting
-              for (const selector of availableSelectors) {
+            const { button, workingSelector } = await findWorkingButton(availableSelectors);
+            if (!button || !workingSelector) {
+                // Final retry for navigation when no selectors work
+              const success = await retryOperation(async () => {
                 try {
-                  checkButton = await page.waitForSelector(selector, { 
-                    state: 'attached',
-                    timeout: 30000
-                  });
-                  if (checkButton) {
-                    workingSelector = selector;
-                    debugLog('Found working selector:', selector);
-                    break;
-                  }
-                } catch (error) {
-                  debugLog(`Selector failed: ${selector} - ${error.message}`);
+                  await page.evaluate(() => window.history.forward());
+                  const newUrl = page.url();
+                  return !visitedUrls.has(newUrl);
+                } catch {
+                  return false;
                 }
-              }
+              });
+                
+              if (!success) return allResults;
+              break;
+            }
 
-              if (!workingSelector) {
-                  debugLog('No working selector found after trying all options');
-                  return allResults;
-              }
+            availableSelectors = availableSelectors.slice(
+                availableSelectors.indexOf(workingSelector)
+            );
 
-              const nextButton = await page.$(workingSelector);
-              if (!nextButton) {
-                debugLog('Next button not found');
-                return allResults;
-              }
+            let retryCount = 0;
+            let navigationSuccess = false;
 
-              const selectorIndex = availableSelectors.indexOf(workingSelector);
-              availableSelectors = availableSelectors.slice(selectorIndex);
-
+            while (retryCount < MAX_RETRIES && !navigationSuccess) {
               try {
-                // Store current URL to check if navigation succeeded
-                const previousUrl = page.url();
-                visitedUrls.push(previousUrl);
-
-                // Try both click methods in sequence
                 try {
                   await Promise.all([
                     page.waitForNavigation({ 
-                        waitUntil: 'networkidle',
-                        timeout: 15000
+                      waitUntil: 'networkidle',
+                      timeout: 15000 
                     }),
-                    nextButton.click()
+                    button.click()
                   ]);
-                } catch (error) {                        
-                  // If we're still on the same URL, try dispatch event
-                  if (page.url() === previousUrl) {
-                    await Promise.all([
-                      page.waitForNavigation({ 
-                        waitUntil: 'networkidle',
-                        timeout: 15000 
-                      }),
-                      nextButton.dispatchEvent('click')
-                    ]);
+                  navigationSuccess = true;
+                } catch (error) {
+                  debugLog(`Regular click failed on attempt ${retryCount + 1}. Trying DispatchEvent`);
+                  
+                  // If regular click fails, try dispatchEvent
+                  if (page.url() === currentUrl) {
+                    try {
+                      await Promise.all([
+                          page.waitForNavigation({ 
+                              waitUntil: 'networkidle',
+                              timeout: 15000 
+                          }),
+                          button.dispatchEvent('click')
+                      ]);
+                      navigationSuccess = true;
+                    } catch (dispatchError) {
+                      debugLog(`DispatchEvent failed on attempt ${retryCount + 1}.`);
+                    }
+                  } else {
+                    navigationSuccess = true;
                   }
                 }
 
-                await page.waitForLoadState('domcontentloaded');
-                await page.waitForLoadState('networkidle', { timeout: 30000 });
-                
-                const currentUrl = page.url();
-                if (visitedUrls.includes(currentUrl)) {
-                  debugLog(`Navigation failed/Detected navigation to previously visited URL: ${currentUrl}`);
-                  return allResults;
+                const newUrl = page.url();
+                if (visitedUrls.has(newUrl)) {
+                  debugLog(`Detected navigation to previously visited URL ${newUrl} on attempt ${retryCount + 1}`);
+                  navigationSuccess = false;
                 }
 
-                // Give the page a moment to stabilize after navigation
-                await page.waitForTimeout(1000);
-
+                if (navigationSuccess) {
+                  await page.waitForTimeout(1000);
+                }
               } catch (error) {
-                debugLog(`Navigation failed completely: ${error.message}`);
+                debugLog(`Navigation attempt ${retryCount + 1} failed completely.`);
+                navigationSuccess = false;
+              }
+
+              if (!navigationSuccess) {
+                retryCount++;
+                if (retryCount < MAX_RETRIES) {
+                  debugLog(`Retrying navigation - attempt ${retryCount + 1} of ${MAX_RETRIES}`);
+                  await page.waitForTimeout(RETRY_DELAY);
+                }
+              }
+            }
+
+            if (!navigationSuccess) {
+              debugLog(`Navigation failed after ${MAX_RETRIES} attempts`);
+              return allResults;
+            }
+            break;
+          }
+
+          case 'clickLoadMore': {
+            while (true) {
+              // Find working button with retry mechanism, consistent with clickNext
+              const { button: loadMoreButton, workingSelector } = await findWorkingButton(availableSelectors);
+              
+              if (!workingSelector || !loadMoreButton) {
+                debugLog('No working Load More selector found after retries');
+                const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
+                allResults = allResults.concat(finalResults);
                 return allResults;
               }
-              break;
-
-            case 'clickLoadMore':
-              while (true) {
-                let checkButton = null;
-                let workingSelector = null;
-
-                for (const selector of availableSelectors) {
-                  try {
-                    checkButton = await page.waitForSelector(selector, { 
-                      state: 'attached',
-                      timeout: 30000
-                    });
-                    if (checkButton) {
-                      workingSelector = selector;
-                      debugLog('Found working selector:', selector);
-                      break;
-                    }
-                  } catch (error) {
-                    debugLog(`Load More selector failed: ${selector}`);
-                  }
-                }
-
-                if (!workingSelector) {
-                  debugLog('No working Load More selector found');
-                  const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
-                  allResults = allResults.concat(finalResults);
-                  return allResults;
-                }
-
-                const loadMoreButton = await page.$(workingSelector);
-                if (!loadMoreButton) {
-                  debugLog('Load More button not found');
-                  const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
-                  allResults = allResults.concat(finalResults);
-                  return allResults;
-                }
-
-                const selectorIndex = availableSelectors.indexOf(workingSelector);
-                availableSelectors = availableSelectors.slice(selectorIndex);
-                
+          
+              // Update available selectors to start from the working one
+              availableSelectors = availableSelectors.slice(
+                availableSelectors.indexOf(workingSelector)
+              );
+          
+              // Implement retry mechanism for clicking the button
+              let retryCount = 0;
+              let clickSuccess = false;
+          
+              while (retryCount < MAX_RETRIES && !clickSuccess) {
                 try {
                   try {
                     await loadMoreButton.click();
+                    clickSuccess = true;
                   } catch (error) {
-                    await loadMoreButton.dispatchEvent('click');
+                    debugLog(`Regular click failed on attempt ${retryCount + 1}. Trying DispatchEvent`);
+                    
+                    // If regular click fails, try dispatchEvent
+                    try {
+                      await loadMoreButton.dispatchEvent('click');
+                      clickSuccess = true;
+                    } catch (dispatchError) {
+                      debugLog(`DispatchEvent failed on attempt ${retryCount + 1}.`);
+                      throw dispatchError; // Propagate error to trigger retry
+                    }
+                  }
+          
+                  if (clickSuccess) {
+                    await page.waitForTimeout(1000);
                   }
                 } catch (error) {
-                  const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
-                  allResults = allResults.concat(finalResults);
-                  return allResults;
-                }
-
-                await page.waitForTimeout(2000);
-                await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-                await page.waitForTimeout(2000);
-
-                const currentHeight = await page.evaluate(() => document.body.scrollHeight);
-                if (currentHeight === previousHeight) {
-                  debugLog('No more items loaded after Load More');
-                  const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
-                  allResults = allResults.concat(finalResults);
-                  return allResults;
-                }
-                previousHeight = currentHeight;
-                
-                if (config.limit && allResults.length >= config.limit) {
-                  allResults = allResults.slice(0, config.limit);
-                  break;
+                  debugLog(`Click attempt ${retryCount + 1} failed completely.`);
+                  retryCount++;
+                  
+                  if (retryCount < MAX_RETRIES) {
+                    debugLog(`Retrying click - attempt ${retryCount + 1} of ${MAX_RETRIES}`);
+                    await page.waitForTimeout(RETRY_DELAY);
+                  }
                 }
               }
-              break;
-
-            default:
-              const results = await page.evaluate((cfg) => window.scrapeList(cfg), config);
-              allResults = allResults.concat(results);
-              return allResults;
-        }
-
-        if (config.limit && allResults.length >= config.limit) {
-            allResults = allResults.slice(0, config.limit);
+          
+              if (!clickSuccess) {
+                debugLog(`Load More clicking failed after ${MAX_RETRIES} attempts`);
+                const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
+                allResults = allResults.concat(finalResults);
+                return allResults;
+              }
+          
+              // Wait for content to load and check scroll height
+              await page.waitForTimeout(2000);
+              await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+              await page.waitForTimeout(2000);
+          
+              const currentHeight = await page.evaluate(() => document.body.scrollHeight);
+              if (currentHeight === previousHeight) {
+                debugLog('No more items loaded after Load More');
+                const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
+                allResults = allResults.concat(finalResults);
+                return allResults;
+              }
+              previousHeight = currentHeight;
+              
+              if (config.limit && allResults.length >= config.limit) {
+                allResults = allResults.slice(0, config.limit);
+                break;
+              }
+            }
             break;
+          }
+
+          default: {
+            await scrapeCurrentPage();
+            return allResults;
+          }
         }
+
+        if (checkLimit()) break;
+      }
+    } catch (error) {
+        debugLog(`Fatal error: ${error.message}`);
+        return allResults;
     }
 
     return allResults;

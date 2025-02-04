@@ -48,7 +48,13 @@ const Register = () => {
       window.localStorage.setItem("user", JSON.stringify(data));
       navigate("/");
     } catch (error:any) {
-      notify("error", error.response.data || t('register.error_notification'));
+      const errorResponse = error.response?.data;
+
+      const errorMessage = errorResponse?.code 
+      ? t(errorResponse.code)
+      : t('register.error.generic');
+
+      notify("error", errorMessage);
       setLoading(false);
     }
   };

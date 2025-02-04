@@ -1,4 +1,4 @@
-import { Box, Tabs, Typography, Tab, Paper, Button } from "@mui/material";
+import { Box, Tabs, Typography, Tab, Paper, Button, CircularProgress } from "@mui/material";
 import Highlight from "react-highlight";
 import * as React from "react";
 import { Data } from "./RunsTable";
@@ -148,9 +148,15 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
           </Button> : null}
         </TabPanel>
         <TabPanel value='output' sx={{ width: '700px' }}>
-          {!row || !row.serializableOutput || !row.binaryOutput
+          {interpretationInProgress ? (
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <CircularProgress size={22} sx={{ marginRight: '10px' }} />
+              {t('run_content.loading')}
+            </Box>
+          ) : (!row || !row.serializableOutput || !row.binaryOutput
             || (Object.keys(row.serializableOutput).length === 0 && Object.keys(row.binaryOutput).length === 0)
-            ? <Typography>{t('run_content.empty_output')}</Typography> : null}
+            ? <Typography>{t('run_content.empty_output')}</Typography> 
+            : null)}
 
           {row.serializableOutput &&
             Object.keys(row.serializableOutput).length !== 0 &&

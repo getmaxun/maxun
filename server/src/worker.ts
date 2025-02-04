@@ -73,9 +73,11 @@ async function jobCounts() {
 
 jobCounts();
 
-process.on('SIGINT', () => {
-    console.log('Worker shutting down...');
-    process.exit();
-});
+// We dont need this right now
+
+// process.on('SIGINT', () => {
+//     console.log('Worker shutting down...');
+//     process.exit();
+// });
 
 export { workflowQueue, worker };

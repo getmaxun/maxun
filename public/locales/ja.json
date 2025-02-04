@@ -8,7 +8,16 @@
         "register_prompt": "アカウントをお持ちでないですか？",
         "register_link": "登録する",
         "welcome_notification": "Maxunへようこそ！",
-        "error_notification": "ログインに失敗しました。もう一度お試しください。"
+        "validation": {
+            "required_fields": "メールアドレスとパスワードは必須です",
+            "password_length": "パスワードは6文字以上である必要があります"
+        },
+        "error": {
+            "user_not_found": "ユーザーが存在しません",
+            "invalid_credentials": "メールアドレスまたはパスワードが無効です",
+            "server_error": "ログインに失敗しました。後でもう一度お試しください",
+            "generic": "エラーが発生しました。もう一度お試しください"
+        }
   },
   "register": {
         "title": "アカウントを登録する",
@@ -19,7 +28,16 @@
         "register_prompt": "既にアカウントをお持ちですか？",
         "login_link": "ログイン",
         "welcome_notification": "Maxunへようこそ！",
-        "error_notification": "登録に失敗しました。もう一度お試しください。"
+        "validation": {
+            "email_required": "メールアドレスは必須です",
+            "password_requirements": "パスワードは6文字以上である必要があります"
+        },
+        "error": {
+            "user_exists": "このメールアドレスは既に登録されています",
+            "creation_failed": "アカウントを作成できませんでした",
+            "server_error": "サーバーエラーが発生しました",
+            "generic": "登録に失敗しました。もう一度お試しください"
+        }
   },
   "recordingtable": {
         "run": "実行",
@@ -41,8 +59,9 @@
         "duplicate": "複製",
         "search": "ロボットを検索...",
         "notifications": {
-            "delete_warning": "関連する実行があるため、ロボットを削除できません",
-            "delete_success": "ロボットが正常に削除されました"
+            "delete_warning": "ロボットには関連する実行があります。ロボットを削除するには、まず実行を削除してください",
+            "delete_success": "ロボットが正常に削除されました",
+            "auth_success": "ロボットの認証に成功しました"
         }
   },
   "mainmenu": {
@@ -62,6 +81,7 @@
         "delete": "削除",
         "settings": "設定",
         "search": "実行を検索...",
+        "sort_tooltip": "クリックして並べ替え",
         "notifications": {
             "no_runs": "実行が見つかりません。もう一度お試しください。",
             "delete_success": "実行が正常に削除されました"
@@ -451,6 +471,7 @@
             "log": "ログ"
         },
         "empty_output": "出力は空です。",
+        "loading": "実行中です。実行が完了すると、抽出されたデータがここに表示されます。",
         "captured_data": {
             "title": "キャプチャされたデータ",
             "download_json": "JSONとしてダウンロード",
