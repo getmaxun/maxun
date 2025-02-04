@@ -1,6 +1,6 @@
 {
   "name": "maxun",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "author": "Maxun",
   "license": "AGPL-3.0-or-later",
   "dependencies": {
@@ -47,7 +47,7 @@
     "lodash": "^4.17.21",
     "loglevel": "^1.8.0",
     "loglevel-plugin-remote": "^0.6.8",
-    "maxun-core": "^0.0.10",
+    "maxun-core": "^0.0.11",
     "minio": "^8.0.1",
     "moment-timezone": "^0.5.45",
     "node-cron": "^3.0.3",
