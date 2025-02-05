@@ -225,7 +225,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                     alignItems: 'center',
                     borderRadius: '5px',
                     padding: '8px',
-                    marginRight: '10px',
+                    marginRight: '20px',
                   }}>
                     <Update sx={{ marginRight: '5px' }} />
                     <Typography variant="body1">{t('navbar.upgrade.button')}</Typography>
