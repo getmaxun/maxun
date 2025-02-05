@@ -220,7 +220,7 @@ export const NavBar: React.FC<NavBarProps> = ({
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
               {!isRecording ? (
                 <>
-                  <Button variant="outlined" onClick={handleUpdateOpen} sx={{
+                  <Button onClick={handleUpdateOpen} sx={{
                     marginRight: '25px',
                     color: "#00000099",
                     border: "#00000099 1px solid",
