@@ -221,9 +221,11 @@ export const NavBar: React.FC<NavBarProps> = ({
               {!isRecording ? (
                 <>
                   <IconButton onClick={handleUpdateOpen} sx={{
-                    marginRight: '25px',
-                    color: "#00000099",
-                    '&:hover': { color: '#ff00c3'}
+                    display: 'flex',
+                    alignItems: 'center',
+                    borderRadius: '5px',
+                    padding: '8px',
+                    marginRight: '10px',
                   }}>
                     <Update sx={{ marginRight: '5px' }} /> {t('navbar.upgrade.button')}
                   </IconButton>
