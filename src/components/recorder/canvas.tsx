@@ -6,6 +6,7 @@ import DatePicker from '../pickers/DatePicker';
 import Dropdown from '../pickers/Dropdown';
 import TimePicker from '../pickers/TimePicker';
 import DateTimeLocalPicker from '../pickers/DateTimeLocalPicker';
+import { useBrowserDimensionsStore } from '../../context/browserDimensions';
 
 interface CreateRefCallback {
     (ref: React.RefObject<HTMLCanvasElement>): void;
@@ -26,7 +27,6 @@ export interface Coordinates {
 };
 
 const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
-
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const { socket } = useSocketStore();
     const { setLastAction, lastAction } = useGlobalInfoStore();
@@ -207,8 +207,8 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
             <canvas
                 tabIndex={0}
                 ref={canvasRef}
-                height={400}
-                width={900}
+                height={height}
+                width={width}
                 style={{ display: 'block' }}
             />
             {datePickerInfo && (
