@@ -27,20 +27,9 @@ const MEMORY_CONFIG = {
     heapUsageThreshold: 0.85 // 85%
 };
 
-const SCREENCAST_CONFIG: {
-    format: "jpeg" | "png";
-    maxWidth: number;
-    maxHeight: number;
-    targetFPS: number;
-    compressionQuality: number;
-    maxQueueSize: number;
-} = {
-    format: 'jpeg',
-    maxWidth: 900,
-    maxHeight: 400,
-    targetFPS: 30,
-    compressionQuality: 0.8,
-    maxQueueSize: 2
+const DEFAULT_VIEWPORT = {
+    width: 900,
+    height: 400
 };
 
 /**
@@ -102,6 +91,17 @@ export class RemoteBrowser {
      */
     public interpreter: WorkflowInterpreter;
 
+    private viewport = {
+        width: DEFAULT_VIEWPORT.width,
+        height: DEFAULT_VIEWPORT.height
+    };
+
+    private screenshotConfig = {
+        format: 'jpeg' as const,
+        targetFPS: 30,
+        compressionQuality: 0.8,
+        maxQueueSize: 2
+    };
 
     private screenshotQueue: Buffer[] = [];
     private isProcessingScreenshot = false;
@@ -130,8 +130,8 @@ export class RemoteBrowser {
             }
 
             // Clear screenshot queue if it's too large
-            if (this.screenshotQueue.length > SCREENCAST_CONFIG.maxQueueSize) {
-                this.screenshotQueue = this.screenshotQueue.slice(-SCREENCAST_CONFIG.maxQueueSize);
+            if (this.screenshotQueue.length > this.screenshotConfig.maxQueueSize) {
+                this.screenshotQueue = this.screenshotQueue.slice(-this.screenshotConfig.maxQueueSize);
             }
         }, MEMORY_CONFIG.gcInterval);
     }
@@ -230,6 +230,29 @@ export class RemoteBrowser {
         return userAgents[Math.floor(Math.random() * userAgents.length)];
     }
 
+    private async getContextOptions(proxyConfig: any) {
+        const contextOptions: any = {
+            viewport: this.viewport,
+            reducedMotion: 'reduce',
+            javaScriptEnabled: true,
+            timeout: 50000,
+            forcedColors: 'none',
+            isMobile: false,
+            hasTouch: false,
+            userAgent: this.getUserAgent(),
+        };
+
+        if (proxyConfig.proxy_url) {
+            contextOptions.proxy = {
+                server: proxyConfig.proxy_url,
+                username: proxyConfig.proxy_username,
+                password: proxyConfig.proxy_password,
+            };
+        }
+
+        return contextOptions;
+    }
+
     /**
      * An asynchronous constructor for asynchronously initialized properties.
      * Must be called right after creating an instance of RemoteBrowser class.
@@ -250,40 +273,8 @@ export class RemoteBrowser {
             ],
         }));
         const proxyConfig = await getDecryptedProxyConfig(userId);
-        let proxyOptions: { server: string, username?: string, password?: string } = { server: '' };
-        if (proxyConfig.proxy_url) {
-            proxyOptions = {
-                server: proxyConfig.proxy_url,
-                ...(proxyConfig.proxy_username && proxyConfig.proxy_password && {
-                    username: proxyConfig.proxy_username,
-                    password: proxyConfig.proxy_password,
-                }),
-            };
-        }
-        const contextOptions: any = {
-            viewport: { height: 400, width: 900 },
-            // recordVideo: { dir: 'videos/' }
-            // Force reduced motion to prevent animation issues
-            reducedMotion: 'reduce',
-            // Force JavaScript to be enabled
-            javaScriptEnabled: true,
-            // Set a reasonable timeout
-            timeout: 50000,
-            // Disable hardware acceleration
-            forcedColors: 'none',
-            isMobile: false,
-            hasTouch: false,
-            userAgent: this.getUserAgent(),
-        };
-
-        if (proxyOptions.server) {
-            contextOptions.proxy = {
-                server: proxyOptions.server,
-                username: proxyOptions.username ? proxyOptions.username : undefined,
-                password: proxyOptions.password ? proxyOptions.password : undefined,
-            };
-        }
-
+        const contextOptions = await this.getContextOptions(proxyConfig);
+        
         this.context = await this.browser.newContext(contextOptions);
         await this.context.addInitScript(
             `const defaultGetter = Object.getOwnPropertyDescriptor(
@@ -363,14 +354,7 @@ export class RemoteBrowser {
             }
         });
         this.socket.on('setViewportSize', async (data: { width: number, height: number }) => {
-            const { width, height } = data;
-            logger.log('debug', `Received viewport size: width=${width}, height=${height}`);
-
-            // Update the browser context's viewport dynamically
-            if (this.context && this.browser) {
-                this.context = await this.browser.newContext({ viewport: { width, height } });
-                logger.log('debug', `Viewport size updated to width=${width}, height=${height} for the entire browser context`);
-            }
+            await this.updateViewport(data.width, data.height);
         });
     }
 
@@ -432,16 +416,48 @@ export class RemoteBrowser {
         }
     }
 
+    public async updateViewport(width: number, height: number): Promise<void> {
+        this.viewport = { width, height };
+
+        if (this.context && this.browser) {
+            // Create new context with updated dimensions
+            const newContext = await this.browser.newContext({ 
+                viewport: this.viewport
+            });
+
+            // Transfer pages from old context to new context
+            const pages = this.context.pages();
+            for (const page of pages) {
+                const newPage = await newContext.newPage();
+                await newPage.goto(page.url());
+                await page.close();
+            }
+
+            // Close old context and update reference
+            await this.context.close();
+            this.context = newContext;
+
+            // Update current page reference and CDP session
+            this.currentPage = this.context.pages()[0];
+            if (this.currentPage) {
+                this.client = await this.currentPage.context().newCDPSession(this.currentPage);
+                await this.makeAndEmitScreenshot();
+            }
+
+            logger.log('debug', `Viewport updated to: ${width}x${height}`);
+        }
+    }
+
     private async optimizeScreenshot(screenshot: Buffer): Promise<Buffer> {
         try {
             return await sharp(screenshot)
                 .jpeg({
-                    quality: Math.round(SCREENCAST_CONFIG.compressionQuality * 100),
+                    quality: Math.round(this.screenshotConfig.compressionQuality * 100),
                     progressive: true
                 })
                 .resize({
-                    width: SCREENCAST_CONFIG.maxWidth,
-                    height: SCREENCAST_CONFIG.maxHeight,
+                    width: this.viewport.width,
+                    height: this.viewport.height,
                     fit: 'inside',
                     withoutEnlargement: true
                 })
@@ -492,7 +508,7 @@ export class RemoteBrowser {
             const workflow = this.generator.AddGeneratedFlags(this.generator.getWorkflowFile());
             await this.initializeNewPage();
             if (this.currentPage) {
-                this.currentPage.setViewportSize({ height: 400, width: 900 });
+                this.currentPage.setViewportSize(this.viewport);
                 const params = this.generator.getParams();
                 if (params) {
                     this.interpreterSettings.params = params.reduce((acc, param) => {
@@ -600,7 +616,7 @@ export class RemoteBrowser {
 
         try {
             await this.client.send('Page.startScreencast', {
-                format: SCREENCAST_CONFIG.format,
+                format: this.screenshotConfig.format,
             });
 
             // Set up screencast frame handler
@@ -644,7 +660,7 @@ export class RemoteBrowser {
      */
     private emitScreenshot = async (payload: Buffer): Promise<void> => {
         if (this.isProcessingScreenshot) {
-            if (this.screenshotQueue.length < SCREENCAST_CONFIG.maxQueueSize) {
+            if (this.screenshotQueue.length < this.screenshotConfig.maxQueueSize) {
                 this.screenshotQueue.push(payload);
             }
             return;
@@ -667,7 +683,7 @@ export class RemoteBrowser {
             if (this.screenshotQueue.length > 0) {
                 const nextScreenshot = this.screenshotQueue.shift();
                 if (nextScreenshot) {
-                    setTimeout(() => this.emitScreenshot(nextScreenshot), 1000 / SCREENCAST_CONFIG.targetFPS);
+                    setTimeout(() => this.emitScreenshot(nextScreenshot), 1000 / this.screenshotConfig.targetFPS);
                 }
             }
         }
