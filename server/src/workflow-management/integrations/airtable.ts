@@ -38,13 +38,13 @@ export async function updateAirtable(robotId: string, runId: string) {
     if (!robot) throw new Error(`Robot not found for robotId: ${robotId}`);
 
     const plainRobot = robot.toJSON();
-    if (plainRobot.airtable_base_id && plainRobot.airtable_table_name) {
+    if (plainRobot.airtable_base_id && plainRobot.airtable_table_name && plainRobot.airtable_table_id) {
       console.log(`Writing to Airtable base ${plainRobot.airtable_base_id}`);
       await writeDataToAirtable(
         robotId,
         plainRobot.airtable_base_id,
         plainRobot.airtable_table_name,
-        plainRobot.airtable_table_id || '',
+        plainRobot.airtable_table_id ,
         data
       );
       console.log(`Data written to Airtable for ${robotId}`);
@@ -82,6 +82,8 @@ export async function writeDataToAirtable(
       if (sampleRow) {
         const sampleValue = sampleRow[field];
         await createAirtableField(baseId, tableName, field, sampleValue, accessToken, tableId);
+        console.log("from airtable.ts",tableId);
+        console.log("from airtable.ts",tableName);
       }
     }
 

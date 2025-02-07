@@ -611,7 +611,7 @@ router.get("/airtable", (req, res) => {
    
     response_type: 'code',
     state: robotId.toString(),
-    scope: 'data.records:read data.records:write schema.bases:read',
+    scope: 'data.records:read data.records:write schema.bases:read schema.bases:write',
     code_challenge: code_challenge,
     code_challenge_method: 'S256'
   });
@@ -804,6 +804,8 @@ router.post("/airtable/remove", requireSignIn, async (req: AuthenticatedRequest,
       airtable_access_token: null,
       airtable_refresh_token: null,
       airtable_base_id: null,
+      airtable_table_name: null,
+      airtable_table_id: null,
    
     });
 
