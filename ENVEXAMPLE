@@ -30,3 +30,8 @@ GOOGLE_REDIRECT_URI=your_google_redirect_uri
 
 # Telemetry Settings - Please keep it enabled. Keeping it enabled helps us understand how the product is used and assess the impact of any new changes. 
 MAXUN_TELEMETRY=true
+
+#airtable integration
+
+AIRTABLE_CLIENT_ID=your_airtable_client_id
+AIRTABLE_REDIRECT_URI=http://localhost:8080/auth/airtable/callback

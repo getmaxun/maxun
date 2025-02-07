@@ -576,7 +576,7 @@ if (!selectedIntegrationType) {
                   <>
                     <Typography sx={{ margin: "20px 0px 30px 0px" }}>
                       {t("integration_settings.descriptions.authenticated_as", {
-                        email: "amit63390@gmail.com",
+                        email: "",
                       })}
                     </Typography>
                     {loading ? (
