@@ -435,32 +435,6 @@ export class WorkflowGenerator {
             if (!element) return null;
             
             const getCursorPosition = (inputElement: HTMLInputElement | HTMLTextAreaElement, clickCoords: Coordinates) => {
-                // const rect = inputElement.getBoundingClientRect();
-                // const clickX = clickCoords.x - rect.left;
-                
-                // // Get the input's text content
-                // const text = inputElement.value;
-                
-                // // Create a temporary element to measure text
-                // const measurer = document.createElement('span');
-                // measurer.style.font = window.getComputedStyle(inputElement).font;
-                // measurer.style.position = 'absolute';
-                // measurer.style.whiteSpace = 'pre';
-                // measurer.style.visibility = 'hidden';
-                // document.body.appendChild(measurer);
-                
-                // // Find the position where the click occurred
-                // let position = 0;
-                // for (let i = 0; i <= text.length; i++) {
-                //     measurer.textContent = text.slice(0, i);
-                //     const width = measurer.getBoundingClientRect().width;
-                //     if (width >= clickX) {
-                //         position = i;
-                //         break;
-                //     }
-                // }
-                
-                // document.body.removeChild(measurer);
                 const position = inputElement.selectionStart || 0;
                 return position;
             };
