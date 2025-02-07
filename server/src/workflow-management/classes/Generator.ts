@@ -435,32 +435,33 @@ export class WorkflowGenerator {
             if (!element) return null;
             
             const getCursorPosition = (inputElement: HTMLInputElement | HTMLTextAreaElement, clickCoords: Coordinates) => {
-                const rect = inputElement.getBoundingClientRect();
-                const clickX = clickCoords.x - rect.left;
+                // const rect = inputElement.getBoundingClientRect();
+                // const clickX = clickCoords.x - rect.left;
                 
-                // Get the input's text content
-                const text = inputElement.value;
+                // // Get the input's text content
+                // const text = inputElement.value;
                 
-                // Create a temporary element to measure text
-                const measurer = document.createElement('span');
-                measurer.style.font = window.getComputedStyle(inputElement).font;
-                measurer.style.position = 'absolute';
-                measurer.style.whiteSpace = 'pre';
-                measurer.style.visibility = 'hidden';
-                document.body.appendChild(measurer);
+                // // Create a temporary element to measure text
+                // const measurer = document.createElement('span');
+                // measurer.style.font = window.getComputedStyle(inputElement).font;
+                // measurer.style.position = 'absolute';
+                // measurer.style.whiteSpace = 'pre';
+                // measurer.style.visibility = 'hidden';
+                // document.body.appendChild(measurer);
                 
-                // Find the position where the click occurred
-                let position = 0;
-                for (let i = 0; i <= text.length; i++) {
-                    measurer.textContent = text.slice(0, i);
-                    const width = measurer.getBoundingClientRect().width;
-                    if (width >= clickX) {
-                        position = i;
-                        break;
-                    }
-                }
+                // // Find the position where the click occurred
+                // let position = 0;
+                // for (let i = 0; i <= text.length; i++) {
+                //     measurer.textContent = text.slice(0, i);
+                //     const width = measurer.getBoundingClientRect().width;
+                //     if (width >= clickX) {
+                //         position = i;
+                //         break;
+                //     }
+                // }
                 
-                document.body.removeChild(measurer);
+                // document.body.removeChild(measurer);
+                const position = inputElement.selectionStart || 0;
                 return position;
             };
     
@@ -740,6 +741,23 @@ export class WorkflowGenerator {
    * @returns {Promise<void>}
    */
   public saveNewWorkflow = async (fileName: string, userId: number, isLogin: boolean) => {
+    for (const pair of this.workflowRecord.workflow) {
+      for (let i = 0; i < pair.what.length; i++) {
+        const condition = pair.what[i];
+
+        if (condition.action === 'press' && condition.args) {
+          const [selector, encryptedKey, type] = condition.args;
+          const key = decrypt(encryptedKey);
+
+          console.log(`Selector: ${selector}, Key: ${key}`);
+        }
+
+        if (condition.action === 'click' && condition.args) {
+          console.log("Click args: ", condition.args);
+        }
+      }
+    }
+
     const recording = this.optimizeWorkflow(this.workflowRecord);
     try {
       this.recordingMeta = {
