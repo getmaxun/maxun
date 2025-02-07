@@ -44,6 +44,7 @@ export async function updateAirtable(robotId: string, runId: string) {
         robotId,
         plainRobot.airtable_base_id,
         plainRobot.airtable_table_name,
+        plainRobot.airtable_table_id || '',
         data
       );
       console.log(`Data written to Airtable for ${robotId}`);
@@ -58,6 +59,7 @@ export async function writeDataToAirtable(
   robotId: string,
   baseId: string,
   tableName: string,
+  tableId: string,
   data: any[]
 ) {
   try {
@@ -70,17 +72,20 @@ export async function writeDataToAirtable(
     const airtable = new Airtable({ apiKey: accessToken });
     const base = airtable.base(baseId);
 
+    // Dynamic field creation logic
     const existingFields = await getExistingFields(base, tableName);
     const dataFields = [...new Set(data.flatMap(row => Object.keys(row)))];
     const missingFields = dataFields.filter(field => !existingFields.includes(field));
 
     for (const field of missingFields) {
-      const sampleValue = data.find(row => row[field])?.[field];
-      if (sampleValue) {
-        await createAirtableField(baseId, tableName, field, sampleValue, accessToken);
+      const sampleRow = data.find(row => field in row);
+      if (sampleRow) {
+        const sampleValue = sampleRow[field];
+        await createAirtableField(baseId, tableName, field, sampleValue, accessToken, tableId);
       }
     }
 
+    // Batch processing with retries
     const batchSize = 10;
     for (let i = 0; i < data.length; i += batchSize) {
       const batch = data.slice(i, i + batchSize);
@@ -94,6 +99,7 @@ export async function writeDataToAirtable(
   }
 }
 
+// Helper functions
 async function getExistingFields(base: Airtable.Base, tableName: string): Promise<string[]> {
   try {
     const records = await base(tableName).select({ maxRecords: 1 }).firstPage();
@@ -109,46 +115,59 @@ async function createAirtableField(
   fieldName: string,
   sampleValue: any,
   accessToken: string,
+  tableId: string,
+
   retries = MAX_RETRIES
 ): Promise<void> {
   try {
-    let fieldType = inferFieldType(sampleValue);
+    const sanitizedFieldName = sanitizeFieldName(fieldName);
+    const fieldType = inferFieldType(sampleValue);
     
-    // Fallback if field type is unknown
-    if (!fieldType) {
-      fieldType = 'singleLineText';
-      logger.log('warn', `Unknown field type for ${fieldName}, defaulting to singleLineText`);
-    }
-
-    console.log(`Creating field: ${fieldName}, Type: ${fieldType}`);
-
     await axios.post(
-      `https://api.airtable.com/v0/meta/bases/${baseId}/tables/${tableName}/fields`,
-      { name: fieldName, type: fieldType },
-      { 
-        headers: { 
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json' 
-        }
-      }
+      `https://api.airtable.com/v0/meta/bases/${baseId}/tables/${tableId}/fields`,
+      { name: sanitizedFieldName, type: fieldType },
+      { headers: { Authorization: `Bearer ${accessToken}` } }
     );
-
-    logger.log('info', `Created field: ${fieldName} (${fieldType})`);
+    logger.log('info', `Created field: ${sanitizedFieldName} (${fieldType})`);
   } catch (error: any) {
     if (retries > 0 && error.response?.status === 429) {
-      await delay(BASE_API_DELAY * (MAX_RETRIES - retries + 2));
-      return createAirtableField(baseId, tableName, fieldName, sampleValue, accessToken, retries - 1);
+      await delay(BASE_API_DELAY * (MAX_RETRIES - retries + 1));
+      return createAirtableField(baseId, tableName, fieldName, sampleValue, accessToken, tableId, retries - 1);
     }
-    throw new Error(`Field creation failed: ${error.response?.data?.error?.message || 'Unknown error'}`);
+    
+    const errorMessage = error.response?.data?.error?.message || error.message;
+    const statusCode = error.response?.status || 'No Status Code';
+    throw new Error(`Field creation failed (${statusCode}): ${errorMessage}`);
   }
 }
 
+function sanitizeFieldName(fieldName: string): string {
+  return fieldName
+    .trim()
+    .replace(/^[^a-zA-Z]+/, '')
+    .replace(/[^\w\s]/gi, ' ')
+    .substring(0, 50);
+}
+
 function inferFieldType(value: any): string {
+  if (value === null || value === undefined) return 'singleLineText';
   if (typeof value === 'number') return 'number';
   if (typeof value === 'boolean') return 'checkbox';
   if (value instanceof Date) return 'dateTime';
-  if (Array.isArray(value)) return 'multipleSelects';
+  if (Array.isArray(value)) {
+    return value.length > 0 && typeof value[0] === 'object' ? 'multipleRecordLinks' : 'multipleSelects';
+  }
+  if (typeof value === 'string' && isValidUrl(value)) return 'url';
   return 'singleLineText';
+}
+
+function isValidUrl(str: string): boolean {
+  try {
+    new URL(str);
+    return true;
+  } catch (_) {
+    return false;
+  }
 }
 
 async function retryableAirtableWrite(
@@ -188,7 +207,7 @@ export const processAirtableUpdates = async () => {
         task.retries += 1;
         if (task.retries >= MAX_RETRIES) {
           task.status = 'failed';
-          logger.log('error', `Permanent failure for run ${runId}`);
+          logger.log('error', `Permanent failure for run ${runId}: ${error.message}`);
         }
       }
     }

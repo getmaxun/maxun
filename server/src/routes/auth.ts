@@ -749,7 +749,7 @@ router.get("/airtable/bases", async (req: AuthenticatedRequest, res) => {
 
 // Update robot with selected base
 router.post("/airtable/update", async (req: AuthenticatedRequest, res) => {
-  const { baseId, robotId , tableName} = req.body;
+  const { baseId, robotId , tableName,tableId} = req.body;
 
   if (!baseId || !robotId) {
     return res.status(400).json({ message: "Base ID and Robot ID are required" });
@@ -767,6 +767,7 @@ router.post("/airtable/update", async (req: AuthenticatedRequest, res) => {
     await robot.update({
       airtable_base_id: baseId,
       airtable_table_name: tableName,
+      airtable_table_id: tableId,
       
     });
 

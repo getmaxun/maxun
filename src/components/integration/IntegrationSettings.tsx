@@ -18,6 +18,7 @@ import Cookies from "js-cookie";
 
 import { useTranslation } from "react-i18next";
 import { SignalCellularConnectedNoInternet0BarSharp } from "@mui/icons-material";
+import { table } from "console";
 
 interface IntegrationProps {
   isOpen: boolean;
@@ -257,6 +258,7 @@ export const IntegrationSettingsModal = ({
           baseName: settings.airtableBaseName,
           robotId: recordingId,
           tableName: settings.airtableTableName,
+          tableId: settings.airtableTableId,
         },
         { withCredentials: true }
       );

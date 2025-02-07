@@ -30,6 +30,7 @@ interface RobotAttributes {
   airtable_access_token?: string | null; // New field for Airtable access token
   airtable_refresh_token?: string | null; // New field for Airtable refresh token
   schedule?: ScheduleConfig | null;
+  airtable_table_id?: string | null;
 }
 
 interface ScheduleConfig {
@@ -61,6 +62,7 @@ class Robot extends Model<RobotAttributes, RobotCreationAttributes> implements R
   public airtable_table_name!: string | null; // New field for Airtable table name
   public airtable_access_token!: string | null; // New field for Airtable access token
   public airtable_refresh_token!: string | null; // New field for Airtable refresh token
+  public airtable_table_id!: string | null; 
   public schedule!: ScheduleConfig | null;
 }
 
@@ -108,6 +110,10 @@ Robot.init(
       allowNull: true,
     },
     airtable_table_name: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    airtable_table_id: {
       type: DataTypes.STRING,
       allowNull: true,
     },
