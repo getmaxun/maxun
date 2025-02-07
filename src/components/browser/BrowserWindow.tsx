@@ -8,6 +8,7 @@ import { useActionContext } from '../../context/browserActions';
 import { useBrowserSteps, TextStep } from '../../context/browserSteps';
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { useTranslation } from 'react-i18next';
+import { useBrowserDimensionsStore } from '../../context/browserDimensions';
 
 interface ElementInfo {
     tagName: string;
@@ -54,6 +55,7 @@ const getAttributeOptions = (tagName: string, elementInfo: ElementInfo | null): 
 };
 
 export const BrowserWindow = () => {
+    const { width, height } = useBrowserDimensionsStore();
     const { t } = useTranslation();
     const [canvasRef, setCanvasReference] = useState<React.RefObject<HTMLCanvasElement> | undefined>(undefined);
     const [screenShot, setScreenShot] = useState<string>("");
@@ -108,7 +110,7 @@ export const BrowserWindow = () => {
             socket.on("screencast", screencastHandler);
         }
         if (canvasRef?.current) {
-            drawImage(screenShot, canvasRef.current);
+            drawImage(screenShot, canvasRef.current, width, height);
         } else {
             console.log('Canvas is not initialized');
         }
@@ -394,7 +396,7 @@ export const BrowserWindow = () => {
     }, [paginationMode, resetPaginationSelector]);
 
     return (
-        <div onClick={handleClick} style={{ width: '900px' }} id="browser-window">
+        <div onClick={handleClick} style={{ width: `${width}px` }} id="browser-window">
             {
                 getText === true || getList === true ? (
                     <GenericModal
@@ -440,27 +442,27 @@ export const BrowserWindow = () => {
                     </GenericModal>
                 ) : null
             }
-            <div style={{ height: '400px', overflow: 'hidden' }}>
+            <div style={{ height: `${height}px`, overflow: 'hidden' }}>
                 {((getText === true || getList === true) && !showAttributeModal && highlighterData?.rect != null && highlighterData?.rect.top != null) && canvasRef?.current ?
                     <Highlighter
                         unmodifiedRect={highlighterData?.rect}
                         displayedSelector={highlighterData?.selector}
-                        width={900}
-                        height={400}
+                        width={width}
+                        height={height}
                         canvasRect={canvasRef.current.getBoundingClientRect()}
                     />
                     : null}
                 <Canvas
                     onCreateRef={setCanvasReference}
-                    width={900}
-                    height={400}
+                    width={width}
+                    height={height}
                 />
             </div>
         </div>
     );
 };
 
-const drawImage = (image: string, canvas: HTMLCanvasElement): void => {
+const drawImage = (image: string, canvas: HTMLCanvasElement, width: number, height: number): void => {
 
     const ctx = canvas.getContext('2d');
 
@@ -469,7 +471,7 @@ const drawImage = (image: string, canvas: HTMLCanvasElement): void => {
     img.src = image;
     img.onload = () => {
         URL.revokeObjectURL(img.src);
-        ctx?.drawImage(img, 0, 0, 900, 400);
+        ctx?.drawImage(img, 0, 0, width, height);
     };
 
 };
