@@ -220,14 +220,16 @@ export const NavBar: React.FC<NavBarProps> = ({
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
               {!isRecording ? (
                 <>
-                  <Button variant="outlined" onClick={handleUpdateOpen} sx={{
-                    marginRight: '25px',
-                    color: "#00000099",
-                    border: "#00000099 1px solid",
-                    '&:hover': { color: '#ff00c3', border: '#ff00c3 1px solid' }
+                  <IconButton onClick={handleUpdateOpen} sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    borderRadius: '5px',
+                    padding: '8px',
+                    marginRight: '20px',
                   }}>
-                    <Update sx={{ marginRight: '5px' }} /> {t('navbar.upgrade.button')}
-                  </Button>
+                    <Update sx={{ marginRight: '5px' }} />
+                    <Typography variant="body1">{t('navbar.upgrade.button')}</Typography>
+                  </IconButton>
                   <Modal open={open} onClose={handleUpdateClose}>
                     <Box
                       sx={{
