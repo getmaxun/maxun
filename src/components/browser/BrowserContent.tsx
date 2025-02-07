@@ -8,6 +8,7 @@ import { useSocketStore } from "../../context/socket";
 import {
   getCurrentTabs,
 } from "../../api/recording";
+import ResizableBrowser from "./ResizableBrowser";
 
 // TODO: Tab !show currentUrl after recordingUrl global state
 export const BrowserContent = () => {
@@ -135,23 +136,24 @@ export const BrowserContent = () => {
   }, [handleUrlChanged]);
 
   return (
-    <div id="browser">
-      <BrowserTabs
-        tabs={tabs}
-        handleTabChange={handleTabChange}
-        handleAddNewTab={handleAddNewTab}
-        handleCloseTab={handleCloseTab}
-        handleChangeIndex={handleChangeIndex}
-        tabIndex={tabIndex}
-      />
-      <BrowserNavBar
-        // todo: use width from browser dimension once fixed
-        browserWidth={900}
-        handleUrlChanged={handleUrlChanged}
-
-      />
-      <BrowserWindow />
-    </div>
+    <ResizableBrowser>
+      <div id="browser">
+        <BrowserTabs
+          tabs={tabs}
+          handleTabChange={handleTabChange}
+          handleAddNewTab={handleAddNewTab}
+          handleCloseTab={handleCloseTab}
+          handleChangeIndex={handleChangeIndex}
+          tabIndex={tabIndex}
+        />
+        <BrowserNavBar
+          // todo: use width from browser dimension once fixed
+          browserWidth={width}
+          handleUrlChanged={handleUrlChanged}
+        />
+        <BrowserWindow />
+      </div>
+    </ResizableBrowser>
   );
 };
 
