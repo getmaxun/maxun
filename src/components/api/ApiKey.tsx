@@ -137,7 +137,7 @@ const ApiKeyManager = () => {
                   </Tooltip>
                   <Tooltip title={showKey ? t('apikey.actions.hide') : t('apikey.actions.show')}>
                     <IconButton onClick={() => setShowKey(!showKey)}>
-                      {showKey ? <Visibility /> : <VisibilityOff />}
+                      {showKey ? <VisibilityOff /> : <Visibility />}
                     </IconButton>
                   </Tooltip>
                   <Tooltip title={t('apikey.actions.delete')}>
