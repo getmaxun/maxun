@@ -14,7 +14,7 @@ import {
   Tooltip,
   Paper,
 } from '@mui/material';
-import { ContentCopy, Visibility, Delete } from '@mui/icons-material';
+import { ContentCopy, Visibility, VisibilityOff, Delete } from '@mui/icons-material';
 import styled from 'styled-components';
 import axios from 'axios';
 import { useGlobalInfoStore } from '../../context/globalInfo';
@@ -137,7 +137,7 @@ const ApiKeyManager = () => {
                   </Tooltip>
                   <Tooltip title={showKey ? t('apikey.actions.hide') : t('apikey.actions.show')}>
                     <IconButton onClick={() => setShowKey(!showKey)}>
-                      <Visibility />
+                      {showKey ? <VisibilityOff /> : <Visibility />}
                     </IconButton>
                   </Tooltip>
                   <Tooltip title={t('apikey.actions.delete')}>
