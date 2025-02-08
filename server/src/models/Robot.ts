@@ -9,10 +9,32 @@ interface RobotMeta {
   pairs: number;
   updatedAt: string;
   params: any[];
+  isLogin?: boolean;
 }
 
 interface RobotWorkflow {
   workflow: WhereWhatPair[];
+}
+
+interface Cookie {
+  name: string;
+  value: string;
+  domain: string;
+  path: string;
+  expires: number;
+  httpOnly: boolean;
+  secure: boolean;
+  sameSite: 'Lax' | 'Strict' | 'None';
+}
+
+interface Origin {
+  origin: string;
+  localStorage: Record<string, any>[];
+}
+
+interface SessionData {
+  cookies: Cookie[];
+  origins: Origin[];
 }
 
 interface RobotAttributes {
@@ -26,6 +48,7 @@ interface RobotAttributes {
   google_access_token?: string | null;
   google_refresh_token?: string | null;
   schedule?: ScheduleConfig | null;
+  session?: SessionData | null;
 }
 
 interface ScheduleConfig {
@@ -54,6 +77,7 @@ class Robot extends Model<RobotAttributes, RobotCreationAttributes> implements R
   public google_access_token!: string | null;
   public google_refresh_token!: string | null;
   public schedule!: ScheduleConfig | null;
+  public session!: SessionData | null;
 }
 
 Robot.init(
@@ -96,6 +120,10 @@ Robot.init(
       allowNull: true,
     },
     schedule: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+    },
+    session: {
       type: DataTypes.JSONB,
       allowNull: true,
     },
