@@ -43,8 +43,33 @@ const ApiKeyManager = () => {
       try {
         const { data } = await axios.get(`${apiUrl}/auth/api-key`);
         setApiKey(data.api_key);
+        notify('success', t('apikey.notifications.success.fetch'));
       } catch (error: any) {
-        notify('error', t('apikey.notifications.fetch_error', { error: error.message }));
+        const status = error.response?.status;
+        let errorKey = 'unknown';
+    
+        switch (status) {
+          case 401:
+            errorKey = 'unauthorized';
+            break;
+          case 404:
+            errorKey = 'not_found';
+            break;
+          case 500:
+            errorKey = 'server';
+            break;
+          default:
+            if (error.message?.includes('Network Error')) {
+              errorKey = 'network';
+            }
+        }
+    
+        notify(
+          'error',
+          t(`apikey.notifications.errors.fetch.${errorKey}`, {
+            error: error.response?.data?.message || error.message
+          })
+        );
       } finally {
         setLoading(false);
       }
