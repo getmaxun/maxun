@@ -261,7 +261,11 @@ router.get(
     const authenticatedReq = req as AuthenticatedRequest;
     try {
       if (!authenticatedReq.user) {
-        return res.status(401).json({ ok: false, error: "Unauthorized" });
+        return res.status(401).json({
+          ok: false,
+          error: "Unauthorized",
+          code: "unauthorized"
+        });
       }
 
       const user = await User.findByPk(authenticatedReq.user.id, {
@@ -270,15 +274,25 @@ router.get(
       });
 
       if (!user) {
-        return res.status(404).json({ message: "User not found" });
+        return res.status(404).json({
+          ok: false,
+          error: "User not found",
+          code: "not_found"
+        });
       }
 
       return res.status(200).json({
+        ok: true,
         message: "API key fetched successfully",
         api_key: user.api_key || null,
       });
     } catch (error) {
-      return res.status(500).json({ message: "Error fetching API key", error });
+      console.error('API Key fetch error:', error);
+      return res.status(500).json({
+        ok: false,
+        error: "Error fetching API key",
+        code: "server",
+      });
     }
   }
 );
