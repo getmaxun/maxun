@@ -220,36 +220,56 @@ router.post(
     const authenticatedReq = req as AuthenticatedRequest;
     try {
       if (!authenticatedReq.user) {
-        return res.status(401).json({ ok: false, error: "Unauthorized" });
+        return res.status(401).json({
+          ok: false,
+          message: "Unauthorized",
+          code: "unauthorized"
+        });
       }
+
       const user = await User.findByPk(authenticatedReq.user.id, {
         attributes: { exclude: ["password"] },
       });
 
       if (!user) {
-        return res.status(404).json({ message: "User not found" });
+        return res.status(404).json({
+          ok: false,
+          message: "User not found",
+          code: "not_found"
+        });
       }
 
       if (user.api_key) {
-        return res.status(400).json({ message: "API key already exists" });
+        return res.status(400).json({
+          ok: false,
+          message: "API key already exists",
+          code: "key_exists"
+        });
       }
-      const apiKey = genAPIKey();
 
+      const apiKey = genAPIKey();
       await user.update({ api_key: apiKey });
 
+      // Capture analytics event
       capture("maxun-oss-api-key-created", {
         user_id: user.id,
         created_at: new Date().toISOString(),
       });
 
       return res.status(200).json({
+        ok: true,
         message: "API key generated successfully",
-        api_key: apiKey,
+        api_key: apiKey
       });
+
     } catch (error) {
-      return res
-        .status(500)
-        .json({ message: "Error generating API key", error });
+      console.error('API Key generation error:', error);
+      return res.status(500).json({
+        ok: false,
+        message: "Error generating API key",
+        code: "server",
+        error: process.env.NODE_ENV === 'development' ? error : undefined
+      });
     }
   }
 );
@@ -263,7 +283,7 @@ router.get(
       if (!authenticatedReq.user) {
         return res.status(401).json({
           ok: false,
-          error: "Unauthorized",
+          message: "Unauthorized",
           code: "unauthorized"
         });
       }
@@ -276,7 +296,7 @@ router.get(
       if (!user) {
         return res.status(404).json({
           ok: false,
-          error: "User not found",
+          message: "User not found",
           code: "not_found"
         });
       }
@@ -284,14 +304,16 @@ router.get(
       return res.status(200).json({
         ok: true,
         message: "API key fetched successfully",
-        api_key: user.api_key || null,
+        api_key: user.api_key || null
       });
+
     } catch (error) {
       console.error('API Key fetch error:', error);
       return res.status(500).json({
         ok: false,
-        error: "Error fetching API key",
+        message: "Error fetching API key",
         code: "server",
+        error: process.env.NODE_ENV === 'development' ? error : undefined
       });
     }
   }
@@ -302,33 +324,59 @@ router.delete(
   requireSignIn,
   async (req: Request, res) => {
     const authenticatedReq = req as AuthenticatedRequest;
-    if (!authenticatedReq.user) {
-      return res.status(401).send({ error: "Unauthorized" });
-    }
-
     try {
-      const user = await User.findByPk(authenticatedReq.user.id, { raw: true });
+      if (!authenticatedReq.user) {
+        return res.status(401).json({
+          ok: false,
+          message: "Unauthorized",
+          code: "unauthorized"
+        });
+      }
+
+      const user = await User.findByPk(authenticatedReq.user.id, {
+        raw: true,
+        attributes: ["id", "api_key"]
+      });
 
       if (!user) {
-        return res.status(404).json({ message: "User not found" });
+        return res.status(404).json({
+          ok: false,
+          message: "User not found",
+          code: "not_found"
+        });
       }
 
       if (!user.api_key) {
-        return res.status(404).json({ message: "API Key not found" });
+        return res.status(404).json({
+          ok: false,
+          message: "API Key not found",
+          code: "key_not_found"
+        });
       }
 
-      await User.update({ api_key: null }, { where: { id: authenticatedReq.user.id } });
+      await User.update(
+        { api_key: null },
+        { where: { id: authenticatedReq.user.id } }
+      );
 
       capture("maxun-oss-api-key-deleted", {
         user_id: user.id,
         deleted_at: new Date().toISOString(),
       });
 
-      return res.status(200).json({ message: "API Key deleted successfully" });
-    } catch (error: any) {
-      return res
-        .status(500)
-        .json({ message: "Error deleting API key", error: error.message });
+      return res.status(200).json({
+        ok: true,
+        message: "API Key deleted successfully"
+      });
+
+    } catch (error) {
+      console.error('API Key deletion error:', error);
+      return res.status(500).json({
+        ok: false,
+        message: "Error deleting API key",
+        code: "server",
+        error: process.env.NODE_ENV === 'development' ? error : undefined
+      });
     }
   }
 );
