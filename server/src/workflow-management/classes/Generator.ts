@@ -1168,12 +1168,18 @@ export class WorkflowGenerator {
           const [selector, encryptedKey, type] = condition.args;
           const key = decrypt(encryptedKey);
           
-          let state = inputStates.get(selector) || {
-            selector,
-            value: '',
-            type: type || 'text',
-            cursorPosition: -1
-          };
+          let state = inputStates.get(selector);
+          if (!state) {
+            state = {
+              selector,
+              value: '',
+              type: type || 'text', // Use the type from the press action
+              cursorPosition: -1
+            };
+          } else {
+            // Update type from the press action if it exists
+            state.type = type || state.type;
+          }
   
           if (key.length === 1) {
             if (state.cursorPosition === -1) {
