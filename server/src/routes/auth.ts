@@ -17,7 +17,6 @@ router.post("/register", async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Validation checks with translation codes
     if (!email) {
       return res.status(400).json({
         error: "VALIDATION_ERROR",
@@ -32,7 +31,6 @@ router.post("/register", async (req, res) => {
       });
     }
 
-    // Check if user exists
     let userExist = await User.findOne({ raw: true, where: { email } });
     if (userExist) {
       return res.status(400).json({
@@ -43,7 +41,6 @@ router.post("/register", async (req, res) => {
 
     const hashedPassword = await hashPassword(password);
 
-    // Create user
     let user: any;
     try {
       user = await User.create({ email, password: hashedPassword });
@@ -55,7 +52,6 @@ router.post("/register", async (req, res) => {
       });
     }
 
-    // Check JWT secret
     if (!process.env.JWT_SECRET) {
       console.log("JWT_SECRET is not defined in the environment");
       return res.status(500).json({
@@ -64,7 +60,6 @@ router.post("/register", async (req, res) => {
       });
     }
 
-    // Success path
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET as string);
     user.password = undefined as unknown as string;
     res.cookie("token", token, {
@@ -124,7 +119,6 @@ router.post("/login", async (req, res) => {
 
     const token = jwt.sign({ id: user?.id }, process.env.JWT_SECRET as string);
 
-    // return user and token to client, exclude hashed password
     if (user) {
       user.password = undefined as unknown as string;
     }
