@@ -42,6 +42,13 @@ interface MetaData {
   isLogin?: boolean;
 }
 
+interface InputState {
+  selector: string;
+  value: string;
+  type: string;
+  cursorPosition: number;
+}
+
 /**
  * Workflow generator is used to transform the user's interactions into an automatically
  * generated correct workflows, using the ability of internal state persistence and
@@ -1126,56 +1133,33 @@ export class WorkflowGenerator {
    * @param workflow The workflow to be optimized.
    */
   private optimizeWorkflow = (workflow: WorkflowFile) => {
-    // Enhanced input state to include cursor position
-    let input = {
-      selector: '',
-      value: '',
-      type: '',
-      actionCounter: 0,
-      cursorPosition: -1  // Track cursor position, -1 means end of text
-    };
+    // Track state for each input field
+    const inputStates = new Map<string, InputState>();
   
-    const pushTheOptimizedAction = (pair: WhereWhatPair, index: number) => {
-      if (input.value.length === 1) {
-        // Single character - keep as is with waitForLoadState
-        pair.what.splice(index + 1, 0, {
-          action: 'waitForLoadState',
-          args: ['networkidle'],
-        });
-      } else {
-        // Multiple characters - optimize to type action
-        pair.what.splice(index - input.actionCounter, input.actionCounter, {
-          action: 'type',
-          args: [input.selector, encrypt(input.value), input.type],
-        }, {
-          action: 'waitForLoadState',
-          args: ['networkidle'],
-        });
-      }
-    };
-  
+    // First pass: Process all actions and build final states
     for (const pair of workflow.workflow) {
-      for (let i = 0; i < pair.what.length; i++) {
-        const condition = pair.what[i];
+      let currentIndex = 0;
+      
+      while (currentIndex < pair.what.length) {
+        const condition = pair.what[currentIndex];
   
-        // Handle click actions that set cursor position
-        if (condition.action === 'click' && condition.args?.[1]) {
-          const cursorIndex = condition.args[1].cursorIndex;
+        // Handle click actions with cursor positioning
+        if (condition.action === 'click' && condition.args?.[2]?.cursorIndex !== undefined) {
+          const selector = condition.args[0];
+          const cursorIndex = condition.args[2].cursorIndex;
   
-          // If we have pending input, commit it before processing the click
-          if (input.value.length > 0) {
-            pushTheOptimizedAction(pair, i);
-            input = {
-              selector: '',
-              value: '',
-              type: '',
-              actionCounter: 0,
-              cursorPosition: -1
-            };
-          }
+          let state = inputStates.get(selector) || {
+            selector,
+            value: '',
+            type: 'text',
+            cursorPosition: -1
+          };
   
-          // Update cursor position for next operations
-          input.cursorPosition = cursorIndex;
+          state.cursorPosition = cursorIndex;
+          inputStates.set(selector, state);
+          
+          // Remove the click action
+          pair.what.splice(currentIndex, 1);
           continue;
         }
   
@@ -1183,86 +1167,73 @@ export class WorkflowGenerator {
         if (condition.action === 'press' && condition.args?.[1]) {
           const [selector, encryptedKey, type] = condition.args;
           const key = decrypt(encryptedKey);
+          
+          let state = inputStates.get(selector) || {
+            selector,
+            value: '',
+            type: type || 'text',
+            cursorPosition: -1
+          };
   
-          // Initialize new input state if selector changes
-          if (!input.selector || input.selector !== selector) {
-            if (input.value.length > 0) {
-              pushTheOptimizedAction(pair, i);
-            }
-            input = {
-              selector,
-              value: '',
-              type: type || 'text',
-              actionCounter: 0,
-              cursorPosition: -1
-            };
-          }
-  
-          input.actionCounter++;
-  
-          // Handle different key types with cursor awareness
           if (key.length === 1) {
-            // Insert character at cursor position or append if no cursor set
-            if (input.cursorPosition === -1) {
-              // No cursor position set, append to end
-              input.value += key;
+            if (state.cursorPosition === -1) {
+              state.value += key;
             } else {
-              // Insert at cursor position
-              input.value = 
-                input.value.slice(0, input.cursorPosition) +
+              state.value = 
+                state.value.slice(0, state.cursorPosition) +
                 key +
-                input.value.slice(input.cursorPosition);
-              input.cursorPosition++;
+                state.value.slice(state.cursorPosition);
+              state.cursorPosition++;
             }
           } else if (key === 'Backspace') {
-            if (input.cursorPosition > 0) {
-              // Delete character before cursor
-              input.value = 
-                input.value.slice(0, input.cursorPosition - 1) +
-                input.value.slice(input.cursorPosition);
-              input.cursorPosition--;
-            } else if (input.cursorPosition === -1 && input.value.length > 0) {
-              // No cursor position set, delete from end
-              input.value = input.value.slice(0, -1);
+            if (state.cursorPosition > 0) {
+              state.value = 
+                state.value.slice(0, state.cursorPosition - 1) +
+                state.value.slice(state.cursorPosition);
+              state.cursorPosition--;
+            } else if (state.cursorPosition === -1 && state.value.length > 0) {
+              state.value = state.value.slice(0, -1);
             }
-          } else if (key !== 'Shift') {
-            // Handle other special keys
-            if (input.value.length > 0) {
-              pushTheOptimizedAction(pair, i);
-              input = {
-                selector: '',
-                value: '',
-                type: '',
-                actionCounter: 0,
-                cursorPosition: -1
-              };
+          } else if (key === 'Delete') {
+            if (state.cursorPosition >= 0 && state.cursorPosition < state.value.length) {
+              state.value = 
+                state.value.slice(0, state.cursorPosition) +
+                state.value.slice(state.cursorPosition + 1);
+            } else if (state.cursorPosition === -1 && state.value.length > 0) {
+              // If no cursor position set, delete at the end
+              state.value = state.value.slice(0, -1);
             }
           }
-        } else {
-          // Handle non-text actions
-          if (input.value.length > 0) {
-            pushTheOptimizedAction(pair, i);
-            input = {
-              selector: '',
-              value: '',
-              type: '',
-              actionCounter: 0,
-              cursorPosition: -1
-            };
-          }
-        }
-      }
   
-      // Clean up any remaining input state
-      if (input.value.length > 0) {
-        pushTheOptimizedAction(pair, pair.what.length);
-        input = {
-          selector: '',
-          value: '',
-          type: '',
-          actionCounter: 0,
-          cursorPosition: -1
-        };
+          inputStates.set(selector, state);
+          
+          // Remove the press action
+          pair.what.splice(currentIndex, 1);
+          continue;
+        }
+  
+        currentIndex++;
+      }
+    }
+  
+    // Second pass: Add one type action per selector in the last pair where that selector was used
+    for (const [selector, state] of inputStates.entries()) {
+      if (state.value) {
+        // Find the last pair that used this selector
+        for (let i = workflow.workflow.length - 1; i >= 0; i--) {
+          const pair = workflow.workflow[i];
+          
+          // Add type action to the end of the pair
+          pair.what.push({
+            action: 'type',
+            args: [selector, encrypt(state.value), state.type]
+          }, {
+            action: 'waitForLoadState',
+            args: ['networkidle']
+          });
+          
+          break; // Stop after adding to the first pair we find
+        }
       }
     }
   
