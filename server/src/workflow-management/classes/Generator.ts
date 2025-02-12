@@ -431,27 +431,95 @@ export class WorkflowGenerator {
       // Calculate the exact position within the element
       const positionAndCursor = await page.evaluate(
         ({ selector, coords }) => {
-            const element = document.querySelector(selector);
-            if (!element) return null;
+          const getCursorPosition = (element: any, clickX: any) => {
+            // Get the input's text content
+            const text = element.value;
             
-            const getCursorPosition = (inputElement: HTMLInputElement | HTMLTextAreaElement, clickCoords: Coordinates) => {
-                const position = inputElement.selectionStart || 0;
-                return position;
-            };
+            // Create a temporary hidden div to measure text
+            const mirror = document.createElement('div');
+            
+            // Copy ALL relevant styles that could affect text measurement
+            const style = window.getComputedStyle(element);
+            mirror.style.cssText = `
+              font: ${style.font};
+              line-height: ${style.lineHeight};
+              padding: ${style.padding};
+              border: ${style.border};
+              box-sizing: ${style.boxSizing};
+              white-space: ${style.whiteSpace};
+              overflow-wrap: ${style.overflowWrap};
+              position: absolute;
+              top: -9999px;
+              left: -9999px;
+              width: ${element.offsetWidth}px;
+            `;
+            
+            document.body.appendChild(mirror);
+          
+            // Get the element's padding and border widths
+            const paddingLeft = parseFloat(style.paddingLeft);
+            const borderLeft = parseFloat(style.borderLeftWidth);
+            
+            // Adjust clickX to account for padding and border
+            const adjustedClickX = clickX - (paddingLeft + borderLeft);
+            
+            let bestIndex = 0;
+            let bestDiff = Infinity;
+          
+            // Try each possible cursor position
+            for (let i = 0; i <= text.length; i++) {
+              // Create a span for the text before cursor
+              const textBeforeCursor = text.substring(0, i);
+              const span = document.createElement('span');
+              span.textContent = textBeforeCursor;
+              mirror.innerHTML = '';
+              mirror.appendChild(span);
+              
+              // Get the x-position where this character would end
+              const textWidth = span.getBoundingClientRect().width;
+              
+              // Calculate distance from adjusted click to this position
+              const diff = Math.abs(adjustedClickX - textWidth);
+              
+              // If this position is closer to the click, update bestIndex
+              if (diff < bestDiff) {
+                bestIndex = i;
+                bestDiff = diff;
+              }
+            }
+            
+            // Clean up
+            document.body.removeChild(mirror);
+            
+            // Add debug logging
+            console.log({
+              text,
+              clickX,
+              adjustedClickX,
+              bestIndex,
+              value: text.substring(0, bestIndex),
+              nextChar: text[bestIndex] || 'EOL'
+            });
+            
+            return bestIndex;
+          };
+
+            const element = document.querySelector(selector) as HTMLInputElement | HTMLTextAreaElement;
+            if (!element) return null;
     
             const rect = element.getBoundingClientRect();
-            const cursorIndex = getCursorPosition(element as HTMLInputElement | HTMLTextAreaElement, coords);
+            const relativeX = coords.x - rect.left;
             
             return {
-                rect: {
-                    x: rect.left,
-                    y: rect.top
-                },
-                cursorIndex
+              rect: {
+                x: rect.left,
+                y: rect.top
+              },
+              cursorIndex: getCursorPosition(element, relativeX)
             };
         },
         { selector, coords: coordinates } 
-    );
+      );
 
       if (positionAndCursor) {
         const relativeX = coordinates.x - positionAndCursor.rect.x;
