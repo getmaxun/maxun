@@ -126,7 +126,7 @@ async function executeRun(id: string) {
 
     const workflow = AddGeneratedFlags(recording.recording);
     const interpretationInfo = await browser.interpreter.InterpretRecording(
-      workflow, currentPage, (newPage: Page) => currentPage = newPage, plainRun.interpreterSettings
+      workflow, currentPage, (newPage: Page) => currentPage = newPage, plainRun.interpreterSettings, plainRun.robotMetaId
     );
 
     const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');

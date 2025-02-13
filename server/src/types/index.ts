@@ -286,3 +286,25 @@ export type Action =
   | WheelAction
   | FullScreenshotAction
   | AwaitTextAction;
+
+interface Cookie {
+    name: string;
+    value: string;
+    domain: string;
+    path: string;
+    expires: number;
+    httpOnly: boolean;
+    secure: boolean;
+    sameSite: 'Lax' | 'Strict' | 'None';
+}
+
+interface Origin {
+    origin: string;
+    localStorage: Record<string, any>[];
+}
+
+export interface SessionData {
+    cookies: Cookie[];
+    origins: Origin[];
+}
+  

@@ -11,7 +11,7 @@ export type Meta = typeof meta[number];
 
 export type SelectorArray = string[];
 
-type RegexableString = string | { '$regex': string };
+export type RegexableString = string | { '$regex': string };
 
 type BaseConditions = {
   'url': RegexableString,
@@ -56,3 +56,25 @@ export type WorkflowFile = {
   meta?: MetaData,
   workflow: Workflow
 };
+
+interface Cookie {
+  name: string;
+  value: string;
+  domain: string;
+  path: string;
+  expires: number;
+  httpOnly: boolean;
+  secure: boolean;
+  sameSite: 'Lax' | 'Strict' | 'None';
+}
+
+interface Origin {
+  origin: string;
+  localStorage: Record<string, any>[];
+}
+
+export interface SessionData {
+  cookies: Cookie[];
+  origins: Origin[];
+}
+
