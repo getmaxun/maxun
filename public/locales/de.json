@@ -139,12 +139,41 @@
         "no_key_message": "Sie haben noch keinen API-Schlüssel generiert.",
         "generate_button": "API-Schlüssel generieren",
         "notifications": {
-            "fetch_error": "API-Schlüssel konnte nicht abgerufen werden - ${error}",
-            "generate_success": "API-Schlüssel erfolgreich generiert",
-            "generate_error": "API-Schlüssel konnte nicht generiert werden - ${error}",
-            "delete_success": "API-Schlüssel erfolgreich gelöscht",
-            "delete_error": "API-Schlüssel konnte nicht gelöscht werden - ${error}",
-            "copy_success": "API-Schlüssel erfolgreich kopiert"
+            "errors": {
+                "fetch": {
+                    "network": "Netzwerkfehler beim Abrufen des API-Schlüssels: ${error}",
+                    "unauthorized": "Sie müssen angemeldet sein, um auf den API-Schlüssel zuzugreifen",
+                    "not_found": "API-Schlüssel für Ihr Konto wurde nicht gefunden",
+                    "server": "Serverfehler beim Abrufen des API-Schlüssels. Bitte versuchen Sie es später erneut",
+                    "unknown": "Unbekannter Fehler beim Abrufen des API-Schlüssels: ${error}"
+                },
+                "generate": {
+                    "network": "Netzwerkfehler bei der Generierung des API-Schlüssels: ${error}",
+                    "unauthorized": "Sie müssen angemeldet sein, um einen API-Schlüssel zu generieren",
+                    "key_exists": "Sie haben bereits einen API-Schlüssel. Bitte löschen Sie zuerst den vorhandenen",
+                    "not_found": "Benutzerkonto nicht gefunden",
+                    "server": "Serverfehler bei der Generierung des API-Schlüssels. Bitte versuchen Sie es später erneut",
+                    "unknown": "Unbekannter Fehler bei der Generierung des API-Schlüssels: ${error}"
+                },
+                "delete": {
+                    "network": "Netzwerkfehler beim Löschen des API-Schlüssels: ${error}",
+                    "unauthorized": "Sie müssen angemeldet sein, um den API-Schlüssel zu löschen",
+                    "not_found": "Benutzerkonto nicht gefunden",
+                    "key_not_found": "Kein API-Schlüssel zum Löschen gefunden",
+                    "server": "Serverfehler beim Löschen des API-Schlüssels. Bitte versuchen Sie es später erneut",
+                    "unknown": "Unbekannter Fehler beim Löschen des API-Schlüssels: ${error}"
+                },
+                "copy": {
+                    "failed": "Fehler beim Kopieren des API-Schlüssels in die Zwischenablage",
+                    "no_key": "Kein API-Schlüssel zum Kopieren verfügbar"
+                }
+            },
+            "success": {
+                "fetch": "API-Schlüssel erfolgreich abgerufen",
+                "generate": "Neuer API-Schlüssel erfolgreich generiert",
+                "delete": "API-Schlüssel erfolgreich gelöscht",
+                "copy": "API-Schlüssel in die Zwischenablage kopiert"
+            }
         }
     },
     "action_description": {
