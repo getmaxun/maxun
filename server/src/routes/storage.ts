@@ -163,30 +163,93 @@ interface Credentials {
   [key: string]: CredentialInfo;
 }
 
-function updateTypeActionsInWorkflow(workflow: any[], credentials: Credentials) {
+function handleWorkflowActions(workflow: any[], credentials: Credentials) {
+  // Process one step at a time to avoid memory issues
   return workflow.map(step => {
       if (!step.what) return step;
 
-      step.what = step.what.map((action: any) => {
-          if (action.action === 'type' && action.args?.length >= 2) {
-              const selector = action.args[0];
+      // Use a more memory-efficient approach
+      const newWhat: any[] = [];
+      const processedSelectors = new Set<string>();
+      
+      for (let i = 0; i < step.what.length; i++) {
+          const action = step.what[i];
+          
+          // Skip invalid actions
+          if (!action?.action || !action?.args?.[0]) {
+              newWhat.push(action);
+              continue;
+          }
+
+          const selector = action.args[0];
+          const credential = credentials[selector];
+
+          // Handle non-credential actions
+          if (!credential) {
+              newWhat.push(action);
+              continue;
+          }
+
+          // Handle credential-related actions
+          if (action.action === 'click') {
+              newWhat.push(action);
               
-              if (credentials[selector]) {
-                  return {
-                      ...action,
-                      args: [
-                          selector,
-                          encrypt(credentials[selector].value),
-                          credentials[selector].type
-                      ]
-                  };
+              // If we haven't processed this selector and there's a following type/press action
+              if (!processedSelectors.has(selector) && 
+                  i + 1 < step.what.length && 
+                  (step.what[i + 1].action === 'type' || step.what[i + 1].action === 'press')) {
+                  
+                  // Add type action
+                  newWhat.push({
+                      action: 'type',
+                      args: [selector, encrypt(credential.value), credential.type]
+                  });
+                  
+                  // Add single waitForLoadState
+                  newWhat.push({
+                      action: 'waitForLoadState',
+                      args: ['networkidle']
+                  });
+                  
+                  processedSelectors.add(selector);
+                  
+                  // Skip subsequent type/press/waitForLoadState actions for this selector
+                  while (i + 1 < step.what.length && 
+                         (step.what[i + 1].action === 'type' || 
+                          step.what[i + 1].action === 'press' || 
+                          step.what[i + 1].action === 'waitForLoadState')) {
+                      i++;
+                  }
+              }
+          } else if ((action.action === 'type' || action.action === 'press') && 
+                     !processedSelectors.has(selector)) {
+              // Handle standalone type/press action
+              newWhat.push({
+                  action: 'type',
+                  args: [selector, encrypt(credential.value), credential.type]
+              });
+              
+              newWhat.push({
+                  action: 'waitForLoadState',
+                  args: ['networkidle']
+              });
+              
+              processedSelectors.add(selector);
+              
+              // Skip subsequent type/press/waitForLoadState actions for this selector
+              while (i + 1 < step.what.length && 
+                     (step.what[i + 1].action === 'type' || 
+                      step.what[i + 1].action === 'press' || 
+                      step.what[i + 1].action === 'waitForLoadState')) {
+                  i++;
               }
           }
-          
-          return action;
-      });
+      }
 
-      return step;
+      return {
+          ...step,
+          what: newWhat
+      };
   });
 }
 
@@ -218,7 +281,7 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
     let workflow = [...robot.recording.workflow]; // Create a copy of the workflow
 
     if (credentials) {
-      workflow = updateTypeActionsInWorkflow(workflow, credentials);
+      workflow = handleWorkflowActions(workflow, credentials);
     }
 
     // Update the limit
