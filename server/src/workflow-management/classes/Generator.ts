@@ -22,7 +22,7 @@ import { getBestSelectorForAction } from "../utils";
 import { browserPool } from "../../server";
 import { uuid } from "uuidv4";
 import { capture } from "../../utils/analytics"
-import { encrypt } from "../../utils/auth";
+import { decrypt, encrypt } from "../../utils/auth";
 
 interface PersistedGeneratedData {
   lastUsedSelector: string;
@@ -40,6 +40,13 @@ interface MetaData {
   updatedAt: string;
   params: string[],
   isLogin?: boolean;
+}
+
+interface InputState {
+  selector: string;
+  value: string;
+  type: string;
+  cursorPosition: number;
 }
 
 /**
@@ -428,26 +435,86 @@ export class WorkflowGenerator {
     }
 
     if ((elementInfo?.tagName === 'INPUT' || elementInfo?.tagName === 'TEXTAREA') && selector) {
-      // Calculate the exact position within the element
-      const elementPos = await page.evaluate((selector) => {
-        const element = document.querySelector(selector);
-        if (!element) return null;
-        const rect = element.getBoundingClientRect();
-        return {
-            x: rect.left,
-            y: rect.top
-        };
-      }, selector);
+      const positionAndCursor = await page.evaluate(
+        ({ selector, coords }) => {
+          const getCursorPosition = (element: any, clickX: any) => {
+            const text = element.value;
+            
+            const mirror = document.createElement('div');
+            
+            const style = window.getComputedStyle(element);
+            mirror.style.cssText = `
+              font: ${style.font};
+              line-height: ${style.lineHeight};
+              padding: ${style.padding};
+              border: ${style.border};
+              box-sizing: ${style.boxSizing};
+              white-space: ${style.whiteSpace};
+              overflow-wrap: ${style.overflowWrap};
+              position: absolute;
+              top: -9999px;
+              left: -9999px;
+              width: ${element.offsetWidth}px;
+            `;
+            
+            document.body.appendChild(mirror);
+          
+            const paddingLeft = parseFloat(style.paddingLeft);
+            const borderLeft = parseFloat(style.borderLeftWidth);
+            
+            const adjustedClickX = clickX - (paddingLeft + borderLeft);
+            
+            let bestIndex = 0;
+            let bestDiff = Infinity;
+          
+            for (let i = 0; i <= text.length; i++) {
+              const textBeforeCursor = text.substring(0, i);
+              const span = document.createElement('span');
+              span.textContent = textBeforeCursor;
+              mirror.innerHTML = '';
+              mirror.appendChild(span);
+              
+              const textWidth = span.getBoundingClientRect().width;
+              
+              const diff = Math.abs(adjustedClickX - textWidth);
+              
+              if (diff < bestDiff) {
+                bestIndex = i;
+                bestDiff = diff;
+              }
+            }
+            
+            document.body.removeChild(mirror);
+            
+            return bestIndex;
+          };
 
-      if (elementPos) {
-        const relativeX = coordinates.x - elementPos.x;
-        const relativeY = coordinates.y - elementPos.y;
+            const element = document.querySelector(selector) as HTMLInputElement | HTMLTextAreaElement;
+            if (!element) return null;
+    
+            const rect = element.getBoundingClientRect();
+            const relativeX = coords.x - rect.left;
+            
+            return {
+              rect: {
+                x: rect.left,
+                y: rect.top
+              },
+              cursorIndex: getCursorPosition(element, relativeX)
+            };
+        },
+        { selector, coords: coordinates } 
+      );
+
+      if (positionAndCursor) {
+        const relativeX = coordinates.x - positionAndCursor.rect.x;
+        const relativeY = coordinates.y - positionAndCursor.rect.y;
 
         const pair: WhereWhatPair = {
             where,
             what: [{
                 action: 'click',
-                args: [selector, { position: { x: relativeX, y: relativeY } }]
+                args: [selector, { position: { x: relativeX, y: relativeY } }, { cursorIndex: positionAndCursor.cursorIndex }],
             }]
         };
 
@@ -1026,77 +1093,107 @@ export class WorkflowGenerator {
    * @param workflow The workflow to be optimized.
    */
   private optimizeWorkflow = (workflow: WorkflowFile) => {
-
-    // replace a sequence of press actions by a single fill action
-    let input = {
-      selector: '',
-      value: '',
-      type: '',
-      actionCounter: 0,
-    };
-
-    const pushTheOptimizedAction = (pair: WhereWhatPair, index: number) => {
-      if (input.value.length === 1) {
-        // when only one press action is present, keep it and add a waitForLoadState action
-        pair.what.splice(index + 1, 0, {
-          action: 'waitForLoadState',
-          args: ['networkidle'],
-        })
-      } else {
-        // when more than one press action is present, add a type action
-        pair.what.splice(index - input.actionCounter, input.actionCounter, {
-          action: 'type',
-          args: [input.selector, encrypt(input.value), input.type],
-        }, {
-          action: 'waitForLoadState',
-          args: ['networkidle'],
-        });
+    const inputStates = new Map<string, InputState>();
+  
+    for (const pair of workflow.workflow) {
+      let currentIndex = 0;
+      
+      while (currentIndex < pair.what.length) {
+        const condition = pair.what[currentIndex];
+  
+        if (condition.action === 'click' && condition.args?.[2]?.cursorIndex !== undefined) {
+          const selector = condition.args[0];
+          const cursorIndex = condition.args[2].cursorIndex;
+  
+          let state = inputStates.get(selector) || {
+            selector,
+            value: '',
+            type: 'text',
+            cursorPosition: -1
+          };
+  
+          state.cursorPosition = cursorIndex;
+          inputStates.set(selector, state);
+          
+          pair.what.splice(currentIndex, 1);
+          continue;
+        }
+  
+        if (condition.action === 'press' && condition.args?.[1]) {
+          const [selector, encryptedKey, type] = condition.args;
+          const key = decrypt(encryptedKey);
+          
+          let state = inputStates.get(selector);
+          if (!state) {
+            state = {
+              selector,
+              value: '',
+              type: type || 'text', 
+              cursorPosition: -1
+            };
+          } else {
+            state.type = type || state.type;
+          }
+  
+          if (key.length === 1) {
+            if (state.cursorPosition === -1) {
+              state.value += key;
+            } else {
+              state.value = 
+                state.value.slice(0, state.cursorPosition) +
+                key +
+                state.value.slice(state.cursorPosition);
+              state.cursorPosition++;
+            }
+          } else if (key === 'Backspace') {
+            if (state.cursorPosition > 0) {
+              state.value = 
+                state.value.slice(0, state.cursorPosition - 1) +
+                state.value.slice(state.cursorPosition);
+              state.cursorPosition--;
+            } else if (state.cursorPosition === -1 && state.value.length > 0) {
+              state.value = state.value.slice(0, -1);
+            }
+          } else if (key === 'Delete') {
+            if (state.cursorPosition >= 0 && state.cursorPosition < state.value.length) {
+              state.value = 
+                state.value.slice(0, state.cursorPosition) +
+                state.value.slice(state.cursorPosition + 1);
+            } else if (state.cursorPosition === -1 && state.value.length > 0) {
+              state.value = state.value.slice(0, -1);
+            }
+          }
+  
+          inputStates.set(selector, state);
+          
+          pair.what.splice(currentIndex, 1);
+          continue;
+        }
+  
+        currentIndex++;
       }
     }
-
-
-    for (const pair of workflow.workflow) {
-      pair.what.forEach((condition, index) => {
-        if (condition.action === 'press') {
-          if (condition.args && condition.args[1]) {
-            if (!input.selector) {
-              input.selector = condition.args[0];
-            }
-            if (input.selector === condition.args[0]) {
-              input.actionCounter++;
-              if (condition.args[1].length === 1) {
-                input.value = input.value + condition.args[1];
-              } else if (condition.args[1] === 'Backspace') {
-                input.value = input.value.slice(0, -1);
-              } else if (condition.args[1] !== 'Shift') {
-                pushTheOptimizedAction(pair, index);
-                pair.what.splice(index + 1, 0, {
-                  action: 'waitForLoadState',
-                  args: ['networkidle'],
-                })
-                input = { selector: '', value: '', type: '', actionCounter: 0 };
-              }
-            } else {
-              pushTheOptimizedAction(pair, index);
-              input = {
-                selector: condition.args[0],
-                value: condition.args[1],
-                type: condition.args[2],
-                actionCounter: 1,
-              };
-            }
-          }
-        } else {
-          if (input.value.length !== 0) {
-            pushTheOptimizedAction(pair, index);
-            // clear the input
-            input = { selector: '', value: '', type: '', actionCounter: 0 };
-          }
+  
+    for (const [selector, state] of inputStates.entries()) {
+      if (state.value) {
+        for (let i = workflow.workflow.length - 1; i >= 0; i--) {
+          const pair = workflow.workflow[i];
+          
+          pair.what.push({
+            action: 'type',
+            args: [selector, encrypt(state.value), state.type]
+          }, {
+            action: 'waitForLoadState',
+            args: ['networkidle']
+          });
+          
+          break; 
         }
-      });
+      }
     }
+  
     return workflow;
-  }
+  };
 
   /**
    * Returns workflow params from the stored metadata.

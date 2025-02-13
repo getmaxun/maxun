@@ -124,81 +124,113 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
         }
     }, [robot]);
 
-    const extractInitialCredentials = (workflow: any[]): Credentials => {
+    function extractInitialCredentials(workflow: any[]): Credentials {
         const credentials: Credentials = {};
-
-        // Helper function to check if a character is printable
+    
         const isPrintableCharacter = (char: string): boolean => {
             return char.length === 1 && !!char.match(/^[\x20-\x7E]$/);
         };
-
-        // Process each step in the workflow
+    
         workflow.forEach(step => {
             if (!step.what) return;
-
-            // Keep track of the current input field being processed
+    
             let currentSelector = '';
             let currentValue = '';
             let currentType = '';
-
-            // Process actions in sequence to maintain correct text state
-            step.what.forEach((action: any) => {
-                if (
-                    (action.action === 'type' || action.action === 'press') &&
-                    action.args?.length >= 2 &&
-                    typeof action.args[1] === 'string'
-                ) {
-                    const selector: string = action.args[0];
-                    const character: string = action.args[1];
-                    const inputType: string = action.args[2] || '';
-
-                    // Detect `input[type="password"]`
-                    if (!currentType && inputType.toLowerCase() === 'password') {
-                        currentType = 'password';
+            let i = 0;
+    
+            while (i < step.what.length) {
+                const action = step.what[i];
+    
+                if (!action.action || !action.args?.[0]) {
+                    i++;
+                    continue;
+                }
+    
+                const selector = action.args[0];
+    
+                // Handle full word type actions first
+                if (action.action === 'type' && 
+                    action.args?.length >= 2 && 
+                    typeof action.args[1] === 'string' &&
+                    action.args[1].length > 1) {  
+                    
+                    if (!credentials[selector]) {
+                        credentials[selector] = {
+                            value: action.args[1],
+                            type: action.args[2] || 'text'
+                        };
                     }
-
-                    // If we're dealing with a new selector, store the previous one
-                    if (currentSelector && selector !== currentSelector) {
-                        if (!credentials[currentSelector]) {
+                    i++;
+                    continue;
+                }
+    
+                // Handle character-by-character sequences (both type and press)
+                if ((action.action === 'type' || action.action === 'press') &&
+                    action.args?.length >= 2 &&
+                    typeof action.args[1] === 'string') {
+    
+                    if (selector !== currentSelector) {
+                        if (currentSelector && currentValue) {
                             credentials[currentSelector] = {
                                 value: currentValue,
-                                type: currentType
+                                type: currentType || 'text'
                             };
-                        } else {
-                            credentials[currentSelector].value = currentValue;
                         }
-                    }
-
-                    // Update current tracking variables
-                    if (selector !== currentSelector) {
                         currentSelector = selector;
                         currentValue = credentials[selector]?.value || '';
-                        currentType = inputType || credentials[selector]?.type || '';
+                        currentType = action.args[2] || credentials[selector]?.type || 'text';
                     }
-
-                    // Handle different types of key actions
-                    if (character === 'Backspace') {
-                        // Remove the last character when backspace is pressed
-                        currentValue = currentValue.slice(0, -1);
-                    } else if (isPrintableCharacter(character)) {
-                        // Add the character to the current value
+    
+                    const character = action.args[1];
+    
+                    if (isPrintableCharacter(character)) {
                         currentValue += character;
+                    } else if (character === 'Backspace') {
+                        currentValue = currentValue.slice(0, -1);
                     }
-                    // Note: We ignore other special keys like 'Shift', 'Enter', etc.
+    
+                    if (!currentType && action.args[2]?.toLowerCase() === 'password') {
+                        currentType = 'password';
+                    }
+    
+                    let j = i + 1;
+                    while (j < step.what.length) {
+                        const nextAction = step.what[j];
+                        if (!nextAction.action || !nextAction.args?.[0] || 
+                            nextAction.args[0] !== selector ||
+                            (nextAction.action !== 'type' && nextAction.action !== 'press')) {
+                            break;
+                        }
+                        if (nextAction.args[1] === 'Backspace') {
+                            currentValue = currentValue.slice(0, -1);
+                        } else if (isPrintableCharacter(nextAction.args[1])) {
+                            currentValue += nextAction.args[1];
+                        }
+                        j++;
+                    }
+    
+                    credentials[currentSelector] = {
+                        value: currentValue,
+                        type: currentType
+                    };
+    
+                    i = j; 
+                } else {
+                    i++;
                 }
-            });
-
-            // Store the final state of the last processed selector
-            if (currentSelector) {
+            }
+    
+            if (currentSelector && currentValue) {
                 credentials[currentSelector] = {
                     value: currentValue,
-                    type: currentType
+                    type: currentType || 'text'
                 };
             }
         });
-
+    
         return credentials;
-    };
+    }
 
     const groupCredentialsByType = (credentials: Credentials): GroupedCredentials => {
         return Object.entries(credentials).reduce((acc: GroupedCredentials, [selector, info]) => {
