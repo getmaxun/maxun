@@ -123,39 +123,113 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
         }
     }, [robot]);
 
-    const extractInitialCredentials = (workflow: any[]): Credentials => {
+    function extractInitialCredentials(workflow: any[]): Credentials {
         const credentials: Credentials = {};
-
-        // Process each step in the workflow
+    
+        const isPrintableCharacter = (char: string): boolean => {
+            return char.length === 1 && !!char.match(/^[\x20-\x7E]$/);
+        };
+    
         workflow.forEach(step => {
             if (!step.what) return;
-
-            // Process actions in sequence to maintain correct text state
-            step.what.forEach((action: any) => {
-                if (
-                    action.action === 'type' &&
-                    action.args?.length >= 2 &&
-                    typeof action.args[1] === 'string'
-                ) {
-                    const selector: string = action.args[0];
-                    const value: string = action.args[1];
-                    const type: string = action.args[2] || 'text';
-
+    
+            let currentSelector = '';
+            let currentValue = '';
+            let currentType = '';
+            let i = 0;
+    
+            while (i < step.what.length) {
+                const action = step.what[i];
+    
+                if (!action.action || !action.args?.[0]) {
+                    i++;
+                    continue;
+                }
+    
+                const selector = action.args[0];
+    
+                // Handle full word type actions first
+                if (action.action === 'type' && 
+                    action.args?.length >= 2 && 
+                    typeof action.args[1] === 'string' &&
+                    action.args[1].length > 1) {  
+                    
                     if (!credentials[selector]) {
                         credentials[selector] = {
-                            value: '',
-                            type: ''
+                            value: action.args[1],
+                            type: action.args[2] || 'text'
                         };
                     }
-
-                    credentials[selector].value = value;
-                    credentials[selector].type = type;
+                    i++;
+                    continue;
                 }
-            });
+    
+                // Handle character-by-character sequences (both type and press)
+                if ((action.action === 'type' || action.action === 'press') &&
+                    action.args?.length >= 2 &&
+                    typeof action.args[1] === 'string') {
+    
+                    if (selector !== currentSelector) {
+                        if (currentSelector && currentValue) {
+                            credentials[currentSelector] = {
+                                value: currentValue,
+                                type: currentType || 'text'
+                            };
+                        }
+                        currentSelector = selector;
+                        currentValue = credentials[selector]?.value || '';
+                        currentType = action.args[2] || credentials[selector]?.type || 'text';
+                    }
+    
+                    const character = action.args[1];
+    
+                    if (isPrintableCharacter(character)) {
+                        currentValue += character;
+                    } else if (character === 'Backspace') {
+                        currentValue = currentValue.slice(0, -1);
+                    }
+    
+                    if (!currentType && action.args[2]?.toLowerCase() === 'password') {
+                        currentType = 'password';
+                    }
+    
+                    let j = i + 1;
+                    while (j < step.what.length) {
+                        const nextAction = step.what[j];
+                        if (!nextAction.action || !nextAction.args?.[0] || 
+                            nextAction.args[0] !== selector ||
+                            (nextAction.action !== 'type' && nextAction.action !== 'press')) {
+                            break;
+                        }
+                        if (nextAction.args[1] === 'Backspace') {
+                            currentValue = currentValue.slice(0, -1);
+                        } else if (isPrintableCharacter(nextAction.args[1])) {
+                            currentValue += nextAction.args[1];
+                        }
+                        j++;
+                    }
+    
+                    credentials[currentSelector] = {
+                        value: currentValue,
+                        type: currentType
+                    };
+    
+                    i = j; 
+                } else {
+                    i++;
+                }
+            }
+    
+            if (currentSelector && currentValue) {
+                credentials[currentSelector] = {
+                    value: currentValue,
+                    type: currentType || 'text'
+                };
+            }
         });
-
+    
         return credentials;
-    };
+    }
 
     const groupCredentialsByType = (credentials: Credentials): GroupedCredentials => {
         return Object.entries(credentials).reduce((acc: GroupedCredentials, [selector, info]) => {
