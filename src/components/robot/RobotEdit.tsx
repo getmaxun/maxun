@@ -118,7 +118,6 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
     useEffect(() => {
         if (robot?.recording?.workflow) {
             const extractedCredentials = extractInitialCredentials(robot.recording.workflow);
-            console.log(extractedCredentials);
             setCredentials(extractedCredentials);
             setCredentialGroups(groupCredentialsByType(extractedCredentials));
         }
