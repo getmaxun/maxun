@@ -167,51 +167,26 @@ function updateTypeActionsInWorkflow(workflow: any[], credentials: Credentials) 
   return workflow.map(step => {
       if (!step.what) return step;
 
-      const indicesToRemove = new Set<number>();
-      step.what.forEach((action: any, index: number) => {
-          if (!action.action || !action.args?.[0]) return;
-          
-          if ((action.action === 'type' || action.action === 'press') && credentials[action.args[0]]) {
-              indicesToRemove.add(index);
-
-              if (step.what[index + 1]?.action === 'waitForLoadState') {
-                  indicesToRemove.add(index + 1);
-              }
-          }
-      });
-
-      const filteredWhat = step.what.filter((_: any, index: number) => !indicesToRemove.has(index));
-
-      Object.entries(credentials).forEach(([selector, credentialInfo]) => {
-          const clickIndex = filteredWhat.findIndex((action: any) => 
-              action.action === 'click' && action.args?.[0] === selector
-          );
-
-          if (clickIndex !== -1) {
-              const chars = credentialInfo.value.split('');
+      step.what = step.what.map((action: any) => {
+          if (action.action === 'type' && action.args?.length >= 2) {
+              const selector = action.args[0];
               
-              chars.forEach((char, i) => {
-                  filteredWhat.splice(clickIndex + 1 + (i * 2), 0, {
-                      action: 'type',
+              if (credentials[selector]) {
+                  return {
+                      ...action,
                       args: [
                           selector,
-                          encrypt(char),
-                          credentialInfo.type 
+                          encrypt(credentials[selector].value),
+                          credentials[selector].type
                       ]
-                  });
-                  
-                  filteredWhat.splice(clickIndex + 2 + (i * 2), 0, {
-                      action: 'waitForLoadState',
-                      args: ['networkidle']
-                  });
-              });
+                  };
+              }
           }
+          
+          return action;
       });
 
-      return {
-          ...step,
-          what: filteredWhat
-      };
+      return step;
   });
 }
 
@@ -281,9 +256,23 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       }
     }
 
-    robot.set('recording', { ...robot.recording, workflow });
+    const updates: any = {
+      recording: {
+        ...robot.recording,
+        workflow
+      }
+    };
 
-    await robot.save();
+    if (name) {
+      updates.recording_meta = {
+        ...robot.recording_meta,
+        name
+      };
+    }
+
+    await Robot.update(updates, {
+      where: { 'recording_meta.id': id }
+    });
 
     const updatedRobot = await Robot.findOne({ where: { 'recording_meta.id': id } });
 
