@@ -139,7 +139,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                 ) {
                     const selector: string = action.args[0];
                     const value: string = action.args[1];
-                    const type: string = action.args[2];
+                    const type: string = action.args[2] || 'text';
 
                     if (!credentials[selector]) {
                         credentials[selector] = {
