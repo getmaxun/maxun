@@ -183,7 +183,6 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
     const getRobot = async () => {
         if (recordingId) {
             const robot = await getStoredRecording(recordingId);
-            console.log("ROBOT:", robot);
             setRobot(robot);
         } else {
             notify('error', t('robot_edit.notifications.update_failed'));
