@@ -118,6 +118,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
     useEffect(() => {
         if (robot?.recording?.workflow) {
             const extractedCredentials = extractInitialCredentials(robot.recording.workflow);
+            console.log(extractedCredentials);
             setCredentials(extractedCredentials);
             setCredentialGroups(groupCredentialsByType(extractedCredentials));
         }
@@ -126,74 +127,32 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
     const extractInitialCredentials = (workflow: any[]): Credentials => {
         const credentials: Credentials = {};
 
-        // Helper function to check if a character is printable
-        const isPrintableCharacter = (char: string): boolean => {
-            return char.length === 1 && !!char.match(/^[\x20-\x7E]$/);
-        };
-
         // Process each step in the workflow
         workflow.forEach(step => {
             if (!step.what) return;
 
-            // Keep track of the current input field being processed
-            let currentSelector = '';
-            let currentValue = '';
-            let currentType = '';
-
             // Process actions in sequence to maintain correct text state
             step.what.forEach((action: any) => {
                 if (
-                    (action.action === 'type' || action.action === 'press') &&
+                    action.action === 'type' &&
                     action.args?.length >= 2 &&
                     typeof action.args[1] === 'string'
                 ) {
                     const selector: string = action.args[0];
-                    const character: string = action.args[1];
-                    const inputType: string = action.args[2] || '';
+                    const value: string = action.args[1];
+                    const type: string = action.args[2];
 
-                    // Detect `input[type="password"]`
-                    if (!currentType && inputType.toLowerCase() === 'password') {
-                        currentType = 'password';
+                    if (!credentials[selector]) {
+                        credentials[selector] = {
+                            value: '',
+                            type: ''
+                        };
                     }
 
-                    // If we're dealing with a new selector, store the previous one
-                    if (currentSelector && selector !== currentSelector) {
-                        if (!credentials[currentSelector]) {
-                            credentials[currentSelector] = {
-                                value: currentValue,
-                                type: currentType
-                            };
-                        } else {
-                            credentials[currentSelector].value = currentValue;
-                        }
-                    }
-
-                    // Update current tracking variables
-                    if (selector !== currentSelector) {
-                        currentSelector = selector;
-                        currentValue = credentials[selector]?.value || '';
-                        currentType = inputType || credentials[selector]?.type || '';
-                    }
-
-                    // Handle different types of key actions
-                    if (character === 'Backspace') {
-                        // Remove the last character when backspace is pressed
-                        currentValue = currentValue.slice(0, -1);
-                    } else if (isPrintableCharacter(character)) {
-                        // Add the character to the current value
-                        currentValue += character;
-                    }
-                    // Note: We ignore other special keys like 'Shift', 'Enter', etc.
+                    credentials[selector].value = value;
+                    credentials[selector].type = type;
                 }
             });
-
-            // Store the final state of the last processed selector
-            if (currentSelector) {
-                credentials[currentSelector] = {
-                    value: currentValue,
-                    type: currentType
-                };
-            }
         });
 
         return credentials;
@@ -224,6 +183,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
     const getRobot = async () => {
         if (recordingId) {
             const robot = await getStoredRecording(recordingId);
+            console.log("ROBOT:", robot);
             setRobot(robot);
         } else {
             notify('error', t('robot_edit.notifications.update_failed'));
