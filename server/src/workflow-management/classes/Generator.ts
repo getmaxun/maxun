@@ -435,17 +435,13 @@ export class WorkflowGenerator {
     }
 
     if ((elementInfo?.tagName === 'INPUT' || elementInfo?.tagName === 'TEXTAREA') && selector) {
-      // Calculate the exact position within the element
       const positionAndCursor = await page.evaluate(
         ({ selector, coords }) => {
           const getCursorPosition = (element: any, clickX: any) => {
-            // Get the input's text content
             const text = element.value;
             
-            // Create a temporary hidden div to measure text
             const mirror = document.createElement('div');
             
-            // Copy ALL relevant styles that could affect text measurement
             const style = window.getComputedStyle(element);
             mirror.style.cssText = `
               font: ${style.font};
@@ -463,50 +459,32 @@ export class WorkflowGenerator {
             
             document.body.appendChild(mirror);
           
-            // Get the element's padding and border widths
             const paddingLeft = parseFloat(style.paddingLeft);
             const borderLeft = parseFloat(style.borderLeftWidth);
             
-            // Adjust clickX to account for padding and border
             const adjustedClickX = clickX - (paddingLeft + borderLeft);
             
             let bestIndex = 0;
             let bestDiff = Infinity;
           
-            // Try each possible cursor position
             for (let i = 0; i <= text.length; i++) {
-              // Create a span for the text before cursor
               const textBeforeCursor = text.substring(0, i);
               const span = document.createElement('span');
               span.textContent = textBeforeCursor;
               mirror.innerHTML = '';
               mirror.appendChild(span);
               
-              // Get the x-position where this character would end
               const textWidth = span.getBoundingClientRect().width;
               
-              // Calculate distance from adjusted click to this position
               const diff = Math.abs(adjustedClickX - textWidth);
               
-              // If this position is closer to the click, update bestIndex
               if (diff < bestDiff) {
                 bestIndex = i;
                 bestDiff = diff;
               }
             }
             
-            // Clean up
             document.body.removeChild(mirror);
-            
-            // Add debug logging
-            console.log({
-              text,
-              clickX,
-              adjustedClickX,
-              bestIndex,
-              value: text.substring(0, bestIndex),
-              nextChar: text[bestIndex] || 'EOL'
-            });
             
             return bestIndex;
           };
@@ -1133,17 +1111,14 @@ export class WorkflowGenerator {
    * @param workflow The workflow to be optimized.
    */
   private optimizeWorkflow = (workflow: WorkflowFile) => {
-    // Track state for each input field
     const inputStates = new Map<string, InputState>();
   
-    // First pass: Process all actions and build final states
     for (const pair of workflow.workflow) {
       let currentIndex = 0;
       
       while (currentIndex < pair.what.length) {
         const condition = pair.what[currentIndex];
   
-        // Handle click actions with cursor positioning
         if (condition.action === 'click' && condition.args?.[2]?.cursorIndex !== undefined) {
           const selector = condition.args[0];
           const cursorIndex = condition.args[2].cursorIndex;
@@ -1158,12 +1133,10 @@ export class WorkflowGenerator {
           state.cursorPosition = cursorIndex;
           inputStates.set(selector, state);
           
-          // Remove the click action
           pair.what.splice(currentIndex, 1);
           continue;
         }
   
-        // Handle text input and editing
         if (condition.action === 'press' && condition.args?.[1]) {
           const [selector, encryptedKey, type] = condition.args;
           const key = decrypt(encryptedKey);
@@ -1173,11 +1146,10 @@ export class WorkflowGenerator {
             state = {
               selector,
               value: '',
-              type: type || 'text', // Use the type from the press action
+              type: type || 'text', 
               cursorPosition: -1
             };
           } else {
-            // Update type from the press action if it exists
             state.type = type || state.type;
           }
   
@@ -1206,14 +1178,12 @@ export class WorkflowGenerator {
                 state.value.slice(0, state.cursorPosition) +
                 state.value.slice(state.cursorPosition + 1);
             } else if (state.cursorPosition === -1 && state.value.length > 0) {
-              // If no cursor position set, delete at the end
               state.value = state.value.slice(0, -1);
             }
           }
   
           inputStates.set(selector, state);
           
-          // Remove the press action
           pair.what.splice(currentIndex, 1);
           continue;
         }
@@ -1222,14 +1192,11 @@ export class WorkflowGenerator {
       }
     }
   
-    // Second pass: Add one type action per selector in the last pair where that selector was used
     for (const [selector, state] of inputStates.entries()) {
       if (state.value) {
-        // Find the last pair that used this selector
         for (let i = workflow.workflow.length - 1; i >= 0; i--) {
           const pair = workflow.workflow[i];
           
-          // Add type action to the end of the pair
           pair.what.push({
             action: 'type',
             args: [selector, encrypt(state.value), state.type]
@@ -1238,7 +1205,7 @@ export class WorkflowGenerator {
             args: ['networkidle']
           });
           
-          break; // Stop after adding to the first pair we find
+          break; 
         }
       }
     }
