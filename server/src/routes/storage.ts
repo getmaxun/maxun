@@ -164,18 +164,15 @@ interface Credentials {
 }
 
 function handleWorkflowActions(workflow: any[], credentials: Credentials) {
-  // Process one step at a time to avoid memory issues
   return workflow.map(step => {
       if (!step.what) return step;
 
-      // Use a more memory-efficient approach
       const newWhat: any[] = [];
       const processedSelectors = new Set<string>();
       
       for (let i = 0; i < step.what.length; i++) {
           const action = step.what[i];
           
-          // Skip invalid actions
           if (!action?.action || !action?.args?.[0]) {
               newWhat.push(action);
               continue;
@@ -184,28 +181,23 @@ function handleWorkflowActions(workflow: any[], credentials: Credentials) {
           const selector = action.args[0];
           const credential = credentials[selector];
 
-          // Handle non-credential actions
           if (!credential) {
               newWhat.push(action);
               continue;
           }
 
-          // Handle credential-related actions
           if (action.action === 'click') {
               newWhat.push(action);
               
-              // If we haven't processed this selector and there's a following type/press action
               if (!processedSelectors.has(selector) && 
                   i + 1 < step.what.length && 
                   (step.what[i + 1].action === 'type' || step.what[i + 1].action === 'press')) {
                   
-                  // Add type action
                   newWhat.push({
                       action: 'type',
                       args: [selector, encrypt(credential.value), credential.type]
                   });
                   
-                  // Add single waitForLoadState
                   newWhat.push({
                       action: 'waitForLoadState',
                       args: ['networkidle']
@@ -213,7 +205,6 @@ function handleWorkflowActions(workflow: any[], credentials: Credentials) {
                   
                   processedSelectors.add(selector);
                   
-                  // Skip subsequent type/press/waitForLoadState actions for this selector
                   while (i + 1 < step.what.length && 
                          (step.what[i + 1].action === 'type' || 
                           step.what[i + 1].action === 'press' || 
@@ -223,7 +214,6 @@ function handleWorkflowActions(workflow: any[], credentials: Credentials) {
               }
           } else if ((action.action === 'type' || action.action === 'press') && 
                      !processedSelectors.has(selector)) {
-              // Handle standalone type/press action
               newWhat.push({
                   action: 'type',
                   args: [selector, encrypt(credential.value), credential.type]
