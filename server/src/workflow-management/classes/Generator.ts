@@ -768,23 +768,6 @@ export class WorkflowGenerator {
    * @returns {Promise<void>}
    */
   public saveNewWorkflow = async (fileName: string, userId: number, isLogin: boolean) => {
-    for (const pair of this.workflowRecord.workflow) {
-      for (let i = 0; i < pair.what.length; i++) {
-        const condition = pair.what[i];
-
-        if (condition.action === 'press' && condition.args) {
-          const [selector, encryptedKey, type] = condition.args;
-          const key = decrypt(encryptedKey);
-
-          console.log(`Selector: ${selector}, Key: ${key}`);
-        }
-
-        if (condition.action === 'click' && condition.args) {
-          console.log("Click args: ", condition.args);
-        }
-      }
-    }
-
     const recording = this.optimizeWorkflow(this.workflowRecord);
     try {
       this.recordingMeta = {
