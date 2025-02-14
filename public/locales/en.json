@@ -20,7 +20,7 @@
       }
     },
     "register": {
-      "title": "Register Account",
+      "title": "Create An Account",
       "email": "Enter Work Email",
       "password": "Password",
       "button": "Register",
