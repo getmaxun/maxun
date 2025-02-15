@@ -140,14 +140,38 @@ router.post("/login", async (req, res) => {
   }
 });
 
-router.get("/logout", async (req, res) => {
-  try {
-    res.clearCookie("token");
-    return res.json({ message: "Logout successful" });
-  } catch (error: any) {
-    res.status(500).send(`Could not logout user - ${error.message}`);
+router.get(
+  "/logout",
+  requireSignIn,
+  async (req: Request, res) => {
+    const authenticatedReq = req as AuthenticatedRequest;
+    try {
+      if (!authenticatedReq.user) {
+        return res.status(401).json({
+          ok: false,
+          message: "Unauthorized",
+          code: "unauthorized"
+        });
+      }
+
+      res.clearCookie("token");
+      
+      return res.status(200).json({
+        ok: true,
+        message: "Logged out successfully",
+        code: "success"
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      return res.status(500).json({
+        ok: false,
+        message: "Error during logout",
+        code: "server",
+        error: process.env.NODE_ENV === 'development' ? error : undefined
+      });
+    }
   }
-});
+);
 
 router.get(
   "/current-user",
