@@ -108,11 +108,39 @@ export const NavBar: React.FC<NavBarProps> = ({
   };
 
   const logout = async () => {
-    dispatch({ type: "LOGOUT" });
-    window.localStorage.removeItem("user");
-    const { data } = await axios.get(`${apiUrl}/auth/logout`);
-    notify("success", data.message);
-    navigate("/login");
+    try {
+      const { data } = await axios.get(`${apiUrl}/auth/logout`);
+      if (data.ok) {
+        dispatch({ type: "LOGOUT" });
+        window.localStorage.removeItem("user");
+        notify('success', t('navbar.notifications.success.logout'));
+        navigate("/login");
+      }
+    } catch (error: any) {
+      const status = error.response?.status;
+      let errorKey = 'unknown';
+  
+      switch (status) {
+        case 401:
+          errorKey = 'unauthorized';
+          break;
+        case 500:
+          errorKey = 'server';
+          break;
+        default:
+          if (error.message?.includes('Network Error')) {
+            errorKey = 'network';
+          }
+      }
+  
+      notify(
+        'error',
+        t(`navbar.notifications.errors.logout.${errorKey}`, {
+          error: error.response?.data?.message || error.message
+        })
+      );
+      navigate("/login");
+    }
   };
 
   const goToMainMenu = async () => {
