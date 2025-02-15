@@ -487,6 +487,19 @@
     },
     "navbar": {
         "project_name": "Maxun",
+        "notifications": {
+            "success": {
+                "logout": "Erfolgreich abgemeldet"
+            },
+            "errors": {
+                "logout": {
+                "unauthorized": "Sie sind nicht berechtigt, diese Aktion durchzuführen",
+                "server": "Serverfehler beim Abmelden",
+                "network": "Netzwerkfehler beim Abmelden",
+                "unknown": "Ein unerwarteter Fehler ist beim Abmelden aufgetreten"
+                }
+            }
+        },
         "upgrade": {
             "button": "Upgrade",
             "modal": {

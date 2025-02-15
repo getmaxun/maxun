@@ -488,6 +488,19 @@
     },
     "navbar": {
         "project_name": "Maxun",
+        "notifications": {
+            "success": {
+                "logout": "ログアウトに成功しました"
+            },
+            "errors": {
+                "logout": {
+                "unauthorized": "この操作を実行する権限がありません",
+                "server": "ログアウト中にサーバーエラーが発生しました",
+                "network": "ログアウト中にネットワークエラーが発生しました",
+                "unknown": "ログアウト中に予期せぬエラーが発生しました"
+                }
+            }
+        },
         "upgrade": {
         "button": "アップグレード",
         "modal": {
