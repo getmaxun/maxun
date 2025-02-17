@@ -488,6 +488,19 @@
   },
   "navbar": {
     "project_name": "Maxun",
+    "notifications": {
+      "success": {
+        "logout": "退出登录成功"
+      },
+      "errors": {
+        "logout": {
+          "unauthorized": "您没有执行此操作的权限",
+          "server": "退出登录时发生服务器错误",
+          "network": "退出登录时发生网络错误",
+          "unknown": "退出登录时发生未知错误"
+        }
+      }
+    },
     "upgrade": {
       "button": "升级",
       "modal": {

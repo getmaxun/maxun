@@ -488,6 +488,19 @@
   },
   "navbar": {
     "project_name": "Maxun",
+    "notifications": {
+      "success": {
+        "logout": "Sesión cerrada exitosamente"
+      },
+      "errors": {
+        "logout": {
+          "unauthorized": "No estás autorizado para realizar esta acción",
+          "server": "Error del servidor durante el cierre de sesión",
+          "network": "Error de red al cerrar sesión",
+          "unknown": "Ocurrió un error inesperado al cerrar sesión"
+        }
+      }
+    },
     "upgrade": {
       "button": "Actualizar",
       "modal": {

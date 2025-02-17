@@ -498,6 +498,19 @@
     },
     "navbar": {
       "project_name": "Maxun",
+      "notifications": {
+        "success": {
+          "logout": "Logged out successfully"
+        },
+        "errors": {
+          "logout": {
+            "unauthorized": "You are not authorized to perform this action",
+            "server": "Server error occurred during logout",
+            "network": "Network error while logging out",
+            "unknown": "An unexpected error occurred during logout"
+          }
+        }
+      },
       "upgrade": {
         "button": "Upgrade",
         "modal": {
