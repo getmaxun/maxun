@@ -1092,12 +1092,16 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
             newPath.splice(i, 1);
             const newPathKey = selector(newPath);
             if (scope.visited.has(newPathKey)) {
-              return;
+              continue;
             }
-            if (unique(newPath) && same(newPath, input)) {
-              yield newPath;
-              scope.visited.set(newPathKey, true);
-              yield* optimize(newPath, input, scope);
+            try {
+              if (unique(newPath) && same(newPath, input)) {
+                yield newPath;
+                scope.visited.set(newPathKey, true);
+                yield* optimize(newPath, input, scope);
+              }
+            } catch (e: any) {
+              continue;
             }
           }
         }
