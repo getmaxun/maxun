@@ -206,7 +206,8 @@ export const NavBar: React.FC<NavBarProps> = ({
           display: 'flex',
           justifyContent: 'flex-start',
           cursor: 'pointer'
-        }}>
+        }}
+        onClick={() => navigate('/')}>
           <img src={MaxunLogo} width={45} height={40} style={{ borderRadius: '5px', margin: '5px 0px 5px 15px' }} />
           <div style={{ padding: '11px' }}><ProjectName mode={darkMode ? 'dark' : 'light'}>{t('navbar.project_name')}</ProjectName></div>
           <Chip
