@@ -25,35 +25,43 @@ chromium.use(stealthPlugin());
 
 export const router = Router();
 
-export const decryptWorkflowActions = async (workflow: any[],): Promise<any[]> => {
-  // Create a deep copy to avoid mutating the original workflow
-  const processedWorkflow = JSON.parse(JSON.stringify(workflow));
+export const processWorkflowActions = async (workflow: any[], checkLimit: boolean = false): Promise<any[]> => {
+ const processedWorkflow = JSON.parse(JSON.stringify(workflow));
 
-  // Process each step in the workflow
-  for (const step of processedWorkflow) {
-    if (!step.what) continue;
-
-    // Process each action in the step
-    for (const action of step.what) {
-      // Only process type and press actions
-      if ((action.action === 'type' || action.action === 'press') && Array.isArray(action.args) && action.args.length > 1) {        
-        // The second argument contains the encrypted value
-        const encryptedValue = action.args[1];
-        if (typeof encryptedValue === 'string') {
-          try {
-            // Decrypt the value and update the args array
-            action.args[1] = await decrypt(encryptedValue);
-          } catch (error) {
-            console.error('Failed to decrypt value:', error);
-            // Keep the encrypted value if decryption fails
+  processedWorkflow.workflow.forEach((pair: any) => {
+    pair.what.forEach((action: any) => {
+      // Handle limit validation for scrapeList action
+      if (action.action === 'scrapeList' && checkLimit && Array.isArray(action.args) && action.args.length > 0) {
+        const scrapeConfig = action.args[0];
+        if (scrapeConfig && typeof scrapeConfig === 'object' && 'limit' in scrapeConfig) {
+          if (typeof scrapeConfig.limit === 'number' && scrapeConfig.limit > 5) {
+            scrapeConfig.limit = 5;
           }
         }
       }
-    }
-  }
+
+      // Handle decryption for type and press actions
+      if ((action.action === 'type' || action.action === 'press') && Array.isArray(action.args) && action.args.length > 1) {
+        try {
+          const encryptedValue = action.args[1];
+          if (typeof encryptedValue === 'string') {
+            const decryptedValue = decrypt(encryptedValue);
+            action.args[1] = decryptedValue;
+          } else {
+            logger.log('error', 'Encrypted value is not a string');
+            action.args[1] = '';
+          }
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          logger.log('error', `Failed to decrypt input value: ${errorMessage}`);
+          action.args[1] = '';
+        }
+      }
+    });
+  });
 
   return processedWorkflow;
-};
+}
 
 /**
  * Logs information about recordings API.
@@ -88,7 +96,7 @@ router.get('/recordings/:id', requireSignIn, async (req, res) => {
     );
 
     if (data?.recording?.workflow) {
-      data.recording.workflow = await decryptWorkflowActions(
+      data.recording.workflow = await processWorkflowActions(
         data.recording.workflow,
       );
     }
