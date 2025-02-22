@@ -286,6 +286,12 @@ export default class Interpreter extends EventEmitter {
             ? arrayToObject(<any>superset[key])
             : superset[key];
 
+          if (key === 'selectors' && Array.isArray(value) && Array.isArray(superset[key])) {
+            return value.some(selector => 
+              (superset[key] as any[]).includes(selector)
+            );
+          }
+
           // Every `subset` key must exist in the `superset` and
           // have the same value (strict equality), or subset[key] <= superset[key]
           return parsedSuperset[key]
