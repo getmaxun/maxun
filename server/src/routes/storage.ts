@@ -171,54 +171,82 @@ interface Credentials {
   [key: string]: CredentialInfo;
 }
 
-function updateTypeActionsInWorkflow(workflow: any[], credentials: Credentials) {
+function handleWorkflowActions(workflow: any[], credentials: Credentials) {
   return workflow.map(step => {
       if (!step.what) return step;
 
-      const indicesToRemove = new Set<number>();
-      step.what.forEach((action: any, index: number) => {
-          if (!action.action || !action.args?.[0]) return;
+      const newWhat: any[] = [];
+      const processedSelectors = new Set<string>();
+      
+      for (let i = 0; i < step.what.length; i++) {
+          const action = step.what[i];
           
-          if ((action.action === 'type' || action.action === 'press') && credentials[action.args[0]]) {
-              indicesToRemove.add(index);
-
-              if (step.what[index + 1]?.action === 'waitForLoadState') {
-                  indicesToRemove.add(index + 1);
-              }
+          if (!action?.action || !action?.args?.[0]) {
+              newWhat.push(action);
+              continue;
           }
-      });
 
-      const filteredWhat = step.what.filter((_: any, index: number) => !indicesToRemove.has(index));
+          const selector = action.args[0];
+          const credential = credentials[selector];
 
-      Object.entries(credentials).forEach(([selector, credentialInfo]) => {
-          const clickIndex = filteredWhat.findIndex((action: any) => 
-              action.action === 'click' && action.args?.[0] === selector
-          );
+          if (!credential) {
+              newWhat.push(action);
+              continue;
+          }
 
-          if (clickIndex !== -1) {
-              const chars = credentialInfo.value.split('');
+          if (action.action === 'click') {
+              newWhat.push(action);
               
-              chars.forEach((char, i) => {
-                  filteredWhat.splice(clickIndex + 1 + (i * 2), 0, {
+              if (!processedSelectors.has(selector) && 
+                  i + 1 < step.what.length && 
+                  (step.what[i + 1].action === 'type' || step.what[i + 1].action === 'press')) {
+                  
+                  newWhat.push({
                       action: 'type',
-                      args: [
-                          selector,
-                          encrypt(char),
-                          credentialInfo.type 
-                      ]
+                      args: [selector, encrypt(credential.value), credential.type]
                   });
                   
-                  filteredWhat.splice(clickIndex + 2 + (i * 2), 0, {
+                  newWhat.push({
                       action: 'waitForLoadState',
                       args: ['networkidle']
                   });
+                  
+                  processedSelectors.add(selector);
+                  
+                  while (i + 1 < step.what.length && 
+                         (step.what[i + 1].action === 'type' || 
+                          step.what[i + 1].action === 'press' || 
+                          step.what[i + 1].action === 'waitForLoadState')) {
+                      i++;
+                  }
+              }
+          } else if ((action.action === 'type' || action.action === 'press') && 
+                     !processedSelectors.has(selector)) {
+              newWhat.push({
+                  action: 'type',
+                  args: [selector, encrypt(credential.value), credential.type]
               });
+              
+              newWhat.push({
+                  action: 'waitForLoadState',
+                  args: ['networkidle']
+              });
+              
+              processedSelectors.add(selector);
+              
+              // Skip subsequent type/press/waitForLoadState actions for this selector
+              while (i + 1 < step.what.length && 
+                     (step.what[i + 1].action === 'type' || 
+                      step.what[i + 1].action === 'press' || 
+                      step.what[i + 1].action === 'waitForLoadState')) {
+                  i++;
+              }
           }
-      });
+      }
 
       return {
           ...step,
-          what: filteredWhat
+          what: newWhat
       };
   });
 }
@@ -251,7 +279,7 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
     let workflow = [...robot.recording.workflow]; // Create a copy of the workflow
 
     if (credentials) {
-      workflow = updateTypeActionsInWorkflow(workflow, credentials);
+      workflow = handleWorkflowActions(workflow, credentials);
     }
 
     // Update the limit
@@ -289,9 +317,23 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       }
     }
 
-    robot.set('recording', { ...robot.recording, workflow });
+    const updates: any = {
+      recording: {
+        ...robot.recording,
+        workflow
+      }
+    };
 
-    await robot.save();
+    if (name) {
+      updates.recording_meta = {
+        ...robot.recording_meta,
+        name
+      };
+    }
+
+    await Robot.update(updates, {
+      where: { 'recording_meta.id': id }
+    });
 
     const updatedRobot = await Robot.findOne({ where: { 'recording_meta.id': id } });
 
