@@ -108,11 +108,39 @@ export const NavBar: React.FC<NavBarProps> = ({
   };
 
   const logout = async () => {
-    dispatch({ type: "LOGOUT" });
-    window.localStorage.removeItem("user");
-    const { data } = await axios.get(`${apiUrl}/auth/logout`);
-    notify("success", data.message);
-    navigate("/login");
+    try {
+      const { data } = await axios.get(`${apiUrl}/auth/logout`);
+      if (data.ok) {
+        dispatch({ type: "LOGOUT" });
+        window.localStorage.removeItem("user");
+        notify('success', t('navbar.notifications.success.logout'));
+        navigate("/login");
+      }
+    } catch (error: any) {
+      const status = error.response?.status;
+      let errorKey = 'unknown';
+  
+      switch (status) {
+        case 401:
+          errorKey = 'unauthorized';
+          break;
+        case 500:
+          errorKey = 'server';
+          break;
+        default:
+          if (error.message?.includes('Network Error')) {
+            errorKey = 'network';
+          }
+      }
+  
+      notify(
+        'error',
+        t(`navbar.notifications.errors.logout.${errorKey}`, {
+          error: error.response?.data?.message || error.message
+        })
+      );
+      navigate("/login");
+    }
   };
 
   const goToMainMenu = async () => {
@@ -205,7 +233,9 @@ export const NavBar: React.FC<NavBarProps> = ({
         <div style={{
           display: 'flex',
           justifyContent: 'flex-start',
-        }}>
+          cursor: 'pointer'
+        }}
+          onClick={() => navigate('/')}>
           <img src={MaxunLogo} width={45} height={40} style={{ borderRadius: '5px', margin: '5px 0px 5px 15px' }} />
           <div style={{ padding: '11px' }}><ProjectName mode={darkMode ? 'dark' : 'light'}>{t('navbar.project_name')}</ProjectName></div>
           <Chip
@@ -220,14 +250,16 @@ export const NavBar: React.FC<NavBarProps> = ({
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
               {!isRecording ? (
                 <>
-                  <Button variant="outlined" onClick={handleUpdateOpen} sx={{
-                    marginRight: '25px',
-                    color: "#00000099",
-                    border: "#00000099 1px solid",
-                    '&:hover': { color: '#ff00c3', border: '#ff00c3 1px solid' }
+                  <IconButton onClick={handleUpdateOpen} sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    borderRadius: '5px',
+                    padding: '8px',
+                    marginRight: '20px',
                   }}>
-                    <Update sx={{ marginRight: '5px' }} /> {t('navbar.upgrade.button')}
-                  </Button>
+                    <Update sx={{ marginRight: '5px' }} />
+                    <Typography variant="body1">{t('navbar.upgrade.button')}</Typography>
+                  </IconButton>
                   <Modal open={open} onClose={handleUpdateClose}>
                     <Box
                       sx={{

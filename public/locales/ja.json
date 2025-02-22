@@ -140,12 +140,41 @@
         "no_key_message": "APIキーはまだ生成されていません。",
         "generate_button": "APIキーを生成",
         "notifications": {
-            "fetch_error": "APIキーの取得に失敗しました - ${error}",
-            "generate_success": "APIキーが正常に生成されました",
-            "generate_error": "APIキーの生成に失敗しました - ${error}",
-            "delete_success": "APIキーが正常に削除されました",
-            "delete_error": "APIキーの削除に失敗しました - ${error}",
-            "copy_success": "APIキーがコピーされました"
+            "errors": {
+                "fetch": {
+                    "network": "APIキーの取得中にネットワークエラーが発生しました：${error}",
+                    "unauthorized": "APIキーにアクセスするにはログインが必要です",
+                    "not_found": "アカウントのAPIキーが見つかりません",
+                    "server": "APIキーの取得中にサーバーエラーが発生しました。後でもう一度お試しください",
+                    "unknown": "APIキーの取得中に不明なエラーが発生しました：${error}"
+                },
+                "generate": {
+                    "network": "APIキーの生成中にネットワークエラーが発生しました：${error}",
+                    "unauthorized": "APIキーを生成するにはログインが必要です",
+                    "key_exists": "APIキーが既に存在します。既存のキーを先に削除してください",
+                    "not_found": "ユーザーアカウントが見つかりません",
+                    "server": "APIキーの生成中にサーバーエラーが発生しました。後でもう一度お試しください",
+                    "unknown": "APIキーの生成中に不明なエラーが発生しました：${error}"
+                },
+                "delete": {
+                    "network": "APIキーの削除中にネットワークエラーが発生しました：${error}",
+                    "unauthorized": "APIキーを削除するにはログインが必要です",
+                    "not_found": "ユーザーアカウントが見つかりません",
+                    "key_not_found": "削除するAPIキーが見つかりません",
+                    "server": "APIキーの削除中にサーバーエラーが発生しました。後でもう一度お試しください",
+                    "unknown": "APIキーの削除中に不明なエラーが発生しました：${error}"
+                },
+                "copy": {
+                    "failed": "APIキーのクリップボードへのコピーに失敗しました",
+                    "no_key": "コピーできるAPIキーがありません"
+                }
+            },
+            "success": {
+                "fetch": "APIキーの取得に成功しました",
+                "generate": "新しいAPIキーの生成に成功しました",
+                "delete": "APIキーの削除に成功しました",
+                "copy": "APIキーをクリップボードにコピーしました"
+            }
         }
     },
     "action_description": {
@@ -488,6 +517,19 @@
     },
     "navbar": {
         "project_name": "Maxun",
+        "notifications": {
+            "success": {
+                "logout": "ログアウトに成功しました"
+            },
+            "errors": {
+                "logout": {
+                "unauthorized": "この操作を実行する権限がありません",
+                "server": "ログアウト中にサーバーエラーが発生しました",
+                "network": "ログアウト中にネットワークエラーが発生しました",
+                "unknown": "ログアウト中に予期せぬエラーが発生しました"
+                }
+            }
+        },
         "upgrade": {
         "button": "アップグレード",
         "modal": {

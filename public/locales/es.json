@@ -50,7 +50,7 @@
     "new": "Crear Robot",
     "modal": {
       "title": "Ingresa la URL",
-      "login_title": "¿Este sitio requiere inicio de sesión?",
+      "login_title": "¿Este sitio web requiere iniciar sesión?",
       "label": "URL",
       "button": "Comenzar grabación"
     },
@@ -140,12 +140,41 @@
     "no_key_message": "Aún no has generado una clave API.",
     "generate_button": "Generar Clave API",
     "notifications": {
-      "fetch_error": "Error al obtener la clave API - ${error}",
-      "generate_success": "Clave API generada con éxito",
-      "generate_error": "Error al generar la clave API - ${error}",
-      "delete_success": "Clave API eliminada con éxito",
-      "delete_error": "Error al eliminar la clave API - ${error}",
-      "copy_success": "Clave API copiada con éxito"
+      "errors": {
+        "fetch": {
+          "network": "Error de red al obtener la clave API: ${error}",
+          "unauthorized": "Debes iniciar sesión para acceder a la clave API",
+          "not_found": "No se pudo encontrar la clave API para tu cuenta",
+          "server": "Error del servidor al obtener la clave API. Por favor, inténtalo más tarde",
+          "unknown": "Error desconocido al obtener la clave API: ${error}"
+        },
+        "generate": {
+          "network": "Error de red al generar la clave API: ${error}",
+          "unauthorized": "Debes iniciar sesión para generar una clave API",
+          "key_exists": "Ya tienes una clave API. Por favor, elimina la existente primero",
+          "not_found": "Cuenta de usuario no encontrada",
+          "server": "Error del servidor al generar la clave API. Por favor, inténtalo más tarde",
+          "unknown": "Error desconocido al generar la clave API: ${error}"
+        },
+        "delete": {
+          "network": "Error de red al eliminar la clave API: ${error}",
+          "unauthorized": "Debes iniciar sesión para eliminar la clave API",
+          "not_found": "Cuenta de usuario no encontrada",
+          "key_not_found": "No se encontró ninguna clave API para eliminar",
+          "server": "Error del servidor al eliminar la clave API. Por favor, inténtalo más tarde",
+          "unknown": "Error desconocido al eliminar la clave API: ${error}"
+        },
+        "copy": {
+          "failed": "Error al copiar la clave API al portapapeles",
+          "no_key": "No hay clave API disponible para copiar"
+        }
+      },
+      "success": {
+        "fetch": "Clave API obtenida exitosamente",
+        "generate": "Nueva clave API generada exitosamente",
+        "delete": "Clave API eliminada exitosamente",
+        "copy": "Clave API copiada al portapapeles"
+      }
     }
   },
   "action_description": {
@@ -488,6 +517,19 @@
   },
   "navbar": {
     "project_name": "Maxun",
+    "notifications": {
+      "success": {
+        "logout": "Sesión cerrada exitosamente"
+      },
+      "errors": {
+        "logout": {
+          "unauthorized": "No estás autorizado para realizar esta acción",
+          "server": "Error del servidor durante el cierre de sesión",
+          "network": "Error de red al cerrar sesión",
+          "unknown": "Ocurrió un error inesperado al cerrar sesión"
+        }
+      }
+    },
     "upgrade": {
       "button": "Actualizar",
       "modal": {

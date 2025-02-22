@@ -17,7 +17,6 @@ router.post("/register", async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Validation checks with translation codes
     if (!email) {
       return res.status(400).json({
         error: "VALIDATION_ERROR",
@@ -32,7 +31,6 @@ router.post("/register", async (req, res) => {
       });
     }
 
-    // Check if user exists
     let userExist = await User.findOne({ raw: true, where: { email } });
     if (userExist) {
       return res.status(400).json({
@@ -43,7 +41,6 @@ router.post("/register", async (req, res) => {
 
     const hashedPassword = await hashPassword(password);
 
-    // Create user
     let user: any;
     try {
       user = await User.create({ email, password: hashedPassword });
@@ -55,7 +52,6 @@ router.post("/register", async (req, res) => {
       });
     }
 
-    // Check JWT secret
     if (!process.env.JWT_SECRET) {
       console.log("JWT_SECRET is not defined in the environment");
       return res.status(500).json({
@@ -64,7 +60,6 @@ router.post("/register", async (req, res) => {
       });
     }
 
-    // Success path
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET as string);
     user.password = undefined as unknown as string;
     res.cookie("token", token, {
@@ -124,7 +119,6 @@ router.post("/login", async (req, res) => {
 
     const token = jwt.sign({ id: user?.id }, process.env.JWT_SECRET as string);
 
-    // return user and token to client, exclude hashed password
     if (user) {
       user.password = undefined as unknown as string;
     }
@@ -147,24 +141,34 @@ router.post("/login", async (req, res) => {
 });
 
 router.get("/logout", async (req, res) => {
-  try {
-    res.clearCookie("token");
-    return res.json({ message: "Logout successful" });
-  } catch (error: any) {
-    res.status(500).send(`Could not logout user - ${error.message}`);
+    try {
+      res.clearCookie("token");
+      return res.status(200).json({
+        ok: true,
+        message: "Logged out successfully",
+        code: "success"
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      return res.status(500).json({
+        ok: false,
+        message: "Error during logout",
+        code: "server",
+        error: process.env.NODE_ENV === 'development' ? error : undefined
+      });
+    }
   }
-});
+);
 
 router.get(
   "/current-user",
   requireSignIn,
-  async (req: Request, res) => {
-    const authenticatedReq = req as AuthenticatedRequest;
+  async (req: AuthenticatedRequest, res) => {
     try {
-      if (!authenticatedReq.user) {
+      if (!req.user) {
         return res.status(401).json({ ok: false, error: "Unauthorized" });
       }
-      const user = await User.findByPk(authenticatedReq.user.id, {
+      const user = await User.findByPk(req.user.id, {
         attributes: { exclude: ["password"] },
       });
       if (!user) {
@@ -187,7 +191,7 @@ router.get(
 router.get(
   "/user/:id",
   requireSignIn,
-  async (req: Request, res) => {
+  async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
       if (!id) {
@@ -216,13 +220,12 @@ router.get(
 router.post(
   "/generate-api-key",
   requireSignIn,
-  async (req: Request, res) => {
-    const authenticatedReq = req as AuthenticatedRequest;
+  async (req: AuthenticatedRequest, res) => {
     try {
-      if (!authenticatedReq.user) {
+      if (!req.user) {
         return res.status(401).json({ ok: false, error: "Unauthorized" });
       }
-      const user = await User.findByPk(authenticatedReq.user.id, {
+      const user = await User.findByPk(req.user.id, {
         attributes: { exclude: ["password"] },
       });
 
@@ -257,14 +260,13 @@ router.post(
 router.get(
   "/api-key",
   requireSignIn,
-  async (req: Request, res) => {
-    const authenticatedReq = req as AuthenticatedRequest;
+  async (req: AuthenticatedRequest, res) => {
     try {
-      if (!authenticatedReq.user) {
+      if (!req.user) {
         return res.status(401).json({ ok: false, error: "Unauthorized" });
       }
 
-      const user = await User.findByPk(authenticatedReq.user.id, {
+      const user = await User.findByPk(req.user.id, {
         raw: true,
         attributes: ["api_key"],
       });
@@ -286,14 +288,13 @@ router.get(
 router.delete(
   "/delete-api-key",
   requireSignIn,
-  async (req: Request, res) => {
-    const authenticatedReq = req as AuthenticatedRequest;
-    if (!authenticatedReq.user) {
+  async (req: AuthenticatedRequest, res) => {
+    if (!req.user) {
       return res.status(401).send({ error: "Unauthorized" });
     }
 
     try {
-      const user = await User.findByPk(authenticatedReq.user.id, { raw: true });
+      const user = await User.findByPk(req.user.id, { raw: true });
 
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -303,7 +304,7 @@ router.delete(
         return res.status(404).json({ message: "API Key not found" });
       }
 
-      await User.update({ api_key: null }, { where: { id: authenticatedReq.user.id } });
+      await User.update({ api_key: null }, { where: { id: req.user.id } });
 
       capture("maxun-oss-api-key-deleted", {
         user_id: user.id,
@@ -349,8 +350,7 @@ router.get("/google", (req, res) => {
 router.get(
   "/google/callback",
   requireSignIn,
-  async (req: Request, res) => {
-    const authenticatedReq = req as AuthenticatedRequest;
+  async (req: AuthenticatedRequest, res) => {
     const { code, state } = req.query;
     try {
       if (!state) {
@@ -376,12 +376,12 @@ router.get(
         return res.status(400).json({ message: "Email not found" });
       }
 
-      if (!authenticatedReq.user) {
+      if (!req.user) {
         return res.status(401).send({ error: "Unauthorized" });
       }
 
       // Get the currently authenticated user (from `requireSignIn`)
-      let user = await User.findOne({ where: { id: authenticatedReq.user.id } });
+      let user = await User.findOne({ where: { id: req.user.id } });
 
       if (!user) {
         return res.status(400).json({ message: "User not found" });
@@ -459,13 +459,12 @@ router.get(
 router.post(
   "/gsheets/data",
   requireSignIn,
-  async (req: Request, res) => {
-    const authenticatedReq = req as AuthenticatedRequest;
+  async (req: AuthenticatedRequest, res) => {
     const { spreadsheetId, robotId } = req.body;
-    if (!authenticatedReq.user) {
+    if (!req.user) {
       return res.status(401).send({ error: "Unauthorized" });
     }
-    const user = await User.findByPk(authenticatedReq.user.id, { raw: true });
+    const user = await User.findByPk(req.user.id, { raw: true });
 
     if (!user) {
       return res.status(400).json({ message: "User not found" });
@@ -577,14 +576,13 @@ router.post("/gsheets/update", requireSignIn, async (req, res) => {
 router.post(
   "/gsheets/remove",
   requireSignIn,
-  async (req: Request, res) => {
-    const authenticatedReq = req as AuthenticatedRequest;
+  async (req: AuthenticatedRequest, res) => {
     const { robotId } = req.body;
     if (!robotId) {
       return res.status(400).json({ message: "Robot ID is required" });
     }
 
-    if (!authenticatedReq.user) {
+    if (!req.user) {
       return res.status(401).send({ error: "Unauthorized" });
     }
 
@@ -606,7 +604,7 @@ router.post(
       });
 
       capture("maxun-oss-google-sheet-integration-removed", {
-        user_id: authenticatedReq.user.id,
+        user_id: req.user.id,
         robot_id: robotId,
         deleted_at: new Date().toISOString(),
       });
