@@ -350,8 +350,7 @@ router.get("/google", (req, res) => {
 router.get(
   "/google/callback",
   requireSignIn,
-  async (req: Request, res) => {
-    const authenticatedReq = req as AuthenticatedRequest;
+  async (req: AuthenticatedRequest, res) => {
     const { code, state } = req.query;
     try {
       if (!state) {
@@ -377,12 +376,12 @@ router.get(
         return res.status(400).json({ message: "Email not found" });
       }
 
-      if (!authenticatedReq.user) {
+      if (!req.user) {
         return res.status(401).send({ error: "Unauthorized" });
       }
 
       // Get the currently authenticated user (from `requireSignIn`)
-      let user = await User.findOne({ where: { id: authenticatedReq.user.id } });
+      let user = await User.findOne({ where: { id: req.user.id } });
 
       if (!user) {
         return res.status(400).json({ message: "User not found" });
@@ -460,13 +459,12 @@ router.get(
 router.post(
   "/gsheets/data",
   requireSignIn,
-  async (req: Request, res) => {
-    const authenticatedReq = req as AuthenticatedRequest;
+  async (req: AuthenticatedRequest, res) => {
     const { spreadsheetId, robotId } = req.body;
-    if (!authenticatedReq.user) {
+    if (!req.user) {
       return res.status(401).send({ error: "Unauthorized" });
     }
-    const user = await User.findByPk(authenticatedReq.user.id, { raw: true });
+    const user = await User.findByPk(req.user.id, { raw: true });
 
     if (!user) {
       return res.status(400).json({ message: "User not found" });
@@ -578,14 +576,13 @@ router.post("/gsheets/update", requireSignIn, async (req, res) => {
 router.post(
   "/gsheets/remove",
   requireSignIn,
-  async (req: Request, res) => {
-    const authenticatedReq = req as AuthenticatedRequest;
+  async (req: AuthenticatedRequest, res) => {
     const { robotId } = req.body;
     if (!robotId) {
       return res.status(400).json({ message: "Robot ID is required" });
     }
 
-    if (!authenticatedReq.user) {
+    if (!req.user) {
       return res.status(401).send({ error: "Unauthorized" });
     }
 
@@ -607,7 +604,7 @@ router.post(
       });
 
       capture("maxun-oss-google-sheet-integration-removed", {
-        user_id: authenticatedReq.user.id,
+        user_id: req.user.id,
         robot_id: robotId,
         deleted_at: new Date().toISOString(),
       });
