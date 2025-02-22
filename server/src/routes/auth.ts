@@ -140,22 +140,9 @@ router.post("/login", async (req, res) => {
   }
 });
 
-router.get(
-  "/logout",
-  requireSignIn,
-  async (req: Request, res) => {
-    const authenticatedReq = req as AuthenticatedRequest;
+router.get("/logout", async (req, res) => {
     try {
-      if (!authenticatedReq.user) {
-        return res.status(401).json({
-          ok: false,
-          message: "Unauthorized",
-          code: "unauthorized"
-        });
-      }
-
       res.clearCookie("token");
-      
       return res.status(200).json({
         ok: true,
         message: "Logged out successfully",
@@ -176,13 +163,12 @@ router.get(
 router.get(
   "/current-user",
   requireSignIn,
-  async (req: Request, res) => {
-    const authenticatedReq = req as AuthenticatedRequest;
+  async (req: AuthenticatedRequest, res) => {
     try {
-      if (!authenticatedReq.user) {
+      if (!req.user) {
         return res.status(401).json({ ok: false, error: "Unauthorized" });
       }
-      const user = await User.findByPk(authenticatedReq.user.id, {
+      const user = await User.findByPk(req.user.id, {
         attributes: { exclude: ["password"] },
       });
       if (!user) {
@@ -205,7 +191,7 @@ router.get(
 router.get(
   "/user/:id",
   requireSignIn,
-  async (req: Request, res) => {
+  async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
       if (!id) {
@@ -234,13 +220,12 @@ router.get(
 router.post(
   "/generate-api-key",
   requireSignIn,
-  async (req: Request, res) => {
-    const authenticatedReq = req as AuthenticatedRequest;
+  async (req: AuthenticatedRequest, res) => {
     try {
-      if (!authenticatedReq.user) {
+      if (!req.user) {
         return res.status(401).json({ ok: false, error: "Unauthorized" });
       }
-      const user = await User.findByPk(authenticatedReq.user.id, {
+      const user = await User.findByPk(req.user.id, {
         attributes: { exclude: ["password"] },
       });
 
@@ -275,14 +260,13 @@ router.post(
 router.get(
   "/api-key",
   requireSignIn,
-  async (req: Request, res) => {
-    const authenticatedReq = req as AuthenticatedRequest;
+  async (req: AuthenticatedRequest, res) => {
     try {
-      if (!authenticatedReq.user) {
+      if (!req.user) {
         return res.status(401).json({ ok: false, error: "Unauthorized" });
       }
 
-      const user = await User.findByPk(authenticatedReq.user.id, {
+      const user = await User.findByPk(req.user.id, {
         raw: true,
         attributes: ["api_key"],
       });
@@ -304,14 +288,13 @@ router.get(
 router.delete(
   "/delete-api-key",
   requireSignIn,
-  async (req: Request, res) => {
-    const authenticatedReq = req as AuthenticatedRequest;
-    if (!authenticatedReq.user) {
+  async (req: AuthenticatedRequest, res) => {
+    if (!req.user) {
       return res.status(401).send({ error: "Unauthorized" });
     }
 
     try {
-      const user = await User.findByPk(authenticatedReq.user.id, { raw: true });
+      const user = await User.findByPk(req.user.id, { raw: true });
 
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -321,7 +304,7 @@ router.delete(
         return res.status(404).json({ message: "API Key not found" });
       }
 
-      await User.update({ api_key: null }, { where: { id: authenticatedReq.user.id } });
+      await User.update({ api_key: null }, { where: { id: req.user.id } });
 
       capture("maxun-oss-api-key-deleted", {
         user_id: user.id,
