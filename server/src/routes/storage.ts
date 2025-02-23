@@ -28,7 +28,7 @@ export const router = Router();
 export const processWorkflowActions = async (workflow: any[], checkLimit: boolean = false): Promise<any[]> => {
  const processedWorkflow = JSON.parse(JSON.stringify(workflow));
 
-  processedWorkflow.workflow.forEach((pair: any) => {
+  processedWorkflow.forEach((pair: any) => {
     pair.what.forEach((action: any) => {
       // Handle limit validation for scrapeList action
       if (action.action === 'scrapeList' && checkLimit && Array.isArray(action.args) && action.args.length > 0) {
