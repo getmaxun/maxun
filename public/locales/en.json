@@ -140,41 +140,12 @@
       "no_key_message": "You haven't generated an API key yet.",
       "generate_button": "Generate API Key",
       "notifications": {
-        "errors": {
-          "fetch": {
-            "network": "Network error while fetching API key: ${error}",
-            "unauthorized": "You must be logged in to access API key",
-            "not_found": "Unable to find API key for your account",
-            "server": "Server error while fetching API key. Please try again later",
-            "unknown": "Unknown error occurred while fetching API key: ${error}"
-          },
-          "generate": {
-            "network": "Network error while generating API key: ${error}",
-            "unauthorized": "You must be logged in to generate an API key",
-            "key_exists": "You already have an API key. Please delete the existing one first",
-            "not_found": "User account not found",
-            "server": "Server error while generating API key. Please try again later",
-            "unknown": "Unknown error occurred while generating API key: ${error}"
-          },
-          "delete": {
-            "network": "Network error while deleting API key: ${error}",
-            "unauthorized": "You must be logged in to delete API key",
-            "not_found": "User account not found",
-            "key_not_found": "No API key found to delete",
-            "server": "Server error while deleting API key. Please try again later",
-            "unknown": "Unknown error occurred while deleting API key: ${error}"
-          },
-          "copy": {
-            "failed": "Failed to copy API key to clipboard",
-            "no_key": "No API key available to copy"
-          }
-        },
-        "success": {
-          "fetch": "API key retrieved successfully",
-          "generate": "New API key generated successfully",
-          "delete": "API key deleted successfully",
-          "copy": "API key copied to clipboard"
-        }
+        "fetch_error": "Failed to fetch API Key - ${error}",
+        "generate_success": "Generated API Key successfully",
+        "generate_error": "Failed to generate API Key - ${error}",
+        "delete_success": "API Key deleted successfully",
+        "delete_error": "Failed to delete API Key - ${error}",
+        "copy_success": "Copied API Key successfully"
       }
     },
     "action_description": {
