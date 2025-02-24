@@ -100,6 +100,7 @@ const ProxyForm: React.FC = () => {
         try {
             const response = await sendProxyConfig(proxyConfigForm);
             if (response) {
+                setIsProxyConfigured(true);
                 notify('success', t('proxy.notifications.config_success'));
             } else {
                 notify('error', t('proxy.notifications.config_error'));
