@@ -140,41 +140,12 @@
     "no_key_message": "您还未生成API密钥。",
     "generate_button": "生成API密钥",
     "notifications": {
-      "errors": {
-        "fetch": {
-          "network": "获取API密钥时发生网络错误：${error}",
-          "unauthorized": "您必须登录才能访问API密钥",
-          "not_found": "找不到您账户的API密钥",
-          "server": "获取API密钥时发生服务器错误。请稍后重试",
-          "unknown": "获取API密钥时发生未知错误：${error}"
-        },
-        "generate": {
-          "network": "生成API密钥时发生网络错误：${error}",
-          "unauthorized": "您必须登录才能生成API密钥",
-          "key_exists": "您已经有一个API密钥。请先删除现有的密钥",
-          "not_found": "找不到用户账户",
-          "server": "生成API密钥时发生服务器错误。请稍后重试",
-          "unknown": "生成API密钥时发生未知错误：${error}"
-        },
-        "delete": {
-          "network": "删除API密钥时发生网络错误：${error}",
-          "unauthorized": "您必须登录才能删除API密钥",
-          "not_found": "找不到用户账户",
-          "key_not_found": "找不到要删除的API密钥",
-          "server": "删除API密钥时发生服务器错误。请稍后重试",
-          "unknown": "删除API密钥时发生未知错误：${error}"
-        },
-        "copy": {
-          "failed": "复制API密钥到剪贴板失败",
-          "no_key": "没有可复制的API密钥"
-        }
-      },
-      "success": {
-        "fetch": "成功获取API密钥",
-        "generate": "成功生成新的API密钥",
-        "delete": "成功删除API密钥",
-        "copy": "已将API密钥复制到剪贴板"
-      }
+      "fetch_error": "获取API密钥失败 - ${error}",
+      "generate_success": "成功生成API密钥",
+      "generate_error": "生成API密钥失败 - ${error}",
+      "delete_success": "成功删除API密钥",
+      "delete_error": "删除API密钥失败 - ${error}",
+      "copy_success": "成功复制API密钥"
     }
   },
   "action_description": {
