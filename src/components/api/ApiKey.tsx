@@ -60,7 +60,7 @@ const ApiKeyManager = () => {
       const { data } = await axios.post(`${apiUrl}/auth/generate-api-key`);
       setApiKey(data.api_key);
 
-      notify('success', t('apikey.notifications.success.generate'));
+      notify('success', t('apikey.notifications.generate_success'));
     } catch (error: any) {
       notify('error', t('apikey.notifications.generate_error', { error: error.message }));
     } finally {
