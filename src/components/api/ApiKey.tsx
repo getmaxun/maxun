@@ -43,33 +43,8 @@ const ApiKeyManager = () => {
       try {
         const { data } = await axios.get(`${apiUrl}/auth/api-key`);
         setApiKey(data.api_key);
-        notify('success', t('apikey.notifications.success.fetch'));
       } catch (error: any) {
-        const status = error.response?.status;
-        let errorKey = 'unknown';
-    
-        switch (status) {
-          case 401:
-            errorKey = 'unauthorized';
-            break;
-          case 404:
-            errorKey = 'not_found';
-            break;
-          case 500:
-            errorKey = 'server';
-            break;
-          default:
-            if (error.message?.includes('Network Error')) {
-              errorKey = 'network';
-            }
-        }
-    
-        notify(
-          'error',
-          t(`apikey.notifications.errors.fetch.${errorKey}`, {
-            error: error.response?.data?.message || error.message
-          })
-        );
+        notify('error', t('apikey.notifications.fetch_error', { error: error.message }));
       } finally {
         setLoading(false);
       }
@@ -83,36 +58,11 @@ const ApiKeyManager = () => {
     setLoading(true);
     try {
       const { data } = await axios.post(`${apiUrl}/auth/generate-api-key`);
-      if (data.ok && data.api_key) {
-        setApiKey(data.api_key);
-        notify('success', t('apikey.notifications.success.generate'));
-      }
+      setApiKey(data.api_key);
+
+      notify('success', t('apikey.notifications.success.generate'));
     } catch (error: any) {
-      const status = error.response?.status;
-      let errorKey = 'unknown';
-  
-      switch (status) {
-        case 401:
-          errorKey = 'unauthorized';
-          break;
-        case 403:
-          errorKey = 'limit_reached';
-          break;
-        case 500:
-          errorKey = 'server';
-          break;
-        default:
-          if (error.message?.includes('Network Error')) {
-            errorKey = 'network';
-          }
-      }
-  
-      notify(
-        'error',
-        t(`apikey.notifications.errors.generate.${errorKey}`, {
-          error: error.response?.data?.message || error.message
-        })
-      );
+      notify('error', t('apikey.notifications.generate_error', { error: error.message }));
     } finally {
       setLoading(false);
     }
@@ -121,54 +71,22 @@ const ApiKeyManager = () => {
   const deleteApiKey = async () => {
     setLoading(true);
     try {
-      const response = await axios.delete(`${apiUrl}/auth/delete-api-key`);
-      if (response.data.ok) {
-        setApiKey(null);
-        notify('success', t('apikey.notifications.success.delete'));
-      }
+      await axios.delete(`${apiUrl}/auth/delete-api-key`);
+      setApiKey(null);
+      notify('success', t('apikey.notifications.delete_success'));
     } catch (error: any) {
-      const status = error.response?.status;
-      let errorKey = 'unknown';
-  
-      switch (status) {
-        case 401:
-          errorKey = 'unauthorized';
-          break;
-        case 404:
-          errorKey = 'not_found';
-          break;
-        case 500:
-          errorKey = 'server';
-          break;
-        default:
-          if (error.message?.includes('Network Error')) {
-            errorKey = 'network';
-          }
-      }
-  
-      notify(
-        'error',
-        t(`apikey.notifications.errors.delete.${errorKey}`, {
-          error: error.response?.data?.message || error.message
-        })
-      );
+      notify('error', t('apikey.notifications.delete_error', { error: error.message }));
     } finally {
       setLoading(false);
     }
   };
 
-  const copyToClipboard = async () => {
-    if (!apiKey) return;
-  
-    try {
-      await navigator.clipboard.writeText(apiKey);
+  const copyToClipboard = () => {
+    if (apiKey) {
+      navigator.clipboard.writeText(apiKey);
       setCopySuccess(true);
-      notify('success', t('apikey.notifications.success.copy'));
-      
-      // Reset copy success state after 2 seconds
       setTimeout(() => setCopySuccess(false), 2000);
-    } catch (error) {
-      notify('error', t('apikey.notifications.errors.copy.failed'));
+      notify('info', t('apikey.notifications.copy_success'));
     }
   };
 
