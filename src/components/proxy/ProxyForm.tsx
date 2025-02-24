@@ -101,6 +101,7 @@ const ProxyForm: React.FC = () => {
             const response = await sendProxyConfig(proxyConfigForm);
             if (response) {
                 setIsProxyConfigured(true);
+                setProxy({ proxy_url: proxyConfigForm.server_url, auth: requiresAuth });
                 notify('success', t('proxy.notifications.config_success'));
             } else {
                 notify('error', t('proxy.notifications.config_error'));
