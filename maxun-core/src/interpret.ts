@@ -7,7 +7,8 @@ import path from 'path';
 import { EventEmitter } from 'events';
 import {
   Where, What, PageState, Workflow, WorkflowFile,
-  ParamType, SelectorArray, CustomFunctions,
+  ParamType, SelectorArray, CustomFunctions, SessionData,
+  RegexableString,
 } from './types/workflow';
 
 import { operators, meta } from './types/logic';
@@ -68,8 +69,13 @@ export default class Interpreter extends EventEmitter {
 
   private cumulativeResults: Record<string, any>[] = [];
 
-  constructor(workflow: WorkflowFile, options?: Partial<InterpreterOptions>) {
+  private session: SessionData | null = null;
+
+  private loginSuccessful: boolean = false;
+
+  constructor(workflow: WorkflowFile, options?: Partial<InterpreterOptions>, session?: SessionData | null) {
     super();
+    this.session = session || null;
     this.workflow = workflow.workflow;
     this.initializedWorkflow = null;
     this.options = {
@@ -127,6 +133,41 @@ export default class Interpreter extends EventEmitter {
         this.log(`Ad-blocker operation failed:`, Level.ERROR);
       }
     }
+  }
+
+  private isLoginUrl(url: string): boolean {
+    const loginKeywords = ['login', 'signin', 'sign-in', 'auth'];
+    const lowercaseUrl = url.toLowerCase();
+    return loginKeywords.some(keyword => lowercaseUrl.includes(keyword));
+  }
+
+  private getUrlString(url: RegexableString | undefined): string {
+    if (!url) return '';
+    
+    if (typeof url === 'string') return url;
+    
+    if ('$regex' in url) {
+        let normalUrl = url['$regex'];
+        return normalUrl
+            .replace(/^\^/, '')           
+            .replace(/\$$/, '')           
+            .replace(/\\([?])/g, '$1');   
+    }
+    
+    return '';
+}
+
+  private findFirstPostLoginAction(workflow: Workflow): number {
+    for (let i = workflow.length - 1; i >= 0; i--) {
+      const action = workflow[i];
+      if (action.where.url && action.where.url !== "about:blank") {
+        const urlString = this.getUrlString(action.where.url);
+        if (!this.isLoginUrl(urlString)) {
+          return i;
+        }
+      }
+    }
+    return -1;
   }
 
   // private getSelectors(workflow: Workflow, actionId: number): string[] {
@@ -242,6 +283,14 @@ export default class Interpreter extends EventEmitter {
 
     if (action && action.where.url !== url && action.where.url !== "about:blank") {
       url = action.where.url;
+    }
+
+    if (this.loginSuccessful) {
+      const sessionState = await page.context().storageState();
+      this.session = sessionState;
+
+      this.loginSuccessful = false;
+      this.log('Stored authentication cookies after successful login', Level.LOG);
     }
 
     return {
@@ -915,6 +964,28 @@ export default class Interpreter extends EventEmitter {
 
     workflowCopy = this.removeSpecialSelectors(workflowCopy);
 
+    if (this.session){
+      const postLoginActionId = this.findFirstPostLoginAction(workflowCopy);
+      if (postLoginActionId !== -1) {
+        const targetUrl = this.getUrlString(workflowCopy[postLoginActionId].where.url);
+        if (targetUrl) {
+          try {
+            await p.goto(targetUrl);
+            await p.waitForLoadState('networkidle');
+            
+            if (!this.isLoginUrl(targetUrl)) {
+              workflowCopy.splice(postLoginActionId + 1);
+              this.log('Successfully skipped login using stored cookies', Level.LOG);
+            } else {
+              this.log('Cookie authentication failed, proceeding with manual login', Level.LOG);
+            }
+          } catch (error) {
+            this.log(`Failed to navigate with stored cookies: ${error}`, Level.ERROR);
+          }
+        }
+      }
+    }
+
     // apply ad-blocker to the current page
     try {
       await this.applyAdBlocker(p);
@@ -1002,6 +1073,12 @@ export default class Interpreter extends EventEmitter {
           await this.carryOutSteps(p, action.what);
           usedActions.push(action.id ?? 'undefined');
 
+          const url = this.getUrlString(action.where.url);
+          
+          if (this.isLoginUrl(url)) {
+            this.loginSuccessful = true;  
+          }
+
           workflowCopy.splice(actionId, 1);
           console.log(`Action with ID ${action.id} removed from the workflow copy.`);
           
@@ -1037,9 +1114,35 @@ export default class Interpreter extends EventEmitter {
    * @param {ParamType} params Workflow specific, set of parameters
    *  for the `{$param: nameofparam}` fields.
    */
-  public async run(page: Page, params?: ParamType): Promise<void> {
+  public async run(page: Page, params?: ParamType): Promise<SessionData> {
     this.log('Starting the workflow.', Level.LOG);
-    const context = page.context();
+    let context = page.context();
+
+    if (this.session) {
+      try {
+        this.log('Found existing session, creating new context with stored state...', Level.LOG);
+        
+        const newContext = await context.browser().newContext({
+          storageState: {
+            cookies: this.session.cookies,
+            origins: this.session.origins.map(origin => ({
+              origin: origin.origin,
+              localStorage: origin.localStorage.map(storage => ({
+                name: storage.name,
+                value: storage.value
+              }))
+            }))
+          }
+        });
+  
+        const newPage = await newContext.newPage();
+        page = newPage;
+        
+        this.log('Successfully created new page with session state', Level.LOG);
+      } catch (error) {
+        this.log(`Failed to create page with session state: ${error.message}. Falling back to original page...`, Level.ERROR);
+      }
+    }
 
     page.setDefaultNavigationTimeout(100000);
     
@@ -1073,6 +1176,8 @@ export default class Interpreter extends EventEmitter {
     await this.concurrency.waitForCompletion();
 
     this.stopper = null;
+
+    return this.session;
   }
 
   public async stop(): Promise<void> {
