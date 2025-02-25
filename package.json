@@ -17,7 +17,6 @@
     "@types/body-parser": "^1.19.5",
     "@types/csurf": "^1.11.5",
     "@types/jsonwebtoken": "^9.0.7",
-    "@types/node": "22.7.9",
     "@types/react": "^18.0.5",
     "@types/react-dom": "^18.0.1",
     "@types/uuid": "^8.3.4",
@@ -101,7 +100,7 @@
     "@types/js-cookie": "^3.0.6",
     "@types/lodash": "^4.17.14",
     "@types/loglevel": "^1.6.3",
-    "@types/node": "22.7.9",
+    "@types/node": "^22.7.9",
     "@types/node-cron": "^3.0.11",
     "@types/prismjs": "^1.26.0",
     "@types/react-highlight": "^0.12.5",
@@ -115,7 +114,7 @@
     "cross-env": "^7.0.3",
     "js-cookie": "^3.0.5",
     "nodemon": "^2.0.15",
-    "ts-node": "^10.4.0",
+    "ts-node": "^10.9.2",
     "vite": "^5.4.10"
   }
 }

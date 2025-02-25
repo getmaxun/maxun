@@ -8,9 +8,7 @@ import { record, workflow, storage, auth, integration, proxy } from './routes';
 import { BrowserPool } from "./browser-management/classes/BrowserPool";
 import logger from './logger';
 import { connectDB, syncDB } from './storage/db'
-import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
-import csrf from 'csurf';
 import { SERVER_PORT } from "./constants/config";
 import { Server } from "socket.io";
 import { readdirSync } from "fs"
@@ -69,7 +67,11 @@ const workerPath = path.resolve(__dirname, isProduction ? './worker.js' : './wor
 let workerProcess: any;
 if (!isProduction) {
   workerProcess = fork(workerPath, [], {
-    execArgv: ['--inspect=5859'],
+    execArgv: [
+      '--inspect=5859',
+      '--loader=ts-node/esm',
+      '--no-warnings=ExperimentalWarning'
+    ],
   });
   workerProcess.on('message', (message: any) => {
     console.log(`Message from worker: ${message}`);
