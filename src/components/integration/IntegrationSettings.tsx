@@ -329,7 +329,10 @@ export const IntegrationSettingsModal = ({
       if (recording) {
         setRecording(recording);
         
-        if (recording.google_sheet_id) {
+        if (preSelectedIntegrationType) {
+          setSettings(prev => ({ ...prev, integrationType: preSelectedIntegrationType }));
+        }
+        else if (recording.google_sheet_id) {
           setSettings(prev => ({ ...prev, integrationType: "googleSheets" }));
         } else if (recording.airtable_base_id) {
           setSettings(prev => ({
