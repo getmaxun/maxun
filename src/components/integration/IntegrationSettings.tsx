@@ -384,9 +384,6 @@ export const IntegrationSettingsModal = ({
           alignItems: "center", 
           padding: "20px" 
         }}>
-          <Typography variant="h6" sx={{ marginBottom: "20px" }}>
-            {t("integration_settings.title_select_integration")}
-          </Typography>
           <div style={{ display: "flex", gap: "20px" }}>
             <Button
               variant="contained"
