@@ -354,7 +354,7 @@
       "title": "Integrar con Airtable",
       "descriptions": {
         "sync_info": "Si habilita esta opción, cada vez que este robot ejecute una tarea correctamente, sus datos capturados se añadirán a su Airtable.",
-        "authenticated_as": "Autenticado con Airtable"
+        "authenticated_as": "Autenticado con Airtable exitosamente. Ahora puede seleccionar la base y la mesa con las que desea integrar."
       },
       "alerts": {
         "success": {
