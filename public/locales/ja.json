@@ -359,7 +359,7 @@
             "alerts": {
                 "success": {
                     "title": "Airtable ベースの統合に成功",
-                    "content": "ロボットはベース: {{baseName}} とテーブル: {{tableName}} に接続されました。アクセスできます ",
+                    "content": "このロボットが正常な実行を作成するたびに、キャプチャされたデータが {{baseName}} ベースと {{tableName}} テーブルに追加されます。更新情報を確認できます",
                     "here": "こちら",
                     "note": "注意:",
                     "sync_limitation": "連携後に取得されたデータのみがAirtableに同期されます。"
