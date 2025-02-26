@@ -355,7 +355,7 @@
         "title": "Integrate with Airtable",
         "descriptions": {
           "sync_info": "If you enable this option, every time this robot runs a task successfully, its captured data will be appended to your Airtable Base.",
-          "authenticated_as": "Authenticated with Airtable"
+          "authenticated_as": "Authenticated with Airtable successfully. You can now select the base and table to integrate with."
         },
         "alerts": {
           "success": {
