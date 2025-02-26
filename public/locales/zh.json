@@ -354,7 +354,7 @@
       "title": "与Airtable集成",
       "descriptions": {
         "sync_info": "如果启用此选项，每次机器人成功运行任务时，其捕获的数据将附加到您的Airtable中。",
-        "authenticated_as": "已使用Airtable认证"
+        "authenticated_as": "已成功通过 Airtable 进行身份验证。您现在可以选择要集成的底座和桌子。"
       },
       "alerts": {
         "success": {
