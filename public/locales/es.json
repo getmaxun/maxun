@@ -306,45 +306,55 @@
     }
   },
   "integration_settings": {
-    "title": "Configuración de integración",
-    "title_select_integration": "Seleccionar tipo de integración",
+    "title": "Ajustes de Integración",
+    "title_select_integration": "Seleccionar Tipo de Integración",
     "descriptions": {
       "authenticated_as": "Autenticado como: {{email}}"
     },
     "buttons": {
       "submit": "Enviar",
-      "remove_integration": "Eliminar integración"
+      "remove_integration": "Eliminar Integración"
     },
     "google": {
       "title": "Integrar con Google Sheet",
       "descriptions": {
-        "sync_info": "Si habilitas esta opción, cada vez que este robot ejecute una tarea exitosamente, sus datos capturados se añadirán a tu Google Sheet.",
+        "sync_info": "Si habilita esta opción, cada vez que este robot ejecute una tarea correctamente, sus datos capturados se añadirán a su Google Sheet.",
         "authenticated_as": "Autenticado como: {{email}}"
       },
       "alerts": {
         "success": {
-          "title": "Google Sheet integrado exitosamente.",
-          "content": "Cada vez que este robot crea una ejecución exitosa, sus datos capturados se añaden a tu Google Sheet {{sheetName}}. Puedes verificar las actualizaciones de datos",
+          "title": "Google Sheet Integrado Correctamente.",
+          "content": "Cada vez que este robot crea una ejecución exitosa, sus datos capturados se añaden a su Google Sheet {{sheetName}}. Puede comprobar las actualizaciones de datos",
           "here": "aquí",
           "note": "Nota:",
-          "sync_limitation": "Los datos extraídos antes de la integración con Google Sheets no se sincronizarán en el Google Sheet. Solo se sincronizarán los datos extraídos después de la integración."
+          "sync_limitation": "Los datos extraídos antes de la integración con Google Sheets no se sincronizarán en la Google Sheet. Solo los datos extraídos después de la integración se sincronizarán."
         }
       },
       "buttons": {
         "authenticate": "Autenticar con Google",
-        "fetch_sheets": "Obtener Google Sheets",
-        "remove_integration": "Eliminar integración",
+        "fetch_sheets": "Obtener Hojas de Cálculo de Google",
+        "remove_integration": "Eliminar Integración",
         "submit": "Enviar"
       },
       "fields": {
         "select_sheet": "Seleccionar Google Sheet",
-        "selected_sheet": "Hoja seleccionada: {{name}} (ID: {{id}})"
+        "selected_sheet": "Hoja Seleccionada: {{name}} (ID: {{id}})"
+      },
+      "errors": {
+        "auth_error": "Error al autenticar con Google",
+        "fetch_error": "Error al obtener archivos de hojas de cálculo: {{message}}",
+        "update_error": "Error al actualizar ID de Google Sheet: {{message}}",
+        "remove_error": "Error al eliminar la integración de Google Sheets: {{message}}"
+      },
+      "notifications": {
+        "sheet_selected": "Google Sheet seleccionado correctamente",
+        "integration_removed": "Integración de Google Sheets eliminada correctamente"
       }
     },
     "airtable": {
       "title": "Integrar con Airtable",
       "descriptions": {
-        "sync_info": "Conecte su robot a una base de Airtable para sincronizar datos automáticamente.",
+        "sync_info": "Si habilita esta opción, cada vez que este robot ejecute una tarea correctamente, sus datos capturados se añadirán a su Airtable.",
         "authenticated_as": "Autenticado con Airtable"
       },
       "alerts": {
@@ -358,28 +368,28 @@
       },
       "buttons": {
         "authenticate": "Conectar con Airtable",
-        "fetch_bases": "Obtener bases de Airtable",
-        "fetch_tables": "Obtener tablas de Airtable",
-        "remove_integration": "Eliminar integración de Airtable",
-        "submit": "Seleccionar base y tabla"
+        "fetch_bases": "Obtener Bases de Airtable",
+        "fetch_tables": "Obtener Tablas de Airtable",
+        "remove_integration": "Eliminar Integración de Airtable",
+        "submit": "Seleccionar Base y Tabla"
       },
       "fields": {
-        "select_base": "Seleccionar base de Airtable",
-        "select_table": "Seleccionar tabla de Airtable",
-        "selected_base": "Base seleccionada: {{name}}",
-        "selected_table": "Tabla seleccionada: {{name}}"
+        "select_base": "Seleccionar Base de Airtable",
+        "select_table": "Seleccionar Tabla de Airtable",
+        "selected_base": "Base Seleccionada: {{name}}",
+        "selected_table": "Tabla Seleccionada: {{name}}"
       },
       "errors": {
         "auth_error": "Error al autenticar con Airtable",
         "fetch_error": "Error al obtener bases de Airtable: {{message}}",
         "fetch_tables_error": "Error al obtener tablas de Airtable: {{message}}",
-        "update_error": "Error al actualizar la base de Airtable: {{message}}",
+        "update_error": "Error al actualizar base de Airtable: {{message}}",
         "remove_error": "Error al eliminar la integración de Airtable: {{message}}"
       },
       "notifications": {
-        "base_selected": "Base de Airtable seleccionada con éxito",
-        "table_selected": "Tabla de Airtable seleccionada con éxito",
-        "integration_removed": "Integración de Airtable eliminada con éxito"
+        "base_selected": "Base de Airtable seleccionada correctamente",
+        "table_selected": "Tabla de Airtable seleccionada correctamente",
+        "integration_removed": "Integración de Airtable eliminada correctamente"
       }
     }
   },
