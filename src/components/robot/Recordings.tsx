@@ -59,10 +59,17 @@ export const Recordings = ({
     };
 
     const authStatus = getAndClearCookie('robot_auth_status');
+    const airtableAuthStatus = getAndClearCookie('airtable_auth_status');
     const robotId = getAndClearCookie('robot_auth_robotId');
 
     if (authStatus === 'success' && robotId) {
       notify(authStatus, t("recordingtable.notifications.auth_success"));
+
+      handleNavigate(`/robots/${robotId}/integrate`, robotId, "", []);''  
+    }
+
+    if (airtableAuthStatus === 'success' && robotId) {
+      notify(airtableAuthStatus, t("recordingtable.notifications.auth_success"));
 
       handleNavigate(`/robots/${robotId}/integrate`, robotId, "", []);''  
     }
