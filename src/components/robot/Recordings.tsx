@@ -65,13 +65,13 @@ export const Recordings = ({
     if (authStatus === 'success' && robotId) {
       notify(authStatus, t("recordingtable.notifications.auth_success"));
 
-      handleNavigate(`/robots/${robotId}/integrate`, robotId, "", []);''  
+      handleNavigate(`/robots/${robotId}/integrate`, robotId, "", []);  
     }
 
     if (airtableAuthStatus === 'success' && robotId) {
       notify(airtableAuthStatus, t("recordingtable.notifications.auth_success"));
 
-      handleNavigate(`/robots/${robotId}/integrate`, robotId, "", []);''  
+      handleNavigate(`/robots/${robotId}/integrate`, robotId, "", []);  
     }
   }, []);
 
