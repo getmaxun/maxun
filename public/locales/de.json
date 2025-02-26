@@ -353,7 +353,7 @@
             "title": "Mit Airtable integrieren",
             "descriptions": {
                 "sync_info": "Wenn Sie diese Option aktivieren, werden bei jeder erfolgreichen Ausführung einer Aufgabe durch diesen Roboter die erfassten Daten an Ihre Airtable angehängt.",
-                "authenticated_as": "Mit Airtable authentifiziert"
+                "authenticated_as": "Erfolgreich bei Airtable authentifiziert. Sie können nun die Basis und den Tisch auswählen, in die Sie integrieren möchten."
             },
             "alerts": {
                 "success": {
