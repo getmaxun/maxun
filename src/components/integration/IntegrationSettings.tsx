@@ -395,7 +395,7 @@ export const IntegrationSettingsModal = ({
               }}
               style={{ display: "flex", flexDirection: "column", alignItems: "center" }}
             >
-              <img src="/public/svg/gsheet.svg" alt="Google Sheets" style={{ marginBottom: "8px" }} />
+              <img src="/public/svg/gsheet.svg" alt="Google Sheets" style={{ margin: "8px"}} />
               Google Sheets
             </Button>
 
@@ -409,7 +409,7 @@ export const IntegrationSettingsModal = ({
               }}
               style={{ display: "flex", flexDirection: "column", alignItems: "center" }}
             >
-              <img src="/public/svg/airtable.svg" alt="Airtable" style={{ marginBottom: "8px" }} />
+              <img src="/public/svg/airtable.svg" alt="Airtable" style={{ margin: "8px" }} />
               Airtable
             </Button>
           </div>
