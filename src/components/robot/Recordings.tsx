@@ -62,16 +62,15 @@ export const Recordings = ({
     const airtableAuthStatus = getAndClearCookie('airtable_auth_status');
     const robotId = getAndClearCookie('robot_auth_robotId');
 
-    if (authStatus === 'success' && robotId) {
-      notify(authStatus, t("recordingtable.notifications.auth_success"));
-
-      handleNavigate(`/robots/${robotId}/integrate`, robotId, "", []);  
-    }
-
     if (airtableAuthStatus === 'success' && robotId) {
+      console.log("Airtable Auth Status:", airtableAuthStatus);
       notify(airtableAuthStatus, t("recordingtable.notifications.auth_success"));
-
-      handleNavigate(`/robots/${robotId}/integrate`, robotId, "", []);  
+      handleNavigate(`/robots/${robotId}/integrate/airtable`, robotId, "", []);
+    } 
+    else if (authStatus === 'success' && robotId) {
+      console.log("Google Auth Status:", authStatus);
+      notify(authStatus, t("recordingtable.notifications.auth_success"));
+      handleNavigate(`/robots/${robotId}/integrate/google`, robotId, "", []);
     }
   }, []);
 
@@ -95,6 +94,24 @@ export const Recordings = ({
           isOpen={true}
           handleClose={handleClose}
           handleStart={handleScheduleRecording}
+        />
+      );
+    } else if (currentPath.endsWith("/integrate/google")) {
+      return (
+        <IntegrationSettingsModal
+          isOpen={true}
+          handleClose={handleClose}
+          handleStart={() => {}}
+          preSelectedIntegrationType="googleSheets"
+        />
+      );
+    } else if (currentPath.endsWith("/integrate/airtable")) {
+      return (
+        <IntegrationSettingsModal
+          isOpen={true}
+          handleClose={handleClose}
+          handleStart={() => {}}
+          preSelectedIntegrationType="airtable"
         />
       );
     } else if (currentPath.endsWith("/integrate")) {
