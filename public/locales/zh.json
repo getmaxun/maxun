@@ -288,29 +288,81 @@
     }
   },
   "integration_settings": {
-    "title": "与Google Sheet集成",
+    "title": "集成设置",
+    "title_select_integration": "选择集成类型",
     "descriptions": {
-      "sync_info": "如果启用此选项，每次机器人成功运行任务时，捕获的数据都会追加到您的Google Sheet中。",
-      "authenticated_as": "已验证身份: {{email}}"
-    },
-    "alerts": {
-      "success": {
-        "title": "Google Sheet集成成功。",
-        "content": "每次此机器人创建成功运行时，捕获的数据都会追加到您的Google Sheet {{sheetName}}中。您可以查看数据更新",
-        "here": "在此处",
-        "note": "注意：",
-        "sync_limitation": "与Google Sheets集成之前提取的数据将不会同步到Google Sheet中。只有集成后提取的数据才会同步。"
-      }
+      "authenticated_as": "已验证身份：{{email}}"
     },
     "buttons": {
-      "authenticate": "使用Google验证",
-      "fetch_sheets": "获取Google Sheets",
-      "remove_integration": "移除集成",
-      "submit": "提交"
+      "submit": "提交",
+      "remove_integration": "移除集成"
     },
-    "fields": {
-      "select_sheet": "选择Google Sheet",
-      "selected_sheet": "已选择表格: {{name}} (ID: {{id}})"
+    "google": {
+      "title": "与Google Sheet集成",
+      "descriptions": {
+        "sync_info": "如果启用此选项，每次机器人成功运行任务时，捕获的数据都会追加到您的Google Sheet中。",
+        "authenticated_as": "已验证身份: {{email}}"
+      },
+      "alerts": {
+        "success": {
+          "title": "Google Sheet集成成功。",
+          "content": "每次此机器人创建成功运行时，捕获的数据都会追加到您的Google Sheet {{sheetName}}中。您可以查看数据更新",
+          "here": "在此处",
+          "note": "注意：",
+          "sync_limitation": "与Google Sheets集成之前提取的数据将不会同步到Google Sheet中。只有集成后提取的数据才会同步。"
+        }
+      },
+      "buttons": {
+        "authenticate": "使用Google验证",
+        "fetch_sheets": "获取Google Sheets",
+        "remove_integration": "移除集成",
+        "submit": "提交"
+      },
+      "fields": {
+        "select_sheet": "选择Google Sheet",
+        "selected_sheet": "已选择表格: {{name}} (ID: {{id}})"
+      }
+    },
+    "airtable": {
+      "title": "与Airtable集成",
+      "descriptions": {
+        "sync_info": "将您的机器人连接到Airtable数据库以自动同步数据。",
+        "authenticated_as": "已通过Airtable认证"
+      },
+      "alerts": {
+        "success": {
+          "title": "已连接到Airtable",
+          "content": "您的机器人现已连接到数据库：{{baseName}}和表格：{{tableName}}。您可以在",
+          "here": "这里",
+          "note": "注意：",
+          "sync_limitation": "只有集成后捕获的数据才会同步到Airtable。"
+        }
+      },
+      "buttons": {
+        "authenticate": "连接Airtable",
+        "fetch_bases": "获取Airtable数据库",
+        "fetch_tables": "获取Airtable表格",
+        "remove_integration": "移除Airtable集成",
+        "submit": "选择数据库和表格"
+      },
+      "fields": {
+        "select_base": "选择Airtable数据库",
+        "select_table": "选择Airtable表格",
+        "selected_base": "已选数据库：{{name}}",
+        "selected_table": "已选表格：{{name}}"
+      },
+      "errors": {
+        "auth_error": "Airtable认证错误",
+        "fetch_error": "获取Airtable数据库错误：{{message}}",
+        "fetch_tables_error": "获取Airtable表格错误：{{message}}",
+        "update_error": "更新Airtable数据库错误：{{message}}",
+        "remove_error": "移除Airtable集成错误：{{message}}"
+      },
+      "notifications": {
+        "base_selected": "已成功选择Airtable数据库",
+        "table_selected": "已成功选择Airtable表格",
+        "integration_removed": "已成功移除Airtable集成"
+      }
     }
   },
   "robot_duplication": {
