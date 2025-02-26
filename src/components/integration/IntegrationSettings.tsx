@@ -395,7 +395,7 @@ export const IntegrationSettingsModal = ({
               }}
               style={{ display: "flex", flexDirection: "column", alignItems: "center" }}
             >
-              <img src="/public/svg/gsheet.svg" alt="Google Sheets" style={{ margin: "8px"}} />
+              <img src="/public/svg/gsheet.svg" alt="Google Sheets" style={{ margin: "8px" }} />
               Google Sheets
             </Button>
 
