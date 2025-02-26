@@ -360,7 +360,7 @@
         "alerts": {
           "success": {
             "title": "Airtable Base Integrated Successfully",
-            "content": "Your robot is now connected to the base: {{baseName}} and table: {{tableName}}. You can access it ",
+            "content": "Every time this robot creates a successful run, its captured data is appended to your {{baseName}} Base and {{tableName}} Table. You can check updates",
             "here": "here",
             "note": "Note:",
             "sync_limitation": "Only data captured after integration will be synced to Airtable."
