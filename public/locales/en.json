@@ -370,7 +370,7 @@
           "authenticate": "Connect with Airtable",
           "fetch_bases": "Fetch Airtable Bases",
           "fetch_tables": "Fetch Airtable Tables",
-          "remove_integration": "Remove Airtable Integration",
+          "remove_integration": "Remove Integration",
           "submit": "Select Base and Table"
         },
         "fields": {
