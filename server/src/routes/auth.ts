@@ -677,7 +677,7 @@ router.get("/airtable", requireSignIn, (req: Request, res) => {
   res.redirect(`https://airtable.com/oauth2/v1/authorize?${params}`);
 });
 
-router.get("/airtable/callback", async (req: Request, res) => {
+router.get("/airtable/callback", requireSignIn, async (req: Request, res) => {
   const authenticatedReq = req as AuthenticatedRequest;
   const baseUrl = process.env.PUBLIC_URL || "http://localhost:5173";
   
@@ -890,7 +890,7 @@ router.post("/airtable/remove", requireSignIn, async (req: Request, res) => {
 
 
 // Fetch tables from an Airtable base
-router.get("/airtable/tables", requireSignIn,async (req: Request, res) => {
+router.get("/airtable/tables", requireSignIn, async (req: Request, res) => {
   const authenticatedReq = req as AuthenticatedRequest;
   try {
     const { baseId, robotId } = authenticatedReq.query;
