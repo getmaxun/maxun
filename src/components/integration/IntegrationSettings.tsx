@@ -387,13 +387,13 @@ export const IntegrationSettingsModal = ({
           <div style={{ display: "flex", gap: "20px" }}>
             <Button
               variant="outlined"
-              color="primary"
+              
               onClick={() => {
                 setSelectedIntegrationType("googleSheets");
                 setSettings({ ...settings, integrationType: "googleSheets" });
                 navigate(`/robots/${recordingId}/integrate/google`);
               }}
-              style={{ display: "flex", flexDirection: "column", alignItems: "center" }}
+              style={{ display: "flex", flexDirection: "column", alignItems: "center", background: 'white', color: '#ff00c3' }}
             >
               <img src="/public/svg/gsheet.svg" alt="Google Sheets" style={{ margin: "8px" }} />
               Google Sheets
@@ -401,13 +401,13 @@ export const IntegrationSettingsModal = ({
 
             <Button
               variant="outlined"
-              color="primary"
+              
               onClick={() => {
                 setSelectedIntegrationType("airtable");
                 setSettings({ ...settings, integrationType: "airtable" });
                 navigate(`/robots/${recordingId}/integrate/airtable`);
               }}
-              style={{ display: "flex", flexDirection: "column", alignItems: "center" }}
+              style={{ display: "flex", flexDirection: "column", alignItems: "center", background: 'white', color: '#ff00c3' }}
             >
               <img src="/public/svg/airtable.svg" alt="Airtable" style={{ margin: "8px" }} />
               Airtable
