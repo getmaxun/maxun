@@ -74,12 +74,12 @@ export const IntegrationSettingsModal = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { 
-    recordingId, 
-    notify, 
-    setRerenderRobots 
+  const {
+    recordingId,
+    notify,
+    setRerenderRobots
   } = useGlobalInfoStore();
-  
+
   const [recording, setRecording] = useState<any>(null);
   const navigate = useNavigate();
 
@@ -162,7 +162,7 @@ export const IntegrationSettingsModal = ({
   // Handle Airtable base selection
   const handleAirtableBaseSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedBase = airtableBases.find((base) => base.id === e.target.value);
-  
+
     if (selectedBase) {
       setSettings((prevSettings) => ({
         ...prevSettings,
@@ -184,7 +184,7 @@ export const IntegrationSettingsModal = ({
       setSettings((prevSettings) => ({
         ...prevSettings,
         airtableTableId: e.target.value,
-        airtableTableName: selectedTable?.name||"",
+        airtableTableName: selectedTable?.name || "",
       }));
     }
   };
@@ -209,10 +209,10 @@ export const IntegrationSettingsModal = ({
         },
         { withCredentials: true }
       );
-      
+
       // Refresh recording data immediately
       await refreshRecordingData();
-      
+
       notify("success", t("integration_settings.google.notifications.sheet_selected"));
       setLoading(false);
     } catch (error: any) {
@@ -239,9 +239,9 @@ export const IntegrationSettingsModal = ({
         },
         { withCredentials: true }
       );
-      
+
       await refreshRecordingData();
-      
+
       notify("success", t("integration_settings.airtable.notifications.base_selected"));
       setLoading(false);
     } catch (error: any) {
@@ -262,14 +262,14 @@ export const IntegrationSettingsModal = ({
         { robotId: recordingId },
         { withCredentials: true }
       );
-      
+
       // Clear UI state
       setSpreadsheets([]);
       setSettings({ ...settings, spreadsheetId: "", spreadsheetName: "" });
-      
+
       // Refresh recording data
       await refreshRecordingData();
-      
+
       notify("success", t("integration_settings.google.notifications.integration_removed"));
       setLoading(false);
     } catch (error: any) {
@@ -290,13 +290,13 @@ export const IntegrationSettingsModal = ({
         { robotId: recordingId },
         { withCredentials: true }
       );
-      
+
       setAirtableBases([]);
       setAirtableTables([]);
-      setSettings({ ...settings, airtableBaseId: "", airtableBaseName: "", airtableTableName:"", airtableTableId: "" });
-      
+      setSettings({ ...settings, airtableBaseId: "", airtableBaseName: "", airtableTableName: "", airtableTableId: "" });
+
       await refreshRecordingData();
-      
+
       notify("success", t("integration_settings.airtable.notifications.integration_removed"));
       setLoading(false);
     } catch (error: any) {
@@ -322,13 +322,13 @@ export const IntegrationSettingsModal = ({
   useEffect(() => {
     const fetchRecordingInfo = async () => {
       if (!recordingId) return;
-      
+
       setLoading(true);
-      
+
       const recording = await getStoredRecording(recordingId);
       if (recording) {
         setRecording(recording);
-        
+
         if (preSelectedIntegrationType) {
           setSettings(prev => ({ ...prev, integrationType: preSelectedIntegrationType }));
         }
@@ -345,10 +345,10 @@ export const IntegrationSettingsModal = ({
           }));
         }
       }
-      
+
       setLoading(false);
     };
-    
+
     fetchRecordingInfo();
   }, [recordingId, preSelectedIntegrationType]);
 
@@ -378,11 +378,11 @@ export const IntegrationSettingsModal = ({
         onClose={handleClose}
         modalStyle={modalStyle}
       >
-        <div style={{ 
-          display: "flex", 
-          flexDirection: "column", 
-          alignItems: "center", 
-          padding: "20px" 
+        <div style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          padding: "20px"
         }}>
           <div style={{ display: "flex", gap: "20px" }}>
             <Button
@@ -413,7 +413,7 @@ export const IntegrationSettingsModal = ({
       </GenericModal>
     );
   }
-  
+
   return (
     <GenericModal isOpen={isOpen} onClose={handleClose} modalStyle={modalStyle}>
       <div style={{
@@ -562,7 +562,7 @@ export const IntegrationSettingsModal = ({
                     <p>{t("integration_settings.airtable.descriptions.sync_info")}</p>
                     <Button
                       variant="contained"
-                      color="primary" 
+                      color="primary"
                       onClick={authenticateWithAirtable}
                       disabled={loading}
                     >
@@ -581,7 +581,7 @@ export const IntegrationSettingsModal = ({
                     ) : airtableBases.length === 0 ? (
                       <Button
                         variant="outlined"
-                        color="primary" 
+                        color="primary"
                         onClick={fetchAirtableBases}
                         disabled={loading}
                       >
@@ -621,7 +621,7 @@ export const IntegrationSettingsModal = ({
                         </TextField>
                         <Button
                           variant="contained"
-                          color="primary" 
+                          color="primary"
                           onClick={updateAirtableBase}
                           style={{ marginTop: "10px" }}
                           disabled={!settings.airtableBaseId || loading}
