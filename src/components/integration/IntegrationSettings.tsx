@@ -394,7 +394,7 @@ export const IntegrationSettingsModal = ({
               navigate(`/robots/${recordingId}/integrate/google`);
               }}
             >
-              <img src="/public/svg/google-sheets.svg" alt="Google Sheets" style={{ marginRight: "8px" }} />
+              <img src="/public/svg/gsheet.svg" alt="Google Sheets" style={{ marginRight: "8px" }} />
               Google Sheets
             </Button>
 
