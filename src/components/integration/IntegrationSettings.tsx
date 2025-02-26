@@ -17,8 +17,6 @@ import { apiUrl } from "../../apiConfig.js";
 import Cookies from "js-cookie";
 
 import { useTranslation } from "react-i18next";
-import { SignalCellularConnectedNoInternet0BarSharp } from "@mui/icons-material";
-import { table } from "console";
 
 interface IntegrationProps {
   isOpen: boolean;
@@ -103,7 +101,7 @@ export const IntegrationSettingsModal = ({
       setSpreadsheets(response.data);
     } catch (error: any) {
       console.error("Error fetching spreadsheet files:", error);
-      notify("error", t("integration_settings.errors.fetch_error", {
+      notify("error", t("integration_settings.google.errors.fetch_error", {
         message: error.response?.data?.message || error.message,
       }));
     }
@@ -119,7 +117,7 @@ export const IntegrationSettingsModal = ({
       setAirtableBases(response.data);
     } catch (error: any) {
       console.error("Error fetching Airtable bases:", error);
-      notify("error", t("integration_settings.errors.fetch_error", {
+      notify("error", t("integration_settings.airtable.errors.fetch_error", {
         message: error.response?.data?.message || error.message,
       }));
     }
@@ -136,7 +134,7 @@ export const IntegrationSettingsModal = ({
     }
     catch (error: any) {
       console.error("Error fetching Airtable tables:", error);
-      notify("error", t("integration_settings.errors.fetch_error", {
+      notify("error", t("integration_settings.airtable.errors.fetch_tables_error", {
         message: error.response?.data?.message || error.message,
       }));
     }
@@ -173,37 +171,6 @@ export const IntegrationSettingsModal = ({
       } else {
         console.error("Recording ID is null");
       }
-
-      
-  
-      // try {
-      //   // Ensure recordingId is available
-      //   if (!recordingId) {
-      //     throw new Error("Recording ID is missing");
-      //   }
-  
-      //   // Make API call to update the base in the database
-      //   const response = await axios.post(
-      //     `${apiUrl}/auth/airtable/update`,
-      //     {
-      //       baseId: selectedBase.id,
-      //       baseName: selectedBase.name,
-      //       robotId: recordingId, // Use recordingId from the global context
-      //     },
-      //     { withCredentials: true }
-      //   );
-  
-      //   if (response.status !== 200) {
-      //     throw new Error("Failed to update Airtable base in the database");
-      //   }
-  
-      //   console.log("Airtable base updated successfully:", response.data);
-      // } catch (error) {
-      //   console.error("Error updating Airtable base:", error);
-      //   notify("error", t("integration_settings.errors.update_error", {
-      //     message: error instanceof Error ? error.message : "Unknown error",
-      //   }));
-      // }
     }
   };
 
@@ -214,9 +181,7 @@ export const IntegrationSettingsModal = ({
       setSettings((prevSettings) => ({
         ...prevSettings,
         airtableTableId: e.target.value,
-        
         airtableTableName: selectedTable?.name||"",
-        
       }));
     }
   };
@@ -235,10 +200,10 @@ export const IntegrationSettingsModal = ({
         },
         { withCredentials: true }
       );
-      notify("success", t("integration_settings.notifications.sheet_selected"));
+      notify("success", t("integration_settings.google.notifications.sheet_selected"));
     } catch (error: any) {
       console.error("Error updating Google Sheet ID:", error);
-      notify("error", t("integration_settings.errors.update_error", {
+      notify("error", t("integration_settings.google.errors.update_error", {
         message: error.response?.data?.message || error.message,
       }));
     }
@@ -246,10 +211,6 @@ export const IntegrationSettingsModal = ({
 
   // Update Airtable integration
   const updateAirtableBase = async () => {
-    console.log(settings.airtableBaseId);
-    console.log(settings.airtableTableName);
-    console.log(recordingId);
-    console.log(settings.airtableBaseName);
     try {
       await axios.post(
         `${apiUrl}/auth/airtable/update`,
@@ -262,10 +223,10 @@ export const IntegrationSettingsModal = ({
         },
         { withCredentials: true }
       );
-      notify("success", t("integration_settings.notifications.base_selected"));
+      notify("success", t("integration_settings.airtable.notifications.base_selected"));
     } catch (error: any) {
       console.error("Error updating Airtable base:", error);
-      notify("error", t("integration_settings.errors.update_error", {
+      notify("error", t("integration_settings.airtable.errors.update_error", {
         message: error.response?.data?.message || error.message,
       }));
     }
@@ -281,10 +242,10 @@ export const IntegrationSettingsModal = ({
       );
       setSpreadsheets([]);
       setSettings({ ...settings, spreadsheetId: "", spreadsheetName: "" });
-      notify("success", t("integration_settings.notifications.integration_removed"));
+      notify("success", t("integration_settings.google.notifications.integration_removed"));
     } catch (error: any) {
       console.error("Error removing Google Sheets integration:", error);
-      notify("error", t("integration_settings.errors.remove_error", {
+      notify("error", t("integration_settings.google.errors.remove_error", {
         message: error.response?.data?.message || error.message,
       }));
     }
@@ -301,10 +262,10 @@ export const IntegrationSettingsModal = ({
       );
       setAirtableBases([]);
       setSettings({ ...settings, airtableBaseId: "", airtableBaseName: "", airtableTableName:"" });
-      notify("success", t("integration_settings.notifications.integration_removed"));
+      notify("success", t("integration_settings.airtable.notifications.integration_removed"));
     } catch (error: any) {
       console.error("Error removing Airtable integration:", error);
-      notify("error", t("integration_settings.errors.remove_error", {
+      notify("error", t("integration_settings.airtable.errors.remove_error", {
         message: error.response?.data?.message || error.message,
       }));
     }
@@ -319,8 +280,7 @@ export const IntegrationSettingsModal = ({
         fetchAirtableBases(); // Fetch bases after successful authentication
       }
     } catch (error) {
-      setError("Error authenticating with Airtable");
-
+      setError(t("integration_settings.airtable.errors.auth_error"));
     }
   };
 
@@ -407,7 +367,7 @@ if (!selectedIntegrationType) {
           {/* Airtable Button */}
           <Button
             variant="contained"
-            color="secondary"
+            color="primary"
             onClick={() => {
               setSelectedIntegrationType("airtable");
               setSettings({ ...settings, integrationType: "airtable" });
@@ -431,18 +391,19 @@ if (!selectedIntegrationType) {
         alignItems: "flex-start",
         marginLeft: "65px",
       }}>
-        <Typography variant="h6">
-          {t("integration_settings.title")}
-        </Typography>
 
         {/* Google Sheets Integration */}
         {settings.integrationType === "googleSheets" && (
           <>
+            <Typography variant="h6">
+              {t("integration_settings.google.title")}
+            </Typography>
+
             {recording?.google_sheet_id ? (
               <>
                 <Alert severity="info" sx={{ marginTop: "10px", border: "1px solid #ff00c3" }}>
-                  <AlertTitle>{t("integration_settings.alerts.success.title")}</AlertTitle>
-                  {t("integration_settings.alerts.success.content", {
+                  <AlertTitle>{t("integration_settings.google.alerts.success.title")}</AlertTitle>
+                  {t("integration_settings.google.alerts.success.content", {
                     sheetName: recording.google_sheet_name,
                   })}
                   <a
@@ -450,7 +411,7 @@ if (!selectedIntegrationType) {
                     target="_blank"
                     rel="noreferrer"
                   >
-                    {t("integration_settings.alerts.success.here")}
+                    {t("integration_settings.google.alerts.success.here")}
                   </a>
                 </Alert>
                 <Button
@@ -459,26 +420,26 @@ if (!selectedIntegrationType) {
                   onClick={removeGoogleSheetsIntegration}
                   style={{ marginTop: "15px" }}
                 >
-                  {t("integration_settings.buttons.remove_integration")}
+                  {t("integration_settings.google.buttons.remove_integration")}
                 </Button>
               </>
             ) : (
               <>
                 {!recording?.google_sheet_email ? (
                   <>
-                    <p>{t("integration_settings.descriptions.sync_info")}</p>
+                    <p>{t("integration_settings.google.descriptions.sync_info")}</p>
                     <Button
                       variant="contained"
                       color="primary"
                       onClick={authenticateWithGoogle}
                     >
-                      {t("integration_settings.buttons.authenticate")}
+                      {t("integration_settings.google.buttons.authenticate")}
                     </Button>
                   </>
                 ) : (
                   <>
                     <Typography sx={{ margin: "20px 0px 30px 0px" }}>
-                      {t("integration_settings.descriptions.authenticated_as", {
+                      {t("integration_settings.google.descriptions.authenticated_as", {
                         email: recording.google_sheet_email,
                       })}
                     </Typography>
@@ -492,14 +453,14 @@ if (!selectedIntegrationType) {
                         color="primary"
                         onClick={fetchSpreadsheetFiles}
                       >
-                        {t("integration_settings.buttons.fetch_sheets")}
+                        {t("integration_settings.google.buttons.fetch_sheets")}
                       </Button>
                     ) : (
                       <>
                         <TextField
                           sx={{ marginBottom: "15px" }}
                           select
-                          label={t("integration_settings.fields.select_sheet")}
+                          label={t("integration_settings.google.fields.select_sheet")}
                           required
                           value={settings.spreadsheetId}
                           onChange={handleSpreadsheetSelect}
@@ -521,7 +482,7 @@ if (!selectedIntegrationType) {
                           style={{ marginTop: "10px" }}
                           disabled={!settings.spreadsheetId || loading}
                         >
-                          {t("integration_settings.buttons.submit")}
+                          {t("integration_settings.google.buttons.submit")}
                         </Button>
                       </>
                     )}
@@ -535,19 +496,24 @@ if (!selectedIntegrationType) {
         {/* Airtable Integration */}
         {settings.integrationType === "airtable" && (
           <>
+            <Typography variant="h6">
+              {t("integration_settings.airtable.title")}
+            </Typography>
+
             {recording?.airtable_base_id ? (
               <>
-                <Alert severity="info" sx={{ marginTop: "10px", border: "1px solid #00c3ff" }}>
-                  <AlertTitle>{t("integration_settings.alerts.airtable_success.title")}</AlertTitle>
-                  {t("integration_settings.alerts.airtable_success.content", {
+                <Alert severity="info" sx={{ marginTop: "10px", border: "1px solid #ff00c3" }}>
+                  <AlertTitle>{t("integration_settings.airtable.alerts.success.title")}</AlertTitle>
+                  {t("integration_settings.airtable.alerts.success.content", {
                     baseName: recording.airtable_base_name,
+                    tableName: recording.airtable_table_name
                   })}
                   <a
                     href={`https://airtable.com/${recording.airtable_base_id}`}
                     target="_blank"
                     rel="noreferrer"
                   >
-                    {t("integration_settings.alerts.airtable_success.here")}
+                    {t("integration_settings.airtable.alerts.success.here")}
                   </a>
                 </Alert>
                 <Button
@@ -556,28 +522,26 @@ if (!selectedIntegrationType) {
                   onClick={removeAirtableIntegration}
                   style={{ marginTop: "15px" }}
                 >
-                  {t("integration_settings.buttons.remove_integration")}
+                  {t("integration_settings.airtable.buttons.remove_integration")}
                 </Button>
               </>
             ) : (
               <>
                 {!recording?.airtable_access_token ? (
                   <>
-                    <p>{t("integration_settings.descriptions.airtable_sync_info")}</p>
+                    <p>{t("integration_settings.airtable.descriptions.sync_info")}</p>
                     <Button
                       variant="contained"
-                      color="secondary"
+                      color="primary" 
                       onClick={authenticateWithAirtable}
                     >
-                      {t("integration_settings.buttons.authenticate_airtable")}
+                      {t("integration_settings.airtable.buttons.authenticate")}
                     </Button>
                   </>
                 ) : (
                   <>
                     <Typography sx={{ margin: "20px 0px 30px 0px" }}>
-                      {t("integration_settings.descriptions.authenticated_as", {
-                        email: "",
-                      })}
+                      {t("integration_settings.airtable.descriptions.authenticated_as")}
                     </Typography>
                     {loading ? (
                       <CircularProgress sx={{ marginBottom: "15px" }} />
@@ -586,17 +550,17 @@ if (!selectedIntegrationType) {
                     ) : airtableBases.length === 0 ? (
                       <Button
                         variant="outlined"
-                        color="secondary"
+                        color="primary" 
                         onClick={fetchAirtableBases}
                       >
-                        {t("integration_settings.buttons.fetch_airtable_bases")}
+                        {t("integration_settings.airtable.buttons.fetch_bases")}
                       </Button>
                     ) : (
                       <>
                         <TextField
                           sx={{ marginBottom: "15px" }}
                           select
-                          label={t("integration_settings.fields.select_airtable_base")}
+                          label={t("integration_settings.airtable.fields.select_base")}
                           required
                           value={settings.airtableBaseId}
                           onChange={handleAirtableBaseSelect}
@@ -611,7 +575,7 @@ if (!selectedIntegrationType) {
                         <TextField
                           sx={{ marginBottom: "15px" }}
                           select
-                          label={t("integration_settings.fields.select_airtable_table")}
+                          label={t("integration_settings.airtable.fields.select_table")}
                           required
                           value={settings.airtableTableId}
                           onChange={handleAirtabletableSelect}
@@ -625,7 +589,7 @@ if (!selectedIntegrationType) {
                         </TextField>
                         <Button
                           variant="contained"
-                          color="secondary"
+                          color="primary" 
                           onClick={() => {
                             updateAirtableBase();
                             handleStart(settings);
@@ -633,7 +597,7 @@ if (!selectedIntegrationType) {
                           style={{ marginTop: "10px" }}
                           disabled={!settings.airtableBaseId || loading}
                         >
-                          {t("integration_settings.buttons.submit_airtable")}
+                          {t("integration_settings.airtable.buttons.submit")}
                         </Button>
                       </>
                     )}
