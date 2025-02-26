@@ -369,7 +369,7 @@
         "authenticate": "连接Airtable",
         "fetch_bases": "获取Airtable基础",
         "fetch_tables": "获取Airtable表格",
-        "remove_integration": "移除Airtable集成",
+        "remove_integration": "移除集成",
         "submit": "选择基础和表格"
       },
       "fields": {
