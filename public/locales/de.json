@@ -357,7 +357,7 @@
             },
             "alerts": {
                 "success": {
-                    "title": "Mit Airtable verbunden",
+                    "title": "Airtable Base erfolgreich integriert",
                     "content": "Ihr Roboter ist jetzt mit der Basis: {{baseName}} und Tabelle: {{tableName}} verbunden. Sie können darauf zugreifen ",
                     "here": "hier",
                     "note": "Hinweis:",
