@@ -369,7 +369,7 @@
                 "authenticate": "Airtableと接続",
                 "fetch_bases": "Airtableベースを取得",
                 "fetch_tables": "Airtableテーブルを取得",
-                "remove_integration": "Airtable連携を解除",
+                "remove_integration": "連携を解除",
                 "submit": "ベースとテーブルを選択"
             },
             "fields": {
