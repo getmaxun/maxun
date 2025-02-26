@@ -240,7 +240,6 @@ export const IntegrationSettingsModal = ({
         { withCredentials: true }
       );
       
-      // Refresh recording data immediately 
       await refreshRecordingData();
       
       notify("success", t("integration_settings.airtable.notifications.base_selected"));
@@ -292,12 +291,10 @@ export const IntegrationSettingsModal = ({
         { withCredentials: true }
       );
       
-      // Clear UI state
       setAirtableBases([]);
       setAirtableTables([]);
       setSettings({ ...settings, airtableBaseId: "", airtableBaseName: "", airtableTableName:"", airtableTableId: "" });
       
-      // Refresh recording data
       await refreshRecordingData();
       
       notify("success", t("integration_settings.airtable.notifications.integration_removed"));
@@ -311,7 +308,6 @@ export const IntegrationSettingsModal = ({
     }
   };
 
-  // Handle OAuth callback for Airtable
   const handleAirtableOAuthCallback = async () => {
     try {
       const response = await axios.get(`${apiUrl}/auth/airtable/callback`);
@@ -323,20 +319,16 @@ export const IntegrationSettingsModal = ({
     }
   };
 
-  // Fetch recording info on component mount and when recordingId changes
   useEffect(() => {
     const fetchRecordingInfo = async () => {
       if (!recordingId) return;
       
-      console.log("Fetching recording info for ID:", recordingId);
       setLoading(true);
       
       const recording = await getStoredRecording(recordingId);
       if (recording) {
-        console.log("Recording fetched:", recording);
         setRecording(recording);
         
-        // Update settings based on existing integrations
         if (recording.google_sheet_id) {
           setSettings(prev => ({ ...prev, integrationType: "googleSheets" }));
         } else if (recording.airtable_base_id) {
@@ -357,7 +349,6 @@ export const IntegrationSettingsModal = ({
     fetchRecordingInfo();
   }, [recordingId, preSelectedIntegrationType]);
 
-  // Handle Airtable authentication cookies
   useEffect(() => {
     const status = getCookie("airtable_auth_status");
     const message = getCookie("airtable_auth_message");
@@ -394,7 +385,6 @@ export const IntegrationSettingsModal = ({
             {t("integration_settings.title_select_integration")}
           </Typography>
           <div style={{ display: "flex", gap: "20px" }}>
-            {/* Google Sheets Button */}
             <Button
               variant="contained"
               color="primary"
@@ -407,7 +397,6 @@ export const IntegrationSettingsModal = ({
               Google Sheets
             </Button>
 
-            {/* Airtable Button */}
             <Button
               variant="contained"
               color="primary"
@@ -434,7 +423,6 @@ export const IntegrationSettingsModal = ({
         marginLeft: "65px",
       }}>
 
-        {/* Google Sheets Integration */}
         {settings.integrationType === "googleSheets" && (
           <>
             <Typography variant="h6">
@@ -535,7 +523,6 @@ export const IntegrationSettingsModal = ({
           </>
         )}
 
-        {/* Airtable Integration */}
         {settings.integrationType === "airtable" && (
           <>
             <Typography variant="h6">
