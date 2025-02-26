@@ -544,6 +544,7 @@ export const IntegrationSettingsModal = ({
                     href={`https://airtable.com/${recording.airtable_base_id}`}
                     target="_blank"
                     rel="noreferrer"
+                    style={{ marginLeft: "4px" }}
                   >
                     {t("integration_settings.airtable.alerts.success.here")}
                   </a>
