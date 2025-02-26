@@ -1,5 +1,4 @@
 import { Router, Request, Response } from "express";
-import Airtable from "airtable";
 
 import User from "../models/User";
 import Robot from "../models/Robot";
@@ -9,7 +8,7 @@ import { requireSignIn } from "../middlewares/auth";
 import { genAPIKey } from "../utils/api";
 import { google } from "googleapis";
 import { capture } from "../utils/analytics";
-
+import crypto from 'crypto';
 
 
 declare module "express-session" {
@@ -584,13 +583,10 @@ router.post(
 );
 
 
-
-
-import crypto from 'crypto';
-
 // Airtable OAuth Routes
-router.get("/airtable", (req, res) => {
-  const { robotId } = req.query;
+router.get("/airtable", (req: Request, res) => {
+  const authenticatedReq = req as AuthenticatedRequest;
+  const { robotId } = authenticatedReq.query;
   if (!robotId) {
     return res.status(400).json({ message: "Robot ID is required" });
   }
@@ -602,13 +598,12 @@ router.get("/airtable", (req, res) => {
     .digest('base64url');
 
   // Store in session
-  req.session.code_verifier = code_verifier;
-  req.session.robotId = robotId.toString();
+  authenticatedReq.session.code_verifier = code_verifier;
+  authenticatedReq.session.robotId = robotId.toString();
 
   const params = new URLSearchParams({
     client_id: process.env.AIRTABLE_CLIENT_ID!,
     redirect_uri: process.env.AIRTABLE_REDIRECT_URI!,
-   
     response_type: 'code',
     state: robotId.toString(),
     scope: 'data.records:read data.records:write schema.bases:read schema.bases:write',
@@ -619,13 +614,16 @@ router.get("/airtable", (req, res) => {
   res.redirect(`https://airtable.com/oauth2/v1/authorize?${params}`);
 });
 
-router.get("/airtable/callback", async (req, res) => {
+router.get("/airtable/callback", async (req: Request, res) => {
+  const authenticatedReq = req as AuthenticatedRequest;
+  const baseUrl = process.env.PUBLIC_URL || "http://localhost:5173";
+  
   try {
-    const { code, state, error } = req.query;
+    const { code, state, error } = authenticatedReq.query;
 
     if (error) {
       return res.redirect(
-        `${process.env.PUBLIC_URL}/robots/${state}/integrate?error=${encodeURIComponent(error.toString())}`
+        `${baseUrl}/robots/${state}/integrate?error=${encodeURIComponent(error.toString())}`
       );
     }
 
@@ -634,7 +632,7 @@ router.get("/airtable/callback", async (req, res) => {
     }
 
     // Verify session data
-    if (!req.session?.code_verifier || req.session.robotId !== state.toString()) {
+    if (!authenticatedReq.session?.code_verifier || authenticatedReq.session.robotId !== state.toString()) {
       return res.status(400).json({ 
         message: "Session expired - please restart the OAuth flow"
       });
@@ -649,10 +647,9 @@ router.get("/airtable/callback", async (req, res) => {
       body: new URLSearchParams({
         grant_type: "authorization_code",
         code: code.toString(),
-        client_id: process.env.AIRTABLE_CLIENT_ID!,
-        
+        client_id: process.env.AIRTABLE_CLIENT_ID!, 
         redirect_uri: process.env.AIRTABLE_REDIRECT_URI!,
-        code_verifier: req.session.code_verifier
+        code_verifier: authenticatedReq.session.code_verifier
       }),
     });
 
@@ -660,7 +657,7 @@ router.get("/airtable/callback", async (req, res) => {
       const errorData = await tokenResponse.json();
       console.error('Token exchange failed:', errorData);
       return res.redirect(
-        `${process.env.PUBLIC_URL}/robots/${state}/integrate?error=${encodeURIComponent(errorData.error_description || 'Authentication failed')}`
+        `${baseUrl}/robots/${state}/integrate?error=${encodeURIComponent(errorData.error_description || 'Authentication failed')}`
       );
     }
 
@@ -678,40 +675,43 @@ router.get("/airtable/callback", async (req, res) => {
     await robot.update({
       airtable_access_token: tokens.access_token,
       airtable_refresh_token: tokens.refresh_token,
-
-      
-    });
-
-    // Clear session data
-    req.session.destroy((err) => {
-      if (err) console.error('Session cleanup error:', err);
     });
 
     res.cookie("airtable_auth_status", "success", {
       httpOnly: false,
       maxAge: 60000,
     }); // 1-minute expiration
-    res.cookie("airtable_auth_message", "Robot successfully authenticated", {
+    // res.cookie("airtable_auth_message", "Robot successfully authenticated", {
+    //   httpOnly: false,
+    //   maxAge: 60000,
+    // });
+
+    res.cookie('robot_auth_robotId', req.session.robotId, {
       httpOnly: false,
       maxAge: 60000,
     });
 
-    res.redirect(
-      `${process.env.PUBLIC_URL}/robots/${state}/integrate || http://localhost:5173/robots/${state}/integrate`
-    );
+    // Clear session data
+    authenticatedReq.session.destroy((err) => {
+      if (err) console.error('Session cleanup error:', err);
+    });
 
+    const redirectUrl = `${baseUrl}/robots/`;
+
+    res.redirect(redirectUrl);
   } catch (error: any) {
     console.error('Airtable callback error:', error);
     res.redirect(
-      `${process.env.PUBLIC_URL}/robots/${req.session.robotId}/integrate?error=${encodeURIComponent(error.message)}`
+      `${baseUrl}/robots/${req.session.robotId}/integrate?error=${encodeURIComponent(error.message)}`
     );
   }
 });
 
 // Get Airtable bases
-router.get("/airtable/bases", async (req: AuthenticatedRequest, res) => {
+router.get("/airtable/bases", async (req: Request, res) => {
+  const authenticatedReq = req as AuthenticatedRequest;
   try {
-    const { robotId } = req.query;
+    const { robotId } = authenticatedReq.query;
     if (!robotId) {
       return res.status(400).json({ message: "Robot ID is required" });
     }
@@ -748,7 +748,8 @@ router.get("/airtable/bases", async (req: AuthenticatedRequest, res) => {
 });
 
 // Update robot with selected base
-router.post("/airtable/update", async (req: AuthenticatedRequest, res) => {
+router.post("/airtable/update", async (req: Request, res) => {
+  const authenticatedReq = req as AuthenticatedRequest;
   const { baseId, robotId , tableName,tableId} = req.body;
 
   if (!baseId || !robotId) {
@@ -772,7 +773,7 @@ router.post("/airtable/update", async (req: AuthenticatedRequest, res) => {
     });
 
     capture("maxun-oss-airtable-integration-created", {
-      user_id: req.user?.id,
+      user_id: authenticatedReq.user?.id,
       robot_id: robotId,
       created_at: new Date().toISOString(),
     });
@@ -785,8 +786,9 @@ router.post("/airtable/update", async (req: AuthenticatedRequest, res) => {
 });
 
 // Remove Airtable integration
-router.post("/airtable/remove", requireSignIn, async (req: AuthenticatedRequest, res) => {
-  const { robotId } = req.body;
+router.post("/airtable/remove", requireSignIn, async (req: Request, res) => {
+  const authenticatedReq = req as AuthenticatedRequest;
+  const { robotId } = authenticatedReq.body;
   if (!robotId) {
     return res.status(400).json({ message: "Robot ID is required" });
   }
@@ -810,7 +812,7 @@ router.post("/airtable/remove", requireSignIn, async (req: AuthenticatedRequest,
     });
 
     capture("maxun-oss-airtable-integration-removed", {
-      user_id: req.user?.id,
+      user_id: authenticatedReq.user?.id,
       robot_id: robotId,
       deleted_at: new Date().toISOString(),
     });
@@ -825,9 +827,10 @@ router.post("/airtable/remove", requireSignIn, async (req: AuthenticatedRequest,
 
 
 // Fetch tables from an Airtable base
-router.get("/airtable/tables", async (req: AuthenticatedRequest, res) => {
+router.get("/airtable/tables", async (req: Request, res) => {
+  const authenticatedReq = req as AuthenticatedRequest;
   try {
-    const { baseId, robotId } = req.query;
+    const { baseId, robotId } = authenticatedReq.query;
 
     if (!baseId || !robotId) {
       return res.status(400).json({ message: "Base ID and Robot ID are required" });
