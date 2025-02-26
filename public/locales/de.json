@@ -358,7 +358,7 @@
             "alerts": {
                 "success": {
                     "title": "Airtable Base erfolgreich integriert",
-                    "content": "Ihr Roboter ist jetzt mit der Basis: {{baseName}} und Tabelle: {{tableName}} verbunden. Sie können darauf zugreifen ",
+                    "content": "Jedes Mal, wenn dieser Roboter einen erfolgreichen Lauf erstellt, werden seine erfassten Daten an Ihre {{baseName}}-Basis und Ihre {{tableName}}-Tabelle angehängt. Sie können Updates überprüfen",
                     "here": "hier",
                     "note": "Hinweis:",
                     "sync_limitation": "Nur nach der Integration erfasste Daten werden mit Airtable synchronisiert."
