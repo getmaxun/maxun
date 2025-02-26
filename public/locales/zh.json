@@ -359,7 +359,7 @@
       "alerts": {
         "success": {
           "title": "Airtable 基地成功集成",
-          "content": "您的机器人现已连接到基础：{{baseName}}和表格：{{tableName}}。您可以访问它",
+          "content": "每次此机器人成功运行时，其捕获的数据都会附加到您的 {{baseName}} 基础和 {{tableName}} 表中。您可以检查更新情况",
           "here": "在这里",
           "note": "注意：",
           "sync_limitation": "只有集成后捕获的数据才会同步到Airtable。"
