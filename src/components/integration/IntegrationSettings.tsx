@@ -389,9 +389,9 @@ export const IntegrationSettingsModal = ({
               variant="contained"
               color="primary"
               onClick={() => {
-              setSelectedIntegrationType("googleSheets");
-              setSettings({ ...settings, integrationType: "googleSheets" });
-              navigate(`/robots/${recordingId}/integrate/google`);
+                setSelectedIntegrationType("googleSheets");
+                setSettings({ ...settings, integrationType: "googleSheets" });
+                navigate(`/robots/${recordingId}/integrate/google`);
               }}
               style={{ display: "flex", flexDirection: "column", alignItems: "center" }}
             >
@@ -403,9 +403,9 @@ export const IntegrationSettingsModal = ({
               variant="contained"
               color="primary"
               onClick={() => {
-              setSelectedIntegrationType("airtable");
-              setSettings({ ...settings, integrationType: "airtable" });
-              navigate(`/robots/${recordingId}/integrate/airtable`);
+                setSelectedIntegrationType("airtable");
+                setSettings({ ...settings, integrationType: "airtable" });
+                navigate(`/robots/${recordingId}/integrate/airtable`);
               }}
               style={{ display: "flex", flexDirection: "column", alignItems: "center" }}
             >
