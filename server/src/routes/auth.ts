@@ -584,7 +584,7 @@ router.post(
 
 
 // Airtable OAuth Routes
-router.get("/airtable", (req: Request, res) => {
+router.get("/airtable", requireSignIn, (req: Request, res) => {
   const authenticatedReq = req as AuthenticatedRequest;
   const { robotId } = authenticatedReq.query;
   if (!robotId) {
@@ -708,7 +708,7 @@ router.get("/airtable/callback", async (req: Request, res) => {
 });
 
 // Get Airtable bases
-router.get("/airtable/bases", async (req: Request, res) => {
+router.get("/airtable/bases", requireSignIn, async (req: Request, res) => {
   const authenticatedReq = req as AuthenticatedRequest;
   try {
     const { robotId } = authenticatedReq.query;
@@ -748,7 +748,7 @@ router.get("/airtable/bases", async (req: Request, res) => {
 });
 
 // Update robot with selected base
-router.post("/airtable/update", async (req: Request, res) => {
+router.post("/airtable/update", requireSignIn, async (req: Request, res) => {
   const authenticatedReq = req as AuthenticatedRequest;
   const { baseId, robotId , baseName, tableName, tableId} = req.body;
 
@@ -827,7 +827,7 @@ router.post("/airtable/remove", requireSignIn, async (req: Request, res) => {
 
 
 // Fetch tables from an Airtable base
-router.get("/airtable/tables", async (req: Request, res) => {
+router.get("/airtable/tables", requireSignIn,async (req: Request, res) => {
   const authenticatedReq = req as AuthenticatedRequest;
   try {
     const { baseId, robotId } = authenticatedReq.query;
