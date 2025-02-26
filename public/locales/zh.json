@@ -307,7 +307,6 @@
   },
   "integration_settings": {
     "title": "集成设置",
-    "title_select_integration": "选择集成类型",
     "descriptions": {
       "authenticated_as": "已认证为：{{email}}"
     },
