@@ -442,7 +442,7 @@ export const IntegrationSettingsModal = ({
                   href={`https://docs.google.com/spreadsheets/d/${recording.google_sheet_id}`}
                   target="_blank"
                   rel="noreferrer"
-                  style={{ marginLeft: "4px" }}
+                  style={{ marginLeft: "4px", fontWeight: "bold" }}
                   >
                   {t("integration_settings.google.alerts.success.here")}
                   </a>
