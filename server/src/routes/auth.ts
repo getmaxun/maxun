@@ -28,29 +28,47 @@ router.post("/register", async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    if (!email) return res.status(400).send("Email is required");
-    if (!password || password.length < 6)
-      return res
-        .status(400)
-        .send("Password is required and must be at least 6 characters");
+    if (!email) {
+      return res.status(400).json({
+        error: "VALIDATION_ERROR",
+        code: "register.validation.email_required"
+      });
+    }
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({
+        error: "VALIDATION_ERROR",
+        code: "register.validation.password_requirements"
+      });
+    }
 
     let userExist = await User.findOne({ raw: true, where: { email } });
-    if (userExist) return res.status(400).send("User already exists");
+    if (userExist) {
+      return res.status(400).json({
+        error: "USER_EXISTS",
+        code: "register.error.user_exists"
+      });
+    }
 
     const hashedPassword = await hashPassword(password);
 
     let user: any;
-
     try {
       user = await User.create({ email, password: hashedPassword });
     } catch (error: any) {
       console.log(`Could not create user - ${error}`);
-      return res.status(500).send(`Could not create user - ${error.message}`);
+      return res.status(500).json({
+        error: "DATABASE_ERROR",
+        code: "register.error.creation_failed"
+      });
     }
 
     if (!process.env.JWT_SECRET) {
       console.log("JWT_SECRET is not defined in the environment");
-      return res.status(500).send("Internal Server Error");
+      return res.status(500).json({
+        error: "SERVER_ERROR",
+        code: "register.error.server_error"
+      });
     }
 
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET as string);
@@ -58,36 +76,60 @@ router.post("/register", async (req, res) => {
     res.cookie("token", token, {
       httpOnly: true,
     });
+    
     capture("maxun-oss-user-registered", {
       email: user.email,
       userId: user.id,
       registeredAt: new Date().toISOString(),
     });
+    
     console.log(`User registered`);
     res.json(user);
+    
   } catch (error: any) {
     console.log(`Could not register user - ${error}`);
-    res.status(500).send(`Could not register user - ${error.message}`);
+    return res.status(500).json({
+      error: "SERVER_ERROR",
+      code: "register.error.generic"
+    });
   }
 });
 
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password)
-      return res.status(400).send("Email and password are required");
-    if (password.length < 6)
-      return res.status(400).send("Password must be at least 6 characters");
+    if (!email || !password) {
+      return res.status(400).json({
+        error: "VALIDATION_ERROR",
+        code: "login.validation.required_fields"
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        error: "VALIDATION_ERROR",
+        code: "login.validation.password_length"
+      });
+    }
 
     let user = await User.findOne({ raw: true, where: { email } });
-    if (!user) return res.status(400).send("User does not exist");
+    if (!user) {
+      return res.status(404).json({
+        error: "USER_NOT_FOUND",
+        code: "login.error.user_not_found"
+      });
+    }
 
     const match = await comparePassword(password, user.password);
-    if (!match) return res.status(400).send("Invalid email or password");
+    if (!match) {
+      return res.status(401).json({
+        error: "INVALID_CREDENTIALS",
+        code: "login.error.invalid_credentials"
+      });
+    }
 
     const token = jwt.sign({ id: user?.id }, process.env.JWT_SECRET as string);
 
-    // return user and token to client, exclude hashed password
     if (user) {
       user.password = undefined as unknown as string;
     }
@@ -101,30 +143,43 @@ router.post("/login", async (req, res) => {
     });
     res.json(user);
   } catch (error: any) {
-    res.status(400).send(`Could not login user - ${error.message}`);
-    console.log(`Could not login user - ${error}`);
+    console.error(`Login error: ${error.message}`);
+    res.status(500).json({
+      error: "SERVER_ERROR",
+      code: "login.error.server_error"
+    });
   }
 });
 
 router.get("/logout", async (req, res) => {
-  try {
-    res.clearCookie("token");
-    return res.json({ message: "Logout successful" });
-  } catch (error: any) {
-    res.status(500).send(`Could not logout user - ${error.message}`);
+    try {
+      res.clearCookie("token");
+      return res.status(200).json({
+        ok: true,
+        message: "Logged out successfully",
+        code: "success"
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      return res.status(500).json({
+        ok: false,
+        message: "Error during logout",
+        code: "server",
+        error: process.env.NODE_ENV === 'development' ? error : undefined
+      });
+    }
   }
-});
+);
 
 router.get(
   "/current-user",
   requireSignIn,
-  async (req: Request, res) => {
-    const authenticatedReq = req as AuthenticatedRequest;
+  async (req: AuthenticatedRequest, res) => {
     try {
-      if (!authenticatedReq.user) {
+      if (!req.user) {
         return res.status(401).json({ ok: false, error: "Unauthorized" });
       }
-      const user = await User.findByPk(authenticatedReq.user.id, {
+      const user = await User.findByPk(req.user.id, {
         attributes: { exclude: ["password"] },
       });
       if (!user) {
@@ -147,7 +202,7 @@ router.get(
 router.get(
   "/user/:id",
   requireSignIn,
-  async (req: Request, res) => {
+  async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
       if (!id) {
@@ -176,13 +231,12 @@ router.get(
 router.post(
   "/generate-api-key",
   requireSignIn,
-  async (req: Request, res) => {
-    const authenticatedReq = req as AuthenticatedRequest;
+  async (req: AuthenticatedRequest, res) => {
     try {
-      if (!authenticatedReq.user) {
+      if (!req.user) {
         return res.status(401).json({ ok: false, error: "Unauthorized" });
       }
-      const user = await User.findByPk(authenticatedReq.user.id, {
+      const user = await User.findByPk(req.user.id, {
         attributes: { exclude: ["password"] },
       });
 
@@ -217,28 +271,41 @@ router.post(
 router.get(
   "/api-key",
   requireSignIn,
-  async (req: Request, res) => {
-    const authenticatedReq = req as AuthenticatedRequest;
+  async (req: AuthenticatedRequest, res) => {
     try {
-      if (!authenticatedReq.user) {
-        return res.status(401).json({ ok: false, error: "Unauthorized" });
+      if (!req.user) {
+        return res.status(401).json({
+          ok: false,
+          error: "Unauthorized",
+          code: "unauthorized"
+        });
       }
 
-      const user = await User.findByPk(authenticatedReq.user.id, {
+      const user = await User.findByPk(req.user.id, {
         raw: true,
         attributes: ["api_key"],
       });
 
       if (!user) {
-        return res.status(404).json({ message: "User not found" });
+        return res.status(404).json({
+          ok: false,
+          error: "User not found",
+          code: "not_found"
+        });
       }
 
       return res.status(200).json({
+        ok: true,
         message: "API key fetched successfully",
         api_key: user.api_key || null,
       });
     } catch (error) {
-      return res.status(500).json({ message: "Error fetching API key", error });
+      console.error('API Key fetch error:', error);
+      return res.status(500).json({
+        ok: false,
+        error: "Error fetching API key",
+        code: "server",
+      });
     }
   }
 );
@@ -246,14 +313,13 @@ router.get(
 router.delete(
   "/delete-api-key",
   requireSignIn,
-  async (req: Request, res) => {
-    const authenticatedReq = req as AuthenticatedRequest;
-    if (!authenticatedReq.user) {
+  async (req: AuthenticatedRequest, res) => {
+    if (!req.user) {
       return res.status(401).send({ error: "Unauthorized" });
     }
 
     try {
-      const user = await User.findByPk(authenticatedReq.user.id, { raw: true });
+      const user = await User.findByPk(req.user.id, { raw: true });
 
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -263,7 +329,7 @@ router.delete(
         return res.status(404).json({ message: "API Key not found" });
       }
 
-      await User.update({ api_key: null }, { where: { id: authenticatedReq.user.id } });
+      await User.update({ api_key: null }, { where: { id: req.user.id } });
 
       capture("maxun-oss-api-key-deleted", {
         user_id: user.id,
@@ -309,8 +375,7 @@ router.get("/google", (req, res) => {
 router.get(
   "/google/callback",
   requireSignIn,
-  async (req: Request, res) => {
-    const authenticatedReq = req as AuthenticatedRequest;
+  async (req: AuthenticatedRequest, res) => {
     const { code, state } = req.query;
     try {
       if (!state) {
@@ -336,12 +401,12 @@ router.get(
         return res.status(400).json({ message: "Email not found" });
       }
 
-      if (!authenticatedReq.user) {
+      if (!req.user) {
         return res.status(401).send({ error: "Unauthorized" });
       }
 
       // Get the currently authenticated user (from `requireSignIn`)
-      let user = await User.findOne({ where: { id: authenticatedReq.user.id } });
+      let user = await User.findOne({ where: { id: req.user.id } });
 
       if (!user) {
         return res.status(400).json({ message: "User not found" });
@@ -419,13 +484,12 @@ router.get(
 router.post(
   "/gsheets/data",
   requireSignIn,
-  async (req: Request, res) => {
-    const authenticatedReq = req as AuthenticatedRequest;
+  async (req: AuthenticatedRequest, res) => {
     const { spreadsheetId, robotId } = req.body;
-    if (!authenticatedReq.user) {
+    if (!req.user) {
       return res.status(401).send({ error: "Unauthorized" });
     }
-    const user = await User.findByPk(authenticatedReq.user.id, { raw: true });
+    const user = await User.findByPk(req.user.id, { raw: true });
 
     if (!user) {
       return res.status(400).json({ message: "User not found" });
@@ -537,14 +601,13 @@ router.post("/gsheets/update", requireSignIn, async (req, res) => {
 router.post(
   "/gsheets/remove",
   requireSignIn,
-  async (req: Request, res) => {
-    const authenticatedReq = req as AuthenticatedRequest;
+  async (req: AuthenticatedRequest, res) => {
     const { robotId } = req.body;
     if (!robotId) {
       return res.status(400).json({ message: "Robot ID is required" });
     }
 
-    if (!authenticatedReq.user) {
+    if (!req.user) {
       return res.status(401).send({ error: "Unauthorized" });
     }
 
@@ -566,7 +629,7 @@ router.post(
       });
 
       capture("maxun-oss-google-sheet-integration-removed", {
-        user_id: authenticatedReq.user.id,
+        user_id: req.user.id,
         robot_id: robotId,
         deleted_at: new Date().toISOString(),
       });
@@ -867,3 +930,5 @@ router.get("/airtable/tables", requireSignIn,async (req: Request, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
+

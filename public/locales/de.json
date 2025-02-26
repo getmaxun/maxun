@@ -8,7 +8,16 @@
         "register_prompt": "Noch keinen Account?",
         "register_link": "Registrieren",
         "welcome_notification": "Willkommen bei Maxun!",
-        "error_notification": "Anmeldung fehlgeschlagen. Bitte versuchen Sie es erneut."
+        "validation": {
+            "required_fields": "E-Mail und Passwort sind erforderlich",
+            "password_length": "Das Passwort muss mindestens 6 Zeichen lang sein"
+            },
+        "error": {
+            "user_not_found": "Benutzer existiert nicht",
+            "invalid_credentials": "Ungültige E-Mail oder Passwort",
+            "server_error": "Anmeldung fehlgeschlagen. Bitte versuchen Sie es später erneut",
+            "generic": "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut"
+        }
     },
     "register": {
         "title": "Konto registrieren",
@@ -19,7 +28,16 @@
         "register_prompt": "Bereits ein Konto?",
         "login_link": "Einloggen",
         "welcome_notification": "Willkommen bei Maxun!",
-        "error_notification": "Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut."
+        "validation": {
+            "email_required": "E-Mail-Adresse ist erforderlich",
+            "password_requirements": "Das Passwort muss mindestens 6 Zeichen lang sein"
+        },
+        "error": {
+            "user_exists": "Ein Benutzer mit dieser E-Mail existiert bereits",
+            "creation_failed": "Konto konnte nicht erstellt werden",
+            "server_error": "Serverfehler aufgetreten",
+            "generic": "Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut"
+        }
     },
     "recordingtable": {
         "run": "Ausführen",
@@ -32,7 +50,7 @@
         "new": "Roboter erstellen",
         "modal": {
             "title": "Geben Sie die URL ein",
-            "login_title": "Erfordert diese Seite eine Anmeldung?",
+            "login_title": "Ist für diese Website eine Anmeldung erforderlich?",
             "label": "URL",
             "button": "Aufnahme starten"
         },
@@ -521,6 +539,19 @@
     },
     "navbar": {
         "project_name": "Maxun",
+        "notifications": {
+            "success": {
+                "logout": "Erfolgreich abgemeldet"
+            },
+            "errors": {
+                "logout": {
+                "unauthorized": "Sie sind nicht berechtigt, diese Aktion durchzuführen",
+                "server": "Serverfehler beim Abmelden",
+                "network": "Netzwerkfehler beim Abmelden",
+                "unknown": "Ein unerwarteter Fehler ist beim Abmelden aufgetreten"
+                }
+            }
+        },
         "upgrade": {
             "button": "Upgrade",
             "modal": {

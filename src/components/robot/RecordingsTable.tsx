@@ -148,7 +148,6 @@ export const RecordingsTable = ({
   const [rows, setRows] = React.useState<Data[]>([]);
   const [isModalOpen, setModalOpen] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState('');
-  const [isLoading, setIsLoading] = React.useState(true);
 
   const columns = useMemo(() => [
     { id: 'interpret', label: t('recordingtable.run'), minWidth: 80 },
@@ -169,6 +168,8 @@ export const RecordingsTable = ({
     setRecordingUrl,
     isLogin,
     setIsLogin,
+    rerenderRobots,
+    setRerenderRobots,
     recordingName,
     setRecordingName,
     recordingId,
@@ -189,32 +190,45 @@ export const RecordingsTable = ({
     setPage(0);
   }, []);
 
+  const parseDateString = (dateStr: string): Date => {
+    try {
+      if (dateStr.includes('PM') || dateStr.includes('AM')) {
+        return new Date(dateStr);
+      }
+      
+      return new Date(dateStr.replace(/(\d+)\/(\d+)\//, '$2/$1/'))
+    } catch {
+      return new Date(0);
+    }
+  };
+
   const fetchRecordings = useCallback(async () => {
-    setIsLoading(true);
     try {
       const recordings = await getStoredRecordings();
       if (recordings) {
         const parsedRows = recordings
-          .map((recording: any, index: number) => {
-            if (recording?.recording_meta) {
-              return {
-                id: index,
-                ...recording.recording_meta,
-                content: recording.recording
-              };
-            }
-            return null;
-          })
-          .filter(Boolean);
-
+        .map((recording: any, index: number) => {
+          if (recording?.recording_meta) {
+            const parsedDate = parseDateString(recording.recording_meta.createdAt);
+            
+            return {
+              id: index,
+              ...recording.recording_meta,
+              content: recording.recording,
+              parsedDate
+            };
+          }
+          return null;
+        })
+        .filter(Boolean) 
+        .sort((a, b) => b.parsedDate.getTime() - a.parsedDate.getTime());
+  
         setRecordings(parsedRows.map((recording) => recording.name));
         setRows(parsedRows);
       }
     } catch (error) {
       console.error('Error fetching recordings:', error);
       notify('error', t('recordingtable.notifications.fetch_error'));
-    } finally {
-      setIsLoading(false);
     }
   }, [setRecordings, notify, t]);
 
@@ -248,6 +262,14 @@ export const RecordingsTable = ({
       fetchRecordings();
     }
   }, [fetchRecordings]);
+
+  useEffect(() => {
+    if (rerenderRobots) {
+      fetchRecordings().then(() => {
+        setRerenderRobots(false);
+      });
+    }
+  }, [rerenderRobots, fetchRecordings, setRerenderRobots]);
 
   function useDebounce<T>(value: T, delay: number): T {
     const [debouncedValue, setDebouncedValue] = React.useState<T>(value);
@@ -343,39 +365,32 @@ export const RecordingsTable = ({
           </IconButton>
         </Box>
       </Box>
-      {isLoading ? (
-        <Box display="flex" justifyContent="center" alignItems="center" height="50%">
-          <CircularProgress />
-        </Box>
-      ) : (
-        <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden', marginTop: '15px' }}>
-          <Table stickyHeader aria-label="sticky table">
-            <TableHead>
-              <TableRow>
-                {columns.map((column) => (
-                  <MemoizedTableCell
-                    key={column.id}
-                    // align={column.align}
-                    style={{ minWidth: column.minWidth }}
-                  >
-                    {column.label}
-                  </MemoizedTableCell>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {visibleRows.map((row) => (
-                <TableRowMemoized
-                  key={row.id}
-                  row={row}
-                  columns={columns}
-                  handlers={handlers}
-                />
+      <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden', marginTop: '15px' }}>
+        <Table stickyHeader aria-label="sticky table">
+          <TableHead>
+            <TableRow>
+              {columns.map((column) => (
+                <MemoizedTableCell
+                  key={column.id}
+                  style={{ minWidth: column.minWidth }}
+                >
+                  {column.label}
+                </MemoizedTableCell>
               ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {visibleRows.map((row) => (
+              <TableRowMemoized
+                key={row.id}
+                row={row}
+                columns={columns}
+                handlers={handlers}
+              />
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
       <TablePagination
         rowsPerPageOptions={[10, 25, 50, 100]}

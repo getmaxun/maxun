@@ -24,6 +24,7 @@ import {
   Clear,
   YouTube,
   X,
+  GitHub,
   Update,
   Close,
   Language,
@@ -107,11 +108,39 @@ export const NavBar: React.FC<NavBarProps> = ({
   };
 
   const logout = async () => {
-    dispatch({ type: "LOGOUT" });
-    window.localStorage.removeItem("user");
-    const { data } = await axios.get(`${apiUrl}/auth/logout`);
-    notify("success", data.message);
-    navigate("/login");
+    try {
+      const { data } = await axios.get(`${apiUrl}/auth/logout`);
+      if (data.ok) {
+        dispatch({ type: "LOGOUT" });
+        window.localStorage.removeItem("user");
+        notify('success', t('navbar.notifications.success.logout'));
+        navigate("/login");
+      }
+    } catch (error: any) {
+      const status = error.response?.status;
+      let errorKey = 'unknown';
+  
+      switch (status) {
+        case 401:
+          errorKey = 'unauthorized';
+          break;
+        case 500:
+          errorKey = 'server';
+          break;
+        default:
+          if (error.message?.includes('Network Error')) {
+            errorKey = 'network';
+          }
+      }
+  
+      notify(
+        'error',
+        t(`navbar.notifications.errors.logout.${errorKey}`, {
+          error: error.response?.data?.message || error.message
+        })
+      );
+      navigate("/login");
+    }
   };
 
   const goToMainMenu = async () => {
@@ -204,7 +233,9 @@ export const NavBar: React.FC<NavBarProps> = ({
         <div style={{
           display: 'flex',
           justifyContent: 'flex-start',
-        }}>
+          cursor: 'pointer'
+        }}
+          onClick={() => navigate('/')}>
           <img src={MaxunLogo} width={45} height={40} style={{ borderRadius: '5px', margin: '5px 0px 5px 15px' }} />
           <div style={{ padding: '11px' }}><ProjectName mode={darkMode ? 'dark' : 'light'}>{t('navbar.project_name')}</ProjectName></div>
           <Chip
@@ -219,14 +250,16 @@ export const NavBar: React.FC<NavBarProps> = ({
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
               {!isRecording ? (
                 <>
-                  <Button variant="outlined" onClick={handleUpdateOpen} sx={{
-                    marginRight: '40px',
-                    color: "#00000099",
-                    border: "#00000099 1px solid",
-                    '&:hover': { color: '#ff00c3', border: '#ff00c3 1px solid' }
+                  <IconButton onClick={handleUpdateOpen} sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    borderRadius: '5px',
+                    padding: '8px',
+                    marginRight: '20px',
                   }}>
-                    <Update sx={{ marginRight: '5px' }} /> {t('navbar.upgrade.button')}
-                  </Button>
+                    <Update sx={{ marginRight: '5px' }} />
+                    <Typography variant="body1">{t('navbar.upgrade.button')}</Typography>
+                  </IconButton>
                   <Modal open={open} onClose={handleUpdateClose}>
                     <Box
                       sx={{
@@ -318,7 +351,14 @@ export const NavBar: React.FC<NavBarProps> = ({
                       )}
                     </Box>
                   </Modal>
-                  <iframe src="https://ghbtns.com/github-btn.html?user=getmaxun&repo=maxun&type=star&count=true&size=large" frameBorder="0" scrolling="0" width="170" height="30" title="GitHub"></iframe>
+                  {/* <iframe 
+                  src="https://ghbtns.com/github-btn.html?user=getmaxun&repo=maxun&type=star&count=true&size=large" 
+                  // frameBorder="0" 
+                  // scrolling="0" 
+                  // width="170" 
+                  // height="30" 
+                  // title="GitHub">
+                  // </iframe>*/}
                   <IconButton onClick={handleMenuOpen} sx={{
                     display: 'flex',
                     alignItems: 'center',
@@ -335,21 +375,30 @@ export const NavBar: React.FC<NavBarProps> = ({
                     onClose={handleMenuClose}
                     anchorOrigin={{
                       vertical: 'bottom',
-                      horizontal: 'right',
+                      horizontal: 'center',
                     }}
                     transformOrigin={{
                       vertical: 'top',
-                      horizontal: 'right',
+                      horizontal: 'center',
                     }}
                     PaperProps={{ sx: { width: '180px' } }}
                   >
                     <MenuItem onClick={() => { handleMenuClose(); logout(); }}>
                       <Logout sx={{ marginRight: '5px' }} /> {t('navbar.menu_items.logout')}
                     </MenuItem>
+                    <MenuItem onClick={handleLangMenuOpen}>
+                      <Language sx={{ marginRight: '5px' }} /> {t('navbar.menu_items.language')}
+                    </MenuItem>
+                    <hr />
                     <MenuItem onClick={() => {
                       window.open('https://docs.maxun.dev', '_blank');
                     }}>
                       <Description sx={{ marginRight: '5px' }} /> Docs
+                    </MenuItem>
+                    <MenuItem onClick={() => {
+                      window.open('https://github.com/getmaxun/maxun', '_blank');
+                    }}>
+                      <GitHub sx={{ marginRight: '5px' }} /> GitHub
                     </MenuItem>
                     <MenuItem onClick={() => {
                       window.open('https://discord.gg/5GbPjBUkws', '_blank');
@@ -366,20 +415,17 @@ export const NavBar: React.FC<NavBarProps> = ({
                     }}>
                       <X sx={{ marginRight: '5px' }} /> Twitter (X)
                     </MenuItem>
-                    <MenuItem onClick={handleLangMenuOpen}>
-                      <Language sx={{ marginRight: '5px' }} /> {t('navbar.menu_items.language')}
-                    </MenuItem>
                     <Menu
                       anchorEl={langAnchorEl}
                       open={Boolean(langAnchorEl)}
                       onClose={handleMenuClose}
                       anchorOrigin={{
                         vertical: "bottom",
-                        horizontal: "right",
+                        horizontal: "center",
                       }}
                       transformOrigin={{
                         vertical: "top",
-                        horizontal: "right",
+                        horizontal: "center",
                       }}
                     >
                       <MenuItem
@@ -471,11 +517,11 @@ export const NavBar: React.FC<NavBarProps> = ({
                 onClose={handleMenuClose}
                 anchorOrigin={{
                   vertical: "bottom",
-                  horizontal: "right",
+                  horizontal: "center",
                 }}
                 transformOrigin={{
                   vertical: "top",
-                  horizontal: "right",
+                  horizontal: "center",
                 }}
               >
                 <MenuItem
