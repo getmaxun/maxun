@@ -16,5 +16,3 @@
 /build
 
 package-lock.json
-
-docker-compose.yml
