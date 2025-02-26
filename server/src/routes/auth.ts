@@ -750,7 +750,7 @@ router.get("/airtable/bases", async (req: Request, res) => {
 // Update robot with selected base
 router.post("/airtable/update", async (req: Request, res) => {
   const authenticatedReq = req as AuthenticatedRequest;
-  const { baseId, robotId , tableName,tableId} = req.body;
+  const { baseId, robotId , baseName, tableName, tableId} = req.body;
 
   if (!baseId || !robotId) {
     return res.status(400).json({ message: "Base ID and Robot ID are required" });
@@ -769,7 +769,7 @@ router.post("/airtable/update", async (req: Request, res) => {
       airtable_base_id: baseId,
       airtable_table_name: tableName,
       airtable_table_id: tableId,
-      
+      airtable_base_name: baseName,
     });
 
     capture("maxun-oss-airtable-integration-created", {
@@ -806,9 +806,9 @@ router.post("/airtable/remove", requireSignIn, async (req: Request, res) => {
       airtable_access_token: null,
       airtable_refresh_token: null,
       airtable_base_id: null,
+      airtable_base_name: null,
       airtable_table_name: null,
       airtable_table_id: null,
-   
     });
 
     capture("maxun-oss-airtable-integration-removed", {
