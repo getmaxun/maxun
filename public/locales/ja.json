@@ -358,7 +358,7 @@
             },
             "alerts": {
                 "success": {
-                    "title": "Airtableに接続しました",
+                    "title": "Airtable ベースの統合に成功",
                     "content": "ロボットはベース: {{baseName}} とテーブル: {{tableName}} に接続されました。アクセスできます ",
                     "here": "こちら",
                     "note": "注意:",
