@@ -148,22 +148,13 @@ export async function writeDataToAirtable(
       }
 
       await deleteEmptyRecords(base, tableName);
-
-      const records = data.map(row => {
-        const validFields = Object.keys(row).filter(field => 
-          existingFields.includes(field) || missingFields.includes(field)
-        );
-        
-        const validData: { [key: string]: any } = {};
-        validFields.forEach((field: any) => {
-          validData[field] = row[field];
-        });
-        
-        return { fields: validData };
-      });
       
-      await createRecordsWithRetry(base, tableName, records);
-
+      const BATCH_SIZE = 10;
+      for (let i = 0; i < data.length; i += BATCH_SIZE) {
+        const batch = data.slice(i, i + BATCH_SIZE);
+        await retryableAirtableWrite(base, tableName, batch);
+      }
+      
       logger.log('info', `Successfully wrote ${data.length} records to Airtable`);
     });
   } catch (error: any) {
@@ -200,21 +191,18 @@ async function deleteEmptyRecords(base: Airtable.Base, tableName: string): Promi
   }
 }
 
-async function createRecordsWithRetry(
-  base: Airtable.Base, 
-  tableName: string, 
-  records: any[], 
+async function retryableAirtableWrite(
+  base: Airtable.Base,
+  tableName: string,
+  batch: any[],
   retries = MAX_RETRIES
 ): Promise<void> {
   try {
-    await base(tableName).create(records);
-  } catch (error: any) {
-    console.error(`Error creating records: ${error.message}`);
-    
+    await base(tableName).create(batch.map(row => ({ fields: row })));
+  } catch (error) {
     if (retries > 0) {
       await new Promise(resolve => setTimeout(resolve, BASE_API_DELAY));
-      console.log(`Retrying create operation, ${retries} attempts remaining`);
-      return createRecordsWithRetry(base, tableName, records, retries - 1);
+      return retryableAirtableWrite(base, tableName, batch, retries - 1);
     }
     throw error;
   }
