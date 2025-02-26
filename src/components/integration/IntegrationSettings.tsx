@@ -393,8 +393,9 @@ export const IntegrationSettingsModal = ({
               setSettings({ ...settings, integrationType: "googleSheets" });
               navigate(`/robots/${recordingId}/integrate/google`);
               }}
+              style={{ display: "flex", flexDirection: "column", alignItems: "center" }}
             >
-              <img src="/public/svg/gsheet.svg" alt="Google Sheets" style={{ marginRight: "8px" }} />
+              <img src="/public/svg/gsheet.svg" alt="Google Sheets" style={{ marginBottom: "8px" }} />
               Google Sheets
             </Button>
 
@@ -406,8 +407,9 @@ export const IntegrationSettingsModal = ({
               setSettings({ ...settings, integrationType: "airtable" });
               navigate(`/robots/${recordingId}/integrate/airtable`);
               }}
+              style={{ display: "flex", flexDirection: "column", alignItems: "center" }}
             >
-              <img src="/public/svg/airtable.svg" alt="Airtable" style={{ marginRight: "8px" }} />
+              <img src="/public/svg/airtable.svg" alt="Airtable" style={{ marginBottom: "8px" }} />
               Airtable
             </Button>
           </div>
