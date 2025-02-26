@@ -387,7 +387,6 @@ export const IntegrationSettingsModal = ({
           <div style={{ display: "flex", gap: "20px" }}>
             <Button
               variant="outlined"
-              
               onClick={() => {
                 setSelectedIntegrationType("googleSheets");
                 setSettings({ ...settings, integrationType: "googleSheets" });
@@ -401,7 +400,6 @@ export const IntegrationSettingsModal = ({
 
             <Button
               variant="outlined"
-              
               onClick={() => {
                 setSelectedIntegrationType("airtable");
                 setSettings({ ...settings, integrationType: "airtable" });
