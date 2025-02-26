@@ -130,9 +130,14 @@ export async function writeDataToAirtable(
       const airtable = new Airtable({ apiKey: accessToken });
       const base = airtable.base(baseId);
 
-      const existingFields = await getExistingFields(base, tableName);      
-      const dataFields = [...new Set(data.flatMap(row => Object.keys(row)))];      
+      const existingFields = await getExistingFields(base, tableName);
+      console.log(`Found ${existingFields.length} existing fields in Airtable`); 
+
+      const dataFields = [...new Set(data.flatMap(row => Object.keys(row)))];  
+      console.log(`Found ${dataFields.length} fields in data: ${dataFields.join(', ')}`);
+
       const missingFields = dataFields.filter(field => !existingFields.includes(field));
+      console.log(`Found ${missingFields.length} missing fields: ${missingFields.join(', ')}`);
 
       for (const field of missingFields) {
         const sampleRow = data.find(row => field in row);
@@ -237,19 +242,13 @@ async function createAirtableField(
   tableId: string,
   retries = MAX_RETRIES
 ): Promise<void> {
-  try {
-    const sanitizedFieldName = sanitizeFieldName(fieldName);
-    const fieldType = inferFieldType(sampleValue);
-    
-    console.log(`Creating field ${sanitizedFieldName} with type ${fieldType}`);
-    
+  try {        
     const response = await axios.post(
       `https://api.airtable.com/v0/meta/bases/${baseId}/tables/${tableId}/fields`,
-      { name: sanitizedFieldName, type: fieldType },
+      { name: fieldName },
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
     
-    logger.log('info', `Created field: ${sanitizedFieldName} (${fieldType})`);
     return response.data;
   } catch (error: any) {
     if (retries > 0 && error.response?.status === 429) {
@@ -265,35 +264,6 @@ async function createAirtableField(
     const errorMessage = error.response?.data?.error?.message || error.message;
     const statusCode = error.response?.status || 'No Status Code';
     console.warn(`Field creation issue (${statusCode}): ${errorMessage}`);
-  }
-}
-
-function sanitizeFieldName(fieldName: string): string {
-  return fieldName
-    .trim()
-    .replace(/^[^a-zA-Z]+/, '')
-    .replace(/[^\w\s]/gi, ' ')
-    .substring(0, 50);
-}
-
-function inferFieldType(value: any): string {
-  if (value === null || value === undefined) return 'singleLineText';
-  if (typeof value === 'number') return 'number';
-  if (typeof value === 'boolean') return 'checkbox';
-  if (value instanceof Date) return 'dateTime';
-  if (Array.isArray(value)) {
-    return value.length > 0 && typeof value[0] === 'object' ? 'multipleRecordLinks' : 'multipleSelects';
-  }
-  if (typeof value === 'string' && isValidUrl(value)) return 'url';
-  return 'singleLineText';
-}
-
-function isValidUrl(str: string): boolean {
-  try {
-    new URL(str);
-    return true;
-  } catch (_) {
-    return false;
   }
 }
 
