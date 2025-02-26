@@ -308,7 +308,6 @@
     },
     "integration_settings": {
       "title": "Integration Settings",
-      "title_select_integration": "Select Integration Type",
       "descriptions": {
         "authenticated_as": "Authenticated as: {{email}}"
       },
