@@ -1092,12 +1092,16 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
             newPath.splice(i, 1);
             const newPathKey = selector(newPath);
             if (scope.visited.has(newPathKey)) {
-              return;
+              continue;
             }
-            if (unique(newPath) && same(newPath, input)) {
-              yield newPath;
-              scope.visited.set(newPathKey, true);
-              yield* optimize(newPath, input, scope);
+            try {
+              if (unique(newPath) && same(newPath, input)) {
+                yield newPath;
+                scope.visited.set(newPathKey, true);
+                yield* optimize(newPath, input, scope);
+              }
+            } catch (e: any) {
+              continue;
             }
           }
         }
@@ -1654,6 +1658,31 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
             }
           }
 
+          if (element.parentElement) {
+            // Look for identical siblings
+            const siblings = Array.from(element.parentElement.children);
+            const identicalSiblings = siblings.filter(sibling => {
+              if (sibling === element) return false;
+              
+              let siblingSelector = sibling.tagName.toLowerCase();
+              const siblingClassName = typeof sibling.className === 'string' ? sibling.className : '';
+              if (siblingClassName) {
+                const siblingClasses = siblingClassName.split(/\s+/).filter(Boolean);
+                const validSiblingClasses = siblingClasses.filter(cls => !cls.startsWith('!') && !cls.includes(':'));
+                if (validSiblingClasses.length > 0) {
+                  siblingSelector += '.' + validSiblingClasses.map(cls => CSS.escape(cls)).join('.');
+                }
+              }
+              
+              return siblingSelector === selector;
+            });
+        
+            if (identicalSiblings.length > 0) {
+              const position = siblings.indexOf(element) + 1;
+              selector += `:nth-child(${position})`;
+            }
+          }
+
           return selector;
         }
 
@@ -1894,6 +1923,31 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
             }
           }
 
+          if (element.parentElement) {
+            // Look for identical siblings
+            const siblings = Array.from(element.parentElement.children);
+            const identicalSiblings = siblings.filter(sibling => {
+              if (sibling === element) return false;
+              
+              let siblingSelector = sibling.tagName.toLowerCase();
+              const siblingClassName = typeof sibling.className === 'string' ? sibling.className : '';
+              if (siblingClassName) {
+                const siblingClasses = siblingClassName.split(/\s+/).filter(Boolean);
+                const validSiblingClasses = siblingClasses.filter(cls => !cls.startsWith('!') && !cls.includes(':'));
+                if (validSiblingClasses.length > 0) {
+                  siblingSelector += '.' + validSiblingClasses.map(cls => CSS.escape(cls)).join('.');
+                }
+              }
+              
+              return siblingSelector === selector;
+            });
+        
+            if (identicalSiblings.length > 0) {
+              const position = siblings.indexOf(element) + 1;
+              selector += `:nth-child(${position})`;
+            }
+          }
+
           return selector;
         }
 
@@ -2022,6 +2076,31 @@ export const getChildSelectors = async (page: Page, parentSelector: string): Pro
             if (validClasses.length > 0) {
               selector += '.' + validClasses.map(cls => CSS.escape(cls)).join('.');
             }
+          }
+        }
+
+        if (element.parentElement) {
+          // Look for identical siblings
+          const siblings = Array.from(element.parentElement.children);
+          const identicalSiblings = siblings.filter(sibling => {
+            if (sibling === element) return false;
+            
+            let siblingSelector = sibling.tagName.toLowerCase();
+            const siblingClassName = typeof sibling.className === 'string' ? sibling.className : '';
+            if (siblingClassName) {
+              const siblingClasses = siblingClassName.split(/\s+/).filter(Boolean);
+              const validSiblingClasses = siblingClasses.filter(cls => !cls.startsWith('!') && !cls.includes(':'));
+              if (validSiblingClasses.length > 0) {
+                siblingSelector += '.' + validSiblingClasses.map(cls => CSS.escape(cls)).join('.');
+              }
+            }
+            
+            return siblingSelector === selector;
+          });
+      
+          if (identicalSiblings.length > 0) {
+            const position = siblings.indexOf(element) + 1;
+            selector += `:nth-child(${position})`;
           }
         }
 

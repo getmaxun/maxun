@@ -161,7 +161,7 @@ export const createRunForStoredRecording = async (id: string, settings: RunSetti
     }
   } catch (error: any) {
     console.log(error);
-    return { browserId: '', runId: '' };
+    return { browserId: '', runId: '', robotMetaId: '' };
   }
 }
 

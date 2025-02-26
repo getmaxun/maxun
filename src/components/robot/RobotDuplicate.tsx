@@ -55,9 +55,9 @@ interface RobotSettingsProps {
 
 export const RobotDuplicationModal = ({ isOpen, handleStart, handleClose, initialSettings }: RobotSettingsProps) => {
     const { t } = useTranslation();
-    const [robot, setRobot] = useState<RobotSettings | null>(null);
     const [targetUrl, setTargetUrl] = useState<string | undefined>('');
-    const { recordingId, notify } = useGlobalInfoStore();
+    const [robot, setRobot] = useState<RobotSettings | null>(null);
+    const { recordingId, notify, setRerenderRobots } = useGlobalInfoStore();
 
     useEffect(() => {
         if (isOpen) {
@@ -96,13 +96,11 @@ export const RobotDuplicationModal = ({ isOpen, handleStart, handleClose, initia
             const success = await duplicateRecording(robot.recording_meta.id, targetUrl);
 
             if (success) {
+                setRerenderRobots(true);
+
                 notify('success', t('robot_duplication.notifications.duplicate_success'));
                 handleStart(robot);
                 handleClose();
-
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
             } else {
                 notify('error', t('robot_duplication.notifications.duplicate_error'));
             }

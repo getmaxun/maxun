@@ -8,7 +8,16 @@
         "register_prompt": "アカウントをお持ちでないですか？",
         "register_link": "登録する",
         "welcome_notification": "Maxunへようこそ！",
-        "error_notification": "ログインに失敗しました。もう一度お試しください。"
+        "validation": {
+            "required_fields": "メールアドレスとパスワードは必須です",
+            "password_length": "パスワードは6文字以上である必要があります"
+        },
+        "error": {
+            "user_not_found": "ユーザーが存在しません",
+            "invalid_credentials": "メールアドレスまたはパスワードが無効です",
+            "server_error": "ログインに失敗しました。後でもう一度お試しください",
+            "generic": "エラーが発生しました。もう一度お試しください"
+        }
   },
   "register": {
         "title": "アカウントを登録する",
@@ -19,7 +28,16 @@
         "register_prompt": "既にアカウントをお持ちですか？",
         "login_link": "ログイン",
         "welcome_notification": "Maxunへようこそ！",
-        "error_notification": "登録に失敗しました。もう一度お試しください。"
+        "validation": {
+            "email_required": "メールアドレスは必須です",
+            "password_requirements": "パスワードは6文字以上である必要があります"
+        },
+        "error": {
+            "user_exists": "このメールアドレスは既に登録されています",
+            "creation_failed": "アカウントを作成できませんでした",
+            "server_error": "サーバーエラーが発生しました",
+            "generic": "登録に失敗しました。もう一度お試しください"
+        }
   },
   "recordingtable": {
         "run": "実行",
@@ -123,11 +141,11 @@
         "generate_button": "APIキーを生成",
         "notifications": {
             "fetch_error": "APIキーの取得に失敗しました - ${error}",
-            "generate_success": "APIキーが正常に生成されました",
+            "generate_success": "APIキーの生成に成功しました",
             "generate_error": "APIキーの生成に失敗しました - ${error}",
-            "delete_success": "APIキーが正常に削除されました",
+            "delete_success": "APIキーの削除に成功しました",
             "delete_error": "APIキーの削除に失敗しました - ${error}",
-            "copy_success": "APIキーがコピーされました"
+            "copy_success": "APIキーのコピーに成功しました"
         }
     },
     "action_description": {
@@ -470,6 +488,19 @@
     },
     "navbar": {
         "project_name": "Maxun",
+        "notifications": {
+            "success": {
+                "logout": "ログアウトに成功しました"
+            },
+            "errors": {
+                "logout": {
+                "unauthorized": "この操作を実行する権限がありません",
+                "server": "ログアウト中にサーバーエラーが発生しました",
+                "network": "ログアウト中にネットワークエラーが発生しました",
+                "unknown": "ログアウト中に予期せぬエラーが発生しました"
+                }
+            }
+        },
         "upgrade": {
         "button": "アップグレード",
         "modal": {

@@ -8,10 +8,19 @@
       "register_prompt": "Don't have an account?",
       "register_link": "Register",
       "welcome_notification": "Welcome to Maxun!",
-      "error_notification": "Login Failed. Please try again."
+      "validation": {
+        "required_fields": "Email and password are required",
+        "password_length": "Password must be at least 6 characters"
+      },
+      "error": {
+        "user_not_found": "User does not exist",
+        "invalid_credentials": "Invalid email or password",
+        "server_error": "Login failed. Please try again later",
+        "generic": "An error occurred. Please try again"
+      }
     },
     "register": {
-      "title": "Register Account",
+      "title": "Create An Account",
       "email": "Enter Work Email",
       "password": "Password",
       "button": "Register",
@@ -19,7 +28,16 @@
       "register_prompt": "Already have an account?",
       "login_link": "Login",
       "welcome_notification": "Welcome to Maxun!",
-      "error_notification": "Registeration Failed. Please try again."
+      "validation": {
+        "email_required": "Email is required",
+        "password_requirements": "Password must be at least 6 characters"
+      },
+      "error": {
+        "user_exists": "User with this email already exists",
+        "creation_failed": "Could not create account",
+        "server_error": "Server error occurred",
+        "generic": "Registration failed. Please try again"
+      }
     },
     "recordingtable":{
       "run": "Run",
@@ -32,7 +50,7 @@
       "new":"Create Robot",
       "modal":{
         "title":"Enter the URL",
-        "login_title": "Does this website require login?",
+        "login_title": "Does this website require logging in?",
         "label":"URL",
         "button":"Start Recording"
       },
@@ -480,6 +498,19 @@
     },
     "navbar": {
       "project_name": "Maxun",
+      "notifications": {
+        "success": {
+          "logout": "Logged out successfully"
+        },
+        "errors": {
+          "logout": {
+            "unauthorized": "You are not authorized to perform this action",
+            "server": "Server error occurred during logout",
+            "network": "Network error while logging out",
+            "unknown": "An unexpected error occurred during logout"
+          }
+        }
+      },
       "upgrade": {
         "button": "Upgrade",
         "modal": {
