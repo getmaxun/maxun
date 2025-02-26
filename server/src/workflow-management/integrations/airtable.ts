@@ -242,13 +242,18 @@ async function createAirtableField(
   tableId: string,
   retries = MAX_RETRIES
 ): Promise<void> {
-  try {        
+  try {
+    const fieldType = inferFieldType(sampleValue);
+    
+    console.log(`Creating field ${fieldName} with type ${fieldType}`);
+    
     const response = await axios.post(
       `https://api.airtable.com/v0/meta/bases/${baseId}/tables/${tableId}/fields`,
-      { name: fieldName },
+      { name: fieldName, type: fieldType },
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
     
+    logger.log('info', `Created field: ${fieldName} (${fieldType})`);
     return response.data;
   } catch (error: any) {
     if (retries > 0 && error.response?.status === 429) {
@@ -264,6 +269,27 @@ async function createAirtableField(
     const errorMessage = error.response?.data?.error?.message || error.message;
     const statusCode = error.response?.status || 'No Status Code';
     console.warn(`Field creation issue (${statusCode}): ${errorMessage}`);
+  }
+}
+
+function inferFieldType(value: any): string {
+  if (value === null || value === undefined) return 'singleLineText';
+  if (typeof value === 'number') return 'number';
+  if (typeof value === 'boolean') return 'checkbox';
+  if (value instanceof Date) return 'dateTime';
+  if (Array.isArray(value)) {
+    return value.length > 0 && typeof value[0] === 'object' ? 'multipleRecordLinks' : 'multipleSelects';
+  }
+  if (typeof value === 'string' && isValidUrl(value)) return 'url';
+  return 'singleLineText';
+}
+
+function isValidUrl(str: string): boolean {
+  try {
+    new URL(str);
+    return true;
+  } catch (_) {
+    return false;
   }
 }
 
