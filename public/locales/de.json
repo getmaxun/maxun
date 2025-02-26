@@ -305,29 +305,91 @@
         }
     },
     "integration_settings": {
-        "title": "Mit Google Sheet integrieren",
+        "title": "Integrationseinstellungen",
+        "title_select_integration": "Integrationstyp auswählen",
         "descriptions": {
-            "sync_info": "Wenn Sie diese Option aktivieren, werden bei jeder erfolgreichen Ausführung dieses Roboters die erfassten Daten in Ihrem Google Sheet ergänzt.",
             "authenticated_as": "Authentifiziert als: {{email}}"
         },
-        "alerts": {
-            "success": {
-                "title": "Google Sheet erfolgreich integriert.",
-                "content": "Jedes Mal, wenn dieser Roboter eine erfolgreiche Ausführung erstellt, werden die erfassten Daten Ihrem Google Sheet {{sheetName}} hinzugefügt. Sie können die Datenaktualisierungen",
-                "here": "hier",
-                "note": "Hinweis:",
-                "sync_limitation": "Die vor der Integration mit Google Sheets extrahierten Daten werden nicht im Google Sheet synchronisiert. Nur die nach der Integration extrahierten Daten werden synchronisiert."
+        "buttons": {
+            "submit": "Absenden",
+            "remove_integration": "Integration entfernen"
+        },
+        "google": {
+            "title": "Mit Google Sheet integrieren",
+            "descriptions": {
+                "sync_info": "Wenn Sie diese Option aktivieren, werden bei jeder erfolgreichen Ausführung einer Aufgabe durch diesen Roboter die erfassten Daten an Ihr Google Sheet angehängt.",
+                "authenticated_as": "Authentifiziert als: {{email}}"
+            },
+            "alerts": {
+                "success": {
+                    "title": "Google Sheet erfolgreich integriert.",
+                    "content": "Jedes Mal, wenn dieser Roboter einen erfolgreichen Lauf erstellt, werden seine erfassten Daten an Ihr Google Sheet {{sheetName}} angehängt. Sie können die Datenaktualisierungen überprüfen",
+                    "here": "hier",
+                    "note": "Hinweis:",
+                    "sync_limitation": "Die vor der Integration mit Google Sheets extrahierten Daten werden nicht im Google Sheet synchronisiert. Nur die nach der Integration extrahierten Daten werden synchronisiert."
+                }
+            },
+            "buttons": {
+                "authenticate": "Mit Google authentifizieren",
+                "fetch_sheets": "Google Tabellenkalkulationen abrufen",
+                "remove_integration": "Integration entfernen",
+                "submit": "Absenden"
+            },
+            "fields": {
+                "select_sheet": "Google Sheet auswählen",
+                "selected_sheet": "Ausgewähltes Sheet: {{name}} (ID: {{id}})"
+            },
+            "errors": {
+                "auth_error": "Fehler bei der Authentifizierung mit Google",
+                "fetch_error": "Fehler beim Abrufen der Tabellenkalkulationsdateien: {{message}}",
+                "update_error": "Fehler beim Aktualisieren der Google Sheet-ID: {{message}}",
+                "remove_error": "Fehler beim Entfernen der Google Sheets-Integration: {{message}}"
+            },
+            "notifications": {
+                "sheet_selected": "Google Sheet erfolgreich ausgewählt",
+                "integration_removed": "Google Sheets-Integration erfolgreich entfernt"
             }
         },
-        "buttons": {
-            "authenticate": "Mit Google authentifizieren",
-            "fetch_sheets": "Google Sheets abrufen",
-            "remove_integration": "Integration entfernen",
-            "submit": "Absenden"
-        },
-        "fields": {
-            "select_sheet": "Google Sheet auswählen",
-            "selected_sheet": "Ausgewähltes Sheet: {{name}} (ID: {{id}})"
+        "airtable": {
+            "title": "Mit Airtable integrieren",
+            "descriptions": {
+                "sync_info": "Wenn Sie diese Option aktivieren, werden bei jeder erfolgreichen Ausführung einer Aufgabe durch diesen Roboter die erfassten Daten an Ihre Airtable angehängt.",
+                "authenticated_as": "Mit Airtable authentifiziert"
+            },
+            "alerts": {
+                "success": {
+                    "title": "Mit Airtable verbunden",
+                    "content": "Ihr Roboter ist jetzt mit der Basis: {{baseName}} und Tabelle: {{tableName}} verbunden. Sie können darauf zugreifen ",
+                    "here": "hier",
+                    "note": "Hinweis:",
+                    "sync_limitation": "Nur nach der Integration erfasste Daten werden mit Airtable synchronisiert."
+                }
+            },
+            "buttons": {
+                "authenticate": "Mit Airtable verbinden",
+                "fetch_bases": "Airtable Basen abrufen",
+                "fetch_tables": "Airtable Tabellen abrufen",
+                "remove_integration": "Airtable-Integration entfernen",
+                "submit": "Basis und Tabelle auswählen"
+            },
+            "fields": {
+                "select_base": "Airtable Basis auswählen",
+                "select_table": "Airtable Tabelle auswählen",
+                "selected_base": "Ausgewählte Basis: {{name}}",
+                "selected_table": "Ausgewählte Tabelle: {{name}}"
+            },
+            "errors": {
+                "auth_error": "Fehler bei der Authentifizierung mit Airtable",
+                "fetch_error": "Fehler beim Abrufen von Airtable-Basen: {{message}}",
+                "fetch_tables_error": "Fehler beim Abrufen von Airtable-Tabellen: {{message}}",
+                "update_error": "Fehler beim Aktualisieren der Airtable-Basis: {{message}}",
+                "remove_error": "Fehler beim Entfernen der Airtable-Integration: {{message}}"
+            },
+            "notifications": {
+                "base_selected": "Airtable-Basis erfolgreich ausgewählt",
+                "table_selected": "Airtable-Tabelle erfolgreich ausgewählt",
+                "integration_removed": "Airtable-Integration erfolgreich entfernt"
+            }
         }
     },
     "robot_duplication": {

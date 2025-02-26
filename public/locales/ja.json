@@ -306,29 +306,91 @@
         }
     },
     "integration_settings": {
-        "title": "Google Sheetと連携",
+        "title": "連携設定",
+        "title_select_integration": "連携タイプを選択",
         "descriptions": {
-            "sync_info": "このオプションを有効にすると、このロボットがタスクを正常に実行するたびに、取得したデータがGoogle Sheetに追加されます。",
-            "authenticated_as": "認証済みユーザー: {{email}}"
-        },
-        "alerts": {
-            "success": {
-                "title": "Google Sheetの連携が完了しました。",
-                "content": "このロボットが正常に実行を完了するたびに、取得したデータはGoogle Sheet {{sheetName}}に追加されます。データの更新は",
-                "here": "こちら",
-                "note": "注意：",
-                "sync_limitation": "Google Sheetsとの連携前に抽出されたデータは同期されません。連携後に抽出されたデータのみが同期されます。"
-            }
+            "authenticated_as": "認証済み: {{email}}"
         },
         "buttons": {
-            "authenticate": "Googleで認証",
-            "fetch_sheets": "Google Sheetsを取得",
-            "remove_integration": "連携を解除",
-            "submit": "送信"
+            "submit": "送信",
+            "remove_integration": "連携を解除"
         },
-        "fields": {
-            "select_sheet": "Google Sheetを選択",
-            "selected_sheet": "選択したシート: {{name}} (ID: {{id}})"
+        "google": {
+            "title": "Google シートと連携",
+            "descriptions": {
+                "sync_info": "このオプションを有効にすると、このロボットがタスクを正常に実行するたびに、取得したデータがGoogle シートに追加されます。",
+                "authenticated_as": "認証済み: {{email}}"
+            },
+            "alerts": {
+                "success": {
+                    "title": "Google シートの連携に成功しました。",
+                    "content": "このロボットが正常に実行されるたびに、取得したデータが{{sheetName}}という名前のGoogle シートに追加されます。データの更新を確認できます",
+                    "here": "こちら",
+                    "note": "注意:",
+                    "sync_limitation": "Google シートとの連携前に抽出されたデータはGoogle シートに同期されません。連携後に抽出されたデータのみが同期されます。"
+                }
+            },
+            "buttons": {
+                "authenticate": "Googleで認証",
+                "fetch_sheets": "Google スプレッドシートを取得",
+                "remove_integration": "連携を解除",
+                "submit": "送信"
+            },
+            "fields": {
+                "select_sheet": "Google シートを選択",
+                "selected_sheet": "選択したシート: {{name}} (ID: {{id}})"
+            },
+            "errors": {
+                "auth_error": "Googleでの認証エラー",
+                "fetch_error": "スプレッドシートファイルの取得エラー: {{message}}",
+                "update_error": "Google シートIDの更新エラー: {{message}}",
+                "remove_error": "Google シート連携の解除エラー: {{message}}"
+            },
+            "notifications": {
+                "sheet_selected": "Google シートが正常に選択されました",
+                "integration_removed": "Google シートの連携が正常に解除されました"
+            }
+        },
+        "airtable": {
+            "title": "Airtableと連携",
+            "descriptions": {
+                "sync_info": "このオプションを有効にすると、このロボットがタスクを正常に実行するたびに、取得したデータがAirtableに追加されます。",
+                "authenticated_as": "Airtableで認証済み"
+            },
+            "alerts": {
+                "success": {
+                    "title": "Airtableに接続しました",
+                    "content": "ロボットはベース: {{baseName}} とテーブル: {{tableName}} に接続されました。アクセスできます ",
+                    "here": "こちら",
+                    "note": "注意:",
+                    "sync_limitation": "連携後に取得されたデータのみがAirtableに同期されます。"
+                }
+            },
+            "buttons": {
+                "authenticate": "Airtableと接続",
+                "fetch_bases": "Airtableベースを取得",
+                "fetch_tables": "Airtableテーブルを取得",
+                "remove_integration": "Airtable連携を解除",
+                "submit": "ベースとテーブルを選択"
+            },
+            "fields": {
+                "select_base": "Airtableベースを選択",
+                "select_table": "Airtableテーブルを選択",
+                "selected_base": "選択したベース: {{name}}",
+                "selected_table": "選択したテーブル: {{name}}"
+            },
+            "errors": {
+                "auth_error": "Airtableでの認証エラー",
+                "fetch_error": "Airtableベースの取得エラー: {{message}}",
+                "fetch_tables_error": "Airtableテーブルの取得エラー: {{message}}",
+                "update_error": "Airtableベースの更新エラー: {{message}}",
+                "remove_error": "Airtable連携の解除エラー: {{message}}"
+            },
+            "notifications": {
+                "base_selected": "Airtableベースが正常に選択されました",
+                "table_selected": "Airtableテーブルが正常に選択されました",
+                "integration_removed": "Airtable連携が正常に解除されました"
+            }
         }
     },
     "robot_duplication": {

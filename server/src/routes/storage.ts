@@ -21,6 +21,7 @@ import { tryCatch } from 'bullmq';
 import { encrypt, decrypt } from '../utils/auth';
 import { WorkflowFile } from 'maxun-core';
 import { Page } from 'playwright';
+import { airtableUpdateTasks, processAirtableUpdates } from '../workflow-management/integrations/airtable';
 chromium.use(stealthPlugin());
 
 export const router = Router();
@@ -667,6 +668,15 @@ router.post('/runs/run/:id', requireSignIn, async (req: AuthenticatedRequest, re
           status: 'pending',
           retries: 5,
         };
+
+        airtableUpdateTasks[plainRun.runId] = {
+          robotId: plainRun.robotMetaId,
+          runId: plainRun.runId,
+          status: 'pending',
+          retries: 5,
+        };
+
+        processAirtableUpdates();
         processGoogleSheetUpdates();
       } catch (err: any) {
         logger.log('error', `Failed to update Google Sheet for run: ${plainRun.runId}: ${err.message}`);
