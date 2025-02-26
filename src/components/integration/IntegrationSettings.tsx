@@ -436,14 +436,15 @@ export const IntegrationSettingsModal = ({
                 <Alert severity="info" sx={{ marginTop: "10px", border: "1px solid #ff00c3" }}>
                   <AlertTitle>{t("integration_settings.google.alerts.success.title")}</AlertTitle>
                   {t("integration_settings.google.alerts.success.content", {
-                    sheetName: recording.google_sheet_name,
+                  sheetName: recording.google_sheet_name,
                   })}
                   <a
-                    href={`https://docs.google.com/spreadsheets/d/${recording.google_sheet_id}`}
-                    target="_blank"
-                    rel="noreferrer"
+                  href={`https://docs.google.com/spreadsheets/d/${recording.google_sheet_id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ marginLeft: "4px" }}
                   >
-                    {t("integration_settings.google.alerts.success.here")}
+                  {t("integration_settings.google.alerts.success.here")}
                   </a>
                 </Alert>
                 <Button
