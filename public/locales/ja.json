@@ -307,7 +307,6 @@
     },
     "integration_settings": {
         "title": "連携設定",
-        "title_select_integration": "連携タイプを選択",
         "descriptions": {
             "authenticated_as": "認証済み: {{email}}"
         },
