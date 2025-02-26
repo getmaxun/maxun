@@ -354,7 +354,7 @@
             "title": "Airtableと連携",
             "descriptions": {
                 "sync_info": "このオプションを有効にすると、このロボットがタスクを正常に実行するたびに、取得したデータがAirtableに追加されます。",
-                "authenticated_as": "Airtableで認証済み"
+                "authenticated_as": "Airtableで認証に成功しました。統合するベースとテーブルを選択できるようになりました。"
             },
             "alerts": {
                 "success": {
