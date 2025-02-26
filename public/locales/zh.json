@@ -358,7 +358,7 @@
       },
       "alerts": {
         "success": {
-          "title": "已连接到Airtable",
+          "title": "Airtable 基地成功集成",
           "content": "您的机器人现已连接到基础：{{baseName}}和表格：{{tableName}}。您可以访问它",
           "here": "在这里",
           "note": "注意：",
