@@ -49,11 +49,7 @@ export async function updateGoogleSheet(robotId: string, runId: string) {
       if (plainRobot.google_sheet_email && spreadsheetId) {
         console.log(`Preparing to write data to Google Sheet for robot: ${robotId}, spreadsheetId: ${spreadsheetId}`);
 
-        const headers = Object.keys(data[0]);
-        const rows = data.map((row: { [key: string]: any }) => Object.values(row));
-        const outputData = [headers, ...rows];
-
-        await writeDataToSheet(robotId, spreadsheetId, outputData);
+        await writeDataToSheet(robotId, spreadsheetId, data);
         console.log(`Data written to Google Sheet successfully for Robot: ${robotId} and Run: ${runId}`);
       } else {
         console.log('Google Sheets integration not configured.');
@@ -102,7 +98,38 @@ export async function writeDataToSheet(robotId: string, spreadsheetId: string, d
 
     const sheets = google.sheets({ version: 'v4', auth: oauth2Client });
 
-    const resource = { values: data };
+    const checkResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: 'Sheet1!1:1', 
+    });
+
+    const expectedHeaders = Object.keys(data[0]);
+
+    const rows = data.map(item => Object.values(item));
+
+    const existingHeaders = 
+      checkResponse.data.values && 
+      checkResponse.data.values[0] ? 
+      checkResponse.data.values[0].map(String) : 
+      [];
+
+    const isSheetEmpty = existingHeaders.length === 0;
+    
+    const headersMatch = 
+      !isSheetEmpty &&
+      existingHeaders.length === expectedHeaders.length && 
+      expectedHeaders.every((header, index) => existingHeaders[index] === header);
+
+    let resource;
+    
+    if (isSheetEmpty || !headersMatch) {
+      resource = { values: [expectedHeaders, ...rows] };
+      console.log('Including headers in the append operation.');
+    } else {
+      resource = { values: rows };
+      console.log('Headers already exist and match, only appending data rows.');
+    }
+
     console.log('Attempting to write to spreadsheet:', spreadsheetId);
 
     const response = await sheets.spreadsheets.values.append({
