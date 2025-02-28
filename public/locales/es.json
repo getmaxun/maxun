@@ -354,12 +354,12 @@
       "title": "Integrar con Airtable",
       "descriptions": {
         "sync_info": "Si habilita esta opción, cada vez que este robot ejecute una tarea correctamente, sus datos capturados se añadirán a su Airtable.",
-        "authenticated_as": "Autenticado con Airtable"
+        "authenticated_as": "Autenticado con Airtable exitosamente. Ahora puede seleccionar la base y la mesa con las que desea integrar."
       },
       "alerts": {
         "success": {
-          "title": "Conectado a Airtable",
-          "content": "Su robot ahora está conectado a la base: {{baseName}} y tabla: {{tableName}}. Puede acceder a ella ",
+          "title": "Base Airtable integrada con éxito",
+          "content": "Cada vez que este robot crea una ejecución exitosa, los datos capturados se agregan a su base {{baseName}} y a su tabla {{tableName}}. Puedes consultar actualizaciones",
           "here": "aquí",
           "note": "Nota:",
           "sync_limitation": "Solo los datos capturados después de la integración se sincronizarán con Airtable."
@@ -369,7 +369,7 @@
         "authenticate": "Conectar con Airtable",
         "fetch_bases": "Obtener Bases de Airtable",
         "fetch_tables": "Obtener Tablas de Airtable",
-        "remove_integration": "Eliminar Integración de Airtable",
+        "remove_integration": "Eliminar Integración",
         "submit": "Seleccionar Base y Tabla"
       },
       "fields": {

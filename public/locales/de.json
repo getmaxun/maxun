@@ -353,12 +353,12 @@
             "title": "Mit Airtable integrieren",
             "descriptions": {
                 "sync_info": "Wenn Sie diese Option aktivieren, werden bei jeder erfolgreichen Ausführung einer Aufgabe durch diesen Roboter die erfassten Daten an Ihre Airtable angehängt.",
-                "authenticated_as": "Mit Airtable authentifiziert"
+                "authenticated_as": "Erfolgreich bei Airtable authentifiziert. Sie können nun die Basis und den Tisch auswählen, in die Sie integrieren möchten."
             },
             "alerts": {
                 "success": {
-                    "title": "Mit Airtable verbunden",
-                    "content": "Ihr Roboter ist jetzt mit der Basis: {{baseName}} und Tabelle: {{tableName}} verbunden. Sie können darauf zugreifen ",
+                    "title": "Airtable Base erfolgreich integriert",
+                    "content": "Jedes Mal, wenn dieser Roboter einen erfolgreichen Lauf erstellt, werden seine erfassten Daten an Ihre {{baseName}}-Basis und Ihre {{tableName}}-Tabelle angehängt. Sie können Updates überprüfen",
                     "here": "hier",
                     "note": "Hinweis:",
                     "sync_limitation": "Nur nach der Integration erfasste Daten werden mit Airtable synchronisiert."
@@ -368,7 +368,7 @@
                 "authenticate": "Mit Airtable verbinden",
                 "fetch_bases": "Airtable Basen abrufen",
                 "fetch_tables": "Airtable Tabellen abrufen",
-                "remove_integration": "Airtable-Integration entfernen",
+                "remove_integration": "Integration entfernen",
                 "submit": "Basis und Tabelle auswählen"
             },
             "fields": {
