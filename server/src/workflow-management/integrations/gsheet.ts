@@ -103,6 +103,11 @@ export async function writeDataToSheet(robotId: string, spreadsheetId: string, d
       range: 'Sheet1!1:1', 
     });
 
+    if (!data || data.length === 0) {
+      console.log('No data to write. Exiting early.');
+      return;
+    }
+
     const expectedHeaders = Object.keys(data[0]);
 
     const rows = data.map(item => Object.values(item));
