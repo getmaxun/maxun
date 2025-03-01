@@ -6,6 +6,7 @@ import DatePicker from '../pickers/DatePicker';
 import Dropdown from '../pickers/Dropdown';
 import TimePicker from '../pickers/TimePicker';
 import DateTimeLocalPicker from '../pickers/DateTimeLocalPicker';
+import { FrontendPerformanceMonitor } from '../../../perf/performance';
 
 interface CreateRefCallback {
     (ref: React.RefObject<HTMLCanvasElement>): void;
@@ -26,6 +27,9 @@ export interface Coordinates {
 };
 
 const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
+
+    const performanceMonitor = useRef(new FrontendPerformanceMonitor());
+    console.log('Frontend Performance Report:', performanceMonitor.current.getPerformanceReport());
 
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const { socket } = useSocketStore();
@@ -110,6 +114,7 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
     }, [socket]);
 
     const onMouseEvent = useCallback((event: MouseEvent) => {
+        performanceMonitor.current.measureEventLatency(event);
         if (socket && canvasRef.current) {
             // Get the canvas bounding rectangle
             const rect = canvasRef.current.getBoundingClientRect();
@@ -158,6 +163,16 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
             }
         }
     }, [socket]);
+
+    // performance logging
+    useEffect(() => {
+        const intervalId = setInterval(() => {
+            const report = performanceMonitor.current.getPerformanceReport();
+            console.log('Frontend Performance Report:', report);
+        }, 5000);
+
+        return () => clearInterval(intervalId);
+    }, []);
 
     const onKeyboardEvent = useCallback((event: KeyboardEvent) => {
         if (socket) {
