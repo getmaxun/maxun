@@ -768,14 +768,20 @@ export default class Interpreter extends EventEmitter {
           }
 
           case 'clickLoadMore': {
+            await scrapeCurrentPage();
+            if (checkLimit()) return allResults;
+            
+            let loadMoreCounter = 0;
+            let previousResultCount = allResults.length;
+            let noNewItemsCounter = 0;
+            const MAX_NO_NEW_ITEMS = 2;
+            
             while (true) {
-              // Find working button with retry mechanism, consistent with clickNext
+              // Find working button with retry mechanism
               const { button: loadMoreButton, workingSelector } = await findWorkingButton(availableSelectors);
               
               if (!workingSelector || !loadMoreButton) {
                 debugLog('No working Load More selector found after retries');
-                const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
-                allResults = allResults.concat(finalResults);
                 return allResults;
               }
           
@@ -808,6 +814,8 @@ export default class Interpreter extends EventEmitter {
           
                   if (clickSuccess) {
                     await page.waitForTimeout(1000);
+                    loadMoreCounter++;
+                    debugLog(`Successfully clicked Load More button (${loadMoreCounter} times)`);
                   }
                 } catch (error) {
                   debugLog(`Click attempt ${retryCount + 1} failed completely.`);
@@ -822,8 +830,6 @@ export default class Interpreter extends EventEmitter {
           
               if (!clickSuccess) {
                 debugLog(`Load More clicking failed after ${MAX_RETRIES} attempts`);
-                const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
-                allResults = allResults.concat(finalResults);
                 return allResults;
               }
           
@@ -833,20 +839,34 @@ export default class Interpreter extends EventEmitter {
               await page.waitForTimeout(2000);
           
               const currentHeight = await page.evaluate(() => document.body.scrollHeight);
-              if (currentHeight === previousHeight) {
-                debugLog('No more items loaded after Load More');
-                const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
-                allResults = allResults.concat(finalResults);
-                return allResults;
-              }
+              const heightChanged = currentHeight !== previousHeight;
               previousHeight = currentHeight;
               
-              if (config.limit && allResults.length >= config.limit) {
-                allResults = allResults.slice(0, config.limit);
-                break;
+              await scrapeCurrentPage();
+              
+              const currentResultCount = allResults.length;
+              const newItemsAdded = currentResultCount > previousResultCount;
+                          
+              if (!newItemsAdded) {
+                noNewItemsCounter++;
+                debugLog(`No new items added after click (${noNewItemsCounter}/${MAX_NO_NEW_ITEMS})`);
+                
+                if (noNewItemsCounter >= MAX_NO_NEW_ITEMS) {
+                  debugLog(`Stopping after ${MAX_NO_NEW_ITEMS} clicks with no new items`);
+                  return allResults;
+                }
+              } else {
+                noNewItemsCounter = 0;
+                previousResultCount = currentResultCount;
+              }
+              
+              if (checkLimit()) return allResults;     
+              
+              if (!heightChanged) {
+                debugLog('No more items loaded after Load More');
+                return allResults;
               }
             }
-            break;
           }
 
           default: {
