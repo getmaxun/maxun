@@ -825,6 +825,7 @@ export class WorkflowGenerator {
         selectors?.testIdSelector,
         selectors?.id,
         selectors?.hrefSelector,
+        selectors?.relSelector,
         selectors?.accessibilitySelector,
         selectors?.attrSelector
       ]
