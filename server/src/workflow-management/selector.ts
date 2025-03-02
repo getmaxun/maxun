@@ -1427,6 +1427,7 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
         const iframeSelector = genSelectorForIframe(element);
         const shadowSelector = genSelectorForShadowDOM(element);
 
+        const relSelector = genSelectorForAttributes(element, ['rel']);
         const hrefSelector = genSelectorForAttributes(element, ['href']);
         const formSelector = genSelectorForAttributes(element, [
           'name',
@@ -1473,6 +1474,7 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
           hrefSelector,
           accessibilitySelector,
           formSelector,
+          relSelector,
           iframeSelector: iframeSelector ? {
             full: iframeSelector.fullSelector,
             isIframe: iframeSelector.isFrameContent,
@@ -1509,6 +1511,11 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
       function genSelectorForAttributes(element: HTMLElement, attributes: string[]) {
         let selector = null;
         try {
+          if (attributes.includes('rel') && element.hasAttribute('rel')) {
+            const relValue = element.getAttribute('rel');
+            return `[rel="${relValue}"]`;
+          }
+
           selector = isAttributesDefined(element, attributes)
             ? finder(element, {
               idName: () => false, // Don't use the id to generate a selector
