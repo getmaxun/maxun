@@ -11,7 +11,7 @@ body {
   padding: 0;
   scrollbar-gutter: stable;
   overflow-y: auto;
-  
+
 }
 
 input:-webkit-autofill,
@@ -35,6 +35,7 @@ html {
 
 a {
   color: #ff00c3;
+
   &:hover {
     color: #ff00c3;
   }
@@ -42,7 +43,7 @@ a {
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-  monospace;
+    monospace;
   color: #ff00c3;
 }
 
@@ -57,7 +58,7 @@ code {
   align-items: center;
   overflow: hidden;
   position: relative;
-  
+
 }
 
 #browser-content {
@@ -65,14 +66,14 @@ code {
   width: 100%;
   display: flex;
   flex-direction: column;
-  transform: scale(1); /* Ensure no scaling */
-  transform-origin: top left; /* Keep the position fixed */
+  transform: scale(1);
+  /* Ensure no scaling */
+  transform-origin: top left;
+  /* Keep the position fixed */
 }
 
 
-#browser {
- 
-}
+#browser {}
 
 #browser-window {
   overflow-y: auto;
