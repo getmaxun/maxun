@@ -286,6 +286,12 @@ export default class Interpreter extends EventEmitter {
             ? arrayToObject(<any>superset[key])
             : superset[key];
 
+          if ((key === 'url' || key === 'selectors') && 
+            Array.isArray(value) && Array.isArray(superset[key]) && 
+            value.length === 0 && (superset[key] as any[]).length === 0) {
+            return true;
+          }
+
           if (key === 'selectors' && Array.isArray(value) && Array.isArray(superset[key])) {
             return value.some(selector => 
               (superset[key] as any[]).includes(selector)
