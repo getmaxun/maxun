@@ -210,7 +210,6 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
           return Array.from(document.querySelectorAll(config.selector));
       }
   
-      // First handle iframe traversal if present
       if (config.selector.includes(':>>')) {
         const parts = config.selector.split(':>>').map(s => s.trim());
         let currentElements = [document];
@@ -223,23 +222,44 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
 
             for (const element of currentElements) {
                 try {
-                    // For document or iframe document
                     const doc = element.contentDocument || element || element.contentWindow?.document;
                     if (!doc) continue;
 
-                    // Query elements in current context
+                    if (part.startsWith('frame[name=') || part.startsWith('iframe[name=')) {
+                        const nameMatch = part.match(/\[name=['"]([^'"]+)['"]\]/);
+                        if (nameMatch && nameMatch[1]) {
+                            const frameName = nameMatch[1];
+                            let foundFrames = [];
+                            
+                            if (doc.getElementsByName && typeof doc.getElementsByName === 'function') {
+                                foundFrames = Array.from(doc.getElementsByName(frameName))
+                                    .filter(el => el.tagName === 'FRAME' || el.tagName === 'IFRAME');
+                            }
+                            
+                            if (foundFrames.length === 0) {
+                                const framesBySelector = Array.from(doc.querySelectorAll(`frame[name="${frameName}"], iframe[name="${frameName}"]`));
+                                foundFrames = framesBySelector;
+                            }
+                            
+                            if (isLast) {
+                                nextElements.push(...foundFrames);
+                            } else {
+                                nextElements.push(...foundFrames);
+                            }
+                            continue;
+                        }
+                    }
+
                     const found = Array.from(doc.querySelectorAll(part));
                     
                     if (isLast) {
-                        // If it's the last part, keep all matching elements
                         nextElements.push(...found);
                     } else {
-                        // If not last, only keep iframes for next iteration
-                        const iframes = found.filter(el => el.tagName === 'IFRAME');
-                        nextElements.push(...iframes);
+                        const frames = found.filter(el => el.tagName === 'IFRAME' || el.tagName === 'FRAME');
+                        nextElements.push(...frames);
                     }
                 } catch (error) {
-                    console.warn('Cannot access iframe content:', error, {
+                    console.warn('Cannot access iframe/frame content:', error, {
                         part,
                         element,
                         index: i
@@ -285,12 +305,17 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
       return [];
     }
 
-    // Modified to handle iframe context for URL resolution
     function getElementValue(element, attribute) {
       if (!element) return null;
   
-      // Get the base URL for resolving relative URLs
-      const baseURL = element.ownerDocument?.location?.href || window.location.origin;
+      let baseURL;
+      try {
+          baseURL = element.ownerDocument?.location?.href || 
+                    element.ownerDocument?.baseURI || 
+                    window.location.origin;
+      } catch (e) {
+          baseURL = window.location.origin;
+      }
   
       switch (attribute) {
         case 'href': {
@@ -305,6 +330,10 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
             return element.innerText?.trim();
         case 'textContent':
             return element.textContent?.trim();
+        case 'innerHTML':
+            return element.innerHTML;
+        case 'outerHTML':
+            return element.outerHTML;
         default:
             return element.getAttribute(attribute) || element.innerText?.trim();
       }
