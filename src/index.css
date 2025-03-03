@@ -72,9 +72,6 @@ code {
   /* Keep the position fixed */
 }
 
-
-#browser {}
-
 #browser-window {
   overflow-y: auto;
   height: 100%;
