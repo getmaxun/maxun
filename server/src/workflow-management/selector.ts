@@ -24,54 +24,64 @@ export const getElementInformation = async (
       const elementInfo = await page.evaluate(
         async ({ x, y }) => {
           const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
-            // First, get the element at the clicked coordinates in the main document
             let element = document.elementFromPoint(x, y) as HTMLElement;
             if (!element) return null;
-
-            // Track the deepest element found
+          
             let deepestElement = element;
-
-            // Function to traverse shadow DOM
+          
             const traverseShadowDOM = (element: HTMLElement): HTMLElement => {
               let current = element;
               let shadowRoot = current.shadowRoot;
               let deepest = current;
-
-              while (shadowRoot) {
+              let depth = 0;
+              const MAX_SHADOW_DEPTH = 4;
+          
+              while (shadowRoot && depth < MAX_SHADOW_DEPTH) {
                 const shadowElement = shadowRoot.elementFromPoint(x, y) as HTMLElement;
                 if (!shadowElement || shadowElement === current) break;
                 
                 deepest = shadowElement;
                 current = shadowElement;
                 shadowRoot = current.shadowRoot;
+                depth++;
               }
-
+          
               return deepest;
             };
-
-            // Handle iframe traversal
+          
+            const isInFrameset = () => {
+              let node = element;
+              while (node && node.parentElement) {
+                if (node.tagName === 'FRAMESET' || node.tagName === 'FRAME') {
+                  return true;
+                }
+                node = node.parentElement;
+              }
+              return false;
+            };
+          
             if (element.tagName === 'IFRAME') {
               let currentIframe = element as HTMLIFrameElement;
-
-              while (currentIframe) {
+              let depth = 0;
+              const MAX_IFRAME_DEPTH = 4;
+          
+              while (currentIframe && depth < MAX_IFRAME_DEPTH) {
                 try {
-                  // Convert coordinates to iframe's local space
                   const iframeRect = currentIframe.getBoundingClientRect();
                   const iframeX = x - iframeRect.left;
                   const iframeY = y - iframeRect.top;
-
+          
                   const iframeDocument = currentIframe.contentDocument || currentIframe.contentWindow?.document;
                   if (!iframeDocument) break;
-
+          
                   const iframeElement = iframeDocument.elementFromPoint(iframeX, iframeY) as HTMLElement;
                   if (!iframeElement) break;
-
-                  // Update deepest element and check for shadow DOM
+          
                   deepestElement = traverseShadowDOM(iframeElement);
-
-                  // Continue traversing if we found another iframe
+          
                   if (iframeElement.tagName === 'IFRAME') {
                     currentIframe = iframeElement as HTMLIFrameElement;
+                    depth++;
                   } else {
                     break;
                   }
@@ -80,28 +90,78 @@ export const getElementInformation = async (
                   break;
                 }
               }
+            } 
+            else if (element.tagName === 'FRAME' || isInFrameset()) {
+              const framesToCheck = [];
+              
+              if (element.tagName === 'FRAME') {
+                framesToCheck.push(element as HTMLFrameElement);
+              }
+              
+              if (isInFrameset()) {
+                document.querySelectorAll('frame').forEach(frame => {
+                  framesToCheck.push(frame as HTMLFrameElement);
+                });
+              }
+          
+              let frameDepth = 0;
+              const MAX_FRAME_DEPTH = 4;
+              
+              const processFrames = (frames: HTMLFrameElement[], currentDepth: number) => {
+                if (currentDepth >= MAX_FRAME_DEPTH) return;
+                
+                for (const frameElement of frames) {
+                  try {
+                    const frameRect = frameElement.getBoundingClientRect();
+                    const frameX = x - frameRect.left;
+                    const frameY = y - frameRect.top;
+          
+                    if (frameX < 0 || frameY < 0 || frameX > frameRect.width || frameY > frameRect.height) {
+                      continue;
+                    }
+          
+                    const frameDocument = 
+                      frameElement.contentDocument || 
+                      frameElement.contentWindow?.document;
+                      
+                    if (!frameDocument) continue;
+          
+                    const frameElementAtPoint = frameDocument.elementFromPoint(frameX, frameY) as HTMLElement;
+                    if (!frameElementAtPoint) continue;
+          
+                    deepestElement = traverseShadowDOM(frameElementAtPoint);
+                    
+                    if (frameElementAtPoint.tagName === 'FRAME') {
+                      processFrames([frameElementAtPoint as HTMLFrameElement], currentDepth + 1);
+                    }
+                    
+                    break; 
+                  } catch (error) {
+                    console.warn('Cannot access frame content:', error);
+                    continue;
+                  }
+                }
+              };
+              
+              processFrames(framesToCheck, frameDepth);
             } else {
-              // If not an iframe, check for shadow DOM
               deepestElement = traverseShadowDOM(element);
             }
-
+          
             return deepestElement;
           };
 
-          // Get the element and its iframe path
           const el = getDeepestElementFromPoint(x, y);
           
           if (el) {
-            // Handle potential anchor parent
             const { parentElement } = el;
             const targetElement = parentElement?.tagName === 'A' ? parentElement : el;
 
-            // Get containing context information
             const ownerDocument = targetElement.ownerDocument;
             const frameElement = ownerDocument?.defaultView?.frameElement as HTMLIFrameElement;
             const isIframeContent = Boolean(frameElement);
+            const isFrameContent = frameElement?.tagName === 'FRAME';
             
-            // Get the containing shadow root if any
             const containingShadowRoot = targetElement.getRootNode() as ShadowRoot;
             const isShadowRoot = containingShadowRoot instanceof ShadowRoot;
 
@@ -115,8 +175,11 @@ export const getElementInformation = async (
               innerHTML?: string;
               outerHTML?: string;
               isIframeContent?: boolean;
+              isFrameContent?: boolean;
               iframeURL?: string;
+              frameURL?: string;
               iframeIndex?: number;
+              frameIndex?: number;
               frameHierarchy?: string[];
               isShadowRoot?: boolean;
               shadowRootMode?: string;
@@ -124,12 +187,17 @@ export const getElementInformation = async (
             } = {
                 tagName: targetElement?.tagName ?? '',
                 isIframeContent,
+                isFrameContent,
                 isShadowRoot
             };
 
-            if (isIframeContent) {
+            if (isIframeContent || isFrameContent) {
               // Include iframe specific information
-              info.iframeURL = frameElement.src;
+              if (isIframeContent) {
+                info.iframeURL = (frameElement as HTMLIFrameElement).src;
+              } else {
+                info.frameURL = (frameElement).src;
+              }
               
               // Calculate the frame's position in the hierarchy
               let currentFrame = frameElement;
@@ -140,8 +208,9 @@ export const getElementInformation = async (
                 // Store the frame's identifier (src, id, or index)
                 frameHierarchy.unshift(
                     currentFrame.id || 
+                    currentFrame.getAttribute('name') ||
                     currentFrame.src || 
-                    `iframe[${frameIndex}]`
+                    `${currentFrame.tagName.toLowerCase()}[${frameIndex}]`
                 );
                 
                 // Move up to parent frame if it exists
@@ -151,7 +220,11 @@ export const getElementInformation = async (
               }
               
               info.frameHierarchy = frameHierarchy;
-              info.iframeIndex = frameIndex - 1; // Adjust for 0-based index
+              if (isIframeContent) {
+                info.iframeIndex = frameIndex - 1; // Adjust for 0-based index
+              } else {
+                info.frameIndex = frameIndex - 1;
+              }
             }
 
             if (isShadowRoot) {
@@ -429,54 +502,64 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
         async ({ x, y }) => {
           // Enhanced helper function to get element from point including iframes
           const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
-            // First, get the element at the clicked coordinates in the main document
             let element = document.elementFromPoint(x, y) as HTMLElement;
             if (!element) return null;
-
-            // Track the deepest element found
+          
             let deepestElement = element;
-
-            // Function to traverse shadow DOM
+          
             const traverseShadowDOM = (element: HTMLElement): HTMLElement => {
               let current = element;
               let shadowRoot = current.shadowRoot;
               let deepest = current;
-
-              while (shadowRoot) {
+              let depth = 0;
+              const MAX_SHADOW_DEPTH = 4;
+          
+              while (shadowRoot && depth < MAX_SHADOW_DEPTH) {
                 const shadowElement = shadowRoot.elementFromPoint(x, y) as HTMLElement;
                 if (!shadowElement || shadowElement === current) break;
                 
                 deepest = shadowElement;
                 current = shadowElement;
                 shadowRoot = current.shadowRoot;
+                depth++;
               }
-
+          
               return deepest;
             };
-
-            // Handle iframe traversal
+          
+            const isInFrameset = () => {
+              let node = element;
+              while (node && node.parentElement) {
+                if (node.tagName === 'FRAMESET' || node.tagName === 'FRAME') {
+                  return true;
+                }
+                node = node.parentElement;
+              }
+              return false;
+            };
+          
             if (element.tagName === 'IFRAME') {
               let currentIframe = element as HTMLIFrameElement;
-
-              while (currentIframe) {
+              let depth = 0;
+              const MAX_IFRAME_DEPTH = 4;
+          
+              while (currentIframe && depth < MAX_IFRAME_DEPTH) {
                 try {
-                  // Convert coordinates to iframe's local space
                   const iframeRect = currentIframe.getBoundingClientRect();
                   const iframeX = x - iframeRect.left;
                   const iframeY = y - iframeRect.top;
-
+          
                   const iframeDocument = currentIframe.contentDocument || currentIframe.contentWindow?.document;
                   if (!iframeDocument) break;
-
+          
                   const iframeElement = iframeDocument.elementFromPoint(iframeX, iframeY) as HTMLElement;
                   if (!iframeElement) break;
-
-                  // Update deepest element and check for shadow DOM
+          
                   deepestElement = traverseShadowDOM(iframeElement);
-
-                  // Continue traversing if we found another iframe
+          
                   if (iframeElement.tagName === 'IFRAME') {
                     currentIframe = iframeElement as HTMLIFrameElement;
+                    depth++;
                   } else {
                     break;
                   }
@@ -485,11 +568,64 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
                   break;
                 }
               }
+            } 
+            else if (element.tagName === 'FRAME' || isInFrameset()) {
+              const framesToCheck = [];
+              
+              if (element.tagName === 'FRAME') {
+                framesToCheck.push(element as HTMLFrameElement);
+              }
+              
+              if (isInFrameset()) {
+                document.querySelectorAll('frame').forEach(frame => {
+                  framesToCheck.push(frame as HTMLFrameElement);
+                });
+              }
+          
+              let frameDepth = 0;
+              const MAX_FRAME_DEPTH = 4;
+              
+              const processFrames = (frames: HTMLFrameElement[], currentDepth: number) => {
+                if (currentDepth >= MAX_FRAME_DEPTH) return;
+                
+                for (const frameElement of frames) {
+                  try {
+                    const frameRect = frameElement.getBoundingClientRect();
+                    const frameX = x - frameRect.left;
+                    const frameY = y - frameRect.top;
+          
+                    if (frameX < 0 || frameY < 0 || frameX > frameRect.width || frameY > frameRect.height) {
+                      continue;
+                    }
+          
+                    const frameDocument = 
+                      frameElement.contentDocument || 
+                      frameElement.contentWindow?.document;
+                      
+                    if (!frameDocument) continue;
+          
+                    const frameElementAtPoint = frameDocument.elementFromPoint(frameX, frameY) as HTMLElement;
+                    if (!frameElementAtPoint) continue;
+          
+                    deepestElement = traverseShadowDOM(frameElementAtPoint);
+                    
+                    if (frameElementAtPoint.tagName === 'FRAME') {
+                      processFrames([frameElementAtPoint as HTMLFrameElement], currentDepth + 1);
+                    }
+                    
+                    break; 
+                  } catch (error) {
+                    console.warn('Cannot access frame content:', error);
+                    continue;
+                  }
+                }
+              };
+              
+              processFrames(framesToCheck, frameDepth);
             } else {
-              // If not an iframe, check for shadow DOM
               deepestElement = traverseShadowDOM(element);
             }
-
+          
             return deepestElement;
           };
 
@@ -1205,65 +1341,63 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
       }
       
       const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
-        // Helper function to traverse shadow DOM
-        const traverseShadowDOM = (element: HTMLElement, depth: number = 0): HTMLElement => {
-          const MAX_SHADOW_DEPTH = 4;
-          let current = element;
-          let deepest = current;
-
-          while (current && depth < MAX_SHADOW_DEPTH) {
-            const shadowRoot = current.shadowRoot;
-            if (!shadowRoot) break;
-
-            const shadowElement = shadowRoot.elementFromPoint(x, y) as HTMLElement;
-            if (!shadowElement || shadowElement === current) break;
-
-            deepest = shadowElement;
-            current = shadowElement;
-            depth++;
-          }
-
-          return deepest;
-        };
-
-        // Start with the element at the specified coordinates
         let element = document.elementFromPoint(x, y) as HTMLElement;
         if (!element) return null;
-
-        // Initialize tracking variables
+      
         let deepestElement = element;
-        let depth = 0;
-        const MAX_IFRAME_DEPTH = 4;
-
-        // First check if the initial element has a shadow root
-        deepestElement = traverseShadowDOM(element);
-
-        // If it's an iframe, traverse through iframe hierarchy
-        if (deepestElement.tagName === 'IFRAME') {
-          let currentIframe = deepestElement as HTMLIFrameElement;
-
+      
+        const traverseShadowDOM = (element: HTMLElement): HTMLElement => {
+          let current = element;
+          let shadowRoot = current.shadowRoot;
+          let deepest = current;
+          let depth = 0;
+          const MAX_SHADOW_DEPTH = 4;
+      
+          while (shadowRoot && depth < MAX_SHADOW_DEPTH) {
+            const shadowElement = shadowRoot.elementFromPoint(x, y) as HTMLElement;
+            if (!shadowElement || shadowElement === current) break;
+            
+            deepest = shadowElement;
+            current = shadowElement;
+            shadowRoot = current.shadowRoot;
+            depth++;
+          }
+      
+          return deepest;
+        };
+      
+        const isInFrameset = () => {
+          let node = element;
+          while (node && node.parentElement) {
+            if (node.tagName === 'FRAMESET' || node.tagName === 'FRAME') {
+              return true;
+            }
+            node = node.parentElement;
+          }
+          return false;
+        };
+      
+        if (element.tagName === 'IFRAME') {
+          let currentIframe = element as HTMLIFrameElement;
+          let depth = 0;
+          const MAX_IFRAME_DEPTH = 4;
+      
           while (currentIframe && depth < MAX_IFRAME_DEPTH) {
             try {
-              // Convert coordinates to iframe's local space
               const iframeRect = currentIframe.getBoundingClientRect();
               const iframeX = x - iframeRect.left;
               const iframeY = y - iframeRect.top;
-
-              // Access iframe's document
-              const iframeDoc = currentIframe.contentDocument || currentIframe.contentWindow?.document;
-              if (!iframeDoc) break;
-
-              // Get element at transformed coordinates in iframe
-              const iframeElement = iframeDoc.elementFromPoint(iframeX, iframeY) as HTMLElement;
+      
+              const iframeDocument = currentIframe.contentDocument || currentIframe.contentWindow?.document;
+              if (!iframeDocument) break;
+      
+              const iframeElement = iframeDocument.elementFromPoint(iframeX, iframeY) as HTMLElement;
               if (!iframeElement) break;
-
-              // Check for shadow DOM within iframe
-              const shadowResult = traverseShadowDOM(iframeElement);
-              deepestElement = shadowResult;
-
-              // If we found another iframe, continue traversing
-              if (shadowResult.tagName === 'IFRAME') {
-                currentIframe = shadowResult as HTMLIFrameElement;
+      
+              deepestElement = traverseShadowDOM(iframeElement);
+      
+              if (iframeElement.tagName === 'IFRAME') {
+                currentIframe = iframeElement as HTMLIFrameElement;
                 depth++;
               } else {
                 break;
@@ -1273,74 +1407,129 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
               break;
             }
           }
+        } 
+        else if (element.tagName === 'FRAME' || isInFrameset()) {
+          const framesToCheck = [];
+          
+          if (element.tagName === 'FRAME') {
+            framesToCheck.push(element as HTMLFrameElement);
+          }
+          
+          if (isInFrameset()) {
+            document.querySelectorAll('frame').forEach(frame => {
+              framesToCheck.push(frame as HTMLFrameElement);
+            });
+          }
+      
+          let frameDepth = 0;
+          const MAX_FRAME_DEPTH = 4;
+          
+          const processFrames = (frames: HTMLFrameElement[], currentDepth: number) => {
+            if (currentDepth >= MAX_FRAME_DEPTH) return;
+            
+            for (const frameElement of frames) {
+              try {
+                const frameRect = frameElement.getBoundingClientRect();
+                const frameX = x - frameRect.left;
+                const frameY = y - frameRect.top;
+      
+                if (frameX < 0 || frameY < 0 || frameX > frameRect.width || frameY > frameRect.height) {
+                  continue;
+                }
+      
+                const frameDocument = 
+                  frameElement.contentDocument || 
+                  frameElement.contentWindow?.document;
+                  
+                if (!frameDocument) continue;
+      
+                const frameElementAtPoint = frameDocument.elementFromPoint(frameX, frameY) as HTMLElement;
+                if (!frameElementAtPoint) continue;
+      
+                deepestElement = traverseShadowDOM(frameElementAtPoint);
+                
+                if (frameElementAtPoint.tagName === 'FRAME') {
+                  processFrames([frameElementAtPoint as HTMLFrameElement], currentDepth + 1);
+                }
+                
+                break; 
+              } catch (error) {
+                console.warn('Cannot access frame content:', error);
+                continue;
+              }
+            }
+          };
+          
+          processFrames(framesToCheck, frameDepth);
+        } else {
+          deepestElement = traverseShadowDOM(element);
         }
-
+      
         return deepestElement;
       };
       
-      const genSelectorForIframe = (element: HTMLElement) => {
-        // Helper function to get the complete iframe path up to document root
-        const getIframePath = (el: HTMLElement) => {
-            const path = [];
-            let current = el;
-            let depth = 0;
-            const MAX_DEPTH = 4;
+      
+      const genSelectorForFrame = (element: HTMLElement) => {
+        const getFramePath = (el: HTMLElement) => {
+          const path = [];
+          let current = el;
+          let depth = 0;
+          const MAX_DEPTH = 4;
+          
+          while (current && depth < MAX_DEPTH) {
+            const ownerDocument = current.ownerDocument;
             
-            while (current && depth < MAX_DEPTH) {
-                // Get the owner document of the current element
-                const ownerDocument = current.ownerDocument;
-                
-                // Check if this document belongs to an iframe
-                const frameElement = ownerDocument?.defaultView?.frameElement as HTMLIFrameElement;
-                
-                if (frameElement) {
-                    path.unshift({
-                        frame: frameElement,
-                        document: ownerDocument,
-                        element: current
-                    });
-                    // Move up to the parent document's element (the iframe)
-                    current = frameElement;
-                    depth++;
-                } else {
-                    break;
-                }
+            const frameElement = 
+              ownerDocument?.defaultView?.frameElement as HTMLIFrameElement | HTMLFrameElement;
+            
+            if (frameElement) {
+              path.unshift({
+                frame: frameElement,
+                document: ownerDocument,
+                element: current,
+                isFrame: frameElement.tagName === 'FRAME'
+              });
+
+              current = frameElement;
+              depth++;
+            } else {
+              break;
             }
-            return path;
+          }
+          return path;
         };
-    
-        const iframePath = getIframePath(element);
-        if (iframePath.length === 0) return null;
-    
+        
+        const framePath = getFramePath(element);
+        if (framePath.length === 0) return null;
+        
         try {
-            const selectorParts: string[] = [];
+          const selectorParts: string[] = [];
+          
+          framePath.forEach((context, index) => {
+            const frameSelector = context.isFrame ? 
+              `frame[name="${context.frame.getAttribute('name')}"]` : 
+              finder(context.frame, {
+                root: index === 0 ? document.body : 
+                      (framePath[index - 1].document.body as Element)
+              });
             
-            // Generate selector for each iframe boundary
-            iframePath.forEach((context, index) => {
-                // Get selector for the iframe element
-                const frameSelector = finder(context.frame, {
-                    root: index === 0 ? document.body : 
-                          (iframePath[index - 1].document.body as Element)
-                });
-    
-                // For the last context, get selector for target element
-                if (index === iframePath.length - 1) {
-                    const elementSelector = finder(element, {
-                        root: context.document.body as Element
-                    });
-                    selectorParts.push(`${frameSelector} :>> ${elementSelector}`);
-                } else {
-                    selectorParts.push(frameSelector);
-                }
-            });
-    
-            return {
-                fullSelector: selectorParts.join(' :>> '),
-                isFrameContent: true
-            };
+            if (index === framePath.length - 1) {
+              const elementSelector = finder(element, {
+                root: context.document.body as Element
+              });
+              selectorParts.push(`${frameSelector} :>> ${elementSelector}`);
+            } else {
+              selectorParts.push(frameSelector);
+            }
+          });
+          
+          return {
+            fullSelector: selectorParts.join(' :>> '),
+            isFrameContent: true
+          };
         } catch (e) {
-            console.warn('Error generating iframe selector:', e);
-            return null;
+          console.warn('Error generating frame selector:', e);
+          return null;
         }
       };
 
@@ -1424,7 +1613,22 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
         }
 
 
-        const iframeSelector = genSelectorForIframe(element);
+        let iframeSelector = null;
+        try {
+          // Check if element is within frame/iframe
+          const isInFrame = element.ownerDocument !== document;
+          const isInFrameset = () => {
+            let doc = element.ownerDocument;
+            return doc.querySelectorAll('frameset').length > 0;
+          };
+          
+          if (isInFrame || isInFrameset()) {
+            iframeSelector = genSelectorForFrame(element);
+          }
+        } catch (e) {
+          console.warn('Error detecting frames:', e);
+        }
+
         const shadowSelector = genSelectorForShadowDOM(element);
 
         const relSelector = genSelectorForAttributes(element, ['rel']);
