@@ -174,5 +174,28 @@ export class CanvasRenderer {
       }
     }
     
+    /**
+     * Cleans up resources to reduce memory usage
+     */
+    private cleanupMemory(): void {
+      // Limit image cache size
+      if (this.imageCache.size > 20) {
+        // Keep only the most recent 10 images
+        const keysToDelete = Array.from(this.imageCache.keys()).slice(0, this.imageCache.size - 10);
+        keysToDelete.forEach(key => {
+          this.imageCache.delete(key);
+        });
+      }
+      
+      // Suggest garbage collection
+      if (window.gc) {
+        try {
+          window.gc();
+        } catch (e) {
+          // GC not available, ignore
+        }
+      }
+    }
     
+   
   }
