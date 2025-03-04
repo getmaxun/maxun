@@ -161,5 +161,18 @@ export class CanvasRenderer {
       }
     }
     
-   
+    /**
+     * Checks current memory usage and cleans up if necessary
+     */
+    private checkMemoryUsage(): void {
+      if (window.performance && (performance as any).memory) {
+        const memory = (performance as any).memory;
+        
+        if (memory.usedJSHeapSize > this.memoryThreshold) {
+          this.cleanupMemory();
+        }
+      }
+    }
+    
+    
   }
