@@ -6,7 +6,7 @@ import DatePicker from '../pickers/DatePicker';
 import Dropdown from '../pickers/Dropdown';
 import TimePicker from '../pickers/TimePicker';
 import DateTimeLocalPicker from '../pickers/DateTimeLocalPicker';
-import { FrontendPerformanceMonitor } from '../../../perf/performance';
+import { EnhancedPerformanceMonitor } from '../../../perf/performance';
 
 interface CreateRefCallback {
     (ref: React.RefObject<HTMLCanvasElement>): void;
@@ -28,7 +28,7 @@ export interface Coordinates {
 
 const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
 
-    const performanceMonitor = useRef(new FrontendPerformanceMonitor());
+    const performanceMonitor = useRef(new EnhancedPerformanceMonitor());
     console.log('Frontend Performance Report:', performanceMonitor.current.getPerformanceReport());
 
     const canvasRef = useRef<HTMLCanvasElement>(null);
