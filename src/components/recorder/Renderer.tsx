@@ -197,5 +197,25 @@ export class CanvasRenderer {
       }
     }
     
-   
+    /**
+     * Update canvas dimensions
+     */
+    public updateCanvasSize(width: number, height: number): void {
+      this.canvas.width = width;
+      this.canvas.height = height;
+      
+      // Re-apply context settings
+      this.ctx.imageSmoothingEnabled = false;
+      
+      // Update offscreen canvas if available
+      if (this.offscreenCanvas) {
+        this.offscreenCanvas.width = width;
+        this.offscreenCanvas.height = height;
+        
+        if (this.offscreenCtx) {
+          this.offscreenCtx.imageSmoothingEnabled = false;
+        }
+      }
+    }
+    
   }
