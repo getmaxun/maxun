@@ -598,33 +598,52 @@ export default class Interpreter extends EventEmitter {
     };
 
     // Enhanced button finder with retry mechanism
-    const findWorkingButton = async (selectors: string[], retryCount = 0): Promise<{ 
-        button: ElementHandle | null, 
-        workingSelector: string | null 
+    const findWorkingButton = async (selectors: string[]): Promise<{ 
+      button: ElementHandle | null, 
+      workingSelector: string | null,
+      updatedSelectors: string[]
     }> => {
-      for (const selector of selectors) {
-        try {
-          const button = await page.waitForSelector(selector, {
-            state: 'attached',
-            timeout: 10000 // Reduced timeout for faster checks
-          });
-          if (button) {
-            debugLog('Found working selector:', selector);
-            return { button, workingSelector: selector };
+      let updatedSelectors = [...selectors]; 
+      
+      for (let i = 0; i < selectors.length; i++) {
+        const selector = selectors[i];
+        let retryCount = 0;
+        let selectorSuccess = false;
+        
+        while (retryCount < MAX_RETRIES && !selectorSuccess) {
+          try {
+            const button = await page.waitForSelector(selector, {
+              state: 'attached',
+              timeout: 10000 
+            });
+            
+            if (button) {
+              debugLog('Found working selector:', selector);
+              return { 
+                button, 
+                workingSelector: selector,
+                updatedSelectors 
+              };
+            }
+          } catch (error) {
+            retryCount++;
+            debugLog(`Selector "${selector}" failed: attempt ${retryCount}/${MAX_RETRIES}`);
+            
+            if (retryCount < MAX_RETRIES) {
+              await page.waitForTimeout(RETRY_DELAY);
+            } else {
+              debugLog(`Removing failed selector "${selector}" after ${MAX_RETRIES} attempts`);
+              updatedSelectors = updatedSelectors.filter(s => s !== selector);
+            }
           }
-        } catch (error) {
-          debugLog(`Selector failed: ${selector}`);
         }
       }
-
-      // Implement retry mechanism when no selectors work
-      if (selectors.length > 0 && retryCount < MAX_RETRIES) {
-        debugLog(`Retry attempt ${retryCount + 1} of ${MAX_RETRIES}`);
-        await page.waitForTimeout(RETRY_DELAY);
-        return findWorkingButton(selectors, retryCount + 1);
-      }
-
-      return { button: null, workingSelector: null };
+    
+      return { 
+        button: null, 
+        workingSelector: null,
+        updatedSelectors 
+      };
     };
 
     const retryOperation = async (operation: () => Promise<boolean>, retryCount = 0): Promise<boolean> => {
@@ -686,7 +705,10 @@ export default class Interpreter extends EventEmitter {
             await scrapeCurrentPage();
             if (checkLimit()) return allResults;
 
-            const { button, workingSelector } = await findWorkingButton(availableSelectors);
+            const { button, workingSelector, updatedSelectors } = await findWorkingButton(availableSelectors);
+            
+            availableSelectors = updatedSelectors;
+
             if (!button || !workingSelector) {
                 // Final retry for navigation when no selectors work
               const success = await retryOperation(async () => {
@@ -702,10 +724,6 @@ export default class Interpreter extends EventEmitter {
               if (!success) return allResults;
               break;
             }
-
-            availableSelectors = availableSelectors.slice(
-                availableSelectors.indexOf(workingSelector)
-            );
 
             let retryCount = 0;
             let navigationSuccess = false;
@@ -784,17 +802,14 @@ export default class Interpreter extends EventEmitter {
             
             while (true) {
               // Find working button with retry mechanism
-              const { button: loadMoreButton, workingSelector } = await findWorkingButton(availableSelectors);
+              const { button: loadMoreButton, workingSelector, updatedSelectors } = await findWorkingButton(availableSelectors);
+
+              availableSelectors = updatedSelectors;
               
               if (!workingSelector || !loadMoreButton) {
                 debugLog('No working Load More selector found after retries');
                 return allResults;
               }
-          
-              // Update available selectors to start from the working one
-              availableSelectors = availableSelectors.slice(
-                availableSelectors.indexOf(workingSelector)
-              );
           
               // Implement retry mechanism for clicking the button
               let retryCount = 0;
