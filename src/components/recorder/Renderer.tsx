@@ -77,4 +77,89 @@ export class CanvasRenderer {
         this.renderFrame(screenshot, x, y, width, height);
       });
     }
+    
+    private renderFrame(
+      screenshot: string | ImageBitmap | HTMLImageElement,
+      x: number,
+      y: number,
+      width?: number,
+      height?: number
+    ): void {
+      // Target context (offscreen if available, otherwise main)
+      const targetCtx = this.offscreenCtx || this.ctx;
+      
+      // Start timing the render
+      const startTime = performance.now();
+      const timeSinceLastDraw = startTime - this.lastDrawTime;
+      
+      // Adaptive frame skipping for high-frequency updates
+      // If we're getting updates faster than 60fps and this isn't the first frame
+      if (timeSinceLastDraw < 16 && this.consecutiveFrameCount > 5) {
+        this.consecutiveFrameCount++;
+        
+        // Skip some frames when we're getting excessive updates
+        if (this.consecutiveFrameCount % 2 !== 0) {
+          return;
+        }
+      } else {
+        this.consecutiveFrameCount = 0;
+      }
+      
+      try {
+        if (typeof screenshot === 'string') {
+          // Check if we have this image in cache
+          let img = this.imageCache.get(screenshot);
+          
+          if (!img) {
+            img = new Image();
+            img.src = screenshot;
+            this.imageCache.set(screenshot, img);
+            
+            // If image isn't loaded yet, draw when it loads
+            if (!img.complete) {
+              img.onload = () => {
+                if (img) {
+                  this.drawScreenshot(img, x, y, width, height);
+                }
+              };
+              return;
+            }
+          }
+          
+          targetCtx.drawImage(
+            img,
+            x, y,
+            width || img.width,
+            height || img.height
+          );
+        } else {
+          // Draw ImageBitmap or HTMLImageElement directly
+          targetCtx.drawImage(
+            screenshot,
+            x, y,
+            width || screenshot.width,
+            height || screenshot.height
+          );
+        }
+        
+        // If using offscreen canvas, copy to main canvas
+        if (this.offscreenCanvas && this.offscreenCtx) {
+          if ('transferToImageBitmap' in this.offscreenCanvas) {
+            // Use more efficient transfer when available
+            const bitmap = this.offscreenCanvas.transferToImageBitmap();
+            this.ctx.drawImage(bitmap, 0, 0);
+          } else {
+            // Fallback to drawImage
+            this.ctx.drawImage(this.offscreenCanvas, 0, 0);
+          }
+        }
+        
+        // Update timestamp
+        this.lastDrawTime = performance.now();
+      } catch (error) {
+        console.error('Error rendering frame:', error);
+      }
+    }
+    
+   
   }
