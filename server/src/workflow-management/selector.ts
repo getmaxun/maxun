@@ -154,8 +154,11 @@ export const getElementInformation = async (
           const el = getDeepestElementFromPoint(x, y);
           
           if (el) {
-            const { parentElement } = el;
-            const targetElement = parentElement?.tagName === 'A' ? parentElement : el;
+            // Prioritize Link (DO NOT REMOVE)
+            // const { parentElement } = el;
+            // const targetElement = parentElement?.tagName === 'A' ? parentElement : el;
+
+            const targetElement = el;
 
             const ownerDocument = targetElement.ownerDocument;
             const frameElement = ownerDocument?.defaultView?.frameElement as HTMLIFrameElement;
@@ -701,8 +704,11 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
 
           const el = getDeepestElementFromPoint(x, y);
           if (el) {
-            const { parentElement } = el;
-            const element = parentElement?.tagName === 'A' ? parentElement : el;
+            // Prioritize Link (DO NOT REMOVE)
+            // const { parentElement } = el;
+            // const element = parentElement?.tagName === 'A' ? parentElement : el;
+
+            const element = el;
             const rectangle = element?.getBoundingClientRect();
             if (rectangle) {
               const createRectObject = (rect: DOMRect) => ({
@@ -1875,9 +1881,12 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
         hoveredElement != null &&
         !hoveredElement.closest('#overlay-controls') != null
       ) {
-        const { parentElement } = hoveredElement;
+        // Prioritize Link (DO NOT REMOVE)
+        // const { parentElement } = hoveredElement;
         // Match the logic in recorder.ts for link clicks
-        const element = parentElement?.tagName === 'A' ? parentElement : hoveredElement;
+        // const element = parentElement?.tagName === 'A' ? parentElement : hoveredElement;
+
+        const element = hoveredElement;
         const generatedSelectors = genSelectors(element);
         return generatedSelectors;
       }
