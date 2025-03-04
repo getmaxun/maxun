@@ -332,6 +332,8 @@ export class WorkflowInterpreter {
       }, {})
     }
 
+    this.socket.emit('run-completed', "success");
+
     logger.log('debug', `Interpretation finished`);
     this.clearState();
     return result;

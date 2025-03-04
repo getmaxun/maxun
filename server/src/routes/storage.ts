@@ -547,6 +547,11 @@ router.put('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res) =>
       binaryOutput: {},
     });
 
+    const job = await workflowQueue.add(
+      'run workflow',
+      { id, runId, userId: req.user.id, isScheduled: false },
+    );
+
     const plainRun = run.toJSON();
 
     return res.send({
