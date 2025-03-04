@@ -218,4 +218,24 @@ export class CanvasRenderer {
       }
     }
     
+    /**
+     * Clean up resources
+     */
+    public dispose(): void {
+      // Cancel any pending frame requests
+      if (this.lastFrameRequest !== null) {
+        cancelAnimationFrame(this.lastFrameRequest);
+        this.lastFrameRequest = null;
+      }
+      
+      // Clear the image cache
+      this.imageCache.clear();
+      
+      // Clear canvases
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      
+      if (this.offscreenCtx && this.offscreenCanvas) {
+        this.offscreenCtx.clearRect(0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height);
+      }
+    }
   }
