@@ -11,7 +11,19 @@ body {
   padding: 0;
   scrollbar-gutter: stable;
   overflow-y: auto;
-  
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
+  transition: background-color 5000s ease-in-out 0s !important;
 }
 
 html {
@@ -22,6 +34,7 @@ html {
 
 a {
   color: #ff00c3;
+
   &:hover {
     color: #ff00c3;
   }
@@ -29,7 +42,7 @@ a {
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-  monospace;
+    monospace;
   color: #ff00c3;
 }
 
@@ -44,7 +57,6 @@ code {
   align-items: center;
   overflow: hidden;
   position: relative;
-  
 }
 
 #browser-content {
@@ -52,13 +64,10 @@ code {
   width: 100%;
   display: flex;
   flex-direction: column;
-  transform: scale(1); /* Ensure no scaling */
-  transform-origin: top left; /* Keep the position fixed */
-}
-
-
-#browser {
- 
+  transform: scale(1);
+  /* Ensure no scaling */
+  transform-origin: top left;
+  /* Keep the position fixed */
 }
 
 #browser-window {
