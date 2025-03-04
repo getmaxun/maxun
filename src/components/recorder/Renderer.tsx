@@ -47,5 +47,34 @@ export class CanvasRenderer {
       this.lastMemoryCheck = performance.now();
     }
     
-    
+    /**
+     * Renders a screenshot to the canvas, optimized for performance
+     */
+    public drawScreenshot(
+      screenshot: string | ImageBitmap | HTMLImageElement,
+      x: number = 0,
+      y: number = 0,
+      width?: number,
+      height?: number
+    ): void {
+      // Cancel any pending frame request
+      if (this.lastFrameRequest !== null) {
+        cancelAnimationFrame(this.lastFrameRequest);
+      }
+      
+      // Check memory usage periodically
+      this.memoryCheckCounter++;
+      const now = performance.now();
+      
+      if (this.memoryCheckCounter >= 30 || now - this.lastMemoryCheck > 5000) {
+        this.checkMemoryUsage();
+        this.memoryCheckCounter = 0;
+        this.lastMemoryCheck = now;
+      }
+      
+      // Request a new frame
+      this.lastFrameRequest = requestAnimationFrame(() => {
+        this.renderFrame(screenshot, x, y, width, height);
+      });
+    }
   }
