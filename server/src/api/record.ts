@@ -517,14 +517,14 @@ async function readyForRunHandler(browserId: string, id: string, userId: string)
             return result.interpretationInfo;
         } else {
             logger.log('error', `Interpretation of ${id} failed`);
-            await destroyRemoteBrowser(browserId);
+            await destroyRemoteBrowser(browserId, userId);
             resetRecordingState(browserId, id);
             return null;
         }
 
     } catch (error: any) {
         logger.error(`Error during readyForRunHandler: ${error.message}`);
-        await destroyRemoteBrowser(browserId);
+        await destroyRemoteBrowser(browserId, userId);
         return null;
     }
 }
@@ -568,7 +568,7 @@ async function executeRun(id: string, userId: string) {
 
         plainRun.status = 'running';
 
-        const browser = browserPool.getRemoteBrowser(plainRun.browserId, userId);
+        const browser = browserPool.getRemoteBrowser(userId);
         if (!browser) {
             throw new Error('Could not access browser');
         }
@@ -586,7 +586,7 @@ async function executeRun(id: string, userId: string) {
         const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
         const uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, interpretationInfo.binaryOutput);
 
-        await destroyRemoteBrowser(plainRun.browserId);
+        await destroyRemoteBrowser(plainRun.browserId, userId);
 
         const updatedRun = await run.update({
             ...run,
