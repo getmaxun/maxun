@@ -92,7 +92,7 @@ function AddGeneratedFlags(workflow: WorkflowFile) {
   return copy;
 };
 
-async function executeRun(id: string) {
+async function executeRun(id: string, userId: string) {
   try {
     const run = await Run.findOne({ where: { runId: id } });
     if (!run) {
@@ -114,7 +114,7 @@ async function executeRun(id: string) {
 
     plainRun.status = 'running';
 
-    const browser = browserPool.getRemoteBrowser(plainRun.browserId);
+    const browser = browserPool.getRemoteBrowser(userId);
     if (!browser) {
       throw new Error('Could not access browser');
     }
@@ -132,7 +132,7 @@ async function executeRun(id: string) {
     const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
     const uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, interpretationInfo.binaryOutput);
 
-    await destroyRemoteBrowser(plainRun.browserId);
+    await destroyRemoteBrowser(userId, plainRun.browserId);
 
     await run.update({
       ...run,
@@ -207,22 +207,22 @@ async function executeRun(id: string) {
   }
 }
 
-async function readyForRunHandler(browserId: string, id: string) {
+async function readyForRunHandler(browserId: string, id: string, userId: string) {
   try {
-    const interpretation = await executeRun(id);
+    const interpretation = await executeRun(id, userId);
 
     if (interpretation) {
       logger.log('info', `Interpretation of ${id} succeeded`);
     } else {
       logger.log('error', `Interpretation of ${id} failed`);
-      await destroyRemoteBrowser(browserId);
+      await destroyRemoteBrowser(userId, browserId);
     }
 
     resetRecordingState(browserId, id);
 
   } catch (error: any) {
     logger.error(`Error during readyForRunHandler: ${error.message}`);
-    await destroyRemoteBrowser(browserId);
+    await destroyRemoteBrowser(userId, browserId);
   }
 }
 
@@ -245,12 +245,12 @@ export async function handleRunRecording(id: string, userId: string) {
       rejectUnauthorized: false
     });
 
-    socket.on('ready-for-run', () => readyForRunHandler(browserId, newRunId));
+    socket.on('ready-for-run', () => readyForRunHandler(browserId, newRunId, userId));
 
     logger.log('info', `Running robot: ${id}`);
 
     socket.on('disconnect', () => {
-      cleanupSocketListeners(socket, browserId, newRunId);
+      cleanupSocketListeners(socket, browserId, newRunId, userId);
     });
 
   } catch (error: any) {
@@ -258,8 +258,8 @@ export async function handleRunRecording(id: string, userId: string) {
   }
 }
 
-function cleanupSocketListeners(socket: Socket, browserId: string, id: string) {
-  socket.off('ready-for-run', () => readyForRunHandler(browserId, id));
+function cleanupSocketListeners(socket: Socket, browserId: string, id: string, userId: string) {
+  socket.off('ready-for-run', () => readyForRunHandler(browserId, id, userId));
   logger.log('info', `Cleaned up listeners for browserId: ${browserId}, runId: ${id}`);
 }
 
