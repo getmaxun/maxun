@@ -201,7 +201,7 @@ export class RemoteBrowser {
                 const currentUrl = page.url();
                 if (this.shouldEmitUrlChange(currentUrl)) {
                     this.lastEmittedUrl = currentUrl;
-                    this.socket.emit('urlChanged', currentUrl);
+                    this.socket.emit('urlChanged', {url: currentUrl, userId: this.userId});
                 }
             }
         });
