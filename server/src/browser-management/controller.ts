@@ -21,12 +21,12 @@ import logger from "../logger";
  * @category BrowserManagement-Controller
  */
 export const initializeRemoteBrowserForRecording = (userId: string): string => {
-  const id = getActiveBrowserId() || uuid();
+  const id = getActiveBrowserId(userId) || uuid();
   createSocketConnection(
     io.of(id),
     async (socket: Socket) => {
       // browser is already active
-      const activeId = getActiveBrowserId();
+      const activeId = getActiveBrowserId(userId);
       if (activeId) {
         const remoteBrowser = browserPool.getRemoteBrowser(activeId);
         remoteBrowser?.updateSocket(socket);
@@ -88,8 +88,8 @@ export const destroyRemoteBrowser = async (id: string, userId: string): Promise<
  * @returns {string | null}
  * @category  BrowserManagement-Controller
  */
-export const getActiveBrowserId = (): string | null => {
-  return browserPool.getActiveBrowserId();
+export const getActiveBrowserId = (userId: string): string | null => {
+  return browserPool.getActiveBrowserId(userId);
 };
 
 /**
@@ -127,7 +127,7 @@ export const getRemoteBrowserCurrentTabs = (id: string, userId: string): string[
  * @category  BrowserManagement-Controller
  */
 export const interpretWholeWorkflow = async (userId: string) => {
-  const id = getActiveBrowserId();
+  const id = getActiveBrowserId(userId);
   if (id) {
     const browser = browserPool.getRemoteBrowser(id);
     if (browser) {
@@ -147,7 +147,7 @@ export const interpretWholeWorkflow = async (userId: string) => {
  * @category  BrowserManagement-Controller
  */
 export const stopRunningInterpretation = async (userId: string) => {
-  const id = getActiveBrowserId();
+  const id = getActiveBrowserId(userId);
   if (id) {
     const browser = browserPool.getRemoteBrowser(id);
     await browser?.stopCurrentInterpretation();
