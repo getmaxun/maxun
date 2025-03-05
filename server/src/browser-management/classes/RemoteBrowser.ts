@@ -112,6 +112,7 @@ export class RemoteBrowser {
     private screenshotQueue: Buffer[] = [];
     private isProcessingScreenshot = false;
     private screencastInterval: NodeJS.Timeout | null = null
+    private isScreencastActive: boolean = false;
 
     /**
      * Initializes a new instances of the {@link Generator} and {@link WorkflowInterpreter} classes and
