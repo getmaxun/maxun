@@ -90,6 +90,12 @@ export class RemoteBrowser {
         maxRepeats: 1,
     };
 
+    /**
+     * The user ID that owns this browser instance
+     * @private
+     */
+    private userId: string;
+
     private lastEmittedUrl: string | null = null;
 
     /**
