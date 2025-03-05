@@ -12,6 +12,7 @@ import { WorkflowGenerator } from "../workflow-management/classes/Generator";
 import { Page } from "playwright";
 import { throttle } from "../../../src/helpers/inputHelpers";
 import { CustomActions } from "../../../src/shared/types";
+import { AuthenticatedRequest } from '../routes/record';
 
 /**
  * A wrapper function for handling user input.
@@ -31,9 +32,21 @@ const handleWrapper = async (
         page: Page,
         args?: any
     ) => Promise<void>,
-    args?: any
+    args?: any,
+    req?: AuthenticatedRequest,
 ) => {
-    const id = browserPool.getActiveBrowserId();
+    if (!req || !req.user || typeof req.user === 'string') {
+        logger.log('warn', `User not authenticated or invalid JWT payload`);
+        return;
+    }
+
+    const userId = req.user.id;
+    if (!userId) {
+        logger.log('warn', `User ID is missing in JWT payload`);
+        return;
+    }
+
+    const id = browserPool.getActiveBrowserId(userId);
     if (id) {
         const activeBrowser = browserPool.getRemoteBrowser(id);
         if (activeBrowser?.interpreter.interpretationInProgress() && !activeBrowser.interpreter.interpretationIsPaused) {
