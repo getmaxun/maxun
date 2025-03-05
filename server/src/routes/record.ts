@@ -87,8 +87,11 @@ router.get('/stop/:browserId', requireSignIn, async (req: AuthenticatedRequest, 
 /**
  * GET endpoint for getting the id of the active remote browser.
  */
-router.get('/active', requireSignIn, (req, res) => {
-    const id = getActiveBrowserId();
+router.get('/active', requireSignIn, (req: AuthenticatedRequest, res) => {
+    if (!req.user) {
+        return res.status(401).send('User not authenticated');
+    }
+    const id = getActiveBrowserId(req.user?.id);
     return res.send(id);
 });
 
@@ -99,7 +102,7 @@ router.get('/active/url', requireSignIn, (req: AuthenticatedRequest, res) => {
     if (!req.user) {
         return res.status(401).send('User not authenticated');
     }
-    const id = getActiveBrowserId();
+    const id = getActiveBrowserId(req.user?.id);
     if (id) {
         const url = getRemoteBrowserCurrentUrl(id, req.user?.id);
         return res.send(url);
@@ -114,7 +117,7 @@ router.get('/active/tabs', requireSignIn, (req: AuthenticatedRequest, res) => {
     if (!req.user) {
         return res.status(401).send('User not authenticated');
     }
-    const id = getActiveBrowserId();
+    const id = getActiveBrowserId(req.user?.id);
     if (id) {
         const hosts = getRemoteBrowserCurrentTabs(id, req.user?.id);
         return res.send(hosts);
