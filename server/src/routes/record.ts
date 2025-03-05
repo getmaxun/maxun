@@ -76,8 +76,11 @@ router.post('/start', requireSignIn, (req: AuthenticatedRequest, res:Response) =
  * GET endpoint for terminating the remote browser recording session.
  * returns whether the termination was successful
  */
-router.get('/stop/:browserId', requireSignIn, async (req, res) => {
-    const success = await destroyRemoteBrowser(req.params.browserId);
+router.get('/stop/:browserId', requireSignIn, async (req: AuthenticatedRequest, res) => {
+    if (!req.user) {
+        return res.status(401).send('User not authenticated');
+    }
+    const success = await destroyRemoteBrowser(req.user?.id, req.params.browserId);
     return res.send(success);
 });
 
@@ -92,10 +95,13 @@ router.get('/active', requireSignIn, (req, res) => {
 /**
  * GET endpoint for getting the current url of the active remote browser.
  */
-router.get('/active/url', requireSignIn, (req, res) => {
+router.get('/active/url', requireSignIn, (req: AuthenticatedRequest, res) => {
+    if (!req.user) {
+        return res.status(401).send('User not authenticated');
+    }
     const id = getActiveBrowserId();
     if (id) {
-        const url = getRemoteBrowserCurrentUrl(id);
+        const url = getRemoteBrowserCurrentUrl(id, req.user?.id);
         return res.send(url);
     }
     return res.send(null);
@@ -104,10 +110,13 @@ router.get('/active/url', requireSignIn, (req, res) => {
 /**
  * GET endpoint for getting the current tabs of the active remote browser.
  */
-router.get('/active/tabs', requireSignIn, (req, res) => {
+router.get('/active/tabs', requireSignIn, (req: AuthenticatedRequest, res) => {
+    if (!req.user) {
+        return res.status(401).send('User not authenticated');
+    }
     const id = getActiveBrowserId();
     if (id) {
-        const hosts = getRemoteBrowserCurrentTabs(id);
+        const hosts = getRemoteBrowserCurrentTabs(id, req.user?.id);
         return res.send(hosts);
     }
     return res.send([]);
@@ -116,9 +125,12 @@ router.get('/active/tabs', requireSignIn, (req, res) => {
 /**
  * GET endpoint for starting an interpretation of the currently generated workflow.
  */
-router.get('/interpret', requireSignIn, async (req, res) => {
+router.get('/interpret', requireSignIn, async (req: AuthenticatedRequest, res) => {
     try {
-        await interpretWholeWorkflow();
+        if (!req.user) {
+            return res.status(401).send('User not authenticated');
+        }
+        await interpretWholeWorkflow(req.user?.id);
         return res.send('interpretation done');
     } catch (e) {
         return res.send('interpretation failed');
@@ -128,7 +140,10 @@ router.get('/interpret', requireSignIn, async (req, res) => {
 /**
  * GET endpoint for stopping an ongoing interpretation of the currently generated workflow.
  */
-router.get('/interpret/stop', requireSignIn, async (req, res) => {
-    await stopRunningInterpretation();
+router.get('/interpret/stop', requireSignIn, async (req: AuthenticatedRequest, res) => {
+    if (!req.user) {
+        return res.status(401).send('User not authenticated');
+    }
+    await stopRunningInterpretation(req.user?.id);
     return res.send('interpretation stopped');
 });
