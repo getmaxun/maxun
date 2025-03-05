@@ -37,7 +37,7 @@ export const initializeRemoteBrowserForRecording = (userId: string): string => {
         await browserSession.initialize(userId);
         await browserSession.registerEditorEvents();
         await browserSession.subscribeToScreencast();
-        browserPool.addRemoteBrowser(id, browserSession, true);
+        browserPool.addRemoteBrowser(id, browserSession, userId);
       }
       socket.emit('loaded');
     });
@@ -59,7 +59,7 @@ export const createRemoteBrowserForRun = (userId: string): string => {
     async (socket: Socket) => {
       const browserSession = new RemoteBrowser(socket);
       await browserSession.initialize(userId);
-      browserPool.addRemoteBrowser(id, browserSession, true);
+      browserPool.addRemoteBrowser(id, browserSession, userId);
       socket.emit('ready-for-run');
     });
   return id;
@@ -72,14 +72,14 @@ export const createRemoteBrowserForRun = (userId: string): string => {
  * @returns {Promise<boolean>}
  * @category BrowserManagement-Controller
  */
-export const destroyRemoteBrowser = async (id: string): Promise<boolean> => {
+export const destroyRemoteBrowser = async (id: string, userId: string): Promise<boolean> => {
   const browserSession = browserPool.getRemoteBrowser(id);
   if (browserSession) {
     logger.log('debug', `Switching off the browser with id: ${id}`);
     await browserSession.stopCurrentInterpretation();
     await browserSession.switchOff();
   }
-  return browserPool.deleteRemoteBrowser(id);
+  return browserPool.deleteRemoteBrowser(userId);
 };
 
 /**
@@ -98,7 +98,7 @@ export const getActiveBrowserId = (): string | null => {
  * @returns {string | undefined}
  * @category  BrowserManagement-Controller
  */
-export const getRemoteBrowserCurrentUrl = (id: string): string | undefined => {
+export const getRemoteBrowserCurrentUrl = (id: string, userId: string): string | undefined => {
   return browserPool.getRemoteBrowser(id)?.getCurrentPage()?.url();
 };
 
@@ -108,7 +108,7 @@ export const getRemoteBrowserCurrentUrl = (id: string): string | undefined => {
  * @return {string[] | undefined}
  * @category  BrowserManagement-Controller
  */
-export const getRemoteBrowserCurrentTabs = (id: string): string[] | undefined => {
+export const getRemoteBrowserCurrentTabs = (id: string, userId: string): string[] | undefined => {
   return browserPool.getRemoteBrowser(id)?.getCurrentPage()?.context().pages()
     .map((page) => {
       const parsedUrl = new URL(page.url());
@@ -126,7 +126,7 @@ export const getRemoteBrowserCurrentTabs = (id: string): string[] | undefined =>
  * @returns {Promise<void>}
  * @category  BrowserManagement-Controller
  */
-export const interpretWholeWorkflow = async () => {
+export const interpretWholeWorkflow = async (userId: string) => {
   const id = getActiveBrowserId();
   if (id) {
     const browser = browserPool.getRemoteBrowser(id);
@@ -146,7 +146,7 @@ export const interpretWholeWorkflow = async () => {
  * @returns {Promise<void>}
  * @category  BrowserManagement-Controller
  */
-export const stopRunningInterpretation = async () => {
+export const stopRunningInterpretation = async (userId: string) => {
   const id = getActiveBrowserId();
   if (id) {
     const browser = browserPool.getRemoteBrowser(id);
