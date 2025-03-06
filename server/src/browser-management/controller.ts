@@ -32,7 +32,7 @@ export const initializeRemoteBrowserForRecording = (userId: string): string => {
         remoteBrowser?.updateSocket(socket);
         await remoteBrowser?.makeAndEmitScreenshot();
       } else {
-        const browserSession = new RemoteBrowser(socket);
+        const browserSession = new RemoteBrowser(socket, userId);
         browserSession.interpreter.subscribeToPausing();
         await browserSession.initialize(userId);
         await browserSession.registerEditorEvents();
@@ -57,7 +57,7 @@ export const createRemoteBrowserForRun = (userId: string): string => {
   createSocketConnectionForRun(
     io.of(id),
     async (socket: Socket) => {
-      const browserSession = new RemoteBrowser(socket);
+      const browserSession = new RemoteBrowser(socket, userId);
       await browserSession.initialize(userId);
       browserPool.addRemoteBrowser(id, browserSession, userId);
       socket.emit('ready-for-run');
