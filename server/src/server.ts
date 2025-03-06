@@ -22,7 +22,7 @@ import swaggerSpec from './swagger/config';
 import session from 'express-session';
 
 import Run from './models/Run';
-
+import PgBoss from 'pg-boss';
 
 const app = express();
 app.use(cors({
@@ -54,6 +54,10 @@ export const io = new Server(server);
  */
 export const browserPool = new BrowserPool();
 
+const pgBossConnectionString = 'postgres://postgres:admin1234@localhost:5432/maxun';
+
+export const pgBoss = new PgBoss({connectionString: pgBossConnectionString, schema: 'public'});
+
 // app.use(bodyParser.json({ limit: '10mb' }))
 // app.use(bodyParser.urlencoded({ extended: true, limit: '10mb', parameterLimit: 9000 }));
 // parse cookies - "cookie" is true in csrfProtection
@@ -79,8 +83,11 @@ readdirSync(path.join(__dirname, 'api')).forEach((r) => {
 
 const isProduction = process.env.NODE_ENV === 'production';
 const workerPath = path.resolve(__dirname, isProduction ? './worker.js' : './worker.ts');
+const recordingWorkerPath = path.resolve(__dirname, isProduction ? './pgboss-worker.js' : './pgboss-worker.ts');
 
 let workerProcess: any;
+let recordingWorkerProcess: any;
+
 if (!isProduction) {
   workerProcess = fork(workerPath, [], {
     execArgv: ['--inspect=5859'],
@@ -93,6 +100,19 @@ if (!isProduction) {
   });
   workerProcess.on('exit', (code: any) => {
     console.log(`Worker exited with code: ${code}`);
+  });
+
+  recordingWorkerProcess = fork(recordingWorkerPath, [], {
+    execArgv: ['--inspect=5860'],
+  });
+  recordingWorkerProcess.on('message', (message: any) => {
+    console.log(`Message from recording worker: ${message}`);
+  });
+  recordingWorkerProcess.on('error', (error: any) => {
+    console.error(`Error in recording worker: ${error}`);
+  });
+  recordingWorkerProcess.on('exit', (code: any) => {
+    console.log(`Recording worker exited with code: ${code}`);
   });
 }
 
@@ -146,7 +166,8 @@ process.on('SIGINT', async () => {
   }
   
   if (!isProduction) {
-    workerProcess.kill();
+    if (workerProcess) workerProcess.kill();
+    if (recordingWorkerProcess) recordingWorkerProcess.kill();
   }
   process.exit();
 });
