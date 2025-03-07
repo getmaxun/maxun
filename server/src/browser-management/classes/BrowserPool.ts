@@ -301,7 +301,7 @@ export class BrowserPool {
      * @returns the first remote active browser instance's id from the pool
      * @deprecated Use getBrowserIdForUser instead to enforce the 1 User - 1 Browser policy
      */
-    public getActiveBrowserIdDep = (): string | null => {
+    public getActiveBrowserIdLegacy = (): string | null => {
         for (const id of Object.keys(this.pool)) {
             if (this.pool[id].active) {
                 return id;
