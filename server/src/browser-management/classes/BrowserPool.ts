@@ -293,5 +293,22 @@ export class BrowserPool {
         return browserIds.length > 0 ? browserIds[0] : null;
     };
 
-    
+    /**
+     * Returns the first active browser's instance id from the pool.
+     * If there is no active browser, it returns null.
+     * If there are multiple active browsers, it returns the first one.
+     * 
+     * @returns the first remote active browser instance's id from the pool
+     * @deprecated Use getBrowserIdForUser instead to enforce the 1 User - 1 Browser policy
+     */
+    public getActiveBrowserIdDep = (): string | null => {
+        for (const id of Object.keys(this.pool)) {
+            if (this.pool[id].active) {
+                return id;
+            }
+        }
+        // Don't log a warning since this behavior is expected in the user-browser model
+        // logger.log('warn', `No active browser in the pool`);
+        return null;
+    };
 }
