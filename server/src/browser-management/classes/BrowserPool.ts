@@ -252,5 +252,12 @@ export class BrowserPool {
         return Object.keys(this.pool).length;
     };
 
-   
+    /**
+     * Returns the total number of active users (users with browsers).
+     */
+    public getActiveUserCount = (): number => {
+        return this.userToBrowserMap.size;
+    };
+    
+    
 }
