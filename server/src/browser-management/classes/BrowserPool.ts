@@ -245,5 +245,12 @@ export class BrowserPool {
         return browserIds;
     };
 
+    /**
+     * Returns the total number of browsers in the pool.
+     */
+    public getPoolSize = (): number => {
+        return Object.keys(this.pool).length;
+    };
+
    
 }
