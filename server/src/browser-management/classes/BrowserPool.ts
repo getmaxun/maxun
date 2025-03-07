@@ -160,5 +160,28 @@ export class BrowserPool {
         return this.pool[id]?.browser;
     };
 
+    /**
+     * Returns the active browser's instance id for a specific user.
+     * 
+     * @param userId the user ID to find the browser for
+     * @returns the browser ID for the user, or null if no browser exists
+     */
+    public getActiveBrowserId = (userId: string): string | null => {
+        const browserId = this.userToBrowserMap.get(userId);
+        if (!browserId) {
+            logger.log('debug', `No browser found for user: ${userId}`);
+            return null;
+        }
+
+        // Verify the browser still exists in the pool
+        if (!this.pool[browserId]) {
+            this.userToBrowserMap.delete(userId);
+            logger.log('warn', `Browser mapping found for user: ${userId}, but browser doesn't exist in pool`);
+            return null;
+        }
+        console.log(`Browser Id ${browserId} found for user: ${userId}`);
+        return browserId;
+    };
+
     
 }
