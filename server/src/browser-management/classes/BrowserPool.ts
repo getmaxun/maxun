@@ -58,5 +58,46 @@ export class BrowserPool {
      * @param active states if the browser's instance is being actively used
      * @returns true if a new browser was added, false if an existing browser was replaced
      */
-    
+    public addRemoteBrowser = (
+        id: string, 
+        browser: RemoteBrowser, 
+        userId: string,
+        active: boolean = false
+    ): boolean => {
+        // Check if user already has a browser
+        const existingBrowserId = this.userToBrowserMap.get(userId);
+        let replaced = false;
+
+        if (existingBrowserId) {
+            // Close and remove the existing browser
+            if (existingBrowserId !== id) {
+                this.closeAndDeleteBrowser(existingBrowserId);
+                replaced = true;
+            } else {
+                // If it's the same browser ID, just update the info
+                this.pool[id] = {
+                    browser,
+                    active,
+                    userId,
+                };
+                logger.log('debug', `Updated existing browser with id: ${id} for user: ${userId}`);
+                return false;
+            }
+        }
+
+        // Add the new browser to the pool
+        this.pool[id] = {
+            browser,
+            active,
+            userId,
+        };
+
+        // Update the user-to-browser mapping
+        this.userToBrowserMap.set(userId, id);
+
+        logger.log('debug', `Remote browser with id: ${id} added to the pool for user: ${userId}`);
+        return !replaced;
+    };
+
+   
 }
