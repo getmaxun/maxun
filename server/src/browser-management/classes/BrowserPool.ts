@@ -196,5 +196,23 @@ export class BrowserPool {
         return this.pool[browserId].userId;
     };
 
-    
+    /**
+     * Sets the active state of a browser.
+     * 
+     * @param id the browser ID
+     * @param active the new active state
+     * @returns true if successful, false if the browser wasn't found
+     */
+    public setActiveBrowser = (id: string, active: boolean): boolean => {
+        if (!this.pool[id]) {
+            logger.log('warn', `Remote browser with id: ${id} does not exist in the pool`);
+            return false;
+        }
+
+        this.pool[id].active = active;
+        logger.log('debug', `Remote browser with id: ${id} set to ${active ? 'active' : 'inactive'}`);
+        return true;
+    };
+
+   
 }
