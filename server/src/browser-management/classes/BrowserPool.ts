@@ -259,5 +259,39 @@ export class BrowserPool {
         return this.userToBrowserMap.size;
     };
     
+    /**
+     * Gets the current active browser for the system if there's only one active user.
+     * This is a migration helper to support code that hasn't been updated to the user-browser model yet.
+     * 
+     * @param currentUserId The ID of the current user, which will be prioritized if multiple browsers exist
+     * @returns A browser ID if one can be determined, or null
+     */
+    public getActiveBrowserForMigration = (currentUserId?: string): string | null => {
+        // If a current user ID is provided and they have a browser, return that
+        if (currentUserId) {
+            const browserForUser = this.getActiveBrowserId(currentUserId);
+            if (browserForUser) {
+                return browserForUser;
+            }
+        }
+        
+        // If only one user has a browser, return that
+        if (this.userToBrowserMap.size === 1) {
+            const userId = Array.from(this.userToBrowserMap.keys())[0];
+            return this.userToBrowserMap.get(userId) || null;
+        }
+        
+        // Fall back to the first active browser if any
+        for (const id of Object.keys(this.pool)) {
+            if (this.pool[id].active) {
+                return id;
+            }
+        }
+        
+        // If all else fails, return the first browser in the pool
+        const browserIds = Object.keys(this.pool);
+        return browserIds.length > 0 ? browserIds[0] : null;
+    };
+
     
 }
