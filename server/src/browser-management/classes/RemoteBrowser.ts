@@ -341,15 +341,40 @@ export class RemoteBrowser {
      * @returns void
      */
     public registerEditorEvents = (): void => {
-        this.socket.on('rerender', async () => await this.makeAndEmitScreenshot());
-        this.socket.on('settings', (settings) => this.interpreterSettings = settings);
-        this.socket.on('changeTab', async (tabIndex) => await this.changeTab(tabIndex));
-        this.socket.on('addTab', async () => {
+        // For each event, include userId to make sure events are handled for the correct browser
+        logger.log('debug', `Registering editor events for user: ${this.userId}`);
+        
+        // Listen for specific events for this user
+        this.socket.on(`rerender:${this.userId}`, async () => {
+            logger.debug(`Rerender event received for user ${this.userId}`);
+            await this.makeAndEmitScreenshot();
+        });
+        
+        // For backward compatibility, also listen to the general event
+        this.socket.on('rerender', async () => {
+            logger.debug(`General rerender event received, checking if for user ${this.userId}`);
+            await this.makeAndEmitScreenshot();
+        });
+        
+        this.socket.on(`settings:${this.userId}`, (settings) => {
+            this.interpreterSettings = settings;
+            logger.debug(`Settings updated for user ${this.userId}`);
+        });
+        
+        this.socket.on(`changeTab:${this.userId}`, async (tabIndex) => {
+            logger.debug(`Tab change to ${tabIndex} requested for user ${this.userId}`);
+            await this.changeTab(tabIndex);
+        });
+        
+        this.socket.on(`addTab:${this.userId}`, async () => {
+            logger.debug(`New tab requested for user ${this.userId}`);
             await this.currentPage?.context().newPage();
             const lastTabIndex = this.currentPage ? this.currentPage.context().pages().length - 1 : 0;
             await this.changeTab(lastTabIndex);
         });
-        this.socket.on('closeTab', async (tabInfo) => {
+        
+        this.socket.on(`closeTab:${this.userId}`, async (tabInfo) => {
+            logger.debug(`Close tab ${tabInfo.index} requested for user ${this.userId}`);
             const page = this.currentPage?.context().pages()[tabInfo.index];
             if (page) {
                 if (tabInfo.isCurrent) {
@@ -364,24 +389,52 @@ export class RemoteBrowser {
                 await page.close();
                 logger.log(
                     'debug',
-                    `${tabInfo.index} page was closed, new length of pages: ${this.currentPage?.context().pages().length}`
-                )
+                    `Tab ${tabInfo.index} was closed for user ${this.userId}, new tab count: ${this.currentPage?.context().pages().length}`
+                );
             } else {
-                logger.log('error', `${tabInfo.index} index out of range of pages`)
+                logger.log('error', `Tab index ${tabInfo.index} out of range for user ${this.userId}`);
             }
         });
-        this.socket.on('setViewportSize', async (data: { width: number, height: number }) => {
+        
+        this.socket.on(`setViewportSize:${this.userId}`, async (data: { width: number, height: number }) => {
             const { width, height } = data;
-            logger.log('debug', `Received viewport size: width=${width}, height=${height}`);
+            logger.log('debug', `Viewport size change to width=${width}, height=${height} requested for user ${this.userId}`);
 
             // Update the browser context's viewport dynamically
             if (this.context && this.browser) {
                 this.context = await this.browser.newContext({ viewport: { width, height } });
-                logger.log('debug', `Viewport size updated to width=${width}, height=${height} for the entire browser context`);
+                logger.log('debug', `Viewport size updated to width=${width}, height=${height} for user ${this.userId}`);
             }
         });
-    }
-
+        
+        // For backward compatibility, also register the standard events
+        this.socket.on('settings', (settings) => this.interpreterSettings = settings);
+        this.socket.on('changeTab', async (tabIndex) => await this.changeTab(tabIndex));
+        this.socket.on('addTab', async () => {
+            await this.currentPage?.context().newPage();
+            const lastTabIndex = this.currentPage ? this.currentPage.context().pages().length - 1 : 0;
+            await this.changeTab(lastTabIndex);
+        });
+        this.socket.on('closeTab', async (tabInfo) => {
+            const page = this.currentPage?.context().pages()[tabInfo.index];
+            if (page) {
+                if (tabInfo.isCurrent) {
+                    if (this.currentPage?.context().pages()[tabInfo.index + 1]) {
+                        await this.changeTab(tabInfo.index + 1);
+                    } else {
+                        await this.changeTab(tabInfo.index - 1);
+                    }
+                }
+                await page.close();
+            }
+        });
+        this.socket.on('setViewportSize', async (data: { width: number, height: number }) => {
+            const { width, height } = data;
+            if (this.context && this.browser) {
+                this.context = await this.browser.newContext({ viewport: { width, height } });
+            }
+        });
+    };
     /**
      * Subscribes the remote browser for a screencast session
      * on [CDP](https://chromedevtools.github.io/devtools-protocol/) level,
@@ -390,16 +443,24 @@ export class RemoteBrowser {
      * @returns {Promise<void>}
      */
     public subscribeToScreencast = async (): Promise<void> => {
+        logger.log('debug', `Starting screencast for user: ${this.userId}`);
         await this.startScreencast();
         if (!this.client) {
             logger.log('warn', 'client is not initialized');
             return;
         }
+        // Set flag to indicate screencast is active
+        this.isScreencastActive = true;
+
         this.client.on('Page.screencastFrame', ({ data: base64, sessionId }) => {
+            // Only process if screencast is still active for this user
+            if (!this.isScreencastActive) {
+                return;
+            }
             this.emitScreenshot(Buffer.from(base64, 'base64'))
             setTimeout(async () => {
                 try {
-                    if (!this.client) {
+                    if (!this.client || !this.isScreencastActive) {
                         logger.log('warn', 'client is not initialized');
                         return;
                     }
@@ -418,6 +479,8 @@ export class RemoteBrowser {
      */
     public async switchOff(): Promise<void> {
         try {
+            this.isScreencastActive = false;
+
             await this.interpreter.stopInterpretation();
 
             if (this.screencastInterval) {
@@ -561,7 +624,11 @@ export class RemoteBrowser {
 
             //await this.currentPage.setViewportSize({ height: 400, width: 900 })
             this.client = await this.currentPage.context().newCDPSession(this.currentPage);
-            this.socket.emit('urlChanged', this.currentPage.url());
+           // Include userId in the URL change event
+            this.socket.emit('urlChanged', { 
+                url: this.currentPage.url(),
+                userId: this.userId
+            });
             await this.makeAndEmitScreenshot();
             await this.subscribeToScreencast();
         } else {
@@ -610,6 +677,8 @@ export class RemoteBrowser {
             await this.client.send('Page.startScreencast', {
                 format: SCREENCAST_CONFIG.format,
             });
+            // Set flag to indicate screencast is active
+            this.isScreencastActive = true;
 
             // Set up screencast frame handler
             this.client.on('Page.screencastFrame', async ({ data, sessionId }) => {
@@ -635,6 +704,8 @@ export class RemoteBrowser {
         }
 
         try {
+            // Set flag to indicate screencast is active
+            this.isScreencastActive = false;
             await this.client.send('Page.stopScreencast');
             this.screenshotQueue = [];
             this.isProcessingScreenshot = false;
@@ -665,8 +736,11 @@ export class RemoteBrowser {
             const base64Data = optimizedScreenshot.toString('base64');
             const dataWithMimeType = `data:image/jpeg;base64,${base64Data}`;
 
-            this.socket.emit('screencast', dataWithMimeType);
-            logger.debug('Screenshot emitted');
+// Emit with user context to ensure the frontend can identify which browser's screenshot this is
+this.socket.emit('screencast', {
+    image: dataWithMimeType,
+    userId: this.userId
+});            logger.debug('Screenshot emitted');
         } catch (error) {
             logger.error('Screenshot emission failed:', error);
         } finally {
