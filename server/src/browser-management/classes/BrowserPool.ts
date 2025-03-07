@@ -99,5 +99,31 @@ export class BrowserPool {
         return !replaced;
     };
 
-   
+    /**
+     * Removes the remote browser instance from the pool.
+     * Note: This doesn't handle browser closing as RemoteBrowser doesn't expose a close method.
+     * The caller should ensure the browser is properly closed before calling this method.
+     * 
+     * @param id remote browser instance's id
+     * @returns true if the browser was removed successfully, false otherwise
+     */
+    public closeAndDeleteBrowser = (id: string): boolean => {
+        if (!this.pool[id]) {
+            logger.log('warn', `Remote browser with id: ${id} does not exist in the pool`);
+            return false;
+        }
+
+        // Remove the user-to-browser mapping
+        const userId = this.pool[id].userId;
+        if (this.userToBrowserMap.get(userId) === id) {
+            this.userToBrowserMap.delete(userId);
+        }
+
+        // Remove from pool
+        delete this.pool[id];
+        logger.log('debug', `Remote browser with id: ${id} removed from the pool`);
+        return true;
+    };
+
+    
 }
