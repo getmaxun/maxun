@@ -183,5 +183,18 @@ export class BrowserPool {
         return browserId;
     };
 
+    /**
+     * Returns the user ID associated with a browser ID.
+     * 
+     * @param browserId the browser ID to find the user for
+     * @returns the user ID for the browser, or null if the browser doesn't exist
+     */
+    public getUserForBrowser = (browserId: string): string | null => {
+        if (!this.pool[browserId]) {
+            return null;
+        }
+        return this.pool[browserId].userId;
+    };
+
     
 }
