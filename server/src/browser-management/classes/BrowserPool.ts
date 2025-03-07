@@ -214,5 +214,36 @@ export class BrowserPool {
         return true;
     };
 
+    /**
+     * Returns all browser instances for a specific user.
+     * Should only be one per the "1 User - 1 Browser" policy, but included for flexibility.
+     * 
+     * @param userId the user ID to find browsers for
+     * @returns an array of browser IDs belonging to the user
+     */
+    public getAllBrowserIdsForUser = (userId: string): string[] => {
+        const browserIds: string[] = [];
+        
+        // Normally this would just return the one browser from the map
+        const mappedBrowserId = this.userToBrowserMap.get(userId);
+        if (mappedBrowserId && this.pool[mappedBrowserId]) {
+            browserIds.push(mappedBrowserId);
+        }
+        
+        // But as a safeguard, also check the entire pool for any browsers assigned to this user
+        // This helps detect and fix any inconsistencies in the maps
+        for (const [id, info] of Object.entries(this.pool)) {
+            if (info.userId === userId && !browserIds.includes(id)) {
+                browserIds.push(id);
+                // Fix the map if it's inconsistent
+                if (!mappedBrowserId) {
+                    this.userToBrowserMap.set(userId, id);
+                }
+            }
+        }
+        
+        return browserIds;
+    };
+
    
 }
