@@ -149,5 +149,16 @@ export class BrowserPool {
         return true;
     };
 
+    /**
+     * Returns the remote browser instance from the pool.
+     * 
+     * @param id remote browser instance's id
+     * @returns remote browser instance or undefined if it does not exist in the pool
+     */
+    public getRemoteBrowser = (id: string): RemoteBrowser | undefined => {
+        logger.log('debug', `Remote browser with id: ${id} retrieved from the pool`);
+        return this.pool[id]?.browser;
+    };
+
     
 }
