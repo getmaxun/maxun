@@ -79,7 +79,7 @@ export const destroyRemoteBrowser = async (id: string, userId: string): Promise<
     await browserSession.stopCurrentInterpretation();
     await browserSession.switchOff();
   }
-  return browserPool.deleteRemoteBrowser(userId);
+  return browserPool.deleteRemoteBrowser(id);
 };
 
 /**

@@ -4,6 +4,8 @@
  * These functions are called by the client through socket communication.
  */
 import { Socket } from 'socket.io';
+import { IncomingMessage } from 'http';
+import { JwtPayload } from 'jsonwebtoken';
 
 import logger from "../logger";
 import { Coordinates, ScrollDeltas, KeyboardInput, DatePickerEventData } from '../types';
@@ -12,7 +14,14 @@ import { WorkflowGenerator } from "../workflow-management/classes/Generator";
 import { Page } from "playwright";
 import { throttle } from "../../../src/helpers/inputHelpers";
 import { CustomActions } from "../../../src/shared/types";
-import { AuthenticatedRequest } from '../routes/record';
+
+interface AuthenticatedIncomingMessage extends IncomingMessage {
+  user?: JwtPayload | string;
+}
+
+interface AuthenticatedSocket extends Socket {
+  request: AuthenticatedIncomingMessage;
+}
 
 /**
  * A wrapper function for handling user input.
@@ -24,6 +33,7 @@ import { AuthenticatedRequest } from '../routes/record';
  *
  * @param handleCallback The callback handler to be called
  * @param args - arguments to be passed to the handler
+ * @param socket - socket with authenticated request
  * @category HelperFunctions
  */
 const handleWrapper = async (
@@ -33,14 +43,14 @@ const handleWrapper = async (
         args?: any
     ) => Promise<void>,
     args?: any,
-    req?: AuthenticatedRequest,
+    socket?: AuthenticatedSocket,
 ) => {
-    if (!req || !req.user || typeof req.user === 'string') {
+    if (!socket || !socket.request || !socket.request.user || typeof socket.request.user === 'string') {
         logger.log('warn', `User not authenticated or invalid JWT payload`);
         return;
     }
 
-    const userId = req.user.id;
+    const userId = socket.request.user.id;
     if (!userId) {
         logger.log('warn', `User ID is missing in JWT payload`);
         return;
@@ -79,12 +89,13 @@ interface CustomActionEventData {
 
 /**
  * A wrapper function for handling custom actions.
+ * @param socket The socket connection
  * @param customActionEventData The custom action event data
  * @category HelperFunctions
  */
-const onGenerateAction = async (customActionEventData: CustomActionEventData) => {
+const onGenerateAction = async (socket: AuthenticatedSocket, customActionEventData: CustomActionEventData) => {
     logger.log('debug', `Generating ${customActionEventData.action} action emitted from client`);
-    await handleWrapper(handleGenerateAction, customActionEventData);
+    await handleWrapper(handleGenerateAction, customActionEventData, socket);
 }
 
 /**
@@ -102,12 +113,13 @@ const handleGenerateAction =
 
 /**
  * A wrapper function for handling mousedown event.
+ * @param socket The socket connection
  * @param coordinates - coordinates of the mouse click
  * @category HelperFunctions
  */
-const onMousedown = async (coordinates: Coordinates) => {
+const onMousedown = async (socket: AuthenticatedSocket, coordinates: Coordinates) => {
     logger.log('debug', 'Handling mousedown event emitted from client');
-    await handleWrapper(handleMousedown, coordinates);
+    await handleWrapper(handleMousedown, coordinates, socket);
 }
 
 /**
@@ -152,12 +164,13 @@ const handleMousedown = async (generator: WorkflowGenerator, page: Page, { x, y 
 
 /**
  * A wrapper function for handling the wheel event.
+ * @param socket The socket connection 
  * @param scrollDeltas - the scroll deltas of the wheel event
  * @category HelperFunctions
  */
-const onWheel = async (scrollDeltas: ScrollDeltas) => {
+const onWheel = async (socket: AuthenticatedSocket, scrollDeltas: ScrollDeltas) => {
     logger.log('debug', 'Handling scroll event emitted from client');
-    await handleWrapper(handleWheel, scrollDeltas);
+    await handleWrapper(handleWheel, scrollDeltas, socket);
 };
 
 /**
@@ -178,12 +191,13 @@ const handleWheel = async (generator: WorkflowGenerator, page: Page, { deltaX, d
 
 /**
  * A wrapper function for handling the mousemove event.
+ * @param socket The socket connection
  * @param coordinates - the coordinates of the mousemove event
  * @category HelperFunctions
  */
-const onMousemove = async (coordinates: Coordinates) => {
+const onMousemove = async (socket: AuthenticatedSocket, coordinates: Coordinates) => {
     logger.log('debug', 'Handling mousemove event emitted from client');
-    await handleWrapper(handleMousemove, coordinates);
+    await handleWrapper(handleMousemove, coordinates, socket);
 }
 
 /**
@@ -212,12 +226,13 @@ const handleMousemove = async (generator: WorkflowGenerator, page: Page, { x, y 
 
 /**
  * A wrapper function for handling the keydown event.
+ * @param socket The socket connection
  * @param keyboardInput - the keyboard input of the keydown event
  * @category HelperFunctions
  */
-const onKeydown = async (keyboardInput: KeyboardInput) => {
+const onKeydown = async (socket: AuthenticatedSocket, keyboardInput: KeyboardInput) => {
     logger.log('debug', 'Handling keydown event emitted from client');
-    await handleWrapper(handleKeydown, keyboardInput);
+    await handleWrapper(handleKeydown, keyboardInput, socket);
 }
 
 /**
@@ -248,49 +263,95 @@ const handleDateSelection = async (generator: WorkflowGenerator, page: Page, dat
     logger.log('debug', `Date ${data.value} selected`);
 }
 
-const onDateSelection = async (data: DatePickerEventData) => {
+/**
+ * A wrapper function for handling the date selection event.
+ * @param socket The socket connection
+ * @param data - the data of the date selection event
+ * @category HelperFunctions
+ */
+const onDateSelection = async (socket: AuthenticatedSocket, data: DatePickerEventData) => {
     logger.log('debug', 'Handling date selection event emitted from client');
-    await handleWrapper(handleDateSelection, data);
+    await handleWrapper(handleDateSelection, data, socket);
 }
 
+/**
+ * Handles the dropdown selection event.
+ * @param generator - the workflow generator {@link Generator}
+ * @param page - the active page of the remote browser
+ * @param data - the data of the dropdown selection event
+ * @category BrowserManagement
+ */
 const handleDropdownSelection = async (generator: WorkflowGenerator, page: Page, data: { selector: string, value: string }) => {
     await generator.onDropdownSelection(page, data);
     logger.log('debug', `Dropdown value ${data.value} selected`);
 }
 
-const onDropdownSelection = async (data: { selector: string, value: string }) => {
+/**
+ * A wrapper function for handling the dropdown selection event.
+ * @param socket The socket connection
+ * @param data - the data of the dropdown selection event
+ * @category HelperFunctions
+ */
+const onDropdownSelection = async (socket: AuthenticatedSocket, data: { selector: string, value: string }) => {
     logger.log('debug', 'Handling dropdown selection event emitted from client');
-    await handleWrapper(handleDropdownSelection, data);
+    await handleWrapper(handleDropdownSelection, data, socket);
 }
 
+/**
+ * Handles the time selection event.
+ * @param generator - the workflow generator {@link Generator}
+ * @param page - the active page of the remote browser
+ * @param data - the data of the time selection event
+ * @category BrowserManagement
+ */
 const handleTimeSelection = async (generator: WorkflowGenerator, page: Page, data: { selector: string, value: string }) => {
     await generator.onTimeSelection(page, data);
     logger.log('debug', `Time value ${data.value} selected`);
 }
 
-const onTimeSelection = async (data: { selector: string, value: string }) => {
+/**
+ * A wrapper function for handling the time selection event.
+ * @param socket The socket connection
+ * @param data - the data of the time selection event
+ * @category HelperFunctions
+ */
+const onTimeSelection = async (socket: AuthenticatedSocket, data: { selector: string, value: string }) => {
     logger.log('debug', 'Handling time selection event emitted from client');
-    await handleWrapper(handleTimeSelection, data);
+    await handleWrapper(handleTimeSelection, data, socket);
 }
 
+/**
+ * Handles the datetime-local selection event.
+ * @param generator - the workflow generator {@link Generator}
+ * @param page - the active page of the remote browser
+ * @param data - the data of the datetime-local selection event
+ * @category BrowserManagement
+ */
 const handleDateTimeLocalSelection = async (generator: WorkflowGenerator, page: Page, data: { selector: string, value: string }) => {
     await generator.onDateTimeLocalSelection(page, data);
     logger.log('debug', `DateTime Local value ${data.value} selected`);
 }
 
-const onDateTimeLocalSelection = async (data: { selector: string, value: string }) => {
+/**
+ * A wrapper function for handling the datetime-local selection event.
+ * @param socket The socket connection
+ * @param data - the data of the datetime-local selection event
+ * @category HelperFunctions
+ */
+const onDateTimeLocalSelection = async (socket: AuthenticatedSocket, data: { selector: string, value: string }) => {
     logger.log('debug', 'Handling datetime-local selection event emitted from client');
-    await handleWrapper(handleDateTimeLocalSelection, data);
+    await handleWrapper(handleDateTimeLocalSelection, data, socket);
 }
 
 /**
  * A wrapper function for handling the keyup event.
+ * @param socket The socket connection
  * @param keyboardInput - the keyboard input of the keyup event
  * @category HelperFunctions
  */
-const onKeyup = async (keyboardInput: KeyboardInput) => {
+const onKeyup = async (socket: AuthenticatedSocket, keyboardInput: KeyboardInput) => {
     logger.log('debug', 'Handling keyup event emitted from client');
-    await handleWrapper(handleKeyup, keyboardInput);
+    await handleWrapper(handleKeyup, keyboardInput, socket);
 }
 
 /**
@@ -309,12 +370,13 @@ const handleKeyup = async (generator: WorkflowGenerator, page: Page, key: string
 
 /**
  * A wrapper function for handling the url change event.
+ * @param socket The socket connection
  * @param url - the new url of the page
  * @category HelperFunctions
  */
-const onChangeUrl = async (url: string) => {
+const onChangeUrl = async (socket: AuthenticatedSocket, url: string) => {
     logger.log('debug', 'Handling change url event emitted from client');
-    await handleWrapper(handleChangeUrl, url);
+    await handleWrapper(handleChangeUrl, url, socket);
 }
 
 /**
@@ -342,11 +404,12 @@ const handleChangeUrl = async (generator: WorkflowGenerator, page: Page, url: st
 
 /**
  * A wrapper function for handling the refresh event.
+ * @param socket The socket connection
  * @category HelperFunctions
  */
-const onRefresh = async () => {
+const onRefresh = async (socket: AuthenticatedSocket) => {
     logger.log('debug', 'Handling refresh event emitted from client');
-    await handleWrapper(handleRefresh);
+    await handleWrapper(handleRefresh, undefined, socket);
 }
 
 /**
@@ -363,11 +426,12 @@ const handleRefresh = async (generator: WorkflowGenerator, page: Page) => {
 
 /**
  * A wrapper function for handling the go back event.
+ * @param socket The socket connection
  * @category HelperFunctions
  */
-const onGoBack = async () => {
-    logger.log('debug', 'Handling refresh event emitted from client');
-    await handleWrapper(handleGoBack);
+const onGoBack = async (socket: AuthenticatedSocket) => {
+    logger.log('debug', 'Handling go back event emitted from client');
+    await handleWrapper(handleGoBack, undefined, socket);
 }
 
 /**
@@ -385,11 +449,12 @@ const handleGoBack = async (generator: WorkflowGenerator, page: Page) => {
 
 /**
  * A wrapper function for handling the go forward event.
+ * @param socket The socket connection
  * @category HelperFunctions
  */
-const onGoForward = async () => {
-    logger.log('debug', 'Handling refresh event emitted from client');
-    await handleWrapper(handleGoForward);
+const onGoForward = async (socket: AuthenticatedSocket) => {
+    logger.log('debug', 'Handling go forward event emitted from client');
+    await handleWrapper(handleGoForward, undefined, socket);
 }
 
 /**
@@ -407,18 +472,7 @@ const handleGoForward = async (generator: WorkflowGenerator, page: Page) => {
 
 /**
  * Helper function for registering the handlers onto established websocket connection.
- * Registers:
- * - mousedownHandler
- * - wheelHandler
- * - mousemoveHandler
- * - keydownHandler
- * - keyupHandler
- * - changeUrlHandler
- * - refreshHandler
- * - goBackHandler
- * - goForwardHandler
- * - onGenerateAction
- * input handlers.
+ * Registers various input handlers.
  *
  * All these handlers first generates the workflow pair data
  * and then calls the corresponding playwright's function to emulate the input.
@@ -428,21 +482,25 @@ const handleGoForward = async (generator: WorkflowGenerator, page: Page) => {
  * @returns void
  * @category BrowserManagement
  */
-const registerInputHandlers = (socket: Socket) => {
-    socket.on("input:mousedown", onMousedown);
-    socket.on("input:wheel", onWheel);
-    socket.on("input:mousemove", onMousemove);
-    socket.on("input:keydown", onKeydown);
-    socket.on("input:keyup", onKeyup);
-    socket.on("input:url", onChangeUrl);
-    socket.on("input:refresh", onRefresh);
-    socket.on("input:back", onGoBack);
-    socket.on("input:forward", onGoForward);
-    socket.on("input:date", onDateSelection);
-    socket.on("input:dropdown", onDropdownSelection);
-    socket.on("input:time", onTimeSelection);
-    socket.on("input:datetime-local", onDateTimeLocalSelection);
-    socket.on("action", onGenerateAction);
+const registerInputHandlers = (socket: Socket) => {    
+    // Cast to our authenticated socket type
+    const authSocket = socket as AuthenticatedSocket;
+    
+    // Register handlers with the socket
+    socket.on("input:mousedown", (data) => onMousedown(authSocket, data));
+    socket.on("input:wheel", (data) => onWheel(authSocket, data));
+    socket.on("input:mousemove", (data) => onMousemove(authSocket, data));
+    socket.on("input:keydown", (data) => onKeydown(authSocket, data));
+    socket.on("input:keyup", (data) => onKeyup(authSocket, data));
+    socket.on("input:url", (data) => onChangeUrl(authSocket, data));
+    socket.on("input:refresh", () => onRefresh(authSocket));
+    socket.on("input:back", () => onGoBack(authSocket));
+    socket.on("input:forward", () => onGoForward(authSocket));
+    socket.on("input:date", (data) => onDateSelection(authSocket, data));
+    socket.on("input:dropdown", (data) => onDropdownSelection(authSocket, data));
+    socket.on("input:time", (data) => onTimeSelection(authSocket, data));
+    socket.on("input:datetime-local", (data) => onDateTimeLocalSelection(authSocket, data));
+    socket.on("action", (data) => onGenerateAction(authSocket, data));
 };
 
 export default registerInputHandlers;

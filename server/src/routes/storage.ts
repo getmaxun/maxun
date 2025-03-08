@@ -617,7 +617,7 @@ router.post('/runs/run/:id', requireSignIn, async (req: AuthenticatedRequest, re
         workflow, currentPage, (newPage: Page) => currentPage = newPage, plainRun.interpreterSettings);
       const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
       const uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, interpretationInfo.binaryOutput);
-      await destroyRemoteBrowser(req.user?.id, plainRun.browserId);
+      await destroyRemoteBrowser(plainRun.browserId, req.user?.id);
       await run.update({
         ...run,
         status: 'success',

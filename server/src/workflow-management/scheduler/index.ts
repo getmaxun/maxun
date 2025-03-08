@@ -132,7 +132,7 @@ async function executeRun(id: string, userId: string) {
     const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
     const uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, interpretationInfo.binaryOutput);
 
-    await destroyRemoteBrowser(userId, plainRun.browserId);
+    await destroyRemoteBrowser(plainRun.browserId, userId);
 
     await run.update({
       ...run,
@@ -215,14 +215,14 @@ async function readyForRunHandler(browserId: string, id: string, userId: string)
       logger.log('info', `Interpretation of ${id} succeeded`);
     } else {
       logger.log('error', `Interpretation of ${id} failed`);
-      await destroyRemoteBrowser(userId, browserId);
+      await destroyRemoteBrowser(browserId, userId);
     }
 
     resetRecordingState(browserId, id);
 
   } catch (error: any) {
     logger.error(`Error during readyForRunHandler: ${error.message}`);
-    await destroyRemoteBrowser(userId, browserId);
+    await destroyRemoteBrowser(browserId, userId);
   }
 }
 
