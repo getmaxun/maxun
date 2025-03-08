@@ -903,7 +903,10 @@ router.delete('/schedule/:id', requireSignIn, async (req: AuthenticatedRequest, 
 router.post('/runs/abort/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     if (!req.user) { return res.status(401).send({ error: 'Unauthorized' }); }
-    const run = await Run.findOne({ where: { runId: req.params.id } });
+      const run = await Run.findOne({ where: { 
+      runId: req.params.id,
+      runByUserId: req.user.id,
+    } });
     if (!run) {
       return res.status(404).send(false);
     }
