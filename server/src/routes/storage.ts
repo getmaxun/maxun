@@ -21,6 +21,7 @@ import { tryCatch } from 'bullmq';
 import { encrypt, decrypt } from '../utils/auth';
 import { WorkflowFile } from 'maxun-core';
 import { Page } from 'playwright';
+import { airtableUpdateTasks, processAirtableUpdates } from '../workflow-management/integrations/airtable';
 chromium.use(stealthPlugin());
 
 export const router = Router();
@@ -28,7 +29,7 @@ export const router = Router();
 export const processWorkflowActions = async (workflow: any[], checkLimit: boolean = false): Promise<any[]> => {
  const processedWorkflow = JSON.parse(JSON.stringify(workflow));
 
-  processedWorkflow.workflow.forEach((pair: any) => {
+  processedWorkflow.forEach((pair: any) => {
     pair.what.forEach((action: any) => {
       // Handle limit validation for scrapeList action
       if (action.action === 'scrapeList' && checkLimit && Array.isArray(action.args) && action.args.length > 0) {
@@ -616,7 +617,7 @@ router.post('/runs/run/:id', requireSignIn, async (req: AuthenticatedRequest, re
         workflow, currentPage, (newPage: Page) => currentPage = newPage, plainRun.interpreterSettings);
       const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
       const uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, interpretationInfo.binaryOutput);
-      await destroyRemoteBrowser(plainRun.browserId);
+      await destroyRemoteBrowser(plainRun.browserId, req.user?.id);
       await run.update({
         ...run,
         status: 'success',
@@ -667,6 +668,15 @@ router.post('/runs/run/:id', requireSignIn, async (req: AuthenticatedRequest, re
           status: 'pending',
           retries: 5,
         };
+
+        airtableUpdateTasks[plainRun.runId] = {
+          robotId: plainRun.robotMetaId,
+          runId: plainRun.runId,
+          status: 'pending',
+          retries: 5,
+        };
+
+        processAirtableUpdates();
         processGoogleSheetUpdates();
       } catch (err: any) {
         logger.log('error', `Failed to update Google Sheet for run: ${plainRun.runId}: ${err.message}`);
@@ -890,9 +900,13 @@ router.delete('/schedule/:id', requireSignIn, async (req: AuthenticatedRequest, 
 /**
  * POST endpoint for aborting a current interpretation of the run.
  */
-router.post('/runs/abort/:id', requireSignIn, async (req, res) => {
+router.post('/runs/abort/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
-    const run = await Run.findOne({ where: { runId: req.params.id } });
+    if (!req.user) { return res.status(401).send({ error: 'Unauthorized' }); }
+      const run = await Run.findOne({ where: { 
+      runId: req.params.id,
+      runByUserId: req.user.id,
+    } });
     if (!run) {
       return res.status(404).send(false);
     }

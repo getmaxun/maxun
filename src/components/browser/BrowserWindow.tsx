@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { useSocketStore } from '../../context/socket';
 import { Button } from '@mui/material';
 import Canvas from "../recorder/canvas";
@@ -8,6 +8,7 @@ import { useActionContext } from '../../context/browserActions';
 import { useBrowserSteps, TextStep } from '../../context/browserSteps';
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { useTranslation } from 'react-i18next';
+import { AuthContext } from '../../context/auth';
 
 interface ElementInfo {
     tagName: string;
@@ -26,6 +27,12 @@ interface AttributeOption {
     label: string;
     value: string;
 }
+
+interface ScreencastData {
+    image: string;
+    userId: string;
+}
+
 
 const getAttributeOptions = (tagName: string, elementInfo: ElementInfo | null): AttributeOption[] => {
     if (!elementInfo) return [];
@@ -72,6 +79,9 @@ export const BrowserWindow = () => {
     const { getText, getList, paginationMode, paginationType, limitMode, captureStage } = useActionContext();
     const { addTextStep, addListStep } = useBrowserSteps();
 
+    const { state } = useContext(AuthContext);
+    const { user } = state; 
+
     const onMouseMove = (e: MouseEvent) => {
         if (canvasRef && canvasRef.current && highlighterData) {
             const canvasRect = canvasRef.current.getBoundingClientRect();
@@ -99,9 +109,15 @@ export const BrowserWindow = () => {
         }
     }, [getList, resetListState]);
 
-    const screencastHandler = useCallback((data: string) => {
-        setScreenShot(data);
-    }, [screenShot]);
+    const screencastHandler = useCallback((data: string | ScreencastData) => {
+        if (typeof data === 'string') {
+            setScreenShot(data);
+        } else if (data && typeof data === 'object' && 'image' in data) {
+            if (!data.userId || data.userId === user?.id) {
+                setScreenShot(data.image);
+            }
+        }
+    }, [screenShot, user?.id]);
 
     useEffect(() => {
         if (socket) {
