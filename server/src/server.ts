@@ -22,7 +22,6 @@ import swaggerSpec from './swagger/config';
 import session from 'express-session';
 
 import Run from './models/Run';
-import PgBoss from 'pg-boss';
 
 const app = express();
 app.use(cors({
@@ -53,10 +52,6 @@ export const io = new Server(server);
  * {@link BrowserPool} globally exported singleton instance for managing browsers.
  */
 export const browserPool = new BrowserPool();
-
-const pgBossConnectionString = 'postgres://postgres:admin1234@localhost:5432/maxun';
-
-export const pgBoss = new PgBoss({connectionString: pgBossConnectionString, schema: 'public'});
 
 // app.use(bodyParser.json({ limit: '10mb' }))
 // app.use(bodyParser.urlencoded({ extended: true, limit: '10mb', parameterLimit: 9000 }));
