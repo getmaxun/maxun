@@ -16,8 +16,17 @@ interface InitializeBrowserData {
   userId: string;
 }
 
+interface InterpretWorkflow {
+  userId: string;
+}
+
+interface StopInterpretWorkflow {
+  userId: string;
+}
+
 interface DestroyBrowserData {
   browserId: string;
+  userId: string;
 }
 
 const pgBoss = new PgBoss({connectionString: pgBossConnectionString, schema: 'public'});
@@ -65,10 +74,10 @@ async function startWorkers() {
     await pgBoss.work('destroy-browser', async (job: Job<DestroyBrowserData> | Job<DestroyBrowserData>[]) => {
       try {
         const data = extractJobData(job);
-        const browserId = data.browserId;
+        const { browserId, userId } = data;
         
         logger.log('info', `Starting browser destruction job for browser: ${browserId}`);
-        const success = await destroyRemoteBrowser(browserId);
+        const success = await destroyRemoteBrowser(browserId, userId);
         logger.log('info', `Browser destruction job completed with result: ${success}`);
         return { success };
       } catch (error: unknown) {
@@ -79,10 +88,13 @@ async function startWorkers() {
     });
 
     // Worker for interpreting workflow
-    await pgBoss.work('interpret-workflow', async () => {
+    await pgBoss.work('interpret-workflow', async (job: Job<InterpretWorkflow> | Job<InterpretWorkflow>[]) => {
       try {
+        const data = extractJobData(job);
+        const userId = data.userId;
+
         logger.log('info', 'Starting workflow interpretation job');
-        await interpretWholeWorkflow();
+        await interpretWholeWorkflow(userId);
         logger.log('info', 'Workflow interpretation job completed');
         return { success: true };
       } catch (error: unknown) {
@@ -93,10 +105,13 @@ async function startWorkers() {
     });
 
     // Worker for stopping workflow interpretation
-    await pgBoss.work('stop-interpretation', async () => {
+    await pgBoss.work('stop-interpretation', async (job: Job<StopInterpretWorkflow> | Job<StopInterpretWorkflow>[]) => {
       try {
+        const data = extractJobData(job);
+        const userId = data.userId;
+
         logger.log('info', 'Starting stop interpretation job');
-        await stopRunningInterpretation();
+        await stopRunningInterpretation(userId);
         logger.log('info', 'Stop interpretation job completed');
         return { success: true };
       } catch (error: unknown) {
