@@ -240,21 +240,30 @@ export const RecordingsTable = ({
     setModalOpen(true);
   }, [browserId]);
 
-  const handleStartRecording = useCallback(() => {
+  const startRecording = () => {
+    setModalOpen(false);
+    
+    // Set local state
     setBrowserId('new-recording');
     setRecordingName('');
     setRecordingId('');
-    navigate('/recording');
-  }, [navigate]);
-
-  const startRecording = () => {
-    setModalOpen(false);
-    handleStartRecording();
+    
+    window.sessionStorage.setItem('browserId', 'new-recording');
+    
+    const sessionId = Date.now().toString();
+    window.sessionStorage.setItem('recordingSessionId', sessionId);
+    window.sessionStorage.setItem('recordingUrl', recordingUrl);
+    
+    window.open(`/recording-setup?session=${sessionId}`, '_blank');
+    
+    window.sessionStorage.setItem('nextTabIsRecording', 'true');
   };
 
   const setBrowserRecordingUrl = (event: React.ChangeEvent<HTMLInputElement>) => {
     setInitialUrl(event.target.value);
     setRecordingUrl(event.target.value);
+
+    window.sessionStorage.setItem('initialUrl', event.target.value);
   }
 
   useEffect(() => {
