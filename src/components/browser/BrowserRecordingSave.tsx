@@ -82,7 +82,13 @@ const BrowserRecordingSave = () => {
       socket?.emit('new-recording');
       socket.emit('input:url', initialUrl);
       // Update the URL in the navbar to match
-      setRecordingUrl(initialUrl);
+      let sessionInitialUrl = window.sessionStorage.getItem('initialUrl');
+      if (sessionInitialUrl) {
+        setRecordingUrl(sessionInitialUrl);
+        window.sessionStorage.setItem('recordingUrl', sessionInitialUrl);
+      } else {
+        setRecordingUrl(initialUrl);
+      }
     }
 
     // Close the reset confirmation modal
