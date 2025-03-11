@@ -41,9 +41,14 @@ import { useGlobalInfoStore } from "../../context/globalInfo";
 import { checkRunsForRecording, deleteRecordingFromStorage, getStoredRecordings } from "../../api/storage";
 import { Add } from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
-import { stopRecording } from "../../api/recording";
+import { getActiveBrowserId, stopRecording } from "../../api/recording";
 import { GenericModal } from '../ui/GenericModal';
 
+declare global {
+  interface Window {
+    openedRecordingWindow?: Window | null;
+  }
+}
 
 /** TODO:
  *  1. allow editing existing robot after persisting browser steps
@@ -148,6 +153,8 @@ export const RecordingsTable = ({
   const [rows, setRows] = React.useState<Data[]>([]);
   const [isModalOpen, setModalOpen] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [isWarningModalOpen, setWarningModalOpen] = React.useState(false);
+  const [activeBrowserId, setActiveBrowserId] = React.useState('');
 
   const columns = useMemo(() => [
     { id: 'interpret', label: t('recordingtable.run'), minWidth: 80 },
@@ -257,12 +264,44 @@ export const RecordingsTable = ({
   }, [setRecordings, notify, t]);
 
   const handleNewRecording = useCallback(async () => {
-    if (browserId) {
-      setBrowserId(null);
-      await stopRecording(browserId);
+    const activeBrowserId = await getActiveBrowserId();
+    
+    if (activeBrowserId) {
+      setActiveBrowserId(activeBrowserId);
+      setWarningModalOpen(true);
+    } else {
+      setModalOpen(true);
     }
+  }, []);
+
+  const notifyRecordingTabsToClose = (browserId: string) => {
+    const closeMessage = {
+      action: 'close-recording-tab',
+      browserId: browserId,
+      timestamp: Date.now()
+    };
+    window.sessionStorage.setItem('recordingTabCloseMessage', JSON.stringify(closeMessage));
+    
+    if (window.openedRecordingWindow && !window.openedRecordingWindow.closed) {
+      try {
+        window.openedRecordingWindow.close();
+      } catch (e) {
+        console.log('Could not directly close recording window:', e);
+      }
+    }
+  };
+
+  const handleDiscardAndCreate = async () => {
+    if (activeBrowserId) {
+      await stopRecording(activeBrowserId);
+      notify('warning', t('browser_recording.notifications.terminated'));
+      
+      notifyRecordingTabsToClose(activeBrowserId);
+    }
+    
+    setWarningModalOpen(false);
     setModalOpen(true);
-  }, [browserId]);
+  };
 
   const startRecording = () => {
     setModalOpen(false);
@@ -278,7 +317,7 @@ export const RecordingsTable = ({
     window.sessionStorage.setItem('recordingSessionId', sessionId);
     window.sessionStorage.setItem('recordingUrl', recordingUrl);
     
-    window.open(`/recording-setup?session=${sessionId}`, '_blank');
+    window.openedRecordingWindow = window.open(`/recording-setup?session=${sessionId}`, '_blank');
     
     window.sessionStorage.setItem('nextTabIsRecording', 'true');
   };
@@ -434,6 +473,30 @@ export const RecordingsTable = ({
         onPageChange={handleChangePage}
         onRowsPerPageChange={handleChangeRowsPerPage}
       />
+      <GenericModal isOpen={isWarningModalOpen} onClose={() => setWarningModalOpen(false)} modalStyle={modalStyle}>
+        <div style={{ padding: '10px' }}>
+          <Typography variant="h6" gutterBottom>{t('recordingtable.warning_modal.title')}</Typography>
+          <Typography variant="body1" style={{ marginBottom: '20px' }}>
+            {t('recordingtable.warning_modal.message')}
+          </Typography>
+          
+          <Box display="flex" justifyContent="space-between" mt={2}>
+            <Button
+              onClick={handleDiscardAndCreate}
+              variant="contained"
+              color="error"
+            >
+              {t('recordingtable.warning_modal.discard_and_create')}
+            </Button>
+            <Button
+              onClick={() => setWarningModalOpen(false)}
+              variant="outlined"
+            >
+              {t('recordingtable.warning_modal.cancel')}
+            </Button>
+          </Box>
+        </div>
+      </GenericModal>
       <GenericModal isOpen={isModalOpen} onClose={() => setModalOpen(false)} modalStyle={modalStyle}>
         <div style={{ padding: '10px' }}>
           <Typography variant="h6" gutterBottom>{t('recordingtable.modal.title')}</Typography>
