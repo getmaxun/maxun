@@ -179,8 +179,6 @@ export const RecordingsTable = ({
   useEffect(() => {
     const handleMessage = (event: any) => {
       if (event.data && event.data.type === 'recording-notification') {
-        console.log('Received message from recording tab:', event.data);
-        
         const notificationData = event.data.notification;
         if (notificationData) {
           notify(notificationData.type, notificationData.message);
