@@ -176,6 +176,32 @@ export const RecordingsTable = ({
     setRecordingId } = useGlobalInfoStore();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    const handleMessage = (event: any) => {
+      if (event.data && event.data.type === 'recording-notification') {
+        console.log('Received message from recording tab:', event.data);
+        
+        const notificationData = event.data.notification;
+        if (notificationData) {
+          notify(notificationData.type, notificationData.message);
+          
+          if ((notificationData.type === 'success' && 
+               notificationData.message.includes('saved')) ||
+              (notificationData.type === 'warning' && 
+               notificationData.message.includes('terminated'))) {
+            setRerenderRobots(true);
+          }
+        }
+      }
+    };
+    
+    window.addEventListener('message', handleMessage);
+    
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [notify, setRerenderRobots]);
+
   const handleChangePage = useCallback((event: unknown, newPage: number) => {
     setPage(newPage);
   }, []);
