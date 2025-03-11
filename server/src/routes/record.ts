@@ -56,7 +56,6 @@ async function waitForJobCompletion(jobId: string, queueName: string, timeout = 
         }
       };
       
-      // Start checking
       checkJobStatus();
     });
 }
@@ -88,9 +87,8 @@ router.get('/start', requireSignIn, async (req: AuthenticatedRequest, res: Respo
         });
         
         if (!jobId) {
-            logger.log('warn', 'pgBoss.send returned null, falling back to direct initialization');
             const browserId = initializeRemoteBrowserForRecording(req.user.id);
-            return res.send( browserId );
+            return res.send(browserId);
         }
         
         logger.log('info', `Queued browser initialization job: ${jobId}, waiting for completion...`);
@@ -99,14 +97,11 @@ router.get('/start', requireSignIn, async (req: AuthenticatedRequest, res: Respo
             const result = await waitForJobCompletion(jobId, 'initialize-browser-recording', 15000);
             
             if (result && result.browserId) {
-                logger.log('info', `Job completed with browserId: ${result.browserId}`);
                 return res.send(result.browserId);
             } else {
-                logger.log('warn', 'Job completed but returned unexpected result');
                 return res.send(jobId);
             }
         } catch (waitError: any) {
-            logger.log('warn', `Error waiting for job completion: ${waitError.message}`);
             return res.send(jobId);
         }
     } catch (error: any) {
@@ -153,7 +148,6 @@ router.get('/stop/:browserId', requireSignIn, async (req: AuthenticatedRequest, 
         });
 
         if (!jobId) {
-            logger.log('warn', 'pgBoss.send returned null, falling back to direct destruction');
             const browserId = initializeRemoteBrowserForRecording(req.user.id);
             return res.send( browserId );
         }
@@ -164,14 +158,11 @@ router.get('/stop/:browserId', requireSignIn, async (req: AuthenticatedRequest, 
             const result = await waitForJobCompletion(jobId, 'destroy-browser', 15000);
             
             if (result) {
-                logger.log('info', `Browser destruction job completed with result: ${result.success}`);
                 return res.send(result.success);
             } else {
-                logger.log('warn', 'Job completed but returned unexpected result');
                 return res.send(false);
             }
         } catch (waitError: any) {
-            logger.log('warn', `Error waiting for job completion: ${waitError.message}`);
             return res.send(false);
         }
     } catch (error: any) {
@@ -238,7 +229,6 @@ router.get('/interpret', requireSignIn, async (req: AuthenticatedRequest, res) =
         });
 
         if (!jobId) {
-            logger.log('warn', 'pgBoss.send returned null, falling back to direct destruction');
             await interpretWholeWorkflow(req.user?.id);
             return res.send('interpretation done');
         }
@@ -249,18 +239,15 @@ router.get('/interpret', requireSignIn, async (req: AuthenticatedRequest, res) =
             const result = await waitForJobCompletion(jobId, 'interpret-workflow', 15000);
             
             if (result) {
-                logger.log('info', `Browser destruction job completed with result: ${result.success}`);
                 return res.send('interpretation done');
             } else {
-                logger.log('warn', 'Job completed but returned unexpected result');
                 return res.send('interpretation failed');
             }
         } catch (waitError: any) {
-            logger.log('warn', `Error waiting for job completion: ${waitError.message}`);
             return res.send('interpretation failed');
         }
     } catch (error: any) {
-        logger.log('error', `Failed to stop browser: ${error.message}`);
+        logger.log('error', `Failed to stop interpret workflow: ${error.message}`);
         return res.status(500).send('interpretation failed');
     }
 });
@@ -279,9 +266,8 @@ router.get('/interpret/stop', requireSignIn, async (req: AuthenticatedRequest, r
         });
 
         if (!jobId) {
-            logger.log('warn', 'pgBoss.send returned null, falling back to direct destruction');
-            await interpretWholeWorkflow(req.user?.id);
-            return res.send('interpretation done');
+            await stopRunningInterpretation(req.user?.id);
+            return res.send('interpretation stopped');
         }
 
         logger.log('info', `Queued stop interpret workflow job: ${jobId}, waiting for completion...`);
@@ -290,31 +276,17 @@ router.get('/interpret/stop', requireSignIn, async (req: AuthenticatedRequest, r
             const result = await waitForJobCompletion(jobId, 'stop-interpretation', 15000);
             
             if (result) {
-                logger.log('info', `Browser destruction job completed with result: ${result.success}`);
                 return res.send('interpretation stopped');
             } else {
-                logger.log('warn', 'Job completed but returned unexpected result');
                 return res.send('interpretation failed to stop');
             }
         } catch (waitError: any) {
-            logger.log('warn', `Error waiting for job completion: ${waitError.message}`);
             return res.send('interpretation failed to stop');
         }
     } catch (error: any) {
-        logger.log('error', `Failed to stop browser: ${error.message}`);
+        logger.log('error', `Failed to stop interpretation: ${error.message}`);
         return res.status(500).send('interpretation failed to stop');
     }
-});
-
-/**
- * GET endpoint for stopping an ongoing interpretation of the currently generated workflow.
- */
-router.get('/interpret/stop', requireSignIn, async (req: AuthenticatedRequest, res) => {
-    if (!req.user) {
-        return res.status(401).send('User not authenticated');
-    }
-    await stopRunningInterpretation(req.user?.id);
-    return res.send('interpretation stopped');
 });
 
 export default router;
