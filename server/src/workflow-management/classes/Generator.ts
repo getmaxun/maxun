@@ -708,6 +708,7 @@ export class WorkflowGenerator {
   public updateSocket = (socket: Socket): void => {
     this.socket = socket;
     this.registerEventHandlers(socket);
+    this.initializeSocketListeners();
   };
 
   /**
