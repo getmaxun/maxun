@@ -617,7 +617,7 @@ router.post('/runs/run/:id', requireSignIn, async (req: AuthenticatedRequest, re
         workflow, currentPage, (newPage: Page) => currentPage = newPage, plainRun.interpreterSettings);
       const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
       const uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, interpretationInfo.binaryOutput);
-      await destroyRemoteBrowser(plainRun.browserId);
+      await destroyRemoteBrowser(plainRun.browserId, req.user?.id);
       await run.update({
         ...run,
         status: 'success',
@@ -900,9 +900,13 @@ router.delete('/schedule/:id', requireSignIn, async (req: AuthenticatedRequest, 
 /**
  * POST endpoint for aborting a current interpretation of the run.
  */
-router.post('/runs/abort/:id', requireSignIn, async (req, res) => {
+router.post('/runs/abort/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
-    const run = await Run.findOne({ where: { runId: req.params.id } });
+    if (!req.user) { return res.status(401).send({ error: 'Unauthorized' }); }
+      const run = await Run.findOne({ where: { 
+      runId: req.params.id,
+      runByUserId: req.user.id,
+    } });
     if (!run) {
       return res.status(404).send(false);
     }

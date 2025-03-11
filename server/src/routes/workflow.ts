@@ -7,6 +7,7 @@ import logger from "../logger";
 import { browserPool } from "../server";
 import { requireSignIn } from '../middlewares/auth';
 import Robot from '../models/Robot';
+import { AuthenticatedRequest } from './record';
 
 export const router = Router();
 
@@ -46,8 +47,9 @@ router.get('/params/:browserId', requireSignIn, (req, res) => {
 /**
  * DELETE endpoint for deleting a pair from the generated workflow.
  */
-router.delete('/pair/:index', requireSignIn, (req, res) => {
-  const id = browserPool.getActiveBrowserId();
+router.delete('/pair/:index', requireSignIn, (req: AuthenticatedRequest, res) => {
+  if (!req.user) { return res.status(401).send('User not authenticated'); }
+  const id = browserPool.getActiveBrowserId(req.user?.id);
   if (id) {
     const browser = browserPool.getRemoteBrowser(id);
     if (browser) {
@@ -62,8 +64,9 @@ router.delete('/pair/:index', requireSignIn, (req, res) => {
 /**
  * POST endpoint for adding a pair to the generated workflow.
  */
-router.post('/pair/:index', requireSignIn, (req, res) => {
-  const id = browserPool.getActiveBrowserId();
+router.post('/pair/:index', requireSignIn, (req: AuthenticatedRequest, res) => {
+  if (!req.user) { return res.status(401).send('User not authenticated'); }
+  const id = browserPool.getActiveBrowserId(req.user?.id);
   if (id) {
     const browser = browserPool.getRemoteBrowser(id);
     logger.log('debug', `Adding pair to workflow`);
@@ -82,8 +85,9 @@ router.post('/pair/:index', requireSignIn, (req, res) => {
 /**
  * PUT endpoint for updating a pair in the generated workflow.
  */
-router.put('/pair/:index', requireSignIn, (req, res) => {
-  const id = browserPool.getActiveBrowserId();
+router.put('/pair/:index', requireSignIn, (req: AuthenticatedRequest, res) => {
+  if (!req.user) { return res.status(401).send('User not authenticated'); }
+  const id = browserPool.getActiveBrowserId(req.user?.id);
   if (id) {
     const browser = browserPool.getRemoteBrowser(id);
     logger.log('debug', `Updating pair in workflow`);

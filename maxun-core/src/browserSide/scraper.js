@@ -210,7 +210,6 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
           return Array.from(document.querySelectorAll(config.selector));
       }
   
-      // First handle iframe traversal if present
       if (config.selector.includes(':>>')) {
         const parts = config.selector.split(':>>').map(s => s.trim());
         let currentElements = [document];
@@ -223,23 +222,44 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
 
             for (const element of currentElements) {
                 try {
-                    // For document or iframe document
                     const doc = element.contentDocument || element || element.contentWindow?.document;
                     if (!doc) continue;
 
-                    // Query elements in current context
+                    if (part.startsWith('frame[name=') || part.startsWith('iframe[name=')) {
+                        const nameMatch = part.match(/\[name=['"]([^'"]+)['"]\]/);
+                        if (nameMatch && nameMatch[1]) {
+                            const frameName = nameMatch[1];
+                            let foundFrames = [];
+                            
+                            if (doc.getElementsByName && typeof doc.getElementsByName === 'function') {
+                                foundFrames = Array.from(doc.getElementsByName(frameName))
+                                    .filter(el => el.tagName === 'FRAME' || el.tagName === 'IFRAME');
+                            }
+                            
+                            if (foundFrames.length === 0) {
+                                const framesBySelector = Array.from(doc.querySelectorAll(`frame[name="${frameName}"], iframe[name="${frameName}"]`));
+                                foundFrames = framesBySelector;
+                            }
+                            
+                            if (isLast) {
+                                nextElements.push(...foundFrames);
+                            } else {
+                                nextElements.push(...foundFrames);
+                            }
+                            continue;
+                        }
+                    }
+
                     const found = Array.from(doc.querySelectorAll(part));
                     
                     if (isLast) {
-                        // If it's the last part, keep all matching elements
                         nextElements.push(...found);
                     } else {
-                        // If not last, only keep iframes for next iteration
-                        const iframes = found.filter(el => el.tagName === 'IFRAME');
-                        nextElements.push(...iframes);
+                        const frames = found.filter(el => el.tagName === 'IFRAME' || el.tagName === 'FRAME');
+                        nextElements.push(...frames);
                     }
                 } catch (error) {
-                    console.warn('Cannot access iframe content:', error, {
+                    console.warn('Cannot access iframe/frame content:', error, {
                         part,
                         element,
                         index: i
@@ -285,12 +305,17 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
       return [];
     }
 
-    // Modified to handle iframe context for URL resolution
     function getElementValue(element, attribute) {
       if (!element) return null;
   
-      // Get the base URL for resolving relative URLs
-      const baseURL = element.ownerDocument?.location?.href || window.location.origin;
+      let baseURL;
+      try {
+          baseURL = element.ownerDocument?.location?.href || 
+                    element.ownerDocument?.baseURI || 
+                    window.location.origin;
+      } catch (e) {
+          baseURL = window.location.origin;
+      }
   
       switch (attribute) {
         case 'href': {
@@ -305,6 +330,10 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
             return element.innerText?.trim();
         case 'textContent':
             return element.textContent?.trim();
+        case 'innerHTML':
+            return element.innerHTML;
+        case 'outerHTML':
+            return element.outerHTML;
         default:
             return element.getAttribute(attribute) || element.innerText?.trim();
       }
@@ -394,7 +423,7 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
  * @returns {Array.<Array.<Object>>} Array of arrays of scraped items, one sub-array per list
  */
   window.scrapeList = async function ({ listSelector, fields, limit = 10 }) {
-    // Enhanced query function to handle both iframe and shadow DOM
+    // Enhanced query function to handle iframe, frame and shadow DOM
     const queryElement = (rootElement, selector) => {
       if (!selector.includes('>>') && !selector.includes(':>>')) {
           return rootElement.querySelector(selector);
@@ -406,14 +435,14 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
       for (let i = 0; i < parts.length; i++) {
           if (!currentElement) return null;
 
-          // Handle iframe traversal
-          if (currentElement.tagName === 'IFRAME') {
+          // Handle iframe and frame traversal
+          if (currentElement.tagName === 'IFRAME' || currentElement.tagName === 'FRAME') {
               try {
-                  const iframeDoc = currentElement.contentDocument || currentElement.contentWindow.document;
-                  currentElement = iframeDoc.querySelector(parts[i]);
+                  const frameDoc = currentElement.contentDocument || currentElement.contentWindow.document;
+                  currentElement = frameDoc.querySelector(parts[i]);
                   continue;
               } catch (e) {
-                  console.warn('Cannot access iframe content:', e);
+                  console.warn(`Cannot access ${currentElement.tagName.toLowerCase()} content:`, e);
                   return null;
               }
           }
@@ -456,13 +485,13 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
           const nextElements = [];
 
           for (const element of currentElements) {
-              // Handle iframe traversal
-              if (element.tagName === 'IFRAME') {
+              // Handle iframe and frame traversal
+              if (element.tagName === 'IFRAME' || element.tagName === 'FRAME') {
                   try {
-                      const iframeDoc = element.contentDocument || element.contentWindow.document;
-                      nextElements.push(...iframeDoc.querySelectorAll(part));
+                      const frameDoc = element.contentDocument || element.contentWindow.document;
+                      nextElements.push(...frameDoc.querySelectorAll(part));
                   } catch (e) {
-                      console.warn('Cannot access iframe content:', e);
+                      console.warn(`Cannot access ${element.tagName.toLowerCase()} content:`, e);
                       continue;
                   }
               } else {
@@ -537,8 +566,8 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
               return { type: 'TR', element: currentElement };
           }
           
-          // Handle iframe crossing
-          if (currentElement.tagName === 'IFRAME') {
+          // Handle iframe and frame crossing
+          if (currentElement.tagName === 'IFRAME' || currentElement.tagName === 'FRAME') {
               try {
                   currentElement = currentElement.contentDocument.body;
               } catch (e) {
@@ -582,7 +611,7 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
                   
                   if (current.tagName === 'TH') return true;
                   
-                  if (current.tagName === 'IFRAME') {
+                  if (current.tagName === 'IFRAME' || current.tagName === 'FRAME') {
                       try {
                           current = current.contentDocument.body;
                       } catch (e) {
@@ -638,14 +667,18 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
           allElements.push(...shadowHost.getElementsByTagName(baseElement.tagName));
       }
       
-      // Get elements from iframes
-      const iframes = document.getElementsByTagName('iframe');
-      for (const iframe of iframes) {
+      // Get elements from iframes and frames
+      const frames = [
+          ...Array.from(document.getElementsByTagName('iframe')),
+          ...Array.from(document.getElementsByTagName('frame'))
+      ];
+      
+      for (const frame of frames) {
           try {
-              const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-              allElements.push(...iframeDoc.getElementsByTagName(baseElement.tagName));
+              const frameDoc = frame.contentDocument || frame.contentWindow.document;
+              allElements.push(...frameDoc.getElementsByTagName(baseElement.tagName));
           } catch (e) {
-              console.warn('Cannot access iframe content:', e);
+              console.warn(`Cannot access ${frame.tagName.toLowerCase()} content:`, e);
           }
       }
 
@@ -707,7 +740,7 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
     const tableData = [];
     const nonTableData = [];
 
-    // Process table data with both iframe and shadow DOM support
+    // Process table data with support for iframes, frames, and shadow DOM
     for (let containerIndex = 0; containerIndex < containers.length; containerIndex++) {
       const container = containers[containerIndex];
       const { tableFields } = containerFields[containerIndex];
@@ -717,14 +750,14 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
           const firstElement = queryElement(container, firstField.selector);
           let tableContext = firstElement;
           
-          // Find table context including both iframe and shadow DOM
+          // Find table context including iframe, frame and shadow DOM
           while (tableContext && tableContext.tagName !== 'TABLE' && tableContext !== container) {
               if (tableContext.getRootNode() instanceof ShadowRoot) {
                   tableContext = tableContext.getRootNode().host;
                   continue;
               }
               
-              if (tableContext.tagName === 'IFRAME') {
+              if (tableContext.tagName === 'IFRAME' || tableContext.tagName === 'FRAME') {
                   try {
                       tableContext = tableContext.contentDocument.body;
                   } catch (e) {
@@ -747,13 +780,13 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
                   rows.push(...tableContext.shadowRoot.getElementsByTagName('TR'));
               }
               
-              // Get rows from iframes
-              if (tableContext.tagName === 'IFRAME') {
+              // Get rows from iframes and frames
+              if (tableContext.tagName === 'IFRAME' || tableContext.tagName === 'FRAME') {
                   try {
-                      const iframeDoc = tableContext.contentDocument || tableContext.contentWindow.document;
-                      rows.push(...iframeDoc.getElementsByTagName('TR'));
+                      const frameDoc = tableContext.contentDocument || tableContext.contentWindow.document;
+                      rows.push(...frameDoc.getElementsByTagName('TR'));
                   } catch (e) {
-                      console.warn('Cannot access iframe rows:', e);
+                      console.warn(`Cannot access ${tableContext.tagName.toLowerCase()} rows:`, e);
                   }
               }
               
@@ -823,7 +856,7 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
       }
     }
 
-    // Process non-table data with both contexts support
+    // Process non-table data with all contexts support
     for (let containerIndex = 0; containerIndex < containers.length; containerIndex++) {
       if (nonTableData.length >= limit) break;
 
