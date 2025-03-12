@@ -56,7 +56,7 @@ const handleWrapper = async (
         return;
     }
 
-    const id = browserPool.getActiveBrowserId(userId);
+    const id = browserPool.getActiveBrowserId(userId, "recording");
     if (id) {
         const activeBrowser = browserPool.getRemoteBrowser(id);
         if (activeBrowser?.interpreter.interpretationInProgress() && !activeBrowser.interpreter.interpretationIsPaused) {
