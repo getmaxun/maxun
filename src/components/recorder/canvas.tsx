@@ -113,7 +113,6 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
     }, [socket]);
 
     const onMouseEvent = useCallback((event: MouseEvent) => {
-        performanceMonitor.current.measureEventLatency(event);
         if (socket && canvasRef.current) {
             // Get the canvas bounding rectangle
             const rect = canvasRef.current.getBoundingClientRect();
