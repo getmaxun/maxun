@@ -6,7 +6,6 @@ import DatePicker from '../pickers/DatePicker';
 import Dropdown from '../pickers/Dropdown';
 import TimePicker from '../pickers/TimePicker';
 import DateTimeLocalPicker from '../pickers/DateTimeLocalPicker';
-import { EnhancedPerformanceMonitor } from '../../../perf/performance';
 
 interface CreateRefCallback {
     (ref: React.RefObject<HTMLCanvasElement>): void;
