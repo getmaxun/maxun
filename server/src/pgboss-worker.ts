@@ -199,13 +199,6 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
     if (!browser || !currentPage) {
       logger.log('error', `Browser or page not available for run ${data.runId}`);
       
-      // Update run status to failed
-      await run.update({
-        status: 'failed',
-        finishedAt: new Date().toLocaleString(),
-        log: 'Failed: Browser or page not available',
-      });
-      
       await pgBoss.fail(job.id, "Failed to get browser or page for run");
       
       // Even if this run failed, check for queued runs
