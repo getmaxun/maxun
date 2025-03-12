@@ -78,9 +78,24 @@ export const BrowserWindow = () => {
     const { notify } = useGlobalInfoStore();
     const { getText, getList, paginationMode, paginationType, limitMode, captureStage } = useActionContext();
     const { addTextStep, addListStep } = useBrowserSteps();
-
+  
     const { state } = useContext(AuthContext);
-    const { user } = state; 
+    const { user } = state;
+
+    useEffect(() => {
+        if (listSelector) {
+          window.sessionStorage.setItem('recordingListSelector', listSelector);
+        }
+    }, [listSelector]);
+
+    useEffect(() => {
+        const storedListSelector = window.sessionStorage.getItem('recordingListSelector');
+        
+        // Only restore state if it exists in sessionStorage
+        if (storedListSelector && !listSelector) {
+          setListSelector(storedListSelector);
+        }
+    }, []); 
 
     const onMouseMove = (e: MouseEvent) => {
         if (canvasRef && canvasRef.current && highlighterData) {
@@ -211,13 +226,25 @@ export const BrowserWindow = () => {
     useEffect(() => {
         document.addEventListener('mousemove', onMouseMove, false);
         if (socket) {
-            socket.on("highlighter", highlighterHandler);
+          socket.off("highlighter", highlighterHandler);
+          
+          socket.on("highlighter", highlighterHandler);
         }
         return () => {
-            document.removeEventListener('mousemove', onMouseMove);
-            socket?.off("highlighter", highlighterHandler);
+          document.removeEventListener('mousemove', onMouseMove);
+          if (socket) {
+            socket.off("highlighter", highlighterHandler);
+          }
         };
-    }, [socket, onMouseMove]);
+    }, [socket, highlighterHandler, onMouseMove, getList, listSelector]);
+
+    useEffect(() => {
+        if (socket && listSelector) {
+          console.log('Syncing list selector with server:', listSelector);
+          socket.emit('setGetList', { getList: true });
+          socket.emit('listSelector', { selector: listSelector });
+        }
+    }, [socket, listSelector]);
 
     useEffect(() => {
         if (captureStage === 'initial' && listSelector) {

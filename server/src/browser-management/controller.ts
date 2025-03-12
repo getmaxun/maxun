@@ -21,12 +21,12 @@ import logger from "../logger";
  * @category BrowserManagement-Controller
  */
 export const initializeRemoteBrowserForRecording = (userId: string): string => {
-  const id = getActiveBrowserId(userId) || uuid();
+  const id = getActiveBrowserIdByState(userId, "recording") || uuid();
   createSocketConnection(
     io.of(id),
     async (socket: Socket) => {
       // browser is already active
-      const activeId = getActiveBrowserId(userId);
+      const activeId = getActiveBrowserIdByState(userId, "recording");
       if (activeId) {
         const remoteBrowser = browserPool.getRemoteBrowser(activeId);
         remoteBrowser?.updateSocket(socket);
@@ -37,7 +37,7 @@ export const initializeRemoteBrowserForRecording = (userId: string): string => {
         await browserSession.initialize(userId);
         await browserSession.registerEditorEvents();
         await browserSession.subscribeToScreencast();
-        browserPool.addRemoteBrowser(id, browserSession, userId);
+        browserPool.addRemoteBrowser(id, browserSession, userId, false, "recording");
       }
       socket.emit('loaded');
     });
@@ -59,7 +59,7 @@ export const createRemoteBrowserForRun = (userId: string): string => {
     async (socket: Socket) => {
       const browserSession = new RemoteBrowser(socket, userId);
       await browserSession.initialize(userId);
-      browserPool.addRemoteBrowser(id, browserSession, userId);
+      browserPool.addRemoteBrowser(id, browserSession, userId, false, "run");
       socket.emit('ready-for-run');
     });
   return id;
@@ -90,6 +90,17 @@ export const destroyRemoteBrowser = async (id: string, userId: string): Promise<
  */
 export const getActiveBrowserId = (userId: string): string | null => {
   return browserPool.getActiveBrowserId(userId);
+};
+
+/**
+ * Returns the id of an active browser with the specified state or null.
+ * @param userId the user ID to find the browser for
+ * @param state the browser state to filter by ("recording" or "run")
+ * @returns {string | null}
+ * @category  BrowserManagement-Controller
+ */
+export const getActiveBrowserIdByState = (userId: string, state: "recording" | "run"): string | null => {
+  return browserPool.getActiveBrowserId(userId, state);
 };
 
 /**
@@ -127,7 +138,7 @@ export const getRemoteBrowserCurrentTabs = (id: string, userId: string): string[
  * @category  BrowserManagement-Controller
  */
 export const interpretWholeWorkflow = async (userId: string) => {
-  const id = getActiveBrowserId(userId);
+  const id = getActiveBrowserIdByState(userId, "recording");
   if (id) {
     const browser = browserPool.getRemoteBrowser(id);
     if (browser) {
@@ -147,7 +158,7 @@ export const interpretWholeWorkflow = async (userId: string) => {
  * @category  BrowserManagement-Controller
  */
 export const stopRunningInterpretation = async (userId: string) => {
-  const id = getActiveBrowserId(userId);
+  const id = getActiveBrowserIdByState(userId, "recording");
   if (id) {
     const browser = browserPool.getRemoteBrowser(id);
     await browser?.stopCurrentInterpretation();

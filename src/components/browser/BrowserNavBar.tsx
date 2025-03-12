@@ -54,6 +54,7 @@ const BrowserNavBar: FC<NavBarProps> = ({
   const handleCurrentUrlChange = useCallback((url: string) => {
     handleUrlChanged(url);
     setRecordingUrl(url);
+    window.sessionStorage.setItem('recordingUrl', url);
   }, [handleUrlChanged, recordingUrl]);
 
   useEffect(() => {

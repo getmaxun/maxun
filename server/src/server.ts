@@ -23,7 +23,6 @@ import session from 'express-session';
 
 import Run from './models/Run';
 
-
 const app = express();
 app.use(cors({
   origin: process.env.PUBLIC_URL ? process.env.PUBLIC_URL : 'http://localhost:5173',
@@ -79,8 +78,11 @@ readdirSync(path.join(__dirname, 'api')).forEach((r) => {
 
 const isProduction = process.env.NODE_ENV === 'production';
 const workerPath = path.resolve(__dirname, isProduction ? './worker.js' : './worker.ts');
+const recordingWorkerPath = path.resolve(__dirname, isProduction ? './pgboss-worker.js' : './pgboss-worker.ts');
 
 let workerProcess: any;
+let recordingWorkerProcess: any;
+
 if (!isProduction) {
   workerProcess = fork(workerPath, [], {
     execArgv: ['--inspect=5859'],
@@ -93,6 +95,19 @@ if (!isProduction) {
   });
   workerProcess.on('exit', (code: any) => {
     console.log(`Worker exited with code: ${code}`);
+  });
+
+  recordingWorkerProcess = fork(recordingWorkerPath, [], {
+    execArgv: ['--inspect=5860'],
+  });
+  recordingWorkerProcess.on('message', (message: any) => {
+    console.log(`Message from recording worker: ${message}`);
+  });
+  recordingWorkerProcess.on('error', (error: any) => {
+    console.error(`Error in recording worker: ${error}`);
+  });
+  recordingWorkerProcess.on('exit', (code: any) => {
+    console.log(`Recording worker exited with code: ${code}`);
   });
 }
 
@@ -146,7 +161,8 @@ process.on('SIGINT', async () => {
   }
   
   if (!isProduction) {
-    workerProcess.kill();
+    if (workerProcess) workerProcess.kill();
+    if (recordingWorkerProcess) recordingWorkerProcess.kill();
   }
   process.exit();
 });

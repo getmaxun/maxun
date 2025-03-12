@@ -54,6 +54,12 @@
         "label":"URL",
         "button":"Start Recording"
       },
+      "warning_modal":{
+        "title":"Active Browser Detected",
+        "message": "There is already a browser recording session running. Would you like to discard it and create a new recording?",
+        "discard_and_create":"Discard & Create New",
+        "cancel":"Cancel"
+      },
       "edit":"Edit",
       "delete":"Delete",
       "duplicate":"Duplicate",
@@ -514,6 +520,7 @@
         "success": "Success",
         "running": "Running",
         "scheduled": "Scheduled",
+        "queued": "Queued",
         "failed": "Failed"
       },
       "run_settings_modal": {

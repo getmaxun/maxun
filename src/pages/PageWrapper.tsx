@@ -16,10 +16,11 @@ import { NotFoundPage } from '../components/dashboard/NotFound';
 
 export const PageWrapper = () => {
   const [open, setOpen] = useState(false);
+  const [isRecordingMode, setIsRecordingMode] = useState(false);
 
   const navigate = useNavigate();
 
-  const { browserId, setBrowserId, notification, recordingName, setRecordingName, recordingId, setRecordingId } = useGlobalInfoStore();
+  const { browserId, setBrowserId, notification, recordingName, setRecordingName, recordingId, setRecordingId, setRecordingUrl } = useGlobalInfoStore();
 
   const handleEditRecording = (recordingId: string, fileName: string) => {
     setRecordingName(fileName);
@@ -35,23 +36,62 @@ export const PageWrapper = () => {
     return notification.isOpen;
   }
 
+  /**
+   * Get the current tab's state from session storage
+   */
+  const getTabState = (key: string): string | null => {
+    try {
+      const value = window.sessionStorage.getItem(key);
+      return value;
+    } catch (error) {
+      return null;
+    }
+  };
+
   useEffect(() => {
-    const isRecordingInProgress = async () => {
-      const id = await getActiveBrowserId();
-      if (id) {
-        setBrowserId(id);
+    const tabMode = getTabState('tabMode');
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionParam = urlParams.get('session');
+    const storedSessionId = getTabState('recordingSessionId');
+    const storedRecordingUrl = getTabState('recordingUrl');
+    
+    if (location.pathname === '/recording-setup' && sessionParam && sessionParam === storedSessionId) {
+      setBrowserId('new-recording');
+      setRecordingName('');
+      setRecordingId('');
+
+      if (storedRecordingUrl) {
+        setRecordingUrl(storedRecordingUrl);
+      }
+
+      navigate('/recording');
+    }
+    else if (location.pathname === '/recording' || 
+           (getTabState('nextTabIsRecording') === 'true' && sessionParam === storedSessionId)) {
+      setIsRecordingMode(true);
+      
+      if (location.pathname !== '/recording') {
         navigate('/recording');
       }
+      
+      window.sessionStorage.removeItem('nextTabIsRecording');
+    } else if (tabMode === 'main') {
+      console.log('Tab is in main application mode');
+    } else {
+      const id = getTabState('browserId');
+      if (id === 'new-recording' || location.pathname === '/recording') {
+        setIsRecordingMode(true);
+      }
     }
-    isRecordingInProgress();
-  }, []);
-
+  }, [location.pathname, navigate, setBrowserId, setRecordingId, setRecordingName, setRecordingUrl]);
+  
   return (
     <div>
       <AuthProvider>
         <SocketProvider>
           <React.Fragment>
-            {!browserId && <NavBar recordingName={recordingName} isRecording={!!browserId} />}
+            {/* {!browserId && location.pathname !== '/recording' && <NavBar recordingName={recordingName} isRecording={!!browserId} />} */}
+            {location.pathname !== '/recording' && <NavBar recordingName={recordingName} isRecording={false} />}
             <Routes>
               <Route element={<UserRoute />}>
                 <Route path="/" element={<Navigate to="/robots" replace />} />

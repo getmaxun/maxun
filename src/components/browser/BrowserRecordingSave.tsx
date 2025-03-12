@@ -14,9 +14,9 @@ import { MoreHoriz } from '@mui/icons-material';
 
 const BrowserRecordingSave = () => {
   const { t } = useTranslation();
-  const [openDiscardModal, setOpenDiscardModal] = useState<boolean>(false);
-  const [openResetModal, setOpenResetModal] = useState<boolean>(false);
-  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  const [openDiscardModal, setOpenDiscardModal] = useState(false);
+  const [openResetModal, setOpenResetModal] = useState(false);
+  const [anchorEl, setAnchorEl] = React.useState(null);
   const { recordingName, browserId, initialUrl, setRecordingUrl, setBrowserId, notify, setCurrentWorkflowActionsState, resetInterpretationLog } = useGlobalInfoStore();
   const navigate = useNavigate();
 
@@ -42,10 +42,25 @@ const BrowserRecordingSave = () => {
   const goToMainMenu = async () => {
     if (browserId) {
       await stopRecording(browserId);
-      notify('warning', t('browser_recording.notifications.terminated'));
+      
+      const notificationData = {
+        type: 'warning',
+        message: t('browser_recording.notifications.terminated'),
+        timestamp: Date.now()
+      };
+      window.sessionStorage.setItem('pendingNotification', JSON.stringify(notificationData));
+      
+      if (window.opener) {
+        window.opener.postMessage({
+          type: 'recording-notification',
+          notification: notificationData
+        }, '*');
+      }
+      
       setBrowserId(null);
+      
+      window.close();
     }
-    navigate('/');
   };
 
   const performReset = () => {
@@ -82,7 +97,13 @@ const BrowserRecordingSave = () => {
       socket?.emit('new-recording');
       socket.emit('input:url', initialUrl);
       // Update the URL in the navbar to match
-      setRecordingUrl(initialUrl);
+      let sessionInitialUrl = window.sessionStorage.getItem('initialUrl');
+      if (sessionInitialUrl) {
+        setRecordingUrl(sessionInitialUrl);
+        window.sessionStorage.setItem('recordingUrl', sessionInitialUrl);
+      } else {
+        setRecordingUrl(initialUrl);
+      }
     }
 
     // Close the reset confirmation modal
@@ -92,7 +113,7 @@ const BrowserRecordingSave = () => {
     notify('info', t('browser_recording.notifications.environment_reset'));
   };
 
-  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
+  const handleClick = (event: any) => {
       setAnchorEl(event.currentTarget);
   };
 
