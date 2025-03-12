@@ -14,6 +14,7 @@ MINIO_ACCESS_KEY=minio_access_key       # MinIO access key
 MINIO_SECRET_KEY=minio_secret_key       # MinIO secret key
 REDIS_HOST=redis                        # Redis host in Docker
 REDIS_PORT=6379                         # Redis port (default: 6379)
+REDIS_PASSWORD=redis_password           # Redis password (This is optional. Needed to authenticate with a password-protected Redis instance; if not set, Redis will connect without authentication.)
 
 # Backend and Frontend URLs and Ports
 BACKEND_PORT=8080 # Port to run backend on. Needed for Docker setup 
