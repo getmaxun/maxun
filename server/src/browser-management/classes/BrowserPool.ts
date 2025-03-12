@@ -4,6 +4,12 @@ import logger from "../../logger";
 /**
  * @category Types
  */
+/**
+ * Represents the possible states of a remote browser.
+ * @category Types
+ */
+type BrowserState = "recording" | "run";
+
 interface BrowserPoolInfo {
     /**
      * The instance of remote browser.
@@ -19,6 +25,12 @@ interface BrowserPoolInfo {
      * The user ID that owns this browser instance.
      */
     userId: string,
+    /**
+     * The current state of the browser.
+     * Can be "recording" or "run".
+     * @default "recording"
+     */
+    state: BrowserState,
 }
 
 /**
@@ -33,7 +45,7 @@ interface PoolDictionary {
 
 /**
  * A browser pool is a collection of remote browsers that are initialized and ready to be used.
- * Enforces a "1 User - 1 Browser" policy, while allowing multiple users to have their own browser instances.
+ * Enforces a "1 User - 2 Browser" policy, while allowing multiple users to have their own browser instances.
  * Adds the possibility to add, remove and retrieve remote browsers from the pool.
  * @category BrowserManagement
  */
@@ -45,12 +57,13 @@ export class BrowserPool {
 
     /**
      * Maps user IDs to their browser IDs.
+     * A user can have up to 2 browsers.
      */
-    private userToBrowserMap: Map<string, string> = new Map();
+    private userToBrowserMap: Map<string, string[]> = new Map();
 
     /**
      * Adds a remote browser instance to the pool for a specific user.
-     * If the user already has a browser, the existing browser will be closed and replaced.
+     * If the user already has two browsers, the oldest browser will be closed and replaced.
      * 
      * @param id remote browser instance's id
      * @param browser remote browser instance
@@ -62,27 +75,43 @@ export class BrowserPool {
         id: string, 
         browser: RemoteBrowser, 
         userId: string,
-        active: boolean = false
+        active: boolean = false,
+        state: BrowserState = "recording"
     ): boolean => {
-        // Check if user already has a browser
-        const existingBrowserId = this.userToBrowserMap.get(userId);
+        // Check if browser with this ID already exists and belongs to this user
+        if (this.pool[id] && this.pool[id].userId === userId) {
+            // Just update the existing browser
+            this.pool[id] = {
+                browser,
+                active,
+                userId,
+                state: this.pool[id].state || state,
+            };
+            logger.log('debug', `Updated existing browser with id: ${id} for user: ${userId}`);
+            return false;
+        }
+
+        // Get existing browsers for this user
+        let userBrowserIds = this.userToBrowserMap.get(userId) || [];
         let replaced = false;
 
-        if (existingBrowserId) {
-            // Close and remove the existing browser
-            if (existingBrowserId !== id) {
-                this.closeAndDeleteBrowser(existingBrowserId);
-                replaced = true;
-            } else {
-                // If it's the same browser ID, just update the info
-                this.pool[id] = {
-                    browser,
-                    active,
-                    userId,
-                };
-                logger.log('debug', `Updated existing browser with id: ${id} for user: ${userId}`);
+        // If trying to add a "recording" browser, check if one already exists
+        if (state === "recording") {
+            // Check if user already has a recording browser
+            const hasRecordingBrowser = userBrowserIds.some(browserId => 
+                this.pool[browserId] && this.pool[browserId].state === "recording"
+            );
+            
+            if (hasRecordingBrowser) {
+                logger.log('debug', `User ${userId} already has a browser in "recording" state`);
                 return false;
             }
+        }
+        
+        // For "run" state, check if the user already has the maximum number of browsers (2)
+        if (userBrowserIds.length >= 2 && !userBrowserIds.includes(id)) {
+            logger.log('debug', "User already has the maximum number of browsers (2)");
+            return false;
         }
 
         // Add the new browser to the pool
@@ -90,10 +119,14 @@ export class BrowserPool {
             browser,
             active,
             userId,
+            state,
         };
 
         // Update the user-to-browser mapping
-        this.userToBrowserMap.set(userId, id);
+        if (!userBrowserIds.includes(id)) {
+            userBrowserIds.push(id);
+        }
+        this.userToBrowserMap.set(userId, userBrowserIds);
 
         logger.log('debug', `Remote browser with id: ${id} added to the pool for user: ${userId}`);
         return !replaced;
@@ -115,8 +148,16 @@ export class BrowserPool {
 
         // Remove the user-to-browser mapping
         const userId = this.pool[id].userId;
-        if (this.userToBrowserMap.get(userId) === id) {
-            this.userToBrowserMap.delete(userId);
+        const userBrowserIds = this.userToBrowserMap.get(userId) || [];
+        
+        if (userBrowserIds.includes(id)) {
+            const updatedBrowserIds = userBrowserIds.filter(bid => bid !== id);
+            
+            if (updatedBrowserIds.length === 0) {
+                this.userToBrowserMap.delete(userId);
+            } else {
+                this.userToBrowserMap.set(userId, updatedBrowserIds);
+            }
         }
 
         // Remove from pool
@@ -139,8 +180,16 @@ export class BrowserPool {
 
         // Remove the user-to-browser mapping
         const userId = this.pool[id].userId;
-        if (this.userToBrowserMap.get(userId) === id) {
-            this.userToBrowserMap.delete(userId);
+        const userBrowserIds = this.userToBrowserMap.get(userId) || [];
+        
+        if (userBrowserIds.includes(id)) {
+            const updatedBrowserIds = userBrowserIds.filter(bid => bid !== id);
+            
+            if (updatedBrowserIds.length === 0) {
+                this.userToBrowserMap.delete(userId);
+            } else {
+                this.userToBrowserMap.set(userId, updatedBrowserIds);
+            }
         }
 
         // Remove from pool
@@ -162,25 +211,73 @@ export class BrowserPool {
 
     /**
      * Returns the active browser's instance id for a specific user.
+     * If state is specified, only returns a browser with that exact state.
      * 
      * @param userId the user ID to find the browser for
-     * @returns the browser ID for the user, or null if no browser exists
+     * @param state optional browser state filter ("recording" or "run")
+     * @returns the browser ID for the user, or null if no browser exists with the required state
      */
-    public getActiveBrowserId = (userId: string): string | null => {
-        const browserId = this.userToBrowserMap.get(userId);
-        if (!browserId) {
+    public getActiveBrowserId = (userId: string, state?: BrowserState): string | null => {
+        const browserIds = this.userToBrowserMap.get(userId);
+        if (!browserIds || browserIds.length === 0) {
             logger.log('debug', `No browser found for user: ${userId}`);
             return null;
         }
 
-        // Verify the browser still exists in the pool
-        if (!this.pool[browserId]) {
-            this.userToBrowserMap.delete(userId);
-            logger.log('warn', `Browser mapping found for user: ${userId}, but browser doesn't exist in pool`);
+        // If state is specified, only return browsers with that exact state
+        if (state) {
+            // Check browsers in reverse order (newest first) to find one with the specified state
+            for (let i = browserIds.length - 1; i >= 0; i--) {
+                const browserId = browserIds[i];
+                
+                // Verify the browser still exists in the pool
+                if (!this.pool[browserId]) {
+                    browserIds.splice(i, 1);
+                    continue;
+                }
+                
+                // Check if browser matches state filter
+                if (this.pool[browserId].state === state) {
+                    return browserId;
+                }
+            }
+            
+            // If no browser with matching state, return null
+            logger.log('debug', `No browser with state ${state} found for user: ${userId}`);
             return null;
         }
-        console.log(`Browser Id ${browserId} found for user: ${userId}`);
-        return browserId;
+        
+        // If no state specified, return any browser
+        for (let i = browserIds.length - 1; i >= 0; i--) {
+            const browserId = browserIds[i];
+            
+            // Verify the browser still exists in the pool
+            if (!this.pool[browserId]) {
+                browserIds.splice(i, 1);
+                continue;
+            }
+            
+            // Return the first browser found
+            if (this.pool[browserId]) {
+                console.log(`Active browser Id ${browserId} found for user: ${userId}`);
+                return browserId;
+            }
+        }
+        
+        // If no active browser, return the most recent one
+        if (browserIds.length > 0) {
+            const mostRecentId = browserIds[browserIds.length - 1];
+            console.log(`No active browser found, returning most recent browser Id ${mostRecentId} for user: ${userId}`);
+            return mostRecentId;
+        }
+        
+        // Clean up the mapping if all browsers were invalid
+        if (browserIds.length === 0) {
+            this.userToBrowserMap.delete(userId);
+        }
+        
+        logger.log('warn', `Browser mapping found for user: ${userId}, but no valid browsers exist in pool`);
+        return null;
     };
 
     /**
@@ -213,10 +310,62 @@ export class BrowserPool {
         logger.log('debug', `Remote browser with id: ${id} set to ${active ? 'active' : 'inactive'}`);
         return true;
     };
+    
+    /**
+     * Sets the state of a browser.
+     * Only allows one browser in "recording" state per user.
+     * 
+     * @param id the browser ID
+     * @param state the new state ("recording" or "run")
+     * @returns true if successful, false if the browser wasn't found or state change not allowed
+     */
+    public setBrowserState = (id: string, state: BrowserState): boolean => {
+        if (!this.pool[id]) {
+            logger.log('warn', `Remote browser with id: ${id} does not exist in the pool`);
+            return false;
+        }
+
+        // If trying to set to "recording" state, check if another browser is already recording
+        if (state === "recording") {
+            const userId = this.pool[id].userId;
+            const userBrowserIds = this.userToBrowserMap.get(userId) || [];
+            
+            // Check if any other browser for this user is already in recording state
+            const hasAnotherRecordingBrowser = userBrowserIds.some(browserId => 
+                browserId !== id && 
+                this.pool[browserId] && 
+                this.pool[browserId].state === "recording"
+            );
+            
+            if (hasAnotherRecordingBrowser) {
+                logger.log('warn', `Cannot set browser ${id} to "recording" state: User ${userId} already has a browser in recording state`);
+                return false;
+            }
+        }
+
+        this.pool[id].state = state;
+        logger.log('debug', `Remote browser with id: ${id} state set to ${state}`);
+        return true;
+    };
+    
+    /**
+     * Gets the current state of a browser.
+     * 
+     * @param id the browser ID
+     * @returns the current state or null if the browser wasn't found
+     */
+    public getBrowserState = (id: string): BrowserState | null => {
+        if (!this.pool[id]) {
+            logger.log('warn', `Remote browser with id: ${id} does not exist in the pool`);
+            return null;
+        }
+        
+        return this.pool[id].state;
+    };
 
     /**
      * Returns all browser instances for a specific user.
-     * Should only be one per the "1 User - 1 Browser" policy, but included for flexibility.
+     * With the "1 User - 2 Browser" policy, this can return up to 2 browsers.
      * 
      * @param userId the user ID to find browsers for
      * @returns an array of browser IDs belonging to the user
@@ -224,22 +373,29 @@ export class BrowserPool {
     public getAllBrowserIdsForUser = (userId: string): string[] => {
         const browserIds: string[] = [];
         
-        // Normally this would just return the one browser from the map
-        const mappedBrowserId = this.userToBrowserMap.get(userId);
-        if (mappedBrowserId && this.pool[mappedBrowserId]) {
-            browserIds.push(mappedBrowserId);
+        // Get browser IDs from the map
+        const mappedBrowserIds = this.userToBrowserMap.get(userId) || [];
+        
+        // Filter to only include IDs that exist in the pool
+        for (const id of mappedBrowserIds) {
+            if (this.pool[id]) {
+                browserIds.push(id);
+            }
         }
         
-        // But as a safeguard, also check the entire pool for any browsers assigned to this user
+        // As a safeguard, also check the entire pool for any browsers assigned to this user
         // This helps detect and fix any inconsistencies in the maps
         for (const [id, info] of Object.entries(this.pool)) {
             if (info.userId === userId && !browserIds.includes(id)) {
                 browserIds.push(id);
-                // Fix the map if it's inconsistent
-                if (!mappedBrowserId) {
-                    this.userToBrowserMap.set(userId, id);
-                }
             }
+        }
+        
+        // Update the map if inconsistencies were found
+        if (browserIds.length > 0 && JSON.stringify(browserIds) !== JSON.stringify(mappedBrowserIds)) {
+            // Limit to 2 browsers if more were found
+            const limitedBrowserIds = browserIds.slice(-2);
+            this.userToBrowserMap.set(userId, limitedBrowserIds);
         }
         
         return browserIds;
@@ -264,24 +420,81 @@ export class BrowserPool {
      * This is a migration helper to support code that hasn't been updated to the user-browser model yet.
      * 
      * @param currentUserId The ID of the current user, which will be prioritized if multiple browsers exist
+     * @param state Optional state filter to find browsers in a specific state
      * @returns A browser ID if one can be determined, or null
      */
-    public getActiveBrowserForMigration = (currentUserId?: string): string | null => {
+    public getActiveBrowserForMigration = (currentUserId?: string, state?: BrowserState): string | null => {
         // If a current user ID is provided and they have a browser, return that
         if (currentUserId) {
-            const browserForUser = this.getActiveBrowserId(currentUserId);
+            const browserForUser = this.getActiveBrowserId(currentUserId, state);
             if (browserForUser) {
                 return browserForUser;
             }
+            
+            // If state is specified and no matching browser was found, return null
+            if (state) {
+                return null;
+            }
         }
         
-        // If only one user has a browser, return that
+        // If only one user has a browser, try to find a matching browser
         if (this.userToBrowserMap.size === 1) {
             const userId = Array.from(this.userToBrowserMap.keys())[0];
-            return this.userToBrowserMap.get(userId) || null;
+            const browserIds = this.userToBrowserMap.get(userId) || [];
+            
+            // If state is specified, only look for that state
+            if (state) {
+                // Return the active browser that matches the state
+                for (let i = browserIds.length - 1; i >= 0; i--) {
+                    const bid = browserIds[i];
+                    if (this.pool[bid]?.active && this.pool[bid].state === state) {
+                        return bid;
+                    }
+                }
+                
+                // If no active browser with matching state, try to find any browser with matching state
+                for (let i = browserIds.length - 1; i >= 0; i--) {
+                    const bid = browserIds[i];
+                    if (this.pool[bid] && this.pool[bid].state === state) {
+                        return bid;
+                    }
+                }
+                
+                // If still no matching browser, return null
+                return null;
+            }
+            
+            // If no state filter, find any active browser
+            for (let i = browserIds.length - 1; i >= 0; i--) {
+                if (this.pool[browserIds[i]]?.active) {
+                    return browserIds[i];
+                }
+            }
+            
+            return browserIds.length > 0 ? browserIds[browserIds.length - 1] : null;
         }
         
-        // Fall back to the first active browser if any
+        // Fall back to checking all browsers if no user was specified
+        if (state) {
+            // Look for active browsers with the specific state
+            for (const id of Object.keys(this.pool)) {
+                if (this.pool[id].active && this.pool[id].state === state) {
+                    return id;
+                }
+            }
+            
+            // Then look for any browser with the specific state
+            for (const id of Object.keys(this.pool)) {
+                if (this.pool[id].state === state) {
+                    return id;
+                }
+            }
+            
+            // If no browser with the requested state is found, return null
+            return null;
+        }
+        
+        // If no state filter, find any active browser
         for (const id of Object.keys(this.pool)) {
             if (this.pool[id].active) {
                 return id;
@@ -299,7 +512,7 @@ export class BrowserPool {
      * If there are multiple active browsers, it returns the first one.
      * 
      * @returns the first remote active browser instance's id from the pool
-     * @deprecated Use getBrowserIdForUser instead to enforce the 1 User - 1 Browser policy
+     * @deprecated Use getBrowserIdForUser instead to enforce the 1 User - 2 Browser policy
      */
     public getActiveBrowserIdLegacy = (): string | null => {
         for (const id of Object.keys(this.pool)) {
