@@ -34,7 +34,7 @@ export const syncDB = async () => {
         // Use `alter: true` only in development mode
         await sequelize.sync({ 
             force: false, 
-            alter: isDevelopment 
+            alter: true
         }); 
         console.log('Database synced successfully!');
     } catch (error) {
