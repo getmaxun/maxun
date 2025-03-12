@@ -20,6 +20,7 @@ import { capture } from './utils/analytics';
 import { googleSheetUpdateTasks, processGoogleSheetUpdates } from './workflow-management/integrations/gsheet';
 import { airtableUpdateTasks, processAirtableUpdates } from './workflow-management/integrations/airtable';
 import { RemoteBrowser } from './browser-management/classes/RemoteBrowser';
+import { io as serverIo } from "./server";
 
 const pgBossConnectionString = `postgres://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
 
@@ -298,6 +299,14 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
       } catch (err: any) {
         logger.log('error', `Failed to update Google Sheet for run: ${plainRun.runId}: ${err.message}`);
       }
+
+      serverIo.of(plainRun.browserId).emit('run-completed', {
+        runId: data.runId,
+        robotMetaId: plainRun.robotMetaId,
+        robotName: recording.recording_meta.name,
+        status: 'success',
+        finishedAt: new Date().toLocaleString()
+      });;
       
       // Check for and process queued runs before destroying the browser
       const queuedRunProcessed = await checkAndProcessQueuedRun(data.userId, plainRun.browserId);
