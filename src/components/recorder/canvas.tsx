@@ -171,16 +171,6 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
         }
     }, [socket]);
 
-    // performance logging
-    useEffect(() => {
-        const intervalId = setInterval(() => {
-            const report = performanceMonitor.current.getPerformanceReport();
-            console.log('Frontend Performance Report:', report);
-        }, 5000);
-
-        return () => clearInterval(intervalId);
-    }, []);
-
     const onKeyboardEvent = useCallback((event: KeyboardEvent) => {
         if (socket) {
             switch (event.type) {
