@@ -51,10 +51,10 @@ const BrowserNavBar: FC<NavBarProps> = ({
     socket?.emit('input:url', address);
   }, [socket]);
 
-  const handleCurrentUrlChange = useCallback((url: string) => {
-    handleUrlChanged(url);
-    setRecordingUrl(url);
-    window.sessionStorage.setItem('recordingUrl', url);
+  const handleCurrentUrlChange = useCallback((data: { url: string, userId: string }) => {
+    handleUrlChanged(data.url);
+    setRecordingUrl(data.url);
+    window.sessionStorage.setItem('recordingUrl', data.url);
   }, [handleUrlChanged, recordingUrl]);
 
   useEffect(() => {
