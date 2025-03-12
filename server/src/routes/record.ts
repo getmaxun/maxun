@@ -11,6 +11,7 @@ import {
     stopRunningInterpretation,
     getRemoteBrowserCurrentUrl,
     getRemoteBrowserCurrentTabs,
+    getActiveBrowserIdByState,
 } from '../browser-management/controller';
 import { chromium } from 'playwright-extra';
 import stealthPlugin from 'puppeteer-extra-plugin-stealth';
@@ -178,7 +179,7 @@ router.get('/active', requireSignIn, (req: AuthenticatedRequest, res) => {
     if (!req.user) {
         return res.status(401).send('User not authenticated');
     }
-    const id = getActiveBrowserId(req.user?.id);
+    const id = getActiveBrowserIdByState(req.user?.id, "recording");
     return res.send(id);
 });
 
@@ -189,7 +190,7 @@ router.get('/active/url', requireSignIn, (req: AuthenticatedRequest, res) => {
     if (!req.user) {
         return res.status(401).send('User not authenticated');
     }
-    const id = getActiveBrowserId(req.user?.id);
+    const id = getActiveBrowserIdByState(req.user?.id, "recording");
     if (id) {
         const url = getRemoteBrowserCurrentUrl(id, req.user?.id);
         return res.send(url);
@@ -204,7 +205,7 @@ router.get('/active/tabs', requireSignIn, (req: AuthenticatedRequest, res) => {
     if (!req.user) {
         return res.status(401).send('User not authenticated');
     }
-    const id = getActiveBrowserId(req.user?.id);
+    const id = getActiveBrowserIdByState(req.user?.id, "recording");
     if (id) {
         const hosts = getRemoteBrowserCurrentTabs(id, req.user?.id);
         return res.send(hosts);
