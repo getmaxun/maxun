@@ -28,9 +28,6 @@ export interface Coordinates {
 
 const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
 
-    const performanceMonitor = useRef(new EnhancedPerformanceMonitor());
-    console.log('Frontend Performance Report:', performanceMonitor.current.getPerformanceReport());
-
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const { socket } = useSocketStore();
     const { setLastAction, lastAction } = useGlobalInfoStore();
