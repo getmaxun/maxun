@@ -54,6 +54,12 @@
         "label":"URL",
         "button":"Start Recording"
       },
+      "warning_modal":{
+        "title":"Active Browser Detected",
+        "message": "There is already a browser recording session running. Would you like to discard it and create a new recording?",
+        "discard_and_create":"Discard & Create New",
+        "cancel":"Cancel"
+      },
       "edit":"Edit",
       "delete":"Delete",
       "duplicate":"Duplicate",
@@ -140,41 +146,12 @@
       "no_key_message": "You haven't generated an API key yet.",
       "generate_button": "Generate API Key",
       "notifications": {
-        "errors": {
-          "fetch": {
-            "network": "Network error while fetching API key: ${error}",
-            "unauthorized": "You must be logged in to access API key",
-            "not_found": "Unable to find API key for your account",
-            "server": "Server error while fetching API key. Please try again later",
-            "unknown": "Unknown error occurred while fetching API key: ${error}"
-          },
-          "generate": {
-            "network": "Network error while generating API key: ${error}",
-            "unauthorized": "You must be logged in to generate an API key",
-            "key_exists": "You already have an API key. Please delete the existing one first",
-            "not_found": "User account not found",
-            "server": "Server error while generating API key. Please try again later",
-            "unknown": "Unknown error occurred while generating API key: ${error}"
-          },
-          "delete": {
-            "network": "Network error while deleting API key: ${error}",
-            "unauthorized": "You must be logged in to delete API key",
-            "not_found": "User account not found",
-            "key_not_found": "No API key found to delete",
-            "server": "Server error while deleting API key. Please try again later",
-            "unknown": "Unknown error occurred while deleting API key: ${error}"
-          },
-          "copy": {
-            "failed": "Failed to copy API key to clipboard",
-            "no_key": "No API key available to copy"
-          }
-        },
-        "success": {
-          "fetch": "API key retrieved successfully",
-          "generate": "New API key generated successfully",
-          "delete": "API key deleted successfully",
-          "copy": "API key copied to clipboard"
-        }
+        "fetch_error": "Failed to fetch API Key - ${error}",
+        "generate_success": "Generated API Key successfully",
+        "generate_error": "Failed to generate API Key - ${error}",
+        "delete_success": "API Key deleted successfully",
+        "delete_error": "Failed to delete API Key - ${error}",
+        "copy_success": "Copied API Key successfully"
       }
     },
     "action_description": {
@@ -336,38 +313,90 @@
       }
     },
     "integration_settings": {
-      "title": "Integrate with Google Sheet",
+      "title": "Integration Settings",
       "descriptions": {
-        "sync_info": "If you enable this option, every time this robot runs a task successfully, its captured data will be appended to your Google Sheet.",
         "authenticated_as": "Authenticated as: {{email}}"
       },
-      "alerts": {
-        "success": {
-          "title": "Google Sheet Integrated Successfully.",
-          "content": "Every time this robot creates a successful run, its captured data is appended to your {{sheetName}} Google Sheet. You can check the data updates",
-          "here": "here",
-          "note": "Note:",
-          "sync_limitation": "The data extracted before integrating with Google Sheets will not be synced in the Google Sheet. Only the data extracted after the integration will be synced."
+      "buttons": {
+        "submit": "Submit",
+        "remove_integration": "Remove Integration"
+      },
+      "google": {
+        "title": "Integrate with Google Sheet",
+        "descriptions": {
+          "sync_info": "If you enable this option, every time this robot runs a task successfully, its captured data will be appended to your Google Sheet.",
+          "authenticated_as": "Authenticated as: {{email}}"
+        },
+        "alerts": {
+          "success": {
+            "title": "Google Sheet Integrated Successfully.",
+            "content": "Every time this robot creates a successful run, its captured data is appended to your {{sheetName}} Google Sheet. You can check the data updates",
+            "here": "here",
+            "note": "Note:",
+            "sync_limitation": "The data extracted before integrating with Google Sheets will not be synced in the Google Sheet. Only the data extracted after the integration will be synced."
+          }
+        },
+        "buttons": {
+          "authenticate": "Authenticate with Google",
+          "fetch_sheets": "Fetch Google Spreadsheets",
+          "remove_integration": "Remove Integration",
+          "submit": "Submit"
+        },
+        "fields": {
+          "select_sheet": "Select Google Sheet",
+          "selected_sheet": "Selected Sheet: {{name}} (ID: {{id}})"
+        },
+        "errors": {
+          "auth_error": "Error authenticating with Google",
+          "fetch_error": "Error fetching spreadsheet files: {{message}}",
+          "update_error": "Error updating Google Sheet ID: {{message}}",
+          "remove_error": "Error removing Google Sheets integration: {{message}}"
+        },
+        "notifications": {
+          "sheet_selected": "Google Sheet selected successfully",
+          "integration_removed": "Google Sheets integration removed successfully"
         }
       },
-      "buttons": {
-        "authenticate": "Authenticate with Google",
-        "fetch_sheets": "Fetch Google Spreadsheets",
-        "remove_integration": "Remove Integration",
-        "submit": "Submit"
-      },
-      "fields": {
-        "select_sheet": "Select Google Sheet",
-        "selected_sheet": "Selected Sheet: {{name}} (ID: {{id}})"
-      },
-      "errors": {
-        "auth_error": "Error authenticating with Google",
-        "fetch_error": "Error fetching spreadsheet files: {{message}}",
-        "update_error": "Error updating Google Sheet ID: {{message}}",
-        "remove_error": "Error removing Google Sheets integration: {{message}}"
-      },
-      "notifications": {
-        "sheet_selected": "Google Sheet selected successfully"
+      "airtable": {
+        "title": "Integrate with Airtable",
+        "descriptions": {
+          "sync_info": "If you enable this option, every time this robot runs a task successfully, its captured data will be appended to your Airtable Base.",
+          "authenticated_as": "Authenticated with Airtable successfully. You can now select the base and table to integrate with."
+        },
+        "alerts": {
+          "success": {
+            "title": "Airtable Base Integrated Successfully",
+            "content": "Every time this robot creates a successful run, its captured data is appended to your {{baseName}} Base and {{tableName}} Table. You can check updates",
+            "here": "here",
+            "note": "Note:",
+            "sync_limitation": "Only data captured after integration will be synced to Airtable."
+          }
+        },
+        "buttons": {
+          "authenticate": "Connect with Airtable",
+          "fetch_bases": "Fetch Airtable Bases",
+          "fetch_tables": "Fetch Airtable Tables",
+          "remove_integration": "Remove Integration",
+          "submit": "Select Base and Table"
+        },
+        "fields": {
+          "select_base": "Select Airtable Base",
+          "select_table": "Select Airtable Table",
+          "selected_base": "Selected Base: {{name}}",
+          "selected_table": "Selected Table: {{name}}"
+        },
+        "errors": {
+          "auth_error": "Error authenticating with Airtable",
+          "fetch_error": "Error fetching Airtable bases: {{message}}",
+          "fetch_tables_error": "Error fetching Airtable tables: {{message}}",
+          "update_error": "Error updating Airtable base: {{message}}",
+          "remove_error": "Error removing Airtable integration: {{message}}"
+        },
+        "notifications": {
+          "base_selected": "Airtable base selected successfully",
+          "table_selected": "Airtable table selected successfully",
+          "integration_removed": "Airtable integration removed successfully"
+        }
       }
     },
     "robot_duplication": {
@@ -491,6 +520,7 @@
         "success": "Success",
         "running": "Running",
         "scheduled": "Scheduled",
+        "queued": "Queued",
         "failed": "Failed"
       },
       "run_settings_modal": {

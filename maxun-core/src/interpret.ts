@@ -286,6 +286,12 @@ export default class Interpreter extends EventEmitter {
             ? arrayToObject(<any>superset[key])
             : superset[key];
 
+          if ((key === 'url' || key === 'selectors') && 
+            Array.isArray(value) && Array.isArray(superset[key]) && 
+            value.length === 0 && (superset[key] as any[]).length === 0) {
+            return true;
+          }
+
           if (key === 'selectors' && Array.isArray(value) && Array.isArray(superset[key])) {
             return value.some(selector => 
               (superset[key] as any[]).includes(selector)
@@ -592,33 +598,52 @@ export default class Interpreter extends EventEmitter {
     };
 
     // Enhanced button finder with retry mechanism
-    const findWorkingButton = async (selectors: string[], retryCount = 0): Promise<{ 
-        button: ElementHandle | null, 
-        workingSelector: string | null 
+    const findWorkingButton = async (selectors: string[]): Promise<{ 
+      button: ElementHandle | null, 
+      workingSelector: string | null,
+      updatedSelectors: string[]
     }> => {
-      for (const selector of selectors) {
-        try {
-          const button = await page.waitForSelector(selector, {
-            state: 'attached',
-            timeout: 10000 // Reduced timeout for faster checks
-          });
-          if (button) {
-            debugLog('Found working selector:', selector);
-            return { button, workingSelector: selector };
+      let updatedSelectors = [...selectors]; 
+      
+      for (let i = 0; i < selectors.length; i++) {
+        const selector = selectors[i];
+        let retryCount = 0;
+        let selectorSuccess = false;
+        
+        while (retryCount < MAX_RETRIES && !selectorSuccess) {
+          try {
+            const button = await page.waitForSelector(selector, {
+              state: 'attached',
+              timeout: 10000 
+            });
+            
+            if (button) {
+              debugLog('Found working selector:', selector);
+              return { 
+                button, 
+                workingSelector: selector,
+                updatedSelectors 
+              };
+            }
+          } catch (error) {
+            retryCount++;
+            debugLog(`Selector "${selector}" failed: attempt ${retryCount}/${MAX_RETRIES}`);
+            
+            if (retryCount < MAX_RETRIES) {
+              await page.waitForTimeout(RETRY_DELAY);
+            } else {
+              debugLog(`Removing failed selector "${selector}" after ${MAX_RETRIES} attempts`);
+              updatedSelectors = updatedSelectors.filter(s => s !== selector);
+            }
           }
-        } catch (error) {
-          debugLog(`Selector failed: ${selector}`);
         }
       }
-
-      // Implement retry mechanism when no selectors work
-      if (selectors.length > 0 && retryCount < MAX_RETRIES) {
-        debugLog(`Retry attempt ${retryCount + 1} of ${MAX_RETRIES}`);
-        await page.waitForTimeout(RETRY_DELAY);
-        return findWorkingButton(selectors, retryCount + 1);
-      }
-
-      return { button: null, workingSelector: null };
+    
+      return { 
+        button: null, 
+        workingSelector: null,
+        updatedSelectors 
+      };
     };
 
     const retryOperation = async (operation: () => Promise<boolean>, retryCount = 0): Promise<boolean> => {
@@ -680,7 +705,10 @@ export default class Interpreter extends EventEmitter {
             await scrapeCurrentPage();
             if (checkLimit()) return allResults;
 
-            const { button, workingSelector } = await findWorkingButton(availableSelectors);
+            const { button, workingSelector, updatedSelectors } = await findWorkingButton(availableSelectors);
+            
+            availableSelectors = updatedSelectors;
+
             if (!button || !workingSelector) {
                 // Final retry for navigation when no selectors work
               const success = await retryOperation(async () => {
@@ -696,10 +724,6 @@ export default class Interpreter extends EventEmitter {
               if (!success) return allResults;
               break;
             }
-
-            availableSelectors = availableSelectors.slice(
-                availableSelectors.indexOf(workingSelector)
-            );
 
             let retryCount = 0;
             let navigationSuccess = false;
@@ -768,21 +792,24 @@ export default class Interpreter extends EventEmitter {
           }
 
           case 'clickLoadMore': {
+            await scrapeCurrentPage();
+            if (checkLimit()) return allResults;
+            
+            let loadMoreCounter = 0;
+            let previousResultCount = allResults.length;
+            let noNewItemsCounter = 0;
+            const MAX_NO_NEW_ITEMS = 2;
+            
             while (true) {
-              // Find working button with retry mechanism, consistent with clickNext
-              const { button: loadMoreButton, workingSelector } = await findWorkingButton(availableSelectors);
+              // Find working button with retry mechanism
+              const { button: loadMoreButton, workingSelector, updatedSelectors } = await findWorkingButton(availableSelectors);
+
+              availableSelectors = updatedSelectors;
               
               if (!workingSelector || !loadMoreButton) {
                 debugLog('No working Load More selector found after retries');
-                const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
-                allResults = allResults.concat(finalResults);
                 return allResults;
               }
-          
-              // Update available selectors to start from the working one
-              availableSelectors = availableSelectors.slice(
-                availableSelectors.indexOf(workingSelector)
-              );
           
               // Implement retry mechanism for clicking the button
               let retryCount = 0;
@@ -808,6 +835,8 @@ export default class Interpreter extends EventEmitter {
           
                   if (clickSuccess) {
                     await page.waitForTimeout(1000);
+                    loadMoreCounter++;
+                    debugLog(`Successfully clicked Load More button (${loadMoreCounter} times)`);
                   }
                 } catch (error) {
                   debugLog(`Click attempt ${retryCount + 1} failed completely.`);
@@ -822,8 +851,6 @@ export default class Interpreter extends EventEmitter {
           
               if (!clickSuccess) {
                 debugLog(`Load More clicking failed after ${MAX_RETRIES} attempts`);
-                const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
-                allResults = allResults.concat(finalResults);
                 return allResults;
               }
           
@@ -833,20 +860,34 @@ export default class Interpreter extends EventEmitter {
               await page.waitForTimeout(2000);
           
               const currentHeight = await page.evaluate(() => document.body.scrollHeight);
-              if (currentHeight === previousHeight) {
-                debugLog('No more items loaded after Load More');
-                const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
-                allResults = allResults.concat(finalResults);
-                return allResults;
-              }
+              const heightChanged = currentHeight !== previousHeight;
               previousHeight = currentHeight;
               
-              if (config.limit && allResults.length >= config.limit) {
-                allResults = allResults.slice(0, config.limit);
-                break;
+              await scrapeCurrentPage();
+              
+              const currentResultCount = allResults.length;
+              const newItemsAdded = currentResultCount > previousResultCount;
+                          
+              if (!newItemsAdded) {
+                noNewItemsCounter++;
+                debugLog(`No new items added after click (${noNewItemsCounter}/${MAX_NO_NEW_ITEMS})`);
+                
+                if (noNewItemsCounter >= MAX_NO_NEW_ITEMS) {
+                  debugLog(`Stopping after ${MAX_NO_NEW_ITEMS} clicks with no new items`);
+                  return allResults;
+                }
+              } else {
+                noNewItemsCounter = 0;
+                previousResultCount = currentResultCount;
+              }
+              
+              if (checkLimit()) return allResults;     
+              
+              if (!heightChanged) {
+                debugLog('No more items loaded after Load More');
+                return allResults;
               }
             }
-            break;
           }
 
           default: {

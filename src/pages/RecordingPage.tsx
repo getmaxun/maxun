@@ -44,7 +44,7 @@ export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
 
   const { setId, socket } = useSocketStore();
   const { setWidth } = useBrowserDimensionsStore();
-  const { browserId, setBrowserId, recordingId, recordingUrl } = useGlobalInfoStore();
+  const { browserId, setBrowserId, recordingId, recordingUrl, setRecordingUrl } = useGlobalInfoStore();
 
   const handleShowOutputData = useCallback(() => {
     setShowOutputData(true);
@@ -78,6 +78,11 @@ export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
   useEffect(() => {
     let isCancelled = false;
     const handleRecording = async () => {
+      const storedUrl = window.sessionStorage.getItem('recordingUrl');
+      if (storedUrl && !recordingUrl) {
+        setRecordingUrl(storedUrl);
+      }
+      
       const id = await getActiveBrowserId();
       if (!isCancelled) {
         if (id) {
@@ -91,13 +96,13 @@ export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
         }
       }
     };
-
+  
     handleRecording();
-
+  
     return () => {
       isCancelled = true;
     }
-  }, [setId]);
+  }, [setId, recordingUrl, setRecordingUrl]);
 
   const changeBrowserDimensions = useCallback(() => {
     if (browserContentRef.current) {

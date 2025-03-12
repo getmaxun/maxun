@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { memo, useCallback, useEffect, useRef } from 'react';
 import { useSocketStore } from '../../context/socket';
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { useActionContext } from '../../context/browserActions';
@@ -33,6 +33,9 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
     const { getText, getList } = useActionContext();
     const getTextRef = useRef(getText);
     const getListRef = useRef(getList);
+
+    const MOUSE_MOVE_THROTTLE = 16; // ~60fps
+    const lastMouseMoveTime = useRef(0);
 
     const [datePickerInfo, setDatePickerInfo] = React.useState<{
         coordinates: Coordinates;
@@ -129,29 +132,38 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
                     }
                     notifyLastAction('click');
                     break;
-                case 'mousemove':
-                    if (lastMousePosition.current.x !== clickCoordinates.x ||
-                        lastMousePosition.current.y !== clickCoordinates.y) {
+                case 'mousemove': {
+                    const now = performance.now();
+                    if (now - lastMouseMoveTime.current < MOUSE_MOVE_THROTTLE) {
+                        return; 
+                    }
+                    lastMouseMoveTime.current = now;
+                    
+                    const dx = Math.abs(lastMousePosition.current.x - clickCoordinates.x);
+                    const dy = Math.abs(lastMousePosition.current.y - clickCoordinates.y);
+                    if (dx > 1 || dy > 1) {
                         lastMousePosition.current = {
                             x: clickCoordinates.x,
                             y: clickCoordinates.y,
                         };
-                        socket.emit('input:mousemove', {
-                            x: clickCoordinates.x,
-                            y: clickCoordinates.y,
-                        });
+                        socket.emit('input:mousemove', clickCoordinates);
                         notifyLastAction('move');
                     }
                     break;
-                case 'wheel':
+                }
+                
+                // Optimize wheel events
+                case 'wheel': {
                     const wheelEvent = event as WheelEvent;
-                    const deltas = {
-                        deltaX: Math.round(wheelEvent.deltaX),
-                        deltaY: Math.round(wheelEvent.deltaY),
-                    };
-                    socket.emit('input:wheel', deltas);
-                    notifyLastAction('scroll');
+                    const deltaX = Math.round(wheelEvent.deltaX / 10) * 10;
+                    const deltaY = Math.round(wheelEvent.deltaY / 10) * 10;
+                    
+                    if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+                        socket.emit('input:wheel', { deltaX, deltaY });
+                        notifyLastAction('scroll');
+                    }
                     break;
+                }
                 default:
                     console.log('Default mouseEvent registered');
                     return;
@@ -207,9 +219,14 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
             <canvas
                 tabIndex={0}
                 ref={canvasRef}
-                height={400}
-                width={900}
-                style={{ display: 'block' }}
+                height={height}
+                width={width}
+                style={{ 
+                    display: 'block',
+                    imageRendering: 'crisp-edges', 
+                    willChange: 'transform', 
+                    transform: 'translateZ(0)' 
+                }}
             />
             {datePickerInfo && (
                 <DatePicker
@@ -246,4 +263,4 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
 };
 
 
-export default Canvas;
+export default memo(Canvas);

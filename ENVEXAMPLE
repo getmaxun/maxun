@@ -14,6 +14,7 @@ MINIO_ACCESS_KEY=minio_access_key       # MinIO access key
 MINIO_SECRET_KEY=minio_secret_key       # MinIO secret key
 REDIS_HOST=redis                        # Redis host in Docker
 REDIS_PORT=6379                         # Redis port (default: 6379)
+REDIS_PASSWORD=redis_password           # Redis password (This is optional. Needed to authenticate with a password-protected Redis instance; if not set, Redis will connect without authentication.)
 
 # Backend and Frontend URLs and Ports
 BACKEND_PORT=8080 # Port to run backend on. Needed for Docker setup 
@@ -27,6 +28,11 @@ VITE_PUBLIC_URL=http://localhost:5173   # URL used by backend to connect to fron
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 GOOGLE_REDIRECT_URI=your_google_redirect_uri
+
+# Optional Airtable OAuth settings for Airtable Integration
+
+AIRTABLE_CLIENT_ID=your_airtable_client_id
+AIRTABLE_REDIRECT_URI=http://localhost:8080/auth/airtable/callback
 
 # Telemetry Settings - Please keep it enabled. Keeping it enabled helps us understand how the product is used and assess the impact of any new changes. 
 MAXUN_TELEMETRY=true

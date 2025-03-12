@@ -47,13 +47,27 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
   };
 
   const exitRecording = useCallback(async () => {
-    notify('success', t('save_recording.notifications.save_success'));
+    const notificationData = {
+      type: 'success',
+      message: t('save_recording.notifications.save_success'),
+      timestamp: Date.now()
+    };
+    window.sessionStorage.setItem('pendingNotification', JSON.stringify(notificationData));
+    
+    if (window.opener) {
+      window.opener.postMessage({
+        type: 'recording-notification',
+        notification: notificationData
+      }, '*');
+    }
+    
     if (browserId) {
       await stopRecording(browserId);
     }
     setBrowserId(null);
-    navigate('/');
-  }, [setBrowserId, browserId, notify]);
+    
+    window.close();
+  }, [setBrowserId, browserId]);
 
   // notifies backed to save the recording in progress,
   // releases resources and changes the view for main page by clearing the global browserId
