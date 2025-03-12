@@ -103,6 +103,17 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
       setSockets(sockets => [...sockets, socket]);
       socket.on('ready-for-run', () => readyForRunHandler(browserId, runId));
       socket.on('debugMessage', debugMessageHandler);
+      socket.on('run-completed', (data) => {
+        setRerenderRuns(true);
+        
+        const robotName = data.robotName;
+        
+        if (data.status === 'success') {
+          notify('success', t('main_page.notifications.interpretation_success', { name: robotName }));
+        } else {
+          notify('error', t('main_page.notifications.interpretation_failed', { name: robotName }));
+        }
+      });
       setContent('runs');
       if (browserId) {
         notify('info', t('main_page.notifications.run_started', { name: runningRecordingName }));
