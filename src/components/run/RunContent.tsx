@@ -134,13 +134,13 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
           }}>
             <div>
               <Highlight className="javascript">
-                {interpretationInProgress ? currentLog : row.log}
+                {row.status === 'running' ? currentLog : row.log}
               </Highlight>
               <div style={{ float: "left", clear: "both" }}
                 ref={logEndRef} />
             </div>
           </Box>
-          {interpretationInProgress ? <Button
+          {row.status === 'running' ? <Button
             color="error"
             onClick={abortRunHandler}
           >
@@ -148,7 +148,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
           </Button> : null}
         </TabPanel>
         <TabPanel value='output' sx={{ width: '700px' }}>
-          {interpretationInProgress ? (
+          {row.status === 'running' || row.status === 'queued' ? (
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <CircularProgress size={22} sx={{ marginRight: '10px' }} />
               {t('run_content.loading')}
