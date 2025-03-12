@@ -520,6 +520,7 @@
         "success": "Success",
         "running": "Running",
         "scheduled": "Scheduled",
+        "queued": "Queued",
         "failed": "Failed"
       },
       "run_settings_modal": {

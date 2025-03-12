@@ -513,6 +513,7 @@
       "success": "成功",
       "running": "运行中",
       "scheduled": "已计划",
+      "queued": "排队",
       "failed": "失败"
     },
     "run_settings_modal": {

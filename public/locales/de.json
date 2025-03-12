@@ -512,6 +512,7 @@
             "success": "Erfolg",
             "running": "Läuft",
             "scheduled": "Geplant",
+            "queued": "In Warteschlange",
             "failed": "Fehlgeschlagen"
         },
         "run_settings_modal": {

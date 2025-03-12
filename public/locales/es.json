@@ -513,6 +513,7 @@
       "success": "Éxito",
       "running": "Ejecutando",
       "scheduled": "Programado",
+      "queued": "En cola",
       "failed": "Fallido"
     },
     "run_settings_modal": {
