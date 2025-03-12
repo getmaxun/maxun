@@ -49,7 +49,7 @@ router.get('/params/:browserId', requireSignIn, (req, res) => {
  */
 router.delete('/pair/:index', requireSignIn, (req: AuthenticatedRequest, res) => {
   if (!req.user) { return res.status(401).send('User not authenticated'); }
-  const id = browserPool.getActiveBrowserId(req.user?.id);
+  const id = browserPool.getActiveBrowserId(req.user?.id, "recording");
   if (id) {
     const browser = browserPool.getRemoteBrowser(id);
     if (browser) {
@@ -66,7 +66,7 @@ router.delete('/pair/:index', requireSignIn, (req: AuthenticatedRequest, res) =>
  */
 router.post('/pair/:index', requireSignIn, (req: AuthenticatedRequest, res) => {
   if (!req.user) { return res.status(401).send('User not authenticated'); }
-  const id = browserPool.getActiveBrowserId(req.user?.id);
+  const id = browserPool.getActiveBrowserId(req.user?.id, "recording");
   if (id) {
     const browser = browserPool.getRemoteBrowser(id);
     logger.log('debug', `Adding pair to workflow`);
@@ -87,7 +87,7 @@ router.post('/pair/:index', requireSignIn, (req: AuthenticatedRequest, res) => {
  */
 router.put('/pair/:index', requireSignIn, (req: AuthenticatedRequest, res) => {
   if (!req.user) { return res.status(401).send('User not authenticated'); }
-  const id = browserPool.getActiveBrowserId(req.user?.id);
+  const id = browserPool.getActiveBrowserId(req.user?.id, "recording");
   if (id) {
     const browser = browserPool.getRemoteBrowser(id);
     logger.log('debug', `Updating pair in workflow`);
