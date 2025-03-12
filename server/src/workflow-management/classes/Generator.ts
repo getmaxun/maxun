@@ -152,7 +152,7 @@ export class WorkflowGenerator {
     });
     socket.on('activeIndex', (data) => this.generatedData.lastIndex = parseInt(data));
     socket.on('decision', async ({ pair, actionType, decision, userId }) => {
-      const id = browserPool.getActiveBrowserId(userId);
+      const id = browserPool.getActiveBrowserId(userId, "recording");
       if (id) {
         // const activeBrowser = browserPool.getRemoteBrowser(id);
         // const currentPage = activeBrowser?.getCurrentPage();
