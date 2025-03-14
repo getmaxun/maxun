@@ -932,3 +932,267 @@ router.get("/airtable/tables", requireSignIn, async (req: Request, res) => {
 });
 
 
+// Zapier OAuth Routes
+// Zapier OAuth Routes
+router.get("/zapier", requireSignIn, (req: Request, res) => {
+  const authenticatedReq = req as AuthenticatedRequest;
+  const { robotId } = authenticatedReq.query;
+  if (!robotId) {
+    return res.status(400).json({ message: "Robot ID is required" });
+  }
+
+  // Generate PKCE codes
+  const code_verifier = crypto.randomBytes(64).toString('base64url');
+  const code_challenge = crypto.createHash('sha256')
+    .update(code_verifier)
+    .digest('base64url');
+
+  // Store in session
+  authenticatedReq.session.code_verifier = code_verifier;
+  authenticatedReq.session.robotId = robotId.toString();
+
+  // Per Zapier documentation, we need to redirect to Zapier's OAuth page
+  const params = new URLSearchParams({
+    client_id: process.env.ZAPIER_CLIENT_ID!,
+    redirect_uri: process.env.ZAPIER_REDIRECT_URI!,  // This should be https://zapier.com/dashboard/auth/oauth/return/App221869CLIAPI/
+    response_type: 'code',
+    state: robotId.toString(),
+    scope: 'read,write',  // Adjust scopes as needed for your application
+    code_challenge: code_challenge,
+    code_challenge_method: 'S256'
+  });
+
+  // Redirect to Zapier's OAuth authorization page
+  res.redirect(`https://zapier.com/oauth/authorize?${params}`);
+});
+
+// This endpoint will receive requests from your app when Zapier redirects back
+router.get("/zapier/callback", requireSignIn, async (req: Request, res) => {
+  const authenticatedReq = req as AuthenticatedRequest;
+  const baseUrl = process.env.PUBLIC_URL || "http://localhost:5173";
+  
+  try {
+    const { code, state, error } = authenticatedReq.query;
+
+    if (error) {
+      return res.redirect(
+        `${baseUrl}/robots/${state}/integrate?error=${encodeURIComponent(error.toString())}`
+      );
+    }
+
+    if (!code || !state) {
+      return res.status(400).json({ message: "Missing authorization code or state" });
+    }
+
+    // Verify session data
+    if (!authenticatedReq.session?.code_verifier || authenticatedReq.session.robotId !== state.toString()) {
+      return res.status(400).json({ 
+        message: "Session expired - please restart the OAuth flow"
+      });
+    }
+
+    // Exchange code for tokens with Zapier's token endpoint
+    const tokenResponse = await fetch("https://zapier.com/oauth/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        code: code.toString(),
+        client_id: process.env.ZAPIER_CLIENT_ID!,
+        client_secret: process.env.ZAPIER_CLIENT_SECRET!,
+        redirect_uri: process.env.ZAPIER_REDIRECT_URI!,
+        code_verifier: authenticatedReq.session.code_verifier
+      }),
+    });
+
+    if (!tokenResponse.ok) {
+      const errorData = await tokenResponse.json();
+      console.error('Token exchange failed:', errorData);
+      return res.redirect(
+        `${baseUrl}/robots/${state}/integrate?error=${encodeURIComponent(errorData.error_description || 'Authentication failed')}`
+      );
+    }
+
+    const tokens = await tokenResponse.json();
+
+    // Update robot with credentials
+    const robot = await Robot.findOne({
+      where: { "recording_meta.id": req.session.robotId }
+    });
+
+    if (!robot) {
+      return res.status(404).json({ message: "Robot not found" });
+    }
+
+    await robot.update({
+      zapier_access_token: tokens.access_token,
+      zapier_refresh_token: tokens.refresh_token,
+    });
+
+    res.cookie("zapier_auth_status", "success", {
+      httpOnly: false,
+      maxAge: 60000,
+    }); // 1-minute expiration
+
+    res.cookie('robot_auth_robotId', req.session.robotId, {
+      httpOnly: false,
+      maxAge: 60000,
+    });
+
+    // Clear session data
+    authenticatedReq.session.destroy((err) => {
+      if (err) console.error('Session cleanup error:', err);
+    });
+
+    capture("maxun-oss-zapier-integration-created", {
+      user_id: authenticatedReq.user?.id,
+      robot_id: req.session.robotId,
+      created_at: new Date().toISOString(),
+    });
+
+    const redirectUrl = `${baseUrl}/robots/`;
+
+    res.redirect(redirectUrl);
+  } catch (error: any) {
+    console.error('Zapier callback error:', error);
+    res.redirect(
+      `${baseUrl}/robots/${req.session.robotId}/integrate?error=${encodeURIComponent(error.message)}`
+    );
+  }
+});
+
+// Refresh token route - uses Zapier's token endpoint
+router.post("/zapier/refresh", requireSignIn, async (req: Request, res) => {
+  const authenticatedReq = req as AuthenticatedRequest;
+  try {
+    const { robotId } = authenticatedReq.body;
+    if (!robotId) {
+      return res.status(400).json({ message: "Robot ID is required" });
+    }
+
+    const robot = await Robot.findOne({
+      where: { "recording_meta.id": robotId },
+      raw: true,
+    });
+
+    if (!robot?.zapier_refresh_token) {
+      return res.status(400).json({ message: "Robot not authenticated with Zapier" });
+    }
+
+    // Exchange refresh token for new access token using Zapier's token endpoint
+    const tokenResponse = await fetch("https://zapier.com/oauth/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: robot.zapier_refresh_token,
+        client_id: process.env.ZAPIER_CLIENT_ID!,
+        client_secret: process.env.ZAPIER_CLIENT_SECRET!
+      }),
+    });
+
+    if (!tokenResponse.ok) {
+      const errorData = await tokenResponse.json();
+      throw new Error(errorData.error_description || 'Failed to refresh token');
+    }
+
+    const tokens = await tokenResponse.json();
+
+    // Update robot with new credentials
+    await Robot.update(
+      {
+        zapier_access_token: tokens.access_token,
+        zapier_refresh_token: tokens.refresh_token || robot.zapier_refresh_token, // Some implementations don't return a new refresh token
+      },
+      { where: { "recording_meta.id": robotId } }
+    );
+
+    res.json({ message: "Zapier token refreshed successfully" });
+
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Remove Zapier integration
+router.post("/zapier/remove", requireSignIn, async (req: Request, res) => {
+  const authenticatedReq = req as AuthenticatedRequest;
+  const { robotId } = authenticatedReq.body;
+  if (!robotId) {
+    return res.status(400).json({ message: "Robot ID is required" });
+  }
+
+  try {
+    const robot = await Robot.findOne({
+      where: { "recording_meta.id": robotId }
+    });
+
+    if (!robot) {
+      return res.status(404).json({ message: "Robot not found" });
+    }
+
+    await robot.update({
+      zapier_access_token: null,
+      zapier_refresh_token: null,
+    });
+    
+    capture("maxun-oss-zapier-integration-removed", {
+      user_id: authenticatedReq.user?.id,
+      robot_id: robotId,
+      deleted_at: new Date().toISOString(),
+    });
+
+    res.json({ message: "Zapier integration removed successfully" });
+
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Test endpoint for Zapier
+router.get("/zapier/test", async (req: Request, res) => {
+  try {
+    // Extract the access token from the Authorization header
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ 
+        error: "Unauthorized",
+        message: "Missing or invalid authorization token" 
+      });
+    }
+    
+    const token = authHeader.split(' ')[1];
+    
+    // Find a robot with this access token
+    const robot = await Robot.findOne({
+      where: { zapier_access_token: token },
+      attributes: ['id', 'recording_meta']
+    });
+    
+    if (!robot) {
+      return res.status(401).json({ 
+        error: "Unauthorized",
+        message: "Invalid access token" 
+      });
+    }
+    
+    // Return basic information about the robot
+    return res.status(200).json({
+      id: robot.id,
+      name: robot.recording_meta.name,
+      status: "active",
+      authenticated: true
+    });
+    
+  } catch (error: any) {
+    console.error('Zapier test endpoint error:', error);
+    return res.status(500).json({ 
+      error: "Server error",
+      message: error.message 
+    });
+  }
+});
