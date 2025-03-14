@@ -1,4 +1,4 @@
-import { BROWSER_DEFAULT_HEIGHT, BROWSER_DEFAULT_WIDTH, VIEWPORT_H, VIEWPORT_W } from "../constants/const";
+import { BROWSER_DEFAULT_HEIGHT, BROWSER_DEFAULT_WIDTH } from "../constants/const";
 
 export class CoordinateMapper {
   private canvasWidth: number;
@@ -7,8 +7,8 @@ export class CoordinateMapper {
   private browserHeight: number;
   
   constructor(
-    canvasWidth: number = VIEWPORT_W, 
-    canvasHeight: number = VIEWPORT_H,
+    canvasWidth: number = window.innerWidth * 0.75, 
+    canvasHeight: number = window.innerHeight * 0.64,
     browserWidth: number = BROWSER_DEFAULT_WIDTH,
     browserHeight: number = BROWSER_DEFAULT_HEIGHT
   ) {
