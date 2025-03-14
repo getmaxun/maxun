@@ -1,3 +1,4 @@
+/* Base styles */
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -13,6 +14,13 @@ body {
   overflow-y: auto;
 }
 
+html {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* Form element autofill styles */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
@@ -26,18 +34,12 @@ select:-webkit-autofill:focus {
   transition: background-color 5000s ease-in-out 0s !important;
 }
 
-html {
-  width: 100%;
-  height: 100%;
-  overflow-y: auto;
-}
-
 a {
   color: #ff00c3;
+}
 
-  &:hover {
-    color: #ff00c3;
-  }
+a:hover {
+  color: #ff00c3;
 }
 
 code {
@@ -46,6 +48,7 @@ code {
   color: #ff00c3;
 }
 
+/* Browser-specific elements */
 #browser-actions {
   right: 0;
   overflow-x: hidden;
@@ -55,19 +58,21 @@ code {
   display: flex;
   justify-content: center;
   align-items: center;
-  overflow: hidden;
   position: relative;
+  box-sizing: border-box;
+  width: calc(100% - 4rem); 
+  height: calc(100vh - 4rem); 
+  margin: 2rem 2rem 2rem 2rem; 
+  overflow: hidden;
 }
 
 #browser-content {
   height: 100%;
   width: 100%;
   display: flex;
-  flex-direction: column;
+  flex-direction: column; 
   transform: scale(1);
-  /* Ensure no scaling */
   transform-origin: top left;
-  /* Keep the position fixed */
 }
 
 #browser-window {
@@ -76,100 +81,44 @@ code {
 }
 
 .right-side-panel {
-  margin: 0;
+  margin-left: 1.5rem; 
   transform: scale(1);
   transform-origin: top left;
   overflow: hidden;
   position: relative;
 }
 
-@media (min-width: 1024px) and (max-width: 1211px) {
+.MuiButton-root[sx*="position: 'absolute'"] {
+  bottom: 2rem !important;
+  margin-bottom: 0 !important;
+}
+
+/* Consistent layout across all screen sizes */
+@media screen and (min-width: 1024px) {
   #browser-recorder {
-    box-sizing: border-box;
-    height: 100vh;
-    margin: 0;
+    width: calc(100% - 4rem); 
+    height: calc(100vh - 4rem); 
+    margin: 2rem 2rem 2rem 2rem; 
   }
 }
 
-/* For laptops (between 1024px and 1440px) */
-@media (min-width: 1211px) and (max-width: 1440px) {
+/* Adjust for very small screens */
+@media screen and (max-width: 1023px) {
   #browser-recorder {
-    box-sizing: border-box;
-    height: calc(100vh - 0.6rem);
-    margin: 0.3rem;
+    width: calc(100% - 2rem);
+    height: calc(100vh - 3rem); 
+    margin: 1.5rem 1rem 1.5rem 1rem; 
+  }
+  
+  .right-side-panel {
+    margin-left: 1rem;
   }
 }
 
-/* For desktops (between 1441px and 1920px) */
-@media (min-width: 1441px) and (max-width: 1500px) {
+/* Adjust for very large screens - prevent content from stretching too much */
+@media screen and (min-width: 2000px) {
   #browser-recorder {
-    box-sizing: border-box;
-    height: calc(100vh - 2rem);
-    margin: 1rem;
-  }
-}
-
-@media (min-width: 1501px) and (max-width: 1700px) {
-  #browser-recorder {
-    box-sizing: border-box;
-    height: calc(100vh - 2rem);
-    margin: 1rem 8rem;
-  }
-}
-
-@media (min-width: 1701px) and (max-width: 1800px) {
-  #browser-recorder {
-    box-sizing: border-box;
-    height: calc(100vh - 2rem);
-    margin: 1rem 14rem;
-  }
-}
-
-@media (min-width: 1801px) and (max-width: 1900px) {
-  #browser-recorder {
-    box-sizing: border-box;
-    height: calc(100vh - 2rem);
-    margin: 1rem 18.5rem;
-  }
-}
-
-@media (min-width: 1900px) and (max-width: 1920px) {
-  #browser-recorder {
-    box-sizing: border-box;
-    height: calc(100vh - 2rem);
-    margin: 1rem 20rem;
-  }
-}
-
-/* For very large desktops (greater than 1920px) */
-@media (min-width: 1921px) and (max-width: 2000px) {
-  #browser-recorder {
-    box-sizing: border-box;
-    height: calc(100vh - 2rem);
-    margin: 1rem 20rem;
-  }
-}
-
-@media (min-width: 2001px) and (max-width: 2500px) {
-  #browser-recorder {
-    box-sizing: border-box;
-    height: calc(100vh - 2rem);
-    margin: 1rem 24rem;
-  }
-}
-
-@media (min-width: 2501px) and (max-width: 2999px) {
-  #browser-recorder {
-    box-sizing: border-box;
-    height: calc(100vh - 2rem);
-    margin: 1rem 40rem;
-  }
-}
-
-@media (min-width: 3000px) {
-  #browser-recorder {
-    box-sizing: border-box;
-    height: calc(100vh - 2rem);
-    margin: 1rem 55rem;
+    width: 1800px;
+    margin: 2rem auto 2rem auto; 
   }
 }
