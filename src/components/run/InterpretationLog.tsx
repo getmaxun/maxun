@@ -130,6 +130,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
   return (
     <Grid container>
       <Grid item xs={12} md={9} lg={9}>
+        <div style={{ height: '20px' }}></div>
         <Button
           onClick={toggleDrawer(true)}
           variant="contained"
@@ -141,7 +142,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
             background: '#ff00c3',
             border: 'none',
             padding: '10px 20px',
-            width: '900px',
+            width: "100%",
             overflow: 'hidden',
             textAlign: 'left',
             justifyContent: 'flex-start',
@@ -163,8 +164,8 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
               background: `${darkMode ? '#1e2124' : 'white'}`,
               color: `${darkMode ? 'white' : 'black'}`,
               padding: '10px',
-              height: 500,
-              width: width - 10,
+              height: window.innerHeight * 0.7,
+              width: window.innerWidth * 0.75,
               display: 'flex',
               borderRadius: '10px 10px 0 0',
             },
