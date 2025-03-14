@@ -461,7 +461,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const theme = useThemeMode();
   const isDarkMode = theme.darkMode;
 
-  let panelHeight = `${(window.innerHeight * 0.64) + 130}px`
+  let panelHeight = `${(window.innerHeight * 0.64) + 137}px`
 
   return (
     <Paper sx={{ height: panelHeight, width: 'auto', alignItems: "center", background: 'inherit' }} id="browser-actions" elevation={0}>
