@@ -9,6 +9,8 @@ import { useBrowserSteps, TextStep } from '../../context/browserSteps';
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../../context/auth';
+import { coordinateMapper } from '../../helpers/coordinateMapper';
+import { VIEWPORT_H, VIEWPORT_W } from '../../constants/const';
 
 interface ElementInfo {
     tagName: string;
@@ -31,6 +33,12 @@ interface AttributeOption {
 interface ScreencastData {
     image: string;
     userId: string;
+    viewport?: ViewportInfo | null;
+}
+
+interface ViewportInfo {
+    width: number;
+    height: number;
 }
 
 
@@ -69,6 +77,7 @@ export const BrowserWindow = () => {
     const [attributeOptions, setAttributeOptions] = useState<AttributeOption[]>([]);
     const [selectedElement, setSelectedElement] = useState<{ selector: string, info: ElementInfo | null } | null>(null);
     const [currentListId, setCurrentListId] = useState<number | null>(null);
+    const [viewportInfo, setViewportInfo] = useState<ViewportInfo>({ width: VIEWPORT_W, height: VIEWPORT_H });
 
     const [listSelector, setListSelector] = useState<string | null>(null);
     const [fields, setFields] = useState<Record<string, TextStep>>({});
@@ -81,6 +90,10 @@ export const BrowserWindow = () => {
   
     const { state } = useContext(AuthContext);
     const { user } = state;
+
+    useEffect(() => {
+        coordinateMapper.updateDimensions(VIEWPORT_W, VIEWPORT_H, viewportInfo.width, viewportInfo.height);
+    }, [viewportInfo]);
 
     useEffect(() => {
         if (listSelector) {
@@ -124,12 +137,33 @@ export const BrowserWindow = () => {
         }
     }, [getList, resetListState]);
 
+    useEffect(() => {
+        if (socket) {
+            socket.on('viewportInfo', (data: { width: number, height: number, userId: string }) => {
+                if (!data.userId || data.userId === user?.id) {
+                    setViewportInfo({
+                        width: data.width,
+                        height: data.height
+                    });
+                }
+            });
+            
+            return () => {
+                socket.off('viewportInfo');
+            };
+        }
+    }, [socket, user?.id]);
+
     const screencastHandler = useCallback((data: string | ScreencastData) => {
         if (typeof data === 'string') {
             setScreenShot(data);
         } else if (data && typeof data === 'object' && 'image' in data) {
             if (!data.userId || data.userId === user?.id) {
                 setScreenShot(data.image);
+                
+                if (data.viewport) {
+                    setViewportInfo(data.viewport);
+                }
             }
         }
     }, [screenShot, user?.id]);
@@ -149,78 +183,85 @@ export const BrowserWindow = () => {
     }, [screenShot, canvasRef, socket, screencastHandler]);
 
     const highlighterHandler = useCallback((data: { rect: DOMRect, selector: string, elementInfo: ElementInfo | null, childSelectors?: string[] }) => {
+        // Map the incoming DOMRect from browser coordinates to canvas coordinates
+        const mappedRect = new DOMRect(
+            data.rect.x,
+            data.rect.y,
+            data.rect.width,
+            data.rect.height
+        );
+        
+        const mappedData = {
+            ...data,
+            rect: mappedRect
+        };
+        
         if (getList === true) {
             if (listSelector) {
                 socket?.emit('listSelector', { selector: listSelector });
-                const hasValidChildSelectors = Array.isArray(data.childSelectors) && data.childSelectors.length > 0;
+                const hasValidChildSelectors = Array.isArray(mappedData.childSelectors) && mappedData.childSelectors.length > 0;
 
                 if (limitMode) {
                     setHighlighterData(null);
                 } else if (paginationMode) {
                     // Only set highlighterData if type is not empty, 'none', 'scrollDown', or 'scrollUp'
                     if (paginationType !== '' && !['none', 'scrollDown', 'scrollUp'].includes(paginationType)) {
-                        setHighlighterData(data);
+                        setHighlighterData(mappedData);
                     } else {
                         setHighlighterData(null);
                     }
-                } else if (data.childSelectors && data.childSelectors.includes(data.selector)) {
+                } else if (mappedData.childSelectors && mappedData.childSelectors.includes(mappedData.selector)) {
                     // Highlight only valid child elements within the listSelector
-                    setHighlighterData(data);
-                } else if (data.elementInfo?.isIframeContent && data.childSelectors) {
-                    // Handle pure iframe elements - similar to previous shadow DOM logic but using iframe syntax
-                    // Check if the selector matches any iframe child selectors
-                    const isIframeChild = data.childSelectors.some(childSelector =>
-                        data.selector.includes(':>>') && // Iframe uses :>> for traversal
+                    setHighlighterData(mappedData);
+                } else if (mappedData.elementInfo?.isIframeContent && mappedData.childSelectors) {
+                    // Handle iframe elements
+                    const isIframeChild = mappedData.childSelectors.some(childSelector =>
+                        mappedData.selector.includes(':>>') && 
                         childSelector.split(':>>').some(part =>
-                            data.selector.includes(part.trim())
+                            mappedData.selector.includes(part.trim())
                         )
                     );
-                    setHighlighterData(isIframeChild ? data : null);
-                } else if (data.selector.includes(':>>') && hasValidChildSelectors) {
+                    setHighlighterData(isIframeChild ? mappedData : null);
+                } else if (mappedData.selector.includes(':>>') && hasValidChildSelectors) {
                     // Handle mixed DOM cases with iframes
-                    // Split the selector into parts and check each against child selectors
-                    const selectorParts = data.selector.split(':>>').map(part => part.trim());
+                    const selectorParts = mappedData.selector.split(':>>').map(part => part.trim());
                     const isValidMixedSelector = selectorParts.some(part =>
-                        // We know data.childSelectors is defined due to hasValidChildSelectors check
-                        data.childSelectors!.some(childSelector =>
+                        mappedData.childSelectors!.some(childSelector =>
                             childSelector.includes(part)
                         )
                     );
-                    setHighlighterData(isValidMixedSelector ? data : null);
-                } else if (data.elementInfo?.isShadowRoot && data.childSelectors) {
-                    // New case: Handle pure Shadow DOM elements
-                    // Check if the selector matches any shadow root child selectors
-                    const isShadowChild = data.childSelectors.some(childSelector =>
-                        data.selector.includes('>>') && // Shadow DOM uses >> for piercing
+                    setHighlighterData(isValidMixedSelector ? mappedData : null);
+                } else if (mappedData.elementInfo?.isShadowRoot && mappedData.childSelectors) {
+                    // Handle Shadow DOM elements
+                    const isShadowChild = mappedData.childSelectors.some(childSelector =>
+                        mappedData.selector.includes('>>') &&
                         childSelector.split('>>').some(part =>
-                            data.selector.includes(part.trim())
+                            mappedData.selector.includes(part.trim())
                         )
                     );
-                    setHighlighterData(isShadowChild ? data : null);
-                } else if (data.selector.includes('>>') && hasValidChildSelectors) {
-                    // New case: Handle mixed DOM cases
-                    // Split the selector into parts and check each against child selectors
-                    const selectorParts = data.selector.split('>>').map(part => part.trim());
+                    setHighlighterData(isShadowChild ? mappedData : null);
+                } else if (mappedData.selector.includes('>>') && hasValidChildSelectors) {
+                    // Handle mixed DOM cases
+                    const selectorParts = mappedData.selector.split('>>').map(part => part.trim());
                     const isValidMixedSelector = selectorParts.some(part =>
-                        // Now we know data.childSelectors is defined
-                        data.childSelectors!.some(childSelector =>
+                        mappedData.childSelectors!.some(childSelector =>
                             childSelector.includes(part)
                         )
                     );
-                    setHighlighterData(isValidMixedSelector ? data : null);
+                    setHighlighterData(isValidMixedSelector ? mappedData : null);
                 } else {
-                    // if !valid child in normal mode, clear the highlighter
+                    // If not a valid child in normal mode, clear the highlighter
                     setHighlighterData(null);
                 }
             } else {
                 // Set highlighterData for the initial listSelector selection
-                setHighlighterData(data);
+                setHighlighterData(mappedData);
             }
         } else {
             // For non-list steps
-            setHighlighterData(data);
+            setHighlighterData(mappedData);
         }
-    }, [highlighterData, getList, socket, listSelector, paginationMode, paginationType, captureStage]);
+    }, [getList, socket, listSelector, paginationMode, paginationType, limitMode]);
 
 
     useEffect(() => {
@@ -260,11 +301,13 @@ export const BrowserWindow = () => {
             const clickY = e.clientY - canvasRect.top;
 
             const highlightRect = highlighterData.rect;
+
+            const mappedRect = coordinateMapper.mapBrowserRectToCanvas(highlightRect);
             if (
-                clickX >= highlightRect.left &&
-                clickX <= highlightRect.right &&
-                clickY >= highlightRect.top &&
-                clickY <= highlightRect.bottom
+                clickX >= mappedRect.left &&
+                clickX <= mappedRect.right &&
+                clickY >= mappedRect.top &&
+                clickY <= mappedRect.bottom
             ) {
 
                 const options = getAttributeOptions(highlighterData.elementInfo?.tagName || '', highlighterData.elementInfo);
@@ -498,6 +541,9 @@ export const BrowserWindow = () => {
                     width={900}
                     height={400}
                 />
+                <div style={{ fontSize: '10px', color: '#666', padding: '4px', textAlign: 'right' }}>
+                    Browser viewport: {viewportInfo.width}x{viewportInfo.height}
+                </div>
             </div>
         </div>
     );
