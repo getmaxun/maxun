@@ -397,6 +397,32 @@
           "table_selected": "Airtable table selected successfully",
           "integration_removed": "Airtable integration removed successfully"
         }
+      },
+      "zapier": {
+        "title": "Connect to Zapier",
+        "descriptions": {
+          "sync_info": "Connect your robot to Zapier to automate workflows with thousands of apps. This will allow your robot to trigger actions based on events."
+        },
+        "alerts": {
+          "success": {
+            "title": "Connected to Zapier",
+            "content": "Your robot is successfully connected to Zapier. You can now create Zaps that use this integration.",
+            "here": "View in Zapier"
+          }
+        },
+        "buttons": {
+          "authenticate": "Connect to Zapier",
+          "remove_integration": "Remove Zapier Connection",
+          "submit": "Save Connection"
+        },
+        "notifications": {
+          "auth_success": "Successfully authenticated with Zapier",
+          "integration_removed": "Zapier integration removed successfully"
+        },
+        "errors": {
+          "auth_error": "Failed to authenticate with Zapier",
+          "remove_error": "Error removing Zapier integration: {{message}}"
+        }
       }
     },
     "robot_duplication": {
