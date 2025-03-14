@@ -23,7 +23,7 @@ interface IntegrationProps {
   isOpen: boolean;
   handleStart: (data: IntegrationSettings) => void;
   handleClose: () => void;
-  preSelectedIntegrationType?: "googleSheets" | "airtable" | null;
+  preSelectedIntegrationType?: "googleSheets" | "airtable" | "zapier" | null;
 }
 
 export interface IntegrationSettings {
@@ -34,7 +34,7 @@ export interface IntegrationSettings {
   airtableTableName?: string,
   airtableTableId?: string,
   data: string;
-  integrationType: "googleSheets" | "airtable";
+  integrationType: "googleSheets" | "airtable" | "zapier";
 }
 
 const getCookie = (name: string): string | null => {
@@ -84,7 +84,7 @@ export const IntegrationSettingsModal = ({
   const navigate = useNavigate();
 
   const [selectedIntegrationType, setSelectedIntegrationType] = useState<
-    "googleSheets" | "airtable" | null
+    "googleSheets" | "airtable" | "zapier" |  null
   >(preSelectedIntegrationType);
 
   const authenticateWithGoogle = () => {
@@ -94,6 +94,10 @@ export const IntegrationSettingsModal = ({
   // Authenticate with Airtable
   const authenticateWithAirtable = () => {
     window.location.href = `${apiUrl}/auth/airtable?robotId=${recordingId}`;
+  };
+
+  const authenticateWithZapier = () => {
+    window.location.href = `${apiUrl}/auth/zapier?robotId=${recordingId}`;
   };
 
   // Fetch Google Sheets files
@@ -308,6 +312,29 @@ export const IntegrationSettingsModal = ({
     }
   };
 
+  const removeZapierIntegration = async () => {
+    try {
+      setLoading(true);
+      await axios.post(
+        `${apiUrl}/auth/zapier/remove`,
+        { robotId: recordingId },
+        { withCredentials: true }
+      );
+  
+      // Refresh recording data
+      await refreshRecordingData();
+  
+      notify("success", t("integration_settings.zapier.notifications.integration_removed"));
+      setLoading(false);
+    } catch (error: any) {
+      setLoading(false);
+      console.error("Error removing Zapier integration:", error);
+      notify("error", t("integration_settings.zapier.errors.remove_error", {
+        message: error.response?.data?.message || error.message,
+      }));
+    }
+  };
+
   const handleAirtableOAuthCallback = async () => {
     try {
       const response = await axios.get(`${apiUrl}/auth/airtable/callback`);
@@ -322,13 +349,13 @@ export const IntegrationSettingsModal = ({
   useEffect(() => {
     const fetchRecordingInfo = async () => {
       if (!recordingId) return;
-
+  
       setLoading(true);
-
+  
       const recording = await getStoredRecording(recordingId);
       if (recording) {
         setRecording(recording);
-
+  
         if (preSelectedIntegrationType) {
           setSettings(prev => ({ ...prev, integrationType: preSelectedIntegrationType }));
         }
@@ -341,28 +368,50 @@ export const IntegrationSettingsModal = ({
             airtableBaseName: recording.airtable_base_name || "",
             airtableTableName: recording.airtable_table_name || "",
             airtableTableId: recording.airtable_table_id || "",
-            integrationType: recording.airtable_base_id ? "airtable" : "googleSheets"
+            integrationType: "airtable"
+          }));
+        } else if (recording.zapier_access_token) {
+          setSettings(prev => ({
+            ...prev,
+            integrationType: "zapier"
           }));
         }
       }
-
+  
       setLoading(false);
     };
-
+  
     fetchRecordingInfo();
   }, [recordingId, preSelectedIntegrationType]);
 
   useEffect(() => {
-    const status = getCookie("airtable_auth_status");
-    const message = getCookie("airtable_auth_message");
-
-    if (status === "success") {
-      notify("success", message || t("integration_settings.airtable.notifications.auth_success"));
-      removeCookie("airtable_auth_status");
-      removeCookie("airtable_auth_message");
+    const googleStatus = getCookie("robot_auth_status");
+    const airtableStatus = getCookie("airtable_auth_status");
+    const zapierStatus = getCookie("zapier_auth_status");
+    const robotId = getCookie("robot_auth_robotId");
+  
+    if (googleStatus === "success" && robotId) {
+      notify("success", t("integration_settings.google.notifications.auth_success"));
+      removeCookie("robot_auth_status");
+      removeCookie("robot_auth_robotId");
       refreshRecordingData();
     }
-
+  
+    if (airtableStatus === "success" && robotId) {
+      notify("success", t("integration_settings.airtable.notifications.auth_success"));
+      removeCookie("airtable_auth_status");
+      removeCookie("robot_auth_robotId");
+      refreshRecordingData();
+    }
+  
+    if (zapierStatus === "success" && robotId) {
+      notify("success", t("integration_settings.zapier.notifications.auth_success"));
+      removeCookie("zapier_auth_status");
+      removeCookie("robot_auth_robotId");
+      refreshRecordingData();
+    }
+  
+    // Rest of your existing code
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get("code");
     if (code) {
@@ -394,7 +443,7 @@ export const IntegrationSettingsModal = ({
               }}
               style={{ display: "flex", flexDirection: "column", alignItems: "center", background: 'white', color: '#ff00c3' }}
             >
-              <img src="/public/svg/gsheet.svg" alt="Google Sheets" style={{ margin: "6px" }} />
+              <img src="/svg/gsheet.svg" alt="Google Sheets" style={{ margin: "6px" }} />
               Google Sheets
             </Button>
 
@@ -407,8 +456,21 @@ export const IntegrationSettingsModal = ({
               }}
               style={{ display: "flex", flexDirection: "column", alignItems: "center", background: 'white', color: '#ff00c3' }}
             >
-              <img src="/public/svg/airtable.svg" alt="Airtable" style={{ margin: "6px" }} />
+              <img src="/svg/airtable.svg" alt="Airtable" style={{ margin: "6px" }} />
               Airtable
+            </Button>
+
+            <Button
+              variant="outlined"
+              onClick={() => {
+                setSelectedIntegrationType("zapier");
+                setSettings({ ...settings, integrationType: "zapier" });
+                navigate(`/robots/${recordingId}/integrate/zapier`);
+              }}
+              style={{ display: "flex", flexDirection: "column", alignItems: "center", background: 'white', color: '#ff00c3' }}
+            >
+              <img src="/svg/zapier.svg" alt="Zapier" style={{ margin: "6px" }} />
+              Zapier
             </Button>
           </div>
         </div>
@@ -636,6 +698,52 @@ export const IntegrationSettingsModal = ({
                     )}
                   </>
                 )}
+              </>
+            )}
+          </>
+        )}
+
+        {settings.integrationType === "zapier" && (
+          <>
+            <Typography variant="h6">
+              {t("integration_settings.zapier.title")}
+            </Typography>
+
+            {recording?.zapier_access_token ? (
+              <>
+                <Alert severity="info" sx={{ marginTop: "10px", border: "1px solid #ff00c3" }}>
+                  <AlertTitle>{t("integration_settings.zapier.alerts.success.title")}</AlertTitle>
+                  {t("integration_settings.zapier.alerts.success.content")}
+                  <a
+                    href="https://zapier.com/app/dashboard"
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ marginLeft: "4px", fontWeight: "bold" }}
+                  >
+                    {t("integration_settings.zapier.alerts.success.here")}
+                  </a>
+                </Alert>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  onClick={removeZapierIntegration}
+                  style={{ marginTop: "15px" }}
+                  disabled={loading}
+                >
+                  {loading ? <CircularProgress size={24} /> : t("integration_settings.zapier.buttons.remove_integration")}
+                </Button>
+              </>
+            ) : (
+              <>
+                <p>{t("integration_settings.zapier.descriptions.sync_info")}</p>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={authenticateWithZapier}
+                  disabled={loading}
+                >
+                  {loading ? <CircularProgress size={24} /> : t("integration_settings.zapier.buttons.authenticate")}
+                </Button>
               </>
             )}
           </>
