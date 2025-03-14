@@ -77,7 +77,7 @@ export const BrowserWindow = () => {
     const [attributeOptions, setAttributeOptions] = useState<AttributeOption[]>([]);
     const [selectedElement, setSelectedElement] = useState<{ selector: string, info: ElementInfo | null } | null>(null);
     const [currentListId, setCurrentListId] = useState<number | null>(null);
-    const [viewportInfo, setViewportInfo] = useState<ViewportInfo>({ width: VIEWPORT_W, height: VIEWPORT_H });
+    const [viewportInfo, setViewportInfo] = useState<ViewportInfo>({ width: window.innerWidth * 0.75, height: window.innerHeight * 0.64 });
 
     const [listSelector, setListSelector] = useState<string | null>(null);
     const [fields, setFields] = useState<Record<string, TextStep>>({});
@@ -92,7 +92,7 @@ export const BrowserWindow = () => {
     const { user } = state;
 
     useEffect(() => {
-        coordinateMapper.updateDimensions(VIEWPORT_W, VIEWPORT_H, viewportInfo.width, viewportInfo.height);
+        coordinateMapper.updateDimensions(window.innerWidth * 0.75, window.innerHeight * 0.64, viewportInfo.width, viewportInfo.height);
     }, [viewportInfo]);
 
     useEffect(() => {
@@ -480,7 +480,7 @@ export const BrowserWindow = () => {
     }, [paginationMode, resetPaginationSelector]);
 
     return (
-        <div onClick={handleClick} style={{ width: '900px' }} id="browser-window">
+        <div onClick={handleClick} style={{ width: '100%' }} id="browser-window">
             {
                 getText === true || getList === true ? (
                     <GenericModal
@@ -526,24 +526,21 @@ export const BrowserWindow = () => {
                     </GenericModal>
                 ) : null
             }
-            <div style={{ height: '400px', overflow: 'hidden' }}>
+            <div style={{ height: window.innerHeight * 0.64, overflow: 'hidden' }}>
                 {((getText === true || getList === true) && !showAttributeModal && highlighterData?.rect != null && highlighterData?.rect.top != null) && canvasRef?.current ?
                     <Highlighter
                         unmodifiedRect={highlighterData?.rect}
                         displayedSelector={highlighterData?.selector}
-                        width={900}
-                        height={400}
+                        width={window.innerWidth * 0.75}
+                        height={window.innerHeight * 0.64}
                         canvasRect={canvasRef.current.getBoundingClientRect()}
                     />
                     : null}
                 <Canvas
                     onCreateRef={setCanvasReference}
-                    width={900}
-                    height={400}
+                    width={window.innerWidth * 0.75}
+                    height={window.innerHeight * 0.64}
                 />
-                <div style={{ fontSize: '10px', color: '#666', padding: '4px', textAlign: 'right' }}>
-                    Browser viewport: {viewportInfo.width}x{viewportInfo.height}
-                </div>
             </div>
         </div>
     );
@@ -558,7 +555,7 @@ const drawImage = (image: string, canvas: HTMLCanvasElement): void => {
     img.src = image;
     img.onload = () => {
         URL.revokeObjectURL(img.src);
-        ctx?.drawImage(img, 0, 0, 900, 400);
+        ctx?.drawImage(img, 0, 0, window.innerWidth * 0.75, window.innerHeight * 0.64);
     };
 
 };
