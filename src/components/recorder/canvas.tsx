@@ -6,7 +6,6 @@ import DatePicker from '../pickers/DatePicker';
 import Dropdown from '../pickers/Dropdown';
 import TimePicker from '../pickers/TimePicker';
 import DateTimeLocalPicker from '../pickers/DateTimeLocalPicker';
-import { VIEWPORT_H, VIEWPORT_W } from '../../constants/const';
 import { coordinateMapper } from '../../helpers/coordinateMapper';
 
 interface CreateRefCallback {
@@ -79,7 +78,7 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
     }, [getText, getList]);
 
     useEffect(() => {
-        coordinateMapper.updateDimensions(VIEWPORT_W, VIEWPORT_H);
+        coordinateMapper.updateDimensions(window.innerWidth * 0.75, window.innerHeight * 0.64);
     }, []);
 
     useEffect(() => {
