@@ -165,7 +165,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
               color: `${darkMode ? 'white' : 'black'}`,
               padding: '10px',
               height: window.innerHeight * 0.7,
-              width: window.innerWidth * 0.7,
+              width: window.innerWidth * 0.716,
               display: 'flex',
               borderRadius: '10px 10px 0 0',
             },
