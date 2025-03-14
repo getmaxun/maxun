@@ -30,6 +30,8 @@ interface RobotAttributes {
   airtable_table_name?: string | null; 
   airtable_access_token?: string | null; 
   airtable_refresh_token?: string | null; 
+  zapier_access_token?: string | null;
+  zapier_refresh_token?: string | null;
   schedule?: ScheduleConfig | null;
   airtable_table_id?: string | null;
 }
@@ -64,6 +66,8 @@ class Robot extends Model<RobotAttributes, RobotCreationAttributes> implements R
   public airtable_table_name!: string | null; 
   public airtable_access_token!: string | null; 
   public airtable_refresh_token!: string | null; 
+  public zapier_access_token!: string | null;
+  public zapier_refresh_token!: string | null;
   public airtable_table_id!: string | null; 
   public schedule!: ScheduleConfig | null;
 }
@@ -128,6 +132,14 @@ Robot.init(
       allowNull: true,
     },
     airtable_refresh_token: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    zapier_access_token: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    zapier_refresh_token: {
       type: DataTypes.TEXT,
       allowNull: true,
     },
