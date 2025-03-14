@@ -10,7 +10,6 @@ import { useGlobalInfoStore } from '../../context/globalInfo';
 import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../../context/auth';
 import { coordinateMapper } from '../../helpers/coordinateMapper';
-import { VIEWPORT_H, VIEWPORT_W } from '../../constants/const';
 
 interface ElementInfo {
     tagName: string;
