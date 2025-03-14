@@ -57,12 +57,18 @@ export const Recordings = ({
       
       return value;
     };
-
+  
     const authStatus = getAndClearCookie('robot_auth_status');
     const airtableAuthStatus = getAndClearCookie('airtable_auth_status');
+    const zapierAuthStatus = getAndClearCookie('zapier_auth_status');
     const robotId = getAndClearCookie('robot_auth_robotId');
-
-    if (airtableAuthStatus === 'success' && robotId) {
+  
+    if (zapierAuthStatus === 'success' && robotId) {
+      console.log("Zapier Auth Status:", zapierAuthStatus);
+      notify(zapierAuthStatus, t("recordingtable.notifications.auth_success"));
+      handleNavigate(`/robots/${robotId}/integrate/zapier`, robotId, "", []);
+    }
+    else if (airtableAuthStatus === 'success' && robotId) {
       console.log("Airtable Auth Status:", airtableAuthStatus);
       notify(airtableAuthStatus, t("recordingtable.notifications.auth_success"));
       handleNavigate(`/robots/${robotId}/integrate/airtable`, robotId, "", []);
@@ -112,6 +118,15 @@ export const Recordings = ({
           handleClose={handleClose}
           handleStart={() => {}}
           preSelectedIntegrationType="airtable"
+        />
+      );
+    } else if (currentPath.endsWith("/integrate/zapier")) {
+      return (
+        <IntegrationSettingsModal
+          isOpen={true}
+          handleClose={handleClose}
+          handleStart={() => {}}
+          preSelectedIntegrationType="zapier"
         />
       );
     } else if (currentPath.endsWith("/integrate")) {
