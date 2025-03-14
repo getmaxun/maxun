@@ -37,7 +37,7 @@ const SCREENCAST_CONFIG: {
 } = {
     format: 'jpeg',
     maxWidth: 1280,
-    maxHeight: 400,
+    maxHeight: 720,
     targetFPS: 30,
     compressionQuality: 0.8,
     maxQueueSize: 2
