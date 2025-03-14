@@ -7,7 +7,7 @@ export class CoordinateMapper {
   private browserHeight: number;
   
   constructor(
-    canvasWidth: number = window.innerWidth * 0.75, 
+    canvasWidth: number = window.innerWidth * 0.7, 
     canvasHeight: number = window.innerHeight * 0.64,
     browserWidth: number = BROWSER_DEFAULT_WIDTH,
     browserHeight: number = BROWSER_DEFAULT_HEIGHT

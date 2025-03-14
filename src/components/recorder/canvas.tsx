@@ -78,7 +78,7 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
     }, [getText, getList]);
 
     useEffect(() => {
-        coordinateMapper.updateDimensions(window.innerWidth * 0.75, window.innerHeight * 0.64);
+        coordinateMapper.updateDimensions(window.innerWidth * 0.7, window.innerHeight * 0.64);
     }, []);
 
     useEffect(() => {

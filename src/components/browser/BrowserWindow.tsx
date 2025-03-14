@@ -76,7 +76,7 @@ export const BrowserWindow = () => {
     const [attributeOptions, setAttributeOptions] = useState<AttributeOption[]>([]);
     const [selectedElement, setSelectedElement] = useState<{ selector: string, info: ElementInfo | null } | null>(null);
     const [currentListId, setCurrentListId] = useState<number | null>(null);
-    const [viewportInfo, setViewportInfo] = useState<ViewportInfo>({ width: window.innerWidth * 0.75, height: window.innerHeight * 0.64 });
+    const [viewportInfo, setViewportInfo] = useState<ViewportInfo>({ width: window.innerWidth * 0.7, height: window.innerHeight * 0.64 });
 
     const [listSelector, setListSelector] = useState<string | null>(null);
     const [fields, setFields] = useState<Record<string, TextStep>>({});
@@ -91,7 +91,7 @@ export const BrowserWindow = () => {
     const { user } = state;
 
     useEffect(() => {
-        coordinateMapper.updateDimensions(window.innerWidth * 0.75, window.innerHeight * 0.64, viewportInfo.width, viewportInfo.height);
+        coordinateMapper.updateDimensions(window.innerWidth * 0.7, window.innerHeight * 0.64, viewportInfo.width, viewportInfo.height);
     }, [viewportInfo]);
 
     useEffect(() => {
@@ -479,7 +479,7 @@ export const BrowserWindow = () => {
     }, [paginationMode, resetPaginationSelector]);
 
     return (
-        <div onClick={handleClick} style={{ width: '100%' }} id="browser-window">
+        <div onClick={handleClick} style={{ width: window.innerWidth * 0.7 }} id="browser-window">
             {
                 getText === true || getList === true ? (
                     <GenericModal
@@ -530,14 +530,14 @@ export const BrowserWindow = () => {
                     <Highlighter
                         unmodifiedRect={highlighterData?.rect}
                         displayedSelector={highlighterData?.selector}
-                        width={window.innerWidth * 0.75}
+                        width={window.innerWidth * 0.7}
                         height={window.innerHeight * 0.64}
                         canvasRect={canvasRef.current.getBoundingClientRect()}
                     />
                     : null}
                 <Canvas
                     onCreateRef={setCanvasReference}
-                    width={window.innerWidth * 0.75}
+                    width={window.innerWidth * 0.7}
                     height={window.innerHeight * 0.64}
                 />
             </div>
@@ -554,7 +554,7 @@ const drawImage = (image: string, canvas: HTMLCanvasElement): void => {
     img.src = image;
     img.onload = () => {
         URL.revokeObjectURL(img.src);
-        ctx?.drawImage(img, 0, 0, window.innerWidth * 0.75, window.innerHeight * 0.64);
+        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
     };
 
 };
