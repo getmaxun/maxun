@@ -15,7 +15,7 @@ const StyledNavBar = styled.div<{ browserWidth: number; isDarkMode: boolean }>`
     display: flex;
     padding: 12px 0px;
     background-color: ${({ isDarkMode }) => (isDarkMode ? '#2C2F33' : '#f6f6f6')};
-    width: ${window.innerWidth * 0.7}px;
+    width: ${({ browserWidth }) => browserWidth}px;
     border-radius: 0px 5px 0px 0px;
 `;
 
