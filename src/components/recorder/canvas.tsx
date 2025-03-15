@@ -78,10 +78,6 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
     }, [getText, getList]);
 
     useEffect(() => {
-        coordinateMapper.updateDimensions(window.innerWidth * 0.7, window.innerHeight * 0.64);
-    }, []);
-
-    useEffect(() => {
         if (socket) {
             socket.on('showDatePicker', (info: { coordinates: Coordinates, selector: string }) => {
                 const canvasCoords = coordinateMapper.mapBrowserToCanvas(info.coordinates);
