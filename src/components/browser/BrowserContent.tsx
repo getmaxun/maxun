@@ -17,6 +17,11 @@ export const BrowserContent = () => {
   const [tabs, setTabs] = useState<string[]>(["current"]);
   const [tabIndex, setTabIndex] = React.useState(0);
   const [showOutputData, setShowOutputData] = useState(false);
+  const [browserWidth, setBrowserWidth] = useState(window.innerWidth * 0.7);
+
+  const handleResize = useCallback(() => {
+    setBrowserWidth(window.innerWidth * 0.7);
+  }, []);
 
   const handleChangeIndex = useCallback(
     (index: number) => {
@@ -110,6 +115,14 @@ export const BrowserContent = () => {
   );
 
   useEffect(() => {
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [handleResize]);
+
+  useEffect(() => {
     if (socket) {
       socket.on("newTab", handleNewTab);
       socket.on("tabHasBeenClosed", tabHasBeenClosedHandler);
@@ -146,7 +159,7 @@ export const BrowserContent = () => {
       />
       <BrowserNavBar
         // todo: use width from browser dimension once fixed
-        browserWidth={window.innerWidth * 0.7}
+        browserWidth={browserWidth}
         handleUrlChanged={handleUrlChanged}
 
       />
