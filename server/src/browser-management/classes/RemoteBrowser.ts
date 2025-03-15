@@ -36,8 +36,8 @@ const SCREENCAST_CONFIG: {
     maxQueueSize: number;
 } = {
     format: 'jpeg',
-    maxWidth: 900,
-    maxHeight: 400,
+    maxWidth: 1280,
+    maxHeight: 720,
     targetFPS: 30,
     compressionQuality: 0.8,
     maxQueueSize: 2
@@ -269,7 +269,7 @@ export class RemoteBrowser {
             };
         }
         const contextOptions: any = {
-            viewport: { height: 400, width: 900 },
+            // viewport: { height: 400, width: 900 },
             // recordVideo: { dir: 'videos/' }
             // Force reduced motion to prevent animation issues
             reducedMotion: 'reduce',
@@ -322,6 +322,15 @@ export class RemoteBrowser {
 
         await this.setupPageEventListeners(this.currentPage);
 
+        const viewportSize = await this.currentPage.viewportSize();
+        if (viewportSize) {
+            this.socket.emit('viewportInfo', {
+                width: viewportSize.width,
+                height: viewportSize.height,
+                userId: this.userId
+            });
+        }
+
         try {
             const blocker = await PlaywrightBlocker.fromLists(fetch, ['https://easylist.to/easylist/easylist.txt']);
             await blocker.enableBlockingInPage(this.currentPage);
@@ -332,6 +341,19 @@ export class RemoteBrowser {
             console.warn('Failed to initialize adblocker, continuing without it:', error.message);
             // Still need to set up the CDP session even if blocker fails
             this.client = await this.currentPage.context().newCDPSession(this.currentPage);
+        }
+    };
+
+    public updateViewportInfo = async (): Promise<void> => {
+        if (this.currentPage) {
+            const viewportSize = await this.currentPage.viewportSize();
+            if (viewportSize) {
+                this.socket.emit('viewportInfo', {
+                    width: viewportSize.width,
+                    height: viewportSize.height,
+                    userId: this.userId
+                });
+            }
         }
     };
 
@@ -452,6 +474,8 @@ export class RemoteBrowser {
         // Set flag to indicate screencast is active
         this.isScreencastActive = true;
 
+        await this.updateViewportInfo();
+
         this.client.on('Page.screencastFrame', ({ data: base64, sessionId }) => {
             // Only process if screencast is still active for this user
             if (!this.isScreencastActive) {
@@ -563,7 +587,7 @@ export class RemoteBrowser {
             const workflow = this.generator.AddGeneratedFlags(this.generator.getWorkflowFile());
             await this.initializeNewPage();
             if (this.currentPage) {
-                this.currentPage.setViewportSize({ height: 400, width: 900 });
+                // this.currentPage.setViewportSize({ height: 400, width: 900 });
                 const params = this.generator.getParams();
                 if (params) {
                     this.interpreterSettings.params = params.reduce((acc, param) => {
@@ -721,7 +745,7 @@ export class RemoteBrowser {
      * @param payload the screenshot binary data
      * @returns void
      */
-    private emitScreenshot = async (payload: Buffer): Promise<void> => {
+    private emitScreenshot = async (payload: Buffer, viewportSize?: { width: number, height: number }): Promise<void> => {
         if (this.isProcessingScreenshot) {
             if (this.screenshotQueue.length < SCREENCAST_CONFIG.maxQueueSize) {
                 this.screenshotQueue.push(payload);
@@ -736,11 +760,14 @@ export class RemoteBrowser {
             const base64Data = optimizedScreenshot.toString('base64');
             const dataWithMimeType = `data:image/jpeg;base64,${base64Data}`;
 
-// Emit with user context to ensure the frontend can identify which browser's screenshot this is
-this.socket.emit('screencast', {
-    image: dataWithMimeType,
-    userId: this.userId
-});            logger.debug('Screenshot emitted');
+            // Emit with user context to ensure the frontend can identify which browser's screenshot this is
+            this.socket.emit('screencast', {
+                image: dataWithMimeType,
+                userId: this.userId,
+                viewport: viewportSize || await this.currentPage?.viewportSize() || null
+            });
+
+            logger.debug('Screenshot emitted');
         } catch (error) {
             logger.error('Screenshot emission failed:', error);
         } finally {
