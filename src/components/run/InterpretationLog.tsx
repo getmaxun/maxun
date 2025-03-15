@@ -37,6 +37,19 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
   const { width } = useBrowserDimensionsStore();
   const { socket } = useSocketStore();
   const { currentWorkflowActionsState, shouldResetInterpretationLog, notify } = useGlobalInfoStore();
+  const [dimensions, setDimensions] = useState({
+    drawerHeight: window.innerHeight * 0.7,
+    drawerWidth: window.innerWidth * 0.716,
+    buttonWidth: window.innerWidth * 0.7
+  });
+
+  const handleResize = useCallback(() => {
+    setDimensions({
+      drawerHeight: window.innerHeight * 0.7,
+      drawerWidth: window.innerWidth * 0.716,
+      buttonWidth: window.innerWidth * 0.7
+    });
+  }, []);
 
   const toggleDrawer = (newOpen: boolean) => (event: React.KeyboardEvent | React.MouseEvent) => {
     if (
@@ -96,6 +109,14 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
   };
 
   useEffect(() => {
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [handleResize]);
+
+  useEffect(() => {
     if (shouldResetInterpretationLog) {
       setLog('');
       setTableData([]);
@@ -142,7 +163,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
             background: '#ff00c3',
             border: 'none',
             padding: '10px 20px',
-            width: window.innerWidth * 0.7,
+            width: dimensions.buttonWidth,
             overflow: 'hidden',
             textAlign: 'left',
             justifyContent: 'flex-start',
@@ -164,8 +185,8 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
               background: `${darkMode ? '#1e2124' : 'white'}`,
               color: `${darkMode ? 'white' : 'black'}`,
               padding: '10px',
-              height: window.innerHeight * 0.7,
-              width: window.innerWidth * 0.716,
+              height: dimensions.drawerHeight,
+              width: dimensions.drawerWidth,
               display: 'flex',
               borderRadius: '10px 10px 0 0',
             },
