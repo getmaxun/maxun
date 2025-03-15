@@ -114,11 +114,3 @@ code {
     margin-left: 1rem;
   }
 }
-
-/* Adjust for very large screens - prevent content from stretching too much */
-@media screen and (min-width: 2000px) {
-  #browser-recorder {
-    width: 1800px;
-    margin: 2rem auto 2rem auto; 
-  }
-}
