@@ -90,8 +90,28 @@ export const BrowserWindow = () => {
     const { state } = useContext(AuthContext);
     const { user } = state;
 
+    const [dimensions, setDimensions] = useState({
+        width: window.innerWidth * 0.7,
+        height: window.innerHeight * 0.64
+    });
+    
+    const handleResize = useCallback(() => {
+        setDimensions({
+            width: window.innerWidth * 0.7,
+            height: window.innerHeight * 0.64
+        });
+    }, []);
+    
     useEffect(() => {
-        coordinateMapper.updateDimensions(window.innerWidth * 0.7, window.innerHeight * 0.64, viewportInfo.width, viewportInfo.height);
+        window.addEventListener('resize', handleResize);
+        
+        return () => {
+          window.removeEventListener('resize', handleResize);
+        };
+    }, [handleResize]);
+
+    useEffect(() => {
+        coordinateMapper.updateDimensions(dimensions.width, dimensions.height, viewportInfo.width, viewportInfo.height);
     }, [viewportInfo]);
 
     useEffect(() => {
@@ -135,23 +155,6 @@ export const BrowserWindow = () => {
             resetListState();
         }
     }, [getList, resetListState]);
-
-    useEffect(() => {
-        if (socket) {
-            socket.on('viewportInfo', (data: { width: number, height: number, userId: string }) => {
-                if (!data.userId || data.userId === user?.id) {
-                    setViewportInfo({
-                        width: data.width,
-                        height: data.height
-                    });
-                }
-            });
-            
-            return () => {
-                socket.off('viewportInfo');
-            };
-        }
-    }, [socket, user?.id]);
 
     const screencastHandler = useCallback((data: string | ScreencastData) => {
         if (typeof data === 'string') {
@@ -525,20 +528,20 @@ export const BrowserWindow = () => {
                     </GenericModal>
                 ) : null
             }
-            <div style={{ height: window.innerHeight * 0.64, overflow: 'hidden' }}>
+            <div style={{ height: dimensions.height, overflow: 'hidden' }}>
                 {((getText === true || getList === true) && !showAttributeModal && highlighterData?.rect != null && highlighterData?.rect.top != null) && canvasRef?.current ?
                     <Highlighter
                         unmodifiedRect={highlighterData?.rect}
                         displayedSelector={highlighterData?.selector}
-                        width={window.innerWidth * 0.7}
-                        height={window.innerHeight * 0.64}
+                        width={dimensions.width}
+                        height={dimensions.height}
                         canvasRect={canvasRef.current.getBoundingClientRect()}
                     />
                     : null}
                 <Canvas
                     onCreateRef={setCanvasReference}
-                    width={window.innerWidth * 0.7}
-                    height={window.innerHeight * 0.64}
+                    width={dimensions.width}
+                    height={dimensions.height}
                 />
             </div>
         </div>
