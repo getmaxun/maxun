@@ -11,17 +11,12 @@ import {
 
 // TODO: Tab !show currentUrl after recordingUrl global state
 export const BrowserContent = () => {
-  const { width } = useBrowserDimensionsStore();
   const { socket } = useSocketStore();
 
   const [tabs, setTabs] = useState<string[]>(["current"]);
   const [tabIndex, setTabIndex] = React.useState(0);
   const [showOutputData, setShowOutputData] = useState(false);
-  const [browserWidth, setBrowserWidth] = useState(window.innerWidth * 0.7);
-
-  const handleResize = useCallback(() => {
-    setBrowserWidth(window.innerWidth * 0.7);
-  }, []);
+  const { browserWidth } = useBrowserDimensionsStore();
 
   const handleChangeIndex = useCallback(
     (index: number) => {
@@ -113,14 +108,6 @@ export const BrowserContent = () => {
     },
     [handleCloseTab]
   );
-
-  useEffect(() => {
-    window.addEventListener('resize', handleResize);
-    
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [handleResize]);
 
   useEffect(() => {
     if (socket) {

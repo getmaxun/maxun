@@ -10,6 +10,7 @@ import { useGlobalInfoStore } from '../../context/globalInfo';
 import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../../context/auth';
 import { coordinateMapper } from '../../helpers/coordinateMapper';
+import { useBrowserDimensionsStore } from '../../context/browserDimensions';
 
 interface ElementInfo {
     tagName: string;
@@ -69,6 +70,7 @@ const getAttributeOptions = (tagName: string, elementInfo: ElementInfo | null): 
 
 export const BrowserWindow = () => {
     const { t } = useTranslation();
+    const { browserWidth, browserHeight } = useBrowserDimensionsStore();
     const [canvasRef, setCanvasReference] = useState<React.RefObject<HTMLCanvasElement> | undefined>(undefined);
     const [screenShot, setScreenShot] = useState<string>("");
     const [highlighterData, setHighlighterData] = useState<{ rect: DOMRect, selector: string, elementInfo: ElementInfo | null, childSelectors?: string[] } | null>(null);
@@ -76,7 +78,7 @@ export const BrowserWindow = () => {
     const [attributeOptions, setAttributeOptions] = useState<AttributeOption[]>([]);
     const [selectedElement, setSelectedElement] = useState<{ selector: string, info: ElementInfo | null } | null>(null);
     const [currentListId, setCurrentListId] = useState<number | null>(null);
-    const [viewportInfo, setViewportInfo] = useState<ViewportInfo>({ width: window.innerWidth * 0.7, height: window.innerHeight * 0.64 });
+    const [viewportInfo, setViewportInfo] = useState<ViewportInfo>({ width: browserWidth, height: browserHeight });
 
     const [listSelector, setListSelector] = useState<string | null>(null);
     const [fields, setFields] = useState<Record<string, TextStep>>({});
@@ -90,29 +92,14 @@ export const BrowserWindow = () => {
     const { state } = useContext(AuthContext);
     const { user } = state;
 
-    const [dimensions, setDimensions] = useState({
-        width: window.innerWidth * 0.7,
-        height: window.innerHeight * 0.64
-    });
-    
-    const handleResize = useCallback(() => {
-        setDimensions({
-            width: window.innerWidth * 0.7,
-            height: window.innerHeight * 0.64
-        });
-    }, []);
-    
-    useEffect(() => {
-        window.addEventListener('resize', handleResize);
-        
-        return () => {
-          window.removeEventListener('resize', handleResize);
-        };
-    }, [handleResize]);
+    const dimensions = {
+        width: browserWidth,
+        height: browserHeight
+    };
 
     useEffect(() => {
         coordinateMapper.updateDimensions(dimensions.width, dimensions.height, viewportInfo.width, viewportInfo.height);
-    }, [viewportInfo]);
+    }, [viewportInfo, dimensions.width, dimensions.height]);
 
     useEffect(() => {
         if (listSelector) {
@@ -482,7 +469,7 @@ export const BrowserWindow = () => {
     }, [paginationMode, resetPaginationSelector]);
 
     return (
-        <div onClick={handleClick} style={{ width: window.innerWidth * 0.7 }} id="browser-window">
+        <div onClick={handleClick} style={{ width: browserWidth }} id="browser-window">
             {
                 getText === true || getList === true ? (
                     <GenericModal

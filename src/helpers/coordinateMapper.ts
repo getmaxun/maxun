@@ -1,4 +1,6 @@
+// coordinateMapper.ts
 import { BROWSER_DEFAULT_HEIGHT, BROWSER_DEFAULT_WIDTH } from "../constants/const";
+import { getResponsiveDimensions } from "./dimensionUtils";
 
 export class CoordinateMapper {
   private canvasWidth: number;
@@ -6,16 +8,13 @@ export class CoordinateMapper {
   private browserWidth: number;
   private browserHeight: number;
   
-  constructor(
-    canvasWidth: number = window.innerWidth * 0.7, 
-    canvasHeight: number = window.innerHeight * 0.64,
-    browserWidth: number = BROWSER_DEFAULT_WIDTH,
-    browserHeight: number = BROWSER_DEFAULT_HEIGHT
-  ) {
-    this.canvasWidth = canvasWidth;
-    this.canvasHeight = canvasHeight;
-    this.browserWidth = browserWidth;
-    this.browserHeight = browserHeight;
+  constructor() {
+    // Use responsive dimensions instead of hardcoded values
+    const dimensions = getResponsiveDimensions();
+    this.canvasWidth = dimensions.canvasWidth;
+    this.canvasHeight = dimensions.canvasHeight;
+    this.browserWidth = BROWSER_DEFAULT_WIDTH;
+    this.browserHeight = BROWSER_DEFAULT_HEIGHT;
   }
   
   mapCanvasToBrowser(coord: { x: number, y: number }): { x: number, y: number } {
