@@ -658,10 +658,12 @@ router.post('/runs/run/:id', requireSignIn, async (req: AuthenticatedRequest, re
     }
 
     try {
+      const userQueueName = `execute-run-user-${req.user.id}`;
+
       // Queue the execution job
-      await pgBoss.createQueue('execute-run');
+      await pgBoss.createQueue(userQueueName);
       
-      const jobId = await pgBoss.send('execute-run', {
+      const jobId = await pgBoss.send(userQueueName, {
         userId: req.user.id,
         runId: req.params.id,
         browserId: plainRun.browserId
