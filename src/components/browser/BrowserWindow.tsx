@@ -76,7 +76,7 @@ export const BrowserWindow = () => {
     const [attributeOptions, setAttributeOptions] = useState<AttributeOption[]>([]);
     const [selectedElement, setSelectedElement] = useState<{ selector: string, info: ElementInfo | null } | null>(null);
     const [currentListId, setCurrentListId] = useState<number | null>(null);
-    const [viewportInfo, setViewportInfo] = useState<ViewportInfo>({ width: window.innerWidth * 0.7, height: window.innerHeight * 0.72 });
+    const [viewportInfo, setViewportInfo] = useState<ViewportInfo>({ width: window.innerWidth * 0.7, height: window.innerHeight * 0.64 });
 
     const [listSelector, setListSelector] = useState<string | null>(null);
     const [fields, setFields] = useState<Record<string, TextStep>>({});
@@ -92,13 +92,13 @@ export const BrowserWindow = () => {
 
     const [dimensions, setDimensions] = useState({
         width: window.innerWidth * 0.7,
-        height: window.innerHeight * 0.72
+        height: window.innerHeight * 0.64
     });
     
     const handleResize = useCallback(() => {
         setDimensions({
             width: window.innerWidth * 0.7,
-            height: window.innerHeight * 0.72
+            height: window.innerHeight * 0.64
         });
     }, []);
     

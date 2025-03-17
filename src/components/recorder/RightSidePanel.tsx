@@ -55,7 +55,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const [isCaptureTextConfirmed, setIsCaptureTextConfirmed] = useState(false);
   const [isCaptureListConfirmed, setIsCaptureListConfirmed] = useState(false);
   const [panelDimensions, setPanelDimensions] = useState({
-    height: window.innerHeight * 0.72 + 137
+    height: window.innerHeight * 0.64 + 137
   });
 
   const { lastAction, notify, currentWorkflowActionsState, setCurrentWorkflowActionsState, resetInterpretationLog } = useGlobalInfoStore();
@@ -72,7 +72,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const handleResize = useCallback(() => {
     // Update panel dimensions
     setPanelDimensions({
-      height: window.innerHeight * 0.72 + 137
+      height: window.innerHeight * 0.64 + 137
     });
   }, []);
 
