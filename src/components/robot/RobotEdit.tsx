@@ -7,7 +7,6 @@ import { modalStyle } from "../recorder/AddWhereCondModal";
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { getStoredRecording, updateRecording } from '../../api/storage';
 import { WhereWhatPair } from 'maxun-core';
-import { useNavigate } from 'react-router-dom';
 
 interface RobotMeta {
     name: string;
