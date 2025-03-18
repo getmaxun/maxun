@@ -459,6 +459,15 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                                 onChange={(e) => handleRobotNameChange(e.target.value)}
                                 style={{ marginBottom: '20px' }}
                             />
+                            
+                            <TextField
+                                    label="Robot Target URL"
+                                    key="Robot Target URL"
+                                    type='text'
+                                    value={targetUrl || ''}
+                                    onChange={(e) => handleTargetUrlChange(e.target.value)}
+                                    style={{ marginBottom: '20px', marginTop: '15px' }}
+                                />
 
                             {robot.recording.workflow?.[0]?.what?.[0]?.args?.[0]?.limit !== undefined && (
                                 <TextField
