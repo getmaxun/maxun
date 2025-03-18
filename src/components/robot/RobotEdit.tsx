@@ -435,6 +435,9 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
         }
     };
 
+    const lastPair = robot?.recording.workflow[robot?.recording.workflow.length - 1];
+    const targetUrl = lastPair?.what.find(action => action.action === "goto")?.args?.[0];
+
     return (
         <GenericModal
             isOpen={isOpen}
