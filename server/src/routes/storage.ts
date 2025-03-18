@@ -259,7 +259,7 @@ function handleWorkflowActions(workflow: any[], credentials: Credentials) {
 router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
-    const { name, limit, credentials } = req.body;
+    const { name, limit, credentials, targetUrl } = req.body;
 
     // Validate input
     if (!name && limit === undefined) {
