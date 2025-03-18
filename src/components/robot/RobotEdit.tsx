@@ -126,35 +126,35 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
 
     function extractInitialCredentials(workflow: any[]): Credentials {
         const credentials: Credentials = {};
-    
+
         const isPrintableCharacter = (char: string): boolean => {
             return char.length === 1 && !!char.match(/^[\x20-\x7E]$/);
         };
-    
+
         workflow.forEach(step => {
             if (!step.what) return;
-    
+
             let currentSelector = '';
             let currentValue = '';
             let currentType = '';
             let i = 0;
-    
+
             while (i < step.what.length) {
                 const action = step.what[i];
-    
+
                 if (!action.action || !action.args?.[0]) {
                     i++;
                     continue;
                 }
-    
+
                 const selector = action.args[0];
-    
+
                 // Handle full word type actions first
-                if (action.action === 'type' && 
-                    action.args?.length >= 2 && 
+                if (action.action === 'type' &&
+                    action.args?.length >= 2 &&
                     typeof action.args[1] === 'string' &&
-                    action.args[1].length > 1) {  
-                    
+                    action.args[1].length > 1) {
+
                     if (!credentials[selector]) {
                         credentials[selector] = {
                             value: action.args[1],
@@ -164,12 +164,12 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                     i++;
                     continue;
                 }
-    
+
                 // Handle character-by-character sequences (both type and press)
                 if ((action.action === 'type' || action.action === 'press') &&
                     action.args?.length >= 2 &&
                     typeof action.args[1] === 'string') {
-    
+
                     if (selector !== currentSelector) {
                         if (currentSelector && currentValue) {
                             credentials[currentSelector] = {
@@ -181,23 +181,23 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                         currentValue = credentials[selector]?.value || '';
                         currentType = action.args[2] || credentials[selector]?.type || 'text';
                     }
-    
+
                     const character = action.args[1];
-    
+
                     if (isPrintableCharacter(character)) {
                         currentValue += character;
                     } else if (character === 'Backspace') {
                         currentValue = currentValue.slice(0, -1);
                     }
-    
+
                     if (!currentType && action.args[2]?.toLowerCase() === 'password') {
                         currentType = 'password';
                     }
-    
+
                     let j = i + 1;
                     while (j < step.what.length) {
                         const nextAction = step.what[j];
-                        if (!nextAction.action || !nextAction.args?.[0] || 
+                        if (!nextAction.action || !nextAction.args?.[0] ||
                             nextAction.args[0] !== selector ||
                             (nextAction.action !== 'type' && nextAction.action !== 'press')) {
                             break;
@@ -209,18 +209,18 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                         }
                         j++;
                     }
-    
+
                     credentials[currentSelector] = {
                         value: currentValue,
                         type: currentType
                     };
-    
-                    i = j; 
+
+                    i = j;
                 } else {
                     i++;
                 }
             }
-    
+
             if (currentSelector && currentValue) {
                 credentials[currentSelector] = {
                     value: currentValue,
@@ -228,7 +228,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                 };
             }
         });
-    
+
         return credentials;
     }
 
@@ -459,15 +459,15 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                                 onChange={(e) => handleRobotNameChange(e.target.value)}
                                 style={{ marginBottom: '20px' }}
                             />
-                            
+
                             <TextField
-                                    label="Robot Target URL"
-                                    key="Robot Target URL"
-                                    type='text'
-                                    value={targetUrl || ''}
-                                    onChange={(e) => handleTargetUrlChange(e.target.value)}
-                                    style={{ marginBottom: '20px', marginTop: '15px' }}
-                                />
+                                label="Robot Target URL"
+                                key="Robot Target URL"
+                                type='text'
+                                value={targetUrl || ''}
+                                onChange={(e) => handleTargetUrlChange(e.target.value)}
+                                style={{ marginBottom: '20px', marginTop: '15px' }}
+                            />
 
                             {robot.recording.workflow?.[0]?.what?.[0]?.args?.[0]?.limit !== undefined && (
                                 <TextField
