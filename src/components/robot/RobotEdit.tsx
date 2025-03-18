@@ -408,13 +408,14 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                 return acc;
             }, {} as Record<string, CredentialInfo>);
 
-             const lastPair = robot.recording.workflow[robot.recording.workflow.length - 1];
+            const lastPair = robot.recording.workflow[robot.recording.workflow.length - 1];
             const targetUrl = lastPair?.what.find(action => action.action === "goto")?.args?.[0];
 
             const payload = {
                 name: robot.recording_meta.name,
                 limit: robot.recording.workflow[0]?.what[0]?.args?.[0]?.limit,
                 credentials: credentialsForPayload,
+                targetUrl: targetUrl,
             };
 
             const success = await updateRecording(robot.recording_meta.id, payload);
