@@ -1,5 +1,6 @@
 import React from 'react';
 import styled from "styled-components";
+import { coordinateMapper } from '../../helpers/coordinateMapper';
 
 interface HighlighterProps {
   unmodifiedRect: DOMRect;
@@ -13,13 +14,15 @@ export const Highlighter = ({ unmodifiedRect, displayedSelector = '', width, hei
   if (!unmodifiedRect) {
     return null;
   } else {
+    const mappedRect = coordinateMapper.mapBrowserRectToCanvas(unmodifiedRect);
+
     const rect = {
-      top: unmodifiedRect.top + canvasRect.top + window.scrollY,
-      left: unmodifiedRect.left + canvasRect.left + window.scrollX,
-      right: unmodifiedRect.right + canvasRect.left,
-      bottom: unmodifiedRect.bottom + canvasRect.top,
-      width: unmodifiedRect.width,
-      height: unmodifiedRect.height,
+      top: mappedRect.top + canvasRect.top + window.scrollY,
+      left: mappedRect.left + canvasRect.left + window.scrollX,
+      right: mappedRect.right + canvasRect.left,
+      bottom: mappedRect.bottom + canvasRect.top,
+      width: mappedRect.width,
+      height: mappedRect.height,
     };
 
 

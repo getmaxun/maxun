@@ -47,7 +47,7 @@ interface ExecuteRunData {
   browserId: string;
 }
 
-const pgBoss = new PgBoss({connectionString: pgBossConnectionString, schema: 'public'});
+const pgBoss = new PgBoss({connectionString: pgBossConnectionString });
 
 /**
  * Extract data safely from a job (single job or job array)

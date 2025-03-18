@@ -11,12 +11,12 @@ import {
 
 // TODO: Tab !show currentUrl after recordingUrl global state
 export const BrowserContent = () => {
-  const { width } = useBrowserDimensionsStore();
   const { socket } = useSocketStore();
 
   const [tabs, setTabs] = useState<string[]>(["current"]);
   const [tabIndex, setTabIndex] = React.useState(0);
   const [showOutputData, setShowOutputData] = useState(false);
+  const { browserWidth } = useBrowserDimensionsStore();
 
   const handleChangeIndex = useCallback(
     (index: number) => {
@@ -146,7 +146,7 @@ export const BrowserContent = () => {
       />
       <BrowserNavBar
         // todo: use width from browser dimension once fixed
-        browserWidth={900}
+        browserWidth={browserWidth}
         handleUrlChanged={handleUrlChanged}
 
       />
