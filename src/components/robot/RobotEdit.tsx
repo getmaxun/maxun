@@ -306,6 +306,24 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
         });
     };
 
+    const handleTargetUrlChange = (newUrl: string) => {
+        setRobot((prev) => {
+            if (!prev) return prev;
+
+            const updatedWorkflow = [...prev.recording.workflow];
+            const lastPairIndex = updatedWorkflow.length - 1;
+
+            if (lastPairIndex >= 0) {
+                const gotoAction = updatedWorkflow[lastPairIndex]?.what?.find(action => action.action === "goto");
+                if (gotoAction && gotoAction.args && gotoAction.args.length > 0) {
+                    gotoAction.args[0] = newUrl;
+                }
+            }
+
+            return { ...prev, recording: { ...prev.recording, workflow: updatedWorkflow } };
+        });
+    };
+
     const renderAllCredentialFields = () => {
         return (
             <>
