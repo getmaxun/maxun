@@ -262,8 +262,8 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
     const { name, limit, credentials, targetUrl } = req.body;
 
     // Validate input
-    if (!name && limit === undefined) {
-      return res.status(400).json({ error: 'Either "name" or "limit" must be provided.' });
+    if (!name && limit === undefined && !targetUrl) {
+      return res.status(400).json({ error: 'Either "name", "limit" or "target_url" must be provided.' });
     }
 
     // Fetch the robot by ID
