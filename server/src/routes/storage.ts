@@ -278,6 +278,27 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       robot.set('recording_meta', { ...robot.recording_meta, name });
     }
 
+    if (targetUrl) {
+      const updatedWorkflow = robot.recording.workflow.map((step) => {
+        if (step.where?.url && step.where.url !== "about:blank") {
+          step.where.url = targetUrl;
+        }
+
+        step.what.forEach((action) => {
+          if (action.action === "goto" && action.args?.length) {
+            action.args[0] = targetUrl; 
+          }
+        });
+
+        return step;
+      });
+
+      robot.set('recording', { ...robot.recording, workflow: updatedWorkflow });
+      robot.changed('recording', true);
+    }
+
+    await robot.save();
+
     let workflow = [...robot.recording.workflow]; // Create a copy of the workflow
 
     if (credentials) {
