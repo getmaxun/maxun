@@ -474,40 +474,6 @@ export const getElementInformation = async (
                 element = tableParent;
               }
             }
-
-            if (element.tagName !== 'TABLE') {
-              while (element.parentElement) {
-                if (element.tagName.toLowerCase() === 'body' || 
-                    element.tagName.toLowerCase() === 'html') {
-                  break;
-                }
-
-                const parentRect = element.parentElement.getBoundingClientRect();
-                const childRect = element.getBoundingClientRect();
-
-                const fullyContained =
-                  parentRect.left <= childRect.left &&
-                  parentRect.right >= childRect.right &&
-                  parentRect.top <= childRect.top &&
-                  parentRect.bottom >= childRect.bottom;
-
-                const significantOverlap =
-                  (childRect.width * childRect.height) /
-                  (parentRect.width * parentRect.height) > 0.1;
-
-                if (fullyContained && significantOverlap) {
-                  const nextParent = element.parentElement;
-                  if (nextParent.tagName.toLowerCase() !== 'body' && 
-                      nextParent.tagName.toLowerCase() !== 'html') {
-                    element = nextParent;
-                  } else {
-                    break;
-                  }
-                } else {
-                  break;
-                }
-              }
-            }
     
             const ownerDocument = element.ownerDocument;
             const frameElement = ownerDocument?.defaultView?.frameElement;
@@ -1024,40 +990,6 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
               const tableParent = element.closest('table');
               if (tableParent) {
                 element = tableParent;
-              }
-            }
-
-            if (element.tagName !== 'TABLE') {
-              while (element.parentElement) {
-                if (element.tagName.toLowerCase() === 'body' || 
-                    element.tagName.toLowerCase() === 'html') {
-                  break;
-                }
-
-                const parentRect = element.parentElement.getBoundingClientRect();
-                const childRect = element.getBoundingClientRect();
-
-                const fullyContained =
-                  parentRect.left <= childRect.left &&
-                  parentRect.right >= childRect.right &&
-                  parentRect.top <= childRect.top &&
-                  parentRect.bottom >= childRect.bottom;
-
-                const significantOverlap =
-                  (childRect.width * childRect.height) /
-                  (parentRect.width * parentRect.height) > 0.1;
-
-                if (fullyContained && significantOverlap) {
-                  const nextParent = element.parentElement;
-                  if (nextParent.tagName.toLowerCase() !== 'body' && 
-                      nextParent.tagName.toLowerCase() !== 'html') {
-                    element = nextParent;
-                  } else {
-                    break;
-                  }
-                } else {
-                  break;
-                }
               }
             }
 
@@ -2374,40 +2306,6 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
           const tableParent = element.closest('table');
           if (tableParent) {
             element = tableParent;
-          }
-        }
-
-        if (element.tagName !== 'TABLE') {
-          while (element.parentElement) {
-            if (element.tagName.toLowerCase() === 'body' || 
-                element.tagName.toLowerCase() === 'html') {
-              break;
-            }
-
-            const parentRect = element.parentElement.getBoundingClientRect();
-            const childRect = element.getBoundingClientRect();
-
-            const fullyContained =
-              parentRect.left <= childRect.left &&
-              parentRect.right >= childRect.right &&
-              parentRect.top <= childRect.top &&
-              parentRect.bottom >= childRect.bottom;
-
-            const significantOverlap =
-              (childRect.width * childRect.height) /
-              (parentRect.width * parentRect.height) > 0.1;
-
-            if (fullyContained && significantOverlap) {
-              const nextParent = element.parentElement;
-              if (nextParent.tagName.toLowerCase() !== 'body' && 
-                  nextParent.tagName.toLowerCase() !== 'html') {
-                element = nextParent;
-              } else {
-                break;
-              }
-            } else {
-              break;
-            }
           }
         }
 
