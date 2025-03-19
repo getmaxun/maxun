@@ -155,10 +155,8 @@ export const getElementInformation = async (
           
           if (el) {
             // Prioritize Link (DO NOT REMOVE)
-            // const { parentElement } = el;
-            // const targetElement = parentElement?.tagName === 'A' ? parentElement : el;
-
-            const targetElement = el;
+            const { parentElement } = el;
+            const targetElement = parentElement?.tagName === 'A' ? parentElement : el;
 
             const ownerDocument = targetElement.ownerDocument;
             const frameElement = ownerDocument?.defaultView?.frameElement as HTMLIFrameElement;
@@ -705,10 +703,9 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
           const el = getDeepestElementFromPoint(x, y);
           if (el) {
             // Prioritize Link (DO NOT REMOVE)
-            // const { parentElement } = el;
-            // const element = parentElement?.tagName === 'A' ? parentElement : el;
+            const { parentElement } = el;
+            const element = parentElement?.tagName === 'A' ? parentElement : el;
 
-            const element = el;
             const rectangle = element?.getBoundingClientRect();
             if (rectangle) {
               const createRectObject = (rect: DOMRect) => ({
@@ -1882,11 +1879,10 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
         !hoveredElement.closest('#overlay-controls') != null
       ) {
         // Prioritize Link (DO NOT REMOVE)
-        // const { parentElement } = hoveredElement;
+        const { parentElement } = hoveredElement;
         // Match the logic in recorder.ts for link clicks
-        // const element = parentElement?.tagName === 'A' ? parentElement : hoveredElement;
+        const element = parentElement?.tagName === 'A' ? parentElement : hoveredElement;
 
-        const element = hoveredElement;
         const generatedSelectors = genSelectors(element);
         return generatedSelectors;
       }
