@@ -45,41 +45,27 @@ export const getResponsiveDimensions = (): AppDimensions => {
   const browserWidth = windowWidth * 0.7;
   const outputPreviewWidth = windowWidth * 0.716;
   
-  let heightFraction = 0.62; 
-  
-  if (windowHeight >= HEIGHT_BREAKPOINTS.xxxxxxxxxxxxxl) { 
-    heightFraction = 0.82;
-  } else if (windowHeight >= HEIGHT_BREAKPOINTS.xxxxxxxxxxxxl) { 
-    heightFraction = 0.81;
-  } else if (windowHeight >= HEIGHT_BREAKPOINTS.xxxxxxxxxxxl) { 
-    heightFraction = 0.80;
-  } else if (windowHeight >= HEIGHT_BREAKPOINTS.xxxxxxxxxxl) { 
-    heightFraction = 0.79;
-  } else if (windowHeight >= HEIGHT_BREAKPOINTS.xxxxxxxxxl) { 
-    heightFraction = 0.78;
-  } else if (windowHeight >= HEIGHT_BREAKPOINTS.xxxxxxxxl) { 
-    heightFraction = 0.77;
-  } else if (windowHeight >= HEIGHT_BREAKPOINTS.xxxxxxxl) { 
-    heightFraction = 0.76;
-  } else if (windowHeight >= HEIGHT_BREAKPOINTS.xxxxxxl) { 
-    heightFraction = 0.75;
-  } else if (windowHeight >= HEIGHT_BREAKPOINTS.xxxxxl) { 
-    heightFraction = 0.74;
-  } else if (windowHeight >= HEIGHT_BREAKPOINTS.xxxxl) { 
-    heightFraction = 0.73;
-  } else if (windowHeight >= HEIGHT_BREAKPOINTS.xxxl) { 
-    heightFraction = 0.72;
-  } else if (windowHeight >= HEIGHT_BREAKPOINTS.xxl) { 
-    heightFraction = 0.71;
-  } else if (windowHeight >= HEIGHT_BREAKPOINTS.xl) { 
-    heightFraction = 0.70;
-  } else if (windowHeight >= HEIGHT_BREAKPOINTS.lg) { 
-    heightFraction = 0.68;
-  } else if (windowHeight >= HEIGHT_BREAKPOINTS.md) { 
-    heightFraction = 0.66;
-  } else if (windowHeight >= HEIGHT_BREAKPOINTS.sm) { 
-    heightFraction = 0.63;
-  }
+  const heightBreakpoints = [
+    { height: HEIGHT_BREAKPOINTS.xxxxxxxxxxxxxl, fraction: 0.82 },
+    { height: HEIGHT_BREAKPOINTS.xxxxxxxxxxxxl, fraction: 0.81 },
+    { height: HEIGHT_BREAKPOINTS.xxxxxxxxxxxl, fraction: 0.80 },
+    { height: HEIGHT_BREAKPOINTS.xxxxxxxxxxl, fraction: 0.79 },
+    { height: HEIGHT_BREAKPOINTS.xxxxxxxxxl, fraction: 0.78 },
+    { height: HEIGHT_BREAKPOINTS.xxxxxxxxl, fraction: 0.77 },
+    { height: HEIGHT_BREAKPOINTS.xxxxxxxl, fraction: 0.76 },
+    { height: HEIGHT_BREAKPOINTS.xxxxxxl, fraction: 0.75 },
+    { height: HEIGHT_BREAKPOINTS.xxxxxl, fraction: 0.74 },
+    { height: HEIGHT_BREAKPOINTS.xxxxl, fraction: 0.73 },
+    { height: HEIGHT_BREAKPOINTS.xxxl, fraction: 0.72 },
+    { height: HEIGHT_BREAKPOINTS.xxl, fraction: 0.71 },
+    { height: HEIGHT_BREAKPOINTS.xl, fraction: 0.70 },
+    { height: HEIGHT_BREAKPOINTS.lg, fraction: 0.68 },
+    { height: HEIGHT_BREAKPOINTS.md, fraction: 0.66 },
+    { height: HEIGHT_BREAKPOINTS.sm, fraction: 0.63 },
+    { height: 0, fraction: 0.62 }
+  ];
+ 
+  const heightFraction = heightBreakpoints.find(bp => windowHeight >= bp.height)?.fraction ?? 0.62;
   
   const browserHeight = windowHeight * heightFraction;
   
