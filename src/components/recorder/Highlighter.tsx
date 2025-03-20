@@ -53,7 +53,6 @@ const HighlighterOutline = styled.div<HighlighterOutlineProps>`
   position: fixed !important;
   background: #ff5d5b26 !important;
   outline: 2px solid #ff00c3 !important;
-  //border: 4px solid #ff5d5b !important;
   z-index: 2147483647 !important;
   //border-radius: 5px;
   top: ${(p: HighlighterOutlineProps) => p.top}px;
