@@ -531,7 +531,7 @@ export class RemoteBrowser {
     private async optimizeScreenshot(screenshot: Buffer): Promise<Buffer> {
         try {
             return await sharp(screenshot)
-                .jpeg({
+                .png({
                     quality: Math.round(SCREENCAST_CONFIG.compressionQuality * 100),
                     progressive: true
                 })
