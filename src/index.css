@@ -62,7 +62,7 @@ code {
   box-sizing: border-box;
   width: 100%; 
   height: calc(100vh - 2rem); 
-  margin: 1rem 1rem 1rem 1rem; 
+  margin: 1rem; 
   overflow: hidden;
 }
 
