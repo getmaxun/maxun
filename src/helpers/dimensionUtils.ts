@@ -42,27 +42,27 @@ export const getResponsiveDimensions = (): AppDimensions => {
   const windowWidth = window.innerWidth;
   const windowHeight = window.innerHeight;
   
-  const browserWidth = windowWidth * 0.7;
-  const outputPreviewWidth = windowWidth * 0.716;
+  const browserWidth = windowWidth * 0.735;
+  const outputPreviewWidth = windowWidth * 0.743;
   
   const heightBreakpoints = [
-    { height: HEIGHT_BREAKPOINTS.xxxxxxxxxxxxxl, fraction: 0.82 },
-    { height: HEIGHT_BREAKPOINTS.xxxxxxxxxxxxl, fraction: 0.81 },
-    { height: HEIGHT_BREAKPOINTS.xxxxxxxxxxxl, fraction: 0.80 },
-    { height: HEIGHT_BREAKPOINTS.xxxxxxxxxxl, fraction: 0.79 },
-    { height: HEIGHT_BREAKPOINTS.xxxxxxxxxl, fraction: 0.78 },
-    { height: HEIGHT_BREAKPOINTS.xxxxxxxxl, fraction: 0.77 },
-    { height: HEIGHT_BREAKPOINTS.xxxxxxxl, fraction: 0.76 },
-    { height: HEIGHT_BREAKPOINTS.xxxxxxl, fraction: 0.75 },
-    { height: HEIGHT_BREAKPOINTS.xxxxxl, fraction: 0.74 },
-    { height: HEIGHT_BREAKPOINTS.xxxxl, fraction: 0.73 },
-    { height: HEIGHT_BREAKPOINTS.xxxl, fraction: 0.72 },
-    { height: HEIGHT_BREAKPOINTS.xxl, fraction: 0.71 },
-    { height: HEIGHT_BREAKPOINTS.xl, fraction: 0.70 },
-    { height: HEIGHT_BREAKPOINTS.lg, fraction: 0.68 },
-    { height: HEIGHT_BREAKPOINTS.md, fraction: 0.66 },
-    { height: HEIGHT_BREAKPOINTS.sm, fraction: 0.63 },
-    { height: 0, fraction: 0.62 }
+    { height: HEIGHT_BREAKPOINTS.xxxxxxxxxxxxxl, fraction: 0.84 },
+    { height: HEIGHT_BREAKPOINTS.xxxxxxxxxxxxl, fraction: 0.83 },
+    { height: HEIGHT_BREAKPOINTS.xxxxxxxxxxxl, fraction: 0.82 },
+    { height: HEIGHT_BREAKPOINTS.xxxxxxxxxxl, fraction: 0.81 },
+    { height: HEIGHT_BREAKPOINTS.xxxxxxxxxl, fraction: 0.80 },
+    { height: HEIGHT_BREAKPOINTS.xxxxxxxxl, fraction: 0.79 },
+    { height: HEIGHT_BREAKPOINTS.xxxxxxxl, fraction: 0.78 },
+    { height: HEIGHT_BREAKPOINTS.xxxxxxl, fraction: 0.77 },
+    { height: HEIGHT_BREAKPOINTS.xxxxxl, fraction: 0.76 },
+    { height: HEIGHT_BREAKPOINTS.xxxxl, fraction: 0.75 },
+    { height: HEIGHT_BREAKPOINTS.xxxl, fraction: 0.741 },
+    { height: HEIGHT_BREAKPOINTS.xxl, fraction: 0.74 },
+    { height: HEIGHT_BREAKPOINTS.xl, fraction: 0.72 },
+    { height: HEIGHT_BREAKPOINTS.lg, fraction: 0.70 },
+    { height: HEIGHT_BREAKPOINTS.md, fraction: 0.68 },
+    { height: HEIGHT_BREAKPOINTS.sm, fraction: 0.67 },
+    { height: 0, fraction: 0.67 }
   ];
  
   const heightFraction = heightBreakpoints.find(bp => windowHeight >= bp.height)?.fraction ?? 0.62;
