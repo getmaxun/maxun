@@ -1532,10 +1532,40 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
       }
       
       const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
-        let element = document.elementFromPoint(x, y) as HTMLElement;
-        if (!element) return null;
+        let elements = document.elementsFromPoint(x, y) as HTMLElement[];
+        if (!elements.length) return null;
+
+        const findDeepestElement = (elements: HTMLElement[]): HTMLElement | null => {
+          if (!elements.length) return null;
+          if (elements.length === 1) return elements[0];
+          
+          let deepestElement = elements[0];
+          let maxDepth = 0;
+          
+          for (const element of elements) {
+            let depth = 0;
+            let current = element;
+            
+            while (current) {
+                depth++;
+                if (current.parentElement) {
+                    current = current.parentElement;
+                } else {
+                    break;
+                }
+            }
+            
+            if (depth > maxDepth) {
+                maxDepth = depth;
+                deepestElement = element;
+            }
+          }
+          
+          return deepestElement;
+        };
       
-        let deepestElement = element;
+        let deepestElement = findDeepestElement(elements);
+        if (!deepestElement) return null;
       
         const traverseShadowDOM = (element: HTMLElement): HTMLElement => {
           let current = element;
@@ -1558,7 +1588,7 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
         };
       
         const isInFrameset = () => {
-          let node = element;
+          let node = deepestElement;
           while (node && node.parentElement) {
             if (node.tagName === 'FRAMESET' || node.tagName === 'FRAME') {
               return true;
@@ -1568,8 +1598,8 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
           return false;
         };
       
-        if (element.tagName === 'IFRAME') {
-          let currentIframe = element as HTMLIFrameElement;
+        if (deepestElement.tagName === 'IFRAME') {
+          let currentIframe = deepestElement as HTMLIFrameElement;
           let depth = 0;
           const MAX_IFRAME_DEPTH = 4;
       
@@ -1599,11 +1629,11 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
             }
           }
         } 
-        else if (element.tagName === 'FRAME' || isInFrameset()) {
+        else if (deepestElement.tagName === 'FRAME' || isInFrameset()) {
           const framesToCheck = [];
           
-          if (element.tagName === 'FRAME') {
-            framesToCheck.push(element as HTMLFrameElement);
+          if (deepestElement.tagName === 'FRAME') {
+            framesToCheck.push(deepestElement as HTMLFrameElement);
           }
           
           if (isInFrameset()) {
@@ -1653,7 +1683,7 @@ export const getSelectors = async (page: Page, coordinates: Coordinates) => {
           
           processFrames(framesToCheck, frameDepth);
         } else {
-          deepestElement = traverseShadowDOM(element);
+          deepestElement = traverseShadowDOM(deepestElement);
         }
       
         return deepestElement;
@@ -1978,10 +2008,40 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
     if (!listSelector) {
       const selectors = await page.evaluate(({ x, y }: { x: number, y: number }) => {
         const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
-          let element = document.elementFromPoint(x, y) as HTMLElement;
-          if (!element) return null;
+          let elements = document.elementsFromPoint(x, y) as HTMLElement[];
+          if (!elements.length) return null;
+
+          const findDeepestElement = (elements: HTMLElement[]): HTMLElement | null => {
+            if (!elements.length) return null;
+            if (elements.length === 1) return elements[0];
+            
+            let deepestElement = elements[0];
+            let maxDepth = 0;
+            
+            for (const element of elements) {
+              let depth = 0;
+              let current = element;
+              
+              while (current) {
+                  depth++;
+                  if (current.parentElement) {
+                      current = current.parentElement;
+                  } else {
+                      break;
+                  }
+              }
+              
+              if (depth > maxDepth) {
+                  maxDepth = depth;
+                  deepestElement = element;
+              }
+            }
+            
+            return deepestElement;
+          };
         
-          let deepestElement = element;
+          let deepestElement = findDeepestElement(elements);
+          if (!deepestElement) return null;
         
           const traverseShadowDOM = (element: HTMLElement): HTMLElement => {
             let current = element;
@@ -2004,7 +2064,7 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
           };
         
           const isInFrameset = () => {
-            let node = element;
+            let node = deepestElement;
             while (node && node.parentElement) {
               if (node.tagName === 'FRAMESET' || node.tagName === 'FRAME') {
                 return true;
@@ -2014,8 +2074,8 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
             return false;
           };
         
-          if (element.tagName === 'IFRAME') {
-            let currentIframe = element as HTMLIFrameElement;
+          if (deepestElement.tagName === 'IFRAME') {
+            let currentIframe = deepestElement as HTMLIFrameElement;
             let depth = 0;
             const MAX_IFRAME_DEPTH = 4;
         
@@ -2045,11 +2105,11 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
               }
             }
           } 
-          else if (element.tagName === 'FRAME' || isInFrameset()) {
+          else if (deepestElement.tagName === 'FRAME' || isInFrameset()) {
             const framesToCheck = [];
             
-            if (element.tagName === 'FRAME') {
-              framesToCheck.push(element as HTMLFrameElement);
+            if (deepestElement.tagName === 'FRAME') {
+              framesToCheck.push(deepestElement as HTMLFrameElement);
             }
             
             if (isInFrameset()) {
@@ -2099,7 +2159,7 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
             
             processFrames(framesToCheck, frameDepth);
           } else {
-            deepestElement = traverseShadowDOM(element);
+            deepestElement = traverseShadowDOM(deepestElement);
           }
         
           return deepestElement;
@@ -2318,10 +2378,40 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
       // When we have a list selector, we need special handling while maintaining shadow DOM and frame support
       const selectors = await page.evaluate(({ x, y }: { x: number, y: number }) => {
         const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
-          let element = document.elementFromPoint(x, y) as HTMLElement;
-          if (!element) return null;
+          let elements = document.elementsFromPoint(x, y) as HTMLElement[];
+          if (!elements.length) return null;
+
+          const findDeepestElement = (elements: HTMLElement[]): HTMLElement | null => {
+            if (!elements.length) return null;
+            if (elements.length === 1) return elements[0];
+            
+            let deepestElement = elements[0];
+            let maxDepth = 0;
+            
+            for (const element of elements) {
+              let depth = 0;
+              let current = element;
+              
+              while (current) {
+                  depth++;
+                  if (current.parentElement) {
+                      current = current.parentElement;
+                  } else {
+                      break;
+                  }
+              }
+              
+              if (depth > maxDepth) {
+                  maxDepth = depth;
+                  deepestElement = element;
+              }
+            }
+            
+            return deepestElement;
+          };
         
-          let deepestElement = element;
+          let deepestElement = findDeepestElement(elements);
+          if (!deepestElement) return null;
         
           const traverseShadowDOM = (element: HTMLElement): HTMLElement => {
             let current = element;
@@ -2344,7 +2434,7 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
           };
         
           const isInFrameset = () => {
-            let node = element;
+            let node = deepestElement;
             while (node && node.parentElement) {
               if (node.tagName === 'FRAMESET' || node.tagName === 'FRAME') {
                 return true;
@@ -2354,8 +2444,8 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
             return false;
           };
         
-          if (element.tagName === 'IFRAME') {
-            let currentIframe = element as HTMLIFrameElement;
+          if (deepestElement.tagName === 'IFRAME') {
+            let currentIframe = deepestElement as HTMLIFrameElement;
             let depth = 0;
             const MAX_IFRAME_DEPTH = 4;
         
@@ -2385,11 +2475,11 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
               }
             }
           } 
-          else if (element.tagName === 'FRAME' || isInFrameset()) {
+          else if (deepestElement.tagName === 'FRAME' || isInFrameset()) {
             const framesToCheck = [];
             
-            if (element.tagName === 'FRAME') {
-              framesToCheck.push(element as HTMLFrameElement);
+            if (deepestElement.tagName === 'FRAME') {
+              framesToCheck.push(deepestElement as HTMLFrameElement);
             }
             
             if (isInFrameset()) {
@@ -2439,7 +2529,7 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
             
             processFrames(framesToCheck, frameDepth);
           } else {
-            deepestElement = traverseShadowDOM(element);
+            deepestElement = traverseShadowDOM(deepestElement);
           }
         
           return deepestElement;
