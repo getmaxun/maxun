@@ -2201,25 +2201,18 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
             
             if (element.parentElement) {
               const siblings = Array.from(element.parentElement.children);
-              const identicalSiblings = siblings.filter(sibling => {
-                if (sibling === element) return false;
-                
-                let siblingSelector = sibling.tagName.toLowerCase();
-                const siblingClassName = typeof sibling.className === 'string' ? sibling.className : '';
-                if (siblingClassName) {
-                  const siblingClasses = siblingClassName.split(/\s+/).filter(Boolean);
-                  const validSiblingClasses = siblingClasses.filter(cls => !cls.startsWith('!') && !cls.includes(':'));
-                  if (validSiblingClasses.length > 0) {
-                    siblingSelector += '.' + validSiblingClasses.map(cls => CSS.escape(cls)).join('.');
-                  }
-                }
-                
-                return siblingSelector === baseSelector;
-              });
             
-              if (identicalSiblings.length > 0) {
+              const elementClasses = Array.from(element.classList || []);
+              
+              const similarSiblings = siblings.filter(sibling => {
+                if (sibling === element) return false;
+                const siblingClasses = Array.from(sibling.classList || []);
+                return siblingClasses.some(cls => elementClasses.includes(cls));
+              });
+              
+              if (similarSiblings.length > 0) {
                 const position = siblings.indexOf(element) + 1;
-                return `${baseSelector}:nth-child(${position})`;
+                selector += `:nth-child(${position})`;
               }
             }
             
@@ -2244,23 +2237,16 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
         
           if (element.parentElement) {
             const siblings = Array.from(element.parentElement.children);
-            const identicalSiblings = siblings.filter(sibling => {
+            
+            const elementClasses = Array.from(element.classList || []);
+            
+            const similarSiblings = siblings.filter(sibling => {
               if (sibling === element) return false;
-              
-              let siblingSelector = sibling.tagName.toLowerCase();
-              const siblingClassName = typeof sibling.className === 'string' ? sibling.className : '';
-              if (siblingClassName) {
-                const siblingClasses = siblingClassName.split(/\s+/).filter(Boolean);
-                const validSiblingClasses = siblingClasses.filter(cls => !cls.startsWith('!') && !cls.includes(':'));
-                if (validSiblingClasses.length > 0) {
-                  siblingSelector += '.' + validSiblingClasses.map(cls => CSS.escape(cls)).join('.');
-                }
-              }
-              
-              return siblingSelector === selector;
+              const siblingClasses = Array.from(sibling.classList || []);
+              return siblingClasses.some(cls => elementClasses.includes(cls));
             });
-        
-            if (identicalSiblings.length > 0) {
+            
+            if (similarSiblings.length > 0) {
               const position = siblings.indexOf(element) + 1;
               selector += `:nth-child(${position})`;
             }
@@ -2571,25 +2557,18 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
             
             if (element.parentElement) {
               const siblings = Array.from(element.parentElement.children);
-              const identicalSiblings = siblings.filter(sibling => {
+              
+              const elementClasses = Array.from(element.classList || []);
+              
+              const similarSiblings = siblings.filter(sibling => {
                 if (sibling === element) return false;
-                
-                let siblingSelector = sibling.tagName.toLowerCase();
-                const siblingClassName = typeof sibling.className === 'string' ? sibling.className : '';
-                if (siblingClassName) {
-                  const siblingClasses = siblingClassName.split(/\s+/).filter(Boolean);
-                  const validSiblingClasses = siblingClasses.filter(cls => !cls.startsWith('!') && !cls.includes(':'));
-                  if (validSiblingClasses.length > 0) {
-                    siblingSelector += '.' + validSiblingClasses.map(cls => CSS.escape(cls)).join('.');
-                  }
-                }
-                
-                return siblingSelector === baseSelector;
+                const siblingClasses = Array.from(sibling.classList || []);
+                return siblingClasses.some(cls => elementClasses.includes(cls));
               });
-            
-              if (identicalSiblings.length > 0) {
+              
+              if (similarSiblings.length > 0) {
                 const position = siblings.indexOf(element) + 1;
-                return `${baseSelector}:nth-child(${position})`;
+                selector += `:nth-child(${position})`;
               }
             }
             
@@ -2614,23 +2593,16 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
         
           if (element.parentElement) {
             const siblings = Array.from(element.parentElement.children);
-            const identicalSiblings = siblings.filter(sibling => {
+            
+            const elementClasses = Array.from(element.classList || []);
+            
+            const similarSiblings = siblings.filter(sibling => {
               if (sibling === element) return false;
-              
-              let siblingSelector = sibling.tagName.toLowerCase();
-              const siblingClassName = typeof sibling.className === 'string' ? sibling.className : '';
-              if (siblingClassName) {
-                const siblingClasses = siblingClassName.split(/\s+/).filter(Boolean);
-                const validSiblingClasses = siblingClasses.filter(cls => !cls.startsWith('!') && !cls.includes(':'));
-                if (validSiblingClasses.length > 0) {
-                  siblingSelector += '.' + validSiblingClasses.map(cls => CSS.escape(cls)).join('.');
-                }
-              }
-              
-              return siblingSelector === selector;
+              const siblingClasses = Array.from(sibling.classList || []);
+              return siblingClasses.some(cls => elementClasses.includes(cls));
             });
-        
-            if (identicalSiblings.length > 0) {
+            
+            if (similarSiblings.length > 0) {
               const position = siblings.indexOf(element) + 1;
               selector += `:nth-child(${position})`;
             }
@@ -2769,25 +2741,17 @@ export const getChildSelectors = async (page: Page, parentSelector: string): Pro
         }
 
         if (element.parentElement) {
-          // Look for identical siblings
           const siblings = Array.from(element.parentElement.children);
-          const identicalSiblings = siblings.filter(sibling => {
+          
+          const elementClasses = Array.from(element.classList || []);
+          
+          const similarSiblings = siblings.filter(sibling => {
             if (sibling === element) return false;
-            
-            let siblingSelector = sibling.tagName.toLowerCase();
-            const siblingClassName = typeof sibling.className === 'string' ? sibling.className : '';
-            if (siblingClassName) {
-              const siblingClasses = siblingClassName.split(/\s+/).filter(Boolean);
-              const validSiblingClasses = siblingClasses.filter(cls => !cls.startsWith('!') && !cls.includes(':'));
-              if (validSiblingClasses.length > 0) {
-                siblingSelector += '.' + validSiblingClasses.map(cls => CSS.escape(cls)).join('.');
-              }
-            }
-            
-            return siblingSelector === selector;
+            const siblingClasses = Array.from(sibling.classList || []);
+            return siblingClasses.some(cls => elementClasses.includes(cls));
           });
-      
-          if (identicalSiblings.length > 0) {
+          
+          if (similarSiblings.length > 0) {
             const position = siblings.indexOf(element) + 1;
             selector += `:nth-child(${position})`;
           }
