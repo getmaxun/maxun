@@ -60,9 +60,9 @@ code {
   align-items: center;
   position: relative;
   box-sizing: border-box;
-  width: calc(100% - 4rem); 
-  height: calc(100vh - 4rem); 
-  margin: 2rem 2rem 2rem 2rem; 
+  width: 100%; 
+  height: calc(100vh - 2rem); 
+  margin: 1rem 1rem 1rem 1rem; 
   overflow: hidden;
 }
 
@@ -81,7 +81,6 @@ code {
 }
 
 .right-side-panel {
-  margin-left: 1.5rem; 
   transform: scale(1);
   transform-origin: top left;
   overflow: hidden;
@@ -91,26 +90,4 @@ code {
 .MuiButton-root[sx*="position: 'absolute'"] {
   bottom: 2rem !important;
   margin-bottom: 0 !important;
-}
-
-/* Consistent layout across all screen sizes */
-@media screen and (min-width: 1024px) {
-  #browser-recorder {
-    width: calc(100% - 4rem); 
-    height: calc(100vh - 4rem); 
-    margin: 2rem 2rem 2rem 2rem; 
-  }
-}
-
-/* Adjust for very small screens */
-@media screen and (max-width: 1023px) {
-  #browser-recorder {
-    width: calc(100% - 2rem);
-    height: calc(100vh - 3rem); 
-    margin: 1.5rem 1rem 1.5rem 1rem; 
-  }
-  
-  .right-side-panel {
-    margin-left: 1rem;
-  }
 }
