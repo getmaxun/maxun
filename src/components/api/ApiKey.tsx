@@ -153,7 +153,7 @@ const ApiKeyManager = () => {
       ) : (
         <>
           <Typography>{t('apikey.no_key_message')}</Typography>
-          <Button onClick={generateApiKey} variant="contained" color="primary" sx={{ marginTop: '15px' }}>
+          <Button onClick={generateApiKey} variant="contained" color="primary" sx={{ marginTop: '20px' }}>
             {t('apikey.generate_button')}
           </Button>
         </>

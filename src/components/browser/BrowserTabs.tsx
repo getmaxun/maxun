@@ -32,7 +32,8 @@ export const BrowserTabs = (
 
   return (
     <Box sx={{
-      width: 800, // Fixed width
+      width: '100%',
+      maxWidth: '100%',
       display: 'flex',
       overflow: 'auto',
       alignItems: 'center',

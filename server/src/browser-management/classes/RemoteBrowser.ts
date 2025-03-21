@@ -35,11 +35,11 @@ const SCREENCAST_CONFIG: {
     compressionQuality: number;
     maxQueueSize: number;
 } = {
-    format: 'jpeg',
-    maxWidth: 900,
-    maxHeight: 400,
+    format: 'png',
+    maxWidth: 1280,
+    maxHeight: 720,
     targetFPS: 30,
-    compressionQuality: 0.8,
+    compressionQuality: 0.95,
     maxQueueSize: 2
 };
 
@@ -255,6 +255,8 @@ export class RemoteBrowser {
                 "--disable-extensions",
                 "--no-sandbox",
                 "--disable-dev-shm-usage",
+                "--force-color-profile=srgb",
+                "--force-device-scale-factor=2",
             ],
         }));
         const proxyConfig = await getDecryptedProxyConfig(userId);
@@ -269,7 +271,7 @@ export class RemoteBrowser {
             };
         }
         const contextOptions: any = {
-            viewport: { height: 400, width: 900 },
+            // viewport: { height: 400, width: 900 },
             // recordVideo: { dir: 'videos/' }
             // Force reduced motion to prevent animation issues
             reducedMotion: 'reduce',
@@ -282,6 +284,7 @@ export class RemoteBrowser {
             isMobile: false,
             hasTouch: false,
             userAgent: this.getUserAgent(),
+            deviceScaleFactor: 2,
         };
 
         if (proxyOptions.server) {
@@ -322,6 +325,15 @@ export class RemoteBrowser {
 
         await this.setupPageEventListeners(this.currentPage);
 
+        const viewportSize = await this.currentPage.viewportSize();
+        if (viewportSize) {
+            this.socket.emit('viewportInfo', {
+                width: viewportSize.width,
+                height: viewportSize.height,
+                userId: this.userId
+            });
+        }
+
         try {
             const blocker = await PlaywrightBlocker.fromLists(fetch, ['https://easylist.to/easylist/easylist.txt']);
             await blocker.enableBlockingInPage(this.currentPage);
@@ -332,6 +344,19 @@ export class RemoteBrowser {
             console.warn('Failed to initialize adblocker, continuing without it:', error.message);
             // Still need to set up the CDP session even if blocker fails
             this.client = await this.currentPage.context().newCDPSession(this.currentPage);
+        }
+    };
+
+    public updateViewportInfo = async (): Promise<void> => {
+        if (this.currentPage) {
+            const viewportSize = await this.currentPage.viewportSize();
+            if (viewportSize) {
+                this.socket.emit('viewportInfo', {
+                    width: viewportSize.width,
+                    height: viewportSize.height,
+                    userId: this.userId
+                });
+            }
         }
     };
 
@@ -452,6 +477,8 @@ export class RemoteBrowser {
         // Set flag to indicate screencast is active
         this.isScreencastActive = true;
 
+        await this.updateViewportInfo();
+
         this.client.on('Page.screencastFrame', ({ data: base64, sessionId }) => {
             // Only process if screencast is still active for this user
             if (!this.isScreencastActive) {
@@ -506,15 +533,18 @@ export class RemoteBrowser {
     private async optimizeScreenshot(screenshot: Buffer): Promise<Buffer> {
         try {
             return await sharp(screenshot)
-                .jpeg({
-                    quality: Math.round(SCREENCAST_CONFIG.compressionQuality * 100),
-                    progressive: true
+                .png({
+                    quality: Math.round(SCREENCAST_CONFIG.compressionQuality * 100),                
+                    compressionLevel: 3,        
+                    adaptiveFiltering: true,    
+                    force: true                
                 })
                 .resize({
                     width: SCREENCAST_CONFIG.maxWidth,
                     height: SCREENCAST_CONFIG.maxHeight,
                     fit: 'inside',
-                    withoutEnlargement: true
+                    withoutEnlargement: true,
+                    kernel: sharp.kernel.mitchell  
                 })
                 .toBuffer();
         } catch (error) {
@@ -563,7 +593,7 @@ export class RemoteBrowser {
             const workflow = this.generator.AddGeneratedFlags(this.generator.getWorkflowFile());
             await this.initializeNewPage();
             if (this.currentPage) {
-                this.currentPage.setViewportSize({ height: 400, width: 900 });
+                // this.currentPage.setViewportSize({ height: 400, width: 900 });
                 const params = this.generator.getParams();
                 if (params) {
                     this.interpreterSettings.params = params.reduce((acc, param) => {
@@ -676,6 +706,9 @@ export class RemoteBrowser {
         try {
             await this.client.send('Page.startScreencast', {
                 format: SCREENCAST_CONFIG.format,
+                quality: Math.round(SCREENCAST_CONFIG.compressionQuality * 100), 
+                maxWidth: SCREENCAST_CONFIG.maxWidth,
+                maxHeight: SCREENCAST_CONFIG.maxHeight,
             });
             // Set flag to indicate screencast is active
             this.isScreencastActive = true;
@@ -721,31 +754,48 @@ export class RemoteBrowser {
      * @param payload the screenshot binary data
      * @returns void
      */
-    private emitScreenshot = async (payload: Buffer): Promise<void> => {
+    private emitScreenshot = async (payload: Buffer, viewportSize?: { width: number, height: number }): Promise<void> => {
         if (this.isProcessingScreenshot) {
             if (this.screenshotQueue.length < SCREENCAST_CONFIG.maxQueueSize) {
                 this.screenshotQueue.push(payload);
             }
             return;
         }
-
+    
         this.isProcessingScreenshot = true;
-
+    
         try {
-            const optimizedScreenshot = await this.optimizeScreenshot(payload);
+            const optimizationPromise = this.optimizeScreenshot(payload);
+            
+            const timeoutPromise = new Promise<Buffer>((resolve) => {
+                setTimeout(() => resolve(payload), 100); 
+            });
+            
+            const optimizedScreenshot = await Promise.race([optimizationPromise, timeoutPromise]);
             const base64Data = optimizedScreenshot.toString('base64');
-            const dataWithMimeType = `data:image/jpeg;base64,${base64Data}`;
-
-// Emit with user context to ensure the frontend can identify which browser's screenshot this is
-this.socket.emit('screencast', {
-    image: dataWithMimeType,
-    userId: this.userId
-});            logger.debug('Screenshot emitted');
+            const dataWithMimeType = `data:image/png;base64,${base64Data}`;
+    
+            this.socket.emit('screencast', {
+                image: dataWithMimeType,
+                userId: this.userId,
+                viewport: viewportSize || await this.currentPage?.viewportSize() || null
+            });
         } catch (error) {
             logger.error('Screenshot emission failed:', error);
+            try {
+                const base64Data = payload.toString('base64');
+                const dataWithMimeType = `data:image/png;base64,${base64Data}`;
+                this.socket.emit('screencast', {
+                    image: dataWithMimeType,
+                    userId: this.userId,
+                    viewport: viewportSize || await this.currentPage?.viewportSize() || null
+                });
+            } catch (e) {
+                logger.error('Fallback screenshot emission also failed:', e);
+            }
         } finally {
             this.isProcessingScreenshot = false;
-
+    
             if (this.screenshotQueue.length > 0) {
                 const nextScreenshot = this.screenshotQueue.shift();
                 if (nextScreenshot) {

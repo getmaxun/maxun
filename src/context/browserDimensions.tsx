@@ -1,36 +1,51 @@
-import React, { createContext, useCallback, useContext, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { AppDimensions, getResponsiveDimensions } from "../helpers/dimensionUtils";
 
-interface BrowserDimensions {
-  width: number;
-  height: number;
+interface BrowserDimensionsContext extends AppDimensions {
   setWidth: (newWidth: number) => void;
-};
+  updateDimensions: () => void;
+}
 
-class BrowserDimensionsStore implements Partial<BrowserDimensions> {
-  width: number = 900;
-  height: number = 400;
-};
+const initialDimensions = getResponsiveDimensions();
 
-const browserDimensionsStore = new BrowserDimensionsStore();
-const browserDimensionsContext = createContext<BrowserDimensions>(browserDimensionsStore as BrowserDimensions);
+const browserDimensionsContext = createContext<BrowserDimensionsContext>({
+  ...initialDimensions,
+  setWidth: () => {},
+  updateDimensions: () => {}
+});
 
 export const useBrowserDimensionsStore = () => useContext(browserDimensionsContext);
 
 export const BrowserDimensionsProvider = ({ children }: { children: JSX.Element }) => {
-  const [width, setWidth] = useState<number>(browserDimensionsStore.width);
-  const [height, setHeight] = useState<number>(browserDimensionsStore.height);
+  const [dimensions, setDimensions] = useState<AppDimensions>(initialDimensions);
 
-  const setNewWidth = useCallback((newWidth: number) => {
-    setWidth(newWidth);
-    setHeight(Math.round(newWidth / 1.6));
-  }, [setWidth, setHeight]);
+  const updateDimensions = useCallback(() => {
+    setDimensions(getResponsiveDimensions());
+  }, []);
+
+  const setWidth = useCallback((newWidth: number) => {
+    setDimensions((prevDimensions: any) => ({
+      ...prevDimensions,
+      browserWidth: newWidth,
+      canvasWidth: newWidth,
+      browserHeight: Math.round(newWidth / 1.6),
+      canvasHeight: Math.round(newWidth / 1.6)
+    }));
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener('resize', updateDimensions);
+    return () => {
+      window.removeEventListener('resize', updateDimensions);
+    };
+  }, [updateDimensions]);
 
   return (
     <browserDimensionsContext.Provider
       value={{
-        width,
-        height,
-        setWidth: setNewWidth,
+        ...dimensions,
+        setWidth,
+        updateDimensions
       }}
     >
       {children}

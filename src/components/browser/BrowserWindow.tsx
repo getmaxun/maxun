@@ -9,6 +9,8 @@ import { useBrowserSteps, TextStep } from '../../context/browserSteps';
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../../context/auth';
+import { coordinateMapper } from '../../helpers/coordinateMapper';
+import { useBrowserDimensionsStore } from '../../context/browserDimensions';
 
 interface ElementInfo {
     tagName: string;
@@ -31,6 +33,12 @@ interface AttributeOption {
 interface ScreencastData {
     image: string;
     userId: string;
+    viewport?: ViewportInfo | null;
+}
+
+interface ViewportInfo {
+    width: number;
+    height: number;
 }
 
 
@@ -62,6 +70,7 @@ const getAttributeOptions = (tagName: string, elementInfo: ElementInfo | null): 
 
 export const BrowserWindow = () => {
     const { t } = useTranslation();
+    const { browserWidth, browserHeight } = useBrowserDimensionsStore();
     const [canvasRef, setCanvasReference] = useState<React.RefObject<HTMLCanvasElement> | undefined>(undefined);
     const [screenShot, setScreenShot] = useState<string>("");
     const [highlighterData, setHighlighterData] = useState<{ rect: DOMRect, selector: string, elementInfo: ElementInfo | null, childSelectors?: string[] } | null>(null);
@@ -69,6 +78,7 @@ export const BrowserWindow = () => {
     const [attributeOptions, setAttributeOptions] = useState<AttributeOption[]>([]);
     const [selectedElement, setSelectedElement] = useState<{ selector: string, info: ElementInfo | null } | null>(null);
     const [currentListId, setCurrentListId] = useState<number | null>(null);
+    const [viewportInfo, setViewportInfo] = useState<ViewportInfo>({ width: browserWidth, height: browserHeight });
 
     const [listSelector, setListSelector] = useState<string | null>(null);
     const [fields, setFields] = useState<Record<string, TextStep>>({});
@@ -81,6 +91,15 @@ export const BrowserWindow = () => {
   
     const { state } = useContext(AuthContext);
     const { user } = state;
+
+    const dimensions = {
+        width: browserWidth,
+        height: browserHeight
+    };
+
+    useEffect(() => {
+        coordinateMapper.updateDimensions(dimensions.width, dimensions.height, viewportInfo.width, viewportInfo.height);
+    }, [viewportInfo, dimensions.width, dimensions.height]);
 
     useEffect(() => {
         if (listSelector) {
@@ -130,6 +149,10 @@ export const BrowserWindow = () => {
         } else if (data && typeof data === 'object' && 'image' in data) {
             if (!data.userId || data.userId === user?.id) {
                 setScreenShot(data.image);
+                
+                if (data.viewport) {
+                    setViewportInfo(data.viewport);
+                }
             }
         }
     }, [screenShot, user?.id]);
@@ -149,78 +172,85 @@ export const BrowserWindow = () => {
     }, [screenShot, canvasRef, socket, screencastHandler]);
 
     const highlighterHandler = useCallback((data: { rect: DOMRect, selector: string, elementInfo: ElementInfo | null, childSelectors?: string[] }) => {
+        // Map the incoming DOMRect from browser coordinates to canvas coordinates
+        const mappedRect = new DOMRect(
+            data.rect.x,
+            data.rect.y,
+            data.rect.width,
+            data.rect.height
+        );
+        
+        const mappedData = {
+            ...data,
+            rect: mappedRect
+        };
+        
         if (getList === true) {
             if (listSelector) {
                 socket?.emit('listSelector', { selector: listSelector });
-                const hasValidChildSelectors = Array.isArray(data.childSelectors) && data.childSelectors.length > 0;
+                const hasValidChildSelectors = Array.isArray(mappedData.childSelectors) && mappedData.childSelectors.length > 0;
 
                 if (limitMode) {
                     setHighlighterData(null);
                 } else if (paginationMode) {
                     // Only set highlighterData if type is not empty, 'none', 'scrollDown', or 'scrollUp'
                     if (paginationType !== '' && !['none', 'scrollDown', 'scrollUp'].includes(paginationType)) {
-                        setHighlighterData(data);
+                        setHighlighterData(mappedData);
                     } else {
                         setHighlighterData(null);
                     }
-                } else if (data.childSelectors && data.childSelectors.includes(data.selector)) {
+                } else if (mappedData.childSelectors && mappedData.childSelectors.includes(mappedData.selector)) {
                     // Highlight only valid child elements within the listSelector
-                    setHighlighterData(data);
-                } else if (data.elementInfo?.isIframeContent && data.childSelectors) {
-                    // Handle pure iframe elements - similar to previous shadow DOM logic but using iframe syntax
-                    // Check if the selector matches any iframe child selectors
-                    const isIframeChild = data.childSelectors.some(childSelector =>
-                        data.selector.includes(':>>') && // Iframe uses :>> for traversal
+                    setHighlighterData(mappedData);
+                } else if (mappedData.elementInfo?.isIframeContent && mappedData.childSelectors) {
+                    // Handle iframe elements
+                    const isIframeChild = mappedData.childSelectors.some(childSelector =>
+                        mappedData.selector.includes(':>>') && 
                         childSelector.split(':>>').some(part =>
-                            data.selector.includes(part.trim())
+                            mappedData.selector.includes(part.trim())
                         )
                     );
-                    setHighlighterData(isIframeChild ? data : null);
-                } else if (data.selector.includes(':>>') && hasValidChildSelectors) {
+                    setHighlighterData(isIframeChild ? mappedData : null);
+                } else if (mappedData.selector.includes(':>>') && hasValidChildSelectors) {
                     // Handle mixed DOM cases with iframes
-                    // Split the selector into parts and check each against child selectors
-                    const selectorParts = data.selector.split(':>>').map(part => part.trim());
+                    const selectorParts = mappedData.selector.split(':>>').map(part => part.trim());
                     const isValidMixedSelector = selectorParts.some(part =>
-                        // We know data.childSelectors is defined due to hasValidChildSelectors check
-                        data.childSelectors!.some(childSelector =>
+                        mappedData.childSelectors!.some(childSelector =>
                             childSelector.includes(part)
                         )
                     );
-                    setHighlighterData(isValidMixedSelector ? data : null);
-                } else if (data.elementInfo?.isShadowRoot && data.childSelectors) {
-                    // New case: Handle pure Shadow DOM elements
-                    // Check if the selector matches any shadow root child selectors
-                    const isShadowChild = data.childSelectors.some(childSelector =>
-                        data.selector.includes('>>') && // Shadow DOM uses >> for piercing
+                    setHighlighterData(isValidMixedSelector ? mappedData : null);
+                } else if (mappedData.elementInfo?.isShadowRoot && mappedData.childSelectors) {
+                    // Handle Shadow DOM elements
+                    const isShadowChild = mappedData.childSelectors.some(childSelector =>
+                        mappedData.selector.includes('>>') &&
                         childSelector.split('>>').some(part =>
-                            data.selector.includes(part.trim())
+                            mappedData.selector.includes(part.trim())
                         )
                     );
-                    setHighlighterData(isShadowChild ? data : null);
-                } else if (data.selector.includes('>>') && hasValidChildSelectors) {
-                    // New case: Handle mixed DOM cases
-                    // Split the selector into parts and check each against child selectors
-                    const selectorParts = data.selector.split('>>').map(part => part.trim());
+                    setHighlighterData(isShadowChild ? mappedData : null);
+                } else if (mappedData.selector.includes('>>') && hasValidChildSelectors) {
+                    // Handle mixed DOM cases
+                    const selectorParts = mappedData.selector.split('>>').map(part => part.trim());
                     const isValidMixedSelector = selectorParts.some(part =>
-                        // Now we know data.childSelectors is defined
-                        data.childSelectors!.some(childSelector =>
+                        mappedData.childSelectors!.some(childSelector =>
                             childSelector.includes(part)
                         )
                     );
-                    setHighlighterData(isValidMixedSelector ? data : null);
+                    setHighlighterData(isValidMixedSelector ? mappedData : null);
                 } else {
-                    // if !valid child in normal mode, clear the highlighter
+                    // If not a valid child in normal mode, clear the highlighter
                     setHighlighterData(null);
                 }
             } else {
                 // Set highlighterData for the initial listSelector selection
-                setHighlighterData(data);
+                setHighlighterData(mappedData);
             }
         } else {
             // For non-list steps
-            setHighlighterData(data);
+            setHighlighterData(mappedData);
         }
-    }, [highlighterData, getList, socket, listSelector, paginationMode, paginationType, captureStage]);
+    }, [getList, socket, listSelector, paginationMode, paginationType, limitMode]);
 
 
     useEffect(() => {
@@ -260,11 +290,13 @@ export const BrowserWindow = () => {
             const clickY = e.clientY - canvasRect.top;
 
             const highlightRect = highlighterData.rect;
+
+            const mappedRect = coordinateMapper.mapBrowserRectToCanvas(highlightRect);
             if (
-                clickX >= highlightRect.left &&
-                clickX <= highlightRect.right &&
-                clickY >= highlightRect.top &&
-                clickY <= highlightRect.bottom
+                clickX >= mappedRect.left &&
+                clickX <= mappedRect.right &&
+                clickY >= mappedRect.top &&
+                clickY <= mappedRect.bottom
             ) {
 
                 const options = getAttributeOptions(highlighterData.elementInfo?.tagName || '', highlighterData.elementInfo);
@@ -437,7 +469,7 @@ export const BrowserWindow = () => {
     }, [paginationMode, resetPaginationSelector]);
 
     return (
-        <div onClick={handleClick} style={{ width: '900px' }} id="browser-window">
+        <div onClick={handleClick} style={{ width: browserWidth }} id="browser-window">
             {
                 getText === true || getList === true ? (
                     <GenericModal
@@ -483,20 +515,20 @@ export const BrowserWindow = () => {
                     </GenericModal>
                 ) : null
             }
-            <div style={{ height: '400px', overflow: 'hidden' }}>
+            <div style={{ height: dimensions.height, overflow: 'hidden' }}>
                 {((getText === true || getList === true) && !showAttributeModal && highlighterData?.rect != null && highlighterData?.rect.top != null) && canvasRef?.current ?
                     <Highlighter
                         unmodifiedRect={highlighterData?.rect}
                         displayedSelector={highlighterData?.selector}
-                        width={900}
-                        height={400}
+                        width={dimensions.width}
+                        height={dimensions.height}
                         canvasRect={canvasRef.current.getBoundingClientRect()}
                     />
                     : null}
                 <Canvas
                     onCreateRef={setCanvasReference}
-                    width={900}
-                    height={400}
+                    width={dimensions.width}
+                    height={dimensions.height}
                 />
             </div>
         </div>
@@ -512,7 +544,7 @@ const drawImage = (image: string, canvas: HTMLCanvasElement): void => {
     img.src = image;
     img.onload = () => {
         URL.revokeObjectURL(img.src);
-        ctx?.drawImage(img, 0, 0, 900, 400);
+        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
     };
 
 };

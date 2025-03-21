@@ -704,13 +704,13 @@ export default class Interpreter extends EventEmitter {
             
             await scrapeCurrentPage();
             if (checkLimit()) return allResults;
-
+          
             const { button, workingSelector, updatedSelectors } = await findWorkingButton(availableSelectors);
             
             availableSelectors = updatedSelectors;
-
+          
             if (!button || !workingSelector) {
-                // Final retry for navigation when no selectors work
+              // Final retry for navigation when no selectors work
               const success = await retryOperation(async () => {
                 try {
                   await page.evaluate(() => window.history.forward());
@@ -724,70 +724,102 @@ export default class Interpreter extends EventEmitter {
               if (!success) return allResults;
               break;
             }
-
+          
             let retryCount = 0;
-            let navigationSuccess = false;
-
-            while (retryCount < MAX_RETRIES && !navigationSuccess) {
+            let paginationSuccess = false;
+            
+            // Capture basic content signature before click
+            const captureContentSignature = async () => {
+              return await page.evaluate((selector) => {
+                const items = document.querySelectorAll(selector);
+                return {
+                  url: window.location.href,
+                  itemCount: items.length,
+                  firstItems: Array.from(items).slice(0, 3).map(el => el.textContent || '').join('|')
+                };
+              }, config.listSelector);
+            };
+          
+            const beforeSignature = await captureContentSignature();
+            debugLog(`Before click: ${beforeSignature.itemCount} items`);
+          
+            while (retryCount < MAX_RETRIES && !paginationSuccess) {
               try {
                 try {
                   await Promise.all([
                     page.waitForNavigation({ 
                       waitUntil: 'networkidle',
                       timeout: 15000 
+                    }).catch(e => {
+                      throw e; 
                     }),
                     button.click()
                   ]);
-                  navigationSuccess = true;
-                } catch (error) {
-                  debugLog(`Regular click failed on attempt ${retryCount + 1}. Trying DispatchEvent`);
-                  
-                  // If regular click fails, try dispatchEvent
-                  if (page.url() === currentUrl) {
+                  debugLog("Navigation successful after regular click");
+                  paginationSuccess = true;
+                } catch (navError) {
+                  debugLog("Regular click with navigation failed, trying dispatch event with navigation");
+                  try {
+                    await Promise.all([
+                      page.waitForNavigation({ 
+                        waitUntil: 'networkidle',
+                        timeout: 15000 
+                      }).catch(e => {
+                        throw e; 
+                      }),
+                      button.dispatchEvent('click')
+                    ]);
+                    debugLog("Navigation successful after dispatch event");
+                    paginationSuccess = true;
+                  } catch (dispatchNavError) {
                     try {
-                      await Promise.all([
-                          page.waitForNavigation({ 
-                              waitUntil: 'networkidle',
-                              timeout: 15000 
-                          }),
-                          button.dispatchEvent('click')
-                      ]);
-                      navigationSuccess = true;
-                    } catch (dispatchError) {
-                      debugLog(`DispatchEvent failed on attempt ${retryCount + 1}.`);
+                      await button.click();
+                      await page.waitForTimeout(2000);
+                    } catch (clickError) {
+                      await button.dispatchEvent('click');
+                      await page.waitForTimeout(2000);
                     }
-                  } else {
-                    navigationSuccess = true;
                   }
                 }
-
-                const newUrl = page.url();
-                if (visitedUrls.has(newUrl)) {
-                  debugLog(`Detected navigation to previously visited URL ${newUrl} on attempt ${retryCount + 1}`);
-                  navigationSuccess = false;
-                }
-
-                if (navigationSuccess) {
-                  await page.waitForTimeout(1000);
+                
+                await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
+                
+                if (!paginationSuccess) {
+                  const newUrl = page.url();
+                  const afterSignature = await captureContentSignature();
+                  
+                  if (newUrl !== currentUrl) {
+                    debugLog(`URL changed to ${newUrl}`);
+                    visitedUrls.add(newUrl);
+                    paginationSuccess = true;
+                  } 
+                  else if (afterSignature.firstItems !== beforeSignature.firstItems) {
+                    debugLog("Content changed without URL change");
+                    paginationSuccess = true;
+                  }
+                  else if (afterSignature.itemCount !== beforeSignature.itemCount) {
+                    debugLog(`Item count changed from ${beforeSignature.itemCount} to ${afterSignature.itemCount}`);
+                    paginationSuccess = true;
+                  }
                 }
               } catch (error) {
-                debugLog(`Navigation attempt ${retryCount + 1} failed completely.`);
-                navigationSuccess = false;
+                debugLog(`Pagination attempt ${retryCount + 1} failed: ${error.message}`);
               }
-
-              if (!navigationSuccess) {
+              
+              if (!paginationSuccess) {
                 retryCount++;
                 if (retryCount < MAX_RETRIES) {
-                  debugLog(`Retrying navigation - attempt ${retryCount + 1} of ${MAX_RETRIES}`);
+                  debugLog(`Retrying pagination - attempt ${retryCount + 1} of ${MAX_RETRIES}`);
                   await page.waitForTimeout(RETRY_DELAY);
                 }
               }
             }
-
-            if (!navigationSuccess) {
-              debugLog(`Navigation failed after ${MAX_RETRIES} attempts`);
+          
+            if (!paginationSuccess) {
+              debugLog(`Pagination failed after ${MAX_RETRIES} attempts`);
               return allResults;
             }
+            
             break;
           }
 

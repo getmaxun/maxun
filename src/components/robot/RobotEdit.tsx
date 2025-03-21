@@ -7,7 +7,6 @@ import { modalStyle } from "../recorder/AddWhereCondModal";
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { getStoredRecording, updateRecording } from '../../api/storage';
 import { WhereWhatPair } from 'maxun-core';
-import { useNavigate } from 'react-router-dom';
 
 interface RobotMeta {
     name: string;
@@ -126,35 +125,35 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
 
     function extractInitialCredentials(workflow: any[]): Credentials {
         const credentials: Credentials = {};
-    
+
         const isPrintableCharacter = (char: string): boolean => {
             return char.length === 1 && !!char.match(/^[\x20-\x7E]$/);
         };
-    
+
         workflow.forEach(step => {
             if (!step.what) return;
-    
+
             let currentSelector = '';
             let currentValue = '';
             let currentType = '';
             let i = 0;
-    
+
             while (i < step.what.length) {
                 const action = step.what[i];
-    
+
                 if (!action.action || !action.args?.[0]) {
                     i++;
                     continue;
                 }
-    
+
                 const selector = action.args[0];
-    
+
                 // Handle full word type actions first
-                if (action.action === 'type' && 
-                    action.args?.length >= 2 && 
+                if (action.action === 'type' &&
+                    action.args?.length >= 2 &&
                     typeof action.args[1] === 'string' &&
-                    action.args[1].length > 1) {  
-                    
+                    action.args[1].length > 1) {
+
                     if (!credentials[selector]) {
                         credentials[selector] = {
                             value: action.args[1],
@@ -164,12 +163,12 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                     i++;
                     continue;
                 }
-    
+
                 // Handle character-by-character sequences (both type and press)
                 if ((action.action === 'type' || action.action === 'press') &&
                     action.args?.length >= 2 &&
                     typeof action.args[1] === 'string') {
-    
+
                     if (selector !== currentSelector) {
                         if (currentSelector && currentValue) {
                             credentials[currentSelector] = {
@@ -181,23 +180,23 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                         currentValue = credentials[selector]?.value || '';
                         currentType = action.args[2] || credentials[selector]?.type || 'text';
                     }
-    
+
                     const character = action.args[1];
-    
+
                     if (isPrintableCharacter(character)) {
                         currentValue += character;
                     } else if (character === 'Backspace') {
                         currentValue = currentValue.slice(0, -1);
                     }
-    
+
                     if (!currentType && action.args[2]?.toLowerCase() === 'password') {
                         currentType = 'password';
                     }
-    
+
                     let j = i + 1;
                     while (j < step.what.length) {
                         const nextAction = step.what[j];
-                        if (!nextAction.action || !nextAction.args?.[0] || 
+                        if (!nextAction.action || !nextAction.args?.[0] ||
                             nextAction.args[0] !== selector ||
                             (nextAction.action !== 'type' && nextAction.action !== 'press')) {
                             break;
@@ -209,18 +208,18 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                         }
                         j++;
                     }
-    
+
                     credentials[currentSelector] = {
                         value: currentValue,
                         type: currentType
                     };
-    
-                    i = j; 
+
+                    i = j;
                 } else {
                     i++;
                 }
             }
-    
+
             if (currentSelector && currentValue) {
                 credentials[currentSelector] = {
                     value: currentValue,
@@ -228,7 +227,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                 };
             }
         });
-    
+
         return credentials;
     }
 
@@ -300,6 +299,24 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                 updatedWorkflow[0].what[0].args[0]
             ) {
                 updatedWorkflow[0].what[0].args[0].limit = newLimit;
+            }
+
+            return { ...prev, recording: { ...prev.recording, workflow: updatedWorkflow } };
+        });
+    };
+
+    const handleTargetUrlChange = (newUrl: string) => {
+        setRobot((prev) => {
+            if (!prev) return prev;
+
+            const updatedWorkflow = [...prev.recording.workflow];
+            const lastPairIndex = updatedWorkflow.length - 1;
+
+            if (lastPairIndex >= 0) {
+                const gotoAction = updatedWorkflow[lastPairIndex]?.what?.find(action => action.action === "goto");
+                if (gotoAction && gotoAction.args && gotoAction.args.length > 0) {
+                    gotoAction.args[0] = newUrl;
+                }
             }
 
             return { ...prev, recording: { ...prev.recording, workflow: updatedWorkflow } };
@@ -390,10 +407,14 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                 return acc;
             }, {} as Record<string, CredentialInfo>);
 
+            const lastPair = robot.recording.workflow[robot.recording.workflow.length - 1];
+            const targetUrl = lastPair?.what.find(action => action.action === "goto")?.args?.[0];
+
             const payload = {
                 name: robot.recording_meta.name,
                 limit: robot.recording.workflow[0]?.what[0]?.args?.[0]?.limit,
                 credentials: credentialsForPayload,
+                targetUrl: targetUrl,
             };
 
             const success = await updateRecording(robot.recording_meta.id, payload);
@@ -412,6 +433,9 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
             console.error('Error updating robot:', error);
         }
     };
+
+    const lastPair = robot?.recording.workflow[robot?.recording.workflow.length - 1];
+    const targetUrl = lastPair?.what.find(action => action.action === "goto")?.args?.[0];
 
     return (
         <GenericModal
@@ -432,6 +456,15 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                                 type='text'
                                 value={robot.recording_meta.name}
                                 onChange={(e) => handleRobotNameChange(e.target.value)}
+                                style={{ marginBottom: '20px' }}
+                            />
+
+                            <TextField
+                                label="Robot Target URL"
+                                key="Robot Target URL"
+                                type='text'
+                                value={targetUrl || ''}
+                                onChange={(e) => handleTargetUrlChange(e.target.value)}
                                 style={{ marginBottom: '20px' }}
                             />
 

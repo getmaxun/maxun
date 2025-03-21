@@ -20,6 +20,7 @@ import { getActiveWorkflow } from "../../api/workflow";
 import ActionDescriptionBox from '../action/ActionDescriptionBox';
 import { useThemeMode } from '../../context/theme-provider';
 import { useTranslation } from 'react-i18next';
+import { useBrowserDimensionsStore } from '../../context/browserDimensions';
 
 const fetchWorkflow = (id: string, callback: (response: WorkflowFile) => void) => {
   getActiveWorkflow(id).then(
@@ -54,6 +55,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const [browserStepIdList, setBrowserStepIdList] = useState<number[]>([]);
   const [isCaptureTextConfirmed, setIsCaptureTextConfirmed] = useState(false);
   const [isCaptureListConfirmed, setIsCaptureListConfirmed] = useState(false);
+  const { panelHeight } = useBrowserDimensionsStore();
 
   const { lastAction, notify, currentWorkflowActionsState, setCurrentWorkflowActionsState, resetInterpretationLog } = useGlobalInfoStore();
   const { getText, startGetText, stopGetText, getScreenshot, startGetScreenshot, stopGetScreenshot, getList, startGetList, stopGetList, startPaginationMode, stopPaginationMode, paginationType, updatePaginationType, limitType, customLimit, updateLimitType, updateCustomLimit, stopLimitMode, startLimitMode, captureStage, setCaptureStage, showPaginationOptions, setShowPaginationOptions, showLimitOptions, setShowLimitOptions, workflow, setWorkflow } = useActionContext();
@@ -460,8 +462,9 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
 
   const theme = useThemeMode();
   const isDarkMode = theme.darkMode;
+
   return (
-    <Paper sx={{ height: '520px', width: 'auto', alignItems: "center", background: 'inherit' }} id="browser-actions" elevation={0}>
+    <Paper sx={{ height: panelHeight, width: 'auto', alignItems: "center", background: 'inherit' }} id="browser-actions" elevation={0}>
       {/* <SimpleBox height={60} width='100%' background='lightGray' radius='0%'>
         <Typography sx={{ padding: '10px' }}>Last action: {` ${lastAction}`}</Typography>
       </SimpleBox> */}

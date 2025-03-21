@@ -6,6 +6,7 @@ import DatePicker from '../pickers/DatePicker';
 import Dropdown from '../pickers/Dropdown';
 import TimePicker from '../pickers/TimePicker';
 import DateTimeLocalPicker from '../pickers/DateTimeLocalPicker';
+import { coordinateMapper } from '../../helpers/coordinateMapper';
 
 interface CreateRefCallback {
     (ref: React.RefObject<HTMLCanvasElement>): void;
@@ -79,7 +80,11 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
     useEffect(() => {
         if (socket) {
             socket.on('showDatePicker', (info: { coordinates: Coordinates, selector: string }) => {
-                setDatePickerInfo(info);
+                const canvasCoords = coordinateMapper.mapBrowserToCanvas(info.coordinates);
+                setDatePickerInfo({
+                    ...info,
+                    coordinates: canvasCoords
+                });
             });
 
             socket.on('showDropdown', (info: {
@@ -92,15 +97,27 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
                     selected: boolean;
                 }>;
             }) => {
-                setDropdownInfo(info);
+                const canvasCoords = coordinateMapper.mapBrowserToCanvas(info.coordinates);
+                setDropdownInfo({
+                    ...info,
+                    coordinates: canvasCoords
+                });
             });
 
             socket.on('showTimePicker', (info: { coordinates: Coordinates, selector: string }) => {
-                setTimePickerInfo(info);
+                const canvasCoords = coordinateMapper.mapBrowserToCanvas(info.coordinates);
+                setTimePickerInfo({
+                    ...info,
+                    coordinates: canvasCoords
+                });
             });
 
             socket.on('showDateTimePicker', (info: { coordinates: Coordinates, selector: string }) => {
-                setDateTimeLocalInfo(info);
+                const canvasCoords = coordinateMapper.mapBrowserToCanvas(info.coordinates);
+                setDateTimeLocalInfo({
+                    ...info,
+                    coordinates: canvasCoords
+                });
             });
 
             return () => {
@@ -114,12 +131,13 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
 
     const onMouseEvent = useCallback((event: MouseEvent) => {
         if (socket && canvasRef.current) {
-            // Get the canvas bounding rectangle
             const rect = canvasRef.current.getBoundingClientRect();
             const clickCoordinates = {
                 x: event.clientX - rect.left, // Use relative x coordinate
                 y: event.clientY - rect.top, // Use relative y coordinate
             };
+
+            const browserCoordinates = coordinateMapper.mapCanvasToBrowser(clickCoordinates);
 
             switch (event.type) {
                 case 'mousedown':
@@ -128,7 +146,7 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
                     } else if (getListRef.current === true) {
                         console.log('Capturing List...');
                     } else {
-                        socket.emit('input:mousedown', clickCoordinates);
+                        socket.emit('input:mousedown', browserCoordinates);
                     }
                     notifyLastAction('click');
                     break;
@@ -146,7 +164,7 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
                             x: clickCoordinates.x,
                             y: clickCoordinates.y,
                         };
-                        socket.emit('input:mousemove', clickCoordinates);
+                        socket.emit('input:mousemove', browserCoordinates);
                         notifyLastAction('move');
                     }
                     break;
@@ -173,9 +191,11 @@ const Canvas = ({ width, height, onCreateRef }: CanvasProps) => {
 
     const onKeyboardEvent = useCallback((event: KeyboardEvent) => {
         if (socket) {
+            const browserCoordinates = coordinateMapper.mapCanvasToBrowser(lastMousePosition.current);
+
             switch (event.type) {
                 case 'keydown':
-                    socket.emit('input:keydown', { key: event.key, coordinates: lastMousePosition.current });
+                    socket.emit('input:keydown', { key: event.key, coordinates: browserCoordinates });
                     notifyLastAction(`${event.key} pressed`);
                     break;
                 case 'keyup':
