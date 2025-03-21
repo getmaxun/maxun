@@ -337,7 +337,24 @@ export const getElementInformation = async (
               return deepestElement;
             };
           
-            let deepestElement = findDeepestElement(elements);
+            // Logic to get list container element
+            let targetElement = null;
+
+            for (const element of elements) {
+              const deepestEl = findDeepestElement(elements);
+              
+              if (deepestEl && element !== deepestEl) {
+                if (element.contains(deepestEl) && 
+                    element !== deepestEl.parentElement && 
+                    element.tagName !== 'HTML' && 
+                    element.tagName !== 'BODY') {
+                  targetElement = element;
+                  break;
+                }
+              }
+            }
+
+            let deepestElement = targetElement || findDeepestElement(elements);
             if (!deepestElement) return null;
           
             const traverseShadowDOM = (element: HTMLElement): HTMLElement => {
@@ -854,7 +871,24 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
               return deepestElement;
             };
           
-            let deepestElement = findDeepestElement(elements);
+            // Logic to get list container element
+            let targetElement = null;
+
+            for (const element of elements) {
+              const deepestEl = findDeepestElement(elements);
+              
+              if (deepestEl && element !== deepestEl) {
+                if (element.contains(deepestEl) && 
+                    element !== deepestEl.parentElement && 
+                    element.tagName !== 'HTML' && 
+                    element.tagName !== 'BODY') {
+                  targetElement = element;
+                  break;
+                }
+              }
+            }
+
+            let deepestElement = targetElement || findDeepestElement(elements);
             if (!deepestElement) return null;
           
             const traverseShadowDOM = (element: HTMLElement): HTMLElement => {
@@ -2036,7 +2070,24 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
             return deepestElement;
           };
         
-          let deepestElement = findDeepestElement(elements);
+          // Logic to get list container element
+          let targetElement = null;
+
+          for (const element of elements) {
+            const deepestEl = findDeepestElement(elements);
+            
+            if (deepestEl && element !== deepestEl) {
+              if (element.contains(deepestEl) && 
+                  element !== deepestEl.parentElement && 
+                  element.tagName !== 'HTML' && 
+                  element.tagName !== 'BODY') {
+                targetElement = element;
+                break;
+              }
+            }
+          }
+
+          let deepestElement = targetElement || findDeepestElement(elements);
           if (!deepestElement) return null;
         
           const traverseShadowDOM = (element: HTMLElement): HTMLElement => {
