@@ -52,7 +52,10 @@ app.use(
     secret: 'mx-session',
     resave: false, // Do not resave the session if it hasn't changed
     saveUninitialized: true, // Save new sessions
-    cookie: { secure: false }, // Set to true if using HTTPS
+    cookie: { 
+      secure: false, // Set to true if using HTTPS
+      maxAge: 24 * 60 * 60 * 1000, // 1-day session expiration
+    },
   })
 );
 
