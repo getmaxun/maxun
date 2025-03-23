@@ -33,7 +33,7 @@ app.use(express.json());
 
 app.use(
   session({
-    secret: 'your_secret_key', // Replace with a secure secret key
+    secret: 'mx-session',
     resave: false, // Do not resave the session if it hasn't changed
     saveUninitialized: true, // Save new sessions
     cookie: { secure: false }, // Set to true if using HTTPS
