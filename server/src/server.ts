@@ -45,6 +45,9 @@ const PgSession = connectPgSimple(session);
 
 app.use(
   session({
+    store: new PgSession({
+      pool: pool,
+    }),
     secret: 'mx-session',
     resave: false, // Do not resave the session if it hasn't changed
     saveUninitialized: true, // Save new sessions
