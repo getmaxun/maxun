@@ -18,6 +18,8 @@ import { fork } from 'child_process';
 import { capture } from "./utils/analytics";
 import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './swagger/config';
+import connectPgSimple from 'connect-pg-simple';
+import pg from 'pg';
 
 import session from 'express-session';
 
@@ -29,6 +31,15 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json());
+
+const { Pool } = pg;
+const pool = new Pool({
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  password: process.env.DB_PASSWORD,
+  port: process.env.DB_PORT,
+});
 
 
 app.use(
