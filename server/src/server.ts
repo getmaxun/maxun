@@ -183,7 +183,7 @@ process.on('SIGINT', async () => {
   try {
     console.log('Closing PostgreSQL connection pool...');
     await pool.end();
-   console.log('PostgreSQL connection pool closed');
+    console.log('PostgreSQL connection pool closed');
   } catch (error) {
     console.error('Error closing PostgreSQL connection pool:', error);
   }
