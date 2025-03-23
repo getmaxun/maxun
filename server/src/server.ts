@@ -41,6 +41,7 @@ const pool = new Pool({
   port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : undefined,
 });
 
+const PgSession = connectPgSimple(session);
 
 app.use(
   session({
