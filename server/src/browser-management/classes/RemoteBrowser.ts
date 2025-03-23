@@ -557,34 +557,27 @@ export class RemoteBrowser {
 
     private async optimizeScreenshot(screenshot: Buffer): Promise<Buffer> {
         try {
-            // Use JPEG format with optimized settings
             return await sharp(screenshot)
-                .jpeg({
-                    quality: Math.round(SCREENCAST_CONFIG.compressionQuality * 100),
-                    progressive: true, // Better streaming performance
-                    force: true // Force JPEG even if PNG input
+                .png({
+                    quality: Math.round(SCREENCAST_CONFIG.compressionQuality * 100),                
+                    compressionLevel: 6,        
+                    adaptiveFiltering: true,    
+                    force: true                 
                 })
                 .resize({
                     width: SCREENCAST_CONFIG.maxWidth,
                     height: SCREENCAST_CONFIG.maxHeight,
                     fit: 'inside',
                     withoutEnlargement: true,
-                    kernel: 'lanczos3' // Better quality/performance balance
+                    kernel: 'lanczos3' 
                 })
                 .toBuffer();
         } catch (error) {
-            logger.error('Screenshot optimization failed:', error);
-            
-            // If sharp processing fails, do basic resize without sharp
-            try {
-                // Fallback to simpler processing
-                return screenshot;
-            } catch (fallbackError) {
-                logger.error('Fallback screenshot processing failed:', fallbackError);
-                return screenshot;
-            }
+            logger.error('Screenshot optimization failed:', error);            
+            return screenshot;
         }
     }
+    
 
     /**
      * Makes and emits a single screenshot to the client side.
@@ -841,7 +834,7 @@ export class RemoteBrowser {
             logger.error('Screenshot emission failed:', error);
             try {
                 const base64Data = payload.toString('base64');
-                const dataWithMimeType = `data:image/jpeg;base64,${base64Data}`;
+                const dataWithMimeType = `data:image/png;base64,${base64Data}`;
                 
                 this.socket.emit('screencast', {
                     image: dataWithMimeType,
