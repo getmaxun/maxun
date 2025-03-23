@@ -18,6 +18,8 @@ import { fork } from 'child_process';
 import { capture } from "./utils/analytics";
 import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './swagger/config';
+import connectPgSimple from 'connect-pg-simple';
+import pg from 'pg';
 
 import session from 'express-session';
 
@@ -30,13 +32,31 @@ app.use(cors({
 }));
 app.use(express.json());
 
+const { Pool } = pg;
+const pool = new Pool({
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  password: process.env.DB_PASSWORD,
+  port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : undefined,
+});
+
+const PgSession = connectPgSimple(session);
 
 app.use(
   session({
+    store: new PgSession({
+      pool: pool,
+      tableName: 'session',
+      createTableIfMissing: true,
+    }),
     secret: 'mx-session',
     resave: false, // Do not resave the session if it hasn't changed
     saveUninitialized: true, // Save new sessions
-    cookie: { secure: false }, // Set to true if using HTTPS
+    cookie: {
+      secure: false, // Set to true if using HTTPS
+      maxAge: 24 * 60 * 60 * 1000, // 1-day session expiration
+    },
   })
 );
 
@@ -159,7 +179,15 @@ process.on('SIGINT', async () => {
   } catch (error: any) {
     console.error('Error updating runs:', error);
   }
-  
+
+  try {
+    console.log('Closing PostgreSQL connection pool...');
+    await pool.end();
+    console.log('PostgreSQL connection pool closed');
+  } catch (error) {
+    console.error('Error closing PostgreSQL connection pool:', error);
+  }
+
   if (!isProduction) {
     if (workerProcess) workerProcess.kill();
     if (recordingWorkerProcess) recordingWorkerProcess.kill();
