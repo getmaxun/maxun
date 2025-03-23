@@ -180,6 +180,14 @@ process.on('SIGINT', async () => {
     console.error('Error updating runs:', error);
   }
 
+  try {
+    console.log('Closing PostgreSQL connection pool...');
+    await pool.end();
+   console.log('PostgreSQL connection pool closed');
+  } catch (error) {
+    console.error('Error closing PostgreSQL connection pool:', error);
+  }
+
   if (!isProduction) {
     if (workerProcess) workerProcess.kill();
     if (recordingWorkerProcess) recordingWorkerProcess.kill();
