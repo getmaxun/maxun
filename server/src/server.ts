@@ -47,6 +47,7 @@ app.use(
   session({
     store: new PgSession({
       pool: pool,
+      tableName: 'session',
     }),
     secret: 'mx-session',
     resave: false, // Do not resave the session if it hasn't changed
