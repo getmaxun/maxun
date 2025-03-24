@@ -245,105 +245,150 @@ export class RemoteBrowser {
      * @returns {Promise<void>}
      */
     public initialize = async (userId: string): Promise<void> => {
-        this.browser = <Browser>(await chromium.launch({
-            headless: true,
-            args: [
-                "--disable-blink-features=AutomationControlled",
-                "--disable-web-security",
-                "--disable-features=IsolateOrigins,site-per-process",
-                "--disable-site-isolation-trials",
-                "--disable-extensions",
-                "--no-sandbox",
-                "--disable-dev-shm-usage",
-                "--force-color-profile=srgb",
-                "--force-device-scale-factor=2",
-            ],
-        }));
-        const proxyConfig = await getDecryptedProxyConfig(userId);
-        let proxyOptions: { server: string, username?: string, password?: string } = { server: '' };
-        if (proxyConfig.proxy_url) {
-            proxyOptions = {
-                server: proxyConfig.proxy_url,
-                ...(proxyConfig.proxy_username && proxyConfig.proxy_password && {
-                    username: proxyConfig.proxy_username,
-                    password: proxyConfig.proxy_password,
-                }),
-            };
-        }
-        const contextOptions: any = {
-            // viewport: { height: 400, width: 900 },
-            // recordVideo: { dir: 'videos/' }
-            // Force reduced motion to prevent animation issues
-            reducedMotion: 'reduce',
-            // Force JavaScript to be enabled
-            javaScriptEnabled: true,
-            // Set a reasonable timeout
-            timeout: 50000,
-            // Disable hardware acceleration
-            forcedColors: 'none',
-            isMobile: false,
-            hasTouch: false,
-            userAgent: this.getUserAgent(),
-            deviceScaleFactor: 2,
-        };
-
-        if (proxyOptions.server) {
-            contextOptions.proxy = {
-                server: proxyOptions.server,
-                username: proxyOptions.username ? proxyOptions.username : undefined,
-                password: proxyOptions.password ? proxyOptions.password : undefined,
-            };
-        }
-
-        this.context = await this.browser.newContext(contextOptions);
-        await this.context.addInitScript(
-            `const defaultGetter = Object.getOwnPropertyDescriptor(
-              Navigator.prototype,
-              "webdriver"
-            ).get;
-            defaultGetter.apply(navigator);
-            defaultGetter.toString();
-            Object.defineProperty(Navigator.prototype, "webdriver", {
-              set: undefined,
-              enumerable: true,
-              configurable: true,
-              get: new Proxy(defaultGetter, {
-                apply: (target, thisArg, args) => {
-                  Reflect.apply(target, thisArg, args);
-                  return false;
-                },
-              }),
-            });
-            const patchedGetter = Object.getOwnPropertyDescriptor(
-              Navigator.prototype,
-              "webdriver"
-            ).get;
-            patchedGetter.apply(navigator);
-            patchedGetter.toString();`
-        );
-        this.currentPage = await this.context.newPage();
-
-        await this.setupPageEventListeners(this.currentPage);
-
-        const viewportSize = await this.currentPage.viewportSize();
-        if (viewportSize) {
-            this.socket.emit('viewportInfo', {
-                width: viewportSize.width,
-                height: viewportSize.height,
-                userId: this.userId
-            });
-        }
-
-        try {
-            const blocker = await PlaywrightBlocker.fromLists(fetch, ['https://easylist.to/easylist/easylist.txt']);
-            await blocker.enableBlockingInPage(this.currentPage);
-            this.client = await this.currentPage.context().newCDPSession(this.currentPage);
-            await blocker.disableBlockingInPage(this.currentPage);
-            console.log('Adblocker initialized');
-        } catch (error: any) {
-            console.warn('Failed to initialize adblocker, continuing without it:', error.message);
-            // Still need to set up the CDP session even if blocker fails
-            this.client = await this.currentPage.context().newCDPSession(this.currentPage);
+        const MAX_RETRIES = 3;
+        let retryCount = 0;
+        let success = false;
+    
+        while (!success && retryCount < MAX_RETRIES) {
+            try {
+                this.browser = <Browser>(await chromium.launch({
+                    headless: true,
+                    args: [
+                        "--disable-blink-features=AutomationControlled",
+                        "--disable-web-security",
+                        "--disable-features=IsolateOrigins,site-per-process",
+                        "--disable-site-isolation-trials",
+                        "--disable-extensions",
+                        "--no-sandbox",
+                        "--disable-dev-shm-usage",
+                        "--force-color-profile=srgb",
+                        "--force-device-scale-factor=2",
+                    ],
+                }));
+                
+                if (!this.browser || this.browser.isConnected() === false) {
+                    throw new Error('Browser failed to launch or is not connected');
+                }
+                
+                const proxyConfig = await getDecryptedProxyConfig(userId);
+                let proxyOptions: { server: string, username?: string, password?: string } = { server: '' };
+                
+                if (proxyConfig.proxy_url) {
+                    proxyOptions = {
+                        server: proxyConfig.proxy_url,
+                        ...(proxyConfig.proxy_username && proxyConfig.proxy_password && {
+                            username: proxyConfig.proxy_username,
+                            password: proxyConfig.proxy_password,
+                        }),
+                    };
+                }
+                
+                const contextOptions: any = {
+                    // viewport: { height: 400, width: 900 },
+                    // recordVideo: { dir: 'videos/' }
+                    // Force reduced motion to prevent animation issues
+                    reducedMotion: 'reduce',
+                    // Force JavaScript to be enabled
+                    javaScriptEnabled: true,
+                    // Set a reasonable timeout
+                    timeout: 50000,
+                    // Disable hardware acceleration
+                    forcedColors: 'none',
+                    isMobile: false,
+                    hasTouch: false,
+                    userAgent: this.getUserAgent(),
+                    deviceScaleFactor: 2,
+                };
+    
+                if (proxyOptions.server) {
+                    contextOptions.proxy = {
+                        server: proxyOptions.server,
+                        username: proxyOptions.username ? proxyOptions.username : undefined,
+                        password: proxyOptions.password ? proxyOptions.password : undefined,
+                    };
+                }
+    
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                const contextPromise = this.browser.newContext(contextOptions);
+                this.context = await Promise.race([
+                    contextPromise,
+                    new Promise<never>((_, reject) => {
+                        setTimeout(() => reject(new Error('Context creation timed out after 15s')), 15000);
+                    })
+                ]) as BrowserContext;
+                
+                await this.context.addInitScript(
+                    `const defaultGetter = Object.getOwnPropertyDescriptor(
+                      Navigator.prototype,
+                      "webdriver"
+                    ).get;
+                    defaultGetter.apply(navigator);
+                    defaultGetter.toString();
+                    Object.defineProperty(Navigator.prototype, "webdriver", {
+                      set: undefined,
+                      enumerable: true,
+                      configurable: true,
+                      get: new Proxy(defaultGetter, {
+                        apply: (target, thisArg, args) => {
+                          Reflect.apply(target, thisArg, args);
+                          return false;
+                        },
+                      }),
+                    });
+                    const patchedGetter = Object.getOwnPropertyDescriptor(
+                      Navigator.prototype,
+                      "webdriver"
+                    ).get;
+                    patchedGetter.apply(navigator);
+                    patchedGetter.toString();`
+                );
+                
+                this.currentPage = await this.context.newPage();
+                await this.setupPageEventListeners(this.currentPage);
+    
+                const viewportSize = await this.currentPage.viewportSize();
+                if (viewportSize) {
+                    this.socket.emit('viewportInfo', {
+                        width: viewportSize.width,
+                        height: viewportSize.height,
+                        userId: this.userId
+                    });
+                }
+    
+                try {
+                    const blocker = await PlaywrightBlocker.fromLists(fetch, ['https://easylist.to/easylist/easylist.txt']);
+                    await blocker.enableBlockingInPage(this.currentPage);
+                    this.client = await this.currentPage.context().newCDPSession(this.currentPage);
+                    await blocker.disableBlockingInPage(this.currentPage);
+                    console.log('Adblocker initialized');
+                } catch (error: any) {
+                    console.warn('Failed to initialize adblocker, continuing without it:', error.message);
+                    // Still need to set up the CDP session even if blocker fails
+                    this.client = await this.currentPage.context().newCDPSession(this.currentPage);
+                }
+                
+                success = true;
+                logger.log('debug', `Browser initialized successfully for user ${userId}`);
+            } catch (error: any) {
+                retryCount++;
+                logger.log('error', `Browser initialization failed (attempt ${retryCount}/${MAX_RETRIES}): ${error.message}`);
+                
+                if (this.browser) {
+                    try {
+                        await this.browser.close();
+                    } catch (closeError) {
+                        logger.log('warn', `Failed to close browser during cleanup: ${closeError}`);
+                    }
+                    this.browser = null;
+                }
+                
+                if (retryCount >= MAX_RETRIES) {
+                    throw new Error(`Failed to initialize browser after ${MAX_RETRIES} attempts: ${error.message}`);
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
         }
     };
 
