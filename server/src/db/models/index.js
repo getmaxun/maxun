@@ -11,9 +11,21 @@ const db = {};
 
 let sequelize;
 if (config.use_env_variable) {
-  sequelize = new Sequelize(process.env[config.use_env_variable], config);
+  try {
+    sequelize = new Sequelize(process.env[config.use_env_variable], config);
+    console.log(`Connected to database using ${config.use_env_variable}`);
+  } catch (error) {
+    console.error('Unable to connect to the database using environment variable:', error);
+    process.exit(1);
+  }
 } else {
-  sequelize = new Sequelize(config.database, config.username, config.password, config);
+  try {
+    sequelize = new Sequelize(config.database, config.username, config.password, config);
+    console.log(`Connected to database: ${config.database}`);
+  } catch (error) {
+    console.error('Unable to connect to the database:', error);
+    process.exit(1);
+  }
 }
 
 fs
