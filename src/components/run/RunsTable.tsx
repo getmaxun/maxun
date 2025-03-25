@@ -424,6 +424,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
       abortRunHandler,
       handleDelete,
       accordionSortConfigs,
+      getPaginationState,
     ]
   );
 
