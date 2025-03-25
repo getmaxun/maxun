@@ -48,6 +48,7 @@ services:
       - "${BACKEND_PORT:-8080}:${BACKEND_PORT:-8080}"
     env_file: .env
     environment:
+      DB_HOST: ${DB_HOST}
       BACKEND_URL: ${BACKEND_URL}
       # to ensure Playwright works in Docker
       PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
