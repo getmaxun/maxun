@@ -524,7 +524,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
                             minWidth: column.minWidth,
                             maxWidth: column.maxWidth,
                             width: `${
-                              (column.flexGrow / totalFlexGrow) * 100
+                             (column.flexGrow / columns.reduce((sum, col) => sum + (col.flexGrow || 0), 0)) * 100
                             }%`,
                             cursor:
                               column.id === "startedAt" ||
