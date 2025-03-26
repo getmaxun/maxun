@@ -1,8 +1,12 @@
 'use strict';
 
-const { execSync } = require('child_process');
-const path = require('path');
-const db = require('./models');
+import { execSync } from 'child_process';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import db from './models/index.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 async function runMigrations() {
   try {
