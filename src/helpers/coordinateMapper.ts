@@ -8,8 +8,10 @@ export class CoordinateMapper {
   private browserWidth: number;
   private browserHeight: number;
   
+  private lastBrowserRect: { left: number, top: number, right: number, bottom: number } | null = null;
+  private lastCanvasRect: DOMRect | null = null;
+  
   constructor() {
-    // Use responsive dimensions instead of hardcoded values
     const dimensions = getResponsiveDimensions();
     this.canvasWidth = dimensions.canvasWidth;
     this.canvasHeight = dimensions.canvasHeight;
@@ -32,18 +34,36 @@ export class CoordinateMapper {
   }
   
   mapBrowserRectToCanvas(rect: DOMRect): DOMRect {
+    if (this.lastBrowserRect && 
+        this.lastBrowserRect.left === rect.left &&
+        this.lastBrowserRect.top === rect.top &&
+        this.lastBrowserRect.right === rect.right &&
+        this.lastBrowserRect.bottom === rect.bottom) {
+      return this.lastCanvasRect!;
+    }
+    
     const topLeft = this.mapBrowserToCanvas({ x: rect.left, y: rect.top });
     const bottomRight = this.mapBrowserToCanvas({ x: rect.right, y: rect.bottom });
     
     const width = bottomRight.x - topLeft.x;
     const height = bottomRight.y - topLeft.y;
     
-    return new DOMRect(
+    const result = new DOMRect(
       topLeft.x,
       topLeft.y,
       width,
       height
     );
+    
+    this.lastBrowserRect = {
+      left: rect.left,
+      top: rect.top,
+      right: rect.right,
+      bottom: rect.bottom
+    };
+    this.lastCanvasRect = result;
+    
+    return result;
   }
   
   mapCanvasRectToBrowser(rect: DOMRect): DOMRect {
@@ -66,6 +86,9 @@ export class CoordinateMapper {
     if (canvasHeight) this.canvasHeight = canvasHeight;
     if (browserWidth) this.browserWidth = browserWidth;
     if (browserHeight) this.browserHeight = browserHeight;
+    
+    this.lastBrowserRect = null;
+    this.lastCanvasRect = null;
   }
 }
 
