@@ -22,9 +22,9 @@ import { getInjectableScript } from 'idcac-playwright';
 chromium.use(stealthPlugin());
 
 const MEMORY_CONFIG = {
-    gcInterval: 60000, // 1 minute
-    maxHeapSize: 2048 * 1024 * 1024, // 2GB
-    heapUsageThreshold: 0.85 // 85%
+    gcInterval: 20000, // Check memory more frequently (20s instead of 60s)
+    maxHeapSize: 1536 * 1024 * 1024, // 1.5GB
+    heapUsageThreshold: 0.7 // 70% (reduced threshold to react earlier)
 };
 
 const SCREENCAST_CONFIG: {
@@ -35,12 +35,12 @@ const SCREENCAST_CONFIG: {
     compressionQuality: number;
     maxQueueSize: number;
 } = {
-    format: 'png',
+    format: 'png', 
     maxWidth: 1280,
     maxHeight: 720,
-    targetFPS: 30,
-    compressionQuality: 0.95,
-    maxQueueSize: 2
+    targetFPS: 15, 
+    compressionQuality: 0.95, 
+    maxQueueSize: 1 
 };
 
 /**
@@ -131,13 +131,23 @@ export class RemoteBrowser {
         setInterval(() => {
             const memoryUsage = process.memoryUsage();
             const heapUsageRatio = memoryUsage.heapUsed / MEMORY_CONFIG.maxHeapSize;
-
-            if (heapUsageRatio > MEMORY_CONFIG.heapUsageThreshold) {
-                logger.warn('High memory usage detected, triggering cleanup');
+            
+            if (heapUsageRatio > MEMORY_CONFIG.heapUsageThreshold * 1.2) {
+                logger.warn('Critical memory pressure detected, triggering emergency cleanup');
                 this.performMemoryCleanup();
+            } else if (heapUsageRatio > MEMORY_CONFIG.heapUsageThreshold) {
+                logger.warn('High memory usage detected, triggering cleanup');
+                
+                if (this.screenshotQueue.length > 0) {
+                    this.screenshotQueue = [];
+                    logger.info('Screenshot queue cleared due to memory pressure');
+                }
+                
+                if (global.gc && heapUsageRatio > MEMORY_CONFIG.heapUsageThreshold * 1.1) {
+                    global.gc();
+                }
             }
-
-            // Clear screenshot queue if it's too large
+            
             if (this.screenshotQueue.length > SCREENCAST_CONFIG.maxQueueSize) {
                 this.screenshotQueue = this.screenshotQueue.slice(-SCREENCAST_CONFIG.maxQueueSize);
             }
@@ -147,24 +157,37 @@ export class RemoteBrowser {
     private async performMemoryCleanup(): Promise<void> {
         this.screenshotQueue = [];
         this.isProcessingScreenshot = false;
-
+        
         if (global.gc) {
-            global.gc();
+            try {
+                global.gc();
+                logger.info('Garbage collection requested');
+            } catch (error) {
+                logger.error('Error during garbage collection:', error);
+            }
         }
-
-        // Reset CDP session if needed
+        
         if (this.client) {
             try {
                 await this.stopScreencast();
+                
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
                 this.client = null;
                 if (this.currentPage) {
                     this.client = await this.currentPage.context().newCDPSession(this.currentPage);
                     await this.startScreencast();
+                    logger.info('CDP session reset completed');
                 }
             } catch (error) {
                 logger.error('Error resetting CDP session:', error);
             }
         }
+        
+        this.socket.emit('memory-cleanup', {
+            userId: this.userId,
+            timestamp: Date.now()
+        });
     }
 
     /**
@@ -345,6 +368,8 @@ export class RemoteBrowser {
             // Still need to set up the CDP session even if blocker fails
             this.client = await this.currentPage.context().newCDPSession(this.currentPage);
         }
+
+        this.initializeMemoryManagement();
     };
 
     public updateViewportInfo = async (): Promise<void> => {
@@ -535,23 +560,24 @@ export class RemoteBrowser {
             return await sharp(screenshot)
                 .png({
                     quality: Math.round(SCREENCAST_CONFIG.compressionQuality * 100),                
-                    compressionLevel: 3,        
+                    compressionLevel: 6,        
                     adaptiveFiltering: true,    
-                    force: true                
+                    force: true                 
                 })
                 .resize({
                     width: SCREENCAST_CONFIG.maxWidth,
                     height: SCREENCAST_CONFIG.maxHeight,
                     fit: 'inside',
                     withoutEnlargement: true,
-                    kernel: sharp.kernel.mitchell  
+                    kernel: 'lanczos3' 
                 })
                 .toBuffer();
         } catch (error) {
-            logger.error('Screenshot optimization failed:', error);
+            logger.error('Screenshot optimization failed:', error);            
             return screenshot;
         }
     }
+    
 
     /**
      * Makes and emits a single screenshot to the client side.
@@ -706,24 +732,43 @@ export class RemoteBrowser {
         try {
             await this.client.send('Page.startScreencast', {
                 format: SCREENCAST_CONFIG.format,
-                quality: Math.round(SCREENCAST_CONFIG.compressionQuality * 100), 
+                quality: Math.round(SCREENCAST_CONFIG.compressionQuality * 100),
                 maxWidth: SCREENCAST_CONFIG.maxWidth,
                 maxHeight: SCREENCAST_CONFIG.maxHeight,
+                everyNthFrame: 1 
             });
-            // Set flag to indicate screencast is active
+            
             this.isScreencastActive = true;
-
-            // Set up screencast frame handler
+    
             this.client.on('Page.screencastFrame', async ({ data, sessionId }) => {
                 try {
+                    if (this.screenshotQueue.length >= SCREENCAST_CONFIG.maxQueueSize && this.isProcessingScreenshot) {
+                        await this.client?.send('Page.screencastFrameAck', { sessionId });
+                        return;
+                    }
+                    
                     const buffer = Buffer.from(data, 'base64');
-                    await this.emitScreenshot(buffer);
-                    await this.client?.send('Page.screencastFrameAck', { sessionId });
+                    this.emitScreenshot(buffer);
+                    
+                    setTimeout(async () => {
+                        try {
+                            if (this.client) {
+                                await this.client.send('Page.screencastFrameAck', { sessionId });
+                            }
+                        } catch (e) {
+                            logger.error('Error acknowledging screencast frame:', e);
+                        }
+                    }, 10); 
                 } catch (error) {
                     logger.error('Screencast frame processing failed:', error);
+                    
+                    try {
+                        await this.client?.send('Page.screencastFrameAck', { sessionId });
+                    } catch (ackError) {
+                        logger.error('Failed to acknowledge screencast frame:', ackError);
+                    }
                 }
             });
-
             logger.info('Screencast started successfully');
         } catch (error) {
             logger.error('Failed to start screencast:', error);
@@ -755,26 +800,31 @@ export class RemoteBrowser {
      * @returns void
      */
     private emitScreenshot = async (payload: Buffer, viewportSize?: { width: number, height: number }): Promise<void> => {
+        if (this.screenshotQueue.length > SCREENCAST_CONFIG.maxQueueSize) {
+            this.screenshotQueue = this.screenshotQueue.slice(-SCREENCAST_CONFIG.maxQueueSize);
+        }
+        
         if (this.isProcessingScreenshot) {
             if (this.screenshotQueue.length < SCREENCAST_CONFIG.maxQueueSize) {
                 this.screenshotQueue.push(payload);
             }
             return;
         }
-    
+        
         this.isProcessingScreenshot = true;
-    
+        
         try {
             const optimizationPromise = this.optimizeScreenshot(payload);
-            
             const timeoutPromise = new Promise<Buffer>((resolve) => {
-                setTimeout(() => resolve(payload), 100); 
+                setTimeout(() => resolve(payload), 150);
             });
             
             const optimizedScreenshot = await Promise.race([optimizationPromise, timeoutPromise]);
             const base64Data = optimizedScreenshot.toString('base64');
-            const dataWithMimeType = `data:image/png;base64,${base64Data}`;
-    
+            const dataWithMimeType = `data:image/${SCREENCAST_CONFIG.format};base64,${base64Data}`;
+            
+            payload = null as any;
+            
             this.socket.emit('screencast', {
                 image: dataWithMimeType,
                 userId: this.userId,
@@ -785,6 +835,7 @@ export class RemoteBrowser {
             try {
                 const base64Data = payload.toString('base64');
                 const dataWithMimeType = `data:image/png;base64,${base64Data}`;
+                
                 this.socket.emit('screencast', {
                     image: dataWithMimeType,
                     userId: this.userId,
@@ -795,11 +846,13 @@ export class RemoteBrowser {
             }
         } finally {
             this.isProcessingScreenshot = false;
-    
+            
             if (this.screenshotQueue.length > 0) {
-                const nextScreenshot = this.screenshotQueue.shift();
+                const nextScreenshot = this.screenshotQueue.shift();  
                 if (nextScreenshot) {
-                    setTimeout(() => this.emitScreenshot(nextScreenshot), 1000 / SCREENCAST_CONFIG.targetFPS);
+                    setTimeout(() => {
+                        this.emitScreenshot(nextScreenshot);
+                    }, 1000 / SCREENCAST_CONFIG.targetFPS);
                 }
             }
         }

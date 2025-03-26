@@ -10,7 +10,7 @@ interface HighlighterProps {
   canvasRect: DOMRect;
 };
 
-export const Highlighter = ({ unmodifiedRect, displayedSelector = '', width, height, canvasRect }: HighlighterProps) => {
+const HighlighterComponent = ({ unmodifiedRect, displayedSelector = '', width, height, canvasRect }: HighlighterProps) => {
   if (!unmodifiedRect) {
     return null;
   } else {
@@ -46,6 +46,8 @@ export const Highlighter = ({ unmodifiedRect, displayedSelector = '', width, hei
     );
   }
 }
+
+export const Highlighter = React.memo(HighlighterComponent);
 
 const HighlighterOutline = styled.div<HighlighterOutlineProps>`
   box-sizing: border-box;
