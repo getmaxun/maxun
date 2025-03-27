@@ -96,7 +96,13 @@
     "build:server": "tsc -p server/tsconfig.json",
     "start:server": "cross-env NODE_OPTIONS='--max-old-space-size=8000' server/dist/server/src/server.js",
     "preview": "vite preview",
-    "lint": "./node_modules/.bin/eslint ."
+    "lint": "./node_modules/.bin/eslint .",
+    "migrate": "sequelize-cli db:migrate",
+    "migrate:undo": "sequelize-cli db:migrate:undo",
+    "migrate:undo:all": "sequelize-cli db:migrate:undo:all",
+    "seed": "sequelize-cli db:seed:all",
+    "seed:undo:all": "sequelize-cli db:seed:undo:all",
+    "migration:generate": "sequelize-cli migration:generate --name"
   },
   "eslintConfig": {
     "extends": [
