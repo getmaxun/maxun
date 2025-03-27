@@ -11,7 +11,6 @@ COPY public ./public
 COPY server ./server
 COPY tsconfig.json ./
 COPY server/tsconfig.json ./server/
-COPY .sequelizerc ./
 # COPY server/start.sh ./  
 
 # Install dependencies
@@ -42,18 +41,11 @@ RUN apt-get update && apt-get install -y \
     libxext6 \
     libxi6 \
     libxtst6 \
-    postgresql-client \
-    netcat-openbsd \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /tmp/.X11-unix && chmod 1777 /tmp/.X11-unix
 
-COPY server/docker-entrypoint.sh /app/
-RUN chmod +x /app/docker-entrypoint.sh
-
 # Expose the backend port
 EXPOSE ${BACKEND_PORT:-8080}
-
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
 
 # Start the backend using the start script
 CMD ["npm", "run", "server"]
