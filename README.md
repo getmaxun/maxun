@@ -64,7 +64,7 @@ npm install
 # get back to the root directory
 cd ..
 
-# make sure playwright is properly initialized
+# install chromium and its dependencies
 npx playwright install chromium
 npx playwright install-deps chromium
 
