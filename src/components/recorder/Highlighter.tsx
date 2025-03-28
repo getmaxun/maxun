@@ -1,5 +1,6 @@
 import React from 'react';
 import styled from "styled-components";
+import { coordinateMapper } from '../../helpers/coordinateMapper';
 
 interface HighlighterProps {
   unmodifiedRect: DOMRect;
@@ -9,17 +10,19 @@ interface HighlighterProps {
   canvasRect: DOMRect;
 };
 
-export const Highlighter = ({ unmodifiedRect, displayedSelector = '', width, height, canvasRect }: HighlighterProps) => {
+const HighlighterComponent = ({ unmodifiedRect, displayedSelector = '', width, height, canvasRect }: HighlighterProps) => {
   if (!unmodifiedRect) {
     return null;
   } else {
+    const mappedRect = coordinateMapper.mapBrowserRectToCanvas(unmodifiedRect);
+
     const rect = {
-      top: unmodifiedRect.top + canvasRect.top + window.scrollY,
-      left: unmodifiedRect.left + canvasRect.left + window.scrollX,
-      right: unmodifiedRect.right + canvasRect.left,
-      bottom: unmodifiedRect.bottom + canvasRect.top,
-      width: unmodifiedRect.width,
-      height: unmodifiedRect.height,
+      top: mappedRect.top + canvasRect.top + window.scrollY,
+      left: mappedRect.left + canvasRect.left + window.scrollX,
+      right: mappedRect.right + canvasRect.left,
+      bottom: mappedRect.bottom + canvasRect.top,
+      width: mappedRect.width,
+      height: mappedRect.height,
     };
 
 
@@ -44,15 +47,15 @@ export const Highlighter = ({ unmodifiedRect, displayedSelector = '', width, hei
   }
 }
 
+export const Highlighter = React.memo(HighlighterComponent);
+
 const HighlighterOutline = styled.div<HighlighterOutlineProps>`
   box-sizing: border-box;
   pointer-events: none !important;
   position: fixed !important;
   background: #ff5d5b26 !important;
-  outline: 4px solid #ff00c3 !important;
-  //border: 4px solid #ff5d5b !important;
+  outline: 2px solid #ff00c3 !important;
   z-index: 2147483647 !important;
-  //border-radius: 5px;
   top: ${(p: HighlighterOutlineProps) => p.top}px;
   left: ${(p: HighlighterOutlineProps) => p.left}px;
   width: ${(p: HighlighterOutlineProps) => p.width}px;

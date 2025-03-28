@@ -259,11 +259,11 @@ function handleWorkflowActions(workflow: any[], credentials: Credentials) {
 router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
-    const { name, limit, credentials } = req.body;
+    const { name, limit, credentials, targetUrl } = req.body;
 
     // Validate input
-    if (!name && limit === undefined) {
-      return res.status(400).json({ error: 'Either "name" or "limit" must be provided.' });
+    if (!name && limit === undefined && !targetUrl) {
+      return res.status(400).json({ error: 'Either "name", "limit" or "target_url" must be provided.' });
     }
 
     // Fetch the robot by ID
@@ -277,6 +277,27 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
     if (name) {
       robot.set('recording_meta', { ...robot.recording_meta, name });
     }
+
+    if (targetUrl) {
+      const updatedWorkflow = robot.recording.workflow.map((step) => {
+        if (step.where?.url && step.where.url !== "about:blank") {
+          step.where.url = targetUrl;
+        }
+
+        step.what.forEach((action) => {
+          if (action.action === "goto" && action.args?.length) {
+            action.args[0] = targetUrl; 
+          }
+        });
+
+        return step;
+      });
+
+      robot.set('recording', { ...robot.recording, workflow: updatedWorkflow });
+      robot.changed('recording', true);
+    }
+
+    await robot.save();
 
     let workflow = [...robot.recording.workflow]; // Create a copy of the workflow
 
@@ -658,10 +679,12 @@ router.post('/runs/run/:id', requireSignIn, async (req: AuthenticatedRequest, re
     }
 
     try {
+      const userQueueName = `execute-run-user-${req.user.id}`;
+
       // Queue the execution job
-      await pgBoss.createQueue('execute-run');
+      await pgBoss.createQueue(userQueueName);
       
-      const jobId = await pgBoss.send('execute-run', {
+      const jobId = await pgBoss.send(userQueueName, {
         userId: req.user.id,
         runId: req.params.id,
         browserId: plainRun.browserId

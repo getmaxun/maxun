@@ -1,6 +1,6 @@
 {
   "name": "maxun",
-  "version": "0.0.10",
+  "version": "0.0.12",
   "author": "Maxun",
   "license": "AGPL-3.0-or-later",
   "dependencies": {
@@ -28,6 +28,7 @@
     "body-parser": "^1.20.3",
     "buffer": "^6.0.3",
     "bullmq": "^5.12.15",
+    "connect-pg-simple": "^10.0.0",
     "connect-redis": "^8.0.1",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
@@ -51,7 +52,7 @@
     "lodash": "^4.17.21",
     "loglevel": "^1.8.0",
     "loglevel-plugin-remote": "^0.6.8",
-    "maxun-core": "^0.0.13",
+    "maxun-core": "^0.0.14",
     "minio": "^8.0.1",
     "moment-timezone": "^0.5.45",
     "node-cron": "^3.0.3",
@@ -95,7 +96,13 @@
     "build:server": "tsc -p server/tsconfig.json",
     "start:server": "cross-env NODE_OPTIONS='--max-old-space-size=8000' server/dist/server/src/server.js",
     "preview": "vite preview",
-    "lint": "./node_modules/.bin/eslint ."
+    "lint": "./node_modules/.bin/eslint .",
+    "migrate": "sequelize-cli db:migrate",
+    "migrate:undo": "sequelize-cli db:migrate:undo",
+    "migrate:undo:all": "sequelize-cli db:migrate:undo:all",
+    "seed": "sequelize-cli db:seed:all",
+    "seed:undo:all": "sequelize-cli db:seed:undo:all",
+    "migration:generate": "sequelize-cli migration:generate --name"
   },
   "eslintConfig": {
     "extends": [
@@ -103,6 +110,7 @@
     ]
   },
   "devDependencies": {
+    "@types/connect-pg-simple": "^7.0.3",
     "@types/cookie-parser": "^1.4.7",
     "@types/express": "^4.17.13",
     "@types/js-cookie": "^3.0.6",

@@ -524,7 +524,7 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
     // Enhanced value extraction with context awareness
     function extractValue(element, attribute) {
       if (!element) return null;
-
+    
       // Get context-aware base URL
       const baseURL = element.ownerDocument?.location?.href || window.location.origin;
       
@@ -535,14 +535,34 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
               return shadowContent.trim();
           }
       }
-
+    
       if (attribute === 'innerText') {
           return element.innerText.trim();
       } else if (attribute === 'innerHTML') {
           return element.innerHTML.trim();
       } else if (attribute === 'src' || attribute === 'href') {
           const attrValue = element.getAttribute(attribute);
-          return attrValue ? new URL(attrValue, baseURL).href : null;
+          
+          const dataAttr = attrValue || element.getAttribute('data-' + attribute);
+          
+          if (!dataAttr || dataAttr.trim() === '') {
+              if (attribute === 'src') {
+                  const style = window.getComputedStyle(element);
+                  const bgImage = style.backgroundImage;
+                  if (bgImage && bgImage !== 'none') {
+                      const matches = bgImage.match(/url\(['"]?([^'")]+)['"]?\)/);
+                      return matches ? new URL(matches[1], baseURL).href : null;
+                  }
+              }
+              return null;
+          }
+          
+          try {
+              return new URL(dataAttr, baseURL).href;
+          } catch (e) {
+              console.warn('Error creating URL from', dataAttr, e);
+              return dataAttr; // Return the original value if URL construction fails
+          }
       }
       return element.getAttribute(attribute);
     }
