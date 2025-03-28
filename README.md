@@ -65,8 +65,7 @@ npm install
 cd ..
 
 # install chromium and its dependencies
-npx playwright install chromium
-npx playwright install-deps chromium
+npx playwright install --with-deps chromium
 
 # get back to the root directory
 cd ..
