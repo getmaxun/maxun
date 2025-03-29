@@ -209,12 +209,10 @@ export async function scheduleWorkflow(id: string, userId: string, cronExpressio
 export async function cancelScheduledWorkflow(robotId: string) {
   try {
     const jobs = await pgBoss.getSchedules();
-
-    console.log("Scheduled JOBS", jobs);
     
     const matchingJobs = jobs.filter((job: any) => {
       try {
-        const data = JSON.parse(job.data);
+        const data = job.data;
         return data && data.id === robotId;
       } catch {
         return false;
