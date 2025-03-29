@@ -22,7 +22,8 @@ import { encrypt, decrypt } from '../utils/auth';
 import { WorkflowFile } from 'maxun-core';
 import { Page } from 'playwright';
 import { airtableUpdateTasks, processAirtableUpdates } from '../workflow-management/integrations/airtable';
-import { cancelScheduledWorkflow, pgBoss, scheduleWorkflow } from '../pgboss-worker';
+import { cancelScheduledWorkflow, scheduleWorkflow } from '../schedule-worker';
+import { pgBoss } from '../pgboss-worker';
 chromium.use(stealthPlugin());
 
 export const router = Router();
