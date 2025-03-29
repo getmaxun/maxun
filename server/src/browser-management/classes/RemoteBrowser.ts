@@ -414,7 +414,7 @@ export class RemoteBrowser {
             }
         }
 
-        this.initializeMemoryManagement();
+        // this.initializeMemoryManagement();
     };
 
     public updateViewportInfo = async (): Promise<void> => {
