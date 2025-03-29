@@ -761,7 +761,7 @@ router.put('/schedule/:id/', requireSignIn, async (req: AuthenticatedRequest, re
 
     switch (runEveryUnit) {
       case 'MINUTES':
-        cronExpression = `${startMinutes} */${runEvery} * * *`;
+        cronExpression = `*/${runEvery} * * * *`;
         break;
       case 'HOURS':
         cronExpression = `${startMinutes} */${runEvery} * * *`;
@@ -774,7 +774,7 @@ router.put('/schedule/:id/', requireSignIn, async (req: AuthenticatedRequest, re
         break;
       case 'MONTHS':
         // todo: handle leap year
-        cronExpression = `0 ${atTimeStart} ${dayOfMonth} * *`;
+        cronExpression = `${startMinutes} ${startHours} ${dayOfMonth} */${runEvery} *`;
         if (startFrom !== 'SUNDAY') {
           cronExpression += ` ${dayIndex}`;
         }
