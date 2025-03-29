@@ -97,7 +97,7 @@ readdirSync(path.join(__dirname, 'api')).forEach((r) => {
 });
 
 const isProduction = process.env.NODE_ENV === 'production';
-const workerPath = path.resolve(__dirname, isProduction ? './worker.js' : './worker.ts');
+const workerPath = path.resolve(__dirname, isProduction ? './schedule-worker.js' : './schedule-worker.ts');
 const recordingWorkerPath = path.resolve(__dirname, isProduction ? './pgboss-worker.js' : './pgboss-worker.ts');
 
 let workerProcess: any;
