@@ -143,9 +143,4 @@ Robot.init(
   }
 );
 
-// Robot.hasMany(Run, {
-//   foreignKey: 'robotId',
-//   as: 'runs', // Alias for the relation
-// });
-
 export default Robot;
