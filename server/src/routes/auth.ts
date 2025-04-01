@@ -1,5 +1,4 @@
 import { Router, Request, Response } from "express";
-
 import User from "../models/User";
 import Robot from "../models/Robot";
 import jwt from "jsonwebtoken";
@@ -9,7 +8,6 @@ import { genAPIKey } from "../utils/api";
 import { google } from "googleapis";
 import { capture } from "../utils/analytics";
 import crypto from 'crypto';
-
 
 declare module "express-session" {
   interface SessionData {
