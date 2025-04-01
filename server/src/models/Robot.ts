@@ -1,6 +1,6 @@
 import { Model, DataTypes, Optional } from 'sequelize';
 import sequelize from '../storage/db';
-import { WorkflowFile, Where, What, WhereWhatPair } from 'maxun-core';
+import { WhereWhatPair } from 'maxun-core';
 
 interface RobotMeta {
   name: string;
