@@ -79,9 +79,4 @@ User.init(
     }
 );
 
-// User.hasMany(Robot, {
-//     foreignKey: 'userId',
-//     as: 'robots', // Alias for the relation
-//   });
-
 export default User;
