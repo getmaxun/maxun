@@ -10,7 +10,6 @@ import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { PlaywrightBlocker } from '@cliqz/adblocker-playwright';
 import fetch from 'cross-fetch';
 import sharp from 'sharp';
-
 import logger from '../../logger';
 import { InterpreterSettings, RemoteBrowserOptions } from "../../types";
 import { WorkflowGenerator } from "../../workflow-management/classes/Generator";
