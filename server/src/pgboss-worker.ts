@@ -8,7 +8,6 @@ import {
   destroyRemoteBrowser,
   interpretWholeWorkflow,
   stopRunningInterpretation,
-  createRemoteBrowserForRun
 } from './browser-management/controller';
 import { WorkflowFile } from 'maxun-core';
 import Run from './models/Run';
