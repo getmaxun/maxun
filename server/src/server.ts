@@ -18,9 +18,7 @@ import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './swagger/config';
 import connectPgSimple from 'connect-pg-simple';
 import pg from 'pg';
-
 import session from 'express-session';
-
 import Run from './models/Run';
 
 const app = express();
