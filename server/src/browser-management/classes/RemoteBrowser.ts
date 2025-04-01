@@ -9,7 +9,6 @@ import { chromium } from 'playwright-extra';
 import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { PlaywrightBlocker } from '@cliqz/adblocker-playwright';
 import fetch from 'cross-fetch';
-import { throttle } from 'lodash';
 import sharp from 'sharp';
 
 import logger from '../../logger';
