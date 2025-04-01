@@ -817,6 +817,7 @@ export default class Interpreter extends EventEmitter {
           
             if (!paginationSuccess) {
               debugLog(`Pagination failed after ${MAX_RETRIES} attempts`);
+              await scrapeCurrentPage();
               return allResults;
             }
             
