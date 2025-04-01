@@ -1,6 +1,5 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../storage/db';
-import Robot from './Robot';
 
 interface UserAttributes {
     id: number;
