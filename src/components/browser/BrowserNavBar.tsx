@@ -5,7 +5,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { NavBarButton } from '../ui/buttons/buttons';
 import { UrlForm } from './UrlForm';
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 import { useSocketStore } from "../../context/socket";
 import { getCurrentUrl } from "../../api/recording";
 import { useGlobalInfoStore } from '../../context/globalInfo';

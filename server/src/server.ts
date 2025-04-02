@@ -8,9 +8,7 @@ import { record, workflow, storage, auth, integration, proxy } from './routes';
 import { BrowserPool } from "./browser-management/classes/BrowserPool";
 import logger from './logger';
 import { connectDB, syncDB } from './storage/db'
-import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
-import csrf from 'csurf';
 import { SERVER_PORT } from "./constants/config";
 import { Server } from "socket.io";
 import { readdirSync } from "fs"
@@ -20,9 +18,7 @@ import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './swagger/config';
 import connectPgSimple from 'connect-pg-simple';
 import pg from 'pg';
-
 import session from 'express-session';
-
 import Run from './models/Run';
 
 const app = express();

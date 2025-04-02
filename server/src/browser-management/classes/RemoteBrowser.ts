@@ -9,11 +9,9 @@ import { chromium } from 'playwright-extra';
 import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { PlaywrightBlocker } from '@cliqz/adblocker-playwright';
 import fetch from 'cross-fetch';
-import { throttle } from 'lodash';
 import sharp from 'sharp';
-
 import logger from '../../logger';
-import { InterpreterSettings, RemoteBrowserOptions } from "../../types";
+import { InterpreterSettings } from "../../types";
 import { WorkflowGenerator } from "../../workflow-management/classes/Generator";
 import { WorkflowInterpreter } from "../../workflow-management/classes/Interpreter";
 import { getDecryptedProxyConfig } from '../../routes/proxy';

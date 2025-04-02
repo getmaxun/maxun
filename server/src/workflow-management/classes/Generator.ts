@@ -13,11 +13,7 @@ import {
   selectorAlreadyInWorkflow
 } from "../selector";
 import { CustomActions } from "../../../../src/shared/types";
-import { workflow } from "../../routes";
 import Robot from "../../models/Robot";
-import Run from "../../models/Run";
-import { saveFile } from "../storage";
-import fs from "fs";
 import { getBestSelectorForAction } from "../utils";
 import { browserPool } from "../../server";
 import { uuid } from "uuidv4";

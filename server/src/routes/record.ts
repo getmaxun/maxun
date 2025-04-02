@@ -5,8 +5,6 @@ import { Router, Request, Response } from 'express';
 
 import {
     initializeRemoteBrowserForRecording,
-    destroyRemoteBrowser,
-    getActiveBrowserId,
     interpretWholeWorkflow,
     stopRunningInterpretation,
     getRemoteBrowserCurrentUrl,
@@ -16,7 +14,6 @@ import {
 import { chromium } from 'playwright-extra';
 import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import logger from "../logger";
-import { getDecryptedProxyConfig } from './proxy';
 import { requireSignIn } from '../middlewares/auth';
 import { pgBoss } from '../pgboss-worker';
 

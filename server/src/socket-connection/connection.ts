@@ -1,6 +1,6 @@
 import { Namespace, Socket } from 'socket.io';
 import { IncomingMessage } from 'http';
-import { verify, JwtPayload, sign } from 'jsonwebtoken';
+import { verify, JwtPayload } from 'jsonwebtoken';
 import logger from "../logger";
 import registerInputHandlers from '../browser-management/inputHandlers';
 
