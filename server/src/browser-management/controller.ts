@@ -5,7 +5,7 @@
 import { Socket } from "socket.io";
 import { uuid } from 'uuidv4';
 
-import { createSocketConnection, createSocketConnectionForRun } from "../socket-connection/connection";
+import { createSocketConnection, createSocketConnectionForRun, registerBrowserUserContext } from "../socket-connection/connection";
 import { io, browserPool } from "../server";
 import { RemoteBrowser } from "./classes/RemoteBrowser";
 import { RemoteBrowserOptions } from "../types";
@@ -48,19 +48,27 @@ export const initializeRemoteBrowserForRecording = (userId: string): string => {
  * Starts and initializes a {@link RemoteBrowser} instance for interpretation.
  * Creates a new {@link Socket} connection over a dedicated namespace.
  * Returns the new remote browser's generated id.
- * @param options {@link RemoteBrowserOptions} to be used when launching the browser
- * @returns string
+ * @param userId User ID for browser ownership
+ * @returns string Browser ID
  * @category BrowserManagement-Controller
  */
 export const createRemoteBrowserForRun = (userId: string): string => {
   const id = uuid();
+  
+  registerBrowserUserContext(id, userId);
+  logger.log('debug', `Created new browser for run: ${id} for user: ${userId}`);
+  
   createSocketConnectionForRun(
-    io.of(id),
+    io.of(`/${id}`), 
     async (socket: Socket) => {
-      const browserSession = new RemoteBrowser(socket, userId);
-      await browserSession.initialize(userId);
-      browserPool.addRemoteBrowser(id, browserSession, userId, false, "run");
-      socket.emit('ready-for-run');
+      try {
+        const browserSession = new RemoteBrowser(socket, userId);
+        await browserSession.initialize(userId);
+        browserPool.addRemoteBrowser(id, browserSession, userId, false, "run");
+        socket.emit('ready-for-run');
+      } catch (error: any) {
+        logger.error(`Error initializing browser: ${error.message}`);
+      }
     });
   return id;
 };

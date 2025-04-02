@@ -1,6 +1,5 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../storage/db';
-import Robot from './Robot';
 
 interface UserAttributes {
     id: number;
@@ -61,13 +60,6 @@ User.init(
         proxy_username: {
             type: DataTypes.STRING,
             allowNull: true,
-            // validate: {
-            //     isProxyPasswordRequired(value: string | null) {
-            //         if (value && !this.proxy_password) {
-            //             throw new Error('Proxy password is required when proxy username is provided');
-            //         }
-            //     },
-            // },
         },
         proxy_password: {
             type: DataTypes.STRING,
@@ -79,10 +71,5 @@ User.init(
         tableName: 'user',
     }
 );
-
-// User.hasMany(Robot, {
-//     foreignKey: 'userId',
-//     as: 'robots', // Alias for the relation
-//   });
 
 export default User;
