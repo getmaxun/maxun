@@ -663,10 +663,7 @@ export default class Interpreter extends EventEmitter {
     let availableSelectors = config.pagination.selector.split(',');
 
     try {
-      while (true) {
-        // Reduced timeout for faster performance
-        await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
-        
+      while (true) {    
         switch (config.pagination.type) {
           case 'scrollDown': {
             await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
