@@ -17,16 +17,6 @@ services:
       timeout: 5s
       retries: 5
 
-  redis:
-    image: redis:6
-    environment:
-      REDIS_HOST: ${REDIS_HOST}
-      REDIS_PORT: ${REDIS_PORT}
-    ports:
-      - "${REDIS_PORT:-6379}:${REDIS_PORT:-6379}"
-    volumes:
-      - redis_data:/data
-
   minio:
     image: minio/minio
     environment:
