@@ -5,7 +5,6 @@ WORKDIR /app
 
 # Install node dependencies
 COPY package*.json ./
-COPY maxun-core ./maxun-core
 COPY src ./src
 COPY public ./public 
 COPY server ./server
