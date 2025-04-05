@@ -4,7 +4,6 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
-COPY maxun-core ./maxun-core
 
 # Install dependencies
 RUN npm install --legacy-peer-deps
