@@ -51,7 +51,6 @@ services:
     mem_limit: 2g   # Set a 2GB memory limit
     depends_on:
       - postgres
-      - redis
       - minio
     volumes:
       - /var/run/dbus:/var/run/dbus
