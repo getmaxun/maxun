@@ -118,7 +118,6 @@
     "@types/prismjs": "^1.26.0",
     "@types/react-highlight": "^0.12.5",
     "@types/react-transition-group": "^4.4.4",
-    "@types/redis": "^4.0.11",
     "@types/styled-components": "^5.1.23",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.6",
