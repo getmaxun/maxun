@@ -185,8 +185,19 @@ const onWheel = async (socket: AuthenticatedSocket, scrollDeltas: ScrollDeltas) 
  * @category BrowserManagement
  */
 const handleWheel = async (generator: WorkflowGenerator, page: Page, { deltaX, deltaY }: ScrollDeltas) => {
-    await page.mouse.wheel(deltaX, deltaY);
-    logger.log('debug', `Scrolled horizontally ${deltaX} pixels and vertically ${deltaY} pixels`);
+    try {
+        if (page.isClosed()) {
+            return;
+        }
+        
+        await page.mouse.wheel(deltaX, deltaY).catch(error => {
+            logger.log('warn', `Wheel event failed: ${error.message}`);
+        });    
+        logger.log('debug', `Scrolled horizontally ${deltaX} pixels and vertically ${deltaY} pixels`);    
+    } catch (e) {
+        const { message } = e as Error;
+        logger.log('warn', `Error handling wheel event: ${message}`);
+    }
 };
 
 /**
