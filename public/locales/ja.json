@@ -54,6 +54,7 @@
             "label": "URL",
             "button": "録画を開始"
         },
+        "retrain": "再学習",
         "edit": "編集",
         "delete": "削除",
         "duplicate": "複製",

@@ -54,6 +54,7 @@
       "label": "URL",
       "button": "开始录制"
     },
+    "retrain": "重新训练",
     "edit": "编辑",
     "delete": "删除",
     "duplicate": "复制",

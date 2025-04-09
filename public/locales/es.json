@@ -54,6 +54,7 @@
       "label": "URL",
       "button": "Comenzar grabación"
     },
+    "retrain": "Reentrenar",
     "edit": "Editar",
     "delete": "Eliminar",
     "duplicate": "Duplicar",

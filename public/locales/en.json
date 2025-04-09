@@ -60,6 +60,7 @@
         "discard_and_create":"Discard & Create New",
         "cancel":"Cancel"
       },
+      "retrain": "Retrain",
       "edit":"Edit",
       "delete":"Delete",
       "duplicate":"Duplicate",
