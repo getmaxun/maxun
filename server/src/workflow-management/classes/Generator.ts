@@ -768,6 +768,8 @@ export class WorkflowGenerator {
    */
   public saveNewWorkflow = async (fileName: string, userId: number, isLogin: boolean, robotId?: string) => {
     const recording = this.optimizeWorkflow(this.workflowRecord);
+    let actionType = 'saved'; 
+    
     try {
       if (robotId) {
         const robot = await Robot.findOne({ where: { 'recording_meta.id': robotId }});
@@ -782,7 +784,8 @@ export class WorkflowGenerator {
               updatedAt: new Date().toLocaleString(),
             },
           })
-
+          
+          actionType = 'retrained';
           logger.log('info', `Robot retrained with id: ${robot.id}`);
         }
       } else {
@@ -807,15 +810,18 @@ export class WorkflowGenerator {
             recording: robot.recording,
           }
         )
-  
+        
+        actionType = 'saved';
         logger.log('info', `Robot saved with id: ${robot.id}`);
       }  
     }
     catch (e) {
       const { message } = e as Error;
       logger.log('warn', `Cannot save the file to the local file system ${e}`)
+      actionType = 'error';
     }
-    this.socket.emit('fileSaved');
+
+    this.socket.emit('fileSaved', { actionType });
   }
 
   /**
