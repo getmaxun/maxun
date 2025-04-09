@@ -322,7 +322,6 @@ export const RecordingsTable = ({
     let targetUrl;
     
     if (robot?.content?.workflow && robot.content.workflow.length > 0) {
-      // Get the last workflow item
       const lastPair = robot.content.workflow[robot.content.workflow.length - 1];
       
       if (lastPair?.what) {
@@ -338,7 +337,6 @@ export const RecordingsTable = ({
       }
     }
     
-    // Set the URL in state and session storage
     if (targetUrl) {
       setInitialUrl(targetUrl);
       setRecordingUrl(targetUrl);
@@ -349,15 +347,14 @@ export const RecordingsTable = ({
       setActiveBrowserId(activeBrowserId);
       setWarningModalOpen(true);
     } else {
-      // Pass the URL directly to avoid timing issues with state updates
       startRetrainRecording(id, name, targetUrl);
     }
   }, [rows, setInitialUrl, setRecordingUrl]);
 
   const startRetrainRecording = (id: string, name: string, url?: string) => {
     setBrowserId('new-recording');
-    setRecordingName('');  
-    setRecordingId('');      
+    setRecordingName(name);  
+    setRecordingId(id);      
     
     window.sessionStorage.setItem('browserId', 'new-recording');
     window.sessionStorage.setItem('robotToRetrain', id);
