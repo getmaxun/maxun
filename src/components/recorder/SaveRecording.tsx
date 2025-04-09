@@ -60,10 +60,22 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
     }
   };
 
-  const exitRecording = useCallback(async () => {
+  const exitRecording = useCallback(async (data?: { actionType: string }) => {
+    let successMessage = t('save_recording.notifications.save_success');
+    
+    if (data && data.actionType) {
+      if (data.actionType === 'retrained') {
+        successMessage = t('save_recording.notifications.retrain_success');
+      } else if (data.actionType === 'saved') {
+        successMessage = t('save_recording.notifications.save_success');
+      } else if (data.actionType === 'error') {
+        successMessage = t('save_recording.notifications.save_error');
+      }
+    }
+    
     const notificationData = {
       type: 'success',
-      message: t('save_recording.notifications.save_success'),
+      message: successMessage,
       timestamp: Date.now()
     };
     
@@ -73,7 +85,6 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
         notification: notificationData
       }, '*');
       
-      // Also notify about clearing any remaining session data
       window.opener.postMessage({
         type: 'session-data-clear',
         timestamp: Date.now()
