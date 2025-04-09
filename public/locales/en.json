@@ -521,7 +521,8 @@
         "running": "Running",
         "scheduled": "Scheduled",
         "queued": "Queued",
-        "failed": "Failed"
+        "failed": "Failed",
+        "aborted": "Aborted"
       },
       "run_settings_modal": {
         "title": "Run Settings",

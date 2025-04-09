@@ -514,7 +514,8 @@
             "running": "実行中",
             "scheduled": "スケジュール済み",
             "queued": "キューに入れました",
-            "failed": "失敗"
+            "failed": "失敗",
+            "aborted": "中止されました"
         },
         "run_settings_modal": {
             "title": "実行設定",
