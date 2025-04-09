@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Grid } from "@mui/material";
 import { RunsTable } from "./RunsTable";
 

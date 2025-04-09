@@ -9,7 +9,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
-import { Accordion, AccordionSummary, AccordionDetails, Typography, Box, TextField, CircularProgress, Tooltip } from '@mui/material';
+import { Accordion, AccordionSummary, AccordionDetails, Typography, Box, TextField, Tooltip } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SearchIcon from '@mui/icons-material/Search';
 import { useLocation, useNavigate } from 'react-router-dom';

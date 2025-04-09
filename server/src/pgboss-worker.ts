@@ -8,7 +8,6 @@ import {
   destroyRemoteBrowser,
   interpretWholeWorkflow,
   stopRunningInterpretation,
-  createRemoteBrowserForRun
 } from './browser-management/controller';
 import { WorkflowFile } from 'maxun-core';
 import Run from './models/Run';
@@ -359,7 +358,6 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
   }
 }
 
-
 async function registerRunExecutionWorker() {
   try {
     const registeredUserQueues = new Map();
@@ -505,6 +503,10 @@ async function startWorkers() {
 
 // Start all workers
 startWorkers();
+
+pgBoss.on('error', (error) => {
+  logger.log('error', `PgBoss error: ${error.message}`);
+});
 
 // Handle graceful shutdown
 process.on('SIGTERM', async () => {

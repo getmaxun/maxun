@@ -114,7 +114,7 @@ async function executeRun(id: string, userId: string) {
 
     plainRun.status = 'running';
 
-    const browser = browserPool.getRemoteBrowser(userId);
+    const browser = browserPool.getRemoteBrowser(plainRun.browserId);
     if (!browser) {
       throw new Error('Could not access browser');
     }

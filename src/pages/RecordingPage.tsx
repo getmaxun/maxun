@@ -3,7 +3,6 @@ import { Grid } from '@mui/material';
 import { BrowserContent } from "../components/browser/BrowserContent";
 import { InterpretationLog } from "../components/run/InterpretationLog";
 import { startRecording, getActiveBrowserId } from "../api/recording";
-import { LeftSidePanel } from "../components/recorder/LeftSidePanel";
 import { RightSidePanel } from "../components/recorder/RightSidePanel";
 import { Loader } from "../components/ui/Loader";
 import { useSocketStore } from "../context/socket";
