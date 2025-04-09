@@ -19,30 +19,44 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
   const { t } = useTranslation();
   const [openModal, setOpenModal] = useState<boolean>(false);
   const [needConfirm, setNeedConfirm] = useState<boolean>(false);
-  const [recordingName, setRecordingName] = useState<string>(fileName);
+  const [saveRecordingName, setSaveRecordingName] = useState<string>(fileName);
   const [waitingForSave, setWaitingForSave] = useState<boolean>(false);
 
-  const { browserId, setBrowserId, notify, recordings, isLogin } = useGlobalInfoStore();
+  const { browserId, setBrowserId, notify, recordings, isLogin, recordingName, retrainRobotId } = useGlobalInfoStore();
   const { socket } = useSocketStore();
   const { state, dispatch } = useContext(AuthContext);
   const { user } = state;
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (recordingName) {
+      setSaveRecordingName(recordingName);
+    }
+  }, [recordingName]);
 
   const handleChangeOfTitle = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = event.target;
     if (needConfirm) {
       setNeedConfirm(false);
     }
-    setRecordingName(value);
+    setSaveRecordingName(value);
   }
 
   const handleSaveRecording = async (event: React.SyntheticEvent) => {
     event.preventDefault();
-    if (recordings.includes(recordingName)) {
+    if (recordings.includes(saveRecordingName)) {
       if (needConfirm) { return; }
       setNeedConfirm(true);
     } else {
       await saveRecording();
+    }
+  };
+
+  const handleFinishClick = () => {
+    if (recordingName && !recordings.includes(recordingName)) {
+      saveRecording();
+    } else {
+      setOpenModal(true);
     }
   };
 
@@ -52,12 +66,17 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
       message: t('save_recording.notifications.save_success'),
       timestamp: Date.now()
     };
-    window.sessionStorage.setItem('pendingNotification', JSON.stringify(notificationData));
     
     if (window.opener) {
       window.opener.postMessage({
         type: 'recording-notification',
         notification: notificationData
+      }, '*');
+      
+      // Also notify about clearing any remaining session data
+      window.opener.postMessage({
+        type: 'session-data-clear',
+        timestamp: Date.now()
       }, '*');
     }
     
@@ -67,16 +86,21 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
     setBrowserId(null);
     
     window.close();
-  }, [setBrowserId, browserId]);
+  }, [setBrowserId, browserId, t]);
 
   // notifies backed to save the recording in progress,
   // releases resources and changes the view for main page by clearing the global browserId
   const saveRecording = async () => {
     if (user) {
-      const payload = { fileName: recordingName, userId: user.id, isLogin: isLogin };
+      const payload = { 
+        fileName: saveRecordingName || recordingName, 
+        userId: user.id, 
+        isLogin: isLogin,
+        robotId: retrainRobotId,
+      };
       socket?.emit('save', payload);
       setWaitingForSave(true);
-      console.log(`Saving the recording as ${recordingName} for userId ${user.id}`);
+      console.log(`Saving the recording as ${saveRecordingName || recordingName} for userId ${user.id}`);
     } else {
       console.error(t('save_recording.notifications.user_not_logged'));
     }
@@ -92,7 +116,7 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
   return (
     <div>
       <Button
-        onClick={() => setOpenModal(true)}
+        onClick={handleFinishClick}
         variant="outlined"
         color="success"
         sx={{
@@ -116,7 +140,7 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
             id="title"
             label={t('save_recording.robot_name')}
             variant="outlined"
-            defaultValue={recordingName ? recordingName : null}
+            value={saveRecordingName}
           />
           {needConfirm
             ?
