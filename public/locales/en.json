@@ -246,7 +246,9 @@
         "confirm": "Confirm"
       },
       "notifications": {
-        "save_success": "Robot saved successfully"
+        "save_success": "Robot saved successfully",
+        "retrain_success": "Robot retrained successfully",
+        "save_error": "Error saving robot"
       },
       "errors": {
         "user_not_logged": "User not logged in. Cannot save recording.",

@@ -239,7 +239,9 @@
             "confirm": "確認"
         },
         "notifications": {
-            "save_success": "ロボットが正常に保存されました"
+            "save_success": "ロボットの保存に成功しました",
+            "retrain_success": "ロボットの再トレーニングに成功しました",
+            "save_error": "ロボットの保存中にエラーが発生しました"
         },
         "errors": {
             "user_not_logged": "ユーザーがログインしていません。録画を保存できません。",

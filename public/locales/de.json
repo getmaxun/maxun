@@ -238,7 +238,9 @@
             "confirm": "Bestätigen"
         },
         "notifications": {
-            "save_success": "Roboter erfolgreich gespeichert"
+            "save_success": "Roboter erfolgreich gespeichert",
+            "retrain_success": "Roboter erfolgreich neu trainiert",
+            "save_error": "Fehler beim Speichern des Roboters"
         },
         "errors": {
             "user_not_logged": "Benutzer nicht angemeldet. Aufnahme kann nicht gespeichert werden.",

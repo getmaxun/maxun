@@ -239,7 +239,9 @@
       "confirm": "Confirmar"
     },
     "notifications": {
-      "save_success": "Robot guardado exitosamente"
+      "save_success": "Robot guardado correctamente",
+      "retrain_success": "Robot reentrenado correctamente",
+      "save_error": "Error al guardar el robot"
     },
     "errors": {
       "user_not_logged": "Usuario no conectado. No se puede guardar la grabación.",
