@@ -139,12 +139,14 @@ export class WorkflowGenerator {
    */
   private registerEventHandlers = (socket: Socket) => {
     socket.on('save', (data) => {
-      const { fileName, userId, isLogin } = data;
+      const { fileName, userId, isLogin, robotId } = data;
       logger.log('debug', `Saving workflow ${fileName} for user ID ${userId}`);
-      this.saveNewWorkflow(fileName, userId, isLogin);
+      this.saveNewWorkflow(fileName, userId, isLogin, robotId);
   });
-    socket.on('new-recording', () => this.workflowRecord = {
-      workflow: [],
+    socket.on('new-recording', (data) => {
+      this.workflowRecord = {
+        workflow: [],
+      };
     });
     socket.on('activeIndex', (data) => this.generatedData.lastIndex = parseInt(data));
     socket.on('decision', async ({ pair, actionType, decision, userId }) => {
@@ -764,32 +766,50 @@ export class WorkflowGenerator {
    * @param fileName The name of the file.
    * @returns {Promise<void>}
    */
-  public saveNewWorkflow = async (fileName: string, userId: number, isLogin: boolean) => {
+  public saveNewWorkflow = async (fileName: string, userId: number, isLogin: boolean, robotId?: string) => {
     const recording = this.optimizeWorkflow(this.workflowRecord);
     try {
-      this.recordingMeta = {
-        name: fileName,
-        id: uuid(),
-        createdAt: this.recordingMeta.createdAt || new Date().toLocaleString(),
-        pairs: recording.workflow.length,
-        updatedAt: new Date().toLocaleString(),
-        params: this.getParams() || [],
-        isLogin: isLogin,
-      }
-      const robot = await Robot.create({
-        userId,
-        recording_meta: this.recordingMeta,
-        recording: recording,
-      });
-      capture(
-        'maxun-oss-robot-created',
-        {
-          robot_meta: robot.recording_meta,
-          recording: robot.recording,
-        }
-      )
+      if (robotId) {
+        const robot = await Robot.findOne({ where: { 'recording_meta.id': robotId }});
 
-      logger.log('info', `Robot saved with id: ${robot.id}`);
+        if (robot) {
+          await robot.update({
+            recording: recording,
+            recording_meta: {
+              ...robot.recording_meta,
+              pairs: recording.workflow.length,
+              params: this.getParams() || [],
+              updatedAt: new Date().toLocaleString(),
+            },
+          })
+
+          logger.log('info', `Robot retrained with id: ${robot.id}`);
+        }
+      } else {
+        this.recordingMeta = {
+          name: fileName,
+          id: uuid(),
+          createdAt: this.recordingMeta.createdAt || new Date().toLocaleString(),
+          pairs: recording.workflow.length,
+          updatedAt: new Date().toLocaleString(),
+          params: this.getParams() || [],
+          isLogin: isLogin,
+        }
+        const robot = await Robot.create({
+          userId,
+          recording_meta: this.recordingMeta,
+          recording: recording,
+        });
+        capture(
+          'maxun-oss-robot-created',
+          {
+            robot_meta: robot.recording_meta,
+            recording: robot.recording,
+          }
+        )
+  
+        logger.log('info', `Robot saved with id: ${robot.id}`);
+      }  
     }
     catch (e) {
       const { message } = e as Error;
