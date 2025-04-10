@@ -43,7 +43,7 @@ export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
 
   const { setId, socket } = useSocketStore();
   const { setWidth } = useBrowserDimensionsStore();
-  const { browserId, setBrowserId, recordingId, recordingUrl, setRecordingUrl } = useGlobalInfoStore();
+  const { browserId, setBrowserId, recordingId, recordingUrl, setRecordingUrl, setRecordingName, setRetrainRobotId } = useGlobalInfoStore();
 
   const handleShowOutputData = useCallback(() => {
     setShowOutputData(true);
@@ -80,6 +80,19 @@ export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
       const storedUrl = window.sessionStorage.getItem('recordingUrl');
       if (storedUrl && !recordingUrl) {
         setRecordingUrl(storedUrl);
+        window.sessionStorage.removeItem('recordingUrl');
+      }
+
+      const robotName = window.sessionStorage.getItem('robotName');
+      if (robotName) {
+        setRecordingName(robotName);
+        window.sessionStorage.removeItem('robotName');
+      }
+
+      const recordingId = window.sessionStorage.getItem('robotToRetrain');
+      if (recordingId) {
+        setRetrainRobotId(recordingId);
+        window.sessionStorage.removeItem('robotToRetrain');
       }
       
       const id = await getActiveBrowserId();
@@ -101,7 +114,7 @@ export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
     return () => {
       isCancelled = true;
     }
-  }, [setId, recordingUrl, setRecordingUrl]);
+  }, [setId, recordingUrl, setRecordingUrl, setRecordingName, setRetrainRobotId]);
 
   const changeBrowserDimensions = useCallback(() => {
     if (browserContentRef.current) {
@@ -126,7 +139,7 @@ export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
       }
       setIsLoaded(true);
     }
-  }, [socket, browserId, recordingName, recordingId, isLoaded])
+  }, [socket, browserId, recordingName, recordingId, isLoaded]);
 
   useEffect(() => {
     socket?.on('loaded', handleLoaded);
