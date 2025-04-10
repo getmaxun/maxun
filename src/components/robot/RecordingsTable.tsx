@@ -187,7 +187,7 @@ export const RecordingsTable = ({
 
   useEffect(() => {
     const handleMessage = (event: any) => {
-      if (event.data && event.data.type === 'recording-notification') {
+      if (event.origin === window.location.origin && event.data && event.data.type === 'recording-notification') {
         const notificationData = event.data.notification;
         if (notificationData) {
           notify(notificationData.type, notificationData.message);
@@ -201,7 +201,7 @@ export const RecordingsTable = ({
         }
       }
 
-      if (event.data && event.data.type === 'session-data-clear') {
+      if (event.origin === window.location.origin && event.data && event.data.type === 'session-data-clear') {
         window.sessionStorage.removeItem('browserId');
         window.sessionStorage.removeItem('robotToRetrain');
         window.sessionStorage.removeItem('robotName');
