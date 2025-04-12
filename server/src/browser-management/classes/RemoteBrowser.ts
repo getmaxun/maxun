@@ -118,11 +118,11 @@ export class RemoteBrowser {
      * @param socket socket.io socket instance used to communicate with the client side
      * @constructor
      */
-    public constructor(socket: Socket, userId: string) {
+    public constructor(socket: Socket, userId: string, poolId: string) {
         this.socket = socket;
         this.userId = userId;
         this.interpreter = new WorkflowInterpreter(socket);
-        this.generator = new WorkflowGenerator(socket);
+        this.generator = new WorkflowGenerator(socket, poolId);
     }
 
     private initializeMemoryManagement(): void {
