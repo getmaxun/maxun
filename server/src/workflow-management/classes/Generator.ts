@@ -79,6 +79,7 @@ export class WorkflowGenerator {
    */
   public constructor(socket: Socket) {
     this.socket = socket;
+    this.poolId = poolId;
     this.registerEventHandlers(socket);
     this.initializeSocketListeners();
   }
