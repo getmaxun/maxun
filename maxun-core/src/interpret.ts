@@ -572,6 +572,7 @@ export default class Interpreter extends EventEmitter {
     let visitedUrls: Set<string> = new Set<string>();
     const MAX_RETRIES = 3;
     const RETRY_DELAY = 1000; // 1 second delay between retries
+    const MAX_UNCHANGED_RESULTS = 5;
 
     const debugLog = (message: string, ...args: any[]) => {
         console.log(`[Page ${visitedUrls.size}] [URL: ${page.url()}] ${message}`, ...args);
@@ -661,18 +662,36 @@ export default class Interpreter extends EventEmitter {
     };
 
     let availableSelectors = config.pagination.selector.split(',');
+    let unchangedResultCounter = 0;
 
     try {
       while (true) {    
         switch (config.pagination.type) {
           case 'scrollDown': {
+            let previousResultCount = allResults.length;
+
+            await scrapeCurrentPage();
+            
+            if (checkLimit()) {
+              return allResults;
+            }
+
             await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
             await page.waitForTimeout(2000);
 
             const currentHeight = await page.evaluate(() => document.body.scrollHeight);
+            const currentResultCount = allResults.length;
+            
+            if (currentResultCount === previousResultCount) {
+              unchangedResultCounter++;
+              if (unchangedResultCounter >= MAX_UNCHANGED_RESULTS) {
+                return allResults;
+              }
+            } else {
+              unchangedResultCounter = 0;
+            }
+            
             if (currentHeight === previousHeight) {
-              const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
-              allResults = allResults.concat(finalResults);
               return allResults;
             }
 
@@ -681,13 +700,30 @@ export default class Interpreter extends EventEmitter {
           }
 
           case 'scrollUp': {
+            let previousResultCount = allResults.length;
+
+            await scrapeCurrentPage();
+            
+            if (checkLimit()) {
+              return allResults;
+            }
+
             await page.evaluate(() => window.scrollTo(0, 0));
             await page.waitForTimeout(2000);
 
             const currentTopHeight = await page.evaluate(() => document.documentElement.scrollTop);
+            const currentResultCount = allResults.length;
+            
+            if (currentResultCount === previousResultCount) {
+              unchangedResultCounter++;              
+              if (unchangedResultCounter >= MAX_UNCHANGED_RESULTS) {
+                return allResults;
+              }
+            } else {
+              unchangedResultCounter = 0;
+            }
+
             if (currentTopHeight === 0) {
-              const finalResults = await page.evaluate((cfg) => window.scrapeList(cfg), config);
-              allResults = allResults.concat(finalResults);
               return allResults;
             }
 
