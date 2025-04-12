@@ -69,6 +69,8 @@ export class WorkflowGenerator {
 
   private paginationMode: boolean = false;
 
+  private poolId: string | null = null;
+
   /**
    * The public constructor of the WorkflowGenerator.
    * Takes socket for communication as a parameter and registers some important events on it.
