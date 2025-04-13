@@ -318,7 +318,6 @@ export class RemoteBrowser {
                     isMobile: false,
                     hasTouch: false,
                     userAgent: this.getUserAgent(),
-                    deviceScaleFactor: 2,
                 };
     
                 if (proxyOptions.server) {
