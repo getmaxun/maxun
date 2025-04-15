@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Button, IconButton, Stack, Typography } from "@mui/material";
+import { Box, Button, Typography } from "@mui/material";
 
 interface ConfirmationBoxProps {
   selector: string;

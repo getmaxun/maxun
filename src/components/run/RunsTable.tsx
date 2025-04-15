@@ -9,7 +9,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
-import { Accordion, AccordionSummary, AccordionDetails, Typography, Box, TextField, CircularProgress, Tooltip } from '@mui/material';
+import { Accordion, AccordionSummary, AccordionDetails, Typography, Box, TextField, Tooltip } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SearchIcon from '@mui/icons-material/Search';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -390,7 +390,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
               TransitionProps={{ unmountOnExit: true }} // Optimize accordion rendering
             >
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="h6">{data[data.length - 1].name}</Typography>
+                <Typography variant="h6">{data[0].name}</Typography>
               </AccordionSummary>
               <AccordionDetails>
                 <Table stickyHeader aria-label="sticky table">
