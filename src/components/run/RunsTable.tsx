@@ -390,7 +390,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
               TransitionProps={{ unmountOnExit: true }} // Optimize accordion rendering
             >
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="h6">{data[data.length - 1].name}</Typography>
+                <Typography variant="h6">{data[0].name}</Typography>
               </AccordionSummary>
               <AccordionDetails>
                 <Table stickyHeader aria-label="sticky table">
