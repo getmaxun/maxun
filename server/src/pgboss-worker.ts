@@ -21,6 +21,10 @@ import { airtableUpdateTasks, processAirtableUpdates } from './workflow-manageme
 import { RemoteBrowser } from './browser-management/classes/RemoteBrowser';
 import { io as serverIo } from "./server";
 
+if (!process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_HOST || !process.env.DB_PORT || !process.env.DB_NAME) {
+    throw new Error('Failed to start pgboss worker: one or more required environment variables are missing.');
+}
+
 const pgBossConnectionString = `postgresql://${process.env.DB_USER}:${encodeURIComponent(process.env.DB_PASSWORD)}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
 
 interface InitializeBrowserData {
