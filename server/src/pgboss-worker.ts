@@ -21,7 +21,7 @@ import { airtableUpdateTasks, processAirtableUpdates } from './workflow-manageme
 import { RemoteBrowser } from './browser-management/classes/RemoteBrowser';
 import { io as serverIo } from "./server";
 
-const pgBossConnectionString = `postgres://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
+const pgBossConnectionString = `postgresql://${process.env.DB_USER}:${encodeURIComponent(process.env.DB_PASSWORD)}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
 
 interface InitializeBrowserData {
   userId: string;
