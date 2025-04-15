@@ -514,7 +514,8 @@
       "running": "Ejecutando",
       "scheduled": "Programado",
       "queued": "En cola",
-      "failed": "Fallido"
+      "failed": "Fallido",
+      "aborted": "Abortado"
     },
     "run_settings_modal": {
       "title": "Configuración de Ejecución",

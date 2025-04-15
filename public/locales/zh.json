@@ -514,7 +514,8 @@
       "running": "运行中",
       "scheduled": "已计划",
       "queued": "排队",
-      "failed": "失败"
+      "failed": "失败",
+      "aborted": "已中止"
     },
     "run_settings_modal": {
       "title": "运行设置",

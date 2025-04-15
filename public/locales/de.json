@@ -513,7 +513,8 @@
             "running": "Läuft",
             "scheduled": "Geplant",
             "queued": "In Warteschlange",
-            "failed": "Fehlgeschlagen"
+            "failed": "Fehlgeschlagen",
+            "aborted": "Abgebrochen"
         },
         "run_settings_modal": {
             "title": "Ausführungseinstellungen",
