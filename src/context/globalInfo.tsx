@@ -60,6 +60,8 @@ interface GlobalInfo {
   setRecordingLength: (recordingLength: number) => void;
   recordingId: string | null;
   setRecordingId: (newId: string | null) => void;
+  retrainRobotId: string | null;
+  setRetrainRobotId: (newId: string | null) => void;
   recordingName: string;
   setRecordingName: (recordingName: string) => void;
   initialUrl: string;
@@ -90,6 +92,7 @@ class GlobalInfoStore implements Partial<GlobalInfo> {
     isOpen: false,
   };
   recordingId = null;
+  retrainRobotId = null;
   recordings: string[] = [];
   rerenderRuns = false;
   rerenderRobots = false;
@@ -119,6 +122,7 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
   const [rerenderRobots, setRerenderRobots] = useState<boolean>(globalInfoStore.rerenderRobots);
   const [recordingLength, setRecordingLength] = useState<number>(globalInfoStore.recordingLength);
   const [recordingId, setRecordingId] = useState<string | null>(globalInfoStore.recordingId);
+  const [retrainRobotId, setRetrainRobotId] = useState<string | null>(globalInfoStore.retrainRobotId);
   const [recordingName, setRecordingName] = useState<string>(globalInfoStore.recordingName);
   const [isLogin, setIsLogin] = useState<boolean>(globalInfoStore.isLogin);
   const [initialUrl, setInitialUrl] = useState<string>(globalInfoStore.initialUrl);
@@ -169,6 +173,8 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
         setRecordingLength,
         recordingId,
         setRecordingId,
+        retrainRobotId,
+        setRetrainRobotId,
         recordingName,
         setRecordingName,
         initialUrl,
