@@ -112,7 +112,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
           <Button href={`${apiUrl}/api-docs/`} target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<Code />}>
             {t('mainmenu.apidocs')}
           </Button>
-          <Button href="https://forms.gle/hXjgqDvkEhPcaBW76" target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<CloudQueue />}>
+          <Button href="" target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<CloudQueue />}>
             {t('mainmenu.feedback')}
           </Button>
         </Box>
