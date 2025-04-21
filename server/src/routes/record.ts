@@ -234,7 +234,7 @@ router.get('/interpret', requireSignIn, async (req: AuthenticatedRequest, res) =
         logger.log('info', `Queued interpret workflow job: ${jobId}, waiting for completion...`);
 
         try {
-            const result = await waitForJobCompletion(jobId, 'interpret-workflow', 15000);
+            const result = await waitForJobCompletion(jobId, 'interpret-workflow', 1000000);
             
             if (result) {
                 return res.send('interpretation done');
