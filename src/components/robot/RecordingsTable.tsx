@@ -35,7 +35,8 @@ import {
   Settings,
   Power,
   ContentCopy,
-  MoreHoriz
+  MoreHoriz,
+  Refresh
 } from "@mui/icons-material";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { checkRunsForRecording, deleteRecordingFromStorage, getStoredRecordings } from "../../api/storage";
@@ -117,6 +118,7 @@ const TableRowMemoized = memo(({ row, columns, handlers }: any) => {
               return (
                 <MemoizedTableCell key={column.id} align={column.align}>
                   <MemoizedOptionsButton
+                    handleRetrain={() =>handlers.handleRetrainRobot(row.id, row.name)}
                     handleEdit={() => handlers.handleEditRobot(row.id, row.name, row.params || [])}
                     handleDuplicate={() => handlers.handleDuplicateRobot(row.id, row.name, row.params || [])}
                     handleDelete={() => handlers.handleDelete(row.id)}
@@ -185,7 +187,7 @@ export const RecordingsTable = ({
 
   useEffect(() => {
     const handleMessage = (event: any) => {
-      if (event.data && event.data.type === 'recording-notification') {
+      if (event.origin === window.location.origin && event.data && event.data.type === 'recording-notification') {
         const notificationData = event.data.notification;
         if (notificationData) {
           notify(notificationData.type, notificationData.message);
@@ -197,6 +199,17 @@ export const RecordingsTable = ({
             setRerenderRobots(true);
           }
         }
+      }
+
+      if (event.origin === window.location.origin && event.data && event.data.type === 'session-data-clear') {
+        window.sessionStorage.removeItem('browserId');
+        window.sessionStorage.removeItem('robotToRetrain');
+        window.sessionStorage.removeItem('robotName');
+        window.sessionStorage.removeItem('recordingUrl');
+        window.sessionStorage.removeItem('recordingSessionId');
+        window.sessionStorage.removeItem('pendingSessionData');
+        window.sessionStorage.removeItem('nextTabIsRecording');
+        window.sessionStorage.removeItem('initialUrl');
       }
     };
     
@@ -303,6 +316,60 @@ export const RecordingsTable = ({
     setModalOpen(true);
   };
 
+  const handleRetrainRobot = useCallback(async (id: string, name: string) => {
+    const activeBrowserId = await getActiveBrowserId();
+    const robot = rows.find(row => row.id === id);
+    let targetUrl;
+    
+    if (robot?.content?.workflow && robot.content.workflow.length > 0) {
+      const lastPair = robot.content.workflow[robot.content.workflow.length - 1];
+      
+      if (lastPair?.what) {
+        if (Array.isArray(lastPair.what)) {
+          const gotoAction = lastPair.what.find(action => 
+            action && typeof action === 'object' && 'action' in action && action.action === "goto"
+          ) as any;
+          
+          if (gotoAction?.args?.[0]) {
+            targetUrl = gotoAction.args[0];
+          }
+        }
+      }
+    }
+    
+    if (targetUrl) {
+      setInitialUrl(targetUrl);
+      setRecordingUrl(targetUrl);
+      window.sessionStorage.setItem('initialUrl', targetUrl);
+    }
+    
+    if (activeBrowserId) {
+      setActiveBrowserId(activeBrowserId);
+      setWarningModalOpen(true);
+    } else {
+      startRetrainRecording(id, name, targetUrl);
+    }
+  }, [rows, setInitialUrl, setRecordingUrl]);
+
+  const startRetrainRecording = (id: string, name: string, url?: string) => {
+    setBrowserId('new-recording');
+    setRecordingName(name);  
+    setRecordingId(id);      
+    
+    window.sessionStorage.setItem('browserId', 'new-recording');
+    window.sessionStorage.setItem('robotToRetrain', id);
+    window.sessionStorage.setItem('robotName', name);
+    
+    window.sessionStorage.setItem('recordingUrl', url || recordingUrl);
+    
+    const sessionId = Date.now().toString();
+    window.sessionStorage.setItem('recordingSessionId', sessionId);
+    
+    window.openedRecordingWindow = window.open(`/recording-setup?session=${sessionId}`, '_blank');
+    
+    window.sessionStorage.setItem('nextTabIsRecording', 'true');
+  };
+
   const startRecording = () => {
     setModalOpen(false);
     
@@ -381,6 +448,7 @@ export const RecordingsTable = ({
     handleSettingsRecording,
     handleEditRobot,
     handleDuplicateRobot,
+    handleRetrainRobot,
     handleDelete: async (id: string) => {
       const hasRuns = await checkRunsForRecording(id);
       if (hasRuns) {
@@ -395,7 +463,7 @@ export const RecordingsTable = ({
         fetchRecordings();
       }
     }
-  }), [handleRunRecording, handleScheduleRecording, handleIntegrateRecording, handleSettingsRecording, handleEditRobot, handleDuplicateRobot, notify, t]);
+  }), [handleRunRecording, handleScheduleRecording, handleIntegrateRecording, handleSettingsRecording, handleEditRobot, handleDuplicateRobot, handleRetrainRobot, notify, t]);
 
   return (
     <React.Fragment>
@@ -597,12 +665,13 @@ const SettingsButton = ({ handleSettings }: SettingsButtonProps) => {
 }
 
 interface OptionsButtonProps {
+  handleRetrain: () => void;
   handleEdit: () => void;
   handleDelete: () => void;
   handleDuplicate: () => void;
 }
 
-const OptionsButton = ({ handleEdit, handleDelete, handleDuplicate }: OptionsButtonProps) => {
+const OptionsButton = ({ handleRetrain, handleEdit, handleDelete, handleDuplicate }: OptionsButtonProps) => {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -629,6 +698,13 @@ const OptionsButton = ({ handleEdit, handleDelete, handleDuplicate }: OptionsBut
         open={Boolean(anchorEl)}
         onClose={handleClose}
       >
+        <MenuItem onClick={() => { handleRetrain(); handleClose(); }}>
+          <ListItemIcon>
+            <Refresh fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>{t('recordingtable.retrain')}</ListItemText>
+        </MenuItem>
+
         <MenuItem onClick={() => { handleEdit(); handleClose(); }}>
           <ListItemIcon>
             <Edit fontSize="small" />
