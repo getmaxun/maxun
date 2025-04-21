@@ -15,7 +15,6 @@ import {
 import { CustomActions } from "../../../../src/shared/types";
 import Robot from "../../models/Robot";
 import { getBestSelectorForAction } from "../utils";
-import { browserPool } from "../../server";
 import { uuid } from "uuidv4";
 import { capture } from "../../utils/analytics"
 import { decrypt, encrypt } from "../../utils/auth";
@@ -70,14 +69,17 @@ export class WorkflowGenerator {
 
   private paginationMode: boolean = false;
 
+  private poolId: string | null = null;
+
   /**
    * The public constructor of the WorkflowGenerator.
    * Takes socket for communication as a parameter and registers some important events on it.
    * @param socket The socket used to communicate with the client.
    * @constructor
    */
-  public constructor(socket: Socket) {
+  public constructor(socket: Socket, poolId: string) {
     this.socket = socket;
+    this.poolId = poolId;
     this.registerEventHandlers(socket);
     this.initializeSocketListeners();
   }
@@ -150,8 +152,7 @@ export class WorkflowGenerator {
     });
     socket.on('activeIndex', (data) => this.generatedData.lastIndex = parseInt(data));
     socket.on('decision', async ({ pair, actionType, decision, userId }) => {
-      const id = browserPool.getActiveBrowserId(userId, "recording");
-      if (id) {
+      if (this.poolId) {
         // const activeBrowser = browserPool.getRemoteBrowser(id);
         // const currentPage = activeBrowser?.getCurrentPage();
         if (!decision) {
