@@ -302,59 +302,38 @@ export const getElementInformation = async (
       );
       return elementInfo;
     } else {
+      page.on('console', msg => {
+        console.log(`Browser console: ${msg.text()}`);
+      });
       const elementInfo = await page.evaluate(
         async ({ x, y }) => {
           const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
             let elements = document.elementsFromPoint(x, y) as HTMLElement[];
             if (!elements.length) return null;
 
-            const findDeepestElement = (elements: HTMLElement[]): HTMLElement | null => {
+            const findContainerElement = (elements: HTMLElement[]): HTMLElement | null => {
               if (!elements.length) return null;
               if (elements.length === 1) return elements[0];
               
-              let deepestElement = elements[0];
-              let maxDepth = 0;
-              
-              for (const element of elements) {
-                let depth = 0;
-                let current = element;
+              for (let i = 0; i < elements.length; i++) {
+                const element = elements[i];
+                const rect = element.getBoundingClientRect();
                 
-                while (current) {
-                    depth++;
-                    if (current.parentElement) {
-                        current = current.parentElement;
-                    } else {
-                        break;
-                    }
-                }
-                
-                if (depth > maxDepth) {
-                    maxDepth = depth;
-                    deepestElement = element;
+                if (rect.width >= 30 && rect.height >= 30) {
+                  const hasChildrenInList = elements.some((otherElement, j) => 
+                    i !== j && element.contains(otherElement)
+                  );
+                  
+                  if (hasChildrenInList) {
+                    return element;
+                  }
                 }
               }
               
-              return deepestElement;
+              return elements[0];
             };
-          
-            // Logic to get list container element
-            let targetElement = null;
 
-            for (const element of elements) {
-              const deepestEl = findDeepestElement(elements);
-              
-              if (deepestEl && element !== deepestEl) {
-                if (element.contains(deepestEl) && 
-                    element !== deepestEl.parentElement && 
-                    element.tagName !== 'HTML' && 
-                    element.tagName !== 'BODY') {
-                  targetElement = element;
-                  break;
-                }
-              }
-            }
-
-            let deepestElement = targetElement || findDeepestElement(elements);
+            let deepestElement = findContainerElement(elements);
             if (!deepestElement) return null;
           
             const traverseShadowDOM = (element: HTMLElement): HTMLElement => {
@@ -842,53 +821,29 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
             let elements = document.elementsFromPoint(x, y) as HTMLElement[];
             if (!elements.length) return null;
 
-            const findDeepestElement = (elements: HTMLElement[]): HTMLElement | null => {
+            const findContainerElement = (elements: HTMLElement[]): HTMLElement | null => {
               if (!elements.length) return null;
               if (elements.length === 1) return elements[0];
               
-              let deepestElement = elements[0];
-              let maxDepth = 0;
-              
-              for (const element of elements) {
-                let depth = 0;
-                let current = element;
+              for (let i = 0; i < elements.length; i++) {
+                const element = elements[i];
+                const rect = element.getBoundingClientRect();
                 
-                while (current) {
-                    depth++;
-                    if (current.parentElement) {
-                        current = current.parentElement;
-                    } else {
-                        break;
-                    }
-                }
-                
-                if (depth > maxDepth) {
-                    maxDepth = depth;
-                    deepestElement = element;
+                if (rect.width >= 30 && rect.height >= 30) {
+                  const hasChildrenInList = elements.some((otherElement, j) => 
+                    i !== j && element.contains(otherElement)
+                  );
+                  
+                  if (hasChildrenInList) {
+                    return element;
+                  }
                 }
               }
               
-              return deepestElement;
+              return elements[0];
             };
-          
-            // Logic to get list container element
-            let targetElement = null;
 
-            for (const element of elements) {
-              const deepestEl = findDeepestElement(elements);
-              
-              if (deepestEl && element !== deepestEl) {
-                if (element.contains(deepestEl) && 
-                    element !== deepestEl.parentElement && 
-                    element.tagName !== 'HTML' && 
-                    element.tagName !== 'BODY') {
-                  targetElement = element;
-                  break;
-                }
-              }
-            }
-
-            let deepestElement = targetElement || findDeepestElement(elements);
+            let deepestElement = findContainerElement(elements);
             if (!deepestElement) return null;
           
             const traverseShadowDOM = (element: HTMLElement): HTMLElement => {
@@ -2041,53 +1996,29 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
           let elements = document.elementsFromPoint(x, y) as HTMLElement[];
           if (!elements.length) return null;
 
-          const findDeepestElement = (elements: HTMLElement[]): HTMLElement | null => {
+          const findContainerElement = (elements: HTMLElement[]): HTMLElement | null => {
             if (!elements.length) return null;
             if (elements.length === 1) return elements[0];
             
-            let deepestElement = elements[0];
-            let maxDepth = 0;
-            
-            for (const element of elements) {
-              let depth = 0;
-              let current = element;
+            for (let i = 0; i < elements.length; i++) {
+              const element = elements[i];
+              const rect = element.getBoundingClientRect();
               
-              while (current) {
-                  depth++;
-                  if (current.parentElement) {
-                      current = current.parentElement;
-                  } else {
-                      break;
-                  }
-              }
-              
-              if (depth > maxDepth) {
-                  maxDepth = depth;
-                  deepestElement = element;
+              if (rect.width >= 30 && rect.height >= 30) {
+                const hasChildrenInList = elements.some((otherElement, j) => 
+                  i !== j && element.contains(otherElement)
+                );
+                
+                if (hasChildrenInList) {
+                  return element;
+                }
               }
             }
             
-            return deepestElement;
+            return elements[0];
           };
-        
-          // Logic to get list container element
-          let targetElement = null;
 
-          for (const element of elements) {
-            const deepestEl = findDeepestElement(elements);
-            
-            if (deepestEl && element !== deepestEl) {
-              if (element.contains(deepestEl) && 
-                  element !== deepestEl.parentElement && 
-                  element.tagName !== 'HTML' && 
-                  element.tagName !== 'BODY') {
-                targetElement = element;
-                break;
-              }
-            }
-          }
-
-          let deepestElement = targetElement || findDeepestElement(elements);
+          let deepestElement = findContainerElement(elements);
           if (!deepestElement) return null;
         
           const traverseShadowDOM = (element: HTMLElement): HTMLElement => {
