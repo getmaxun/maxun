@@ -302,9 +302,6 @@ export const getElementInformation = async (
       );
       return elementInfo;
     } else {
-      page.on('console', msg => {
-        console.log(`Browser console: ${msg.text()}`);
-      });
       const elementInfo = await page.evaluate(
         async ({ x, y }) => {
           const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
