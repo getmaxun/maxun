@@ -31,7 +31,7 @@ Maxun lets you train a robot in 2 minutes and scrape the web on auto-pilot. Web 
 <img src="https://static.scarf.sh/a.png?x-pxid=c12a77cc-855e-4602-8a0f-614b2d0da56a" />
 
 # Getting Started
-The simplest way to get started is to use the hosted version: https://app.maxun.dev. Maxun cloud also deals with anti-bot detection, huge proxy network with automatic proxy rotation, and CAPTCHA solving.
+The simplest & fastest way to get started is to use the hosted version: https://app.maxun.dev. Maxun Cloud deals with anti-bot detection, huge proxy network with automatic proxy rotation, and CAPTCHA solving.
 
 # Local Installation
 1. Create a root folder for your project (e.g. 'maxun')
@@ -132,10 +132,11 @@ BYOP (Bring Your Own Proxy) lets you connect external proxies to bypass anti-bot
 - ✨ Run Robots On A Specific Schedule
 - ✨ Turn Websites to APIs
 - ✨ Turn Websites to Spreadsheets
-- ✨ Adapt To Website Layout Changes (coming soon)
-- ✨ Extract Behind Login, With Two-Factor Authentication Support (coming soon)
-- ✨ Integrations (currently Google Sheet)
-- +++ A lot of amazing things soon!
+- ✨ Adapt To Website Layout Changes
+- ✨ Extract Behind Login, 
+- ✨ Bypass  Two-Factor Authentication For Extract Behind Login (coming soon)
+- ✨ Integrations
+- +++ A lot of amazing things!
 
 # Screenshots
 ![Maxun PH Launch (1)-1-1](https://github.com/user-attachments/assets/d7c75fa2-2bbc-47bb-a5f6-0ee6c162f391)
@@ -149,7 +150,7 @@ BYOP (Bring Your Own Proxy) lets you connect external proxies to bypass anti-bot
 ![Maxun PH Launch (1)-9-1](https://github.com/user-attachments/assets/160f46fa-0357-4c1b-ba50-b4fe64453bb7)
 
 # Note
-This project is in early stages of development. Your feedback is very important for us - we're actively working to improve the product. <a href="https://forms.gle/E8vRMVB7bUbsSktPA">Drop anonymous feedback here.</a>
+This project is in early stages of development. Your feedback is very important for us - we're actively working to improve the product. </a>
 
 # License
 <p>
