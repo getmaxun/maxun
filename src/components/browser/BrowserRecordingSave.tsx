@@ -55,6 +55,11 @@ const BrowserRecordingSave = () => {
           type: 'recording-notification',
           notification: notificationData
         }, '*');
+
+        window.opener.postMessage({
+          type: 'session-data-clear',
+          timestamp: Date.now()
+        }, '*');
       }
       
       setBrowserId(null);

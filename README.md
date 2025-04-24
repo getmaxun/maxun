@@ -15,11 +15,11 @@ Maxun lets you train a robot in 2 minutes and scrape the web on auto-pilot. Web 
 
 
 <p align="center">
+    <a href="https://app.maxun.dev/?ref=ghread"><b>Go To App</b></a> |
     <a href="https://docs.maxun.dev/?ref=ghread"><b>Documentation</b></a> |
     <a href="https://www.maxun.dev/?ref=ghread"><b>Website</b></a> |
     <a href="https://discord.gg/5GbPjBUkws"><b>Discord</b></a> |
     <a href="https://x.com/maxun_io?ref=ghread"><b>Twitter</b></a> |
-    <a href="https://docs.google.com/forms/d/e/1FAIpQLSdbD2uhqC4sbg4eLZ9qrFbyrfkXZ2XsI6dQ0USRCQNZNn5pzg/viewform"><b>Join Maxun Cloud</b></a> | 
     <a href="https://www.youtube.com/@MaxunOSS?ref=ghread"><b>Watch Tutorials</b></a>
     <br />
     <br />
@@ -30,7 +30,10 @@ Maxun lets you train a robot in 2 minutes and scrape the web on auto-pilot. Web 
 
 <img src="https://static.scarf.sh/a.png?x-pxid=c12a77cc-855e-4602-8a0f-614b2d0da56a" />
 
-# Installation
+# Getting Started
+The simplest & fastest way to get started is to use the hosted version: https://app.maxun.dev. Maxun Cloud deals with anti-bot detection, huge proxy network with automatic proxy rotation, and CAPTCHA solving.
+
+# Local Installation
 1. Create a root folder for your project (e.g. 'maxun')
 2. Create a file named `.env` in the root folder of the project
 3. Example env file can be viewed [here](https://github.com/getmaxun/maxun/blob/master/ENVEXAMPLE). Copy all content of example env to your `.env` file.
@@ -64,9 +67,8 @@ npm install
 # get back to the root directory
 cd ..
 
-# make sure playwright is properly initialized
-npx playwright install
-npx playwright install-deps
+# install chromium and its dependencies
+npx playwright install --with-deps chromium
 
 # get back to the root directory
 cd ..
@@ -105,9 +107,7 @@ You can access the frontend at http://localhost:5173/ and backend at http://loca
 | `GOOGLE_REDIRECT_URI` | No       | Redirect URI for handling Google OAuth responses.                                            | Google login will not work.                                  |
 | `AIRTABLE_CLIENT_ID` | No       | Client ID for Airtable, used for Airtable integration authentication.                         | Airtable login will not work.  |
 | `AIRTABLE_REDIRECT_URI` | No    | Redirect URI for handling Airtable OAuth responses.                                           | Airtable login will not work.  |
-| `REDIS_HOST`          | Yes       | Host address of the Redis server, used by BullMQ for scheduling robots.                     | Redis connection will fail. |
-| `REDIS_PORT`          | Yes       | Port number for the Redis server.                                                           | Redis connection will fail. |
-| `REDIS_PASSWORD`          | No       | Password for Redis Authentication. Needed to authenticate with a password-protected Redis instance;                     | Redis will attempt to connect without authentication. |
+
 | `MAXUN_TELEMETRY`     | No        | Disables telemetry to stop sending anonymous usage data. Keeping it enabled helps us understand how the product is used and assess the impact of any new changes. Please keep it enabled. | Telemetry data will not be collected. |
 
 
@@ -132,13 +132,11 @@ BYOP (Bring Your Own Proxy) lets you connect external proxies to bypass anti-bot
 - ✨ Run Robots On A Specific Schedule
 - ✨ Turn Websites to APIs
 - ✨ Turn Websites to Spreadsheets
-- ✨ Adapt To Website Layout Changes (coming soon)
-- ✨ Extract Behind Login, With Two-Factor Authentication Support (coming soon)
-- ✨ Integrations (currently Google Sheet)
-- +++ A lot of amazing things soon!
-
-# Cloud
-We offer a managed cloud version to run Maxun without having to manage the infrastructure and extract data at scale. Maxun cloud also deals with anti-bot detection, huge proxy network with automatic proxy rotation, and CAPTCHA solving. If this interests you, [join the cloud waitlist](https://docs.google.com/forms/d/e/1FAIpQLSdbD2uhqC4sbg4eLZ9qrFbyrfkXZ2XsI6dQ0USRCQNZNn5pzg/viewform) as we launch soon.
+- ✨ Adapt To Website Layout Changes
+- ✨ Extract Behind Login, 
+- ✨ Bypass  Two-Factor Authentication For Extract Behind Login (coming soon)
+- ✨ Integrations
+- +++ A lot of amazing things!
 
 # Screenshots
 ![Maxun PH Launch (1)-1-1](https://github.com/user-attachments/assets/d7c75fa2-2bbc-47bb-a5f6-0ee6c162f391)
@@ -152,7 +150,7 @@ We offer a managed cloud version to run Maxun without having to manage the infra
 ![Maxun PH Launch (1)-9-1](https://github.com/user-attachments/assets/160f46fa-0357-4c1b-ba50-b4fe64453bb7)
 
 # Note
-This project is in early stages of development. Your feedback is very important for us - we're actively working to improve the product. <a href="https://forms.gle/E8vRMVB7bUbsSktPA">Drop anonymous feedback here.</a>
+This project is in early stages of development. Your feedback is very important for us - we're actively working to improve the product. </a>
 
 # License
 <p>

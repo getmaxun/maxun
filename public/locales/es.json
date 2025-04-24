@@ -54,6 +54,7 @@
       "label": "URL",
       "button": "Comenzar grabación"
     },
+    "retrain": "Reentrenar",
     "edit": "Editar",
     "delete": "Eliminar",
     "duplicate": "Duplicar",
@@ -238,7 +239,9 @@
       "confirm": "Confirmar"
     },
     "notifications": {
-      "save_success": "Robot guardado exitosamente"
+      "save_success": "Robot guardado correctamente",
+      "retrain_success": "Robot reentrenado correctamente",
+      "save_error": "Error al guardar el robot"
     },
     "errors": {
       "user_not_logged": "Usuario no conectado. No se puede guardar la grabación.",
@@ -514,7 +517,8 @@
       "running": "Ejecutando",
       "scheduled": "Programado",
       "queued": "En cola",
-      "failed": "Fallido"
+      "failed": "Fallido",
+      "aborted": "Abortado"
     },
     "run_settings_modal": {
       "title": "Configuración de Ejecución",

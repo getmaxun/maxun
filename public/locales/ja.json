@@ -54,6 +54,7 @@
             "label": "URL",
             "button": "録画を開始"
         },
+        "retrain": "再学習",
         "edit": "編集",
         "delete": "削除",
         "duplicate": "複製",
@@ -238,7 +239,9 @@
             "confirm": "確認"
         },
         "notifications": {
-            "save_success": "ロボットが正常に保存されました"
+            "save_success": "ロボットの保存に成功しました",
+            "retrain_success": "ロボットの再トレーニングに成功しました",
+            "save_error": "ロボットの保存中にエラーが発生しました"
         },
         "errors": {
             "user_not_logged": "ユーザーがログインしていません。録画を保存できません。",
@@ -514,7 +517,8 @@
             "running": "実行中",
             "scheduled": "スケジュール済み",
             "queued": "キューに入れました",
-            "failed": "失敗"
+            "failed": "失敗",
+            "aborted": "中止されました"
         },
         "run_settings_modal": {
             "title": "実行設定",

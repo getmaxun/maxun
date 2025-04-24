@@ -8,7 +8,6 @@ import {
   destroyRemoteBrowser,
   interpretWholeWorkflow,
   stopRunningInterpretation,
-  createRemoteBrowserForRun
 } from './browser-management/controller';
 import { WorkflowFile } from 'maxun-core';
 import Run from './models/Run';
@@ -22,7 +21,11 @@ import { airtableUpdateTasks, processAirtableUpdates } from './workflow-manageme
 import { RemoteBrowser } from './browser-management/classes/RemoteBrowser';
 import { io as serverIo } from "./server";
 
-const pgBossConnectionString = `postgres://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
+if (!process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_HOST || !process.env.DB_PORT || !process.env.DB_NAME) {
+    throw new Error('Failed to start pgboss worker: one or more required environment variables are missing.');
+}
+
+const pgBossConnectionString = `postgresql://${process.env.DB_USER}:${encodeURIComponent(process.env.DB_PASSWORD)}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
 
 interface InitializeBrowserData {
   userId: string;
@@ -45,6 +48,11 @@ interface ExecuteRunData {
   userId: string;
   runId: string;
   browserId: string;
+}
+
+interface AbortRunData {
+  userId: string;
+  runId: string;
 }
 
 const pgBoss = new PgBoss({connectionString: pgBossConnectionString });
@@ -176,6 +184,11 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
       return { success: false };
     }
 
+    if (run.status === 'aborted' || run.status === 'aborting') {
+      logger.log('info', `Run ${data.runId} has status ${run.status}, skipping execution`);
+      return { success: true }; 
+    }
+
     const plainRun = run.toJSON();
 
     // Find the recording
@@ -183,12 +196,14 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
     if (!recording) {
       logger.log('error', `Recording for run ${data.runId} not found`);
       
-      // Update run status to failed
-      await run.update({
-        status: 'failed',
-        finishedAt: new Date().toLocaleString(),
-        log: 'Failed: Recording not found',
-      });
+      const currentRun = await Run.findOne({ where: { runId: data.runId } });
+      if (currentRun && (currentRun.status !== 'aborted' && currentRun.status !== 'aborting')) {
+        await run.update({
+          status: 'failed',
+          finishedAt: new Date().toLocaleString(),
+          log: 'Failed: Recording not found',
+        });
+      }
       
       // Check for queued runs even if this one failed
       await checkAndProcessQueuedRun(data.userId, data.browserId);
@@ -203,8 +218,6 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
     if (!browser || !currentPage) {
       logger.log('error', `Browser or page not available for run ${data.runId}`);
       
-      await pgBoss.fail(job.id, "Failed to get browser or page for run");
-      
       // Even if this run failed, check for queued runs
       await checkAndProcessQueuedRun(data.userId, data.browserId);
       
@@ -215,6 +228,11 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
       // Reset the browser state before executing this run
       await resetBrowserState(browser);
       
+      const isRunAborted = async (): Promise<boolean> => {
+        const currentRun = await Run.findOne({ where: { runId: data.runId } });
+        return currentRun ? (currentRun.status === 'aborted' || currentRun.status === 'aborting') : false;
+      };
+      
       // Execute the workflow
       const workflow = AddGeneratedFlags(recording.recording);
       const interpretationInfo = await browser.interpreter.InterpretRecording(
@@ -224,9 +242,27 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
         plainRun.interpreterSettings
       );
       
+      if (await isRunAborted()) {
+        logger.log('info', `Run ${data.runId} was aborted during execution, not updating status`);
+        
+        const queuedRunProcessed = await checkAndProcessQueuedRun(data.userId, plainRun.browserId);
+        
+        if (!queuedRunProcessed) {
+          await destroyRemoteBrowser(plainRun.browserId, data.userId);
+          logger.log('info', `No queued runs found for browser ${plainRun.browserId}, browser destroyed`);
+        }
+        
+        return { success: true };
+      }
+      
       // Process the results
       const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
       const uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, interpretationInfo.binaryOutput);
+      
+      if (await isRunAborted()) {
+        logger.log('info', `Run ${data.runId} was aborted while processing results, not updating status`);
+        return { success: true };
+      }
       
       // Update the run record with results
       await run.update({
@@ -318,11 +354,28 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
     } catch (executionError: any) {
       logger.log('error', `Run execution failed for run ${data.runId}: ${executionError.message}`);
       
-      await run.update({
-        status: 'failed',
-        finishedAt: new Date().toLocaleString(),
-        log: `Failed: ${executionError.message}`,
-      });
+      const currentRun = await Run.findOne({ where: { runId: data.runId } });
+      if (currentRun && (currentRun.status !== 'aborted' && currentRun.status !== 'aborting')) {
+        await run.update({
+          status: 'failed',
+          finishedAt: new Date().toLocaleString(),
+          log: `Failed: ${executionError.message}`,
+        });
+        
+        // Capture failure metrics
+        capture(
+          'maxun-oss-run-created-manual',
+          {
+            runId: data.runId,
+            user_id: data.userId,
+            created_at: new Date().toISOString(),
+            status: 'failed',
+            error_message: executionError.message,
+          }
+        );
+      } else {
+        logger.log('info', `Run ${data.runId} was aborted, not updating status to failed`);
+      }
       
       // Check for queued runs before destroying the browser
       const queuedRunProcessed = await checkAndProcessQueuedRun(data.userId, plainRun.browserId);
@@ -336,18 +389,6 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
           logger.log('warn', `Failed to clean up browser for failed run ${data.runId}: ${cleanupError.message}`);
         }
       }
-
-      // Capture failure metrics
-      capture(
-        'maxun-oss-run-created-manual',
-        {
-          runId: data.runId,
-          user_id: data.userId,
-          created_at: new Date().toISOString(),
-          status: 'failed',
-          error_message: executionError.message,
-        }
-      );
       
       return { success: false };
     }
@@ -359,6 +400,134 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
   }
 }
 
+async function abortRun(runId: string, userId: string): Promise<boolean> {
+  try {
+    const run = await Run.findOne({ 
+      where: { 
+        runId: runId,
+        runByUserId: userId
+      }
+    });
+
+    if (!run) {
+      logger.log('warn', `Run ${runId} not found or does not belong to user ${userId}`);
+      return false;
+    }
+
+    await run.update({
+      status: 'aborting'
+    });
+
+    const plainRun = run.toJSON();
+
+    const recording = await Robot.findOne({ 
+      where: { 'recording_meta.id': plainRun.robotMetaId }, 
+      raw: true 
+    });
+    
+    const robotName = recording?.recording_meta?.name || 'Unknown Robot';
+    
+    let browser;
+    try {
+      browser = browserPool.getRemoteBrowser(plainRun.browserId);
+    } catch (browserError) {
+      logger.log('warn', `Could not get browser for run ${runId}: ${browserError}`);
+      browser = null;
+    }
+
+    if (!browser) {
+      await run.update({
+        status: 'aborted',
+        finishedAt: new Date().toLocaleString(),
+        log: 'Aborted: Browser not found or already closed'
+      });
+      
+      try {
+        serverIo.of(plainRun.browserId).emit('run-aborted', {
+          runId,
+          robotName: robotName,
+          status: 'aborted',
+          finishedAt: new Date().toLocaleString()
+        });
+      } catch (socketError) {
+        logger.log('warn', `Failed to emit run-aborted event: ${socketError}`);
+      }
+      
+      logger.log('warn', `Browser not found for run ${runId}`);
+      return true;
+    }
+
+    let currentLog = 'Run aborted by user';
+    let serializableOutput: Record<string, any> = {};
+    let binaryOutput: Record<string, any> = {};
+    
+    try {
+      if (browser.interpreter) {      
+        if (browser.interpreter.debugMessages) {
+          currentLog = browser.interpreter.debugMessages.join('\n') || currentLog;
+        }
+        
+        if (browser.interpreter.serializableData) {
+          browser.interpreter.serializableData.forEach((item, index) => {
+            serializableOutput[`item-${index}`] = item;
+          });
+        }
+        
+        if (browser.interpreter.binaryData) {
+          browser.interpreter.binaryData.forEach((item, index) => {
+            binaryOutput[`item-${index}`] = item;
+          });
+        }
+      }
+    } catch (interpreterError) {
+      logger.log('warn', `Error collecting data from interpreter: ${interpreterError}`);
+    }
+
+    await run.update({
+      status: 'aborted',
+      finishedAt: new Date().toLocaleString(),
+      browserId: plainRun.browserId,
+      log: currentLog,
+      serializableOutput,
+      binaryOutput,
+    });
+
+    try {
+      serverIo.of(plainRun.browserId).emit('run-aborted', {
+        runId,
+        robotName: robotName,
+        status: 'aborted',
+        finishedAt: new Date().toLocaleString()
+      });
+    } catch (socketError) {
+      logger.log('warn', `Failed to emit run-aborted event: ${socketError}`);
+    }
+
+    let queuedRunProcessed = false;
+    try {
+      queuedRunProcessed = await checkAndProcessQueuedRun(userId, plainRun.browserId);
+    } catch (queueError) {
+      logger.log('warn', `Error checking queued runs: ${queueError}`);
+    }
+    
+    if (!queuedRunProcessed) {
+      try {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        await destroyRemoteBrowser(plainRun.browserId, userId);
+        logger.log('info', `Browser ${plainRun.browserId} destroyed successfully after abort`);
+      } catch (cleanupError) {
+        logger.log('warn', `Failed to clean up browser for aborted run ${runId}: ${cleanupError}`);
+      }
+    }
+
+    return true;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.log('error', `Failed to abort run ${runId}: ${errorMessage}`);
+    return false;
+  }
+}
 
 async function registerRunExecutionWorker() {
   try {
@@ -411,6 +580,52 @@ async function registerRunExecutionWorker() {
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.log('error', `Failed to register run execution worker: ${errorMessage}`);
+  }
+}
+
+async function registerAbortRunWorker() {
+  try {
+    const registeredAbortQueues = new Map();
+
+    const checkForNewAbortQueues = async () => {
+      try {
+        const activeQueues = await pgBoss.getQueues();
+        
+        const abortQueues = activeQueues.filter(q => q.name.startsWith('abort-run-user-'));
+        
+        for (const queue of abortQueues) {
+          if (!registeredAbortQueues.has(queue.name)) {
+            await pgBoss.work(queue.name, async (job: Job<AbortRunData> | Job<AbortRunData>[]) => {
+              try {
+                const data = extractJobData(job);
+                const { userId, runId } = data;
+                
+                logger.log('info', `Processing abort request for run ${runId} by user ${userId}`);
+                const success = await abortRun(runId, userId);
+                return { success };
+              } catch (error: unknown) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                logger.log('error', `Abort run job failed in ${queue.name}: ${errorMessage}`);
+                throw error;
+              }
+            });
+            
+            registeredAbortQueues.set(queue.name, true);
+            logger.log('info', `Registered abort worker for queue: ${queue.name}`);
+          }
+        }
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.log('error', `Failed to check for new abort queues: ${errorMessage}`);
+      }
+    };
+
+    await checkForNewAbortQueues();
+    
+    logger.log('info', 'Abort run worker registration system initialized');
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.log('error', `Failed to initialize abort run worker system: ${errorMessage}`);
   }
 }
 
@@ -495,6 +710,9 @@ async function startWorkers() {
     // Register the run execution worker
     await registerRunExecutionWorker();
 
+    // Register the abort run worker
+    await registerAbortRunWorker();
+
     logger.log('info', 'All recording workers registered successfully');
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -505,6 +723,10 @@ async function startWorkers() {
 
 // Start all workers
 startWorkers();
+
+pgBoss.on('error', (error) => {
+  logger.log('error', `PgBoss error: ${error.message}`);
+});
 
 // Handle graceful shutdown
 process.on('SIGTERM', async () => {

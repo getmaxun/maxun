@@ -13,13 +13,8 @@ import {
   selectorAlreadyInWorkflow
 } from "../selector";
 import { CustomActions } from "../../../../src/shared/types";
-import { workflow } from "../../routes";
 import Robot from "../../models/Robot";
-import Run from "../../models/Run";
-import { saveFile } from "../storage";
-import fs from "fs";
 import { getBestSelectorForAction } from "../utils";
-import { browserPool } from "../../server";
 import { uuid } from "uuidv4";
 import { capture } from "../../utils/analytics"
 import { decrypt, encrypt } from "../../utils/auth";
@@ -74,14 +69,17 @@ export class WorkflowGenerator {
 
   private paginationMode: boolean = false;
 
+  private poolId: string | null = null;
+
   /**
    * The public constructor of the WorkflowGenerator.
    * Takes socket for communication as a parameter and registers some important events on it.
    * @param socket The socket used to communicate with the client.
    * @constructor
    */
-  public constructor(socket: Socket) {
+  public constructor(socket: Socket, poolId: string) {
     this.socket = socket;
+    this.poolId = poolId;
     this.registerEventHandlers(socket);
     this.initializeSocketListeners();
   }
@@ -143,17 +141,18 @@ export class WorkflowGenerator {
    */
   private registerEventHandlers = (socket: Socket) => {
     socket.on('save', (data) => {
-      const { fileName, userId, isLogin } = data;
+      const { fileName, userId, isLogin, robotId } = data;
       logger.log('debug', `Saving workflow ${fileName} for user ID ${userId}`);
-      this.saveNewWorkflow(fileName, userId, isLogin);
+      this.saveNewWorkflow(fileName, userId, isLogin, robotId);
   });
-    socket.on('new-recording', () => this.workflowRecord = {
-      workflow: [],
+    socket.on('new-recording', (data) => {
+      this.workflowRecord = {
+        workflow: [],
+      };
     });
     socket.on('activeIndex', (data) => this.generatedData.lastIndex = parseInt(data));
     socket.on('decision', async ({ pair, actionType, decision, userId }) => {
-      const id = browserPool.getActiveBrowserId(userId, "recording");
-      if (id) {
+      if (this.poolId) {
         // const activeBrowser = browserPool.getRemoteBrowser(id);
         // const currentPage = activeBrowser?.getCurrentPage();
         if (!decision) {
@@ -768,38 +767,62 @@ export class WorkflowGenerator {
    * @param fileName The name of the file.
    * @returns {Promise<void>}
    */
-  public saveNewWorkflow = async (fileName: string, userId: number, isLogin: boolean) => {
+  public saveNewWorkflow = async (fileName: string, userId: number, isLogin: boolean, robotId?: string) => {
     const recording = this.optimizeWorkflow(this.workflowRecord);
+    let actionType = 'saved'; 
+    
     try {
-      this.recordingMeta = {
-        name: fileName,
-        id: uuid(),
-        createdAt: this.recordingMeta.createdAt || new Date().toLocaleString(),
-        pairs: recording.workflow.length,
-        updatedAt: new Date().toLocaleString(),
-        params: this.getParams() || [],
-        isLogin: isLogin,
-      }
-      const robot = await Robot.create({
-        userId,
-        recording_meta: this.recordingMeta,
-        recording: recording,
-      });
-      capture(
-        'maxun-oss-robot-created',
-        {
-          robot_meta: robot.recording_meta,
-          recording: robot.recording,
-        }
-      )
+      if (robotId) {
+        const robot = await Robot.findOne({ where: { 'recording_meta.id': robotId }});
 
-      logger.log('info', `Robot saved with id: ${robot.id}`);
+        if (robot) {
+          await robot.update({
+            recording: recording,
+            recording_meta: {
+              ...robot.recording_meta,
+              pairs: recording.workflow.length,
+              params: this.getParams() || [],
+              updatedAt: new Date().toLocaleString(),
+            },
+          })
+          
+          actionType = 'retrained';
+          logger.log('info', `Robot retrained with id: ${robot.id}`);
+        }
+      } else {
+        this.recordingMeta = {
+          name: fileName,
+          id: uuid(),
+          createdAt: this.recordingMeta.createdAt || new Date().toLocaleString(),
+          pairs: recording.workflow.length,
+          updatedAt: new Date().toLocaleString(),
+          params: this.getParams() || [],
+          isLogin: isLogin,
+        }
+        const robot = await Robot.create({
+          userId,
+          recording_meta: this.recordingMeta,
+          recording: recording,
+        });
+        capture(
+          'maxun-oss-robot-created',
+          {
+            robot_meta: robot.recording_meta,
+            recording: robot.recording,
+          }
+        )
+        
+        actionType = 'saved';
+        logger.log('info', `Robot saved with id: ${robot.id}`);
+      }  
     }
     catch (e) {
       const { message } = e as Error;
       logger.log('warn', `Cannot save the file to the local file system ${e}`)
+      actionType = 'error';
     }
-    this.socket.emit('fileSaved');
+
+    this.socket.emit('fileSaved', { actionType });
   }
 
   /**

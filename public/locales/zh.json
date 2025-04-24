@@ -54,6 +54,7 @@
       "label": "URL",
       "button": "开始录制"
     },
+    "retrain": "重新训练",
     "edit": "编辑",
     "delete": "删除",
     "duplicate": "复制",
@@ -238,7 +239,9 @@
       "confirm": "确认"
     },
     "notifications": {
-      "save_success": "机器人保存成功"
+      "save_success": "机器人保存成功",
+      "retrain_success": "机器人重新训练成功",
+      "save_error": "保存机器人时出错"
     },
     "errors": {
       "user_not_logged": "用户未登录。无法保存录制。",
@@ -514,7 +517,8 @@
       "running": "运行中",
       "scheduled": "已计划",
       "queued": "排队",
-      "failed": "失败"
+      "failed": "失败",
+      "aborted": "已中止"
     },
     "run_settings_modal": {
       "title": "运行设置",

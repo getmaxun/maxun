@@ -1,10 +1,13 @@
 import { Sequelize } from 'sequelize';
 import dotenv from 'dotenv';
-import setupAssociations from '../models/associations';
 
 dotenv.config();
 
-const databaseUrl = `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
+if (!process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_HOST || !process.env.DB_PORT || !process.env.DB_NAME) {
+    throw new Error('One or more required environment variables are missing.');
+}
+
+const databaseUrl = `postgresql://${process.env.DB_USER}:${encodeURIComponent(process.env.DB_PASSWORD)}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
 
 // Extract the hostname using the URL constructor
 const host = new URL(databaseUrl).hostname;

@@ -1,27 +1,22 @@
 import { Router } from 'express';
 import logger from "../logger";
-import { createRemoteBrowserForRun, destroyRemoteBrowser, getActiveBrowserIdByState } from "../browser-management/controller";
+import { createRemoteBrowserForRun, getActiveBrowserIdByState } from "../browser-management/controller";
 import { chromium } from 'playwright-extra';
 import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { browserPool } from "../server";
 import { uuid } from "uuidv4";
 import moment from 'moment-timezone';
 import cron from 'node-cron';
-import { googleSheetUpdateTasks, processGoogleSheetUpdates } from '../workflow-management/integrations/gsheet';
 import { getDecryptedProxyConfig } from './proxy';
 import { requireSignIn } from '../middlewares/auth';
 import Robot from '../models/Robot';
 import Run from '../models/Run';
-import { BinaryOutputService } from '../storage/mino';
-import { workflowQueue } from '../worker';
 import { AuthenticatedRequest } from './record';
 import { computeNextRun } from '../utils/schedule';
 import { capture } from "../utils/analytics";
-import { tryCatch } from 'bullmq';
 import { encrypt, decrypt } from '../utils/auth';
 import { WorkflowFile } from 'maxun-core';
-import { Page } from 'playwright';
-import { airtableUpdateTasks, processAirtableUpdates } from '../workflow-management/integrations/airtable';
+import { cancelScheduledWorkflow, scheduleWorkflow } from '../schedule-worker';
 import { pgBoss } from '../pgboss-worker';
 chromium.use(stealthPlugin());
 
@@ -761,7 +756,7 @@ router.put('/schedule/:id/', requireSignIn, async (req: AuthenticatedRequest, re
 
     switch (runEveryUnit) {
       case 'MINUTES':
-        cronExpression = `${startMinutes} */${runEvery} * * *`;
+        cronExpression = `*/${runEvery} * * * *`;
         break;
       case 'HOURS':
         cronExpression = `${startMinutes} */${runEvery} * * *`;
@@ -774,7 +769,7 @@ router.put('/schedule/:id/', requireSignIn, async (req: AuthenticatedRequest, re
         break;
       case 'MONTHS':
         // todo: handle leap year
-        cronExpression = `0 ${atTimeStart} ${dayOfMonth} * *`;
+        cronExpression = `${startMinutes} ${startHours} ${dayOfMonth} */${runEvery} *`;
         if (startFrom !== 'SUNDAY') {
           cronExpression += ` ${dayIndex}`;
         }
@@ -792,17 +787,13 @@ router.put('/schedule/:id/', requireSignIn, async (req: AuthenticatedRequest, re
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    // Create the job in the queue with the cron expression
-    const job = await workflowQueue.add(
-      'run workflow',
-      { id, runId: uuid(), userId: req.user.id },
-      {
-        repeat: {
-          pattern: cronExpression,
-          tz: timezone,
-        },
-      }
-    );
+    try {
+      await cancelScheduledWorkflow(id);
+    } catch (cancelError) {
+      logger.log('warn', `Failed to cancel existing schedule for robot ${id}: ${cancelError}`);
+    }
+
+    const jobId = await scheduleWorkflow(id, req.user.id, cronExpression, timezone);
 
     const nextRunAt = computeNextRun(cronExpression, timezone);
 
@@ -877,12 +868,12 @@ router.delete('/schedule/:id', requireSignIn, async (req: AuthenticatedRequest, 
       return res.status(404).json({ error: 'Robot not found' });
     }
 
-    // Remove existing job from queue if it exists
-    const existingJobs = await workflowQueue.getJobs(['delayed', 'waiting']);
-    for (const job of existingJobs) {
-      if (job.data.id === id) {
-        await job.remove();
-      }
+    // Cancel the scheduled job in PgBoss
+    try {
+      await cancelScheduledWorkflow(id);
+    } catch (error) {
+      logger.log('error', `Error cancelling scheduled job for robot ${id}: ${error}`);
+      // Continue with robot update even if cancellation fails
     }
 
     // Delete the schedule from the robot
@@ -913,42 +904,32 @@ router.delete('/schedule/:id', requireSignIn, async (req: AuthenticatedRequest, 
 router.post('/runs/abort/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     if (!req.user) { return res.status(401).send({ error: 'Unauthorized' }); }
-      const run = await Run.findOne({ where: { 
+    
+    const run = await Run.findOne({ where: { 
       runId: req.params.id,
       runByUserId: req.user.id,
     } });
+    
     if (!run) {
       return res.status(404).send(false);
     }
-    const plainRun = run.toJSON();
-
-    const browser = browserPool.getRemoteBrowser(plainRun.browserId);
-    const currentLog = browser?.interpreter.debugMessages.join('/n');
-    const serializableOutput = browser?.interpreter.serializableData.reduce((reducedObject, item, index) => {
-      return {
-        [`item-${index}`]: item,
-        ...reducedObject,
-      }
-    }, {});
-    const binaryOutput = browser?.interpreter.binaryData.reduce((reducedObject, item, index) => {
-      return {
-        [`item-${index}`]: item,
-        ...reducedObject,
-      }
-    }, {});
-    await run.update({
-      ...run,
-      status: 'aborted',
-      finishedAt: new Date().toLocaleString(),
-      browserId: plainRun.browserId,
-      log: currentLog,
-      serializableOutput,
-      binaryOutput,
+    
+    const userQueueName = `abort-run-user-${req.user.id}`;
+    await pgBoss.createQueue(userQueueName);
+    
+    await pgBoss.send(userQueueName, {
+      userId: req.user.id,
+      runId: req.params.id
     });
+    
+    await run.update({
+      status: 'aborting'
+    });
+    
     return res.send(true);
   } catch (e) {
     const { message } = e as Error;
-    logger.log('info', `Error while running a robot with name: ${req.params.fileName}_${req.params.runId}.json`);
+    logger.log('info', `Error while aborting run with id: ${req.params.id} - ${message}`);
     return res.send(false);
   }
 });

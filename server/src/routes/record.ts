@@ -5,8 +5,6 @@ import { Router, Request, Response } from 'express';
 
 import {
     initializeRemoteBrowserForRecording,
-    destroyRemoteBrowser,
-    getActiveBrowserId,
     interpretWholeWorkflow,
     stopRunningInterpretation,
     getRemoteBrowserCurrentUrl,
@@ -16,7 +14,6 @@ import {
 import { chromium } from 'playwright-extra';
 import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import logger from "../logger";
-import { getDecryptedProxyConfig } from './proxy';
 import { requireSignIn } from '../middlewares/auth';
 import { pgBoss } from '../pgboss-worker';
 
@@ -237,7 +234,7 @@ router.get('/interpret', requireSignIn, async (req: AuthenticatedRequest, res) =
         logger.log('info', `Queued interpret workflow job: ${jobId}, waiting for completion...`);
 
         try {
-            const result = await waitForJobCompletion(jobId, 'interpret-workflow', 15000);
+            const result = await waitForJobCompletion(jobId, 'interpret-workflow', 1000000);
             
             if (result) {
                 return res.send('interpretation done');
