@@ -71,7 +71,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
     interpretStoredRecording(runId).then(async (interpretation: boolean) => {
       if (!aborted) {
         if (interpretation) {
-          notify('success', t('main_page.notifications.interpretation_success', { name: runningRecordingName }));
+          // notify('success', t('main_page.notifications.interpretation_success', { name: runningRecordingName }));
         } else {
           notify('success', t('main_page.notifications.interpretation_failed', { name: runningRecordingName }));
           // destroy the created browser
@@ -112,6 +112,14 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
           notify('error', t('main_page.notifications.interpretation_failed', { name: robotName }));
         }
       });
+
+      socket.on('run-aborted', (data) => {
+        setRerenderRuns(true);
+        
+        const abortedRobotName = data.robotName;
+        notify('success', t('main_page.notifications.abort_success', { name: abortedRobotName }));
+      });
+
       setContent('runs');
       if (browserId) {
         notify('info', t('main_page.notifications.run_started', { name: runningRecordingName }));

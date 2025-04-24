@@ -904,42 +904,32 @@ router.delete('/schedule/:id', requireSignIn, async (req: AuthenticatedRequest, 
 router.post('/runs/abort/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     if (!req.user) { return res.status(401).send({ error: 'Unauthorized' }); }
-      const run = await Run.findOne({ where: { 
+    
+    const run = await Run.findOne({ where: { 
       runId: req.params.id,
       runByUserId: req.user.id,
     } });
+    
     if (!run) {
       return res.status(404).send(false);
     }
-    const plainRun = run.toJSON();
-
-    const browser = browserPool.getRemoteBrowser(plainRun.browserId);
-    const currentLog = browser?.interpreter.debugMessages.join('/n');
-    const serializableOutput = browser?.interpreter.serializableData.reduce((reducedObject, item, index) => {
-      return {
-        [`item-${index}`]: item,
-        ...reducedObject,
-      }
-    }, {});
-    const binaryOutput = browser?.interpreter.binaryData.reduce((reducedObject, item, index) => {
-      return {
-        [`item-${index}`]: item,
-        ...reducedObject,
-      }
-    }, {});
-    await run.update({
-      ...run,
-      status: 'aborted',
-      finishedAt: new Date().toLocaleString(),
-      browserId: plainRun.browserId,
-      log: currentLog,
-      serializableOutput,
-      binaryOutput,
+    
+    const userQueueName = `abort-run-user-${req.user.id}`;
+    await pgBoss.createQueue(userQueueName);
+    
+    await pgBoss.send(userQueueName, {
+      userId: req.user.id,
+      runId: req.params.id
     });
+    
+    await run.update({
+      status: 'aborting'
+    });
+    
     return res.send(true);
   } catch (e) {
     const { message } = e as Error;
-    logger.log('info', `Error while running a robot with name: ${req.params.fileName}_${req.params.runId}.json`);
+    logger.log('info', `Error while aborting run with id: ${req.params.id} - ${message}`);
     return res.send(false);
   }
 });

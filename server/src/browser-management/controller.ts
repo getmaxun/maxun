@@ -81,13 +81,39 @@ export const createRemoteBrowserForRun = (userId: string): string => {
  * @category BrowserManagement-Controller
  */
 export const destroyRemoteBrowser = async (id: string, userId: string): Promise<boolean> => {
-  const browserSession = browserPool.getRemoteBrowser(id);
-  if (browserSession) {
+  try {
+    const browserSession = browserPool.getRemoteBrowser(id);
+    if (!browserSession) {
+      logger.log('info', `Browser with id: ${id} not found, may have already been destroyed`);
+      return true; 
+    }
+    
     logger.log('debug', `Switching off the browser with id: ${id}`);
-    await browserSession.stopCurrentInterpretation();
-    await browserSession.switchOff();
+    
+    try {
+      await browserSession.stopCurrentInterpretation();
+    } catch (stopError) {
+      logger.log('warn', `Error stopping interpretation for browser ${id}: ${stopError}`);
+    }
+    
+    try {
+      await browserSession.switchOff();
+    } catch (switchOffError) {
+      logger.log('warn', `Error switching off browser ${id}: ${switchOffError}`);
+    }
+    
+    return browserPool.deleteRemoteBrowser(id);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.log('error', `Failed to destroy browser ${id}: ${errorMessage}`);
+    
+    try {
+      return browserPool.deleteRemoteBrowser(id);
+    } catch (deleteError) {
+      logger.log('error', `Failed to delete browser ${id} from pool: ${deleteError}`);
+      return false;
+    }
   }
-  return browserPool.deleteRemoteBrowser(id);
 };
 
 /**
