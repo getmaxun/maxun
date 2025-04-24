@@ -393,19 +393,15 @@ async function abortRun(runId: string, userId: string): Promise<boolean> {
     }
 
     const currentLog = browser.interpreter.debugMessages.join('\n');
-    const serializableOutput = browser.interpreter.serializableData.reduce((reducedObject, item, index) => {
-      return {
-        [`item-${index}`]: item,
-        ...reducedObject,
-      }
-    }, {});
+    const serializableOutput: Record<string, any> = {};
+    browser.interpreter.serializableData.forEach((item, index) => {
+      serializableOutput[`item-${index}`] = item;
+    });
     
-    const binaryOutput = browser.interpreter.binaryData.reduce((reducedObject, item, index) => {
-      return {
-        [`item-${index}`]: item,
-        ...reducedObject,
-      }
-    }, {});
+    const binaryOutput: Record<string, any> = {};
+    browser.interpreter.binaryData.forEach((item, index) => {
+      binaryOutput[`item-${index}`] = item;
+    });
 
     await run.update({
       status: 'aborted',
