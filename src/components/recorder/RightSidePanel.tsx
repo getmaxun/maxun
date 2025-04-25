@@ -423,6 +423,8 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
       }
     });
     resetListState();
+    stopPaginationMode();
+    stopLimitMode();
     setShowPaginationOptions(false);
     setShowLimitOptions(false);
     setCaptureStage('initial');
