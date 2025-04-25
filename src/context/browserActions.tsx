@@ -68,7 +68,10 @@ export const ActionProvider = ({ children }: { children: ReactNode }) => {
         socket?.emit('setPaginationMode', { pagination: true });
     };
 
-    const stopPaginationMode = () => setPaginationMode(false);
+    const stopPaginationMode = () => {
+        setPaginationMode(false);
+        socket?.emit('setPaginationMode', { pagination: false });
+    };
 
     const startLimitMode = () => {
         setLimitMode(true);
