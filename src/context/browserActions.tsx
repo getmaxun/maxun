@@ -88,6 +88,7 @@ export const ActionProvider = ({ children }: { children: ReactNode }) => {
 
     const stopGetList = () => {
         setGetList(false);
+        socket?.emit('setGetList', { getList: false });
         setPaginationType('');
         setLimitType('');
         setCustomLimit('');
