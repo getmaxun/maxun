@@ -45,6 +45,7 @@ interface InterpreterOptions {
   debugChannel: Partial<{
     activeId: Function,
     debugMessage: Function,
+    setActionType: Function,
   }>
 }
 
@@ -377,12 +378,20 @@ export default class Interpreter extends EventEmitter {
      */
     const wawActions: Record<CustomFunctions, (...args: any[]) => void> = {
       screenshot: async (params: PageScreenshotOptions) => {
+        if (this.options.debugChannel?.setActionType) {
+          this.options.debugChannel.setActionType('screenshot');
+        }
+
         const screenshotBuffer = await page.screenshot({
           ...params, path: undefined,
         });
         await this.options.binaryCallback(screenshotBuffer, 'image/png');
       },
       enqueueLinks: async (selector: string) => {
+        if (this.options.debugChannel?.setActionType) {
+          this.options.debugChannel.setActionType('enqueueLinks');
+        }
+
         const links: string[] = await page.locator(selector)
           .evaluateAll(
             // @ts-ignore
@@ -409,6 +418,10 @@ export default class Interpreter extends EventEmitter {
         await page.close();
       },
       scrape: async (selector?: string) => {
+        if (this.options.debugChannel?.setActionType) {
+          this.options.debugChannel.setActionType('scrape');
+        }
+
         await this.ensureScriptsLoaded(page);
 
         const scrapeResults: Record<string, string>[] = await page.evaluate((s) => window.scrape(s ?? null), selector);
@@ -416,6 +429,10 @@ export default class Interpreter extends EventEmitter {
       },
 
       scrapeSchema: async (schema: Record<string, { selector: string; tag: string, attribute: string; shadow: string}>) => {
+        if (this.options.debugChannel?.setActionType) {
+          this.options.debugChannel.setActionType('scrapeSchema');
+        }
+
         await this.ensureScriptsLoaded(page);
       
         const scrapeResult = await page.evaluate((schemaObj) => window.scrapeSchema(schemaObj), schema);
@@ -458,6 +475,10 @@ export default class Interpreter extends EventEmitter {
       },
 
       scrapeList: async (config: { listSelector: string, fields: any, limit?: number, pagination: any }) => {
+        if (this.options.debugChannel?.setActionType) {
+          this.options.debugChannel.setActionType('scrapeList');
+        }
+
         await this.ensureScriptsLoaded(page);
         if (!config.pagination) {
           const scrapeResults: Record<string, any>[] = await page.evaluate((cfg) => window.scrapeList(cfg), config);
@@ -469,6 +490,10 @@ export default class Interpreter extends EventEmitter {
       },
 
       scrapeListAuto: async (config: { listSelector: string }) => {
+        if (this.options.debugChannel?.setActionType) {
+          this.options.debugChannel.setActionType('scrapeListAuto');
+        }
+
         await this.ensureScriptsLoaded(page);
 
         const scrapeResults: { selector: string, innerText: string }[] = await page.evaluate((listSelector) => {
@@ -479,6 +504,10 @@ export default class Interpreter extends EventEmitter {
       },
 
       scroll: async (pages?: number) => {
+        if (this.options.debugChannel?.setActionType) {
+          this.options.debugChannel.setActionType('scroll');
+        }
+
         await page.evaluate(async (pagesInternal) => {
           for (let i = 1; i <= (pagesInternal ?? 1); i += 1) {
             // @ts-ignore
@@ -488,6 +517,10 @@ export default class Interpreter extends EventEmitter {
       },
 
       script: async (code: string) => {
+        if (this.options.debugChannel?.setActionType) {
+          this.options.debugChannel.setActionType('script');
+        }
+
         const AsyncFunction: FunctionConstructor = Object.getPrototypeOf(
           async () => { },
         ).constructor;
@@ -496,6 +529,10 @@ export default class Interpreter extends EventEmitter {
       },
 
       flag: async () => new Promise((res) => {
+        if (this.options.debugChannel?.setActionType) {
+          this.options.debugChannel.setActionType('flag');
+        }
+
         this.emit('flag', page, res);
       }),
     };
@@ -526,6 +563,10 @@ export default class Interpreter extends EventEmitter {
         const params = !step.args || Array.isArray(step.args) ? step.args : [step.args];
         await wawActions[step.action as CustomFunctions](...(params ?? []));
       } else {
+        if (this.options.debugChannel?.setActionType) {
+          this.options.debugChannel.setActionType(String(step.action));
+        }
+
         // Implements the dot notation for the "method name" in the workflow
         const levels = String(step.action).split('.');
         const methodName = levels[levels.length - 1];
