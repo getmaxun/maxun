@@ -6,6 +6,7 @@ import { emptyWorkflow } from '../shared/constants';
 export type PaginationType = 'scrollDown' | 'scrollUp' | 'clickNext' | 'clickLoadMore' | 'none' | '';
 export type LimitType = '10' | '100' | 'custom' | '';
 export type CaptureStage = 'initial' | 'pagination' | 'limit' | 'complete' | '';
+export type ActionType = 'text' | 'list' | 'screenshot';
 
 interface ActionContextProps {
     getText: boolean;
@@ -19,18 +20,27 @@ interface ActionContextProps {
     customLimit: string;
     captureStage: CaptureStage;
     showPaginationOptions: boolean;
-    showLimitOptions: boolean;
+    showLimitOptions: boolean;    
+    actionsInWorkflow: {
+        text: boolean;
+        list: boolean;
+        screenshot: boolean;
+    };
+    activeAction: 'none' | 'text' | 'list' | 'screenshot';
+    setActiveAction: (action: 'none' | 'text' | 'list' | 'screenshot') => void;
     setWorkflow: (workflow: WorkflowFile) => void;
     setShowPaginationOptions: (show: boolean) => void;
     setShowLimitOptions: (show: boolean) => void;
     setCaptureStage: (stage: CaptureStage) => void;
-    startPaginationMode: () => void;
+    startAction: (action: 'text' | 'list' | 'screenshot') => void;
+    finishAction: (action: 'text' | 'list' | 'screenshot') => void;
     startGetText: () => void;
     stopGetText: () => void;
     startGetList: () => void;
     stopGetList: () => void;
     startGetScreenshot: () => void;
     stopGetScreenshot: () => void;
+    startPaginationMode: () => void;
     stopPaginationMode: () => void;
     updatePaginationType: (type: PaginationType) => void;
     startLimitMode: () => void;
@@ -54,8 +64,53 @@ export const ActionProvider = ({ children }: { children: ReactNode }) => {
     const [captureStage, setCaptureStage] = useState<CaptureStage>('initial');
     const [showPaginationOptions, setShowPaginationOptions] = useState(false);
     const [showLimitOptions, setShowLimitOptions] = useState(false);
+    const [actionsInWorkflow, setActionsInWorkflow] = useState({
+        text: false,
+        list: false,
+        screenshot: false
+    });
+    const [activeAction, setActiveAction] = useState<'none' | 'text' | 'list' | 'screenshot'>('none');
 
     const { socket } = useSocketStore();
+
+    const startAction = (action: 'text' | 'list' | 'screenshot') => {
+        if (activeAction !== 'none') return;
+        
+        setActiveAction(action);
+        
+        if (action === 'text') {
+            setGetText(true);
+        } else if (action === 'list') {
+            setGetList(true);
+            socket?.emit('setGetList', { getList: true });
+            setCaptureStage('initial');
+        } else if (action === 'screenshot') {
+            setGetScreenshot(true);
+        }
+    };
+    
+    const finishAction = (action: 'text' | 'list' | 'screenshot') => {
+        if (activeAction !== action) return;
+        
+        setActionsInWorkflow(prev => ({
+            ...prev,
+            [action]: true
+        }));
+        
+        setActiveAction('none');
+        
+        if (action === 'text') {
+            setGetText(false);
+        } else if (action === 'list') {
+            setGetList(false);
+            setPaginationType('');
+            setLimitType('');
+            setCustomLimit('');
+            setCaptureStage('complete');
+        } else if (action === 'screenshot') {
+            setGetScreenshot(false);
+        }
+    };
 
     const updatePaginationType = (type: PaginationType) => setPaginationType(type);
     const updateLimitType = (type: LimitType) => setLimitType(type);
@@ -77,25 +132,30 @@ export const ActionProvider = ({ children }: { children: ReactNode }) => {
 
     const stopLimitMode = () => setLimitMode(false);
 
-    const startGetText = () => setGetText(true);
-    const stopGetText = () => setGetText(false);
-
-    const startGetList = () => {
-        setGetList(true);
-        socket?.emit('setGetList', { getList: true });
-        setCaptureStage('initial');
-    }
-
+    const startGetText = () => startAction('text');
+    
+    const stopGetText = () => {
+        setGetText(false);
+        setActiveAction('none');
+    };
+    
+    const startGetList = () => startAction('list');
+    
     const stopGetList = () => {
         setGetList(false);
         setPaginationType('');
         setLimitType('');
         setCustomLimit('');
         setCaptureStage('complete');
+        setActiveAction('none');
     };
-
-    const startGetScreenshot = () => setGetScreenshot(true);
-    const stopGetScreenshot = () => setGetScreenshot(false);
+    
+    const startGetScreenshot = () => startAction('screenshot');
+    
+    const stopGetScreenshot = () => {
+        setGetScreenshot(false);
+        setActiveAction('none');
+    };
 
     return (
         <ActionContext.Provider value={{
@@ -111,10 +171,15 @@ export const ActionProvider = ({ children }: { children: ReactNode }) => {
             captureStage,
             showPaginationOptions,
             showLimitOptions,
+            actionsInWorkflow,
+            activeAction,
+            setActiveAction,
             setWorkflow,
             setShowPaginationOptions,   
             setShowLimitOptions,
             setCaptureStage,
+            startAction,
+            finishAction,
             startGetText,
             stopGetText,
             startGetList,
@@ -123,9 +188,9 @@ export const ActionProvider = ({ children }: { children: ReactNode }) => {
             stopGetScreenshot,
             startPaginationMode,
             stopPaginationMode,
+            updatePaginationType,
             startLimitMode,
             stopLimitMode,
-            updatePaginationType,
             updateLimitType,
             updateCustomLimit
         }}>
