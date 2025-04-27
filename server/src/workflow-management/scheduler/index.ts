@@ -132,6 +132,12 @@ async function executeRun(id: string, userId: string) {
     const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
     const uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, interpretationInfo.binaryOutput);
 
+    const categorizedOutput = {
+      scrapeSchema: interpretationInfo.scrapeSchemaOutput || {},
+      scrapeList: interpretationInfo.scrapeListOutput || {},
+      other: interpretationInfo.otherOutput || {}
+    };
+
     await destroyRemoteBrowser(plainRun.browserId, userId);
 
     await run.update({
@@ -140,7 +146,11 @@ async function executeRun(id: string, userId: string) {
       finishedAt: new Date().toLocaleString(),
       browserId: plainRun.browserId,
       log: interpretationInfo.log.join('\n'),
-      serializableOutput: interpretationInfo.serializableOutput,
+      serializableOutput: {
+        scrapeSchema: Object.values(categorizedOutput.scrapeSchema),
+        scrapeList: Object.values(categorizedOutput.scrapeList),
+        other: Object.values(categorizedOutput.other),
+      },
       binaryOutput: uploadedBinaryOutput,
     });
 
