@@ -87,9 +87,22 @@ export class WorkflowInterpreter {
   public debugMessages: string[] = [];
 
   /**
-   * An array of all the serializable data extracted from the run.
+   * Storage for different types of serializable data
    */
-  public serializableData: string[] = [];
+  public serializableDataByType: {
+    scrapeSchema: any[],
+    scrapeList: any[],
+    other: any[]
+  } = {
+    scrapeSchema: [],
+    scrapeList: [],
+    other: []
+  };
+
+  /**
+   * Track the current action type being processed
+   */
+  private currentActionType: string | null = null;
 
   /**
    * An array of all the binary data extracted from the run.
@@ -181,6 +194,9 @@ export class WorkflowInterpreter {
           this.debugMessages.push(`[${new Date().toLocaleString()}] ` + msg);
           this.socket.emit('log', msg)
         },
+        setActionType: (type: string) => {
+          this.currentActionType = type;
+        }
       },
       serializableCallback: (data: any) => {
         this.socket.emit('serializableCallback', data);
@@ -246,7 +262,12 @@ export class WorkflowInterpreter {
     this.interpreter = null;
     this.breakpoints = [];
     this.interpretationResume = null;
-    this.serializableData = [];
+    this.currentActionType = null;
+    this.serializableDataByType = {
+      scrapeSchema: [],
+      scrapeList: [],
+      other: []
+    };
     this.binaryData = [];
   }
 
@@ -278,9 +299,19 @@ export class WorkflowInterpreter {
           this.debugMessages.push(`[${new Date().toLocaleString()}] ` + msg);
           this.socket.emit('debugMessage', msg)
         },
+        setActionType: (type: string) => {
+          this.currentActionType = type;
+        }
       },
       serializableCallback: (data: any) => {
-        this.serializableData.push(data);
+        if (this.currentActionType === 'scrapeSchema') {
+          this.serializableDataByType.scrapeSchema.push(data);
+        } else if (this.currentActionType === 'scrapeList') {
+          this.serializableDataByType.scrapeList.push(data);
+        } else {
+          this.serializableDataByType.other.push(data);
+        }
+        
         this.socket.emit('serializableCallback', data);
       },
       binaryCallback: async (data: string, mimetype: string) => {
@@ -311,14 +342,23 @@ export class WorkflowInterpreter {
 
     const status = await interpreter.run(page, params);
 
-    const lastArray = this.serializableData.length > 1
-    ? [this.serializableData[this.serializableData.length - 1]]
-    : this.serializableData;
-
+    // Structure the output to maintain separate data for each action type
     const result = {
       log: this.debugMessages,
       result: status,
-      serializableOutput: lastArray.reduce((reducedObject, item, index) => {
+      scrapeSchemaOutput: this.serializableDataByType.scrapeSchema.reduce((reducedObject, item, index) => {
+        return {
+          [`schema-${index}`]: item,
+          ...reducedObject,
+        }
+      }, {}),
+      scrapeListOutput: this.serializableDataByType.scrapeList.reduce((reducedObject, item, index) => {
+        return {
+          [`list-${index}`]: item,
+          ...reducedObject,
+        }
+      }, {}),
+      otherOutput: this.serializableDataByType.other.reduce((reducedObject, item, index) => {
         return {
           [`item-${index}`]: item,
           ...reducedObject,
