@@ -45,6 +45,7 @@ app.use(
       pool: pool,
       tableName: 'session',
       createTableIfMissing: true,
+      pruneSessionInterval: 60 * 60,
     }),
     secret: 'mx-session',
     resave: false, // Do not resave the session if it hasn't changed
