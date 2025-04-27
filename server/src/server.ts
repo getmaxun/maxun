@@ -46,9 +46,10 @@ app.use(
       tableName: 'session',
       createTableIfMissing: true,
       pruneSessionInterval: 60 * 60,
-      errorLog: (err) => {
+      errorLog: (err: any) => {
         logger.log('error', `Session store error: ${err}`);
       },
+    } as any),
     }),
     secret: 'mx-session',
     resave: false, // Do not resave the session if it hasn't changed
