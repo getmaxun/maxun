@@ -337,9 +337,10 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
       notify('error', t('right_panel.errors.unable_create_settings'));
     }
     handleStopGetList();
+    resetInterpretationLog();
     finishAction('list');
     onFinishCapture();
-  }, [getListSettingsObject, socket, notify, handleStopGetList, finishAction, onFinishCapture, t]);
+  }, [getListSettingsObject, socket, notify, handleStopGetList, resetInterpretationLog, finishAction, onFinishCapture, t]);
 
   const hasUnconfirmedListTextFields = browserSteps.some(step => 
     step.type === 'list' && Object.values(step.fields).some(field => 
@@ -459,6 +460,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     socket?.emit('action', { action: 'screenshot', settings: screenshotSettings });
     addScreenshotStep(fullPage);
     stopGetScreenshot();
+    resetInterpretationLog();
     finishAction('screenshot');
     onFinishCapture();
   };
