@@ -536,20 +536,25 @@
             "output_data": "出力データ",
             "log": "ログ"
         },
-        "empty_output": "出力は空です。",
-        "loading": "実行中です。実行が完了すると、抽出されたデータがここに表示されます。",
+        "buttons": {
+            "stop": "停止"
+        },
+        "loading": "データを読み込み中...",
+        "empty_output": "出力データがありません",
         "captured_data": {
             "title": "キャプチャされたデータ",
-            "download_json": "JSONとしてダウンロード",
-            "download_csv": "CSVとしてダウンロード"
+            "download_csv": "CSVをダウンロード",
+            "download_all_json": "すべてのJSONをダウンロード",
+            "view_full": "すべてのデータを表示",
+            "items": "アイテム",
+            "schema_title": "テキストをキャプチャ",
+            "list_title": "リストをキャプチャ",
+            "other_title": "その他のデータ"
         },
         "captured_screenshot": {
             "title": "キャプチャされたスクリーンショット",
             "download": "スクリーンショットをダウンロード",
-            "render_failed": "画像のレンダリングに失敗しました"
-        },
-        "buttons": {
-            "stop": "停止"
+            "render_failed": "スクリーンショットのレンダリングに失敗しました"
         }
     },
     "navbar": {

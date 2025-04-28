@@ -536,20 +536,25 @@
       "output_data": "Datos de Salida",
       "log": "Registro"
     },
-    "empty_output": "La salida está vacía.",
-    "loading": "Ejecución en curso. Los datos extraídos aparecerán aquí una vez que se complete la ejecución.",
-    "captured_data": {
-      "title": "Datos Capturados",
-      "download_json": "Descargar como JSON",
-      "download_csv": "Descargar como CSV"
-    },
-    "captured_screenshot": {
-      "title": "Captura de Pantalla",
-      "download": "Descargar Captura",
-      "render_failed": "No se pudo renderizar la imagen"
-    },
     "buttons": {
       "stop": "Detener"
+    },
+    "loading": "Cargando datos...",
+    "empty_output": "No hay datos de salida disponibles",
+    "captured_data": {
+      "title": "Datos Capturados",
+      "download_csv": "Descargar CSV",
+      "download_all_json": "Descargar Todo JSON",
+      "view_full": "Ver Datos Completos",
+      "items": "elementos",
+      "schema_title": "Capturar Texto",
+      "list_title": "Capturar Lista",
+      "other_title": "Otros Datos"
+    },
+    "captured_screenshot": {
+      "title": "Capturas de Pantalla",
+      "download": "Descargar Captura",
+      "render_failed": "Error al renderizar la captura"
     }
   },
   "navbar": {

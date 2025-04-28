@@ -177,6 +177,19 @@
         "pagination": "Select how the robot can capture the rest of the list",
         "limit": "Choose the number of items to extract",
         "complete": "Capture is complete"
+      },
+      "workflow_progress": {
+        "title": "Workflow Progress",
+        "description": "You have completed {{completed}} out of {{total}} possible actions",
+        "completed": "All actions completed!"
+      },
+      "workflow_actions": {
+        "description": "The following actions have been added to your workflow:"
+      },
+      "actions": {
+        "text": "Capture Text",
+        "list": "Capture List",
+        "screenshot": "Capture Screenshot"
       }
     },
     "right_panel": {
@@ -543,20 +556,25 @@
         "output_data": "Output Data",
         "log": "Log"
       },
-      "empty_output": "The output is empty.",
-      "loading": "Run in progress. Extracted data will appear here once run completes.",
-      "captured_data": {
-        "title": "Captured Data",
-        "download_json": "Download as JSON",
-        "download_csv": "Download as CSV"
-      },
-      "captured_screenshot": {
-        "title": "Captured Screenshot",
-        "download": "Download Screenshot",
-        "render_failed": "The image failed to render"
-      },
       "buttons": {
         "stop": "Stop"
+      },
+      "loading": "Loading data...",
+      "empty_output": "No output data available",
+      "captured_data": {
+        "title": "Captured Data",
+        "download_csv": "Download CSV",
+        "download_all_json": "Download All JSON",
+        "view_full": "View Full Data",
+        "items": "items",
+        "schema_title": "Capture Text",
+        "list_title": "Capture List",
+        "other_title": "Other Data"
+      },
+      "captured_screenshot": {
+        "title": "Captured Screenshots",
+        "download": "Download Screenshot",
+        "render_failed": "Failed to render screenshot"
       }
     },
     "navbar": {
