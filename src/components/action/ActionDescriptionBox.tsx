@@ -49,14 +49,24 @@ const Content = styled.div`
   text-align: left;
 `;
 
-
 const ActionDescriptionBox = ({ isDarkMode }: { isDarkMode: boolean }) => {
   const { t } = useTranslation();
-  const { getText, getScreenshot, getList, captureStage } = useActionContext() as {
+  const { 
+    getText, 
+    getScreenshot, 
+    getList, 
+    captureStage,
+    actionsInWorkflow 
+  } = useActionContext() as {
     getText: boolean;
     getScreenshot: boolean;
     getList: boolean;
     captureStage: 'initial' | 'pagination' | 'limit' | 'complete';
+    actionsInWorkflow: {
+      text: boolean;
+      list: boolean;
+      screenshot: boolean;
+    };
   };
 
   const messages = [
@@ -118,10 +128,95 @@ const ActionDescriptionBox = ({ isDarkMode }: { isDarkMode: boolean }) => {
         </>
       );
     } else {
+      const actionsInWorkflowCount = Object.values(actionsInWorkflow).filter(Boolean).length;
+      
       return (
         <>
-          <Typography variant="subtitle2" gutterBottom>{t('action_description.default.title')}</Typography>
-          <Typography variant="body2" gutterBottom>{t('action_description.default.description')}</Typography>
+          <Typography variant="subtitle2" gutterBottom>
+            {actionsInWorkflowCount === 0 
+              ? t('action_description.default.title')
+              : t('action_description.workflow_progress.title')}
+          </Typography>
+          
+          {actionsInWorkflowCount === 0 ? (
+            <Typography variant="body2" gutterBottom>
+              {t('action_description.default.description')}
+            </Typography>
+          ) : (
+            <>
+              <Typography variant="body2" gutterBottom>
+                {t('action_description.workflow_actions.description')}
+              </Typography>
+              
+              <Box mt={2}>
+                {actionsInWorkflow.text && (
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={true}
+                        disabled
+                        sx={{
+                          color: isDarkMode ? 'white' : 'default',
+                          '&.Mui-checked': {
+                            color: '#ff33cc',
+                          },
+                        }}
+                      />
+                    }
+                    label={
+                      <Typography variant="body2" gutterBottom color={isDarkMode ? 'white' : 'textPrimary'}>
+                        {t('action_description.actions.text')}
+                      </Typography>
+                    }
+                  />
+                )}
+                
+                {actionsInWorkflow.list && (
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={true}
+                        disabled
+                        sx={{
+                          color: isDarkMode ? 'white' : 'default',
+                          '&.Mui-checked': {
+                            color: '#ff33cc',
+                          },
+                        }}
+                      />
+                    }
+                    label={
+                      <Typography variant="body2" gutterBottom color={isDarkMode ? 'white' : 'textPrimary'}>
+                        {t('action_description.actions.list')}
+                      </Typography>
+                    }
+                  />
+                )}
+                
+                {actionsInWorkflow.screenshot && (
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={true}
+                        disabled
+                        sx={{
+                          color: isDarkMode ? 'white' : 'default',
+                          '&.Mui-checked': {
+                            color: '#ff33cc',
+                          },
+                        }}
+                      />
+                    }
+                    label={
+                      <Typography variant="body2" gutterBottom color={isDarkMode ? 'white' : 'textPrimary'}>
+                        {t('action_description.actions.screenshot')}
+                      </Typography>
+                    }
+                  />
+                )}
+              </Box>
+            </>
+          )}
         </>
       );
     }
