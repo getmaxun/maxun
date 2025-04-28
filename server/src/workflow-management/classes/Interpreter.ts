@@ -180,9 +180,9 @@ export class WorkflowInterpreter {
   ) => {
     const params = settings.params ? settings.params : null;
     delete settings.params;
-
+    
     const processedWorkflow = processWorkflow(workflow, true);
-
+  
     const options = {
       ...settings,
       debugChannel: {
@@ -199,23 +199,49 @@ export class WorkflowInterpreter {
         }
       },
       serializableCallback: (data: any) => {
-        this.socket.emit('serializableCallback', data);
+        if (this.currentActionType === 'scrapeSchema') {
+          if (Array.isArray(data) && data.length > 0) {
+            this.socket.emit('serializableCallback', { 
+              type: 'captureText', 
+              data 
+            });
+          } else {
+            this.socket.emit('serializableCallback', { 
+              type: 'captureText', 
+              data : [data]
+            });
+          }
+        } else if (this.currentActionType === 'scrapeList') {
+          this.socket.emit('serializableCallback', { 
+            type: 'captureList', 
+            data 
+          });
+        } else {
+          this.socket.emit('serializableCallback', { 
+            type: 'other', 
+            data 
+          });
+        }
       },
       binaryCallback: (data: string, mimetype: string) => {
-        this.socket.emit('binaryCallback', { data, mimetype });
+        this.socket.emit('binaryCallback', { 
+          data, 
+          mimetype,
+          type: 'captureScreenshot'
+        });
       }
     }
-
+  
     const interpreter = new Interpreter(processedWorkflow, options);
     this.interpreter = interpreter;
-
+  
     interpreter.on('flag', async (page, resume) => {
       if (this.activeId !== null && this.breakpoints[this.activeId]) {
         logger.log('debug', `breakpoint hit id: ${this.activeId}`);
         this.socket.emit('breakpointHit');
         this.interpretationIsPaused = true;
       }
-
+  
       if (this.interpretationIsPaused) {
         this.interpretationResume = resume;
         logger.log('debug', `Paused inside of flag: ${page.url()}`);
@@ -225,13 +251,13 @@ export class WorkflowInterpreter {
         resume();
       }
     });
-
+  
     this.socket.emit('log', '----- Starting the interpretation -----', false);
-
+  
     const status = await interpreter.run(page, params);
-
+  
     this.socket.emit('log', `----- The interpretation finished with status: ${status} -----`, false);
-
+  
     logger.log('debug', `Interpretation finished`);
     this.interpreter = null;
     this.socket.emit('activePairId', -1);
@@ -288,6 +314,8 @@ export class WorkflowInterpreter {
 
     const processedWorkflow = processWorkflow(workflow);
 
+    let mergedScrapeSchema = {};
+
     const options = {
       ...settings,
       debugChannel: {
@@ -305,7 +333,13 @@ export class WorkflowInterpreter {
       },
       serializableCallback: (data: any) => {
         if (this.currentActionType === 'scrapeSchema') {
-          this.serializableDataByType.scrapeSchema.push(data);
+          if (Array.isArray(data) && data.length > 0) {
+            mergedScrapeSchema = { ...mergedScrapeSchema, ...data[0] };
+            this.serializableDataByType.scrapeSchema.push(data);
+          } else {
+            mergedScrapeSchema = { ...mergedScrapeSchema, ...data };
+            this.serializableDataByType.scrapeSchema.push([data]);
+          }
         } else if (this.currentActionType === 'scrapeList') {
           this.serializableDataByType.scrapeList.push(data);
         } else {
@@ -346,12 +380,14 @@ export class WorkflowInterpreter {
     const result = {
       log: this.debugMessages,
       result: status,
-      scrapeSchemaOutput: this.serializableDataByType.scrapeSchema.reduce((reducedObject, item, index) => {
-        return {
-          [`schema-${index}`]: item,
-          ...reducedObject,
-        }
-      }, {}),
+      scrapeSchemaOutput: Object.keys(mergedScrapeSchema).length > 0 
+      ? { "schema-merged": [mergedScrapeSchema] }
+      : this.serializableDataByType.scrapeSchema.reduce((reducedObject, item, index) => {
+          return {
+            [`schema-${index}`]: item,
+            ...reducedObject,
+          }
+        }, {}),
       scrapeListOutput: this.serializableDataByType.scrapeList.reduce((reducedObject, item, index) => {
         return {
           [`list-${index}`]: item,
