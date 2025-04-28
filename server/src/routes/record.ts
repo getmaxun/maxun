@@ -147,7 +147,7 @@ router.get('/stop/:browserId', requireSignIn, async (req: AuthenticatedRequest, 
         });
 
         if (!jobId) {
-            await destroyRemoteBrowser(req.user.id, req.user.id);
+            await destroyRemoteBrowser(req.params.browserId, req.user.id);
             return res.send(false);
         }
 
