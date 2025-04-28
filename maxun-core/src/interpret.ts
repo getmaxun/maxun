@@ -432,46 +432,30 @@ export default class Interpreter extends EventEmitter {
         if (this.options.debugChannel?.setActionType) {
           this.options.debugChannel.setActionType('scrapeSchema');
         }
-
+      
         await this.ensureScriptsLoaded(page);
       
         const scrapeResult = await page.evaluate((schemaObj) => window.scrapeSchema(schemaObj), schema);
       
-        const newResults = Array.isArray(scrapeResult) ? scrapeResult : [scrapeResult];
-        newResults.forEach((result) => {
-          Object.entries(result).forEach(([key, value]) => {
-              const keyExists = this.cumulativeResults.some(
-                  (item) => key in item && item[key] !== undefined
-              );
-  
-              if (!keyExists) {
-                  this.cumulativeResults.push({ [key]: value });
-              }
-          });
+        if (!this.cumulativeResults || !Array.isArray(this.cumulativeResults)) {
+          this.cumulativeResults = [];
+        }
+      
+        if (this.cumulativeResults.length === 0) {
+          this.cumulativeResults.push({});
+        }
+      
+        const mergedResult = this.cumulativeResults[0];
+        const resultToProcess = Array.isArray(scrapeResult) ? scrapeResult[0] : scrapeResult;
+        
+        Object.entries(resultToProcess).forEach(([key, value]) => {
+          if (value !== undefined) {
+            mergedResult[key] = value;
+          }
         });
-
-        const mergedResult: Record<string, string>[] = [
-          Object.fromEntries( 
-            Object.entries(
-              this.cumulativeResults.reduce((acc, curr) => {
-                Object.entries(curr).forEach(([key, value]) => {
-                  // If the key doesn't exist or the current value is not undefined, add/update it
-                  if (value !== undefined) {
-                    acc[key] = value;
-                  }
-                });
-                return acc;
-              }, {})
-            )
-          )
-        ];
-
-        // Log cumulative results after each action
-        console.log("CUMULATIVE results:", this.cumulativeResults);
-        console.log("MERGED results:", mergedResult);
-
-        await this.options.serializableCallback(mergedResult);
-        // await this.options.serializableCallback(scrapeResult);
+      
+        console.log("Updated merged result:", mergedResult);
+        await this.options.serializableCallback([mergedResult]);
       },
 
       scrapeList: async (config: { listSelector: string, fields: any, limit?: number, pagination: any }) => {
