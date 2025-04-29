@@ -402,7 +402,7 @@ const handleChangeUrl = async (generator: WorkflowGenerator, page: Page, url: st
     if (url) {
         await generator.onChangeUrl(url, page);
         try {
-            await page.goto(url);
+            await page.goto(url, { waitUntil: 'networkidle', timeout: 10000 });
             logger.log('debug', `Went to ${url}`);
         } catch (e) {
             const { message } = e as Error;
