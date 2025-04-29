@@ -43,9 +43,9 @@ interface InterpreterOptions {
   binaryCallback: (output: any, mimeType: string) => (void | Promise<void>);
   debug: boolean;
   debugChannel: Partial<{
-    activeId: Function,
-    debugMessage: Function,
-    setActionType: Function,
+    activeId: (id: number) => void,
+    debugMessage: (msg: string) => void,
+    setActionType: (type: string) => void,
   }>
 }
 
