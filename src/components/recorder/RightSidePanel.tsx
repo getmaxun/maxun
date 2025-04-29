@@ -342,9 +342,10 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     onFinishCapture();
   }, [getListSettingsObject, socket, notify, handleStopGetList, resetInterpretationLog, finishAction, onFinishCapture, t]);
 
-  const hasUnconfirmedListTextFields = browserSteps.some(step => 
-    step.type === 'list' && Object.values(step.fields).some(field => 
-      !confirmedListTextFields[step.id]?.[field.id]
+  const hasUnconfirmedListTextFields = browserSteps.some(step =>
+    step.type === 'list' &&
+    Object.entries(step.fields).some(([fieldKey]) =>
+      !confirmedListTextFields[step.id]?.[fieldKey]
     )
   );
 
