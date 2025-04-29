@@ -49,9 +49,12 @@ function mergeRelatedData(serializableOutput: SerializableOutput, binaryOutput: 
   const mergedRecords: Record<string, any>[] = [];
   
   const maxLength = Math.max(
-    ...(serializableOutput.scrapeSchema?.map(array => array?.length || 0) || [0]),
-    ...(serializableOutput.scrapeList?.map(array => array?.length || 0) || [0]),
-    ...(serializableOutput.other?.map(array => array?.length || 0) || [0])
+    ...[
+      ...(serializableOutput.scrapeSchema ?? []).map(arr => arr?.length ?? 0),
+      ...(serializableOutput.scrapeList ?? []).map(arr => arr?.length ?? 0),
+      ...(serializableOutput.other ?? []).map(arr => arr?.length ?? 0),
+      0
+    ]
   );
   
   for (let i = 0; i < maxLength; i++) {
