@@ -235,18 +235,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     }, 100);
   };
 
-  const downloadAllJSON = () => {
-    let allData;
-
-    if (isLegacyData) {
-      allData = { data: legacyData };
-    } else {
-      allData = {
-        schema: schemaData,
-        list: listData.flat(),
-      };
-    }
-
     const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
 
