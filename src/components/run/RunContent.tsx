@@ -57,6 +57,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   const [listColumns, setListColumns] = useState<string[][]>([]);
   const [currentListIndex, setCurrentListIndex] = useState<number>(0);
 
+  const [screenshotKeys, setScreenshotKeys] = useState<string[]>([]);
+  const [currentScreenshotIndex, setCurrentScreenshotIndex] = useState<number>(0);
+
   const [expandedView, setExpandedView] = useState<string | null>(null);
 
   const [legacyData, setLegacyData] = useState<any[]>([]);
@@ -89,6 +92,13 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
       processScrapeList(row.serializableOutput.scrapeList);
     }
   }, [row.serializableOutput]);
+
+  useEffect(() => {
+    if (row.binaryOutput && Object.keys(row.binaryOutput).length > 0) {
+      setScreenshotKeys(Object.keys(row.binaryOutput));
+      setCurrentScreenshotIndex(0);
+    }
+  }, [row.binaryOutput]);
 
   const processLegacyData = (legacyOutput: Record<string, any>) => {
     let allData: any[] = [];
@@ -237,6 +247,14 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
       setCurrentListIndex(currentListIndex + 1);
     } else if (direction === 'prev' && currentListIndex > 0) {
       setCurrentListIndex(currentListIndex - 1);
+    }
+  };
+
+  const navigateScreenshots = (direction: 'next' | 'prev') => {
+    if (direction === 'next' && currentScreenshotIndex < screenshotKeys.length - 1) {
+      setCurrentScreenshotIndex(currentScreenshotIndex + 1);
+    } else if (direction === 'prev' && currentScreenshotIndex > 0) {
+      setCurrentScreenshotIndex(currentScreenshotIndex - 1);
     }
   };
 
@@ -789,11 +807,90 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
             </Box>
           )}
 
-          {/* {hasScreenshots && (
+          {hasScreenshots && (
             <>
-              {renderPaginatedScreenshots()}
+              <Accordion defaultExpanded sx={{ mb: 2 }}>
+                <AccordionSummary
+                  expandIcon={<ExpandMoreIcon />}
+                  aria-controls="screenshot-content"
+                  id="screenshot-header"
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <ImageIcon sx={{ color: '#FF00C3' }} />
+                    <Typography variant='h6' sx={{ ml: 2 }}>
+                      {t('run_content.captured_screenshot.title', 'Screenshots')}
+                    </Typography>
+                  </Box>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                    <Button
+                      startIcon={<DownloadIcon />}
+                      href={row.binaryOutput[screenshotKeys[currentScreenshotIndex]]}
+                      download={screenshotKeys[currentScreenshotIndex]}
+                      sx={{ borderColor: '#FF00C3', color: '#FF00C3', borderRadius: 1 }}
+                      variant="outlined"
+                    >
+                      {t('run_content.captured_screenshot.download', 'Download')}
+                    </Button>
+                    
+                    {screenshotKeys.length > 1 && (
+                      <ButtonGroup size="small">
+                        <Button
+                          onClick={() => navigateScreenshots('prev')}
+                          disabled={currentScreenshotIndex === 0}
+                          sx={{
+                            borderColor: '#FF00C3',
+                            color: currentScreenshotIndex === 0 ? 'gray' : '#FF00C3',
+                            '&.Mui-disabled': {
+                              borderColor: 'rgba(0, 0, 0, 0.12)'
+                            }
+                          }}
+                        >
+                          <ArrowBackIcon />
+                        </Button>
+                        <Button
+                          onClick={() => navigateScreenshots('next')}
+                          disabled={currentScreenshotIndex === screenshotKeys.length - 1}
+                          sx={{
+                            borderColor: '#FF00C3',
+                            color: currentScreenshotIndex === screenshotKeys.length - 1 ? 'gray' : '#FF00C3',
+                            '&.Mui-disabled': {
+                              borderColor: 'rgba(0, 0, 0, 0.12)'
+                            }
+                          }}
+                        >
+                          <ArrowForwardIcon />
+                        </Button>
+                      </ButtonGroup>
+                    )}
+                  </Box>
+                  
+                  <Box sx={{ mt: 1 }}>
+                    {screenshotKeys.length > 1 && (
+                      <Chip
+                        label={`Screenshot ${currentScreenshotIndex + 1} of ${screenshotKeys.length}`}
+                        size="small"
+                        sx={{ backgroundColor: '#FF00C3', color: 'white', mb: 2 }}
+                      />
+                    )}
+                    <Box>
+                      <img
+                        src={row.binaryOutput[screenshotKeys[currentScreenshotIndex]]}
+                        alt={`Screenshot ${screenshotKeys[currentScreenshotIndex]}`}
+                        style={{
+                          maxWidth: '100%',
+                          height: 'auto',
+                          border: '1px solid #e0e0e0',
+                          borderRadius: '4px'
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                </AccordionDetails>
+              </Accordion>
             </>
-          )} */}
+          )}
         </TabPanel>
       </TabContext>
     </Box>
