@@ -253,7 +253,7 @@ export const RecordingsTable = ({
         const parsedRows = recordings
         .map((recording: any, index: number) => {
           if (recording?.recording_meta) {
-            const parsedDate = parseDateString(recording.recording_meta.createdAt);
+            const parsedDate = parseDateString(recording.recording_meta.updatedAt);
             
             return {
               id: index,
