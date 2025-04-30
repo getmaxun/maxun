@@ -43,8 +43,9 @@ interface InterpreterOptions {
   binaryCallback: (output: any, mimeType: string) => (void | Promise<void>);
   debug: boolean;
   debugChannel: Partial<{
-    activeId: Function,
-    debugMessage: Function,
+    activeId: (id: number) => void,
+    debugMessage: (msg: string) => void,
+    setActionType: (type: string) => void,
   }>
 }
 
@@ -377,12 +378,20 @@ export default class Interpreter extends EventEmitter {
      */
     const wawActions: Record<CustomFunctions, (...args: any[]) => void> = {
       screenshot: async (params: PageScreenshotOptions) => {
+        if (this.options.debugChannel?.setActionType) {
+          this.options.debugChannel.setActionType('screenshot');
+        }
+
         const screenshotBuffer = await page.screenshot({
           ...params, path: undefined,
         });
         await this.options.binaryCallback(screenshotBuffer, 'image/png');
       },
       enqueueLinks: async (selector: string) => {
+        if (this.options.debugChannel?.setActionType) {
+          this.options.debugChannel.setActionType('enqueueLinks');
+        }
+
         const links: string[] = await page.locator(selector)
           .evaluateAll(
             // @ts-ignore
@@ -409,6 +418,10 @@ export default class Interpreter extends EventEmitter {
         await page.close();
       },
       scrape: async (selector?: string) => {
+        if (this.options.debugChannel?.setActionType) {
+          this.options.debugChannel.setActionType('scrape');
+        }
+
         await this.ensureScriptsLoaded(page);
 
         const scrapeResults: Record<string, string>[] = await page.evaluate((s) => window.scrape(s ?? null), selector);
@@ -416,48 +429,40 @@ export default class Interpreter extends EventEmitter {
       },
 
       scrapeSchema: async (schema: Record<string, { selector: string; tag: string, attribute: string; shadow: string}>) => {
+        if (this.options.debugChannel?.setActionType) {
+          this.options.debugChannel.setActionType('scrapeSchema');
+        }
+      
         await this.ensureScriptsLoaded(page);
       
         const scrapeResult = await page.evaluate((schemaObj) => window.scrapeSchema(schemaObj), schema);
       
-        const newResults = Array.isArray(scrapeResult) ? scrapeResult : [scrapeResult];
-        newResults.forEach((result) => {
-          Object.entries(result).forEach(([key, value]) => {
-              const keyExists = this.cumulativeResults.some(
-                  (item) => key in item && item[key] !== undefined
-              );
-  
-              if (!keyExists) {
-                  this.cumulativeResults.push({ [key]: value });
-              }
-          });
+        if (!this.cumulativeResults || !Array.isArray(this.cumulativeResults)) {
+          this.cumulativeResults = [];
+        }
+      
+        if (this.cumulativeResults.length === 0) {
+          this.cumulativeResults.push({});
+        }
+      
+        const mergedResult = this.cumulativeResults[0];
+        const resultToProcess = Array.isArray(scrapeResult) ? scrapeResult[0] : scrapeResult;
+        
+        Object.entries(resultToProcess).forEach(([key, value]) => {
+          if (value !== undefined) {
+            mergedResult[key] = value;
+          }
         });
-
-        const mergedResult: Record<string, string>[] = [
-          Object.fromEntries( 
-            Object.entries(
-              this.cumulativeResults.reduce((acc, curr) => {
-                Object.entries(curr).forEach(([key, value]) => {
-                  // If the key doesn't exist or the current value is not undefined, add/update it
-                  if (value !== undefined) {
-                    acc[key] = value;
-                  }
-                });
-                return acc;
-              }, {})
-            )
-          )
-        ];
-
-        // Log cumulative results after each action
-        console.log("CUMULATIVE results:", this.cumulativeResults);
-        console.log("MERGED results:", mergedResult);
-
-        await this.options.serializableCallback(mergedResult);
-        // await this.options.serializableCallback(scrapeResult);
+      
+        console.log("Updated merged result:", mergedResult);
+        await this.options.serializableCallback([mergedResult]);
       },
 
       scrapeList: async (config: { listSelector: string, fields: any, limit?: number, pagination: any }) => {
+        if (this.options.debugChannel?.setActionType) {
+          this.options.debugChannel.setActionType('scrapeList');
+        }
+
         await this.ensureScriptsLoaded(page);
         if (!config.pagination) {
           const scrapeResults: Record<string, any>[] = await page.evaluate((cfg) => window.scrapeList(cfg), config);
@@ -469,6 +474,10 @@ export default class Interpreter extends EventEmitter {
       },
 
       scrapeListAuto: async (config: { listSelector: string }) => {
+        if (this.options.debugChannel?.setActionType) {
+          this.options.debugChannel.setActionType('scrapeListAuto');
+        }
+
         await this.ensureScriptsLoaded(page);
 
         const scrapeResults: { selector: string, innerText: string }[] = await page.evaluate((listSelector) => {
@@ -479,6 +488,10 @@ export default class Interpreter extends EventEmitter {
       },
 
       scroll: async (pages?: number) => {
+        if (this.options.debugChannel?.setActionType) {
+          this.options.debugChannel.setActionType('scroll');
+        }
+
         await page.evaluate(async (pagesInternal) => {
           for (let i = 1; i <= (pagesInternal ?? 1); i += 1) {
             // @ts-ignore
@@ -488,6 +501,10 @@ export default class Interpreter extends EventEmitter {
       },
 
       script: async (code: string) => {
+        if (this.options.debugChannel?.setActionType) {
+          this.options.debugChannel.setActionType('script');
+        }
+
         const AsyncFunction: FunctionConstructor = Object.getPrototypeOf(
           async () => { },
         ).constructor;
@@ -496,6 +513,10 @@ export default class Interpreter extends EventEmitter {
       },
 
       flag: async () => new Promise((res) => {
+        if (this.options.debugChannel?.setActionType) {
+          this.options.debugChannel.setActionType('flag');
+        }
+
         this.emit('flag', page, res);
       }),
     };
@@ -526,6 +547,10 @@ export default class Interpreter extends EventEmitter {
         const params = !step.args || Array.isArray(step.args) ? step.args : [step.args];
         await wawActions[step.action as CustomFunctions](...(params ?? []));
       } else {
+        if (this.options.debugChannel?.setActionType) {
+          this.options.debugChannel.setActionType(String(step.action));
+        }
+
         // Implements the dot notation for the "method name" in the workflow
         const levels = String(step.action).split('.');
         const methodName = levels[levels.length - 1];

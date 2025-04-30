@@ -177,6 +177,11 @@
         "pagination": "Select how the robot can capture the rest of the list",
         "limit": "Choose the number of items to extract",
         "complete": "Capture is complete"
+      },
+      "actions": {
+        "text": "Capture Text",
+        "list": "Capture List",
+        "screenshot": "Capture Screenshot"
       }
     },
     "right_panel": {
@@ -543,20 +548,23 @@
         "output_data": "Output Data",
         "log": "Log"
       },
-      "empty_output": "The output is empty.",
-      "loading": "Run in progress. Extracted data will appear here once run completes.",
-      "captured_data": {
-        "title": "Captured Data",
-        "download_json": "Download as JSON",
-        "download_csv": "Download as CSV"
-      },
-      "captured_screenshot": {
-        "title": "Captured Screenshot",
-        "download": "Download Screenshot",
-        "render_failed": "The image failed to render"
-      },
       "buttons": {
         "stop": "Stop"
+      },
+      "loading": "Loading data...",
+      "empty_output": "No output data available",
+      "captured_data": {
+        "title": "Captured Data",
+        "download_csv": "Download CSV",
+        "view_full": "View Full Data",
+        "items": "items",
+        "schema_title": "Captured Texts",
+        "list_title": "Captured Lists"
+      },
+      "captured_screenshot": {
+        "title": "Captured Screenshots",
+        "download": "Download",
+        "render_failed": "Failed to render screenshot"
       }
     },
     "navbar": {

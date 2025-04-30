@@ -34,9 +34,6 @@ const fetchWorkflow = (id: string, callback: (response: WorkflowFile) => void) =
   ).catch((error) => { console.log(error.message) })
 };
 
-// TODO: 
-// 1. Add description for each browser step
-// 2. Handle non custom action steps
 interface RightSidePanelProps {
   onFinishCapture: () => void;
 }
@@ -46,8 +43,6 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const [errors, setErrors] = useState<{ [id: string]: string }>({});
   const [confirmedTextSteps, setConfirmedTextSteps] = useState<{ [id: string]: boolean }>({});
   const [confirmedListTextFields, setConfirmedListTextFields] = useState<{ [listId: string]: { [fieldKey: string]: boolean } }>({});
-  // const [showPaginationOptions, setShowPaginationOptions] = useState(false);
-  // const [showLimitOptions, setShowLimitOptions] = useState(false);
   const [showCaptureList, setShowCaptureList] = useState(true);
   const [showCaptureScreenshot, setShowCaptureScreenshot] = useState(true);
   const [showCaptureText, setShowCaptureText] = useState(true);
@@ -58,15 +53,31 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const { panelHeight } = useBrowserDimensionsStore();
 
   const { lastAction, notify, currentWorkflowActionsState, setCurrentWorkflowActionsState, resetInterpretationLog } = useGlobalInfoStore();
-  const { getText, startGetText, stopGetText, getScreenshot, startGetScreenshot, stopGetScreenshot, getList, startGetList, stopGetList, startPaginationMode, stopPaginationMode, paginationType, updatePaginationType, limitType, customLimit, updateLimitType, updateCustomLimit, stopLimitMode, startLimitMode, captureStage, setCaptureStage, showPaginationOptions, setShowPaginationOptions, showLimitOptions, setShowLimitOptions, workflow, setWorkflow } = useActionContext();
+  const { 
+    getText, startGetText, stopGetText, 
+    getList, startGetList, stopGetList, 
+    getScreenshot, startGetScreenshot, stopGetScreenshot, 
+    startPaginationMode, stopPaginationMode, 
+    paginationType, updatePaginationType, 
+    limitType, customLimit, updateLimitType, updateCustomLimit, 
+    stopLimitMode, startLimitMode, 
+    captureStage, setCaptureStage, 
+    showPaginationOptions, setShowPaginationOptions, 
+    showLimitOptions, setShowLimitOptions, 
+    workflow, setWorkflow, 
+    activeAction, setActiveAction, 
+    startAction, finishAction 
+  } = useActionContext();
+  
   const { browserSteps, updateBrowserTextStepLabel, deleteBrowserStep, addScreenshotStep, updateListTextFieldLabel, removeListTextField } = useBrowserSteps();
   const { id, socket } = useSocketStore();
   const { t } = useTranslation();
 
+  const isAnyActionActive = activeAction !== 'none';
+
   const workflowHandler = useCallback((data: WorkflowFile) => {
     setWorkflow(data);
-    //setRecordingLength(data.workflow.length);
-  }, [])
+  }, [setWorkflow]);
 
   useEffect(() => {
     if (socket) {
@@ -113,12 +124,10 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
       hasScrapeSchemaAction,
     });
 
-    const shouldHideActions = hasScrapeListAction || hasScrapeSchemaAction || hasScreenshotAction;
-
-    setShowCaptureList(!shouldHideActions);
-    setShowCaptureScreenshot(!shouldHideActions);
-    setShowCaptureText(!(hasScrapeListAction || hasScreenshotAction));
-  }, [workflow]);
+    setShowCaptureList(true);
+    setShowCaptureScreenshot(true);
+    setShowCaptureText(true);
+  }, [workflow, setCurrentWorkflowActionsState]);
 
   const handleMouseEnter = (id: number) => {
     setHoverStates(prev => ({ ...prev, [id]: true }));
@@ -127,8 +136,6 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const handleMouseLeave = (id: number) => {
     setHoverStates(prev => ({ ...prev, [id]: false }));
   };
-
-  const handlePairDelete = () => { }
 
   const handleStartGetText = () => {
     setIsCaptureTextConfirmed(false);
@@ -139,6 +146,10 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     setIsCaptureListConfirmed(false);
     startGetList();
   }
+
+  const handleStartGetScreenshot = () => {
+    startGetScreenshot();
+  };
 
   const handleTextLabelChange = (id: number, label: string, listId?: number, fieldKey?: string) => {
     if (listId !== undefined && fieldKey !== undefined) {
@@ -253,7 +264,6 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     return settings;
   }, [browserSteps, browserStepIdList]);
 
-
   const stopCaptureAndEmitGetTextSettings = useCallback(() => {
     const hasUnconfirmedTextSteps = browserSteps.some(step => step.type === 'text' && !confirmedTextSteps[step.id]);
     if (hasUnconfirmedTextSteps) {
@@ -268,8 +278,9 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     }
     setIsCaptureTextConfirmed(true);
     resetInterpretationLog();
+    finishAction('text'); 
     onFinishCapture();
-  }, [stopGetText, getTextSettingsObject, socket, browserSteps, confirmedTextSteps, resetInterpretationLog]);
+  }, [stopGetText, getTextSettingsObject, socket, browserSteps, confirmedTextSteps, resetInterpretationLog, finishAction, notify, onFinishCapture, t]);
 
   const getListSettingsObject = useCallback(() => {
     let settings: {
@@ -311,7 +322,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     setShowLimitOptions(false);
     updateLimitType('');
     updateCustomLimit('');
-  }, [updatePaginationType, updateLimitType, updateCustomLimit]);
+  }, [setShowPaginationOptions, updatePaginationType, setShowLimitOptions, updateLimitType, updateCustomLimit]);
 
   const handleStopGetList = useCallback(() => {
     stopGetList();
@@ -326,10 +337,17 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
       notify('error', t('right_panel.errors.unable_create_settings'));
     }
     handleStopGetList();
+    resetInterpretationLog();
+    finishAction('list');
     onFinishCapture();
-  }, [stopGetList, getListSettingsObject, socket, notify, handleStopGetList]);
+  }, [getListSettingsObject, socket, notify, handleStopGetList, resetInterpretationLog, finishAction, onFinishCapture, t]);
 
-  const hasUnconfirmedListTextFields = browserSteps.some(step => step.type === 'list' && Object.values(step.fields).some(field => !confirmedListTextFields[step.id]?.[field.id]));
+  const hasUnconfirmedListTextFields = browserSteps.some(step =>
+    step.type === 'list' &&
+    Object.entries(step.fields).some(([fieldKey]) =>
+      !confirmedListTextFields[step.id]?.[fieldKey]
+    )
+  );
 
   const handleConfirmListCapture = useCallback(() => {
     switch (captureStage) {
@@ -378,7 +396,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         setCaptureStage('initial');
         break;
     }
-  }, [captureStage, paginationType, limitType, customLimit, startPaginationMode, stopPaginationMode, startLimitMode, stopLimitMode, notify, stopCaptureAndEmitGetListSettings, getListSettingsObject]);
+  }, [captureStage, paginationType, limitType, customLimit, startPaginationMode, setShowPaginationOptions, setCaptureStage, getListSettingsObject, notify, stopPaginationMode, startLimitMode, setShowLimitOptions, stopLimitMode, setIsCaptureListConfirmed, stopCaptureAndEmitGetListSettings, t]);
 
   const handleBackCaptureList = useCallback(() => {
     switch (captureStage) {
@@ -395,7 +413,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         setCaptureStage('initial');
         break;
     }
-  }, [captureStage, stopLimitMode, startPaginationMode, stopPaginationMode]);
+  }, [captureStage, stopLimitMode, setShowLimitOptions, startPaginationMode, setShowPaginationOptions, setCaptureStage, stopPaginationMode]);
 
   const handlePaginationSettingSelect = (option: PaginationType) => {
     updatePaginationType(option);
@@ -413,7 +431,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     setConfirmedTextSteps({});
     setIsCaptureTextConfirmed(false);
     notify('error', t('right_panel.errors.capture_text_discarded'));
-  }, [browserSteps, stopGetText, deleteBrowserStep]);
+  }, [browserSteps, stopGetText, deleteBrowserStep, notify, t]);
 
   const discardGetList = useCallback(() => {
     stopGetList();
@@ -431,8 +449,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     setConfirmedListTextFields({});
     setIsCaptureListConfirmed(false);
     notify('error', t('right_panel.errors.capture_list_discarded'));
-  }, [browserSteps, stopGetList, deleteBrowserStep, resetListState]);
-
+  }, [browserSteps, stopGetList, deleteBrowserStep, resetListState, setShowPaginationOptions, setShowLimitOptions, setCaptureStage, notify, t]);
 
   const captureScreenshot = (fullPage: boolean) => {
     const screenshotSettings: ScreenshotSettings = {
@@ -446,10 +463,12 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     socket?.emit('action', { action: 'screenshot', settings: screenshotSettings });
     addScreenshotStep(fullPage);
     stopGetScreenshot();
+    resetInterpretationLog();
+    finishAction('screenshot');
+    onFinishCapture();
   };
 
   const isConfirmCaptureDisabled = useMemo(() => {
-    // Check if we are in the initial stage and if there are no browser steps or no valid list selectors with fields
     if (captureStage !== 'initial') return false;
 
     const hasValidListSelector = browserSteps.some(step =>
@@ -458,7 +477,6 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
       Object.keys(step.fields).length > 0
     );
 
-    // Disable the button if there are no valid list selectors or if there are unconfirmed list text fields
     return !hasValidListSelector || hasUnconfirmedListTextFields;
   }, [captureStage, browserSteps, hasUnconfirmedListTextFields]);
 
@@ -467,15 +485,41 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
 
   return (
     <Paper sx={{ height: panelHeight, width: 'auto', alignItems: "center", background: 'inherit' }} id="browser-actions" elevation={0}>
-      {/* <SimpleBox height={60} width='100%' background='lightGray' radius='0%'>
-        <Typography sx={{ padding: '10px' }}>Last action: {` ${lastAction}`}</Typography>
-      </SimpleBox> */}
       <ActionDescriptionBox isDarkMode={isDarkMode} />
       <Box display="flex" flexDirection="column" gap={2} style={{ margin: '13px' }}>
-        {!getText && !getScreenshot && !getList && showCaptureList && <Button variant="contained" onClick={startGetList}>{t('right_panel.buttons.capture_list')}</Button>}
+        {!isAnyActionActive && (
+          <>
+            {showCaptureList && (
+              <Button 
+                variant="contained" 
+                onClick={handleStartGetList}
+              >
+                {t('right_panel.buttons.capture_list')}
+              </Button>
+            )}
+
+            {showCaptureText && (
+              <Button 
+                variant="contained" 
+                onClick={handleStartGetText}
+              >
+                {t('right_panel.buttons.capture_text')}
+              </Button>
+            )}
+
+            {showCaptureScreenshot && (
+              <Button 
+                variant="contained" 
+                onClick={handleStartGetScreenshot}
+              >
+                {t('right_panel.buttons.capture_screenshot')}
+              </Button>
+            )}
+          </>
+        )}
 
         {getList && (
-          <>
+          <Box>
             <Box display="flex" justifyContent="space-between" gap={2} style={{ margin: '15px' }}>
               {(captureStage === 'pagination' || captureStage === 'limit') && (
                 <Button
@@ -513,126 +557,125 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                   color: 'red !important',
                   borderColor: 'red !important',
                   backgroundColor: 'whitesmoke !important',
-                }} >
+                }}
+              >
                 {t('right_panel.buttons.discard')}
               </Button>
             </Box>
-          </>
-        )}
-        {showPaginationOptions && (
-          <Box display="flex" flexDirection="column" gap={2} style={{ margin: '13px' }}>
-            <Typography>{t('right_panel.pagination.title')}</Typography>
-            <Button
-              variant={paginationType === 'clickNext' ? "contained" : "outlined"}
-              onClick={() => handlePaginationSettingSelect('clickNext')}
-              sx={{
-                color: paginationType === 'clickNext' ? 'whitesmoke !important' : '#ff00c3 !important',
-                borderColor: '#ff00c3 !important',
-                backgroundColor: paginationType === 'clickNext' ? '#ff00c3 !important' : 'whitesmoke !important',
-              }}>
-              {t('right_panel.pagination.click_next')}
-            </Button>
-            <Button
-              variant={paginationType === 'clickLoadMore' ? "contained" : "outlined"}
-              onClick={() => handlePaginationSettingSelect('clickLoadMore')}
-              sx={{
-                color: paginationType === 'clickLoadMore' ? 'whitesmoke !important' : '#ff00c3 !important',
-                borderColor: '#ff00c3 !important',
-                backgroundColor: paginationType === 'clickLoadMore' ? '#ff00c3 !important' : 'whitesmoke !important',
-              }}>
-              {t('right_panel.pagination.click_load_more')}
-            </Button>
-            <Button
-              variant={paginationType === 'scrollDown' ? "contained" : "outlined"}
-              onClick={() => handlePaginationSettingSelect('scrollDown')}
-              sx={{
-                color: paginationType === 'scrollDown' ? 'whitesmoke !important' : '#ff00c3 !important',
-                borderColor: '#ff00c3 !important',
-                backgroundColor: paginationType === 'scrollDown' ? '#ff00c3 !important' : 'whitesmoke !important',
-              }}>
-              {t('right_panel.pagination.scroll_down')}
-            </Button>
-            <Button
-              variant={paginationType === 'scrollUp' ? "contained" : "outlined"}
-              onClick={() => handlePaginationSettingSelect('scrollUp')}
-              sx={{
-                color: paginationType === 'scrollUp' ? 'whitesmoke !important' : '#ff00c3 !important',
-                borderColor: '#ff00c3 !important',
-                backgroundColor: paginationType === 'scrollUp' ? '#ff00c3 !important' : 'whitesmoke !important',
-              }}>
-              {t('right_panel.pagination.scroll_up')}
-            </Button>
-            <Button
-              variant={paginationType === 'none' ? "contained" : "outlined"}
-              onClick={() => handlePaginationSettingSelect('none')}
-              sx={{
-                color: paginationType === 'none' ? 'whitesmoke !important' : '#ff00c3 !important',
-                borderColor: '#ff00c3 !important',
-                backgroundColor: paginationType === 'none' ? '#ff00c3 !important' : 'whitesmoke !important',
-              }}>
-              {t('right_panel.pagination.none')}</Button>
+          
+            {showPaginationOptions && (
+              <Box display="flex" flexDirection="column" gap={2} style={{ margin: '13px' }}>
+                <Typography>{t('right_panel.pagination.title')}</Typography>
+                <Button
+                  variant={paginationType === 'clickNext' ? "contained" : "outlined"}
+                  onClick={() => handlePaginationSettingSelect('clickNext')}
+                  sx={{
+                    color: paginationType === 'clickNext' ? 'whitesmoke !important' : '#ff00c3 !important',
+                    borderColor: '#ff00c3 !important',
+                    backgroundColor: paginationType === 'clickNext' ? '#ff00c3 !important' : 'whitesmoke !important',
+                  }}>
+                  {t('right_panel.pagination.click_next')}
+                </Button>
+                <Button
+                  variant={paginationType === 'clickLoadMore' ? "contained" : "outlined"}
+                  onClick={() => handlePaginationSettingSelect('clickLoadMore')}
+                  sx={{
+                    color: paginationType === 'clickLoadMore' ? 'whitesmoke !important' : '#ff00c3 !important',
+                    borderColor: '#ff00c3 !important',
+                    backgroundColor: paginationType === 'clickLoadMore' ? '#ff00c3 !important' : 'whitesmoke !important',
+                  }}>
+                  {t('right_panel.pagination.click_load_more')}
+                </Button>
+                <Button
+                  variant={paginationType === 'scrollDown' ? "contained" : "outlined"}
+                  onClick={() => handlePaginationSettingSelect('scrollDown')}
+                  sx={{
+                    color: paginationType === 'scrollDown' ? 'whitesmoke !important' : '#ff00c3 !important',
+                    borderColor: '#ff00c3 !important',
+                    backgroundColor: paginationType === 'scrollDown' ? '#ff00c3 !important' : 'whitesmoke !important',
+                  }}>
+                  {t('right_panel.pagination.scroll_down')}
+                </Button>
+                <Button
+                  variant={paginationType === 'scrollUp' ? "contained" : "outlined"}
+                  onClick={() => handlePaginationSettingSelect('scrollUp')}
+                  sx={{
+                    color: paginationType === 'scrollUp' ? 'whitesmoke !important' : '#ff00c3 !important',
+                    borderColor: '#ff00c3 !important',
+                    backgroundColor: paginationType === 'scrollUp' ? '#ff00c3 !important' : 'whitesmoke !important',
+                  }}>
+                  {t('right_panel.pagination.scroll_up')}
+                </Button>
+                <Button
+                  variant={paginationType === 'none' ? "contained" : "outlined"}
+                  onClick={() => handlePaginationSettingSelect('none')}
+                  sx={{
+                    color: paginationType === 'none' ? 'whitesmoke !important' : '#ff00c3 !important',
+                    borderColor: '#ff00c3 !important',
+                    backgroundColor: paginationType === 'none' ? '#ff00c3 !important' : 'whitesmoke !important',
+                  }}>
+                  {t('right_panel.pagination.none')}</Button>
+              </Box>
+            )}
+          
+            {showLimitOptions && (
+              <FormControl>
+                <FormLabel>
+                  <h4>{t('right_panel.limit.title')}</h4>
+                </FormLabel>
+                <RadioGroup
+                  value={limitType}
+                  onChange={(e) => updateLimitType(e.target.value as LimitType)}
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    width: '500px'
+                  }}
+                >
+                  <FormControlLabel value="10" control={<Radio />} label="10" />
+                  <FormControlLabel value="100" control={<Radio />} label="100" />
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <FormControlLabel value="custom" control={<Radio />} label={t('right_panel.limit.custom')} />
+                    {limitType === 'custom' && (
+                      <TextField
+                        type="number"
+                        value={customLimit}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                          const value = parseInt(e.target.value);
+                          if (e.target.value === '' || value >= 1) {
+                            updateCustomLimit(e.target.value);
+                          }
+                        }}
+                        inputProps={{
+                          min: 1,
+                          onKeyPress: (e: React.KeyboardEvent<HTMLInputElement>) => {
+                            const value = (e.target as HTMLInputElement).value + e.key;
+                            if (parseInt(value) < 1) {
+                              e.preventDefault();
+                            }
+                          }
+                        }}
+                        placeholder={t('right_panel.limit.enter_number')}
+                        sx={{
+                          marginLeft: '10px',
+                          '& input': {
+                            padding: '10px',
+                          },
+                          width: '150px',
+                          background: isDarkMode ? "#1E2124" : 'white',
+                          color: isDarkMode ? "white" : 'black',
+                        }}
+                      />
+                    )}
+                  </div>
+                </RadioGroup>
+              </FormControl>
+            )}
           </Box>
         )}
-        {showLimitOptions && (
-          <FormControl>
-            <FormLabel>
-              <h4>{t('right_panel.limit.title')}</h4>
-            </FormLabel>
-            <RadioGroup
-              value={limitType}
-              onChange={(e) => updateLimitType(e.target.value as LimitType)}
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                width: '500px'
-              }}
-            >
-              <FormControlLabel value="10" control={<Radio />} label="10" />
-              <FormControlLabel value="100" control={<Radio />} label="100" />
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                <FormControlLabel value="custom" control={<Radio />} label={t('right_panel.limit.custom')} />
-                {limitType === 'custom' && (
-                  <TextField
-                    type="number"
-                    value={customLimit}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                      const value = parseInt(e.target.value);
-                      // Only update if the value is greater than or equal to 1 or if the field is empty
-                      if (e.target.value === '' || value >= 1) {
-                        updateCustomLimit(e.target.value);
-                      }
-                    }}
-                    inputProps={{
-                      min: 1,
-                      onKeyPress: (e: React.KeyboardEvent<HTMLInputElement>) => {
-                        const value = (e.target as HTMLInputElement).value + e.key;
-                        if (parseInt(value) < 1) {
-                          e.preventDefault();
-                        }
-                      }
-                    }}
-                    placeholder={t('right_panel.limit.enter_number')}
-                    sx={{
-                      marginLeft: '10px',
-                      '& input': {
-                        padding: '10px',
-
-                      },
-                      width: '150px',
-                      background: isDarkMode ? "#1E2124" : 'white',
-                      color: isDarkMode ? "white" : 'black', // Ensure the text field does not go outside the panel
-                    }}
-                  />
-                )}
-              </div>
-            </RadioGroup>
-          </FormControl>
-        )}
-        {/* {!getText && !getScreenshot && !getList && showCaptureText && <Button variant="contained" sx={{backgroundColor:"#ff00c3",color:`${isDarkMode?'white':'black'}`}} onClick={startGetText}>{t('right_panel.buttons.capture_text')}</Button>} */}
-
-        {!getText && !getScreenshot && !getList && showCaptureText && <Button variant="contained" onClick={handleStartGetText}>{t('right_panel.buttons.capture_text')}</Button>}
-        {getText &&
-          <>
+        
+        {getText && (
+          <Box>
             <Box display="flex" justifyContent="space-between" gap={2} style={{ margin: '15px' }}>
               <Button
                 variant="outlined"
@@ -641,7 +684,8 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                   color: '#ff00c3 !important',
                   borderColor: '#ff00c3 !important',
                   backgroundColor: 'whitesmoke !important',
-                }}>
+                }}
+              >
                 {t('right_panel.buttons.confirm')}
               </Button>
               <Button
@@ -652,32 +696,41 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                   color: '#ff00c3 !important',
                   borderColor: '#ff00c3 !important',
                   backgroundColor: 'whitesmoke !important',
-                }}>
+                }}
+              >
                 {t('right_panel.buttons.discard')}
               </Button>
             </Box>
-          </>
-        }
-        {/* {!getText && !getScreenshot && !getList && showCaptureScreenshot && <Button variant="contained"  sx={{backgroundColor:"#ff00c3",color:`${isDarkMode?'white':'black'}`}} onClick={startGetScreenshot}>{t('right_panel.buttons.capture_screenshot')}</Button>} */}
-        {!getText && !getScreenshot && !getList && showCaptureScreenshot && <Button variant="contained" onClick={startGetScreenshot}>{t('right_panel.buttons.capture_screenshot')}</Button>}
+          </Box>
+        )}
+        
         {getScreenshot && (
           <Box display="flex" flexDirection="column" gap={2}>
-            <Button variant="contained" onClick={() => captureScreenshot(true)}>{t('right_panel.screenshot.capture_fullpage')}</Button>
-            <Button variant="contained" onClick={() => captureScreenshot(false)}>{t('right_panel.screenshot.capture_visible')}</Button>
+            <Button variant="contained" onClick={() => captureScreenshot(true)}>
+              {t('right_panel.screenshot.capture_fullpage')}
+            </Button>
+            <Button variant="contained" onClick={() => captureScreenshot(false)}>
+              {t('right_panel.screenshot.capture_visible')}
+            </Button>
             <Button
               variant="outlined"
               color="error"
-              onClick={stopGetScreenshot}
+              onClick={() => {
+                stopGetScreenshot();
+                setActiveAction('none');
+              }}
               sx={{
                 color: '#ff00c3 !important',
                 borderColor: '#ff00c3 !important',
                 backgroundColor: 'whitesmoke !important',
-              }}>
+              }}
+            >
               {t('right_panel.buttons.discard')}
             </Button>
           </Box>
         )}
       </Box>
+      
       <Box>
         {browserSteps.map(step => (
           <Box key={step.id} onMouseEnter={() => handleMouseEnter(step.id)} onMouseLeave={() => handleMouseLeave(step.id)} sx={{ padding: '10px', margin: '11px', borderRadius: '5px', position: 'relative', background: isDarkMode ? "#1E2124" : 'white', color: isDarkMode ? "white" : 'black' }}>
@@ -716,7 +769,6 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                         </InputAdornment>
                       )
                     }}
-
                   />
                   {!confirmedTextSteps[step.id] ? (
                     <Box display="flex" justifyContent="space-between" gap={2}>
