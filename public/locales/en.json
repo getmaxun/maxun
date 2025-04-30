@@ -564,15 +564,14 @@
       "captured_data": {
         "title": "Captured Data",
         "download_csv": "Download CSV",
-        "download_all_json": "Download All JSON",
         "view_full": "View Full Data",
         "items": "items",
-        "schema_title": "Capture Text",
-        "list_title": "Capture List"
+        "schema_title": "Captured Texts",
+        "list_title": "Captured Lists"
       },
       "captured_screenshot": {
         "title": "Captured Screenshots",
-        "download": "Download Screenshot",
+        "download": "Download",
         "render_failed": "Failed to render screenshot"
       }
     },
