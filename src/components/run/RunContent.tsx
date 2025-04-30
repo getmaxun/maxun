@@ -293,22 +293,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
             <Typography variant='h6' sx={{ ml: 2 }}>
               {title}
             </Typography>
-            {isPaginatedList ? (
-              <Chip
-                label={listData.length > 1
-                  ? `Table ${currentListIndex + 1} of ${listData.length} (${currentData.length} ${currentData.length === 1 ? 'item' : 'items'})`
-                  : `${currentData.length} ${currentData.length === 1 ? 'item' : 'items'}`
-                }
-                size="small"
-                sx={{ ml: 2, backgroundColor: '#FF00C3', color: 'white' }}
-              />
-            ) : (
-              <Chip
-                label={`${data.length} ${data.length === 1 ? 'item' : 'items'}`}
-                size="small"
-                sx={{ ml: 2, backgroundColor: '#FF00C3', color: 'white' }}
-              />
-            )}
           </Box>
         </AccordionSummary>
         <AccordionDetails>
