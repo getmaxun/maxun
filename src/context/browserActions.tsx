@@ -21,11 +21,6 @@ interface ActionContextProps {
     captureStage: CaptureStage;
     showPaginationOptions: boolean;
     showLimitOptions: boolean;    
-    actionsInWorkflow: {
-        text: boolean;
-        list: boolean;
-        screenshot: boolean;
-    };
     activeAction: 'none' | 'text' | 'list' | 'screenshot';
     setActiveAction: (action: 'none' | 'text' | 'list' | 'screenshot') => void;
     setWorkflow: (workflow: WorkflowFile) => void;
@@ -64,11 +59,6 @@ export const ActionProvider = ({ children }: { children: ReactNode }) => {
     const [captureStage, setCaptureStage] = useState<CaptureStage>('initial');
     const [showPaginationOptions, setShowPaginationOptions] = useState(false);
     const [showLimitOptions, setShowLimitOptions] = useState(false);
-    const [actionsInWorkflow, setActionsInWorkflow] = useState({
-        text: false,
-        list: false,
-        screenshot: false
-    });
     const [activeAction, setActiveAction] = useState<'none' | 'text' | 'list' | 'screenshot'>('none');
 
     const { socket } = useSocketStore();
@@ -91,11 +81,6 @@ export const ActionProvider = ({ children }: { children: ReactNode }) => {
     
     const finishAction = (action: 'text' | 'list' | 'screenshot') => {
         if (activeAction !== action) return;
-        
-        setActionsInWorkflow(prev => ({
-            ...prev,
-            [action]: true
-        }));
         
         setActiveAction('none');
         
@@ -175,7 +160,6 @@ export const ActionProvider = ({ children }: { children: ReactNode }) => {
             captureStage,
             showPaginationOptions,
             showLimitOptions,
-            actionsInWorkflow,
             activeAction,
             setActiveAction,
             setWorkflow,

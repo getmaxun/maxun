@@ -178,14 +178,6 @@
         "limit": "Choose the number of items to extract",
         "complete": "Capture is complete"
       },
-      "workflow_progress": {
-        "title": "Workflow Progress",
-        "description": "You have completed {{completed}} out of {{total}} possible actions",
-        "completed": "All actions completed!"
-      },
-      "workflow_actions": {
-        "description": "The following actions have been added to your workflow:"
-      },
       "actions": {
         "text": "Capture Text",
         "list": "Capture List",
