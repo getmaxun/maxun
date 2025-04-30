@@ -33,7 +33,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
   const [captureListData, setCaptureListData] = useState<any[]>([]);
   const [captureTextData, setCaptureTextData] = useState<any[]>([]);
   const [screenshotData, setScreenshotData] = useState<string[]>([]);
-  const [otherData, setOtherData] = useState<any[]>([]);
 
   const [captureListPage, setCaptureListPage] = useState<number>(0);
   const [screenshotPage, setScreenshotPage] = useState<number>(0);
@@ -77,7 +76,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
       prevState + '\n' + t('interpretation_log.data_sections.serializable_received') + '\n'
       + JSON.stringify(data, null, 2) + '\n' + t('interpretation_log.data_sections.separator'));
   
-    if (type === 'captureList' && Array.isArray(data)) {
+    if (type === 'captureList') {
       setCaptureListData(prev => [...prev, data]); 
       if (captureListData.length === 0) {
         const availableTabs = getAvailableTabs();
@@ -98,7 +97,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     }
   
     scrollLogToBottom();
-  }, [captureListData.length, captureTextData.length, otherData.length, t]);
+  }, [captureListData.length, captureTextData.length, t]);
   
   const handleBinaryCallback = useCallback(({ data, mimetype, type }: { data: any, mimetype: string, type: string }) => {
     const base64String = Buffer.from(data).toString('base64');
@@ -132,7 +131,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
       setCaptureListData([]);
       setCaptureTextData([]);
       setScreenshotData([]);
-      setOtherData([]);
       setActiveTab(0);
       setCaptureListPage(0);
       setScreenshotPage(0);
@@ -188,6 +186,17 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
   const getCaptureTextColumns = captureTextData.length > 0 ? Object.keys(captureTextData[0]) : [];
 
+  const shouldShowTabs = availableTabs.length > 1;
+
+  const getSingleContentType = () => {
+    if (availableTabs.length === 1) {
+      return availableTabs[0].id;
+    }
+    return null;
+  };
+
+  const singleContentType = getSingleContentType();
+
   return (
     <Grid container>
       <Grid item xs={12} md={9} lg={9}>
@@ -240,43 +249,45 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
           
           {availableTabs.length > 0 ? (
             <>
-              <Box 
-                sx={{
-                  display: 'flex',
-                  borderBottom: '1px solid',
-                  borderColor: darkMode ? '#3a4453' : '#dee2e6',
-                  backgroundColor: darkMode ? '#2a3441' : '#f8f9fa'
-                }}
-              >
-                {availableTabs.map((tab, index) => (
-                  <Box
-                    key={tab.id}
-                    onClick={() => setActiveTab(index)}
-                    sx={{
-                      px: 4,
-                      py: 2,
-                      cursor: 'pointer',
-                      borderBottom: activeTab === index ? '2px solid' : 'none',
-                      borderColor: activeTab === index ? (darkMode ? '#ff00c3' : '#ff00c3') : 'transparent',
-                      backgroundColor: activeTab === index ? (darkMode ? '#34404d' : '#e9ecef') : 'transparent',
-                      color: darkMode ? 'white' : 'black',
-                      fontWeight: activeTab === index ? 500 : 400,
-                      textAlign: 'center',
-                      position: 'relative',
-                      '&:hover': {
-                        backgroundColor: activeTab !== index ? (darkMode ? '#303b49' : '#e2e6ea') : undefined
-                      }
-                    }}
-                  >
-                    <Typography variant="body1">
-                      {tab.label}
-                    </Typography>
-                  </Box>
-                ))}
-              </Box>
+              {shouldShowTabs && (
+                <Box 
+                  sx={{
+                    display: 'flex',
+                    borderBottom: '1px solid',
+                    borderColor: darkMode ? '#3a4453' : '#dee2e6',
+                    backgroundColor: darkMode ? '#2a3441' : '#f8f9fa'
+                  }}
+                >
+                  {availableTabs.map((tab, index) => (
+                    <Box
+                      key={tab.id}
+                      onClick={() => setActiveTab(index)}
+                      sx={{
+                        px: 4,
+                        py: 2,
+                        cursor: 'pointer',
+                        borderBottom: activeTab === index ? '2px solid' : 'none',
+                        borderColor: activeTab === index ? (darkMode ? '#ff00c3' : '#ff00c3') : 'transparent',
+                        backgroundColor: activeTab === index ? (darkMode ? '#34404d' : '#e9ecef') : 'transparent',
+                        color: darkMode ? 'white' : 'black',
+                        fontWeight: activeTab === index ? 500 : 400,
+                        textAlign: 'center',
+                        position: 'relative',
+                        '&:hover': {
+                          backgroundColor: activeTab !== index ? (darkMode ? '#303b49' : '#e2e6ea') : undefined
+                        }
+                      }}
+                    >
+                      <Typography variant="body1">
+                        {tab.label}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Box>
+              )}
               
               <Box sx={{ flexGrow: 1, overflow: 'auto', p: 0 }}>
-                {activeTab === availableTabs.findIndex(tab => tab.id === 'captureList') && captureListData.length > 0 && (
+                {(activeTab === availableTabs.findIndex(tab => tab.id === 'captureList') || singleContentType === 'captureList') && captureListData.length > 0 && (
                   <Box>
                     <Box sx={{ 
                       display: 'flex', 
@@ -355,7 +366,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                   </Box>
                 )}
 
-                {activeTab === availableTabs.findIndex(tab => tab.id === 'captureScreenshot') && (
+                {(activeTab === availableTabs.findIndex(tab => tab.id === 'captureScreenshot') || singleContentType === 'captureScreenshot') && screenshotData.length > 0 && (
                   <Box>
                     {screenshotData.length > 1 && (
                       <Box sx={{ 
@@ -402,7 +413,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                   </Box>
                 )}
                 
-                {activeTab === availableTabs.findIndex(tab => tab.id === 'captureText') && (
+                {(activeTab === availableTabs.findIndex(tab => tab.id === 'captureText') || singleContentType === 'captureText') && captureTextData.length > 0 && (
                   <TableContainer component={Paper} sx={{ boxShadow: 'none', borderRadius: 0 }}>
                     <Table>
                       <TableHead>
