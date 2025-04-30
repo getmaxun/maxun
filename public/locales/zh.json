@@ -544,15 +544,14 @@
     "captured_data": {
       "title": "已捕获的数据",
       "download_csv": "下载CSV",
-      "download_all_json": "下载所有JSON",
       "view_full": "查看完整数据",
       "items": "项目",
-      "schema_title": "捕获文本",
-      "list_title": "捕获列表"
+      "schema_title": "已捕获的文本",
+      "list_title": "已捕获的列表"
     },
     "captured_screenshot": {
       "title": "已捕获的截图",
-      "download": "下载截图",
+      "download": "下载",
       "render_failed": "渲染截图失败"
     }
   },

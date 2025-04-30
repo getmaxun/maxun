@@ -543,16 +543,15 @@
         "captured_data": {
             "title": "Erfasste Daten",
             "download_csv": "CSV herunterladen",
-            "download_all_json": "Gesamte JSON herunterladen",
             "view_full": "Vollständige Daten anzeigen",
             "items": "Elemente",
-            "schema_title": "Text erfassen",
-            "list_title": "Liste erfassen"
+            "schema_title": "Erfasste Texte",
+            "list_title": "Erfasste Listen"
         },
         "captured_screenshot": {
             "title": "Erfasste Screenshots",
-            "download": "Screenshot herunterladen",
-            "render_failed": "Screenshot konnte nicht gerendert werden"
+            "download": "Herunterladen",
+            "render_failed": "Fehler beim Rendern des Screenshots"
         }
     },
     "navbar": {
