@@ -59,8 +59,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
   const [expandedView, setExpandedView] = useState<string | null>(null);
 
-  const [viewMode, setViewMode] = useState<'horizontal' | 'vertical'>('vertical');
-
   const [legacyData, setLegacyData] = useState<any[]>([]);
   const [legacyColumns, setLegacyColumns] = useState<string[]>([]);
   const [isLegacyData, setIsLegacyData] = useState<boolean>(false);
@@ -754,93 +752,34 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
           {hasData && (
             <Box sx={{ mb: 3 }}>
               {isLegacyData && (
-                viewMode === 'vertical' ? (
-                  renderDataTable(
-                    legacyData,
-                    legacyColumns,
-                    t('run_content.captured_data.title'),
-                    'data.csv',
-                    'data.json'
-                  )
-                ) : (
-                  <Grid container spacing={3}>
-                    <Grid item xs={12} md={12}>
-                      {renderDataCard(
-                        legacyData,
-                        legacyColumns,
-                        t('run_content.captured_data.title'),
-                        'legacy',
-                        'data.csv',
-                        'data.json'
-                      )}
-                    </Grid>
-                  </Grid>
+                renderDataTable(
+                  legacyData,
+                  legacyColumns,
+                  t('run_content.captured_data.title'),
+                  'data.csv',
+                  'data.json'
                 )
               )}
 
               {!isLegacyData && (
-                viewMode === 'vertical' ? (
-                  <>
-                    {renderDataTable(
-                      schemaData,
-                      schemaColumns,
-                      t('run_content.captured_data.schema_title'),
-                      'schema_data.csv',
-                      'schema_data.json'
-                    )}
+                <>
+                  {renderDataTable(
+                    schemaData,
+                    schemaColumns,
+                    t('run_content.captured_data.schema_title'),
+                    'schema_data.csv',
+                    'schema_data.json'
+                  )}
 
-                    {listData.length > 0 && renderDataTable(
-                      [],
-                      [],
-                      t('run_content.captured_data.list_title'),
-                      'list_data.csv',
-                      'list_data.json',
-                      true
-                    )}
-                  </>
-                ) : (
-                  <Grid container spacing={3}>
-                    {(() => {
-                      const dataCategoriesCount = [
-                        schemaData.length > 0,
-                        listData.length > 0,
-                      ].filter(Boolean).length;
-
-                      const columnWidth = dataCategoriesCount === 1 ? 12 : dataCategoriesCount === 2 ? 6 : 4;
-
-                      return (
-                        <>
-                          {schemaData.length > 0 && (
-                            <Grid item xs={12} md={columnWidth} sx={{ display: 'flex' }}>
-                              {renderDataCard(
-                                schemaData,
-                                schemaColumns,
-                                t('run_content.captured_data.schema_title'),
-                                'schema',
-                                'schema_data.csv',
-                                'schema_data.json'
-                              )}
-                            </Grid>
-                          )}
-
-                          {listData.length > 0 && (
-                            <Grid item xs={12} md={columnWidth} sx={{ display: 'flex' }}>
-                              {renderDataCard(
-                                [],
-                                [],
-                                t('run_content.captured_data.list_title'),
-                                'list',
-                                'list_data.csv',
-                                'list_data.json',
-                                true
-                              )}
-                            </Grid>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </Grid>
-                )
+                  {listData.length > 0 && renderDataTable(
+                    [],
+                    [],
+                    t('run_content.captured_data.list_title'),
+                    'list_data.csv',
+                    'list_data.json',
+                    true
+                  )}
+                </>
               )}
 
               {renderExpandedView('schema')}
@@ -850,120 +789,11 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
             </Box>
           )}
 
-          {hasScreenshots && (
+          {/* {hasScreenshots && (
             <>
-              {viewMode === 'vertical' ? (
-                <>
-                  {Object.keys(row.binaryOutput).map((key, index) => {
-                    try {
-                      const imageUrl = row.binaryOutput[key];
-                      return (
-                        <Accordion defaultExpanded sx={{ mb: 2 }} key={`screenshot-${key}`}>
-                          <AccordionSummary
-                            expandIcon={<ExpandMoreIcon />}
-                            aria-controls={`screenshot-${key}-content`}
-                            id={`screenshot-${key}-header`}
-                          >
-                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                              <ImageIcon sx={{ color: '#FF00C3' }} />
-                              <Typography variant='h6' sx={{ ml: 2 }}>
-                                Screenshot {index + 1}
-                              </Typography>
-                            </Box>
-                          </AccordionSummary>
-                          <AccordionDetails>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                              <ButtonGroup size="small" variant="outlined">
-                                <Button
-                                  startIcon={<DownloadIcon />}
-                                  href={imageUrl}
-                                  download={key}
-                                  sx={{ borderColor: '#FF00C3', color: '#FF00C3' }}
-                                >
-                                  {t('run_content.captured_screenshot.download')}
-                                </Button>
-                              </ButtonGroup>
-                            </Box>
-                            <Box>
-                              <img
-                                src={imageUrl}
-                                alt={`Screenshot ${key}`}
-                                style={{
-                                  maxWidth: '100%',
-                                  height: 'auto',
-                                  border: '1px solid #e0e0e0',
-                                  borderRadius: '4px'
-                                }}
-                              />
-                            </Box>
-                          </AccordionDetails>
-                        </Accordion>
-                      );
-                    } catch (e) {
-                      console.log(e);
-                      return (
-                        <Typography key={`screenshot-error-${key}`} color="error">
-                          {key}: {t('run_content.captured_screenshot.render_failed')}
-                        </Typography>
-                      );
-                    }
-                  })}
-                </>
-              ) : (
-                <Grid container spacing={3}>
-                  {Object.keys(row.binaryOutput).map((key) => {
-                    try {
-                      const imageUrl = row.binaryOutput[key];
-                      return (
-                        <Grid item xs={12} md={6} key={`screenshot-${key}`}>
-                          <Card sx={{ height: '100%', boxShadow: 3 }}>
-                            <CardHeader
-                              avatar={<ImageIcon sx={{ color: '#FF00C3' }} />}
-                              title={`Screenshot ${key}`}
-                              action={
-                                <IconButton
-                                  size="small"
-                                  href={imageUrl}
-                                  download={key}
-                                  title={t('run_content.captured_screenshot.download')}
-                                >
-                                  <DownloadIcon />
-                                </IconButton>
-                              }
-                            />
-                            <CardContent sx={{ p: 1 }}>
-                              <Box sx={{ position: 'relative', width: '100%', height: 'auto', overflow: 'hidden' }}>
-                                <img
-                                  src={imageUrl}
-                                  alt={`Screenshot ${key}`}
-                                  style={{
-                                    width: '100%',
-                                    height: 'auto',
-                                    objectFit: 'contain',
-                                    border: '1px solid #e0e0e0',
-                                    borderRadius: '4px'
-                                  }}
-                                />
-                              </Box>
-                            </CardContent>
-                          </Card>
-                        </Grid>
-                      );
-                    } catch (e) {
-                      console.log(e);
-                      return (
-                        <Box key={`screenshot-error-${key}`}>
-                          <Typography color="error">
-                            {key}: {t('run_content.captured_screenshot.render_failed')}
-                          </Typography>
-                        </Box>
-                      );
-                    }
-                  })}
-                </Grid>
-              )}
+              {renderPaginatedScreenshots()}
             </>
-          )}
+          )} */}
         </TabPanel>
       </TabContext>
     </Box>
