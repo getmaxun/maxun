@@ -21,7 +21,6 @@ import Highlight from "react-highlight";
 import * as React from "react";
 import { Data } from "./RunsTable";
 import { TabPanel, TabContext } from "@mui/lab";
-import ArticleIcon from '@mui/icons-material/Article';
 import ImageIcon from '@mui/icons-material/Image';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DownloadIcon from '@mui/icons-material/Download';
