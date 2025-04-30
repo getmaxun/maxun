@@ -235,17 +235,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     }, 100);
   };
 
-    const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", "all_data.json");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   const navigateListTable = (direction: 'next' | 'prev') => {
     if (direction === 'next' && currentListIndex < listData.length - 1) {
       setCurrentListIndex(currentListIndex + 1);
