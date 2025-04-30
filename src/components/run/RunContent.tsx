@@ -284,34 +284,44 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
         </AccordionSummary>
         <AccordionDetails>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-            <ButtonGroup size="small" variant="outlined">
-              <Button
-                startIcon={<DownloadIcon />}
-                onClick={() => {
-                  if (isPaginatedList) {
-                    downloadCSV(currentData, currentColumns, `list_table_${currentListIndex + 1}.csv`);
-                  } else {
-                    downloadCSV(data, columns, csvFilename);
+            <Box>
+              <Button 
+                component="a"
+                onClick={() => downloadJSON(data, jsonFilename)}
+                sx={{ 
+                  color: '#FF00C3', 
+                  textTransform: 'none',
+                  mr: 2,
+                  p: 0,
+                  minWidth: 'auto',
+                  backgroundColor: 'transparent',
+                  '&:hover': {
+                    backgroundColor: 'transparent',
+                    textDecoration: 'underline'
                   }
                 }}
-                sx={{ borderColor: '#FF00C3', color: '#FF00C3' }}
               >
-                CSV
+                Download as JSON
               </Button>
-              <Button
-                startIcon={<DataObjectIcon />}
-                onClick={() => {
-                  if (isPaginatedList) {
-                    downloadJSON(currentData, `list_table_${currentListIndex + 1}.json`);
-                  } else {
-                    downloadJSON(data, jsonFilename);
+
+              <Button 
+                component="a"
+                onClick={() => downloadCSV(data, columns, csvFilename)}
+                sx={{ 
+                  color: '#FF00C3', 
+                  textTransform: 'none',
+                  p: 0,
+                  minWidth: 'auto',
+                  backgroundColor: 'transparent',
+                  '&:hover': {
+                    backgroundColor: 'transparent',
+                    textDecoration: 'underline'
                   }
                 }}
-                sx={{ borderColor: '#FF00C3', color: '#FF00C3' }}
               >
-                JSON
+                Download as CSV
               </Button>
-            </ButtonGroup>
+            </Box>
 
             {isPaginatedList && listData.length > 1 && (
               <ButtonGroup size="small">
@@ -367,132 +377,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
           </TableContainer>
         </AccordionDetails>
       </Accordion>
-    );
-  };
-
-  const renderExpandedView = (dataTypeWithIndex: string) => {
-    if (expandedView !== dataTypeWithIndex) return null;
-
-    let data: any[] = [];
-    let columns: string[] = [];
-    let title = "";
-    let csvFilename = "";
-    let jsonFilename = "";
-
-    if (dataTypeWithIndex.startsWith('list-')) {
-      const indexStr = dataTypeWithIndex.split('-')[1];
-      const index = parseInt(indexStr, 10);
-
-      if (index >= 0 && index < listData.length) {
-        data = listData[index];
-        columns = listColumns[index];
-        title = `${t('run_content.captured_data.list_title')} - Table ${index + 1}`;
-        csvFilename = `list_table_${index + 1}.csv`;
-        jsonFilename = `list_table_${index + 1}.json`;
-      }
-    } else {
-      switch (dataTypeWithIndex) {
-        case 'schema':
-          data = schemaData;
-          columns = schemaColumns;
-          title = t('run_content.captured_data.schema_title');
-          csvFilename = 'schema_data.csv';
-          jsonFilename = 'schema_data.json';
-          break;
-        case 'list':
-          if (listData.length > 0 && listColumns.length > 0) {
-            data = listData[currentListIndex];
-            columns = listColumns[currentListIndex];
-          }
-          title = t('run_content.captured_data.list_title');
-          csvFilename = 'list_data.csv';
-          jsonFilename = 'list_data.json';
-          break;
-        case 'legacy':
-          data = legacyData;
-          columns = legacyColumns;
-          title = t('run_content.captured_data.title');
-          csvFilename = 'data.csv';
-          jsonFilename = 'data.json';
-          break;
-      }
-    }
-
-    return (
-      <Box sx={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.7)',
-        zIndex: 9999,
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        p: 4
-      }}>
-        <Box sx={{
-          bgcolor: 'background.paper',
-          borderRadius: 1,
-          boxShadow: 24,
-          p: 4,
-          width: '90%',
-          maxWidth: '1200px',
-          maxHeight: '90vh',
-          overflow: 'auto'
-        }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-            <Typography variant="h5">{title}</Typography>
-            <Box>
-              <ButtonGroup variant="outlined" size="small" sx={{ mr: 2 }}>
-                <Button
-                  onClick={() => downloadCSV(data, columns, csvFilename)}
-                  startIcon={<DownloadIcon />}
-                >
-                  CSV
-                </Button>
-                <Button
-                  onClick={() => downloadJSON(data, jsonFilename)}
-                  startIcon={<DataObjectIcon />}
-                >
-                  JSON
-                </Button>
-              </ButtonGroup>
-              <Button
-                variant="outlined"
-                color="secondary"
-                onClick={() => setExpandedView(null)}
-              >
-                Close
-              </Button>
-            </Box>
-          </Box>
-
-          <TableContainer component={Paper} sx={{ maxHeight: 'calc(90vh - 150px)' }}>
-            <Table stickyHeader aria-label="expanded data table">
-              <TableHead>
-                <TableRow>
-                  {columns.map((column) => (
-                    <TableCell key={column}>{column}</TableCell>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {data.map((row, index) => (
-                  <TableRow key={index}>
-                    {columns.map((column) => (
-                      <TableCell key={column}>
-                        {row[column] === undefined || row[column] === "" ? "-" : row[column]}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Box>
-      </Box>
     );
   };
 
@@ -613,11 +497,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   )}
                 </>
               )}
-
-              {renderExpandedView('schema')}
-              {renderExpandedView('legacy')}
-
-              {listData.map((_, index) => renderExpandedView(`list-${index}`))}
             </Box>
           )}
 
@@ -630,8 +509,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   id="screenshot-header"
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <ImageIcon sx={{ color: '#FF00C3' }} />
-                    <Typography variant='h6' sx={{ ml: 2 }}>
+                    <Typography variant='h6'>
                       {t('run_content.captured_screenshot.title', 'Screenshots')}
                     </Typography>
                   </Box>
@@ -639,11 +517,20 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 <AccordionDetails>
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                     <Button
-                      startIcon={<DownloadIcon />}
+                      component="a"
                       href={row.binaryOutput[screenshotKeys[currentScreenshotIndex]]}
                       download={screenshotKeys[currentScreenshotIndex]}
-                      sx={{ borderColor: '#FF00C3', color: '#FF00C3', borderRadius: 1 }}
-                      variant="outlined"
+                      sx={{ 
+                        color: '#FF00C3', 
+                        textTransform: 'none',
+                        p: 0,
+                        minWidth: 'auto',
+                        backgroundColor: 'transparent',
+                        '&:hover': {
+                          backgroundColor: 'transparent',
+                          textDecoration: 'underline'
+                        }
+                      }}
                     >
                       {t('run_content.captured_screenshot.download', 'Download')}
                     </Button>
