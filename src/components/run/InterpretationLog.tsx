@@ -37,7 +37,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
   const [captureListPage, setCaptureListPage] = useState<number>(0);
   const [screenshotPage, setScreenshotPage] = useState<number>(0);
-  const [otherPage, setOtherPage] = useState<number>(0);
   
   const [activeTab, setActiveTab] = useState(0);
   
@@ -137,7 +136,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
       setActiveTab(0);
       setCaptureListPage(0);
       setScreenshotPage(0);
-      setOtherPage(0);
     }
   }, [shouldResetInterpretationLog]);
 
@@ -168,7 +166,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     }
     
     return tabs;
-  }, [captureListData.length, captureTextData.length, screenshotData.length, otherData.length]);
+  }, [captureListData.length, captureTextData.length, screenshotData.length]);
 
   const availableTabs = getAvailableTabs();
   
