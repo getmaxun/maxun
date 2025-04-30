@@ -272,7 +272,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     data: any[],
     columns: string[],
     title: string,
-    icon: React.ReactNode,
     csvFilename: string,
     jsonFilename: string,
     isPaginatedList: boolean = false
@@ -293,7 +292,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
           id={`${title.toLowerCase()}-header`}
         >
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            {icon}
             <Typography variant='h6' sx={{ ml: 2 }}>
               {title}
             </Typography>
@@ -812,7 +810,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                     legacyData,
                     legacyColumns,
                     t('run_content.captured_data.title'),
-                    <ArticleIcon sx={{ color: '#FF00C3' }} />,
                     'data.csv',
                     'data.json'
                   )
@@ -840,7 +837,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                       schemaData,
                       schemaColumns,
                       t('run_content.captured_data.schema_title'),
-                      <SchemaIcon sx={{ color: '#FF00C3' }} />,
                       'schema_data.csv',
                       'schema_data.json'
                     )}
@@ -849,7 +845,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                       [],
                       [],
                       t('run_content.captured_data.list_title'),
-                      <ListIcon sx={{ color: '#FF00C3' }} />,
                       'list_data.csv',
                       'list_data.json',
                       true
