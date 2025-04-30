@@ -547,8 +547,7 @@
             "view_full": "Vollständige Daten anzeigen",
             "items": "Elemente",
             "schema_title": "Text erfassen",
-            "list_title": "Liste erfassen",
-            "other_title": "Andere Daten"
+            "list_title": "Liste erfassen"
         },
         "captured_screenshot": {
             "title": "Erfasste Screenshots",

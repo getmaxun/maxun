@@ -265,8 +265,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
       
       const categorizedOutput = {
         scrapeSchema: interpretationInfo.scrapeSchemaOutput || {},
-        scrapeList: interpretationInfo.scrapeListOutput || {},
-        other: interpretationInfo.otherOutput || {}
+        scrapeList: interpretationInfo.scrapeListOutput || {}
       };
       
       await run.update({
@@ -278,7 +277,6 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
         serializableOutput: {
           scrapeSchema: Object.values(categorizedOutput.scrapeSchema),
           scrapeList: Object.values(categorizedOutput.scrapeList),
-          other: Object.values(categorizedOutput.other),
         },
         binaryOutput: uploadedBinaryOutput,
       });
@@ -482,7 +480,6 @@ async function abortRun(runId: string, userId: string): Promise<boolean> {
     let categorizedOutput = {
       scrapeSchema: {},
       scrapeList: {},
-      other: {}
     };
     let binaryOutput: Record<string, any> = {};
     
@@ -496,7 +493,6 @@ async function abortRun(runId: string, userId: string): Promise<boolean> {
           categorizedOutput = {
             scrapeSchema: collectDataByType(browser.interpreter.serializableDataByType.scrapeSchema || []),
             scrapeList: collectDataByType(browser.interpreter.serializableDataByType.scrapeList || []),
-            other: collectDataByType(browser.interpreter.serializableDataByType.other || [])
           };
         }
         
@@ -516,7 +512,6 @@ async function abortRun(runId: string, userId: string): Promise<boolean> {
       serializableOutput: {
         scrapeSchema: Object.values(categorizedOutput.scrapeSchema),
         scrapeList: Object.values(categorizedOutput.scrapeList),
-        other: Object.values(categorizedOutput.other),
       },
       binaryOutput,
     });

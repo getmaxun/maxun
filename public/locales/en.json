@@ -568,8 +568,7 @@
         "view_full": "View Full Data",
         "items": "items",
         "schema_title": "Capture Text",
-        "list_title": "Capture List",
-        "other_title": "Other Data"
+        "list_title": "Capture List"
       },
       "captured_screenshot": {
         "title": "Captured Screenshots",

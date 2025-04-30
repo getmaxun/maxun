@@ -45,9 +45,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   const [listData, setListData] = useState<any[][]>([]);
   const [listColumns, setListColumns] = useState<string[][]>([]);
   const [currentListIndex, setCurrentListIndex] = useState<number>(0);
-  
-  const [otherData, setOtherData] = useState<any[]>([]);
-  const [otherColumns, setOtherColumns] = useState<string[]>([]);
 
   const [expandedView, setExpandedView] = useState<string | null>(null);
   
@@ -66,7 +63,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
     if (!row.serializableOutput.scrapeSchema && 
         !row.serializableOutput.scrapeList && 
-        !row.serializableOutput.other &&
         Object.keys(row.serializableOutput).length > 0) {
       
       setIsLegacyData(true);
@@ -82,10 +78,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     
     if (row.serializableOutput.scrapeList) {
       processScrapeList(row.serializableOutput.scrapeList);
-    }
-    
-    if (row.serializableOutput.other && Object.keys(row.serializableOutput.other).length > 0) {
-      processDataCategory(row.serializableOutput.other, setOtherData, setOtherColumns);
     }
   }, [row.serializableOutput]);
 
@@ -240,7 +232,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
       allData = {
         schema: schemaData,
         list: listData.flat(),
-        other: otherData
       };
     }
     
@@ -619,13 +610,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
           csvFilename = 'list_data.csv';
           jsonFilename = 'list_data.json';
           break;
-        case 'other':
-          data = otherData;
-          columns = otherColumns;
-          title = t('run_content.captured_data.other_title');
-          csvFilename = 'other_data.csv';
-          jsonFilename = 'other_data.json';
-          break;
         case 'legacy':
           data = legacyData;
           columns = legacyColumns;
@@ -714,7 +698,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     );
   };
 
-  const hasData = schemaData.length > 0 || listData.length > 0 || otherData.length > 0 || legacyData.length > 0;
+  const hasData = schemaData.length > 0 || listData.length > 0 || legacyData.length > 0;
   const hasScreenshots = row.binaryOutput && Object.keys(row.binaryOutput).length > 0;
 
   return (
@@ -881,15 +865,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                       'list_data.json',
                       true 
                     )}
-                    
-                    {renderDataTable(
-                      otherData,
-                      otherColumns,
-                      t('run_content.captured_data.other_title'),
-                      <MoreHorizIcon sx={{ color: '#FF00C3' }} />,
-                      'other_data.csv',
-                      'other_data.json'
-                    )}
                   </>
                 ) : (
                   <Grid container spacing={3}>
@@ -897,7 +872,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                       const dataCategoriesCount = [
                         schemaData.length > 0, 
                         listData.length > 0, 
-                        otherData.length > 0
                       ].filter(Boolean).length;
                       
                       const columnWidth = dataCategoriesCount === 1 ? 12 : dataCategoriesCount === 2 ? 6 : 4;
@@ -932,20 +906,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               )}
                             </Grid>
                           )}
-                          
-                          {otherData.length > 0 && (
-                            <Grid item xs={12} md={columnWidth} sx={{ display: 'flex' }}>
-                              {renderDataCard(
-                                otherData,
-                                otherColumns,
-                                t('run_content.captured_data.other_title'),
-                                <MoreHorizIcon sx={{ color: '#FF00C3' }} />,
-                                'other',
-                                'other_data.csv',
-                                'other_data.json'
-                              )}
-                            </Grid>
-                          )}
                         </>
                       );
                     })()}
@@ -954,7 +914,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
               
               {renderExpandedView('schema')}
-              {renderExpandedView('other')}
               {renderExpandedView('legacy')}
               
               {listData.map((_, index) => renderExpandedView(`list-${index}`))}

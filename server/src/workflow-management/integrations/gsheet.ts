@@ -13,7 +13,6 @@ interface GoogleSheetUpdateTask {
 interface SerializableOutput {
   scrapeSchema?: any[];
   scrapeList?: any[];
-  other?: any[];
 }
 
 const MAX_RETRIES = 5;
@@ -66,16 +65,6 @@ export async function updateGoogleSheet(robotId: string, runId: string) {
             spreadsheetId, 
             'List', 
             serializableOutput.scrapeList, 
-            plainRobot
-          );
-        }
-        
-        if (serializableOutput.other && serializableOutput.other.length > 0) {
-          await processOutputType(
-            robotId, 
-            spreadsheetId, 
-            'Other', 
-            serializableOutput.other, 
             plainRobot
           );
         }

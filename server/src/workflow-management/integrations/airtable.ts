@@ -14,7 +14,6 @@ interface AirtableUpdateTask {
 interface SerializableOutput {
   scrapeSchema?: any[];
   scrapeList?: any[];
-  other?: any[];
 }
 
 const MAX_RETRIES = 3;
@@ -52,7 +51,6 @@ function mergeRelatedData(serializableOutput: SerializableOutput, binaryOutput: 
     ...[
       ...(serializableOutput.scrapeSchema ?? []).map(arr => arr?.length ?? 0),
       ...(serializableOutput.scrapeList ?? []).map(arr => arr?.length ?? 0),
-      ...(serializableOutput.other ?? []).map(arr => arr?.length ?? 0),
       0
     ]
   );
@@ -79,17 +77,6 @@ function mergeRelatedData(serializableOutput: SerializableOutput, binaryOutput: 
       for (let i = 0; i < listArray.length; i++) {
         if (i >= mergedRecords.length) break;
         mergedRecords[i] = { ...mergedRecords[i], ...listArray[i] };
-      }
-    }
-  }
-  
-  if (serializableOutput.other) {
-    for (const otherArray of serializableOutput.other) {
-      if (!Array.isArray(otherArray)) continue;
-      
-      for (let i = 0; i < otherArray.length; i++) {
-        if (i >= mergedRecords.length) break;
-        mergedRecords[i] = { ...mergedRecords[i], ...otherArray[i] };
       }
     }
   }

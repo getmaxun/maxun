@@ -96,17 +96,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
         const tabIndex = availableTabs.findIndex(tab => tab.id === 'captureText');
         if (tabIndex !== -1) setActiveTab(tabIndex);
       }
-    } else if (type === 'other') {
-      if (Array.isArray(data)) {
-        setOtherData(prev => [...prev, data]); 
-      } else {
-        setOtherData(prev => [...prev, [data]]); 
-      }
-      if (otherData.length === 0) {
-        const availableTabs = getAvailableTabs();
-        const tabIndex = availableTabs.findIndex(tab => tab.id === 'other');
-        if (tabIndex !== -1) setActiveTab(tabIndex);
-      }
     }
   
     scrollLogToBottom();
@@ -176,10 +165,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     
     if (screenshotData.length > 0) {
       tabs.push({ id: 'captureScreenshot', label: 'Screenshots' });
-    }
-    
-    if (otherData.length > 0) {
-      tabs.push({ id: 'other', label: 'Other' });
     }
     
     return tabs;
@@ -463,87 +448,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                       </TableBody>
                     </Table>
                   </TableContainer>
-                )}
-                
-                {activeTab === availableTabs.findIndex(tab => tab.id === 'other') && otherData.length > 0 && (
-                  <Box>
-                    {otherData.length > 1 && (
-                      <Box sx={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        alignItems: 'center', 
-                        mb: 2,
-                        mt: 2 
-                      }}>
-                        <Typography variant="body2">
-                          {`Dataset ${otherPage + 1} of ${otherData.length}`}
-                        </Typography>
-                        <Box>
-                          <Button 
-                            onClick={() => setOtherPage(prev => Math.max(0, prev - 1))}
-                            disabled={otherPage === 0}
-                            size="small"
-                          >
-                            Previous
-                          </Button>
-                          <Button 
-                            onClick={() => setOtherPage(prev => Math.min(otherData.length - 1, prev + 1))}
-                            disabled={otherPage >= otherData.length - 1}
-                            size="small"
-                            sx={{ ml: 1 }}
-                          >
-                            Next
-                          </Button>
-                        </Box>
-                      </Box>
-                    )}
-                    <TableContainer component={Paper} sx={{ boxShadow: 'none', borderRadius: 0 }}>
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            {otherData[otherPage] && otherData[otherPage].length > 0 && 
-                              Object.keys(otherData[otherPage][0]).map((column) => (
-                                <TableCell 
-                                  key={column}
-                                  sx={{ 
-                                    borderBottom: '1px solid',
-                                    borderColor: darkMode ? '#3a4453' : '#dee2e6',
-                                    backgroundColor: darkMode ? '#2a3441' : '#f8f9fa'
-                                  }}
-                                >
-                                  {column}
-                                </TableCell>
-                              ))
-                            }
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {otherData[otherPage] && 
-                          otherData[otherPage].map((row: any, idx: any) => (
-                            <TableRow 
-                              key={idx}
-                              sx={{ 
-                                borderBottom: '1px solid',
-                                borderColor: darkMode ? '#3a4453' : '#dee2e6'
-                              }}
-                            >
-                              {Object.keys(row).map((column) => (
-                                <TableCell 
-                                  key={column}
-                                  sx={{ 
-                                    borderBottom: 'none',
-                                    py: 2
-                                  }}
-                                >
-                                  {row[column]}
-                                </TableCell>
-                              ))}
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </Box>
                 )}
               </Box>
             </>

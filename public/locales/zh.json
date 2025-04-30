@@ -548,8 +548,7 @@
       "view_full": "查看完整数据",
       "items": "项目",
       "schema_title": "捕获文本",
-      "list_title": "捕获列表",
-      "other_title": "其他数据"
+      "list_title": "捕获列表"
     },
     "captured_screenshot": {
       "title": "已捕获的截图",

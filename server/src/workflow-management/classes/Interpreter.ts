@@ -92,11 +92,9 @@ export class WorkflowInterpreter {
   public serializableDataByType: {
     scrapeSchema: any[],
     scrapeList: any[],
-    other: any[]
   } = {
     scrapeSchema: [],
     scrapeList: [],
-    other: []
   };
 
   /**
@@ -216,12 +214,7 @@ export class WorkflowInterpreter {
             type: 'captureList', 
             data 
           });
-        } else {
-          this.socket.emit('serializableCallback', { 
-            type: 'other', 
-            data 
-          });
-        }
+        } 
       },
       binaryCallback: (data: string, mimetype: string) => {
         this.socket.emit('binaryCallback', { 
@@ -292,7 +285,6 @@ export class WorkflowInterpreter {
     this.serializableDataByType = {
       scrapeSchema: [],
       scrapeList: [],
-      other: []
     };
     this.binaryData = [];
   }
@@ -342,9 +334,7 @@ export class WorkflowInterpreter {
           }
         } else if (this.currentActionType === 'scrapeList') {
           this.serializableDataByType.scrapeList.push(data);
-        } else {
-          this.serializableDataByType.other.push(data);
-        }
+        } 
         
         this.socket.emit('serializableCallback', data);
       },
@@ -391,12 +381,6 @@ export class WorkflowInterpreter {
       scrapeListOutput: this.serializableDataByType.scrapeList.reduce((reducedObject, item, index) => {
         return {
           [`list-${index}`]: item,
-          ...reducedObject,
-        }
-      }, {}),
-      otherOutput: this.serializableDataByType.other.reduce((reducedObject, item, index) => {
-        return {
-          [`item-${index}`]: item,
           ...reducedObject,
         }
       }, {}),

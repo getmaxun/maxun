@@ -548,8 +548,7 @@
       "view_full": "Ver Datos Completos",
       "items": "elementos",
       "schema_title": "Capturar Texto",
-      "list_title": "Capturar Lista",
-      "other_title": "Otros Datos"
+      "list_title": "Capturar Lista"
     },
     "captured_screenshot": {
       "title": "Capturas de Pantalla",

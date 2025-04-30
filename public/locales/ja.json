@@ -548,8 +548,7 @@
             "view_full": "すべてのデータを表示",
             "items": "アイテム",
             "schema_title": "テキストをキャプチャ",
-            "list_title": "リストをキャプチャ",
-            "other_title": "その他のデータ"
+            "list_title": "リストをキャプチャ"
         },
         "captured_screenshot": {
             "title": "キャプチャされたスクリーンショット",

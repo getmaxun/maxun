@@ -135,7 +135,6 @@ async function executeRun(id: string, userId: string) {
     const categorizedOutput = {
       scrapeSchema: interpretationInfo.scrapeSchemaOutput || {},
       scrapeList: interpretationInfo.scrapeListOutput || {},
-      other: interpretationInfo.otherOutput || {}
     };
 
     await destroyRemoteBrowser(plainRun.browserId, userId);
@@ -149,7 +148,6 @@ async function executeRun(id: string, userId: string) {
       serializableOutput: {
         scrapeSchema: Object.values(categorizedOutput.scrapeSchema),
         scrapeList: Object.values(categorizedOutput.scrapeList),
-        other: Object.values(categorizedOutput.other),
       },
       binaryOutput: uploadedBinaryOutput,
     });
