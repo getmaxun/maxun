@@ -23,8 +23,6 @@ import { Data } from "./RunsTable";
 import { TabPanel, TabContext } from "@mui/lab";
 import ArticleIcon from '@mui/icons-material/Article';
 import ImageIcon from '@mui/icons-material/Image';
-import ListIcon from '@mui/icons-material/List';
-import SchemaIcon from '@mui/icons-material/Schema';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DownloadIcon from '@mui/icons-material/Download';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
