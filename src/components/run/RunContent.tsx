@@ -807,9 +807,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   <ArticleIcon sx={{ marginRight: '15px' }} />
                   {t('run_content.captured_data.title')}
                 </Typography>
-                <Box>
-
-                </Box>
               </Box>
 
               {isLegacyData && (
