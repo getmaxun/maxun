@@ -793,13 +793,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
           {hasData && (
             <Box sx={{ mb: 3 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant='h6' sx={{ display: 'flex', alignItems: 'center' }}>
-                  <ArticleIcon sx={{ marginRight: '15px' }} />
-                  {t('run_content.captured_data.title')}
-                </Typography>
-              </Box>
-
               {isLegacyData && (
                 viewMode === 'vertical' ? (
                   renderDataTable(
