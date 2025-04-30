@@ -405,7 +405,7 @@ router.post('/recordings/:id/duplicate', requireSignIn, async (req: Authenticate
       return step;
     });
 
-    const currentTimestamp = new Date().toISOString();
+    const currentTimestamp = new Date().toLocaleString();
 
     const newRobot = await Robot.create({
       id: uuid(), 
