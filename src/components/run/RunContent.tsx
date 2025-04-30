@@ -510,9 +510,22 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 <AccordionDetails>
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                     <Button
-                      component="a"
-                      href={row.binaryOutput[screenshotKeys[currentScreenshotIndex]]}
-                      download={screenshotKeys[currentScreenshotIndex]}
+                      onClick={() => {
+                        fetch(row.binaryOutput[screenshotKeys[currentScreenshotIndex]])
+                          .then(response => response.blob())
+                          .then(blob => {
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.style.display = 'none';
+                            a.href = url;
+                            a.download = screenshotKeys[currentScreenshotIndex];
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            window.URL.revokeObjectURL(url);
+                          })
+                          .catch(err => console.error('Download failed:', err));
+                      }}
                       sx={{ 
                         color: '#FF00C3', 
                         textTransform: 'none',
