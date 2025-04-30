@@ -93,7 +93,7 @@ async function resetBrowserState(browser: RemoteBrowser): Promise<boolean> {
     }
     
     // Navigate to blank page to reset state
-    await currentPage.goto('about:blank');
+    await currentPage.goto('about:blank', { waitUntil: 'networkidle', timeout: 10000 });
     
     // Clear browser storage
     await currentPage.evaluate(() => {
