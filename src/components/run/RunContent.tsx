@@ -822,15 +822,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   >
                     <ViewListIcon />
                   </IconButton>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={downloadAllJSON}
-                    startIcon={<CloudDownloadIcon />}
-                    sx={{ borderColor: '#FF00C3', color: '#FF00C3', ml: 1 }}
-                  >
-                    {t('run_content.captured_data.download_all_json')}
-                  </Button>
                 </Box>
               </Box>
 
