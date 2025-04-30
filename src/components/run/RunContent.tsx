@@ -681,13 +681,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   </Box>
                   
                   <Box sx={{ mt: 1 }}>
-                    {screenshotKeys.length > 1 && (
-                      <Chip
-                        label={`Screenshot ${currentScreenshotIndex + 1} of ${screenshotKeys.length}`}
-                        size="small"
-                        sx={{ backgroundColor: '#FF00C3', color: 'white', mb: 2 }}
-                      />
-                    )}
                     <Box>
                       <img
                         src={row.binaryOutput[screenshotKeys[currentScreenshotIndex]]}
