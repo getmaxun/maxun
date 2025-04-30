@@ -808,13 +808,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   {t('run_content.captured_data.title')}
                 </Typography>
                 <Box>
-                  <IconButton
-                    onClick={() => setViewMode('vertical')}
-                    color={viewMode === 'vertical' ? 'primary' : 'default'}
-                    sx={{ color: viewMode === 'vertical' ? '#FF00C3' : 'inherit' }}
-                  >
-                    <ViewListIcon />
-                  </IconButton>
+
                 </Box>
               </Box>
 
