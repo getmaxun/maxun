@@ -925,8 +925,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                       sx={{ ml: 2, backgroundColor: '#FF00C3', color: 'white' }}
                     />
                   </Typography>
-                  <Box>
-                  </Box>
                 </Box>
               </Box>
 
