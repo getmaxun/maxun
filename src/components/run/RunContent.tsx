@@ -9,18 +9,13 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  Chip,
   ButtonGroup
 } from "@mui/material";
 import Highlight from "react-highlight";
 import * as React from "react";
 import { Data } from "./RunsTable";
 import { TabPanel, TabContext } from "@mui/lab";
-import ImageIcon from '@mui/icons-material/Image';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import DownloadIcon from '@mui/icons-material/Download';
-import FullscreenIcon from '@mui/icons-material/Fullscreen';
-import DataObjectIcon from '@mui/icons-material/DataObject';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { useEffect, useState } from "react";
@@ -54,8 +49,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
   const [screenshotKeys, setScreenshotKeys] = useState<string[]>([]);
   const [currentScreenshotIndex, setCurrentScreenshotIndex] = useState<number>(0);
-
-  const [expandedView, setExpandedView] = useState<string | null>(null);
 
   const [legacyData, setLegacyData] = useState<any[]>([]);
   const [legacyColumns, setLegacyColumns] = useState<string[]>([]);
