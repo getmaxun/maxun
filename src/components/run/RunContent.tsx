@@ -853,7 +853,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
           {hasScreenshots && (
             <>
-
               {viewMode === 'vertical' ? (
                 <>
                   {Object.keys(row.binaryOutput).map((key, index) => {
