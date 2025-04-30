@@ -809,13 +809,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 </Typography>
                 <Box>
                   <IconButton
-                    onClick={() => setViewMode('horizontal')}
-                    color={viewMode === 'horizontal' ? 'primary' : 'default'}
-                    sx={{ color: viewMode === 'horizontal' ? '#FF00C3' : 'inherit' }}
-                  >
-                    <ViewModuleIcon />
-                  </IconButton>
-                  <IconButton
                     onClick={() => setViewMode('vertical')}
                     color={viewMode === 'vertical' ? 'primary' : 'default'}
                     sx={{ color: viewMode === 'vertical' ? '#FF00C3' : 'inherit' }}
