@@ -892,19 +892,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
           {hasScreenshots && (
             <>
-              <Box sx={{ mb: 3 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <Typography variant='h6' sx={{ display: 'flex', alignItems: 'center' }}>
-                    <ImageIcon sx={{ marginRight: '15px' }} />
-                    {t('run_content.captured_screenshot.title')}
-                    <Chip
-                      label={`${Object.keys(row.binaryOutput).length} ${Object.keys(row.binaryOutput).length === 1 ? 'item' : 'items'}`}
-                      size="small"
-                      sx={{ ml: 2, backgroundColor: '#FF00C3', color: 'white' }}
-                    />
-                  </Typography>
-                </Box>
-              </Box>
 
               {viewMode === 'vertical' ? (
                 <>
