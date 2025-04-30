@@ -282,7 +282,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
           id={`${title.toLowerCase()}-header`}
         >
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Typography variant='h6' sx={{ ml: 2 }}>
+            <Typography variant='h6'>
               {title}
             </Typography>
           </Box>
