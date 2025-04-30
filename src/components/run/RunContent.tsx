@@ -38,16 +38,16 @@ interface RunContentProps {
 export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRef, abortRunHandler }: RunContentProps) => {
   const { t } = useTranslation();
   const [tab, setTab] = React.useState<string>('output');
-  
+
   const [schemaData, setSchemaData] = useState<any[]>([]);
   const [schemaColumns, setSchemaColumns] = useState<string[]>([]);
-  
+
   const [listData, setListData] = useState<any[][]>([]);
   const [listColumns, setListColumns] = useState<string[][]>([]);
   const [currentListIndex, setCurrentListIndex] = useState<number>(0);
 
   const [expandedView, setExpandedView] = useState<string | null>(null);
-  
+
   const [viewMode, setViewMode] = useState<'horizontal' | 'vertical'>('vertical');
 
   const [legacyData, setLegacyData] = useState<any[]>([]);
@@ -61,10 +61,10 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   useEffect(() => {
     if (!row.serializableOutput) return;
 
-    if (!row.serializableOutput.scrapeSchema && 
-        !row.serializableOutput.scrapeList && 
-        Object.keys(row.serializableOutput).length > 0) {
-      
+    if (!row.serializableOutput.scrapeSchema &&
+      !row.serializableOutput.scrapeList &&
+      Object.keys(row.serializableOutput).length > 0) {
+
       setIsLegacyData(true);
       processLegacyData(row.serializableOutput);
       return;
@@ -75,7 +75,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     if (row.serializableOutput.scrapeSchema && Object.keys(row.serializableOutput.scrapeSchema).length > 0) {
       processDataCategory(row.serializableOutput.scrapeSchema, setSchemaData, setSchemaColumns);
     }
-    
+
     if (row.serializableOutput.scrapeList) {
       processScrapeList(row.serializableOutput.scrapeList);
     }
@@ -83,7 +83,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
   const processLegacyData = (legacyOutput: Record<string, any>) => {
     let allData: any[] = [];
-    
+
     Object.keys(legacyOutput).forEach(key => {
       const data = legacyOutput[key];
       if (Array.isArray(data)) {
@@ -93,13 +93,13 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
         allData = [...allData, ...filteredData];
       }
     });
-    
+
     if (allData.length > 0) {
       const allColumns = new Set<string>();
       allData.forEach(item => {
         Object.keys(item).forEach(key => allColumns.add(key));
       });
-      
+
       setLegacyData(allData);
       setLegacyColumns(Array.from(allColumns));
     }
@@ -111,7 +111,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     setColumns: React.Dispatch<React.SetStateAction<string[]>>
   ) => {
     let allData: any[] = [];
-    
+
     Object.keys(categoryData).forEach(key => {
       const data = categoryData[key];
       if (Array.isArray(data)) {
@@ -121,13 +121,13 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
         allData = [...allData, ...filteredData];
       }
     });
-    
+
     if (allData.length > 0) {
       const allColumns = new Set<string>();
       allData.forEach(item => {
         Object.keys(item).forEach(key => allColumns.add(key));
       });
-      
+
       setData(allData);
       setColumns(Array.from(allColumns));
     }
@@ -136,22 +136,22 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   const processScrapeList = (scrapeListData: any) => {
     const tablesList: any[][] = [];
     const columnsList: string[][] = [];
-    
+
     if (Array.isArray(scrapeListData)) {
       scrapeListData.forEach(tableData => {
         if (Array.isArray(tableData) && tableData.length > 0) {
           const filteredData = tableData.filter(row =>
             Object.values(row).some(value => value !== undefined && value !== "")
           );
-          
+
           if (filteredData.length > 0) {
             tablesList.push(filteredData);
-            
+
             const tableColumns = new Set<string>();
             filteredData.forEach(item => {
               Object.keys(item).forEach(key => tableColumns.add(key));
             });
-            
+
             columnsList.push(Array.from(tableColumns));
           }
         }
@@ -163,21 +163,21 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
           const filteredData = tableData.filter(row =>
             Object.values(row).some(value => value !== undefined && value !== "")
           );
-          
+
           if (filteredData.length > 0) {
             tablesList.push(filteredData);
-            
+
             const tableColumns = new Set<string>();
             filteredData.forEach(item => {
               Object.keys(item).forEach(key => tableColumns.add(key));
             });
-            
+
             columnsList.push(Array.from(tableColumns));
           }
         }
       });
     }
-    
+
     setListData(tablesList);
     setListColumns(columnsList);
     setCurrentListIndex(0);
@@ -217,7 +217,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
+
     setTimeout(() => {
       URL.revokeObjectURL(url);
     }, 100);
@@ -225,7 +225,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
   const downloadAllJSON = () => {
     let allData;
-    
+
     if (isLegacyData) {
       allData = { data: legacyData };
     } else {
@@ -234,7 +234,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
         list: listData.flat(),
       };
     }
-    
+
     const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
 
@@ -265,12 +265,12 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   ) => {
     if (!isPaginatedList && data.length === 0) return null;
     if (isPaginatedList && (listData.length === 0 || currentListIndex >= listData.length)) return null;
-    
+
     const currentData = isPaginatedList ? listData[currentListIndex] : data;
     const currentColumns = isPaginatedList ? listColumns[currentListIndex] : columns;
-    
+
     if (!currentData || currentData.length === 0) return null;
-    
+
     return (
       <Accordion defaultExpanded sx={{ mb: 2 }}>
         <AccordionSummary
@@ -284,19 +284,19 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               {title}
             </Typography>
             {isPaginatedList ? (
-              <Chip 
-                label={listData.length > 1 
+              <Chip
+                label={listData.length > 1
                   ? `Table ${currentListIndex + 1} of ${listData.length} (${currentData.length} ${currentData.length === 1 ? 'item' : 'items'})`
                   : `${currentData.length} ${currentData.length === 1 ? 'item' : 'items'}`
-                } 
-                size="small" 
-                sx={{ ml: 2, backgroundColor: '#FF00C3', color: 'white' }} 
+                }
+                size="small"
+                sx={{ ml: 2, backgroundColor: '#FF00C3', color: 'white' }}
               />
             ) : (
-              <Chip 
-                label={`${data.length} ${data.length === 1 ? 'item' : 'items'}`} 
-                size="small" 
-                sx={{ ml: 2, backgroundColor: '#FF00C3', color: 'white' }} 
+              <Chip
+                label={`${data.length} ${data.length === 1 ? 'item' : 'items'}`}
+                size="small"
+                sx={{ ml: 2, backgroundColor: '#FF00C3', color: 'white' }}
               />
             )}
           </Box>
@@ -308,7 +308,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 startIcon={<DownloadIcon />}
                 onClick={() => {
                   if (isPaginatedList) {
-                    downloadCSV(currentData, currentColumns, `list_table_${currentListIndex+1}.csv`);
+                    downloadCSV(currentData, currentColumns, `list_table_${currentListIndex + 1}.csv`);
                   } else {
                     downloadCSV(data, columns, csvFilename);
                   }
@@ -321,7 +321,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 startIcon={<DataObjectIcon />}
                 onClick={() => {
                   if (isPaginatedList) {
-                    downloadJSON(currentData, `list_table_${currentListIndex+1}.json`);
+                    downloadJSON(currentData, `list_table_${currentListIndex + 1}.json`);
                   } else {
                     downloadJSON(data, jsonFilename);
                   }
@@ -331,14 +331,14 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 JSON
               </Button>
             </ButtonGroup>
-            
+
             {isPaginatedList && listData.length > 1 && (
               <ButtonGroup size="small">
                 <Button
                   onClick={() => navigateListTable('prev')}
                   disabled={currentListIndex === 0}
-                  sx={{ 
-                    borderColor: '#FF00C3', 
+                  sx={{
+                    borderColor: '#FF00C3',
                     color: currentListIndex === 0 ? 'gray' : '#FF00C3',
                     '&.Mui-disabled': {
                       borderColor: 'rgba(0, 0, 0, 0.12)'
@@ -350,7 +350,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 <Button
                   onClick={() => navigateListTable('next')}
                   disabled={currentListIndex === listData.length - 1}
-                  sx={{ 
+                  sx={{
                     color: currentListIndex === listData.length - 1 ? 'gray' : '#FF00C3',
                     '&.Mui-disabled': {
                       borderColor: 'rgba(0, 0, 0, 0.12)'
@@ -401,20 +401,20 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   ) => {
     if (!isPaginatedList && data.length === 0) return null;
     if (isPaginatedList && (listData.length === 0 || currentListIndex >= listData.length)) return null;
-    
+
     const currentData = isPaginatedList ? listData[currentListIndex] : data;
     const currentColumns = isPaginatedList ? listColumns[currentListIndex] : columns;
-    
+
     if (!currentData || currentData.length === 0) return null;
-    
+
     const previewData = currentData.slice(0, 1);
     const previewColumns = currentColumns.slice(0, 3);
-    
+
     const showMoreColumns = currentColumns.length > 3;
-    
+
     return (
-      <Card sx={{ 
-        width: '100%', 
+      <Card sx={{
+        width: '100%',
         mb: 3,
         height: '100%',
         display: 'flex',
@@ -426,11 +426,11 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
           title={title}
           action={
             <Box>
-              <IconButton 
-                size="small" 
+              <IconButton
+                size="small"
                 onClick={() => {
                   if (isPaginatedList) {
-                    downloadCSV(currentData, currentColumns, `list_table_${currentListIndex+1}.csv`);
+                    downloadCSV(currentData, currentColumns, `list_table_${currentListIndex + 1}.csv`);
                   } else {
                     downloadCSV(data, columns, csvFilename);
                   }
@@ -439,11 +439,11 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               >
                 <DownloadIcon />
               </IconButton>
-              <IconButton 
-                size="small" 
+              <IconButton
+                size="small"
                 onClick={() => {
                   if (isPaginatedList) {
-                    downloadJSON(currentData, `list_table_${currentListIndex+1}.json`);
+                    downloadJSON(currentData, `list_table_${currentListIndex + 1}.json`);
                   } else {
                     downloadJSON(data, jsonFilename);
                   }
@@ -453,7 +453,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               >
                 <DataObjectIcon />
               </IconButton>
-              <IconButton 
+              <IconButton
                 size="small"
                 onClick={() => {
                   if (isPaginatedList) {
@@ -473,29 +473,29 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
         <CardContent sx={{ pt: 0, pb: 1, flexGrow: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
             {isPaginatedList ? (
-              <Chip 
-                label={listData.length > 1 
+              <Chip
+                label={listData.length > 1
                   ? `Table ${currentListIndex + 1} of ${listData.length} (${currentData.length} ${currentData.length === 1 ? 'item' : 'items'})`
                   : `${currentData.length} ${currentData.length === 1 ? 'item' : 'items'}`
-                } 
-                size="small" 
-                sx={{ backgroundColor: '#FF00C3', color: 'white' }} 
+                }
+                size="small"
+                sx={{ backgroundColor: '#FF00C3', color: 'white' }}
               />
             ) : (
-              <Chip 
-                label={`${data.length} ${data.length === 1 ? 'item' : 'items'}`} 
-                size="small" 
-                sx={{ backgroundColor: '#FF00C3', color: 'white' }} 
+              <Chip
+                label={`${data.length} ${data.length === 1 ? 'item' : 'items'}`}
+                size="small"
+                sx={{ backgroundColor: '#FF00C3', color: 'white' }}
               />
             )}
-            
+
             {isPaginatedList && listData.length > 1 && (
               <ButtonGroup size="small">
                 <Button
                   onClick={() => navigateListTable('prev')}
                   disabled={currentListIndex === 0}
-                  sx={{ 
-                    borderColor: '#FF00C3', 
+                  sx={{
+                    borderColor: '#FF00C3',
                     color: currentListIndex === 0 ? 'gray' : '#FF00C3',
                     '&.Mui-disabled': {
                       borderColor: 'rgba(0, 0, 0, 0.12)'
@@ -509,8 +509,8 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 <Button
                   onClick={() => navigateListTable('next')}
                   disabled={currentListIndex === listData.length - 1}
-                  sx={{ 
-                    borderColor: '#FF00C3', 
+                  sx={{
+                    borderColor: '#FF00C3',
                     color: currentListIndex === listData.length - 1 ? 'gray' : '#FF00C3',
                     '&.Mui-disabled': {
                       borderColor: 'rgba(0, 0, 0, 0.12)'
@@ -548,8 +548,8 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 {currentData.length > 1 && (
                   <TableRow>
                     <TableCell colSpan={previewColumns.length + (showMoreColumns ? 1 : 0)} align="center">
-                      <Button 
-                        size="small" 
+                      <Button
+                        size="small"
                         onClick={() => {
                           if (isPaginatedList) {
                             setExpandedView(`list-${currentListIndex}`);
@@ -584,13 +584,13 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     if (dataTypeWithIndex.startsWith('list-')) {
       const indexStr = dataTypeWithIndex.split('-')[1];
       const index = parseInt(indexStr, 10);
-      
+
       if (index >= 0 && index < listData.length) {
         data = listData[index];
         columns = listColumns[index];
-        title = `${t('run_content.captured_data.list_title')} - Table ${index+1}`;
-        csvFilename = `list_table_${index+1}.csv`;
-        jsonFilename = `list_table_${index+1}.json`;
+        title = `${t('run_content.captured_data.list_title')} - Table ${index + 1}`;
+        csvFilename = `list_table_${index + 1}.csv`;
+        jsonFilename = `list_table_${index + 1}.json`;
       }
     } else {
       switch (dataTypeWithIndex) {
@@ -621,25 +621,25 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     }
 
     return (
-      <Box sx={{ 
-        position: 'fixed', 
-        top: 0, 
-        left: 0, 
-        right: 0, 
-        bottom: 0, 
-        backgroundColor: 'rgba(0,0,0,0.7)', 
+      <Box sx={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.7)',
         zIndex: 9999,
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
         p: 4
       }}>
-        <Box sx={{ 
-          bgcolor: 'background.paper', 
-          borderRadius: 1, 
-          boxShadow: 24, 
-          p: 4, 
-          width: '90%', 
+        <Box sx={{
+          bgcolor: 'background.paper',
+          borderRadius: 1,
+          boxShadow: 24,
+          p: 4,
+          width: '90%',
           maxWidth: '1200px',
           maxHeight: '90vh',
           overflow: 'auto'
@@ -648,29 +648,29 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
             <Typography variant="h5">{title}</Typography>
             <Box>
               <ButtonGroup variant="outlined" size="small" sx={{ mr: 2 }}>
-                <Button 
+                <Button
                   onClick={() => downloadCSV(data, columns, csvFilename)}
                   startIcon={<DownloadIcon />}
                 >
                   CSV
                 </Button>
-                <Button 
+                <Button
                   onClick={() => downloadJSON(data, jsonFilename)}
                   startIcon={<DataObjectIcon />}
                 >
                   JSON
                 </Button>
               </ButtonGroup>
-              <Button 
-                variant="outlined" 
-                color="secondary" 
+              <Button
+                variant="outlined"
+                color="secondary"
                 onClick={() => setExpandedView(null)}
               >
                 Close
               </Button>
             </Box>
           </Box>
-          
+
           <TableContainer component={Paper} sx={{ maxHeight: 'calc(90vh - 150px)' }}>
             <Table stickyHeader aria-label="expanded data table">
               <TableHead>
@@ -780,7 +780,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               {t('run_content.loading')}
             </Box>
           ) : (!hasData && !hasScreenshots
-            ? <Typography>{t('run_content.empty_output')}</Typography> 
+            ? <Typography>{t('run_content.empty_output')}</Typography>
             : null)}
 
           {hasData && (
@@ -791,23 +791,23 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   {t('run_content.captured_data.title')}
                 </Typography>
                 <Box>
-                  <IconButton 
+                  <IconButton
                     onClick={() => setViewMode('horizontal')}
                     color={viewMode === 'horizontal' ? 'primary' : 'default'}
                     sx={{ color: viewMode === 'horizontal' ? '#FF00C3' : 'inherit' }}
                   >
                     <ViewModuleIcon />
                   </IconButton>
-                  <IconButton 
+                  <IconButton
                     onClick={() => setViewMode('vertical')}
                     color={viewMode === 'vertical' ? 'primary' : 'default'}
                     sx={{ color: viewMode === 'vertical' ? '#FF00C3' : 'inherit' }}
                   >
                     <ViewListIcon />
                   </IconButton>
-                  <Button 
-                    variant="outlined" 
-                    size="small" 
+                  <Button
+                    variant="outlined"
+                    size="small"
                     onClick={downloadAllJSON}
                     startIcon={<CloudDownloadIcon />}
                     sx={{ borderColor: '#FF00C3', color: '#FF00C3', ml: 1 }}
@@ -816,7 +816,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   </Button>
                 </Box>
               </Box>
-              
+
               {isLegacyData && (
                 viewMode === 'vertical' ? (
                   renderDataTable(
@@ -843,7 +843,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   </Grid>
                 )
               )}
-              
+
               {!isLegacyData && (
                 viewMode === 'vertical' ? (
                   <>
@@ -855,27 +855,27 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                       'schema_data.csv',
                       'schema_data.json'
                     )}
-                    
+
                     {listData.length > 0 && renderDataTable(
-                      [], 
-                      [], 
+                      [],
+                      [],
                       t('run_content.captured_data.list_title'),
                       <ListIcon sx={{ color: '#FF00C3' }} />,
                       'list_data.csv',
                       'list_data.json',
-                      true 
+                      true
                     )}
                   </>
                 ) : (
                   <Grid container spacing={3}>
                     {(() => {
                       const dataCategoriesCount = [
-                        schemaData.length > 0, 
-                        listData.length > 0, 
+                        schemaData.length > 0,
+                        listData.length > 0,
                       ].filter(Boolean).length;
-                      
+
                       const columnWidth = dataCategoriesCount === 1 ? 12 : dataCategoriesCount === 2 ? 6 : 4;
-                      
+
                       return (
                         <>
                           {schemaData.length > 0 && (
@@ -891,18 +891,18 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               )}
                             </Grid>
                           )}
-                          
+
                           {listData.length > 0 && (
                             <Grid item xs={12} md={columnWidth} sx={{ display: 'flex' }}>
                               {renderDataCard(
-                                [], 
-                                [], 
+                                [],
+                                [],
                                 t('run_content.captured_data.list_title'),
                                 <ListIcon sx={{ color: '#FF00C3' }} />,
                                 'list',
                                 'list_data.csv',
                                 'list_data.json',
-                                true 
+                                true
                               )}
                             </Grid>
                           )}
@@ -912,14 +912,14 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   </Grid>
                 )
               )}
-              
+
               {renderExpandedView('schema')}
               {renderExpandedView('legacy')}
-              
+
               {listData.map((_, index) => renderExpandedView(`list-${index}`))}
             </Box>
           )}
-          
+
           {hasScreenshots && (
             <>
               <Box sx={{ mb: 3 }}>
@@ -927,21 +927,21 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   <Typography variant='h6' sx={{ display: 'flex', alignItems: 'center' }}>
                     <ImageIcon sx={{ marginRight: '15px' }} />
                     {t('run_content.captured_screenshot.title')}
-                    <Chip 
-                      label={`${Object.keys(row.binaryOutput).length} ${Object.keys(row.binaryOutput).length === 1 ? 'item' : 'items'}`} 
-                      size="small" 
-                      sx={{ ml: 2, backgroundColor: '#FF00C3', color: 'white' }} 
+                    <Chip
+                      label={`${Object.keys(row.binaryOutput).length} ${Object.keys(row.binaryOutput).length === 1 ? 'item' : 'items'}`}
+                      size="small"
+                      sx={{ ml: 2, backgroundColor: '#FF00C3', color: 'white' }}
                     />
                   </Typography>
                   <Box>
-                    <IconButton 
+                    <IconButton
                       onClick={() => setViewMode('horizontal')}
                       color={viewMode === 'horizontal' ? 'primary' : 'default'}
                       sx={{ color: viewMode === 'horizontal' ? '#FF00C3' : 'inherit' }}
                     >
                       <ViewModuleIcon />
                     </IconButton>
-                    <IconButton 
+                    <IconButton
                       onClick={() => setViewMode('vertical')}
                       color={viewMode === 'vertical' ? 'primary' : 'default'}
                       sx={{ color: viewMode === 'vertical' ? '#FF00C3' : 'inherit' }}
@@ -951,7 +951,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   </Box>
                 </Box>
               </Box>
-              
+
               {viewMode === 'vertical' ? (
                 <>
                   {Object.keys(row.binaryOutput).map((key, index) => {
@@ -967,7 +967,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
                               <ImageIcon sx={{ color: '#FF00C3' }} />
                               <Typography variant='h6' sx={{ ml: 2 }}>
-                                Screenshot {index+1}
+                                Screenshot {index + 1}
                               </Typography>
                             </Box>
                           </AccordionSummary>
@@ -985,15 +985,15 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               </ButtonGroup>
                             </Box>
                             <Box>
-                              <img 
-                                src={imageUrl} 
-                                alt={`Screenshot ${key}`} 
-                                style={{ 
+                              <img
+                                src={imageUrl}
+                                alt={`Screenshot ${key}`}
+                                style={{
                                   maxWidth: '100%',
                                   height: 'auto',
                                   border: '1px solid #e0e0e0',
                                   borderRadius: '4px'
-                                }} 
+                                }}
                               />
                             </Box>
                           </AccordionDetails>
@@ -1033,16 +1033,16 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                             />
                             <CardContent sx={{ p: 1 }}>
                               <Box sx={{ position: 'relative', width: '100%', height: 'auto', overflow: 'hidden' }}>
-                                <img 
-                                  src={imageUrl} 
-                                  alt={`Screenshot ${key}`} 
-                                  style={{ 
+                                <img
+                                  src={imageUrl}
+                                  alt={`Screenshot ${key}`}
+                                  style={{
                                     width: '100%',
                                     height: 'auto',
                                     objectFit: 'contain',
                                     border: '1px solid #e0e0e0',
                                     borderRadius: '4px'
-                                  }} 
+                                  }}
                                 />
                               </Box>
                             </CardContent>
