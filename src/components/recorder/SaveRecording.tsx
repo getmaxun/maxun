@@ -20,6 +20,7 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
   const [openModal, setOpenModal] = useState<boolean>(false);
   const [needConfirm, setNeedConfirm] = useState<boolean>(false);
   const [saveRecordingName, setSaveRecordingName] = useState<string>(fileName);
+  const [saveRecordingDescription, setSaveRecordingDescription] = useState<string>("");
   const [waitingForSave, setWaitingForSave] = useState<boolean>(false);
 
   const { browserId, setBrowserId, notify, recordings, isLogin, recordingName, retrainRobotId } = useGlobalInfoStore();
@@ -152,6 +153,15 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
             label={t('save_recording.robot_name')}
             variant="outlined"
             value={saveRecordingName}
+          />
+          <TextField
+            required
+            sx={{ width: '300px', margin: '15px 0px' }}
+            onChange={handleChangeOfTitle}
+            id="title"
+            label={t('Description (optional)')}
+            variant="outlined"
+            value={saveRecordingDescription}
           />
           {needConfirm
             ?

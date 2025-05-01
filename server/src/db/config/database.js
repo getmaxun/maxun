@@ -1,5 +1,5 @@
-import dotenv from 'dotenv';
-dotenv.config({ path: './.env' });
+// CommonJS format for database.js
+require('dotenv').config({ path: './.env' });
 
 // Validate required environment variables
 const requiredEnvVars = ['DB_USER', 'DB_PASSWORD', 'DB_NAME', 'DB_HOST', 'DB_PORT'];
@@ -9,7 +9,6 @@ requiredEnvVars.forEach(envVar => {
     process.exit(1);
   }
 });
-
 
 module.exports = {
   development: {
