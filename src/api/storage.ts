@@ -28,7 +28,12 @@ export const getStoredRecordings = async (): Promise<string[] | null> => {
   }
 };
 
-export const updateRecording = async (id: string, data: { name?: string; limit?: number, credentials?: Credentials, targetUrl?: string }): Promise<boolean> => {
+export const updateRecording = async (id: string, data: { 
+  name?: string; 
+  limits?: Array<{pairIndex: number, actionIndex: number, argIndex: number, limit: number}>;
+  credentials?: Credentials; 
+  targetUrl?: string 
+}): Promise<boolean> => {
   try {
     const response = await axios.put(`${apiUrl}/storage/recordings/${id}`, data);
     if (response.status === 200) {
