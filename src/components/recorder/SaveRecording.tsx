@@ -8,7 +8,7 @@ import { useSocketStore } from "../../context/socket";
 import { TextField, Typography } from "@mui/material";
 import { WarningText } from "../ui/texts";
 import NotificationImportantIcon from "@mui/icons-material/NotificationImportant";
-import { useNavigate } from 'react-router-dom';
+import { redirect, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 interface SaveRecordingProps {
@@ -55,6 +55,8 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
   const handleFinishClick = () => {
     if (recordingName && !recordings.includes(recordingName)) {
       saveRecording();
+      
+      
     } else {
       setOpenModal(true);
     }
