@@ -1,15 +1,15 @@
-import React, { useCallback, useEffect, useState, useContext } from 'react';
+import React, { useCallback, useEffect, useState, useContext } from "react";
 import { Button, Box, LinearProgress, Tooltip } from "@mui/material";
 import { GenericModal } from "../ui/GenericModal";
 import { stopRecording } from "../../api/recording";
 import { useGlobalInfoStore } from "../../context/globalInfo";
-import { AuthContext } from '../../context/auth';
+import { AuthContext } from "../../context/auth";
 import { useSocketStore } from "../../context/socket";
 import { TextField, Typography } from "@mui/material";
 import { WarningText } from "../ui/texts";
 import NotificationImportantIcon from "@mui/icons-material/NotificationImportant";
-import { useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 interface SaveRecordingProps {
   fileName: string;
@@ -20,10 +20,19 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
   const [openModal, setOpenModal] = useState<boolean>(false);
   const [needConfirm, setNeedConfirm] = useState<boolean>(false);
   const [saveRecordingName, setSaveRecordingName] = useState<string>(fileName);
-  const [saveRecordingDescription, setSaveRecordingDescription] = useState<string>("");
+  const [saveRecordingDescription, setSaveRecordingDescription] =
+    useState<string>("");
   const [waitingForSave, setWaitingForSave] = useState<boolean>(false);
 
-  const { browserId, setBrowserId, notify, recordings, isLogin, recordingName, retrainRobotId } = useGlobalInfoStore();
+  const {
+    browserId,
+    setBrowserId,
+    notify,
+    recordings,
+    isLogin,
+    recordingName,
+    retrainRobotId,
+  } = useGlobalInfoStore();
   const { socket } = useSocketStore();
   const { state, dispatch } = useContext(AuthContext);
   const { user } = state;
@@ -41,17 +50,21 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
       setNeedConfirm(false);
     }
     setSaveRecordingName(value);
-  }
+  };
 
-  const handleChangeOfDescription = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChangeOfDescription = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const { value } = event.target;
     setSaveRecordingDescription(value);
-  }
+  };
 
   const handleSaveRecording = async (event: React.SyntheticEvent) => {
     event.preventDefault();
     if (recordings.includes(saveRecordingName)) {
-      if (needConfirm) { return; }
+      if (needConfirm) {
+        return;
+      }
       setNeedConfirm(true);
     } else {
       await saveRecording();
@@ -66,71 +79,84 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
     }
   };
 
-  const exitRecording = useCallback(async (data?: { actionType: string }) => {
-    let successMessage = t('save_recording.notifications.save_success');
-    
-    if (data && data.actionType) {
-      if (data.actionType === 'retrained') {
-        successMessage = t('save_recording.notifications.retrain_success');
-      } else if (data.actionType === 'saved') {
-        successMessage = t('save_recording.notifications.save_success');
-      } else if (data.actionType === 'error') {
-        successMessage = t('save_recording.notifications.save_error');
+  const exitRecording = useCallback(
+    async (data?: { actionType: string }) => {
+      let successMessage = t("save_recording.notifications.save_success");
+
+      if (data && data.actionType) {
+        if (data.actionType === "retrained") {
+          successMessage = t("save_recording.notifications.retrain_success");
+        } else if (data.actionType === "saved") {
+          successMessage = t("save_recording.notifications.save_success");
+        } else if (data.actionType === "error") {
+          successMessage = t("save_recording.notifications.save_error");
+        }
       }
-    }
-    
-    const notificationData = {
-      type: 'success',
-      message: successMessage,
-      timestamp: Date.now()
-    };
-    
-    if (window.opener) {
-      window.opener.postMessage({
-        type: 'recording-notification',
-        notification: notificationData
-      }, '*');
-      
-      window.opener.postMessage({
-        type: 'session-data-clear',
-        timestamp: Date.now()
-      }, '*');
-    }
-    
-    if (browserId) {
-      await stopRecording(browserId);
-    }
-    setBrowserId(null);
-    
-    window.close();
-  }, [setBrowserId, browserId, t]);
+
+      const notificationData = {
+        type: "success",
+        message: successMessage,
+        timestamp: Date.now(),
+      };
+
+      if (window.opener) {
+        window.opener.postMessage(
+          {
+            type: "recording-notification",
+            notification: notificationData,
+          },
+          "*"
+        );
+
+        window.opener.postMessage(
+          {
+            type: "session-data-clear",
+            timestamp: Date.now(),
+          },
+          "*"
+        );
+      }
+
+      if (browserId) {
+        await stopRecording(browserId);
+      }
+      setBrowserId(null);
+
+      window.close();
+    },
+    [setBrowserId, browserId, t]
+  );
 
   // notifies backed to save the recording in progress,
   // releases resources and changes the view for main page by clearing the global browserId
   const saveRecording = async () => {
     if (user) {
-      const payload = { 
-        fileName: saveRecordingName || recordingName, 
-        userId: user.id, 
+      const payload = {
+        fileName: saveRecordingName || recordingName,
+        userId: user.id,
         isLogin: isLogin,
         robotId: retrainRobotId,
         description: saveRecordingDescription,
       };
 
-      console.log(payload)
-      socket?.emit('save', payload);
+      console.log(payload);
+      socket?.emit("save", payload);
       setWaitingForSave(true);
-      console.log(`Saving the recording as ${saveRecordingName || recordingName} for userId ${user.id} with description: ${saveRecordingDescription}`);
+      console.log(
+        `Saving the recording as ${
+          saveRecordingName || recordingName
+        } for userId ${user.id} with description: ${saveRecordingDescription}`
+      );
     } else {
-      console.error(t('save_recording.notifications.user_not_logged'));
+      console.error(t("save_recording.notifications.user_not_logged"));
     }
   };
 
   useEffect(() => {
-    socket?.on('fileSaved', exitRecording);
+    socket?.on("fileSaved", exitRecording);
     return () => {
-      socket?.off('fileSaved', exitRecording);
-    }
+      socket?.off("fileSaved", exitRecording);
+    };
   }, [socket, exitRecording]);
 
   return (
@@ -140,74 +166,112 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
         variant="outlined"
         color="success"
         sx={{
-          marginRight: '20px',
-          color: '#00c853 !important',
-          borderColor: '#00c853 !important',
-          backgroundColor: 'whitesmoke !important',
+          marginRight: "20px",
+          color: "#00c853 !important",
+          borderColor: "#00c853 !important",
+          backgroundColor: "whitesmoke !important",
         }}
         size="small"
       >
-        {t('right_panel.buttons.finish')}
+        {t("right_panel.buttons.finish")}
       </Button>
 
-      <GenericModal isOpen={openModal} onClose={() => setOpenModal(false)} modalStyle={modalStyle}>
-        <form onSubmit={handleSaveRecording} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-          <Typography variant="h6">{t('save_recording.title')}</Typography>
+      <GenericModal
+        isOpen={openModal}
+        onClose={() => setOpenModal(false)}
+        modalStyle={modalStyle}
+      >
+        <form
+          onSubmit={handleSaveRecording}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-start",
+          }}
+        >
+          <Typography variant="h6">{t("save_recording.title")}</Typography>
           <TextField
             required
-            sx={{ width: '300px', margin: '15px 0px' }}
+            sx={{ width: "300px", margin: "15px 0px" }}
             onChange={handleChangeOfTitle}
             id="title"
-            label={t('save_recording.robot_name')}
+            label={t("save_recording.robot_name")}
             variant="outlined"
             value={saveRecordingName}
           />
           <TextField
-            sx={{ width: '300px', margin: '15px 0px' }}
-            onChange={handleChangeOfDescription}
+            sx={{ width: "300px", margin: "15px 0px" }}
+            onChange={(e) =>
+              setSaveRecordingDescription(e.target.value.slice(0, 50))
+            }
             id="description"
-            label={t('save_recording.description')}
+            label={t("save_recording.description")}
             variant="outlined"
             value={saveRecordingDescription}
             multiline
             rows={2}
+            inputProps={{ maxLength: 50 }}
+            helperText={
+              <span
+                style={{
+                  color:
+                    50 - saveRecordingDescription.length <= 0
+                      ? "red"
+                      : "inherit",
+                }}
+              >
+                {50 - saveRecordingDescription.length} characters remaining
+              </span>
+            }
           />
-          {needConfirm
-            ?
-            (<React.Fragment>
-              <Button color="error" variant="contained" onClick={saveRecording} sx={{ marginTop: '10px' }}>
-                {t('save_recording.buttons.confirm')}
+          {needConfirm ? (
+            <React.Fragment>
+              <Button
+                color="error"
+                variant="contained"
+                onClick={saveRecording}
+                sx={{ marginTop: "10px" }}
+              >
+                {t("save_recording.buttons.confirm")}
               </Button>
               <WarningText>
                 <NotificationImportantIcon color="warning" />
-                {t('save_recording.errors.exists_warning')}
+                {t("save_recording.errors.exists_warning")}
               </WarningText>
-            </React.Fragment>)
-            : <Button type="submit" variant="contained" sx={{ marginTop: '10px' }}>
-              {t('save_recording.buttons.save')}
+            </React.Fragment>
+          ) : (
+            <Button
+              type="submit"
+              variant="contained"
+              sx={{ marginTop: "10px" }}
+            >
+              {t("save_recording.buttons.save")}
             </Button>
-          }
-          {waitingForSave &&
-            <Tooltip title={t('save_recording.tooltips.optimizing')} placement={"bottom"}>
-              <Box sx={{ width: '100%', marginTop: '10px' }}>
+          )}
+          {waitingForSave && (
+            <Tooltip
+              title={t("save_recording.tooltips.optimizing")}
+              placement={"bottom"}
+            >
+              <Box sx={{ width: "100%", marginTop: "10px" }}>
                 <LinearProgress />
               </Box>
             </Tooltip>
-          }
+          )}
         </form>
       </GenericModal>
     </div>
   );
-}
+};
 
 const modalStyle = {
-  top: '25%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  width: '30%',
-  backgroundColor: 'background.paper',
+  top: "25%",
+  left: "50%",
+  transform: "translate(-50%, -50%)",
+  width: "30%",
+  backgroundColor: "background.paper",
   p: 4,
-  height: 'fit-content',
-  display: 'block',
-  padding: '20px',
+  height: "fit-content",
+  display: "block",
+  padding: "20px",
 };

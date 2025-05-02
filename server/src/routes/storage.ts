@@ -254,7 +254,7 @@ function handleWorkflowActions(workflow: any[], credentials: Credentials) {
 router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
-    const { name, limit, credentials, targetUrl } = req.body;
+    const { name, limit, credentials, targetUrl,description } = req.body;
 
     // Validate input
     if (!name && limit === undefined && !targetUrl) {
@@ -287,6 +287,10 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
 
         return step;
       });
+
+      if(description){
+        robot.set('description', description);
+      }
 
       robot.set('recording', { ...robot.recording, workflow: updatedWorkflow });
       robot.changed('recording', true);
