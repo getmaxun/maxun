@@ -141,9 +141,9 @@ export class WorkflowGenerator {
    */
   private registerEventHandlers = (socket: Socket) => {
     socket.on('save', (data) => {
-      const { fileName, userId, isLogin, robotId } = data;
+      const { fileName, userId, isLogin, robotId,description } = data;
       logger.log('debug', `Saving workflow ${fileName} for user ID ${userId}`);
-      this.saveNewWorkflow(fileName, userId, isLogin, robotId);
+      this.saveNewWorkflow(fileName, userId, isLogin, robotId,description);
   });
     socket.on('new-recording', (data) => {
       this.workflowRecord = {
@@ -767,7 +767,7 @@ export class WorkflowGenerator {
    * @param fileName The name of the file.
    * @returns {Promise<void>}
    */
-  public saveNewWorkflow = async (fileName: string, userId: number, isLogin: boolean, robotId?: string) => {
+  public saveNewWorkflow = async (fileName: string, userId: number, isLogin: boolean, robotId?: string,description?: string) => {
     const recording = this.optimizeWorkflow(this.workflowRecord);
     let actionType = 'saved'; 
     
@@ -784,10 +784,11 @@ export class WorkflowGenerator {
               params: this.getParams() || [],
               updatedAt: new Date().toLocaleString(),
             },
+            description: description,
           })
           
           actionType = 'retrained';
-          logger.log('info', `Robot retrained with id: ${robot.id}`);
+          logger.log('info', `Robot retrained with id: ${robot.id} and name: ${robot.description}`);
         }
       } else {
         this.recordingMeta = {
@@ -803,6 +804,7 @@ export class WorkflowGenerator {
           userId,
           recording_meta: this.recordingMeta,
           recording: recording,
+          description: description,
         });
         capture(
           'maxun-oss-robot-created',
@@ -813,7 +815,7 @@ export class WorkflowGenerator {
         )
         
         actionType = 'saved';
-        logger.log('info', `Robot saved with id: ${robot.id}`);
+        logger.log('info', `Robot saved with id: ${robot.id} with description: ${robot.description}`);
       }  
     }
     catch (e) {

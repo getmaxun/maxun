@@ -43,6 +43,11 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
     setSaveRecordingName(value);
   }
 
+  const handleChangeOfDescription = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { value } = event.target;
+    setSaveRecordingDescription(value);
+  }
+
   const handleSaveRecording = async (event: React.SyntheticEvent) => {
     event.preventDefault();
     if (recordings.includes(saveRecordingName)) {
@@ -109,10 +114,13 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
         userId: user.id, 
         isLogin: isLogin,
         robotId: retrainRobotId,
+        description: saveRecordingDescription,
       };
+
+      console.log(payload)
       socket?.emit('save', payload);
       setWaitingForSave(true);
-      console.log(`Saving the recording as ${saveRecordingName || recordingName} for userId ${user.id}`);
+      console.log(`Saving the recording as ${saveRecordingName || recordingName} for userId ${user.id} with description: ${saveRecordingDescription}`);
     } else {
       console.error(t('save_recording.notifications.user_not_logged'));
     }
@@ -155,13 +163,14 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
             value={saveRecordingName}
           />
           <TextField
-            required
             sx={{ width: '300px', margin: '15px 0px' }}
-            onChange={handleChangeOfTitle}
-            id="title"
-            label={t('Description (optional)')}
+            onChange={handleChangeOfDescription}
+            id="description"
+            label={t('save_recording.description')}
             variant="outlined"
             value={saveRecordingDescription}
+            multiline
+            rows={2}
           />
           {needConfirm
             ?
