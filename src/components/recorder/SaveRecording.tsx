@@ -186,76 +186,85 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
           style={{
             display: "flex",
             flexDirection: "column",
-            alignItems: "flex-start",
+            gap: "16px",
+            width: "100%",
           }}
         >
-          <Typography variant="h6">{t("save_recording.title")}</Typography>
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            {t("save_recording.title")}
+          </Typography>
+
           <TextField
             required
-            sx={{ width: "300px", margin: "15px 0px" }}
-            onChange={handleChangeOfTitle}
+            fullWidth
             id="title"
-            label={t("save_recording.robot_name")}
             variant="outlined"
+            label={t("save_recording.robot_name")}
             value={saveRecordingName}
+            onChange={handleChangeOfTitle}
+            sx={{ mt: 1 }}
           />
+
           <TextField
-            sx={{ width: "300px", margin: "15px 0px" }}
+            fullWidth
+            id="description"
+            variant="outlined"
+            label={t("save_recording.description")}
+            value={saveRecordingDescription}
             onChange={(e) =>
               setSaveRecordingDescription(e.target.value.slice(0, 50))
             }
-            id="description"
-            label={t("save_recording.description")}
-            variant="outlined"
-            value={saveRecordingDescription}
             multiline
             rows={2}
             inputProps={{ maxLength: 50 }}
             helperText={
               <span
                 style={{
+                  width: "100%",
+                  display: "flex",
+                  justifyContent: "space-between",
                   color:
                     50 - saveRecordingDescription.length <= 0
                       ? "red"
                       : "inherit",
                 }}
               >
-                {50 - saveRecordingDescription.length} characters remaining
+                <span>{t("common.optional")}</span>
+                <span>{50 - saveRecordingDescription.length} / 50</span>
               </span>
             }
           />
+
           {needConfirm ? (
-            <React.Fragment>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <Button
+                fullWidth
                 color="error"
                 variant="contained"
                 onClick={saveRecording}
-                sx={{ marginTop: "10px" }}
+                sx={{ mt: 1 }}
               >
                 {t("save_recording.buttons.confirm")}
               </Button>
-              <WarningText>
+              <WarningText
+                style={{ display: "flex", alignItems: "center", gap: 1 }}
+              >
                 <NotificationImportantIcon color="warning" />
                 {t("save_recording.errors.exists_warning")}
               </WarningText>
-            </React.Fragment>
+            </div>
           ) : (
-            <Button
-              type="submit"
-              variant="contained"
-              sx={{ marginTop: "10px" }}
-            >
+            <Button fullWidth type="submit" variant="contained" sx={{ mt: 1 }}>
               {t("save_recording.buttons.save")}
             </Button>
           )}
+
           {waitingForSave && (
             <Tooltip
               title={t("save_recording.tooltips.optimizing")}
-              placement={"bottom"}
+              placement="bottom"
             >
-              <Box sx={{ width: "100%", marginTop: "10px" }}>
-                <LinearProgress />
-              </Box>
+              <LinearProgress sx={{ width: "100%", mt: 2 }} />
             </Tooltip>
           )}
         </form>
@@ -268,10 +277,11 @@ const modalStyle = {
   top: "25%",
   left: "50%",
   transform: "translate(-50%, -50%)",
-  width: "30%",
-  backgroundColor: "background.paper",
-  p: 4,
-  height: "fit-content",
+  width: "400px",
+  maxWidth: "90vw",
+  bgcolor: "background.paper",
+  boxShadow: "24px",
+  p: 3,
+  borderRadius: 2,
   display: "block",
-  padding: "20px",
 };
