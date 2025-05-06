@@ -60,7 +60,7 @@ const sessionStore = new PgSession({
 app.use(
   session({
     store: sessionStore,
-    secret: 'mx-session',
+    secret: process.env.SESSION_SECRET || 'mx-session',
     resave: false,
     saveUninitialized: false,
     cookie: {
