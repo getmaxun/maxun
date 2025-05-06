@@ -39,6 +39,14 @@ const pool = new Pool({
 
 const PgSession = connectPgSimple(session);
 
+interface PgStoreOptions {
+  pool: pg.Pool;
+  tableName: string;
+  createTableIfMissing?: boolean;
+  pruneSessionInterval?: number;
+  errorLog?: (err: Error) => void;
+}
+
 app.use(
   session({
     store: new PgSession({
