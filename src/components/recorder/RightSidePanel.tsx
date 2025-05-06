@@ -7,7 +7,7 @@ import { WorkflowFile } from "maxun-core";
 import Typography from "@mui/material/Typography";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { PaginationType, useActionContext, LimitType } from '../../context/browserActions';
-import { useBrowserSteps } from '../../context/browserSteps';
+import { BrowserStep, useBrowserSteps } from '../../context/browserSteps';
 import { useSocketStore } from '../../context/socket';
 import { ScreenshotSettings } from '../../shared/types';
 import InputAdornment from '@mui/material/InputAdornment';
@@ -69,7 +69,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     startAction, finishAction 
   } = useActionContext();
   
-  const { browserSteps, updateBrowserTextStepLabel, deleteBrowserStep, addScreenshotStep, updateListTextFieldLabel, removeListTextField } = useBrowserSteps();
+  const { browserSteps, updateBrowserTextStepLabel, deleteBrowserStep, addScreenshotStep, updateListTextFieldLabel, removeListTextField, updateListStepLimit } = useBrowserSteps();
   const { id, socket } = useSocketStore();
   const { t } = useTranslation();
 
@@ -349,6 +349,13 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     )
   );
 
+  const getLatestListStep = (steps: BrowserStep[]) => {
+    const listSteps = steps.filter(step => step.type === 'list');
+    if (listSteps.length === 0) return null;
+    
+    return listSteps.sort((a, b) => b.id - a.id)[0];
+  };
+
   const handleConfirmListCapture = useCallback(() => {
     switch (captureStage) {
       case 'initial':
@@ -385,6 +392,12 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
           notify('error', t('right_panel.errors.invalid_limit'));
           return;
         }
+
+        const latestListStep = getLatestListStep(browserSteps);
+        if (latestListStep) {
+          updateListStepLimit(latestListStep.id, limit);
+        }
+
         stopLimitMode();
         setShowLimitOptions(false);
         setIsCaptureListConfirmed(true);
