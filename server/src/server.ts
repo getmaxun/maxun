@@ -47,27 +47,15 @@ interface PgStoreOptions {
   errorLog?: (err: Error) => void;
 }
 
-app.use(
-  session({
-    store: new PgSession({
-      pool: pool,
-      tableName: 'session',
-      createTableIfMissing: true,
-      pruneSessionInterval: 60 * 60,
-      errorLog: (err: any) => {
-        logger.log('error', `Session store error: ${err}`);
-      },
-    } as any),
-    }),
-    secret: 'mx-session',
-    resave: false, // Do not resave the session if it hasn't changed
-    saveUninitialized: true, // Save new sessions
-    cookie: {
-      secure: false, // Set to true if using HTTPS
-      maxAge: 24 * 60 * 60 * 1000, // 1-day session expiration
-    },
-  })
-);
+const sessionStore = new PgSession({
+  pool: pool,
+  tableName: 'session',
+  createTableIfMissing: true,
+  pruneSessionInterval: 15 * 60,
+  errorLog: (err: Error) => {
+    logger.log('error', `Session store error: ${err.message}`);
+  },
+} as PgStoreOptions);
 
 const server = http.createServer(app);
 
