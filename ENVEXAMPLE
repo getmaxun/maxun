@@ -7,6 +7,7 @@ DB_PASSWORD=postgres                    # PostgreSQL password
 DB_HOST=postgres                        # Host for PostgreSQL in Docker
 DB_PORT=5432                            # Port for PostgreSQL (default: 5432)
 ENCRYPTION_KEY=f4d5e6a7b8c9d0e1f23456789abcdef01234567890abcdef123456789abcdef0      # Key for encrypting sensitive data (passwords and proxies)
+SESSION_SECRET=maxun_session
 MINIO_ENDPOINT=minio                    # MinIO endpoint in Docker
 MINIO_PORT=9000                         # Port for MinIO (default: 9000)
 MINIO_CONSOLE_PORT=9001                 # Web UI Port for MinIO (default: 9001)
