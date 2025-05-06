@@ -26,7 +26,7 @@ export interface ListStep {
     limit?: number;
 }
 
-type BrowserStep = TextStep | ScreenshotStep | ListStep;
+export type BrowserStep = TextStep | ScreenshotStep | ListStep;
 
 export interface SelectorObject {
     selector: string;
@@ -44,6 +44,7 @@ interface BrowserStepsContextType {
     deleteBrowserStep: (id: number) => void;
     updateBrowserTextStepLabel: (id: number, newLabel: string) => void;
     updateListTextFieldLabel: (listId: number, fieldKey: string, newLabel: string) => void;
+    updateListStepLimit: (listId: number, limit: number) => void;
     removeListTextField: (listId: number, fieldKey: string) => void;
 }
 
@@ -142,6 +143,20 @@ export const BrowserStepsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         );
     };
 
+    const updateListStepLimit = (listId: number, limit: number) => {
+        setBrowserSteps(prevSteps =>
+          prevSteps.map(step => {
+            if (step.type === 'list' && step.id === listId) {
+              return {
+                ...step,
+                limit: limit
+              };
+            }
+            return step;
+          })
+        );
+    };
+
     const removeListTextField = (listId: number, fieldKey: string) => {
         setBrowserSteps(prevSteps =>
             prevSteps.map(step => {
@@ -166,6 +181,7 @@ export const BrowserStepsProvider: React.FC<{ children: React.ReactNode }> = ({ 
             deleteBrowserStep,
             updateBrowserTextStepLabel,
             updateListTextFieldLabel,
+            updateListStepLimit,
             removeListTextField,
         }}>
             {children}
