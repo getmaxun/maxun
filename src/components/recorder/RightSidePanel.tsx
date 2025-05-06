@@ -621,7 +621,15 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
             {showLimitOptions && (
               <FormControl>
                 <FormLabel>
-                  <h4>{t('right_panel.limit.title')}</h4>
+                  <Typography variant="h6" sx={{ 
+                    fontSize: '16px', 
+                    fontWeight: 'bold',
+                    mb: 1,
+                    whiteSpace: 'normal', 
+                    wordBreak: 'break-word' 
+                  }}>
+                    {t('right_panel.limit.title')}
+                  </Typography>
                 </FormLabel>
                 <RadioGroup
                   value={limitType}
@@ -629,7 +637,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                   sx={{
                     display: 'flex',
                     flexDirection: 'column',
-                    width: '500px'
+                    width: '100%',
                   }}
                 >
                   <FormControlLabel value="10" control={<Radio />} label="10" />
