@@ -39,25 +39,34 @@ const pool = new Pool({
 
 const PgSession = connectPgSimple(session);
 
+interface PgStoreOptions {
+  pool: pg.Pool;
+  tableName: string;
+  createTableIfMissing?: boolean;
+  pruneSessionInterval?: number;
+  errorLog?: (err: Error) => void;
+}
+
+const sessionStore = new PgSession({
+  pool: pool,
+  tableName: 'session',
+  createTableIfMissing: true,
+  pruneSessionInterval: 15 * 60,
+  errorLog: (err: Error) => {
+    logger.log('error', `Session store error: ${err.message}`);
+  },
+} as PgStoreOptions);
+
 app.use(
   session({
-    store: new PgSession({
-      pool: pool,
-      tableName: 'session',
-      createTableIfMissing: true,
-      pruneSessionInterval: 60 * 60,
-      errorLog: (err: any) => {
-        logger.log('error', `Session store error: ${err}`);
-      },
-    } as any),
-    }),
-    secret: 'mx-session',
-    resave: false, // Do not resave the session if it hasn't changed
-    saveUninitialized: true, // Save new sessions
+    store: sessionStore,
+    secret: process.env.SESSION_SECRET || 'mx-session',
+    resave: false,
+    saveUninitialized: false,
     cookie: {
-      secure: false, // Set to true if using HTTPS
-      maxAge: 24 * 60 * 60 * 1000, // 1-day session expiration
-    },
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 24 * 60 * 60 * 1000,
+    }
   })
 );
 
