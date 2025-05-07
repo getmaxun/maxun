@@ -45,6 +45,7 @@ interface BrowserStepsContextType {
     updateBrowserTextStepLabel: (id: number, newLabel: string) => void;
     updateListTextFieldLabel: (listId: number, fieldKey: string, newLabel: string) => void;
     updateListStepLimit: (listId: number, limit: number) => void;
+    updateListStepData: (listId: number, extractedData: any[]) => void;
     removeListTextField: (listId: number, fieldKey: string) => void;
 }
 
@@ -143,6 +144,20 @@ export const BrowserStepsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         );
     };
 
+    const updateListStepData = (listId: number, extractedData: any[]) => {
+        setBrowserSteps((prevSteps) => {
+          return prevSteps.map(step => {
+            if (step.type === 'list' && step.id === listId) {
+              return {
+                ...step,
+                data: extractedData  // Add the extracted data to the step
+              };
+            }
+            return step;
+          });
+        });
+    };
+
     const updateListStepLimit = (listId: number, limit: number) => {
         setBrowserSteps(prevSteps =>
           prevSteps.map(step => {
@@ -182,6 +197,7 @@ export const BrowserStepsProvider: React.FC<{ children: React.ReactNode }> = ({ 
             updateBrowserTextStepLabel,
             updateListTextFieldLabel,
             updateListStepLimit,
+            updateListStepData,
             removeListTextField,
         }}>
             {children}
