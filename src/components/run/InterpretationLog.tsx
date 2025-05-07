@@ -1,7 +1,7 @@
 import * as React from 'react';
 import SwipeableDrawer from '@mui/material/SwipeableDrawer';
 import Typography from '@mui/material/Typography';
-import { Button, Grid, Tabs, Tab, Box } from '@mui/material';
+import { Button, Grid, Box } from '@mui/material';
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSocketStore } from "../../context/socket";
 import { Buffer } from 'buffer';
@@ -19,6 +19,7 @@ import { SidePanelHeader } from '../recorder/SidePanelHeader';
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { useThemeMode } from '../../context/theme-provider';
 import { useTranslation } from 'react-i18next';
+import { useBrowserSteps } from '../../context/browserSteps';
 
 interface InterpretationLogProps {
   isOpen: boolean;
@@ -40,6 +41,10 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
   const [activeTab, setActiveTab] = useState(0);
   
   const logEndRef = useRef<HTMLDivElement | null>(null);
+
+  const { browserSteps } = useBrowserSteps();
+  
+  const [activeActionId, setActiveActionId] = useState<number | null>(null);
 
   const { browserWidth, outputPreviewHeight, outputPreviewWidth } = useBrowserDimensionsStore();
   const { socket } = useSocketStore();
@@ -71,33 +76,39 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     scrollLogToBottom();
   }, []);
 
-  const handleSerializableCallback = useCallback(({ type, data }: { type: string, data: any }) => {
-    setLog((prevState) =>
-      prevState + '\n' + t('interpretation_log.data_sections.serializable_received') + '\n'
-      + JSON.stringify(data, null, 2) + '\n' + t('interpretation_log.data_sections.separator'));
-  
-    if (type === 'captureList') {
-      setCaptureListData(prev => [...prev, data]); 
-      if (captureListData.length === 0) {
-        const availableTabs = getAvailableTabs();
-        const tabIndex = availableTabs.findIndex(tab => tab.id === 'captureList');
-        if (tabIndex !== -1) setActiveTab(tabIndex);
+  useEffect(() => {
+    if (activeActionId !== null) {
+      const textSteps = browserSteps.filter(step => step.type === 'text');
+      if (textSteps.length > 0) {
+        const textDataRow: Record<string, string> = {};
+        
+        textSteps.forEach(step => {
+          textDataRow[step.label] = step.data;
+        });
+        
+        setCaptureTextData([textDataRow]);
       }
-    } else if (type === 'captureText') {
-      if (Array.isArray(data)) {
-        setCaptureTextData(data);
-      } else {
-        setCaptureTextData([data]);
+      
+      const listSteps = browserSteps.filter(step => step.type === 'list');
+      if (listSteps.length > 0) {
+        setCaptureListData(listSteps);
       }
-      if (captureTextData.length === 0) {
-        const availableTabs = getAvailableTabs();
-        const tabIndex = availableTabs.findIndex(tab => tab.id === 'captureText');
-        if (tabIndex !== -1) setActiveTab(tabIndex);
-      }
+      
+      updateActiveTab();
     }
-  
-    scrollLogToBottom();
-  }, [captureListData.length, captureTextData.length, t]);
+  }, [activeActionId, browserSteps, t]);
+
+  const updateActiveTab = useCallback(() => {
+    const availableTabs = getAvailableTabs();
+    
+    if (captureListData.length > 0 && availableTabs.findIndex(tab => tab.id === 'captureList') !== -1) {
+      setActiveTab(availableTabs.findIndex(tab => tab.id === 'captureList'));
+    } else if (captureTextData.length > 0 && availableTabs.findIndex(tab => tab.id === 'captureText') !== -1) {
+      setActiveTab(availableTabs.findIndex(tab => tab.id === 'captureText'));
+    } else if (screenshotData.length > 0 && availableTabs.findIndex(tab => tab.id === 'captureScreenshot') !== -1) {
+      setActiveTab(availableTabs.findIndex(tab => tab.id === 'captureScreenshot'));
+    }
+  }, [captureListData.length, captureTextData.length, screenshotData.length]);
   
   const handleBinaryCallback = useCallback(({ data, mimetype, type }: { data: any, mimetype: string, type: string }) => {
     const base64String = Buffer.from(data).toString('base64');
@@ -121,6 +132,10 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     scrollLogToBottom();
   }, [screenshotData.length, t]);
 
+  const handleActivePairId = useCallback((id: number) => {
+    setActiveActionId(id);
+  }, []);
+
   const handleCustomValueChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setCustomValue(event.target.value);
   };
@@ -134,19 +149,21 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
       setActiveTab(0);
       setCaptureListPage(0);
       setScreenshotPage(0);
+      setActiveActionId(null);
     }
   }, [shouldResetInterpretationLog]);
 
   useEffect(() => {
     socket?.on('log', handleLog);
-    socket?.on('serializableCallback', handleSerializableCallback);
     socket?.on('binaryCallback', handleBinaryCallback);
+    socket?.on('activePairId', handleActivePairId);
+    
     return () => {
       socket?.off('log', handleLog);
-      socket?.off('serializableCallback', handleSerializableCallback);
       socket?.off('binaryCallback', handleBinaryCallback);
+      socket?.off('activePairId', handleActivePairId);
     };
-  }, [socket, handleLog, handleSerializableCallback, handleBinaryCallback]);
+  }, [socket, handleLog, handleBinaryCallback, handleActivePairId]);
 
   const getAvailableTabs = useCallback(() => {
     const tabs = [];
@@ -321,45 +338,48 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                       <Table>
                         <TableHead>
                           <TableRow>
-                            {captureListData[captureListPage] && captureListData[captureListPage].length > 0 && 
-                              Object.keys(captureListData[captureListPage][0]).map((column) => (
-                                <TableCell 
-                                  key={column}
-                                  sx={{ 
-                                    borderBottom: '1px solid',
-                                    borderColor: darkMode ? '#3a4453' : '#dee2e6',
-                                    backgroundColor: darkMode ? '#2a3441' : '#f8f9fa'
-                                  }}
-                                >
-                                  {column}
-                                </TableCell>
-                              ))
-                            }
+                            {Object.values(captureListData[captureListPage]?.fields || {}).map((field: any, index) => (
+                              <TableCell 
+                                key={index}
+                                sx={{ 
+                                  borderBottom: '1px solid',
+                                  borderColor: darkMode ? '#3a4453' : '#dee2e6',
+                                  backgroundColor: darkMode ? '#2a3441' : '#f8f9fa'
+                                }}
+                              >
+                                {field.label}
+                              </TableCell>
+                            ))}
                           </TableRow>
                         </TableHead>
                         <TableBody>
-                          {captureListData[captureListPage] && 
-                          captureListData[captureListPage].map((row: any, idx: any) => (
-                            <TableRow 
-                              key={idx}
-                              sx={{ 
-                                borderBottom: '1px solid',
-                                borderColor: darkMode ? '#3a4453' : '#dee2e6'
-                              }}
-                            >
-                              {Object.keys(row).map((column) => (
-                                <TableCell 
-                                  key={column}
-                                  sx={{ 
-                                    borderBottom: 'none',
-                                    py: 2
-                                  }}
-                                >
-                                  {row[column]}
-                                </TableCell>
-                              ))}
-                            </TableRow>
-                          ))}
+                          {(captureListData[captureListPage]?.data || [])
+                            .slice(0, Math.min(captureListData[captureListPage]?.limit || 10, 5))
+                            .map((row: any, rowIndex: any) => (
+                              <TableRow 
+                                key={rowIndex}
+                                sx={{ 
+                                  borderBottom: rowIndex < Math.min(
+                                    (captureListData[captureListPage]?.data?.length || 0),
+                                    Math.min(captureListData[captureListPage]?.limit || 10, 5)
+                                  ) - 1 ? '1px solid' : 'none',
+                                  borderColor: darkMode ? '#3a4453' : '#dee2e6'
+                                }}
+                              >
+                                {Object.values(captureListData[captureListPage]?.fields || {}).map((field: any, colIndex) => (
+                                  <TableCell 
+                                    key={colIndex}
+                                    sx={{ 
+                                      borderBottom: 'none',
+                                      py: 2
+                                    }}
+                                  >
+                                    {row[field.label]}
+                                  </TableCell>
+                                ))}
+                              </TableRow>
+                            ))
+                          }
                         </TableBody>
                       </Table>
                     </TableContainer>
