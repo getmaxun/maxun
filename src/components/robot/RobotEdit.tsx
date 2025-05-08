@@ -73,6 +73,13 @@ interface GroupedCredentials {
     others: string[];
 }
 
+interface ScrapeListLimit {
+    pairIndex: number;
+    actionIndex: number;
+    argIndex: number;
+    currentLimit: number;
+}
+
 export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettings }: RobotSettingsProps) => {
     const { t } = useTranslation();
     const [credentials, setCredentials] = useState<Credentials>({});
@@ -85,6 +92,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
         others: []
     });
     const [showPasswords, setShowPasswords] = useState<CredentialVisibility>({});
+    const [scrapeListLimits, setScrapeListLimits] = useState<ScrapeListLimit[]>([]);
 
     const isEmailPattern = (value: string): boolean => {
         return value.includes('@');
@@ -120,8 +128,35 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
             const extractedCredentials = extractInitialCredentials(robot.recording.workflow);
             setCredentials(extractedCredentials);
             setCredentialGroups(groupCredentialsByType(extractedCredentials));
+            
+            findScrapeListLimits(robot.recording.workflow);
         }
     }, [robot]);
+
+    const findScrapeListLimits = (workflow: WhereWhatPair[]) => {
+        const limits: ScrapeListLimit[] = [];
+        
+        workflow.forEach((pair, pairIndex) => {
+            if (!pair.what) return;
+            
+            pair.what.forEach((action, actionIndex) => {
+                if (action.action === 'scrapeList' && action.args && action.args.length > 0) {
+                    // Check if first argument has a limit property
+                    const arg = action.args[0];
+                    if (arg && typeof arg === 'object' && 'limit' in arg) {
+                        limits.push({
+                            pairIndex,
+                            actionIndex,
+                            argIndex: 0,
+                            currentLimit: arg.limit
+                        });
+                    }
+                }
+            });
+        });
+        
+        setScrapeListLimits(limits);
+    };
 
     function extractInitialCredentials(workflow: any[]): Credentials {
         const credentials: Credentials = {};
@@ -285,20 +320,30 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
         }));
     };
 
-    const handleLimitChange = (newLimit: number) => {
+    const handleLimitChange = (pairIndex: number, actionIndex: number, argIndex: number, newLimit: number) => {
         setRobot((prev) => {
             if (!prev) return prev;
 
             const updatedWorkflow = [...prev.recording.workflow];
             if (
-                updatedWorkflow.length > 0 &&
-                updatedWorkflow[0]?.what &&
-                updatedWorkflow[0].what.length > 0 &&
-                updatedWorkflow[0].what[0].args &&
-                updatedWorkflow[0].what[0].args.length > 0 &&
-                updatedWorkflow[0].what[0].args[0]
+                updatedWorkflow.length > pairIndex &&
+                updatedWorkflow[pairIndex]?.what &&
+                updatedWorkflow[pairIndex].what.length > actionIndex &&
+                updatedWorkflow[pairIndex].what[actionIndex].args &&
+                updatedWorkflow[pairIndex].what[actionIndex].args.length > argIndex
             ) {
-                updatedWorkflow[0].what[0].args[0].limit = newLimit;
+                updatedWorkflow[pairIndex].what[actionIndex].args[argIndex].limit = newLimit;
+                
+                setScrapeListLimits(prev => {
+                    return prev.map(item => {
+                        if (item.pairIndex === pairIndex && 
+                            item.actionIndex === actionIndex && 
+                            item.argIndex === argIndex) {
+                            return { ...item, currentLimit: newLimit };
+                        }
+                        return item;
+                    });
+                });
             }
 
             return { ...prev, recording: { ...prev.recording, workflow: updatedWorkflow } };
@@ -358,9 +403,6 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
 
         return (
             <>
-                {/* <Typography variant="h6" style={{ marginBottom: '20px' }}>
-                    {headerText}
-                </Typography> */}
                 {selectors.map((selector, index) => {
                     const isVisible = showPasswords[selector];
 
@@ -393,6 +435,40 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
         );
     };
 
+    const renderScrapeListLimitFields = () => {
+        if (scrapeListLimits.length === 0) return null;
+        
+        return (
+            <>
+                <Typography variant="body1" style={{ marginBottom: '20px' }}>
+                    {t('List Limits')}
+                </Typography>
+                
+                {scrapeListLimits.map((limitInfo, index) => (
+                    <TextField
+                        key={`limit-${limitInfo.pairIndex}-${limitInfo.actionIndex}`}
+                        label={`${t('List Limit')} ${index + 1}`}
+                        type="number"
+                        value={limitInfo.currentLimit || ''}
+                        onChange={(e) => {
+                            const value = parseInt(e.target.value, 10);
+                            if (value >= 1) {
+                                handleLimitChange(
+                                    limitInfo.pairIndex,
+                                    limitInfo.actionIndex,
+                                    limitInfo.argIndex,
+                                    value
+                                );
+                            }
+                        }}
+                        inputProps={{ min: 1 }}
+                        style={{ marginBottom: '20px' }}
+                    />
+                ))}
+            </>
+        );
+    };
+
     const handleSave = async () => {
         if (!robot) return;
 
@@ -412,7 +488,12 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
 
             const payload = {
                 name: robot.recording_meta.name,
-                limit: robot.recording.workflow[0]?.what[0]?.args?.[0]?.limit,
+                limits: scrapeListLimits.map(limit => ({
+                    pairIndex: limit.pairIndex,
+                    actionIndex: limit.actionIndex,
+                    argIndex: limit.argIndex,
+                    limit: limit.currentLimit
+                })),
                 credentials: credentialsForPayload,
                 targetUrl: targetUrl,
             };
@@ -468,21 +549,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                                 style={{ marginBottom: '20px' }}
                             />
 
-                            {robot.recording.workflow?.[0]?.what?.[0]?.args?.[0]?.limit !== undefined && (
-                                <TextField
-                                    label={t('robot_edit.robot_limit')}
-                                    type="number"
-                                    value={robot.recording.workflow[0].what[0].args[0].limit || ''}
-                                    onChange={(e) => {
-                                        const value = parseInt(e.target.value, 10);
-                                        if (value >= 1) {
-                                            handleLimitChange(value);
-                                        }
-                                    }}
-                                    inputProps={{ min: 1 }}
-                                    style={{ marginBottom: '20px' }}
-                                />
-                            )}
+                            {renderScrapeListLimitFields()}
 
                             {(Object.keys(credentials).length > 0) && (
                                 <>

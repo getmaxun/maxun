@@ -10,6 +10,7 @@ import {
     getRemoteBrowserCurrentUrl,
     getRemoteBrowserCurrentTabs,
     getActiveBrowserIdByState,
+    destroyRemoteBrowser,
 } from '../browser-management/controller';
 import { chromium } from 'playwright-extra';
 import stealthPlugin from 'puppeteer-extra-plugin-stealth';
@@ -146,8 +147,8 @@ router.get('/stop/:browserId', requireSignIn, async (req: AuthenticatedRequest, 
         });
 
         if (!jobId) {
-            const browserId = initializeRemoteBrowserForRecording(req.user.id);
-            return res.send( browserId );
+            await destroyRemoteBrowser(req.params.browserId, req.user.id);
+            return res.send(false);
         }
 
         logger.log('info', `Queued browser destruction job: ${jobId}, waiting for completion...`);

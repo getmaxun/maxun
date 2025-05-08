@@ -224,9 +224,15 @@ const onMousemove = async (socket: AuthenticatedSocket, coordinates: Coordinates
  */
 const handleMousemove = async (generator: WorkflowGenerator, page: Page, { x, y }: Coordinates) => {
     try {
+        if (page.isClosed()) {
+            logger.log('debug', `Ignoring mousemove event: page is closed`);
+            return;
+        }
         await page.mouse.move(x, y);
         throttle(async () => {
-            await generator.generateDataForHighlighter(page, { x, y });
+            if (!page.isClosed()) {
+                await generator.generateDataForHighlighter(page, { x, y });
+            }
         }, 100)();
         logger.log('debug', `Moved over position x:${x}, y:${y}`);
     } catch (e) {
@@ -402,7 +408,7 @@ const handleChangeUrl = async (generator: WorkflowGenerator, page: Page, url: st
     if (url) {
         await generator.onChangeUrl(url, page);
         try {
-            await page.goto(url);
+            await page.goto(url, { waitUntil: 'networkidle', timeout: 10000 });
             logger.log('debug', `Went to ${url}`);
         } catch (e) {
             const { message } = e as Error;

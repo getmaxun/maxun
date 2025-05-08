@@ -78,7 +78,7 @@ export const BrowserContent = () => {
     [socket]
   );
 
-  const handleUrlChanged = (url: string) => {
+  const handleUrlChanged = useCallback((url: string) => {
     const parsedUrl = new URL(url);
     if (parsedUrl.hostname) {
       const host = parsedUrl.hostname
@@ -100,7 +100,7 @@ export const BrowserContent = () => {
         ]);
       }
     }
-  };
+  }, [tabs, tabIndex]);
 
   const tabHasBeenClosedHandler = useCallback(
     (index: number) => {
@@ -132,7 +132,7 @@ export const BrowserContent = () => {
       .catch((error) => {
         console.log("Fetching current url failed");
       });
-  }, [handleUrlChanged]);
+  }, []);
 
   return (
     <div id="browser">

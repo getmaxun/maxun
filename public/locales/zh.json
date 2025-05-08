@@ -536,20 +536,23 @@
       "output_data": "输出数据",
       "log": "日志"
     },
-    "empty_output": "输出为空。",
-    "loading": "运行中。运行完成后，提取的数据将显示在此处。",
-    "captured_data": {
-      "title": "捕获的数据",
-      "download_json": "下载为JSON",
-      "download_csv": "下载为CSV"
-    },
-    "captured_screenshot": {
-      "title": "捕获的截图",
-      "download": "下载截图",
-      "render_failed": "图像渲染失败"
-    },
     "buttons": {
       "stop": "停止"
+    },
+    "loading": "加载数据中...",
+    "empty_output": "没有可用的输出数据",
+    "captured_data": {
+      "title": "已捕获的数据",
+      "download_csv": "下载CSV",
+      "view_full": "查看完整数据",
+      "items": "项目",
+      "schema_title": "已捕获的文本",
+      "list_title": "已捕获的列表"
+    },
+    "captured_screenshot": {
+      "title": "已捕获的截图",
+      "download": "下载",
+      "render_failed": "渲染截图失败"
     }
   },
   "navbar": {

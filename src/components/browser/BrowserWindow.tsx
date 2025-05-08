@@ -87,7 +87,7 @@ export const BrowserWindow = () => {
     const { socket } = useSocketStore();
     const { notify } = useGlobalInfoStore();
     const { getText, getList, paginationMode, paginationType, limitMode, captureStage } = useActionContext();
-    const { addTextStep, addListStep } = useBrowserSteps();
+    const { addTextStep, addListStep, updateListStepData } = useBrowserSteps();
   
     const { state } = useContext(AuthContext);
     const { user } = state;
@@ -252,6 +252,19 @@ export const BrowserWindow = () => {
         }
     }, [getList, socket, listSelector, paginationMode, paginationType, limitMode]);
 
+    useEffect(() => {
+        if (socket) {
+          socket.on('listDataExtracted', (response) => {
+            const { currentListId, data } = response;
+        
+            updateListStepData(currentListId, data);
+          });
+        }
+        
+        return () => {
+          socket?.off('listDataExtracted');
+        };
+    }, [socket]);
 
     useEffect(() => {
         document.addEventListener('mousemove', onMouseMove, false);
@@ -380,16 +393,27 @@ export const BrowserWindow = () => {
                             }
                         };
 
-                        setFields(prevFields => {
-                            const updatedFields = {
-                                ...prevFields,
-                                [newField.id]: newField
-                            };
-                            return updatedFields;
-                        });
+                        const updatedFields = {
+                            ...fields,
+                            [newField.id]: newField
+                          };
+                          
+                        setFields(updatedFields);
 
                         if (listSelector) {
-                            addListStep(listSelector, { ...fields, [newField.id]: newField }, currentListId, { type: '', selector: paginationSelector });
+                            socket?.emit('extractListData', {
+                                listSelector,
+                                fields: updatedFields,
+                                currentListId,
+                                pagination: { type: '', selector: paginationSelector }
+                            });
+
+                            addListStep(
+                                listSelector, 
+                                updatedFields, 
+                                currentListId, 
+                                { type: '', selector: paginationSelector }
+                            );
                         }
 
                     } else {
@@ -441,16 +465,27 @@ export const BrowserWindow = () => {
                         }
                     };
 
-                    setFields(prevFields => {
-                        const updatedFields = {
-                            ...prevFields,
-                            [newField.id]: newField
-                        };
-                        return updatedFields;
-                    });
+                    const updatedFields = {
+                        ...fields,
+                        [newField.id]: newField
+                      };
+                      
+                    setFields(updatedFields);
 
                     if (listSelector) {
-                        addListStep(listSelector, { ...fields, [newField.id]: newField }, currentListId, { type: '', selector: paginationSelector });
+                        socket?.emit('extractListData', {
+                            listSelector,
+                            fields: updatedFields,
+                            currentListId,
+                            pagination: { type: '', selector: paginationSelector }
+                        });
+
+                        addListStep(
+                            listSelector, 
+                            updatedFields, 
+                            currentListId, 
+                            { type: '', selector: paginationSelector }
+                        );
                     }
                 }
             }
