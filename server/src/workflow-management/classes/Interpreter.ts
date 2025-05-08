@@ -183,6 +183,7 @@ export class WorkflowInterpreter {
   
     const options = {
       ...settings,
+      mode: 'editor',
       debugChannel: {
         activeId: (id: any) => {
           this.activeId = id;

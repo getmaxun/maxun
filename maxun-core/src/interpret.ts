@@ -37,6 +37,7 @@ declare global {
  * Defines optional intepreter options (passed in constructor)
  */
 interface InterpreterOptions {
+  mode?: string;
   maxRepeats: number;
   maxConcurrency: number;
   serializableCallback: (output: any) => (void | Promise<void>);
@@ -432,6 +433,11 @@ export default class Interpreter extends EventEmitter {
         if (this.options.debugChannel?.setActionType) {
           this.options.debugChannel.setActionType('scrapeSchema');
         }
+
+        if (this.options.mode && this.options.mode === 'editor') {
+          await this.options.serializableCallback({});
+          return;
+        }
       
         await this.ensureScriptsLoaded(page);
       
@@ -461,6 +467,11 @@ export default class Interpreter extends EventEmitter {
       scrapeList: async (config: { listSelector: string, fields: any, limit?: number, pagination: any }) => {
         if (this.options.debugChannel?.setActionType) {
           this.options.debugChannel.setActionType('scrapeList');
+        }
+
+        if (this.options.mode && this.options.mode === 'editor') {
+          await this.options.serializableCallback({});
+          return;
         }
 
         await this.ensureScriptsLoaded(page);
