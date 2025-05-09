@@ -284,6 +284,7 @@ export class RemoteBrowser {
                         "--disable-dev-shm-usage",
                         "--force-color-profile=srgb",
                         "--force-device-scale-factor=2",
+                        "--ignore-certificate-errors"
                     ],
                 }));
                 
