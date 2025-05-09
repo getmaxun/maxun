@@ -89,6 +89,7 @@ router.get('/test', requireSignIn, async (req: Request, res: Response) => {
         const browser = await chromium.launch({
             headless: true,
             proxy: proxyOptions,
+            args:["--ignore-certificate-errors"]
         });
         const page = await browser.newPage();
         await page.goto('https://example.com');
