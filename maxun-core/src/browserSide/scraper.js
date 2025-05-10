@@ -725,6 +725,30 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
       });
     }
 
+    function tryFallbackSelector(rootElement, originalSelector) {
+        let element = queryElement(rootElement, originalSelector);
+        
+        if (!element && originalSelector.includes('nth-child')) {
+            const match = originalSelector.match(/nth-child\((\d+)\)/);
+            if (match) {
+            const position = parseInt(match[1], 10);
+            
+            for (let i = position - 1; i >= 1; i--) {
+                const fallbackSelector = originalSelector.replace(/nth-child\(\d+\)/, `nth-child(${i})`);
+                element = queryElement(rootElement, fallbackSelector);
+                if (element) break;
+            }
+            
+            if (!element) {
+                const baseSelector = originalSelector.replace(/\:nth-child\(\d+\)/, '');
+                element = queryElement(rootElement, baseSelector);
+            }
+            }
+        }
+        
+        return element;
+    }
+
     // Main scraping logic with context support
     let containers = queryElementAll(document, listSelector);
     containers = Array.from(containers);
@@ -902,7 +926,7 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
           for (const [label, { selector, attribute }] of Object.entries(nonTableFields)) {
               // Get the last part of the selector after any context delimiter
               const relativeSelector = selector.split(/(?:>>|:>>)/).slice(-1)[0];
-              const element = queryElement(container, relativeSelector);
+              const element = tryFallbackSelector(container, relativeSelector);
               
               if (element) {
                   record[label] = extractValue(element, attribute);
