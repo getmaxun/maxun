@@ -203,7 +203,11 @@ const ProxyForm: React.FC = () => {
                                     fullWidth
                                     required
                                     error={!!errors.server_url}
-                                    helperText={errors.server_url || t('proxy.server_url_helper')}
+                                    helperText={
+                                        <span style={{ marginLeft: '-10px' }}>
+                                            {errors.server_url || t('proxy.server_url_helper')}
+                                        </span>
+                                    }
                                 />
                             </FormControl>
                             <FormControl>
