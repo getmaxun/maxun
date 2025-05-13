@@ -475,13 +475,13 @@ export class RemoteBrowser {
               if (!selector.includes('>>') && !selector.includes(':>>')) {
                 return rootElement.querySelector(selector);
               }
-    
+
               const parts = selector.split(/(?:>>|:>>)/).map(part => part.trim());
               let currentElement: Element | Document | null = rootElement;
-    
+
               for (let i = 0; i < parts.length; i++) {
                 if (!currentElement) return null;
-    
+
                 if ((currentElement as Element).tagName === 'IFRAME' || (currentElement as Element).tagName === 'FRAME') {
                   try {
                     const frameElement = currentElement as HTMLIFrameElement | HTMLFrameElement;
@@ -494,17 +494,17 @@ export class RemoteBrowser {
                     return null;
                   }
                 }
-    
+
                 let nextElement: Element | null = null;
                 
                 if ('querySelector' in currentElement) {
                   nextElement = currentElement.querySelector(parts[i]);
                 }
-    
+
                 if (!nextElement && 'shadowRoot' in currentElement && (currentElement as Element).shadowRoot) {
                   nextElement = (currentElement as Element).shadowRoot!.querySelector(parts[i]);
                 }
-    
+
                 if (!nextElement && 'children' in currentElement) {
                   const children: any = Array.from((currentElement as Element).children || []);
                   for (const child of children) {
@@ -514,24 +514,24 @@ export class RemoteBrowser {
                     }
                   }
                 }
-    
+
                 currentElement = nextElement;
               }
-    
+
               return currentElement as Element | null;
             };
-    
+
             const queryElementAll = (rootElement: Element | Document, selector: string): Element[] => {
               if (!selector.includes('>>') && !selector.includes(':>>')) {
                 return Array.from(rootElement.querySelectorAll(selector));
               }
-    
+
               const parts = selector.split(/(?:>>|:>>)/).map(part => part.trim());
               let currentElements: (Element | Document)[] = [rootElement];
-    
+
               for (const part of parts) {
                 const nextElements: Element[] = [];
-    
+
                 for (const element of currentElements) {
                   if ((element as Element).tagName === 'IFRAME' || (element as Element).tagName === 'FRAME') {
                     try {
@@ -563,13 +563,13 @@ export class RemoteBrowser {
                     }
                   }
                 }
-    
+
                 currentElements = nextElements;
               }
-    
+
               return currentElements as Element[];
             };
-    
+
             function extractValue(element: Element, attribute: string): string | null {
               if (!element) return null;
               
@@ -577,15 +577,17 @@ export class RemoteBrowser {
               
               if (element.shadowRoot) {
                 const shadowContent = element.shadowRoot.textContent;
-                if (shadowContent?.trim()) {
+                if (shadowContent && shadowContent.trim) {
                   return shadowContent.trim();
                 }
               }
               
               if (attribute === 'innerText') {
-                return (element as HTMLElement).innerText.trim();
+                const text = (element as HTMLElement).innerText;
+                return text && typeof text.trim === 'function' ? text.trim() : text || null;
               } else if (attribute === 'innerHTML') {
-                return element.innerHTML.trim();
+                const html = element.innerHTML;
+                return html && typeof html.trim === 'function' ? html.trim() : html || null;
               } else if (attribute === 'src' || attribute === 'href') {
                 if (attribute === 'href' && element.tagName !== 'A') {
                   const parentElement = element.parentElement;
@@ -604,7 +606,7 @@ export class RemoteBrowser {
                 const attrValue = element.getAttribute(attribute);
                 const dataAttr = attrValue || element.getAttribute('data-' + attribute);
                 
-                if (!dataAttr || dataAttr.trim() === '') {
+                if (!dataAttr || (typeof dataAttr.trim === 'function' && dataAttr.trim() === '')) {
                   if (attribute === 'src') {
                     const style = window.getComputedStyle(element);
                     const bgImage = style.backgroundImage;
@@ -623,9 +625,10 @@ export class RemoteBrowser {
                   return dataAttr; // Return the original value if URL construction fails
                 }
               }
-              return element.getAttribute(attribute);
+              const attrValue = element.getAttribute(attribute);
+              return attrValue !== null ? attrValue : null;
             }
-    
+
             function findTableAncestor(element: Element): { type: string; element: Element } | null {
               let currentElement: Element | null = element;
               const MAX_DEPTH = 5;
@@ -657,7 +660,7 @@ export class RemoteBrowser {
               }
               return null;
             }
-    
+
             function getCellIndex(td: Element): number {
               if (td.getRootNode() instanceof ShadowRoot) {
                 const shadowRoot = td.getRootNode() as ShadowRoot;
@@ -672,7 +675,7 @@ export class RemoteBrowser {
               }
               return index;
             }
-    
+
             function hasThElement(row: Element, tableFields: Record<string, { selector: string; attribute: string }>): boolean {
               for (const [_, { selector }] of Object.entries(tableFields)) {
                 const element = queryElement(row, selector);
@@ -701,7 +704,7 @@ export class RemoteBrowser {
               }
               return false;
             }
-    
+
             function filterRowsBasedOnTag(rows: Element[], tableFields: Record<string, { selector: string; attribute: string }>): Element[] {
               for (const row of rows) {
                 if (hasThElement(row, tableFields)) {
@@ -715,19 +718,19 @@ export class RemoteBrowser {
                 return directTH && shadowTH;
               });
             }
-    
+
             function calculateClassSimilarity(classList1: string[], classList2: string[]): number {
               const set1 = new Set(classList1);
               const set2 = new Set(classList2);
               const intersection = new Set([...set1].filter(x => set2.has(x)));
               const union = new Set([...set1, ...set2]);
-              return intersection.size / union.size;
+              return union.size === 0 ? 0 : intersection.size / union.size;
             }
-    
+
             function findSimilarElements(baseElement: Element, similarityThreshold: number = 0.7): Element[] {
               const baseClasses = Array.from(baseElement.classList);
               if (baseClasses.length === 0) return [];
-    
+
               const allElements: Element[] = [];
               
               allElements.push(...Array.from(document.getElementsByTagName(baseElement.tagName)));
@@ -753,7 +756,7 @@ export class RemoteBrowser {
                   console.warn(`Cannot access ${frame.tagName.toLowerCase()} content:`, e);
                 }
               }
-    
+
               return allElements.filter(element => {
                 if (element === baseElement) return false;
                 const similarity = calculateClassSimilarity(
@@ -763,11 +766,11 @@ export class RemoteBrowser {
                 return similarity >= similarityThreshold;
               });
             }
-    
+
             let containers = queryElementAll(document, listSelector);
             
             if (containers.length === 0) return [];
-    
+
             if (limit > 1 && containers.length === 1) {
               const baseContainer = containers[0];
               const similarContainers = findSimilarElements(baseContainer);
@@ -779,7 +782,7 @@ export class RemoteBrowser {
                 containers = [...containers, ...newContainers];
               }
             }
-    
+
             const containerFields = containers.map(() => ({
               tableFields: {} as Record<string, { 
                 selector: string; 
@@ -792,7 +795,7 @@ export class RemoteBrowser {
                 attribute: string; 
               }>
             }));
-    
+
             containers.forEach((container, containerIndex) => {
               for (const [label, field] of Object.entries(convertedFields)) {
                 const sampleElement = queryElement(container, field.selector);
@@ -813,14 +816,14 @@ export class RemoteBrowser {
                 }
               }
             });
-    
+
             const tableData: Array<Record<string, string>> = [];
             const nonTableData: Array<Record<string, string>> = [];
-    
+
             for (let containerIndex = 0; containerIndex < containers.length; containerIndex++) {
               const container = containers[containerIndex];
               const { tableFields } = containerFields[containerIndex];
-    
+
               if (Object.keys(tableFields).length > 0) {
                 const firstField = Object.values(tableFields)[0];
                 const firstElement = queryElement(container, firstField.selector);
@@ -843,7 +846,7 @@ export class RemoteBrowser {
                     tableContext = tableContext.parentElement;
                   }
                 }
-    
+
                 if (tableContext) {
                   const rows: Element[] = [];
                   
@@ -886,7 +889,7 @@ export class RemoteBrowser {
                           if (!element && selector.split(/(?:>>|:>>)/).pop()?.includes('td:nth-child')) {
                             element = td;
                           }
-    
+
                           if (!element) {
                             const tagOnlySelector = selector.split('.')[0];
                             element = queryElement(td, tagOnlySelector);
@@ -919,7 +922,7 @@ export class RemoteBrowser {
                         }
                       }
                     }
-    
+
                     if (Object.keys(record).length > 0) {
                       tableData.push(record);
                     }
@@ -927,16 +930,16 @@ export class RemoteBrowser {
                 }
               }
             }
-    
+
             for (let containerIndex = 0; containerIndex < containers.length; containerIndex++) {
               if (nonTableData.length >= limit) break;
-    
+
               const container = containers[containerIndex];
               const { nonTableFields } = containerFields[containerIndex];
-    
+
               if (Object.keys(nonTableFields).length > 0) {
                 const record: Record<string, string> = {};
-    
+
                 for (const [label, { selector, attribute }] of Object.entries(nonTableFields)) {
                   const relativeSelector = selector.split(/(?:>>|:>>)/).slice(-1)[0];
                   const element = queryElement(container, relativeSelector);
