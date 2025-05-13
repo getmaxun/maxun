@@ -125,9 +125,21 @@ export class WorkflowGenerator {
   private initializeSocketListeners() {
     this.socket.on('setGetList', (data: { getList: boolean }) => {
       this.getList = data.getList;
+
+      if (!data.getList) {
+        // @ts-ignore - adding custom property to socket
+        this.socket.hasEmittedListChildElements = false;
+        this.listSelector = '';
+      }
     });
     this.socket.on('listSelector', (data: { selector: string }) => {
+      const prevSelector = this.listSelector;
       this.listSelector = data.selector;
+
+      if (prevSelector !== data.selector) {
+      // @ts-ignore - adding custom property to socket
+      this.socket.hasEmittedListChildElements = false;
+    }
     })
     this.socket.on('setPaginationMode', (data: { pagination: boolean }) => {
       this.paginationMode = data.pagination;
@@ -899,13 +911,40 @@ export class WorkflowGenerator {
 
       if (this.getList === true) {
         if (this.listSelector !== '') {
-          const childSelectors = await getChildSelectors(page, this.listSelector || '');
-          this.socket.emit('highlighter', { ...highlighterData, childSelectors })
+          // @ts-ignore - adding custom property to socket
+          if (!this.socket.hasEmittedListChildElements) {
+            const childElements = await getChildSelectors(page, this.listSelector);
+            
+            this.socket.emit('listChildElements', { 
+              container: {
+                selector: this.listSelector,
+                rect
+              },
+              childElements
+            });
+            
+            // @ts-ignore - adding custom property to socket
+            this.socket.hasEmittedListChildElements = true;
+            
+            logger.log('info', `Emitted list child elements for selector: ${this.listSelector}`);
+          } else {
+            if (this.paginationMode) {
+              this.socket.emit('highlighter', { ...highlighterData });
+            } else {
+              this.socket.emit('highlighter', { ...highlighterData });
+            }
+          }
         } else {
           this.socket.emit('highlighter', { ...highlighterData });
+          
+          // @ts-ignore - adding custom property to socket
+          this.socket.hasEmittedListChildElements = false;
         }
       } else {
         this.socket.emit('highlighter', { ...highlighterData });
+        
+        // @ts-ignore - adding custom property to socket
+        this.socket.hasEmittedListChildElements = false;
       }
     }
   }
