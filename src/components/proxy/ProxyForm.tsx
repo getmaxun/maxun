@@ -255,23 +255,6 @@ const ProxyForm: React.FC = () => {
                             </Button>
                         </Box>
                     ))}
-                {tabIndex === 1 && (
-                    <Box sx={{ maxWidth: 400, width: '100%', textAlign: 'center', marginTop: '20px' }}>
-                        <>
-                            <Typography variant="body1" gutterBottom component="div">
-                                {t('proxy.coming_soon')}
-                            </Typography>
-
-                            {/* <Button variant="contained" color="primary" sx={{ marginTop: '20px',backgroundColor: '#ff00c3' }}>
-                                <a style={{ color: 'white', textDecoration: 'none' }} href="https://forms.gle/hXjgqDvkEhPcaBW76">Join Maxun Cloud Waitlist</a>  */}
-
-                            <Button variant="contained" color="primary" sx={{ marginTop: '20px' }}>
-                                <a style={{ color: 'white', textDecoration: 'none' }} href="https://forms.gle/hXjgqDvkEhPcaBW76">{t('proxy.join_waitlist')}</a>
-
-                            </Button>
-                        </>
-                    </Box>
-                )}
             </FormContainer>
 
             <Alert severity="info" sx={{ marginTop: '80px', marginLeft: '50px', height: '250px', width: '600px', border: '1px solid #ff00c3' }}>
