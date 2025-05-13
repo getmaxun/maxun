@@ -164,7 +164,7 @@ const ProxyForm: React.FC = () => {
                 <Typography variant="h6" gutterBottom component="div" style={{ marginTop: '20px' }}>
                     {t('proxy.title')}
                 </Typography>
-                <Tabs value={tabIndex} onChange={handleTabChange}>
+                <Tabs value={tabIndex} onChange={handleTabChange} style={{ marginBottom: '10px'}}>
                     <Tab label={t('proxy.tab_standard')} />
                 </Tabs>
 
