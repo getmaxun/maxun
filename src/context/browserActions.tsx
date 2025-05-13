@@ -20,12 +20,14 @@ interface ActionContextProps {
     customLimit: string;
     captureStage: CaptureStage;
     showPaginationOptions: boolean;
-    showLimitOptions: boolean;    
+    showLimitOptions: boolean;
+    childSelectorsLoaded: boolean;    
     activeAction: 'none' | 'text' | 'list' | 'screenshot';
     setActiveAction: (action: 'none' | 'text' | 'list' | 'screenshot') => void;
     setWorkflow: (workflow: WorkflowFile) => void;
     setShowPaginationOptions: (show: boolean) => void;
     setShowLimitOptions: (show: boolean) => void;
+    setChildSelectorsLoaded: (loaded: boolean) => void;
     setCaptureStage: (stage: CaptureStage) => void;
     startAction: (action: 'text' | 'list' | 'screenshot') => void;
     finishAction: (action: 'text' | 'list' | 'screenshot') => void;
@@ -59,6 +61,7 @@ export const ActionProvider = ({ children }: { children: ReactNode }) => {
     const [captureStage, setCaptureStage] = useState<CaptureStage>('initial');
     const [showPaginationOptions, setShowPaginationOptions] = useState(false);
     const [showLimitOptions, setShowLimitOptions] = useState(false);
+    const [childSelectorsLoaded, setChildSelectorsLoaded] = useState(false);
     const [activeAction, setActiveAction] = useState<'none' | 'text' | 'list' | 'screenshot'>('none');
 
     const { socket } = useSocketStore();
@@ -128,7 +131,10 @@ export const ActionProvider = ({ children }: { children: ReactNode }) => {
         setActiveAction('none');
     };
     
-    const startGetList = () => startAction('list');
+    const startGetList = () => {
+        setChildSelectorsLoaded(false);
+        startAction('list')
+    };
     
     const stopGetList = () => {
         setGetList(false);
@@ -162,9 +168,11 @@ export const ActionProvider = ({ children }: { children: ReactNode }) => {
             showPaginationOptions,
             showLimitOptions,
             activeAction,
+            childSelectorsLoaded,
             setActiveAction,
             setWorkflow,
-            setShowPaginationOptions,   
+            setShowPaginationOptions,  
+            setChildSelectorsLoaded, 
             setShowLimitOptions,
             setCaptureStage,
             startAction,
