@@ -8,9 +8,17 @@ interface HighlighterProps {
   width: number;
   height: number;
   canvasRect: DOMRect;
+  isDeselected?: boolean;
 };
 
-const HighlighterComponent = ({ unmodifiedRect, displayedSelector = '', width, height, canvasRect }: HighlighterProps) => {
+const HighlighterComponent = ({ 
+  unmodifiedRect, 
+  displayedSelector = '', 
+  width, 
+  height, 
+  canvasRect,
+  isDeselected = false 
+}: HighlighterProps) => {
   if (!unmodifiedRect) {
     return null;
   } else {
@@ -25,7 +33,6 @@ const HighlighterComponent = ({ unmodifiedRect, displayedSelector = '', width, h
       height: mappedRect.height,
     };
 
-
     return (
       <div>
         <HighlighterOutline
@@ -34,14 +41,24 @@ const HighlighterComponent = ({ unmodifiedRect, displayedSelector = '', width, h
           left={rect.left}
           width={rect.width}
           height={rect.height}
+          isDeselected={isDeselected}
         />
-        {/* <HighlighterLabel
-          id="Highlighter-label"
-          top={rect.top + rect.height + 8}
-          left={rect.left}
-        >
-          {displayedSelector}
-        </HighlighterLabel> */}
+        {/* {displayedSelector && !isDeselected && (
+          <HighlighterLabel 
+            top={rect.top - 30} 
+            left={rect.left}
+          >
+            {displayedSelector.length > 30 ? displayedSelector.substring(0, 30) + '...' : displayedSelector}
+          </HighlighterLabel>
+        )} */}
+        {isDeselected && (
+          <HighlighterLabel 
+            top={rect.top - 30} 
+            left={rect.left}
+          >
+            Click to re-select
+          </HighlighterLabel>
+        )}
       </div>
     );
   }
@@ -49,17 +66,30 @@ const HighlighterComponent = ({ unmodifiedRect, displayedSelector = '', width, h
 
 export const Highlighter = React.memo(HighlighterComponent);
 
+interface HighlighterOutlineProps {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+  isDeselected?: boolean;
+}
+
+interface HighlighterLabelProps {
+  top: number;
+  left: number;
+}
+
 const HighlighterOutline = styled.div<HighlighterOutlineProps>`
   box-sizing: border-box;
   pointer-events: none !important;
   position: fixed !important;
-  background: #ff5d5b26 !important;
-  outline: 2px solid #ff00c3 !important;
+  background: ${(p) => p.isDeselected ? 'rgba(128, 128, 128, 0.1)' : 'rgba(255, 93, 91, 0.15)'} !important;
+  outline: ${(p) => p.isDeselected ? '2px dashed #888888' : '2px solid #ff00c3'} !important;
   z-index: 2147483647 !important;
-  top: ${(p: HighlighterOutlineProps) => p.top}px;
-  left: ${(p: HighlighterOutlineProps) => p.left}px;
-  width: ${(p: HighlighterOutlineProps) => p.width}px;
-  height: ${(p: HighlighterOutlineProps) => p.height}px;
+  top: ${(p) => p.top}px;
+  left: ${(p) => p.left}px;
+  width: ${(p) => p.width}px;
+  height: ${(p) => p.height}px;
 `;
 
 const HighlighterLabel = styled.div<HighlighterLabelProps>`
@@ -71,18 +101,6 @@ const HighlighterLabel = styled.div<HighlighterLabelProps>`
   font-family: monospace !important;
   border-radius: 5px !important;
   z-index: 2147483647 !important;
-  top: ${(p: HighlighterLabelProps) => p.top}px;
-  left: ${(p: HighlighterLabelProps) => p.left}px;
+  top: ${(p) => p.top}px;
+  left: ${(p) => p.left}px;
 `;
-
-interface HighlighterLabelProps {
-  top: number;
-  left: number;
-}
-
-interface HighlighterOutlineProps {
-  top: number;
-  left: number;
-  width: number;
-  height: number;
-}
