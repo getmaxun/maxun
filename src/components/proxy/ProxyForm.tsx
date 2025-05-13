@@ -156,8 +156,6 @@ const ProxyForm: React.FC = () => {
         fetchProxyConfig();
     }, []);
 
-    const theme = useThemeMode();
-
     return (
         <>
             <FormContainer>
