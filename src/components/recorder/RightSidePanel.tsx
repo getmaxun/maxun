@@ -69,7 +69,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     startAction, finishAction 
   } = useActionContext();
   
-  const { browserSteps, updateBrowserTextStepLabel, deleteBrowserStep, addScreenshotStep, updateListTextFieldLabel, removeListTextField, updateListStepLimit } = useBrowserSteps();
+  const { browserSteps, updateBrowserTextStepLabel, deleteBrowserStep, addScreenshotStep, updateListTextFieldLabel, removeListTextField, updateListStepLimit, updateListStepData } = useBrowserSteps();
   const { id, socket } = useSocketStore();
   const { t } = useTranslation();
 
@@ -98,6 +98,19 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
       clearInterval(interval);
     };
   }, [id, socket, workflowHandler]);
+
+  useEffect(() => {
+    if (socket) {
+      socket.on('listDataExtracted', (response) => {
+        const { currentListId, data } = response;
+        updateListStepData(currentListId, data);
+      });
+    }
+    
+    return () => {
+      socket?.off('listDataExtracted');
+    };
+  }, [socket, updateListStepData]);
 
   useEffect(() => {
     const hasPairs = workflow.workflow.length > 0;
@@ -329,18 +342,55 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     resetListState();
   }, [stopGetList, resetListState]);
 
+  // Function to trigger list data extraction
+  const extractListData = useCallback((currentListId: number) => {
+    // Get the latest list step
+    const latestListStep = getLatestListStep(browserSteps);
+
+    if (!latestListStep || !socket) return;
+
+    // Extract fields data to send to the server
+    const fields: Record<string, any> = {};
+    Object.entries(latestListStep.fields).forEach(([key, field]) => {
+      if (field.selectorObj) {
+        fields[key] = {
+          label: field.label,
+          selectorObj: field.selectorObj
+        };
+      }
+    });
+
+    // If there's a list selector and fields, send the extract request
+    if (latestListStep.listSelector && Object.keys(fields).length > 0) {
+      socket.emit('extractListData', {
+        listSelector: latestListStep.listSelector,
+        fields,
+        currentListId,
+        pagination: latestListStep.pagination
+      });
+    }
+  }, [browserSteps, socket]);
+
   const stopCaptureAndEmitGetListSettings = useCallback(() => {
     const settings = getListSettingsObject();
-    if (settings) {
+    
+    // Get latest list step ID
+    const latestListStep = getLatestListStep(browserSteps);
+    if (latestListStep && settings) {
+      // Extract the list data
+      extractListData(latestListStep.id);
+      
+      // Emit the action
       socket?.emit('action', { action: 'scrapeList', settings });
     } else {
       notify('error', t('right_panel.errors.unable_create_settings'));
     }
+    
     handleStopGetList();
     resetInterpretationLog();
     finishAction('list');
     onFinishCapture();
-  }, [getListSettingsObject, socket, notify, handleStopGetList, resetInterpretationLog, finishAction, onFinishCapture, t]);
+  }, [getListSettingsObject, socket, notify, handleStopGetList, resetInterpretationLog, finishAction, onFinishCapture, t, browserSteps, extractListData]);
 
   const hasUnconfirmedListTextFields = browserSteps.some(step =>
     step.type === 'list' &&
@@ -409,7 +459,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         setCaptureStage('initial');
         break;
     }
-  }, [captureStage, paginationType, limitType, customLimit, startPaginationMode, setShowPaginationOptions, setCaptureStage, getListSettingsObject, notify, stopPaginationMode, startLimitMode, setShowLimitOptions, stopLimitMode, setIsCaptureListConfirmed, stopCaptureAndEmitGetListSettings, t]);
+  }, [captureStage, paginationType, limitType, customLimit, startPaginationMode, setShowPaginationOptions, setCaptureStage, getListSettingsObject, notify, stopPaginationMode, startLimitMode, setShowLimitOptions, stopLimitMode, setIsCaptureListConfirmed, stopCaptureAndEmitGetListSettings, t, browserSteps, updateListStepLimit]);
 
   const handleBackCaptureList = useCallback(() => {
     switch (captureStage) {
@@ -834,7 +884,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                         fullWidth
                         margin="normal"
                         InputProps={{
-                          readOnly: confirmedListTextFields[field.id]?.[key],
+                          readOnly: confirmedListTextFields[step.id]?.[key],
                           startAdornment: (
                             <InputAdornment position="start">
                               <EditIcon />
