@@ -167,7 +167,6 @@ const ProxyForm: React.FC = () => {
                 </Typography>
                 <Tabs value={tabIndex} onChange={handleTabChange}>
                     <Tab label={t('proxy.tab_standard')} />
-                    {/* <Tab label={t('proxy.tab_rotation')} /> */}
                 </Tabs>
 
                 {tabIndex === 0 && (
