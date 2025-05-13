@@ -204,7 +204,7 @@ const ProxyForm: React.FC = () => {
                                     required
                                     error={!!errors.server_url}
                                     helperText={
-                                        <span style={{ marginLeft: '-10px' }}>
+                                        <span style={{ display: 'block', marginLeft: '-10px' }}>
                                             {errors.server_url || t('proxy.server_url_helper')}
                                         </span>
                                     }
