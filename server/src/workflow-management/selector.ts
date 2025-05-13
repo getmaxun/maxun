@@ -2691,276 +2691,288 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
   }
 };
 
-export const getChildSelectors = async (page: Page, parentSelector: string): Promise<string[]> => {
+export const getChildSelectors = async (page: Page, parentSelector: string): Promise<Array<{ selector: string, info: any }>> => {
   try {
-    const childSelectors = await page.evaluate((parentSelector: string) => {
-      // Function to get a non-unique selector based on tag and class (if present)
-      function getNonUniqueSelector(element: HTMLElement): string {
-        let selector = element.tagName.toLowerCase();
-
-        if (selector === 'td' && element.parentElement) {
-          const siblings = Array.from(element.parentElement.children);
-          const position = siblings.indexOf(element) + 1;
-          return `${selector}:nth-child(${position})`;
+    const childElements = await page.evaluate((containerSelector: string) => {
+      function getAllDescendantsWithInfo(container: HTMLElement): Array<{ element: HTMLElement, info: any }> {
+        const result: Array<{ element: HTMLElement, info: any }> = [];
+        
+        function processElement(element: HTMLElement) {
+          const rect = element.getBoundingClientRect();
+          if (rect.width === 0 || rect.height === 0) {
+            return null;
+          }
+          
+          const info: any = {
+            tagName: element.tagName,
+            innerText: element.textContent?.trim() || '',
+            rect: {
+              x: rect.x,
+              y: rect.y,
+              width: rect.width,
+              height: rect.height,
+              top: rect.top,
+              right: rect.right,
+              bottom: rect.bottom,
+              left: rect.left
+            }
+          };
+          
+          if (element.tagName === 'A') {
+            info.url = (element as HTMLAnchorElement).href;
+          } else if (element.tagName === 'IMG') {
+            info.imageUrl = (element as HTMLImageElement).src;
+            info.alt = (element as HTMLImageElement).alt;
+          } else if (element.tagName === 'INPUT') {
+            info.inputType = (element as HTMLInputElement).type;
+            info.value = (element as HTMLInputElement).value;
+          }
+          
+          info.attributes = {};
+          for (const attr of element.attributes) {
+            info.attributes[attr.name] = attr.value;
+          }
+          
+          if (element.shadowRoot) {
+            info.isShadowRoot = true;
+            info.shadowRootMode = element.shadowRoot.mode;
+          }
+          
+          return { element, info };
         }
-
-        const className = typeof element.className === 'string' ? element.className : '';
-        if (className) {
-          const classes = className.split(/\s+/).filter((cls: string) => Boolean(cls));
-          if (classes.length > 0) {
-            const validClasses = classes.filter((cls: string) => !cls.startsWith('!') && !cls.includes(':'));
-            if (validClasses.length > 0) {
-              selector += '.' + validClasses.map(cls => CSS.escape(cls)).join('.');
+        
+        function collectDescendants(parent: HTMLElement) {
+          const children = Array.from(parent.children) as HTMLElement[];
+          
+          for (const child of children) {
+            const childInfo = processElement(child);
+            if (childInfo) {
+              result.push(childInfo);
+            }
+            collectDescendants(child);
+          }
+          
+          if (parent.shadowRoot) {
+            const shadowChildren = Array.from(parent.shadowRoot.querySelectorAll('*')) as HTMLElement[];
+            for (const shadowChild of shadowChildren) {
+              const childInfo = processElement(shadowChild);
+              if (childInfo) {
+                result.push(childInfo);
+              }
             }
           }
-        }
-
-        if (element.parentElement) {
-          const siblings = Array.from(element.parentElement.children);
           
-          const elementClasses = Array.from(element.classList || []);
-          
-          const similarSiblings = siblings.filter(sibling => {
-            if (sibling === element) return false;
-            const siblingClasses = Array.from(sibling.classList || []);
-            return siblingClasses.some(cls => elementClasses.includes(cls));
-          });
-          
-          if (similarSiblings.length > 0) {
-            const position = siblings.indexOf(element) + 1;
-            selector += `:nth-child(${position})`;
-          }
-        }
-
-        return selector;
-      }
-
-      // Function to generate selector path from an element to its parent
-      function getSelectorPath(element: HTMLElement): string {
-        if (!element || !element.parentElement) return '';
-
-        const elementSelector = getNonUniqueSelector(element);
-        
-        // Check for shadow DOM context
-        const rootNode = element.getRootNode();
-        if (rootNode instanceof ShadowRoot) {
-          const hostSelector = getNonUniqueSelector(rootNode.host as HTMLElement);
-          return `${hostSelector} >> ${elementSelector}`;
-        }
-
-        // Check for iframe/frame context
-        const ownerDocument = element.ownerDocument;
-        const frameElement = ownerDocument?.defaultView?.frameElement;
-        if (frameElement) {
-          const frameSelector = getNonUniqueSelector(frameElement as HTMLElement);
-          const isFrame = frameElement.tagName === 'FRAME';
-          // Use the appropriate delimiter based on whether it's a frame or iframe
-          return `${frameSelector} :>> ${elementSelector}`;
-        }
-
-        // Regular DOM context
-        const parentSelector = getNonUniqueSelector(element.parentElement);
-        return `${parentSelector} > ${elementSelector}`;
-      }
-
-      // Function to get all children from special contexts including frames
-      function getSpecialContextChildren(element: HTMLElement): HTMLElement[] {
-        const children: HTMLElement[] = [];
-        
-        // Get shadow DOM children
-        const shadowRoot = element.shadowRoot;
-        if (shadowRoot) {
-          const shadowElements = Array.from(shadowRoot.querySelectorAll('*')) as HTMLElement[];
-          children.push(...shadowElements);
-        }
-        
-        // Get iframe children
-        const iframes = Array.from(element.querySelectorAll('iframe')) as HTMLIFrameElement[];
-        for (const iframe of iframes) {
-          try {
-            const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-            if (iframeDoc) {
-              const iframeElements = Array.from(iframeDoc.querySelectorAll('*')) as HTMLElement[];
-              children.push(...iframeElements);
-            }
-          } catch (error) {
-            console.warn('Cannot access iframe content:', error);
-            continue;
-          }
-        }
-        
-        // Get frame children
-        const frames = Array.from(element.querySelectorAll('frame')) as HTMLFrameElement[];
-        for (const frame of frames) {
-          try {
-            const frameDoc = frame.contentDocument || frame.contentWindow?.document;
-            if (frameDoc) {
-              const frameElements = Array.from(frameDoc.querySelectorAll('*')) as HTMLElement[];
-              children.push(...frameElements);
-            }
-          } catch (error) {
-            console.warn('Cannot access frame content:', error);
-            continue;
-          }
-        }
-        
-        // Check for framesets
-        const framesets = Array.from(element.querySelectorAll('frameset')) as HTMLElement[];
-        for (const frameset of framesets) {
-          const framesToCheck = Array.from(frameset.querySelectorAll('frame')) as HTMLFrameElement[];
-          for (const frame of framesToCheck) {
+          const iframes = Array.from(parent.querySelectorAll('iframe')) as HTMLIFrameElement[];
+          for (const iframe of iframes) {
             try {
-              const frameDoc = frame.contentDocument || frame.contentWindow?.document;
-              if (frameDoc) {
-                const frameElements = Array.from(frameDoc.querySelectorAll('*')) as HTMLElement[];
-                children.push(...frameElements);
-              }
-            } catch (error) {
-              console.warn('Cannot access frameset frame content:', error);
-              continue;
-            }
-          }
-        }
-        
-        return children;
-      }
-
-      // Function to recursively get all descendant selectors
-      function getAllDescendantSelectors(element: HTMLElement): string[] {
-        let selectors: string[] = [];
-        
-        // Handle regular DOM children
-        const children = Array.from(element.children) as HTMLElement[];
-        for (const child of children) {
-          const childPath = getSelectorPath(child);
-          if (childPath) {
-            selectors.push(childPath);
-            
-            // Process regular descendants
-            selectors = selectors.concat(getAllDescendantSelectors(child));
-            
-            // Process special context children (shadow DOM, iframes, and frames)
-            const specialChildren = getSpecialContextChildren(child);
-            for (const specialChild of specialChildren) {
-              const specialPath = getSelectorPath(specialChild);
-              if (specialPath) {
-                selectors.push(specialPath);
-                selectors = selectors.concat(getAllDescendantSelectors(specialChild));
-              }
-            }
-          }
-        }
-
-        // Handle direct special context children
-        const specialChildren = getSpecialContextChildren(element);
-        for (const specialChild of specialChildren) {
-          const specialPath = getSelectorPath(specialChild);
-          if (specialPath) {
-            selectors.push(specialPath);
-            selectors = selectors.concat(getAllDescendantSelectors(specialChild));
-          }
-        }
-
-        return selectors;
-      }
-
-      // Handle both shadow DOM, iframe, and frame parent selectors
-      let parentElements: HTMLElement[] = [];
-      
-      // Check for special context traversal in parent selector
-      if (parentSelector.includes('>>') || parentSelector.includes(':>>')) {
-        // Split by both types of delimiters
-        const selectorParts = parentSelector.split(/(?:>>|:>>)/).map(part => part.trim());
-        
-        // Start with initial elements
-        parentElements = Array.from(document.querySelectorAll(selectorParts[0])) as HTMLElement[];
-        
-        // Traverse through parts
-        for (let i = 1; i < selectorParts.length; i++) {
-          const newParentElements: HTMLElement[] = [];
-          
-          for (const element of parentElements) {
-            // Check for shadow DOM
-            if (element.shadowRoot) {
-              const shadowChildren = Array.from(
-                element.shadowRoot.querySelectorAll(selectorParts[i])
-              ) as HTMLElement[];
-              newParentElements.push(...shadowChildren);
-            }
-            
-            // Check for iframe
-            if (element.tagName === 'IFRAME') {
-              try {
-                const iframeDoc = (element as HTMLIFrameElement).contentDocument || 
-                                (element as HTMLIFrameElement).contentWindow?.document;
-                if (iframeDoc) {
-                  const iframeChildren = Array.from(
-                    iframeDoc.querySelectorAll(selectorParts[i])
-                  ) as HTMLElement[];
-                  newParentElements.push(...iframeChildren);
-                }
-              } catch (error) {
-                console.warn('Cannot access iframe content during traversal:', error);
-                continue;
-              }
-            }
-            
-            // Check for frame
-            if (element.tagName === 'FRAME') {
-              try {
-                const frameDoc = (element as HTMLFrameElement).contentDocument || 
-                                (element as HTMLFrameElement).contentWindow?.document;
-                if (frameDoc) {
-                  const frameChildren = Array.from(
-                    frameDoc.querySelectorAll(selectorParts[i])
-                  ) as HTMLElement[];
-                  newParentElements.push(...frameChildren);
-                }
-              } catch (error) {
-                console.warn('Cannot access frame content during traversal:', error);
-                continue;
-              }
-            }
-            
-            // Check for frameset
-            if (element.tagName === 'FRAMESET') {
-              const frames = Array.from(element.querySelectorAll('frame')) as HTMLFrameElement[];
-              for (const frame of frames) {
-                try {
-                  const frameDoc = frame.contentDocument || frame.contentWindow?.document;
-                  if (frameDoc) {
-                    const frameChildren = Array.from(
-                      frameDoc.querySelectorAll(selectorParts[i])
-                    ) as HTMLElement[];
-                    newParentElements.push(...frameChildren);
+              if (iframe.contentDocument) {
+                const frameElements = Array.from(iframe.contentDocument.querySelectorAll('*')) as HTMLElement[];
+                for (const frameEl of frameElements) {
+                  const childInfo = processElement(frameEl);
+                  if (childInfo) {
+                    result.push(childInfo);
                   }
-                } catch (error) {
-                  console.warn('Cannot access frameset frame during traversal:', error);
-                  continue;
                 }
               }
+            } catch (e) {
+              console.warn('Cannot access iframe content', e);
             }
           }
           
-          parentElements = newParentElements;
+          const frames = Array.from(parent.querySelectorAll('frame')) as HTMLFrameElement[];
+          for (const frame of frames) {
+            try {
+              if (frame.contentDocument) {
+                const frameElements = Array.from(frame.contentDocument.querySelectorAll('*')) as HTMLElement[];
+                for (const frameEl of frameElements) {
+                  const childInfo = processElement(frameEl);
+                  if (childInfo) {
+                    result.push(childInfo);
+                  }
+                }
+              }
+            } catch (e) {
+              console.warn('Cannot access frame content', e);
+            }
+          }
         }
-      } else {
-        // Regular DOM selector
-        parentElements = Array.from(document.querySelectorAll(parentSelector)) as HTMLElement[];
+        
+        collectDescendants(container);
+        return result;
       }
-
-      const allChildSelectors = new Set<string>();  // Use a set to ensure uniqueness
-
-      // Process each parent element and its descendants
-      parentElements.forEach((parentElement) => {
-        const descendantSelectors = getAllDescendantSelectors(parentElement);
-        descendantSelectors.forEach((selector) => allChildSelectors.add(selector));
-      });
-
-      return Array.from(allChildSelectors);
+      
+      function getRelativeSelector(container: HTMLElement, element: HTMLElement): string | null {
+        let isDescendant = false;
+        let parent: HTMLElement | null = element;
+        
+        while (parent && parent !== document.documentElement) {
+          if (parent === container) {
+            isDescendant = true;
+            break;
+          }
+          parent = parent.parentElement;
+        }
+        
+        if (!isDescendant) {
+          if (container.shadowRoot) {
+            const shadowElements = Array.from(container.shadowRoot.querySelectorAll('*')) as HTMLElement[];
+            if (shadowElements.includes(element)) {
+              isDescendant = true;
+            }
+          }
+          
+          const frames = [
+            ...Array.from(container.querySelectorAll('iframe')),
+            ...Array.from(container.querySelectorAll('frame'))
+          ];
+          
+          for (const frame of frames) {
+            try {
+              const frameDoc = (frame as HTMLIFrameElement | HTMLFrameElement).contentDocument;
+              if (frameDoc && frameDoc.contains(element)) {
+                isDescendant = true;
+                break;
+              }
+            } catch (e) {
+              console.warn('Cannot access frame content', e);
+            }
+          }
+          
+          if (!isDescendant) {
+            return null;
+          }
+        }
+        
+        const path: string[] = [];
+        let current: Node | null = element;
+        
+        while (current && current !== container && current !== document.documentElement) {
+          if (current.nodeType !== Node.ELEMENT_NODE) {
+            current = current.parentNode;
+            continue;
+          }
+          
+          const el = current as HTMLElement;
+          let selector = el.tagName.toLowerCase();
+          
+          if (el.id) {
+            selector = `#${el.id}`;
+          } 
+          else if (el.className && typeof el.className === 'string') {
+            const classes = el.className.split(/\s+/)
+              .filter(c => c && !c.startsWith('!') && !c.includes(':'))
+              .map(c => `.${CSS.escape(c)}`)
+              .join('');
+            
+            if (classes) {
+              selector += classes;
+            }
+          }
+          
+          const parent = el.parentElement;
+          if (parent && parent !== container) {
+            const siblings = Array.from(parent.children);
+            if (siblings.length > 1) {
+              const index = siblings.indexOf(el) + 1;
+              selector += `:nth-child(${index})`;
+            }
+          }
+          
+          path.unshift(selector);
+          current = current.parentNode;
+          
+          if (current instanceof ShadowRoot) {
+            current = current.host;
+          }
+        }
+        
+        return path.join(' > ');
+      }
+      
+      try {
+        let containers: HTMLElement[] = [];
+        if (containerSelector.includes('>>')) {
+          const parts = containerSelector.split('>>').map(p => p.trim());
+          let elements = Array.from(document.querySelectorAll(parts[0])) as HTMLElement[];
+          
+          for (let i = 1; i < parts.length; i++) {
+            const nextElements: HTMLElement[] = [];
+            for (const el of elements) {
+              if (el.shadowRoot) {
+                const shadowEls = Array.from(el.shadowRoot.querySelectorAll(parts[i])) as HTMLElement[];
+                nextElements.push(...shadowEls);
+              }
+            }
+            elements = nextElements;
+          }
+          
+          containers = elements;
+        } else if (containerSelector.includes(':>>')) {
+          const parts = containerSelector.split(':>>').map(p => p.trim());
+          let elements = Array.from(document.querySelectorAll(parts[0])) as HTMLElement[];
+          
+          for (let i = 1; i < parts.length; i++) {
+            const nextElements: HTMLElement[] = [];
+            for (const el of elements) {
+              if (el.tagName === 'IFRAME' || el.tagName === 'FRAME') {
+                try {
+                  const frameDoc = (el as HTMLIFrameElement | HTMLFrameElement).contentDocument;
+                  if (frameDoc) {
+                    const frameEls = Array.from(frameDoc.querySelectorAll(parts[i])) as HTMLElement[];
+                    nextElements.push(...frameEls);
+                  }
+                } catch (e) {
+                  console.warn('Cannot access frame content', e);
+                }
+              }
+            }
+            elements = nextElements;
+          }
+          
+          containers = elements;
+        } else {
+          containers = Array.from(document.querySelectorAll(containerSelector)) as HTMLElement[];
+        }
+        
+        if (containers.length === 0) {
+          console.warn('No container elements found for selector:', containerSelector);
+          return [];
+        }
+        
+        const result: Array<{ selector: string, info: any }> = [];
+        
+        for (const container of containers) {
+          const rect = container.getBoundingClientRect();
+          if (rect.width === 0 || rect.height === 0) {
+            continue;
+          }
+          
+          const descendants = getAllDescendantsWithInfo(container);
+          
+          for (const { element, info } of descendants) {
+            const relativeSelector = getRelativeSelector(container, element);
+            if (relativeSelector) {
+              const fullSelector = `${containerSelector} > ${relativeSelector}`;
+              result.push({ 
+                selector: fullSelector, 
+                info
+              });
+            }
+          }
+          
+          if (result.length > 0) {
+            break;
+          }
+        }
+        
+        return result;
+      } catch (error) {
+        console.error('Error getting child selectors with info:', error);
+        return [];
+      }
     }, parentSelector);
 
-    return childSelectors || [];
+    return childElements || [];
   } catch (error) {
     console.error('Error in getChildSelectors:', error);
     return [];
