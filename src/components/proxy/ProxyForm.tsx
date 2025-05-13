@@ -162,7 +162,7 @@ const ProxyForm: React.FC = () => {
                 <Typography variant="h6" gutterBottom component="div" style={{ marginTop: '20px' }}>
                     {t('proxy.title')}
                 </Typography>
-                <Tabs value={tabIndex} onChange={handleTabChange} style={{ marginBottom: '10px'}}>
+                <Tabs value={tabIndex} onChange={handleTabChange} style={{ marginBottom: '10px' }}>
                     <Tab label={t('proxy.tab_standard')} />
                 </Tabs>
 
@@ -204,7 +204,7 @@ const ProxyForm: React.FC = () => {
                                     required
                                     error={!!errors.server_url}
                                     helperText={
-                                        <span style={{ display: 'block', marginLeft: '-10px' }}>
+                                        <span style={{ display: 'block', marginLeft: '-10px', marginTop: '5px' }}>
                                             {errors.server_url || t('proxy.server_url_helper')}
                                         </span>
                                     }
