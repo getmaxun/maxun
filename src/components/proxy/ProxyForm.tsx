@@ -157,7 +157,6 @@ const ProxyForm: React.FC = () => {
     }, []);
 
     const theme = useThemeMode();
-    const isDarkMode = theme.darkMode;
 
     return (
         <>
