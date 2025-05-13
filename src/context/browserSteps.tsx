@@ -72,16 +72,14 @@ export const BrowserStepsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     
                 // Preserve existing labels for fields
                 const mergedFields = Object.entries(newFields).reduce((acc, [key, field]) => {
-                    if (!discardedFields.has(`${listId}-${key}`)) {
-                        // If field exists, preserve its label
-                        if (existingListStep.fields[key]) {
-                            acc[key] = {
-                                ...field,
-                                label: existingListStep.fields[key].label
-                            };
-                        } else {
-                            acc[key] = field;
-                        }
+                    // If field exists, preserve its label
+                    if (existingListStep.fields[key]) {
+                        acc[key] = {
+                            ...field,
+                            label: existingListStep.fields[key].label
+                        };
+                    } else {
+                        acc[key] = field;
                     }
                     return acc;
                 }, {} as { [key: string]: TextStep });
