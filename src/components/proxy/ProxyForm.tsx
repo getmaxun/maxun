@@ -156,18 +156,14 @@ const ProxyForm: React.FC = () => {
         fetchProxyConfig();
     }, []);
 
-    const theme = useThemeMode();
-    const isDarkMode = theme.darkMode;
-
     return (
         <>
             <FormContainer>
                 <Typography variant="h6" gutterBottom component="div" style={{ marginTop: '20px' }}>
                     {t('proxy.title')}
                 </Typography>
-                <Tabs value={tabIndex} onChange={handleTabChange}>
+                <Tabs value={tabIndex} onChange={handleTabChange} style={{ marginBottom: '10px' }}>
                     <Tab label={t('proxy.tab_standard')} />
-                    <Tab label={t('proxy.tab_rotation')} />
                 </Tabs>
 
                 {tabIndex === 0 && (
@@ -197,7 +193,7 @@ const ProxyForm: React.FC = () => {
                             </Button>
                         </Box>
                     ) : (
-                        <Box component="form" onSubmit={handleSubmit} sx={{ maxWidth: 400, width: '100%' }}>
+                        <Box component="form" onSubmit={handleSubmit} sx={{ maxWidth: 500, width: '100%' }}>
                             <FormControl>
                                 <TextField
                                     label={t('proxy.server_url')}
@@ -207,7 +203,11 @@ const ProxyForm: React.FC = () => {
                                     fullWidth
                                     required
                                     error={!!errors.server_url}
-                                    helperText={errors.server_url || t('proxy.server_url_helper')}
+                                    helperText={
+                                        <span style={{ display: 'block', marginLeft: '-10px', marginTop: '5px' }}>
+                                            {errors.server_url || t('proxy.server_url_helper')}
+                                        </span>
+                                    }
                                 />
                             </FormControl>
                             <FormControl>
@@ -256,26 +256,9 @@ const ProxyForm: React.FC = () => {
                             </Button>
                         </Box>
                     ))}
-                {tabIndex === 1 && (
-                    <Box sx={{ maxWidth: 400, width: '100%', textAlign: 'center', marginTop: '20px' }}>
-                        <>
-                            <Typography variant="body1" gutterBottom component="div">
-                                {t('proxy.coming_soon')}
-                            </Typography>
-
-                            {/* <Button variant="contained" color="primary" sx={{ marginTop: '20px',backgroundColor: '#ff00c3' }}>
-                                <a style={{ color: 'white', textDecoration: 'none' }} href="https://forms.gle/hXjgqDvkEhPcaBW76">Join Maxun Cloud Waitlist</a>  */}
-
-                            <Button variant="contained" color="primary" sx={{ marginTop: '20px' }}>
-                                <a style={{ color: 'white', textDecoration: 'none' }} href="https://forms.gle/hXjgqDvkEhPcaBW76">{t('proxy.join_waitlist')}</a>
-
-                            </Button>
-                        </>
-                    </Box>
-                )}
             </FormContainer>
 
-            <Alert severity="info" sx={{ marginTop: '80px', marginLeft: '50px', height: '250px', width: '600px', border: '1px solid #ff00c3' }}>
+            <Alert severity="info" sx={{ marginTop: '80px', marginLeft: '50px', height: '250px', width: '600px' }}>
                 <AlertTitle>{t('proxy.alert.title')}</AlertTitle>
                 <br />
                 <b>{t('proxy.alert.right_way')}</b>
