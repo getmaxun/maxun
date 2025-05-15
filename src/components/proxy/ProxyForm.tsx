@@ -258,7 +258,7 @@ const ProxyForm: React.FC = () => {
                     ))}
             </FormContainer>
 
-            <Alert severity="info" sx={{ marginTop: '80px', marginLeft: '50px', height: '250px', width: '600px', border: '1px solid #ff00c3' }}>
+            <Alert severity="info" sx={{ marginTop: '80px', marginLeft: '50px', height: '250px', width: '600px' }}>
                 <AlertTitle>{t('proxy.alert.title')}</AlertTitle>
                 <br />
                 <b>{t('proxy.alert.right_way')}</b>
