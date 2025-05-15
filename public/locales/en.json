@@ -170,7 +170,7 @@
       },
       "default": {
         "title": "What data do you want to extract?",
-        "description": "A robot is designed to perform one action at a time. You can choose any of the options below."
+        "description": "A robot can perform one or multiple actions. Choose from the options listed below."
       },
       "list_stages": {
         "initial": "Select the list you want to extract along with the texts inside it",
