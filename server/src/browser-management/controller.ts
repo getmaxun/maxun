@@ -24,6 +24,7 @@ export const initializeRemoteBrowserForRecording = (userId: string): string => {
   const id = getActiveBrowserIdByState(userId, "recording") || uuid();
   createSocketConnection(
     io.of(id),
+    userId,
     async (socket: Socket) => {
       // browser is already active
       const activeId = getActiveBrowserIdByState(userId, "recording");
