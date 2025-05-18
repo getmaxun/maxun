@@ -11,11 +11,12 @@ import registerInputHandlers from '../browser-management/inputHandlers';
  */
 export const createSocketConnection = (
     io: Namespace,
+    userId: string,
     callback: (socket: Socket) => void,
 ) => {
     const onConnection = async (socket: Socket) => {
         logger.log('info', "Client connected " + socket.id);
-        registerInputHandlers(socket);
+        registerInputHandlers(socket, userId);
         socket.on('disconnect', () => logger.log('info', "Client disconnected " + socket.id));
         callback(socket);
     }
