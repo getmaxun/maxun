@@ -332,6 +332,28 @@ export const getElementInformation = async (
 
             let deepestElement = findContainerElement(elements);
             if (!deepestElement) return null;
+
+            if (deepestElement.tagName === 'A') {
+              for (let i = 1; i < elements.length; i++) {
+                const sibling = elements[i];
+                if (!deepestElement.contains(sibling) && !sibling.contains(deepestElement)) {
+                  const anchorRect = deepestElement.getBoundingClientRect();
+                  const siblingRect = sibling.getBoundingClientRect();
+
+                  const isOverlapping = !(
+                    siblingRect.right < anchorRect.left || 
+                    siblingRect.left > anchorRect.right || 
+                    siblingRect.bottom < anchorRect.top || 
+                    siblingRect.top > anchorRect.bottom
+                  );
+
+                  if (isOverlapping) {
+                    deepestElement = sibling;
+                    break;
+                  }
+                }
+              }
+            }
           
             const traverseShadowDOM = (element: HTMLElement): HTMLElement => {
               let current = element;
