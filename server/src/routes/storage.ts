@@ -254,11 +254,13 @@ function handleWorkflowActions(workflow: any[], credentials: Credentials) {
 router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
+
     const { name, limit, credentials, targetUrl,description } = req.body;
 
+
     // Validate input
-    if (!name && limit === undefined && !targetUrl) {
-      return res.status(400).json({ error: 'Either "name", "limit" or "target_url" must be provided.' });
+    if (!name && !limits && !credentials && !targetUrl) {
+      return res.status(400).json({ error: 'Either "name", "limits", "credentials" or "target_url" must be provided.' });
     }
 
     // Fetch the robot by ID
@@ -272,28 +274,33 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
     if (name) {
       robot.set('recording_meta', { ...robot.recording_meta, name });
     }
-
-    if (targetUrl) {
-      const updatedWorkflow = robot.recording.workflow.map((step) => {
-        if (step.where?.url && step.where.url !== "about:blank") {
-          step.where.url = targetUrl;
-        }
-
-        step.what.forEach((action) => {
-          if (action.action === "goto" && action.args?.length) {
-            action.args[0] = targetUrl; 
-          }
-        });
-
-        return step;
-      });
-
-      if(description){
+    
+     if(description){
         robot.set('description', description);
       }
 
-      robot.set('recording', { ...robot.recording, workflow: updatedWorkflow });
-      robot.changed('recording', true);
+    if (targetUrl) {
+      const updatedWorkflow = [...robot.recording.workflow];
+      
+      for (let i = updatedWorkflow.length - 1; i >= 0; i--) {
+        const step = updatedWorkflow[i];
+        for (let j = 0; j < step.what.length; j++) {
+          const action = step.what[j];
+          if (action.action === "goto" && action.args?.length) {
+
+            action.args[0] = targetUrl;
+            if (step.where?.url && step.where.url !== "about:blank") {
+              step.where.url = targetUrl;
+            }
+            
+            robot.set('recording', { ...robot.recording, workflow: updatedWorkflow });
+            robot.changed('recording', true);
+            i = -1;
+            break;
+          }
+        }
+      }
+
     }
 
     await robot.save();
@@ -304,38 +311,20 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       workflow = handleWorkflowActions(workflow, credentials);
     }
 
-    // Update the limit
-    if (limit !== undefined) {
-      // Ensure the workflow structure is valid before updating
-      if (
-        workflow.length > 0 &&
-        workflow[0]?.what?.[0]
-      ) {
-        // Create a new workflow object with the updated limit
-        workflow = workflow.map((step, index) => {
-          if (index === 0) { // Assuming you want to update the first step
-            return {
-              ...step,
-              what: step.what.map((action, actionIndex) => {
-                if (actionIndex === 0) { // Assuming the first action needs updating
-                  return {
-                    ...action,
-                    args: (action.args ?? []).map((arg, argIndex) => {
-                      if (argIndex === 0) { // Assuming the first argument needs updating
-                        return { ...arg, limit };
-                      }
-                      return arg;
-                    }),
-                  };
-                }
-                return action;
-              }),
-            };
-          }
-          return step;
-        });
-      } else {
-        return res.status(400).json({ error: 'Invalid workflow structure for updating limit.' });
+    if (limits && Array.isArray(limits) && limits.length > 0) {
+      for (const limitInfo of limits) {
+        const { pairIndex, actionIndex, argIndex, limit } = limitInfo;
+        
+        const pair = workflow[pairIndex];
+        if (!pair || !pair.what) continue;
+        
+        const action = pair.what[actionIndex];
+        if (!action || !action.args) continue;
+        
+        const arg = action.args[argIndex];
+        if (!arg || typeof arg !== 'object') continue;
+        
+        (arg as { limit: number }).limit = limit;
       }
     }
 
@@ -409,7 +398,7 @@ router.post('/recordings/:id/duplicate', requireSignIn, async (req: Authenticate
       return step;
     });
 
-    const currentTimestamp = new Date().toISOString();
+    const currentTimestamp = new Date().toLocaleString();
 
     const newRobot = await Robot.create({
       id: uuid(), 
