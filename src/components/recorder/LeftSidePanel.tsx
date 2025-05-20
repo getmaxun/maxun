@@ -5,7 +5,6 @@ import { useSocketStore } from '../../context/socket';
 import { WhereWhatPair, WorkflowFile } from "maxun-core";
 import { emptyWorkflow } from "../../shared/constants";
 import { LeftSidePanelContent } from "./LeftSidePanelContent";
-import { useBrowserDimensionsStore } from "../../context/browserDimensions";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { TabContext, TabPanel } from "@mui/lab";
 import { LeftSidePanelSettings } from "./LeftSidePanelSettings";
