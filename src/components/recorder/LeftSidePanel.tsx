@@ -44,7 +44,7 @@ export const LeftSidePanel = (
   });
 
   const { id, socket } = useSocketStore();
-  const { setWidth, width } = useBrowserDimensionsStore();
+  const { setWidth } = useBrowserDimensionsStore();
   const { setRecordingLength } = useGlobalInfoStore();
 
   const workflowHandler = useCallback((data: WorkflowFile) => {
