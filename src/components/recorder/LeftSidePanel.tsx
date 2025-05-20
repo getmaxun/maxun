@@ -76,12 +76,10 @@ export const LeftSidePanel = (
       const innerHeightWithoutNavbar = window.innerHeight - 70;
       if (innerHeightWithoutNavbar <= workflowListHeight) {
         if (!hasScrollbar) {
-          setWidth(width - 10);
           setHasScrollbar(true);
         }
       } else {
         if (hasScrollbar && !alreadyHasScrollbar) {
-          setWidth(width + 10);
           setHasScrollbar(false);
         }
       }
