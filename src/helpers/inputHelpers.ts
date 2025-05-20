@@ -1,8 +1,6 @@
 import {
   ONE_PERCENT_OF_VIEWPORT_H,
   ONE_PERCENT_OF_VIEWPORT_W,
-  VIEWPORT_W,
-  VIEWPORT_H,
 } from "../constants/const";
 import { Coordinates } from '../components/recorder/canvas';
 
