@@ -21,7 +21,6 @@ import {
 } from '@mui/material';
 import { sendProxyConfig, getProxyConfig, testProxyConfig, deleteProxyConfig } from '../../api/proxy';
 import { useGlobalInfoStore } from '../../context/globalInfo';
-import { useThemeMode } from '../../context/theme-provider';
 import { useTranslation } from 'react-i18next';
 
 const FormContainer = styled(Box)({
