@@ -52,7 +52,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const [isCaptureListConfirmed, setIsCaptureListConfirmed] = useState(false);
   const { panelHeight } = useBrowserDimensionsStore();
 
-  const { lastAction, notify, currentWorkflowActionsState, setCurrentWorkflowActionsState, resetInterpretationLog } = useGlobalInfoStore();
+  const { lastAction, notify, currentWorkflowActionsState, setCurrentWorkflowActionsState, resetInterpretationLog, currentListActionId, setCurrentListActionId, currentTextActionId, setCurrentTextActionId, currentScreenshotActionId, setCurrentScreenshotActionId } = useGlobalInfoStore();  
   const { 
     getText, startGetText, stopGetText, 
     getList, startGetList, stopGetList, 
@@ -69,7 +69,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     startAction, finishAction 
   } = useActionContext();
   
-  const { browserSteps, updateBrowserTextStepLabel, deleteBrowserStep, addScreenshotStep, updateListTextFieldLabel, removeListTextField, updateListStepLimit } = useBrowserSteps();
+  const { browserSteps, updateBrowserTextStepLabel, deleteBrowserStep, addScreenshotStep, updateListTextFieldLabel, removeListTextField, updateListStepLimit, deleteStepsByActionId } = useBrowserSteps();
   const { id, socket } = useSocketStore();
   const { t } = useTranslation();
 
@@ -139,15 +139,21 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
 
   const handleStartGetText = () => {
     setIsCaptureTextConfirmed(false);
+    const newActionId = `text-${Date.now()}`;
+    setCurrentTextActionId(newActionId);
     startGetText();
   }
 
   const handleStartGetList = () => {
     setIsCaptureListConfirmed(false);
+    const newActionId = `list-${Date.now()}`;
+    setCurrentListActionId(newActionId);
     startGetList();
   }
 
   const handleStartGetScreenshot = () => {
+    const newActionId = `screenshot-${Date.now()}`;
+    setCurrentScreenshotActionId(newActionId);
     startGetScreenshot();
   };
 
@@ -277,6 +283,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
       socket?.emit('action', { action: 'scrapeSchema', settings });
     }
     setIsCaptureTextConfirmed(true);
+    setCurrentTextActionId('');
     resetInterpretationLog();
     finishAction('text'); 
     onFinishCapture();
@@ -337,6 +344,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
       notify('error', t('right_panel.errors.unable_create_settings'));
     }
     handleStopGetList();
+    setCurrentListActionId('');
     resetInterpretationLog();
     finishAction('list');
     onFinishCapture();
@@ -434,35 +442,73 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
 
   const discardGetText = useCallback(() => {
     stopGetText();
-    browserSteps.forEach(step => {
-      if (step.type === 'text') {
-        deleteBrowserStep(step.id);
-      }
-    });
-    setTextLabels({});
-    setErrors({});
-    setConfirmedTextSteps({});
+    
+    if (currentTextActionId) {
+      const stepsToDelete = browserSteps
+        .filter(step => step.type === 'text' && step.actionId === currentTextActionId)
+        .map(step => step.id);
+      
+      deleteStepsByActionId(currentTextActionId);
+      
+      setTextLabels(prevLabels => {
+        const newLabels = { ...prevLabels };
+        stepsToDelete.forEach(id => {
+          delete newLabels[id];
+        });
+        return newLabels;
+      });
+      
+      setErrors(prevErrors => {
+        const newErrors = { ...prevErrors };
+        stepsToDelete.forEach(id => {
+          delete newErrors[id];
+        });
+        return newErrors;
+      });
+      
+      setConfirmedTextSteps(prev => {
+        const newConfirmed = { ...prev };
+        stepsToDelete.forEach(id => {
+          delete newConfirmed[id];
+        });
+        return newConfirmed;
+      });
+    }
+    
+    setCurrentTextActionId('');
     setIsCaptureTextConfirmed(false);
     notify('error', t('right_panel.errors.capture_text_discarded'));
-  }, [browserSteps, stopGetText, deleteBrowserStep, notify, t]);
+  }, [currentTextActionId, browserSteps, stopGetText, deleteStepsByActionId, notify, t]);
 
   const discardGetList = useCallback(() => {
     stopGetList();
-    browserSteps.forEach(step => {
-      if (step.type === 'list') {
-        deleteBrowserStep(step.id);
-      }
-    });
+    
+    if (currentListActionId) {
+      const listStepsToDelete = browserSteps
+        .filter(step => step.type === 'list' && step.actionId === currentListActionId)
+        .map(step => step.id);
+      
+      deleteStepsByActionId(currentListActionId);
+      
+      setConfirmedListTextFields(prev => {
+        const newConfirmed = { ...prev };
+        listStepsToDelete.forEach(id => {
+          delete newConfirmed[id];
+        });
+        return newConfirmed;
+      });
+    }
+    
     resetListState();
     stopPaginationMode();
     stopLimitMode();
     setShowPaginationOptions(false);
     setShowLimitOptions(false);
     setCaptureStage('initial');
-    setConfirmedListTextFields({});
+    setCurrentListActionId('');
     setIsCaptureListConfirmed(false);
     notify('error', t('right_panel.errors.capture_list_discarded'));
-  }, [browserSteps, stopGetList, deleteBrowserStep, resetListState, setShowPaginationOptions, setShowLimitOptions, setCaptureStage, notify, t]);
+  }, [currentListActionId, browserSteps, stopGetList, deleteStepsByActionId, resetListState, setShowPaginationOptions, setShowLimitOptions, setCaptureStage, notify, t]);
 
   const captureScreenshot = (fullPage: boolean) => {
     const screenshotSettings: ScreenshotSettings = {
@@ -474,7 +520,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
       scale: 'device',
     };
     socket?.emit('action', { action: 'screenshot', settings: screenshotSettings });
-    addScreenshotStep(fullPage);
+    addScreenshotStep(fullPage, currentScreenshotActionId);
     stopGetScreenshot();
     resetInterpretationLog();
     finishAction('screenshot');
