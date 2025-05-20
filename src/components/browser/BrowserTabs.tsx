@@ -36,7 +36,7 @@ export const BrowserTabs = (
       overflow: 'auto',
       alignItems: 'center',
     }}>
-      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}> {/* Synced border color */}
+      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Tabs
           value={tabIndex}
           onChange={handleChange}
@@ -50,7 +50,7 @@ export const BrowserTabs = (
                   background: 'white',
                   borderRadius: '5px 5px 0px 0px',
                   '&.Mui-selected': {
-                    backgroundColor: ` ${isDarkMode ? "#2a2a2a" : "#f5f5f5"}`, // Synced selected tab color
+                    backgroundColor: ` ${isDarkMode ? "#2a2a2a" : "#f5f5f5"}`,
                     color: '#ff00c3', // Slightly lighter text when selected
                   },
                 }}
