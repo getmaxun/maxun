@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { Box, IconButton, Tab, Tabs } from "@mui/material";
-import { useBrowserDimensionsStore } from "../../context/browserDimensions";
 import { Close } from "@mui/icons-material";
 import { useThemeMode } from '../../context/theme-provider';
 
