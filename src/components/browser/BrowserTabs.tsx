@@ -21,8 +21,6 @@ export const BrowserTabs = (
 
   let tabWasClosed = false;
 
-  const { width } = useBrowserDimensionsStore();
-
   const handleChange = (event: React.SyntheticEvent, newValue: number) => {
     if (!tabWasClosed) {
       handleChangeIndex(newValue);
