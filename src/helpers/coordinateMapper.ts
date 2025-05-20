@@ -1,4 +1,3 @@
-// coordinateMapper.ts
 import { BROWSER_DEFAULT_HEIGHT, BROWSER_DEFAULT_WIDTH } from "../constants/const";
 import { getResponsiveDimensions } from "./dimensionUtils";
 
