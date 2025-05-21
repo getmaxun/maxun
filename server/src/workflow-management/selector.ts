@@ -2299,7 +2299,12 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
             return selectorParts.join(contextPath[0].type === 'shadow' ? ' >> ' : ' :>> ');
           }
 
-          // Regular DOM path generation
+          const elementSelector = getNonUniqueSelector(element);
+          
+          if (elementSelector.includes('.') && elementSelector.split('.').length > 1) {
+            return elementSelector;
+          }
+          
           const path: string[] = [];
           let currentElement = element;
           const MAX_DEPTH = 2;
@@ -2656,7 +2661,12 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
             return selectorParts.join(contextPath[0].type === 'shadow' ? ' >> ' : ' :>> ');
           }
 
-          // Regular DOM path generation
+          const elementSelector = getNonUniqueSelector(element);
+          
+          if (elementSelector.includes('.') && elementSelector.split('.').length > 1) {
+            return elementSelector;
+          }
+          
           const path: string[] = [];
           let currentElement = element;
           const MAX_DEPTH = 2;
@@ -2753,12 +2763,14 @@ export const getChildSelectors = async (page: Page, parentSelector: string): Pro
         const frameElement = ownerDocument?.defaultView?.frameElement;
         if (frameElement) {
           const frameSelector = getNonUniqueSelector(frameElement as HTMLElement);
-          const isFrame = frameElement.tagName === 'FRAME';
           // Use the appropriate delimiter based on whether it's a frame or iframe
           return `${frameSelector} :>> ${elementSelector}`;
         }
 
-        // Regular DOM context
+        if (elementSelector.includes('.') && elementSelector.split('.').length > 1) {
+          return elementSelector;
+        }
+        
         const parentSelector = getNonUniqueSelector(element.parentElement);
         return `${parentSelector} > ${elementSelector}`;
       }
