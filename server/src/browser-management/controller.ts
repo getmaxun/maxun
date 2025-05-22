@@ -5,7 +5,7 @@
 import { Socket } from "socket.io";
 import { uuid } from 'uuidv4';
 
-import { createSocketConnection, createSocketConnectionForRun, registerBrowserUserContext } from "../socket-connection/connection";
+import { createSocketConnection, createSocketConnectionForRun } from "../socket-connection/connection";
 import { io, browserPool } from "../server";
 import { RemoteBrowser } from "./classes/RemoteBrowser";
 import { RemoteBrowserOptions } from "../types";
@@ -24,6 +24,7 @@ export const initializeRemoteBrowserForRecording = (userId: string): string => {
   const id = getActiveBrowserIdByState(userId, "recording") || uuid();
   createSocketConnection(
     io.of(id),
+    userId,
     async (socket: Socket) => {
       // browser is already active
       const activeId = getActiveBrowserIdByState(userId, "recording");
@@ -55,11 +56,8 @@ export const initializeRemoteBrowserForRecording = (userId: string): string => {
 export const createRemoteBrowserForRun = (userId: string): string => {
   const id = uuid();
   
-  registerBrowserUserContext(id, userId);
-  logger.log('debug', `Created new browser for run: ${id} for user: ${userId}`);
-  
   createSocketConnectionForRun(
-    io.of(`/${id}`), 
+    io.of(id), 
     async (socket: Socket) => {
       try {
         const browserSession = new RemoteBrowser(socket, userId, id);
