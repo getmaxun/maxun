@@ -44,7 +44,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
   return (
     <Paper
       sx={{
-        height: 'auto',
+        height: '100%',
         width: '250px',
         backgroundColor: theme.palette.background.paper,
         paddingTop: '0.5rem',
