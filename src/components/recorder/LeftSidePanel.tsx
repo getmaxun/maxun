@@ -5,7 +5,6 @@ import { useSocketStore } from '../../context/socket';
 import { WhereWhatPair, WorkflowFile } from "maxun-core";
 import { emptyWorkflow } from "../../shared/constants";
 import { LeftSidePanelContent } from "./LeftSidePanelContent";
-import { useBrowserDimensionsStore } from "../../context/browserDimensions";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { TabContext, TabPanel } from "@mui/lab";
 import { LeftSidePanelSettings } from "./LeftSidePanelSettings";
@@ -44,7 +43,6 @@ export const LeftSidePanel = (
   });
 
   const { id, socket } = useSocketStore();
-  const { setWidth, width } = useBrowserDimensionsStore();
   const { setRecordingLength } = useGlobalInfoStore();
 
   const workflowHandler = useCallback((data: WorkflowFile) => {
@@ -76,12 +74,10 @@ export const LeftSidePanel = (
       const innerHeightWithoutNavbar = window.innerHeight - 70;
       if (innerHeightWithoutNavbar <= workflowListHeight) {
         if (!hasScrollbar) {
-          setWidth(width - 10);
           setHasScrollbar(true);
         }
       } else {
         if (hasScrollbar && !alreadyHasScrollbar) {
-          setWidth(width + 10);
           setHasScrollbar(false);
         }
       }
