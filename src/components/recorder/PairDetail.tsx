@@ -252,7 +252,10 @@ export const PairDetail = ({ pair, index }: PairDetailProps) => {
                           sx={{ flexGrow: 1, overflowY: 'auto' }}
                           key={`tree-view-2-${key}-${index}`}
                         >
-                          <TreeItem nodeId={`${key}-${index}`} label={`${pair.what[index].action}`}>
+                          <TreeItem
+                            nodeId={`${String(key)}-${index}`}
+                            label={`${String(pair.what[index].action)}`}
+                          >
                             {
                               // @ts-ignore
                               DisplayValueContent(pair.what[key], [key], false)
