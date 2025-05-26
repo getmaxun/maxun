@@ -139,20 +139,20 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
 
   const handleStartGetText = () => {
     setIsCaptureTextConfirmed(false);
-    const newActionId = `text-${Date.now()}`;
+    const newActionId = `text-${crypto.randomUUID()}`;
     setCurrentTextActionId(newActionId);
     startGetText();
   }
 
   const handleStartGetList = () => {
     setIsCaptureListConfirmed(false);
-    const newActionId = `list-${Date.now()}`;
+    const newActionId = `list-${crypto.randomUUID()}`;
     setCurrentListActionId(newActionId);
     startGetList();
   }
 
   const handleStartGetScreenshot = () => {
-    const newActionId = `screenshot-${Date.now()}`;
+    const newActionId = `screenshot-${crypto.randomUUID()}`;
     setCurrentScreenshotActionId(newActionId);
     startGetScreenshot();
   };
