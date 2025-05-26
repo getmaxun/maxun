@@ -34,7 +34,7 @@ export interface IntegrationSettings {
   airtableTableName?: string,
   airtableTableId?: string,
   data: string;
-  integrationType: "googleSheets" | "airtable";
+  integrationType: "googleSheets" | "airtable"| "n8n";
 }
 
 const getCookie = (name: string): string | null => {
@@ -84,7 +84,7 @@ export const IntegrationSettingsModal = ({
   const navigate = useNavigate();
 
   const [selectedIntegrationType, setSelectedIntegrationType] = useState<
-    "googleSheets" | "airtable" | null
+    "googleSheets" | "airtable" | "n8n" | null
   >(preSelectedIntegrationType);
 
   const authenticateWithGoogle = () => {
@@ -394,7 +394,7 @@ export const IntegrationSettingsModal = ({
               }}
               style={{ display: "flex", flexDirection: "column", alignItems: "center", background: 'white', color: '#ff00c3' }}
             >
-              <img src="/public/svg/gsheet.svg" alt="Google Sheets" style={{ margin: "6px" }} />
+              <img src="/svg/gsheet.svg" alt="Google Sheets" style={{ margin: "6px" }} />
               Google Sheets
             </Button>
 
@@ -407,8 +407,20 @@ export const IntegrationSettingsModal = ({
               }}
               style={{ display: "flex", flexDirection: "column", alignItems: "center", background: 'white', color: '#ff00c3' }}
             >
-              <img src="/public/svg/airtable.svg" alt="Airtable" style={{ margin: "6px" }} />
+              <img src="/svg/airtable.svg" alt="Airtable" style={{ margin: "6px" }} />
               Airtable
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => {
+                setSelectedIntegrationType("airtable");
+                setSettings({ ...settings, integrationType: "n8n" });
+                navigate(`/robots/${recordingId}/integrate/n8n`);
+              }}
+              style={{ display: "flex", flexDirection: "column", alignItems: "center", background: 'white', color: '#ff00c3' }}
+            >
+              <img src="/svg/n8n.svg" alt="n8n" height={100} width={100}  style={{ margin: "30px" }} />
+              n8n
             </Button>
           </div>
         </div>
