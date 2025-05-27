@@ -274,33 +274,80 @@ router.post('/test', requireSignIn, async (req: Request, res: Response) => {
             timestamp: new Date().toISOString(),
             webhook_id: webhook.id,
             data: {
-                workflow_id: robotId,
+                robot_id: robotId,
                 run_id: "110c4dae-c39b-4b30-a932-eff1022e4bb0",
-                robot_name: robot.recording_meta?.name || "Unknown Robot",
+                robot_name: robot.recording_meta?.name || "E-commerce Product Scraper",
                 status: "test",
-                started_at: new Date().toISOString(),
+                started_at: new Date(Date.now() - 45000).toISOString(),
                 finished_at: new Date().toISOString(),
-                execution_time_ms: 5000,
                 extracted_data: {
-                    schema_items: {
-                        "item-0": { title: "Test Item 1", value: "Sample Value 1" },
-                        "item-1": { title: "Test Item 2", value: "Sample Value 2" }
+                    captured_texts: [
+                        {
+                            "Product Name": "MacBook Pro 16-inch M3 Max",
+                            "Price": "$3,999.00",
+                            "Rating": "4.8/5 stars",
+                            "Availability": "In Stock - Ships within 2-3 business days",
+                            "SKU": "MBPM3-16-1TB-SLV",
+                            "Description": "The most powerful MacBook Pro ever is here. With the blazing-fast M3 Max chip, pro-level performance has never been more portable."
+                        }
+                    ],
+                    captured_lists: {
+                        "list_1": [
+                            {
+                                "Rank": "1",
+                                "Product": "MacBook Air M2",
+                                "Category": "Laptops",
+                                "Units Sold": "2,847",
+                                "Revenue": "$2,847,000"
+                            },
+                            {
+                                "Rank": "2", 
+                                "Product": "iPhone 15",
+                                "Category": "Smartphones",
+                                "Units Sold": "1,923",
+                                "Revenue": "$1,923,000"
+                            },
+                            {
+                                "Rank": "3",
+                                "Product": "iPad Pro 12.9",
+                                "Category": "Tablets", 
+                                "Units Sold": "1,456",
+                                "Revenue": "$1,456,000"
+                            }
+                        ],
+                        "list_0": [
+                            {
+                                "Customer": "Sarah M.",
+                                "Rating": "5 stars",
+                                "Review": "Absolutely love my new MacBook! The battery life is incredible and the performance is outstanding.",
+                                "Date": "2024-12-15",
+                                "Verified Purchase": "Yes"
+                            },
+                            {
+                                "Customer": "John D.",
+                                "Rating": "4 stars", 
+                                "Review": "Great phone overall, but wish the battery lasted a bit longer with heavy usage.",
+                                "Date": "2024-12-14",
+                                "Verified Purchase": "Yes"
+                            },
+                            {
+                                "Customer": "Emily R.",
+                                "Rating": "5 stars",
+                                "Review": "The camera quality is phenomenal! Perfect for my photography business.",
+                                "Date": "2024-12-13",
+                                "Verified Purchase": "Yes"
+                            }
+                        ],
                     },
-                    list_items: {
-                        "item-0": [
-                            { name: "List Item 1", price: "$10.99" },
-                            { name: "List Item 2", price: "$15.99" }
-                        ]
-                    },
-                    total_rows: 4,
-                    schema_count: 2,
-                    list_count: 2,
-                    screenshots_count: 3
+                    total_rows: 11,
+                    captured_texts_count: 5,
+                    captured_lists_count: 6, 
+                    screenshots_count: 5
                 },
                 metadata: {
                     test_mode: true,
-                    browser_id: "d27ace57-75cb-441c-8589-8ba34e52f7d1",
-                    user_id: "108"
+                    browser_id: "d27ace57-75cb-441c-8589-8ba34e52f7d1", 
+                    user_id: 108,
                 }
             }
         };
