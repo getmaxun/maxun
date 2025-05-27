@@ -4,6 +4,7 @@ import { router as storage } from './storage';
 import { router as auth } from './auth';
 import { router as integration } from './integration';
 import { router as proxy } from './proxy';
+import { router as webhook } from './webhook';
 
 export {
     record,
@@ -11,5 +12,6 @@ export {
     storage,
     auth,
     integration,
-    proxy
+    proxy,
+    webhook
 };
