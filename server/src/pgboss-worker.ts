@@ -215,7 +215,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
           finished_at: new Date().toLocaleString(),
           error: {
             message: "Failed: Recording not found",
-            type: 'RecodingNotFoundError'
+            type: 'RecordingNotFoundError'
           },
           metadata: {
             browser_id: plainRun.browserId,
