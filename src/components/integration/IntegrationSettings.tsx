@@ -35,19 +35,13 @@ import Cookies from "js-cookie";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
+import { addWebhook, updateWebhook, removeWebhook, getWebhooks, testWebhook,WebhookConfig } from "../../api/webhook";
+
 interface IntegrationProps {
   isOpen: boolean;
   handleStart: (data: IntegrationSettings) => void;
   handleClose: () => void;
   preSelectedIntegrationType?: "googleSheets" | "airtable" | "webhook" | null;
-}
-
-export interface WebhookConfig {
-  id: string;
-  url: string;
-  events: string[];
-  active: boolean;
-  lastCalledAt?: string | null;
 }
 
 export interface IntegrationSettings {
@@ -156,7 +150,30 @@ export const IntegrationSettingsModal = ({
     return true;
   };
 
-  const addWebhook = async () => {
+  const fetchWebhooks = async () => {
+    try {
+      setLoading(true);
+      if (!recordingId) return;
+
+      const response = await getWebhooks(recordingId);
+
+      if (response.ok && response.webhooks) {
+        setSettings(prev => ({
+          ...prev,
+          webhooks: response.webhooks
+        }));
+      } else {
+        notify("error", response.error || "Failed to fetch webhooks");
+      }
+      setLoading(false);
+    } catch (error: any) {
+      setLoading(false);
+      console.error("Error fetching webhooks:", error);
+      notify("error", "Failed to fetch webhooks");
+    }
+  };
+
+  const addWebhookSetting = async () => {
     if (!validateWebhookData(newWebhook.url, newWebhook.events)) {
       if (!newWebhook.url) {
         notify("error", "Please provide webhook URL");
@@ -166,6 +183,8 @@ export const IntegrationSettingsModal = ({
       return;
     }
 
+    if (!recordingId) return;
+
     try {
       setLoading(true);
       const webhookWithId = {
@@ -173,31 +192,28 @@ export const IntegrationSettingsModal = ({
         id: Date.now().toString(),
       };
 
-      const response = await axios.post(
-        `${apiUrl}/webhook/add`,
-        {
-          webhook: webhookWithId,
-          robotId: recordingId,
-        },
-        { withCredentials: true }
-      );
+      const response = await addWebhook(webhookWithId, recordingId);
 
-      const updatedWebhooks = [...(settings.webhooks || []), webhookWithId];
-      setSettings({ ...settings, webhooks: updatedWebhooks });
-
-      resetWebhookForm();
-      await refreshRecordingData();
-      notify("success", "Webhook added successfully");
+      if (response.ok) {
+        const updatedWebhooks = [...(settings.webhooks || []), webhookWithId];
+        setSettings({ ...settings, webhooks: updatedWebhooks });
+        
+        resetWebhookForm();
+        await refreshRecordingData();
+        notify("success", "Webhook added successfully");
+      } else {
+        notify("error", response.error || "Failed to add webhook");
+      }
       setLoading(false);
     } catch (error: any) {
       setLoading(false);
       console.log("Error adding webhook:", error);
-      notify("error", `Error adding webhook: ${error.response?.data?.message || error.message}`);
+      notify("error", "Failed to add webhook");
     }
   };
 
-  const updateWebhook = async () => {
-    if (!editingWebhook) return;
+  const updateWebhookSetting = async () => {
+    if (!editingWebhook || !recordingId) return;
 
     if (!validateWebhookData(newWebhook.url, newWebhook.events, editingWebhook)) {
       if (!newWebhook.url) {
@@ -210,112 +226,106 @@ export const IntegrationSettingsModal = ({
 
     try {
       setLoading(true);
-      await axios.post(
-        `${apiUrl}/webhook/update`,
-        {
-          webhook: newWebhook,
-          robotId: recordingId,
-        },
-        { withCredentials: true }
-      );
+      const response = await updateWebhook(newWebhook, recordingId);
 
-      const updatedWebhooks = (settings.webhooks || []).map(w => 
-        w.id === editingWebhook ? newWebhook : w
-      );
-      setSettings({ ...settings, webhooks: updatedWebhooks });
+      if (response.ok) {
+        const updatedWebhooks = (settings.webhooks || []).map(w => 
+          w.id === editingWebhook ? newWebhook : w
+        );
+        setSettings({ ...settings, webhooks: updatedWebhooks });
 
-      resetWebhookForm();
-      await refreshRecordingData();
-      notify("success", "Webhook updated successfully");
+        resetWebhookForm();
+        await refreshRecordingData();
+        notify("success", "Webhook updated successfully");
+      } else {
+        notify("error", response.error || "Failed to update webhook");
+      }
       setLoading(false);
     } catch (error: any) {
       setLoading(false);
       console.error("Error updating webhook:", error);
-      notify("error", `Error updating webhook: ${error.response?.data?.message || error.message}`);
+      notify("error", "Failed to update webhook");
     }
   };
 
-  const removeWebhook = async (webhookId: string) => {
+  const removeWebhookSetting = async (webhookId: string) => {
+    if (!recordingId) return;
+
     try {
       setLoading(true);
-      await axios.post(
-        `${apiUrl}/webhook/remove`,
-        {
-          webhookId,
-          robotId: recordingId,
-        },
-        { withCredentials: true }
-      );
+      const response = await removeWebhook(webhookId, recordingId);
 
-      const updatedWebhooks = (settings.webhooks || []).filter(w => w.id !== webhookId);
-      setSettings({ ...settings, webhooks: updatedWebhooks });
+      if (response.ok) {
+        const updatedWebhooks = (settings.webhooks || []).filter(w => w.id !== webhookId);
+        setSettings({ ...settings, webhooks: updatedWebhooks });
 
-      await refreshRecordingData();
-      notify("success", "Webhook removed successfully");
+        await refreshRecordingData();
+        notify("success", "Webhook removed successfully");
+      } else {
+        notify("error", response.error || "Failed to remove webhook");
+      }
       setLoading(false);
     } catch (error: any) {
       setLoading(false);
       console.error("Error removing webhook:", error);
-      notify("error", `Error removing webhook: ${error.response?.data?.message || error.message}`);
+      notify("error", "Failed to remove webhook");
     }
   };
 
-  const toggleWebhookStatus = async (webhookId: string) => {
+  const toggleWebhookStatusSetting = async (webhookId: string) => {
+    if (!recordingId) return;
+
     try {
       const webhook = settings.webhooks?.find(w => w.id === webhookId);
       if (!webhook) return;
 
       const updatedWebhook = { ...webhook, active: !webhook.active };
       
-      await axios.post(
-        `${apiUrl}/webhook/update`,
-        {
-          webhook: updatedWebhook,
-          robotId: recordingId,
-        },
-        { withCredentials: true }
-      );
+      const response = await updateWebhook(updatedWebhook, recordingId);
 
-      const updatedWebhooks = (settings.webhooks || []).map(w => 
-        w.id === webhookId ? updatedWebhook : w
-      );
-      setSettings({ ...settings, webhooks: updatedWebhooks });
+      if (response.ok) {
+        const updatedWebhooks = (settings.webhooks || []).map(w => 
+          w.id === webhookId ? updatedWebhook : w
+        );
+        setSettings({ ...settings, webhooks: updatedWebhooks });
 
-      await refreshRecordingData();
-      notify("success", `Webhook ${updatedWebhook.active ? "enabled" : "disabled"}`);
+        await refreshRecordingData();
+        notify("success", `Webhook ${updatedWebhook.active ? "enabled" : "disabled"}`);
+      } else {
+        notify("error", response.error || "Failed to update webhook");
+      }
     } catch (error: any) {
       console.error("Error toggling webhook status:", error);
-      notify("error", `Error updating webhook: ${error.response?.data?.message || error.message}`);
+      notify("error", "Failed to update webhook");
     }
   };
 
-  const testWebhook = async (webhook: WebhookConfig) => {
+  const testWebhookSetting = async (webhook: WebhookConfig) => {
+    if (!recordingId) return;
+
     try {
       setLoading(true);
-      await axios.post(
-        `${apiUrl}/webhook/test`,
-        {
-          webhook,
-          robotId: recordingId,
-        },
-        { withCredentials: true }
-      );
+      const response = await testWebhook(webhook, recordingId);
 
-      const updatedWebhooks = (settings.webhooks || []).map(w => 
-        w.id === webhook.id ? { ...w, lastCalledAt: new Date().toISOString() } : w
-      );
-      setSettings({ ...settings, webhooks: updatedWebhooks });
+      if (response.ok) {
+        const updatedWebhooks = (settings.webhooks || []).map(w => 
+          w.id === webhook.id ? { ...w, lastCalledAt: new Date().toISOString() } : w
+        );
+        setSettings({ ...settings, webhooks: updatedWebhooks });
 
-      notify("success", "Test webhook sent successfully");
+        notify("success", "Test webhook sent successfully");
+      } else {
+        notify("error", response.error || "Failed to test webhook");
+      }
       setLoading(false);
     } catch (error: any) {
       setLoading(false);
       console.error("Error testing webhook:", error);
-      notify("error", `Error testing webhook: ${error.response?.data?.message || error.message}`);
+      notify("error", "Failed to test webhook");
     }
   };
 
-  const editWebhook = (webhook: WebhookConfig) => {
+  const editWebhookSetting = (webhook: WebhookConfig) => {
     setNewWebhook(webhook);
     setEditingWebhook(webhook.id);
     setShowWebhookForm(true);
@@ -430,6 +440,9 @@ export const IntegrationSettingsModal = ({
     if (!recordingId) return null;
     const updatedRecording = await getStoredRecording(recordingId);
     setRecording(updatedRecording);
+    
+    await fetchWebhooks();
+    
     setRerenderRobots(true);
     return updatedRecording;
   };
@@ -568,8 +581,7 @@ export const IntegrationSettingsModal = ({
 
         if (preSelectedIntegrationType) {
           setSettings(prev => ({ ...prev, integrationType: preSelectedIntegrationType }));
-        }
-        else if (recording.google_sheet_id) {
+        } else if (recording.google_sheet_id) {
           setSettings(prev => ({ ...prev, integrationType: "googleSheets" }));
         } else if (recording.airtable_base_id) {
           setSettings(prev => ({
@@ -578,14 +590,17 @@ export const IntegrationSettingsModal = ({
             airtableBaseName: recording.airtable_base_name || "",
             airtableTableName: recording.airtable_table_name || "",
             airtableTableId: recording.airtable_table_id || "",
-            integrationType: recording.airtable_base_id ? "airtable" : "googleSheets"
+            integrationType: "airtable"
           }));
-        } else if (recording.webhooks && recording.webhooks.length > 0) {
-          setSettings(prev => ({
-            ...prev,
-            webhooks: recording.webhooks,
-            integrationType: "webhook"
-          }));
+        }
+
+        await fetchWebhooks();
+        
+        if (!preSelectedIntegrationType && !recording.google_sheet_id && !recording.airtable_base_id) {
+          const webhookResponse = await getWebhooks(recordingId);
+          if (webhookResponse.ok && webhookResponse.webhooks && webhookResponse.webhooks.length > 0) {
+            setSettings(prev => ({ ...prev, integrationType: "webhook" }));
+          }
         }
       }
 
@@ -617,8 +632,6 @@ export const IntegrationSettingsModal = ({
     switch (event) {
       case "run_completed":
         return "Run finished";
-      case "run_completed_success":
-        return "Run finished successfully";
       case "run_failed":
         return "Run failed";
       default:
@@ -680,7 +693,7 @@ export const IntegrationSettingsModal = ({
               }}
               style={{ display: "flex", flexDirection: "column", alignItems: "center", background: 'white', color: '#ff00c3' }}
             >
-              <img src="/public/svg/gsheet.svg" alt="Google Sheets" style={{ margin: "6px" }} />
+              <img src="/svg/gsheet.svg" alt="Google Sheets" style={{ margin: "6px" }} />
               Google Sheets
             </Button>
 
@@ -693,7 +706,7 @@ export const IntegrationSettingsModal = ({
               }}
               style={{ display: "flex", flexDirection: "column", alignItems: "center", background: 'white', color: '#ff00c3' }}
             >
-              <img src="/public/svg/airtable.svg" alt="Airtable" style={{ margin: "6px" }} />
+              <img src="/svg/airtable.svg" alt="Airtable" style={{ margin: "6px" }} />
               Airtable
             </Button>
 
@@ -706,7 +719,7 @@ export const IntegrationSettingsModal = ({
               }}
               style={{ display: "flex", flexDirection: "column", alignItems: "center", background: 'white', color: '#ff00c3' }}
             >
-              <img src="/public/svg/webhook.svg" alt="Webhook" style={{ margin: "6px" }} />
+              <img src="/svg/webhook.svg" alt="Webhook" style={{ margin: "6px" }} />
               Webhooks
             </Button>
           </div>
@@ -968,7 +981,7 @@ export const IntegrationSettingsModal = ({
                         <TableCell>
                           <Switch
                             checked={webhook.active}
-                            onChange={() => toggleWebhookStatus(webhook.id)}
+                            onChange={() => toggleWebhookStatusSetting(webhook.id)}
                             size="small"
                           />
                         </TableCell>
@@ -976,7 +989,7 @@ export const IntegrationSettingsModal = ({
                           <Box sx={{ display: "flex", gap: "8px" }}>
                             <IconButton
                               size="small"
-                              onClick={() => testWebhook(webhook)}
+                              onClick={() => testWebhookSetting(webhook)}
                               disabled={loading || !webhook.active}
                               title="Test"
                             >
@@ -984,7 +997,7 @@ export const IntegrationSettingsModal = ({
                             </IconButton>
                             <IconButton
                               size="small"
-                              onClick={() => editWebhook(webhook)}
+                              onClick={() => editWebhookSetting(webhook)}
                               disabled={loading}
                               title="Edit"
                             >
@@ -992,7 +1005,7 @@ export const IntegrationSettingsModal = ({
                             </IconButton>
                             <IconButton
                               size="small"
-                              onClick={() => removeWebhook(webhook.id)}
+                              onClick={() => removeWebhookSetting(webhook.id)}
                               disabled={loading}
                               title="Delete"
                             >
@@ -1033,7 +1046,6 @@ export const IntegrationSettingsModal = ({
                     sx={{ minWidth: "200px" }}
                   >
                     <MenuItem value="run_completed">Run finished</MenuItem>
-                    <MenuItem value="run_completed_success">Run finished successfully</MenuItem>
                     <MenuItem value="run_failed">Run failed</MenuItem>
                   </TextField>
                 </Box>
@@ -1057,7 +1069,7 @@ export const IntegrationSettingsModal = ({
                       if (!validateWebhookData(newWebhook.url, newWebhook.events)) {
                         return;
                       }
-                      addWebhook();
+                      addWebhookSetting();
                     }}
                     disabled={!newWebhook.url || !newWebhook.events || newWebhook.events.length === 0 || loading || !!urlError}
                   >
@@ -1112,7 +1124,6 @@ export const IntegrationSettingsModal = ({
                     required
                   >
                     <MenuItem value="run_completed">Run finished</MenuItem>
-                    <MenuItem value="run_completed_success">Run finished successfully</MenuItem>
                     <MenuItem value="run_failed">Run failed</MenuItem>
                   </TextField>
                   
@@ -1132,7 +1143,7 @@ export const IntegrationSettingsModal = ({
                   <Button
                     variant="contained"
                     color="primary"
-                    onClick={editingWebhook ? updateWebhook : addWebhook}
+                    onClick={editingWebhook ? updateWebhookSetting : addWebhookSetting}
                     disabled={!newWebhook.url || !newWebhook.events || newWebhook.events.length === 0 || loading || !!urlError}
                   >
                     {loading ? (
