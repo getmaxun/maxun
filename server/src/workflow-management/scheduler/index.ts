@@ -255,17 +255,20 @@ async function executeRun(id: string, userId: string) {
         finishedAt: new Date().toLocaleString(),
       });
 
+      const recording = await Robot.findOne({ where: { 'recording_meta.id': run.robotMetaId }, raw: true });
+
       // Trigger webhooks for run failure
       const failedWebhookPayload = {
         robot_id: run.robotMetaId,
         run_id: run.runId,
-        robot_name: 'Unknown Robot',
+        robot_name: recording ? recording.recording_meta.name : 'Unknown Robot',
         status: 'failed',
         started_at: run.startedAt,
         finished_at: new Date().toLocaleString(),
         error: {
-          message: "Failed: Recording not found",
-          type: 'RecodingNotFoundError'
+          message: error.message,
+          stack: error.stack,
+          type: error.name || 'ExecutionError'
         },
         metadata: {
           browser_id: run.browserId,
