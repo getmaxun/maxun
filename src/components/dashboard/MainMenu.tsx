@@ -109,9 +109,9 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
         </Tabs>
         <hr />
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: '1rem', textAlign: 'left' }}>
-          <Button href={`${apiUrl}/api-docs/`} target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<Code />}>
+          {/* <Button href={`${apiUrl}/api-docs/`} target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<Code />}>
             {t('mainmenu.apidocs')}
-          </Button>
+          </Button> */}
           <Button href="https://app.maxun.dev/login" target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<CloudQueue />}>
             {t('mainmenu.feedback')}
           </Button>
