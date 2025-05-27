@@ -19,6 +19,7 @@ import { Page } from "playwright";
 import { WorkflowFile } from "maxun-core";
 import { googleSheetUpdateTasks, processGoogleSheetUpdates } from "../workflow-management/integrations/gsheet";
 import { airtableUpdateTasks, processAirtableUpdates } from "../workflow-management/integrations/airtable";
+import { sendWebhook } from "../routes/webhook";
 chromium.use(stealthPlugin());
 
 const formatRecording = (recordingData: any) => {
@@ -667,6 +668,35 @@ async function executeRun(id: string, userId: string) {
             }
         )
 
+        // Trigger webhooks for run completion
+        const webhookPayload = {
+            robot_id: plainRun.robotMetaId,
+            run_id: plainRun.runId,
+            robot_name: recording.recording_meta.name,
+            status: 'success',
+            started_at: plainRun.startedAt,
+            finished_at: new Date().toLocaleString(),
+            extracted_data: {
+                captured_texts: categorizedOutput.scrapeSchema["schema_merged"] || [],
+                captured_lists: categorizedOutput.scrapeList,
+                total_rows: totalRowsExtracted,
+                captured_texts_count: totalSchemaItemsExtracted,
+                captured_lists_count: totalListItemsExtracted,
+                screenshots_count: extractedScreenshotsCount
+            },
+            metadata: {
+                browser_id: plainRun.browserId,
+                user_id: userId,
+            }
+        };
+
+        try {
+            await sendWebhook(plainRun.robotMetaId, 'run_completed', webhookPayload);
+            logger.log('info', `Webhooks sent successfully for completed run ${plainRun.runId}`);
+        } catch (webhookError: any) {
+            logger.log('error', `Failed to send webhooks for run ${plainRun.runId}: ${webhookError.message}`);
+        }
+
         try {
             googleSheetUpdateTasks[id] = {
                 robotId: plainRun.robotMetaId,
@@ -701,6 +731,34 @@ async function executeRun(id: string, userId: string) {
                 status: 'failed',
                 finishedAt: new Date().toLocaleString(),
             });
+
+            const recording = await Robot.findOne({ where: { 'recording_meta.id': run.robotMetaId }, raw: true });
+
+            // Trigger webhooks for run failure
+            const failedWebhookPayload = {
+                robot_id: run.robotMetaId,
+                run_id: run.runId,
+                robot_name: recording ? recording.recording_meta.name : 'Unknown Robot',
+                status: 'failed',
+                started_at: run.startedAt,
+                finished_at: new Date().toLocaleString(),
+                error: {
+                    message: error.message,
+                    stack: error.stack,
+                    type: error.name || 'ExecutionError'
+                },
+                metadata: {
+                    browser_id: run.browserId,
+                    user_id: userId,
+                }
+            };
+
+            try {
+                await sendWebhook(run.robotMetaId, 'run_failed', failedWebhookPayload);
+                logger.log('info', `Failure webhooks sent successfully for run ${run.runId}`);
+            } catch (webhookError: any) {
+                logger.log('error', `Failed to send failure webhooks for run ${run.runId}: ${webhookError.message}`);
+            }
         }
         capture(
            'maxun-oss-run-created-api',
