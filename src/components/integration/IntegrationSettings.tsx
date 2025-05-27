@@ -8,7 +8,23 @@ import {
   AlertTitle,
   Button,
   TextField,
+  IconButton,
+  Box,
+  Chip,
+  Card,
+  CardContent,
+  CardActions,
+  Switch,
+  FormControlLabel,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
 } from "@mui/material";
+import { Add as AddIcon, Delete as DeleteIcon, Edit as EditIcon, Science as ScienceIcon } from "@mui/icons-material";
 import axios from "axios";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { getStoredRecording } from "../../api/storage";
@@ -28,11 +44,10 @@ interface IntegrationProps {
 
 export interface WebhookConfig {
   id: string;
-  name: string;
   url: string;
-  headers: { [key: string]: string };
   events: string[];
   active: boolean;
+  lastCalledAt?: string | null;
 }
 
 export interface IntegrationSettings {
@@ -85,17 +100,15 @@ export const IntegrationSettingsModal = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Webhook-specific state
+  const [showWebhookForm, setShowWebhookForm] = useState(false);
+  const [editingWebhook, setEditingWebhook] = useState<string | null>(null);
   const [newWebhook, setNewWebhook] = useState<WebhookConfig>({
     id: "",
-    name: "",
     url: "",
-    headers: {},
-    events: ["scrape_completed"],
+    events: ["run_completed"],
     active: true,
   });
-  const [newHeaderKey, setNewHeaderKey] = useState("");
-  const [newHeaderValue, setNewHeaderValue] = useState("");
+  const [urlError, setUrlError] = useState<string | null>(null);
 
   const {
     recordingId,
@@ -117,6 +130,207 @@ export const IntegrationSettingsModal = ({
   // Authenticate with Airtable
   const authenticateWithAirtable = () => {
     window.location.href = `${apiUrl}/auth/airtable?robotId=${recordingId}`;
+  };
+
+  const validateWebhookData = (url: string, events: string[], excludeId?: string) => {
+    if (!url) {
+      setUrlError("Please provide webhook URL");
+      return false;
+    }
+
+    const existingWebhook = settings.webhooks?.find(
+      (webhook) => webhook.url === url && webhook.id !== excludeId
+    );
+
+    if (existingWebhook) {
+      setUrlError("This webhook URL is already in use");
+      return false;
+    }
+
+    if (!events || events.length === 0) {
+      setUrlError("Please select at least one event");
+      return false;
+    }
+
+    setUrlError(null);
+    return true;
+  };
+
+  const addWebhook = async () => {
+    if (!validateWebhookData(newWebhook.url, newWebhook.events)) {
+      if (!newWebhook.url) {
+        notify("error", "Please provide webhook URL");
+      } else if (!newWebhook.events || newWebhook.events.length === 0) {
+        notify("error", "Please select at least one event");
+      }
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const webhookWithId = {
+        ...newWebhook,
+        id: Date.now().toString(),
+      };
+
+      const response = await axios.post(
+        `${apiUrl}/webhook/add`,
+        {
+          webhook: webhookWithId,
+          robotId: recordingId,
+        },
+        { withCredentials: true }
+      );
+
+      const updatedWebhooks = [...(settings.webhooks || []), webhookWithId];
+      setSettings({ ...settings, webhooks: updatedWebhooks });
+
+      resetWebhookForm();
+      await refreshRecordingData();
+      notify("success", "Webhook added successfully");
+      setLoading(false);
+    } catch (error: any) {
+      setLoading(false);
+      console.log("Error adding webhook:", error);
+      notify("error", `Error adding webhook: ${error.response?.data?.message || error.message}`);
+    }
+  };
+
+  const updateWebhook = async () => {
+    if (!editingWebhook) return;
+
+    if (!validateWebhookData(newWebhook.url, newWebhook.events, editingWebhook)) {
+      if (!newWebhook.url) {
+        notify("error", "Please provide webhook URL");
+      } else if (!newWebhook.events || newWebhook.events.length === 0) {
+        notify("error", "Please select at least one event");
+      }
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await axios.post(
+        `${apiUrl}/webhook/update`,
+        {
+          webhook: newWebhook,
+          robotId: recordingId,
+        },
+        { withCredentials: true }
+      );
+
+      const updatedWebhooks = (settings.webhooks || []).map(w => 
+        w.id === editingWebhook ? newWebhook : w
+      );
+      setSettings({ ...settings, webhooks: updatedWebhooks });
+
+      resetWebhookForm();
+      await refreshRecordingData();
+      notify("success", "Webhook updated successfully");
+      setLoading(false);
+    } catch (error: any) {
+      setLoading(false);
+      console.error("Error updating webhook:", error);
+      notify("error", `Error updating webhook: ${error.response?.data?.message || error.message}`);
+    }
+  };
+
+  const removeWebhook = async (webhookId: string) => {
+    try {
+      setLoading(true);
+      await axios.post(
+        `${apiUrl}/webhook/remove`,
+        {
+          webhookId,
+          robotId: recordingId,
+        },
+        { withCredentials: true }
+      );
+
+      const updatedWebhooks = (settings.webhooks || []).filter(w => w.id !== webhookId);
+      setSettings({ ...settings, webhooks: updatedWebhooks });
+
+      await refreshRecordingData();
+      notify("success", "Webhook removed successfully");
+      setLoading(false);
+    } catch (error: any) {
+      setLoading(false);
+      console.error("Error removing webhook:", error);
+      notify("error", `Error removing webhook: ${error.response?.data?.message || error.message}`);
+    }
+  };
+
+  const toggleWebhookStatus = async (webhookId: string) => {
+    try {
+      const webhook = settings.webhooks?.find(w => w.id === webhookId);
+      if (!webhook) return;
+
+      const updatedWebhook = { ...webhook, active: !webhook.active };
+      
+      await axios.post(
+        `${apiUrl}/webhook/update`,
+        {
+          webhook: updatedWebhook,
+          robotId: recordingId,
+        },
+        { withCredentials: true }
+      );
+
+      const updatedWebhooks = (settings.webhooks || []).map(w => 
+        w.id === webhookId ? updatedWebhook : w
+      );
+      setSettings({ ...settings, webhooks: updatedWebhooks });
+
+      await refreshRecordingData();
+      notify("success", `Webhook ${updatedWebhook.active ? "enabled" : "disabled"}`);
+    } catch (error: any) {
+      console.error("Error toggling webhook status:", error);
+      notify("error", `Error updating webhook: ${error.response?.data?.message || error.message}`);
+    }
+  };
+
+  const testWebhook = async (webhook: WebhookConfig) => {
+    try {
+      setLoading(true);
+      await axios.post(
+        `${apiUrl}/webhook/test`,
+        {
+          webhook,
+          robotId: recordingId,
+        },
+        { withCredentials: true }
+      );
+
+      const updatedWebhooks = (settings.webhooks || []).map(w => 
+        w.id === webhook.id ? { ...w, lastCalledAt: new Date().toISOString() } : w
+      );
+      setSettings({ ...settings, webhooks: updatedWebhooks });
+
+      notify("success", "Test webhook sent successfully");
+      setLoading(false);
+    } catch (error: any) {
+      setLoading(false);
+      console.error("Error testing webhook:", error);
+      notify("error", `Error testing webhook: ${error.response?.data?.message || error.message}`);
+    }
+  };
+
+  const editWebhook = (webhook: WebhookConfig) => {
+    setNewWebhook(webhook);
+    setEditingWebhook(webhook.id);
+    setShowWebhookForm(true);
+  };
+
+  const resetWebhookForm = () => {
+    setNewWebhook({
+      id: "",
+      url: "",
+      events: ["run_completed"],
+      active: true,
+    });
+    setShowWebhookForm(false);
+    setEditingWebhook(null);
+    setUrlError(null); 
   };
 
   // Fetch Google Sheets files
@@ -366,6 +580,12 @@ export const IntegrationSettingsModal = ({
             airtableTableId: recording.airtable_table_id || "",
             integrationType: recording.airtable_base_id ? "airtable" : "googleSheets"
           }));
+        } else if (recording.webhooks && recording.webhooks.length > 0) {
+          setSettings(prev => ({
+            ...prev,
+            webhooks: recording.webhooks,
+            integrationType: "webhook"
+          }));
         }
       }
 
@@ -393,7 +613,50 @@ export const IntegrationSettingsModal = ({
     }
   }, []);
 
-  // Add this UI at the top of the modal return statement
+  const formatEventName = (event: string) => {
+    switch (event) {
+      case "run_completed":
+        return "Run finished";
+      case "run_completed_success":
+        return "Run finished successfully";
+      case "run_failed":
+        return "Run failed";
+      default:
+        return event;
+    }
+  };
+
+  const formatLastCalled = (lastCalledAt?: string | null) => {
+    if (!lastCalledAt) {
+      return "Not called yet";
+    }
+
+    const date = new Date(lastCalledAt);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+
+    if (diffMinutes < 1) {
+      return "Just now";
+    } else if (diffMinutes < 60) {
+      return `${diffMinutes} minute${diffMinutes === 1 ? '' : 's'} ago`;
+    } else if (diffHours < 24) {
+      return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+    } else if (diffDays < 7) {
+      return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+    } else {
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+  };
+
   if (!selectedIntegrationType) {
     return (
       <GenericModal
@@ -459,6 +722,7 @@ export const IntegrationSettingsModal = ({
         flexDirection: "column",
         alignItems: "flex-start",
         marginLeft: "65px",
+        maxWidth: "1000px",
       }}>
 
         {settings.integrationType === "googleSheets" && (
@@ -676,6 +940,219 @@ export const IntegrationSettingsModal = ({
             )}
           </>
         )}
+
+        {settings.integrationType === "webhook" && (
+          <>
+            <Typography variant="h6" sx={{ marginBottom: "20px" }}>
+              Integrate using Webhooks
+            </Typography>
+
+            {settings.webhooks && settings.webhooks.length > 0 && (
+              <TableContainer component={Paper} sx={{ marginBottom: "30px", width: "100%" }}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell><strong>Webhook URL</strong></TableCell>
+                      <TableCell><strong>Call when</strong></TableCell>
+                      <TableCell><strong>Last called</strong></TableCell>
+                      <TableCell><strong>Status</strong></TableCell>
+                      <TableCell><strong>Actions</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {settings.webhooks.map((webhook) => (
+                      <TableRow key={webhook.id}>
+                        <TableCell>{webhook.url}</TableCell>
+                        <TableCell>{formatEventName(webhook.events[0])}</TableCell>
+                        <TableCell>{formatLastCalled(webhook.lastCalledAt)}</TableCell>
+                        <TableCell>
+                          <Switch
+                            checked={webhook.active}
+                            onChange={() => toggleWebhookStatus(webhook.id)}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Box sx={{ display: "flex", gap: "8px" }}>
+                            <IconButton
+                              size="small"
+                              onClick={() => testWebhook(webhook)}
+                              disabled={loading || !webhook.active}
+                              title="Test"
+                            >
+                              <ScienceIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              onClick={() => editWebhook(webhook)}
+                              disabled={loading}
+                              title="Edit"
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              onClick={() => removeWebhook(webhook.id)}
+                              disabled={loading}
+                              title="Delete"
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+
+            {!showWebhookForm && (
+              <Box sx={{ marginBottom: "20px", width: "100%" }}>
+                <Box sx={{ display: "flex", gap: "15px", alignItems: "center", marginBottom: "15px" }}>
+                  <TextField
+                    label="Webhook URL"
+                    placeholder="https://your-api.com/webhook/endpoint"
+                    sx={{ flex: 1 }}
+                    value={newWebhook.url}
+                    onChange={(e) => {
+                      setNewWebhook({ ...newWebhook, url: e.target.value });
+                      if (urlError) setUrlError(null);
+                    }}
+                    error={!!urlError}
+                    helperText={urlError}
+                  />
+                  <TextField
+                    select
+                    label="When"
+                    value={newWebhook.events[0] || "run_completed"}
+                    onChange={(e) => setNewWebhook({ 
+                      ...newWebhook, 
+                      events: [e.target.value]
+                    })}
+                    sx={{ minWidth: "200px" }}
+                  >
+                    <MenuItem value="run_completed">Run finished</MenuItem>
+                    <MenuItem value="run_completed_success">Run finished successfully</MenuItem>
+                    <MenuItem value="run_failed">Run failed</MenuItem>
+                  </TextField>
+                </Box>
+                
+                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                  <Typography variant="body2" color="textSecondary" sx={{ marginTop: "10px" }}>
+                    Refer to the <a href="https://docs.maxun.dev/" style={{ color: '#ff00c3', textDecoration: 'none' }}>API documentation</a> for examples and details.
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={() => {
+                      if (!newWebhook.url) {
+                        setUrlError("Please provide webhook URL");
+                        return;
+                      }
+                      if (!newWebhook.events || newWebhook.events.length === 0) {
+                        setUrlError("Please select at least one event");
+                        return;
+                      }
+                      if (!validateWebhookData(newWebhook.url, newWebhook.events)) {
+                        return;
+                      }
+                      addWebhook();
+                    }}
+                    disabled={!newWebhook.url || !newWebhook.events || newWebhook.events.length === 0 || loading || !!urlError}
+                  >
+                    Add New Webhook
+                  </Button>
+                </Box>
+              </Box>
+            )}
+
+            {showWebhookForm && (
+              <Card sx={{ width: "100%", marginBottom: "20px" }}>
+                <CardContent>
+                  <Typography variant="h6" sx={{ marginBottom: "20px" }}>
+                    {editingWebhook ? "Edit Webhook" : "Add New Webhook"}
+                  </Typography>
+                  
+                  <TextField
+                    fullWidth
+                    label="Webhook URL"
+                    value={newWebhook.url}
+                    onChange={(e) => {
+                      setNewWebhook({ ...newWebhook, url: e.target.value });
+                      if (urlError) setUrlError(null);
+                    }}
+                    sx={{ marginBottom: "15px" }}
+                    placeholder="https://your-api.com/webhook/endpoint"
+                    required
+                    error={!!urlError}
+                    helperText={urlError}
+                  />
+
+                  <TextField
+                    fullWidth
+                    select
+                    label="Call when"
+                    value={newWebhook.events}
+                    onChange={(e) => setNewWebhook({ 
+                      ...newWebhook, 
+                      events: typeof e.target.value === 'string' ? [e.target.value] : e.target.value 
+                    })}
+                    SelectProps={{
+                      multiple: true,
+                      renderValue: (selected) => (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {(selected as string[]).map((value) => (
+                            <Chip key={value} label={formatEventName(value)} size="small" />
+                          ))}
+                        </Box>
+                      ),
+                    }}
+                    sx={{ marginBottom: "20px" }}
+                    required
+                  >
+                    <MenuItem value="run_completed">Run finished</MenuItem>
+                    <MenuItem value="run_completed_success">Run finished successfully</MenuItem>
+                    <MenuItem value="run_failed">Run failed</MenuItem>
+                  </TextField>
+                  
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={newWebhook.active}
+                        onChange={(e) => setNewWebhook({ ...newWebhook, active: e.target.checked })}
+                      />
+                    }
+                    label="Active"
+                    sx={{ marginBottom: "10px" }}
+                  />
+                </CardContent>
+                
+                <CardActions>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={editingWebhook ? updateWebhook : addWebhook}
+                    disabled={!newWebhook.url || !newWebhook.events || newWebhook.events.length === 0 || loading || !!urlError}
+                  >
+                    {loading ? (
+                      <CircularProgress size={24} />
+                    ) : (
+                      editingWebhook ? "Update Webhook" : "Add Webhook"
+                    )}
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    onClick={resetWebhookForm}
+                    disabled={loading}
+                  >
+                    Cancel
+                  </Button>
+                </CardActions>
+              </Card>
+            )}
+          </>
+        )}
       </div>
     </GenericModal>
   );
@@ -685,10 +1162,12 @@ export const modalStyle = {
   top: "40%",
   left: "50%",
   transform: "translate(-50%, -50%)",
-  width: "50%",
+  width: "60%",
   backgroundColor: "background.paper",
   p: 4,
   height: "fit-content",
   display: "block",
   padding: "20px",
+  maxHeight: "90vh",
+  overflow: "auto",
 };
