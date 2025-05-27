@@ -23,7 +23,16 @@ interface IntegrationProps {
   isOpen: boolean;
   handleStart: (data: IntegrationSettings) => void;
   handleClose: () => void;
-  preSelectedIntegrationType?: "googleSheets" | "airtable" | null;
+  preSelectedIntegrationType?: "googleSheets" | "airtable" | "webhook" | null;
+}
+
+export interface WebhookConfig {
+  id: string;
+  name: string;
+  url: string;
+  headers: { [key: string]: string };
+  events: string[];
+  active: boolean;
 }
 
 export interface IntegrationSettings {
@@ -33,8 +42,9 @@ export interface IntegrationSettings {
   airtableBaseName?: string;
   airtableTableName?: string,
   airtableTableId?: string,
+  webhooks?: WebhookConfig[];
   data: string;
-  integrationType: "googleSheets" | "airtable";
+  integrationType: "googleSheets" | "airtable" | "webhook";
 }
 
 const getCookie = (name: string): string | null => {
@@ -64,6 +74,7 @@ export const IntegrationSettingsModal = ({
     airtableBaseName: "",
     airtableTableName: "",
     airtableTableId: "",
+    webhooks: [],
     data: "",
     integrationType: preSelectedIntegrationType || "googleSheets",
   });
@@ -73,6 +84,18 @@ export const IntegrationSettingsModal = ({
   const [airtableTables, setAirtableTables] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Webhook-specific state
+  const [newWebhook, setNewWebhook] = useState<WebhookConfig>({
+    id: "",
+    name: "",
+    url: "",
+    headers: {},
+    events: ["scrape_completed"],
+    active: true,
+  });
+  const [newHeaderKey, setNewHeaderKey] = useState("");
+  const [newHeaderValue, setNewHeaderValue] = useState("");
 
   const {
     recordingId,
@@ -84,7 +107,7 @@ export const IntegrationSettingsModal = ({
   const navigate = useNavigate();
 
   const [selectedIntegrationType, setSelectedIntegrationType] = useState<
-    "googleSheets" | "airtable" | null
+    "googleSheets" | "airtable" | "webhook" | null
   >(preSelectedIntegrationType);
 
   const authenticateWithGoogle = () => {
@@ -409,6 +432,19 @@ export const IntegrationSettingsModal = ({
             >
               <img src="/public/svg/airtable.svg" alt="Airtable" style={{ margin: "6px" }} />
               Airtable
+            </Button>
+
+            <Button
+              variant="outlined"
+              onClick={() => {
+                setSelectedIntegrationType("webhook");
+                setSettings({ ...settings, integrationType: "webhook" });
+                navigate(`/robots/${recordingId}/integrate/webhook`);
+              }}
+              style={{ display: "flex", flexDirection: "column", alignItems: "center", background: 'white', color: '#ff00c3' }}
+            >
+              <img src="/public/svg/webhook.svg" alt="Webhook" style={{ margin: "6px" }} />
+              Webhooks
             </Button>
           </div>
         </div>
