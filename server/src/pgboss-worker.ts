@@ -213,7 +213,6 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
           status: 'failed',
           started_at: plainRun.startedAt,
           finished_at: new Date().toLocaleString(),
-          execution_time_ms: new Date().getTime() - new Date(plainRun.startedAt).getTime(),
           error: {
             message: "Failed: Recording not found",
             type: 'RecodingNotFoundError'
@@ -457,7 +456,6 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
           status: 'failed',
           started_at: plainRun.startedAt,
           finished_at: new Date().toLocaleString(),
-          execution_time_ms: new Date().getTime() - new Date(plainRun.startedAt).getTime(),
           error: {
             message: executionError.message,
             stack: executionError.stack,
