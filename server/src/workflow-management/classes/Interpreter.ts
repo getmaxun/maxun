@@ -372,22 +372,22 @@ export class WorkflowInterpreter {
       log: this.debugMessages,
       result: status,
       scrapeSchemaOutput: Object.keys(mergedScrapeSchema).length > 0 
-      ? { "schema-merged": [mergedScrapeSchema] }
+      ? { "schema_merged": [mergedScrapeSchema] }
       : this.serializableDataByType.scrapeSchema.reduce((reducedObject, item, index) => {
           return {
-            [`schema-${index}`]: item,
+            [`schema_${index}`]: item,
             ...reducedObject,
           }
         }, {}),
       scrapeListOutput: this.serializableDataByType.scrapeList.reduce((reducedObject, item, index) => {
         return {
-          [`list-${index}`]: item,
+          [`list_${index}`]: item,
           ...reducedObject,
         }
       }, {}),
       binaryOutput: this.binaryData.reduce((reducedObject, item, index) => {
         return {
-          [`item-${index}`]: item,
+          [`item_${index}`]: item,
           ...reducedObject,
         }
       }, {})
