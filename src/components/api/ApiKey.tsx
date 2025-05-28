@@ -113,7 +113,7 @@ const ApiKeyManager = () => {
         <a href={`${apiUrl}/api-docs/`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', marginLeft: '5px', marginRight: '5px' }}>
           test your API
         </a>
-        or read the <a href={`${apiUrl}/api-docs/`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+        or read the <a href="https://docs.maxun.dev/category/api-docs" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
           API documentation
         </a> for setup instructions.
       </Typography>
