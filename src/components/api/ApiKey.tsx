@@ -111,10 +111,10 @@ const ApiKeyManager = () => {
       <Typography variant="body2" sx={{ marginTop: '10px' }}>
         Start by creating an API key below. Then,
         <a href={`${apiUrl}/api-docs/`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', marginLeft: '5px' }}>
-         test your API
+          test your API
         </a>
         or read the <a href={`${apiUrl}/api-docs/`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', marginLeft: '5px' }}>
-         API documentation
+          API documentation
         </a> for setup instructions.
       </Typography>
       <Typography variant="h6" gutterBottom component="div" style={{ marginBottom: '20px' }}>
