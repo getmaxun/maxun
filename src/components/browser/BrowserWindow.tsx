@@ -85,7 +85,7 @@ export const BrowserWindow = () => {
     const [paginationSelector, setPaginationSelector] = useState<string>('');
 
     const { socket } = useSocketStore();
-    const { notify } = useGlobalInfoStore();
+    const { notify, currentTextActionId, currentListActionId } = useGlobalInfoStore();
     const { getText, getList, paginationMode, paginationType, limitMode, captureStage } = useActionContext();
     const { addTextStep, addListStep, updateListStepData } = useBrowserSteps();
   
@@ -326,8 +326,8 @@ export const BrowserWindow = () => {
                             selector: highlighterData.selector,
                             tag: highlighterData.elementInfo?.tagName,
                             shadow: highlighterData.elementInfo?.isShadowRoot,
-                            attribute
-                        });
+                            attribute,
+                        }, currentTextActionId || `text-${crypto.randomUUID()}`);
                     } else {
                         // Show the modal if there are multiple options
                         setAttributeOptions(options);
@@ -344,7 +344,7 @@ export const BrowserWindow = () => {
                     if (paginationType !== '' && paginationType !== 'scrollDown' && paginationType !== 'scrollUp' && paginationType !== 'none') {
                         setPaginationSelector(highlighterData.selector);
                         notify(`info`, t('browser_window.attribute_modal.notifications.pagination_select_success'));
-                        addListStep(listSelector!, fields, currentListId || 0, { type: paginationType, selector: highlighterData.selector });
+                        addListStep(listSelector!, fields, currentListId || 0, currentListActionId || `list-${crypto.randomUUID()}`, { type: paginationType, selector: highlighterData.selector });
                         socket?.emit('setPaginationMode', { pagination: false });
                     }
                     return;
@@ -412,6 +412,7 @@ export const BrowserWindow = () => {
                                 listSelector, 
                                 updatedFields, 
                                 currentListId, 
+                                currentListActionId || `list-${crypto.randomUUID()}`,
                                 { type: '', selector: paginationSelector }
                             );
                         }
@@ -449,7 +450,7 @@ export const BrowserWindow = () => {
                         tag: selectedElement.info?.tagName,
                         shadow: selectedElement.info?.isShadowRoot,
                         attribute: attribute
-                    });
+                    }, currentTextActionId || `text-${crypto.randomUUID()}`);
                 }
                 if (getList === true && listSelector && currentListId) {
                     const newField: TextStep = {
@@ -484,6 +485,7 @@ export const BrowserWindow = () => {
                             listSelector, 
                             updatedFields, 
                             currentListId, 
+                            currentListActionId || `list-${crypto.randomUUID()}`,
                             { type: '', selector: paginationSelector }
                         );
                     }
