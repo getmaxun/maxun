@@ -1046,6 +1046,8 @@ export const IntegrationSettingsModal = ({
                     }}
                     error={!!urlError}
                     helperText={urlError}
+                    required
+                    aria-describedby="webhook-url-help"
                   />
                   <TextField
                     select
@@ -1056,6 +1058,7 @@ export const IntegrationSettingsModal = ({
                       events: [e.target.value]
                     })}
                     sx={{ minWidth: "200px" }}
+                    required
                   >
                     <MenuItem value="run_completed">Run finished</MenuItem>
                     <MenuItem value="run_failed">Run failed</MenuItem>
