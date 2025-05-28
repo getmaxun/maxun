@@ -133,6 +133,13 @@ export const IntegrationSettingsModal = ({
       return false;
     }
 
+    try {
+      new URL(url);
+    } catch {
+      setUrlError("Please provide a valid URL");
+      return false;
+    }
+
     const existingWebhook = settings.webhooks?.find(
       (webhook) => webhook.url === url && webhook.id !== excludeId
     );
