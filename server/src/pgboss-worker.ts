@@ -365,7 +365,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
         started_at: plainRun.startedAt,
         finished_at: new Date().toLocaleString(),
         extracted_data: {
-          captured_texts: categorizedOutput.scrapeSchema["schema_merged"] || [],
+          captured_texts: Object.values(categorizedOutput.scrapeSchema).flat() || [],
           captured_lists: categorizedOutput.scrapeList,
           total_rows: totalRowsExtracted,
           captured_texts_count: totalSchemaItemsExtracted,
