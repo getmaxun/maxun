@@ -159,11 +159,11 @@ const ApiKeyManager = () => {
         </>
       )}
       <Typography variant="body2" sx={{ marginTop: '20px' }}>
-         View and test your API endpoints
-      <a href={`${apiUrl}/api-docs/`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', marginLeft: '5px' }}>
-      here
-      </a> 
-    </Typography>
+        View and test your API endpoints
+        <a href={`${apiUrl}/api-docs/`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', marginLeft: '5px' }}>
+          here
+        </a>
+      </Typography>
     </Container>
   );
 };
