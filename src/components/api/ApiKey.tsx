@@ -158,9 +158,12 @@ const ApiKeyManager = () => {
           </Button>
         </>
       )}
+      <Typography variant="body2" sx={{ marginTop: '20px' }}>
+         View and test your API endpoints:
       <a href={`${apiUrl}/api-docs/`} target="_blank" rel="noopener noreferrer">
-        {t('mainmenu.apidocs')}
+      here
       </a> 
+    </Typography>
     </Container>
   );
 };
