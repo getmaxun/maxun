@@ -158,6 +158,9 @@ const ApiKeyManager = () => {
           </Button>
         </>
       )}
+      <a href={`${apiUrl}/api-docs/`} target="_blank" rel="noopener noreferrer">
+        {t('mainmenu.apidocs')}
+      </a> 
     </Container>
   );
 };
