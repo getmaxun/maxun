@@ -1079,20 +1079,7 @@ export const IntegrationSettingsModal = ({
                   <Button
                     variant="contained"
                     startIcon={<AddIcon />}
-                    onClick={() => {
-                      if (!newWebhook.url) {
-                        setUrlError("Please provide webhook URL");
-                        return;
-                      }
-                      if (!newWebhook.events || newWebhook.events.length === 0) {
-                        setUrlError("Please select at least one event");
-                        return;
-                      }
-                      if (!validateWebhookData(newWebhook.url, newWebhook.events)) {
-                        return;
-                      }
-                      addWebhookSetting();
-                    }}
+                    onClick={addWebhookSetting}
                     disabled={!newWebhook.url || !newWebhook.events || newWebhook.events.length === 0 || loading || !!urlError}
                   >
                     Add New Webhook
