@@ -117,7 +117,12 @@ const ApiKeyManager = () => {
           API documentation
         </a> for setup instructions.
       </Typography>
-      <Typography variant="h6" gutterBottom component="div" style={{ marginBottom: '20px' }}>
+      <Typography
+        variant="h6"
+        gutterBottom
+        component="div"
+        style={{ marginBottom: '20px', textAlign: 'left', width: '100%' }}
+      >
         {t('apikey.title')}
       </Typography>
       {apiKey ? (
