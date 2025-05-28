@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import Robot from '../models/Robot';
 import { requireSignIn } from '../middlewares/auth';
 import axios from 'axios';
-import { uuid } from "uuidv4";
+import { v4 as uuid } from "uuid";
 
 export const router = Router();
 

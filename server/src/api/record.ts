@@ -7,7 +7,7 @@ import Robot from "../models/Robot";
 import Run from "../models/Run";
 const router = Router();
 import { getDecryptedProxyConfig } from "../routes/proxy";
-import { uuid } from "uuidv4";
+import { v4 as uuid } from "uuid";
 import { createRemoteBrowserForRun, destroyRemoteBrowser } from "../browser-management/controller";
 import logger from "../logger";
 import { browserPool } from "../server";

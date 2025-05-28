@@ -3,7 +3,7 @@
  * Holds the singleton instances of browser pool and socket.io server.
  */
 import { Socket } from "socket.io";
-import { uuid } from 'uuidv4';
+import { v4 as uuid } from "uuid";
 
 import { createSocketConnection, createSocketConnectionForRun } from "../socket-connection/connection";
 import { io, browserPool } from "../server";

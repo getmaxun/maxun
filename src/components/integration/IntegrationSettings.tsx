@@ -29,7 +29,7 @@ import axios from "axios";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { getStoredRecording } from "../../api/storage";
 import { apiUrl } from "../../apiConfig.js";
-import { uuid } from "uuidv4";
+import { v4 as uuid } from "uuid";
 
 import Cookies from "js-cookie";
 
