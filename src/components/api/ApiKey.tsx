@@ -111,7 +111,7 @@ const ApiKeyManager = () => {
       <Typography variant="h6" gutterBottom component="div" style={{ marginBottom: '20px' }}>
         {t('apikey.title')}
       </Typography>
-            <Typography variant="body2" sx={{ marginTop: '20px' }}>
+      <Typography variant="body2" sx={{ marginTop: '20px' }}>
         View and test your API endpoints
         <a href={`${apiUrl}/api-docs/`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', marginLeft: '5px' }}>
           here
