@@ -977,7 +977,18 @@ export const IntegrationSettingsModal = ({
                     {settings.webhooks.map((webhook) => (
                       <TableRow key={webhook.id}>
                         <TableCell>{webhook.url}</TableCell>
-                        <TableCell>{formatEventName(webhook.events[0])}</TableCell>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                            {webhook.events.map((event) => (
+                              <Chip 
+                                key={event} 
+                                label={formatEventName(event)} 
+                                size="small"
+                                variant="outlined"
+                              />
+                            ))}
+                          </Box>
+                        </TableCell>
                         <TableCell>{formatLastCalled(webhook.lastCalledAt)}</TableCell>
                         <TableCell>
                           <Switch
