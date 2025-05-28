@@ -108,7 +108,7 @@ const ApiKeyManager = () => {
 
   return (
     <Container sx={{ alignSelf: 'flex-start' }}>
-      <Typography variant="body1" sx={{ marginTop: '10px', marginBottom: '20px' }}>
+      <Typography variant="body1" sx={{ marginTop: '10px', marginBottom: '40px' }}>
         Start by creating an API key below. Then,
         <a href={`${apiUrl}/api-docs/`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', marginLeft: '5px', marginRight: '5px' }}>
           test your API
