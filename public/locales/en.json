@@ -113,7 +113,7 @@
       "coming_soon": "Coming Soon - In Open Source (Basic Rotation) & Cloud (Advanced Rotation). If you don't want to manage the infrastructure, join our cloud waitlist to get early access.",
       "join_waitlist": "Join Maxun Cloud Waitlist",
       "alert": {
-        "title": "If your proxy requires a username and password, always provide them separately from the proxy URL.",
+        "title": "If your proxy requires a username and password, always provide them separate from the proxy URL.",
         "right_way": "The right way",
         "wrong_way": "The wrong way",
         "proxy_url": "Proxy URL:",
@@ -170,7 +170,7 @@
       },
       "default": {
         "title": "What data do you want to extract?",
-        "description": "A robot is designed to perform one action at a time. You can choose any of the options below."
+        "description": "A robot can perform one or multiple actions. Choose from the options listed below."
       },
       "list_stages": {
         "initial": "Select the list you want to extract along with the texts inside it",

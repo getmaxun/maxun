@@ -163,7 +163,7 @@
         },
         "default": {
             "title": "Welche Daten möchten Sie extrahieren?",
-            "description": "Ein Roboter ist darauf ausgelegt, eine Aktion nach der anderen auszuführen. Sie können eine der folgenden Optionen wählen."
+            "description": "Ein Roboter kann eine oder mehrere Aktionen ausführen. Wählen Sie aus den unten aufgeführten Optionen."
         },
         "list_stages": {
             "initial": "Wählen Sie die Liste aus, die Sie extrahieren möchten, zusammen mit den darin enthaltenen Texten",

@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { Box, IconButton, Tab, Tabs } from "@mui/material";
-import { useBrowserDimensionsStore } from "../../context/browserDimensions";
 import { Close } from "@mui/icons-material";
 import { useThemeMode } from '../../context/theme-provider';
 
@@ -21,8 +20,6 @@ export const BrowserTabs = (
 
   let tabWasClosed = false;
 
-  const { width } = useBrowserDimensionsStore();
-
   const handleChange = (event: React.SyntheticEvent, newValue: number) => {
     if (!tabWasClosed) {
       handleChangeIndex(newValue);
@@ -38,7 +35,7 @@ export const BrowserTabs = (
       overflow: 'auto',
       alignItems: 'center',
     }}>
-      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}> {/* Synced border color */}
+      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Tabs
           value={tabIndex}
           onChange={handleChange}
@@ -52,7 +49,7 @@ export const BrowserTabs = (
                   background: 'white',
                   borderRadius: '5px 5px 0px 0px',
                   '&.Mui-selected': {
-                    backgroundColor: ` ${isDarkMode ? "#2a2a2a" : "#f5f5f5"}`, // Synced selected tab color
+                    backgroundColor: ` ${isDarkMode ? "#2a2a2a" : "#f5f5f5"}`,
                     color: '#ff00c3', // Slightly lighter text when selected
                   },
                 }}

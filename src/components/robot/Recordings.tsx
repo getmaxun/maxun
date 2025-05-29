@@ -114,6 +114,15 @@ export const Recordings = ({
           preSelectedIntegrationType="airtable"
         />
       );
+    } else if (currentPath.endsWith("/integrate/webhook")) {
+      return (
+        <IntegrationSettingsModal
+          isOpen={true}
+          handleClose={handleClose}
+          handleStart={() => {}}
+          preSelectedIntegrationType="webhook"
+        />
+      );
     } else if (currentPath.endsWith("/integrate")) {
       return (
         <IntegrationSettingsModal

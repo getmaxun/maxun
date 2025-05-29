@@ -43,8 +43,9 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /tmp/.X11-unix && chmod 1777 /tmp/.X11-unix
 
-# Expose the backend port
+# Expose backend port
 EXPOSE ${BACKEND_PORT:-8080}
 
-# Start the backend using the start script
-CMD ["npm", "run", "server"]
+# Run migrations & start backend using start script
+#CMD ["npm", "run", "server"]
+CMD ["sh", "-c", "npm run migrate && npm run server"]

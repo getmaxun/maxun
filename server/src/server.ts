@@ -4,7 +4,7 @@ import http from 'http';
 import cors from 'cors';
 import dotenv from 'dotenv';
 dotenv.config();
-import { record, workflow, storage, auth, integration, proxy } from './routes';
+import { record, workflow, storage, auth, integration, proxy, webhook } from './routes';
 import { BrowserPool } from "./browser-management/classes/BrowserPool";
 import logger from './logger';
 import { connectDB, syncDB } from './storage/db'
@@ -88,6 +88,7 @@ export const browserPool = new BrowserPool();
 // parse cookies - "cookie" is true in csrfProtection
 app.use(cookieParser())
 
+app.use('/webhook', webhook);
 app.use('/record', record);
 app.use('/workflow', workflow);
 app.use('/storage', storage);
