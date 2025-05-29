@@ -1074,7 +1074,7 @@ export const IntegrationSettingsModal = ({
                 
                 <Box sx={{ display: "flex", justifyContent: "space-between" }}>
                   <Typography variant="body2" color="textSecondary" sx={{ marginTop: "10px" }}>
-                    Refer to the <a href="https://docs.maxun.dev/" style={{ color: '#ff00c3', textDecoration: 'none' }}>API documentation</a> for examples and details.
+                    Refer to the <a href="https://docs.maxun.dev/api/webhooks" style={{ color: '#ff00c3', textDecoration: 'none' }}>API documentation</a> for examples and details.
                   </Typography>
                   <Button
                     variant="contained"
