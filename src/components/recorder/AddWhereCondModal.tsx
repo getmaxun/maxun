@@ -139,6 +139,10 @@ export const AddWhereCondModal = ({ isOpen, onClose, pair, index }: AddWhereCond
   )
 }
 
+
+
+
+
 export const modalStyle = {
   top: '40%',
   left: '50%',

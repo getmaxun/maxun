@@ -567,7 +567,7 @@ export const RobotEditModal = ({
                         50 - (robot.description?.length ?? 0) <= 0 ? "red" : "inherit",
                     }}
                   >
-                    {50 - (robot.description?.length ?? 0)} characters remaining
+                    {50 - (robot.description?.length ?? 0)} / 50
                   </span>
                 }
               />}
