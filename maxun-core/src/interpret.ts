@@ -825,6 +825,7 @@ export default class Interpreter extends EventEmitter {
                     button.click()
                   ]);
                   debugLog("Navigation successful after regular click");
+                  await page.waitForTimeout(2000);
                   paginationSuccess = true;
                 } catch (navError) {
                   debugLog("Regular click with navigation failed, trying dispatch event with navigation");
@@ -839,6 +840,7 @@ export default class Interpreter extends EventEmitter {
                       button.dispatchEvent('click')
                     ]);
                     debugLog("Navigation successful after dispatch event");
+                    await page.waitForTimeout(2000);
                     paginationSuccess = true;
                   } catch (dispatchNavError) {
                     try {

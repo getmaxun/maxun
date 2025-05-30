@@ -15,7 +15,7 @@ import {
 import { CustomActions } from "../../../../src/shared/types";
 import Robot from "../../models/Robot";
 import { getBestSelectorForAction } from "../utils";
-import { uuid } from "uuidv4";
+import { v4 as uuid } from "uuid";
 import { capture } from "../../utils/analytics"
 import { decrypt, encrypt } from "../../utils/auth";
 

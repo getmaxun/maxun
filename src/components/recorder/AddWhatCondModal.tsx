@@ -1,7 +1,7 @@
 import { WhereWhatPair } from "maxun-core";
 import { GenericModal } from "../ui/GenericModal";
 import { modalStyle } from "./AddWhereCondModal";
-import { Button, MenuItem, TextField, Typography } from "@mui/material";
+import { Button, TextField, Typography } from "@mui/material";
 import React, { useRef } from "react";
 import { KeyValueForm } from "./KeyValueForm";
 import { ClearButton } from "../ui/buttons/ClearButton";

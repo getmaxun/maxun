@@ -15,6 +15,19 @@ interface RobotWorkflow {
   workflow: WhereWhatPair[];
 }
 
+interface WebhookConfig {
+  id: string;
+  url: string;
+  events: string[];
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+  lastCalledAt?: string | null;
+  retryAttempts?: number;
+  retryDelay?: number; 
+  timeout?: number; 
+}
+
 interface RobotAttributes {
   id: string;
   userId?: number;
@@ -33,6 +46,7 @@ interface RobotAttributes {
   airtable_refresh_token?: string | null;
   schedule?: ScheduleConfig | null;
   airtable_table_id?: string | null;
+  webhooks?: WebhookConfig[] | null; 
 }
 
 interface ScheduleConfig {
@@ -68,6 +82,7 @@ class Robot extends Model<RobotAttributes, RobotCreationAttributes> implements R
   public airtable_refresh_token!: string | null;
   public airtable_table_id!: string | null;
   public schedule!: ScheduleConfig | null;
+  public webhooks!: WebhookConfig[] | null;
 }
 
 Robot.init(
@@ -140,6 +155,11 @@ Robot.init(
     schedule: {
       type: DataTypes.JSONB,
       allowNull: true,
+    },
+    webhooks: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {
