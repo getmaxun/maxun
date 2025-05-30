@@ -1,5 +1,4 @@
 import styled from 'styled-components';
-import { useThemeMode } from '../../../context/theme-provider';
 
 export const NavBarButton = styled.button<{ disabled: boolean, mode: 'light' | 'dark' }>`
     margin-left: 10px;

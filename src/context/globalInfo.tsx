@@ -80,6 +80,12 @@ interface GlobalInfo {
   }) => void;
   shouldResetInterpretationLog: boolean;
   resetInterpretationLog: () => void;
+  currentTextActionId: string;
+  setCurrentTextActionId: (actionId: string) => void;
+  currentListActionId: string;
+  setCurrentListActionId: (actionId: string) => void;
+  currentScreenshotActionId: string;
+  setCurrentScreenshotActionId: (actionId: string) => void;
 };
 
 class GlobalInfoStore implements Partial<GlobalInfo> {
@@ -106,6 +112,9 @@ class GlobalInfoStore implements Partial<GlobalInfo> {
     hasScrapeSchemaAction: false,
   };
   shouldResetInterpretationLog = false;
+  currentTextActionId = '';
+  currentListActionId = '';
+  currentScreenshotActionId = '';
 };
 
 const globalInfoStore = new GlobalInfoStore();
@@ -129,6 +138,9 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
   const [recordingUrl, setRecordingUrl] = useState<string>(globalInfoStore.recordingUrl);
   const [currentWorkflowActionsState, setCurrentWorkflowActionsState] = useState(globalInfoStore.currentWorkflowActionsState);
   const [shouldResetInterpretationLog, setShouldResetInterpretationLog] = useState<boolean>(globalInfoStore.shouldResetInterpretationLog);
+  const [currentTextActionId, setCurrentTextActionId] = useState<string>('');
+  const [currentListActionId, setCurrentListActionId] = useState<string>('');
+  const [currentScreenshotActionId, setCurrentScreenshotActionId] = useState<string>('');
 
   const notify = (severity: 'error' | 'warning' | 'info' | 'success', message: string) => {
     setNotification({ severity, message, isOpen: true });
@@ -187,6 +199,12 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
         setCurrentWorkflowActionsState,
         shouldResetInterpretationLog,
         resetInterpretationLog,
+        currentTextActionId,
+        setCurrentTextActionId,
+        currentListActionId,
+        setCurrentListActionId,
+        currentScreenshotActionId,
+        setCurrentScreenshotActionId,
       }}
     >
       {children}

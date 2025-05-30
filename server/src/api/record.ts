@@ -7,7 +7,7 @@ import Robot from "../models/Robot";
 import Run from "../models/Run";
 const router = Router();
 import { getDecryptedProxyConfig } from "../routes/proxy";
-import { uuid } from "uuidv4";
+import { v4 as uuid } from "uuid";
 import { createRemoteBrowserForRun, destroyRemoteBrowser } from "../browser-management/controller";
 import logger from "../logger";
 import { browserPool } from "../server";
@@ -17,6 +17,9 @@ import { AuthenticatedRequest } from "../routes/record"
 import {capture} from "../utils/analytics";
 import { Page } from "playwright";
 import { WorkflowFile } from "maxun-core";
+import { googleSheetUpdateTasks, processGoogleSheetUpdates } from "../workflow-management/integrations/gsheet";
+import { airtableUpdateTasks, processAirtableUpdates } from "../workflow-management/integrations/airtable";
+import { sendWebhook } from "../routes/webhook";
 chromium.use(stealthPlugin());
 
 const formatRecording = (recordingData: any) => {
@@ -338,14 +341,29 @@ function formatRunResponse(run: any) {
         runByUserId: run.runByUserId,
         runByScheduleId: run.runByScheduleId,
         runByAPI: run.runByAPI,
-        data: {},
-        screenshot: null,
+        data: {
+            textData: [],
+            listData: []
+        },
+        screenshots: [] as any[],
     };
 
-    if (run.serializableOutput && run.serializableOutput['item-0']) {
-        formattedRun.data = run.serializableOutput['item-0'];
-    } else if (run.binaryOutput && run.binaryOutput['item-0']) {
-        formattedRun.screenshot = run.binaryOutput['item-0']; 
+    if (run.serializableOutput) {
+        if (run.serializableOutput.scrapeSchema && run.serializableOutput.scrapeSchema.length > 0) {
+            formattedRun.data.textData = run.serializableOutput.scrapeSchema;
+        }
+
+        if (run.serializableOutput.scrapeList && run.serializableOutput.scrapeList.length > 0) {
+            formattedRun.data.listData = run.serializableOutput.scrapeList;
+        }
+    }
+
+    if (run.binaryOutput) {
+        Object.keys(run.binaryOutput).forEach(key => {
+            if (run.binaryOutput[key]) {
+                formattedRun.screenshots.push(run.binaryOutput[key]);
+            }
+        });
     }
 
     return formattedRun;
@@ -568,7 +586,7 @@ async function executeRun(id: string, userId: string) {
 
         plainRun.status = 'running';
 
-        const browser = browserPool.getRemoteBrowser(userId);
+        const browser = browserPool.getRemoteBrowser(plainRun.browserId);
         if (!browser) {
             throw new Error('Could not access browser');
         }
@@ -586,6 +604,11 @@ async function executeRun(id: string, userId: string) {
         const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
         const uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, interpretationInfo.binaryOutput);
 
+        const categorizedOutput = {
+            scrapeSchema: interpretationInfo.scrapeSchemaOutput || {},
+            scrapeList: interpretationInfo.scrapeListOutput || {},
+        };
+
         await destroyRemoteBrowser(plainRun.browserId, userId);
 
         const updatedRun = await run.update({
@@ -594,28 +617,43 @@ async function executeRun(id: string, userId: string) {
             finishedAt: new Date().toLocaleString(),
             browserId: plainRun.browserId,
             log: interpretationInfo.log.join('\n'),
-            serializableOutput: interpretationInfo.serializableOutput,
+            serializableOutput: {
+                scrapeSchema: Object.values(categorizedOutput.scrapeSchema),
+                scrapeList: Object.values(categorizedOutput.scrapeList),
+            },
             binaryOutput: uploadedBinaryOutput,
         });
 
-      let totalRowsExtracted = 0;
+      let totalSchemaItemsExtracted = 0;
+      let totalListItemsExtracted = 0;
       let extractedScreenshotsCount = 0;
-      let extractedItemsCount = 0;
-
-      if (updatedRun.dataValues.binaryOutput && updatedRun.dataValues.binaryOutput["item-0"]) {
-        extractedScreenshotsCount = 1;
+      
+      if (categorizedOutput.scrapeSchema) {
+        Object.values(categorizedOutput.scrapeSchema).forEach((schemaResult: any) => {
+          if (Array.isArray(schemaResult)) {
+            totalSchemaItemsExtracted += schemaResult.length;
+          } else if (schemaResult && typeof schemaResult === 'object') {
+            totalSchemaItemsExtracted += 1;
+          }
+        });
       }
-
-      if (updatedRun.dataValues.serializableOutput && updatedRun.dataValues.serializableOutput["item-0"]) {
-        const itemsArray = run.dataValues.serializableOutput["item-0"];
-        extractedItemsCount = itemsArray.length;
-
-        totalRowsExtracted = itemsArray.reduce((total, item) => {
-          return total + Object.keys(item).length;
-        }, 0);
+      
+      if (categorizedOutput.scrapeList) {
+        Object.values(categorizedOutput.scrapeList).forEach((listResult: any) => {
+          if (Array.isArray(listResult)) {
+            totalListItemsExtracted += listResult.length;
+          }
+        });
       }
-
-      console.log(`Extracted Items Count: ${extractedItemsCount}`);
+      
+      if (uploadedBinaryOutput) {
+        extractedScreenshotsCount = Object.keys(uploadedBinaryOutput).length;
+      }
+      
+      const totalRowsExtracted = totalSchemaItemsExtracted + totalListItemsExtracted;
+      
+      console.log(`Extracted Schema Items Count: ${totalSchemaItemsExtracted}`);
+      console.log(`Extracted List Items Count: ${totalListItemsExtracted}`);
       console.log(`Extracted Screenshots Count: ${extractedScreenshotsCount}`);
       console.log(`Total Rows Extracted: ${totalRowsExtracted}`);
 
@@ -623,11 +661,62 @@ async function executeRun(id: string, userId: string) {
                 runId: id,
                 created_at: new Date().toISOString(),
                 status: 'success',
-                extractedItemsCount,
                 totalRowsExtracted,
+                schemaItemsExtracted: totalSchemaItemsExtracted,
+                listItemsExtracted: totalListItemsExtracted,
                 extractedScreenshotsCount,
             }
         )
+
+        // Trigger webhooks for run completion
+        const webhookPayload = {
+            robot_id: plainRun.robotMetaId,
+            run_id: plainRun.runId,
+            robot_name: recording.recording_meta.name,
+            status: 'success',
+            started_at: plainRun.startedAt,
+            finished_at: new Date().toLocaleString(),
+            extracted_data: {
+                captured_texts: Object.values(categorizedOutput.scrapeSchema).flat() || [],
+                captured_lists: categorizedOutput.scrapeList,
+                total_rows: totalRowsExtracted,
+                captured_texts_count: totalSchemaItemsExtracted,
+                captured_lists_count: totalListItemsExtracted,
+                screenshots_count: extractedScreenshotsCount
+            },
+            metadata: {
+                browser_id: plainRun.browserId,
+                user_id: userId,
+            }
+        };
+
+        try {
+            await sendWebhook(plainRun.robotMetaId, 'run_completed', webhookPayload);
+            logger.log('info', `Webhooks sent successfully for completed run ${plainRun.runId}`);
+        } catch (webhookError: any) {
+            logger.log('error', `Failed to send webhooks for run ${plainRun.runId}: ${webhookError.message}`);
+        }
+
+        try {
+            googleSheetUpdateTasks[id] = {
+                robotId: plainRun.robotMetaId,
+                runId: id,
+                status: 'pending',
+                retries: 5,
+            };
+    
+            airtableUpdateTasks[id] = {
+                robotId: plainRun.robotMetaId,
+                runId: id,
+                status: 'pending',
+                retries: 5,
+            };
+    
+            processAirtableUpdates();
+            processGoogleSheetUpdates();
+        } catch (err: any) {
+            logger.log('error', `Failed to update Google Sheet for run: ${plainRun.runId}: ${err.message}`);
+        }
 
         return {
             success: true,
@@ -642,6 +731,34 @@ async function executeRun(id: string, userId: string) {
                 status: 'failed',
                 finishedAt: new Date().toLocaleString(),
             });
+
+            const recording = await Robot.findOne({ where: { 'recording_meta.id': run.robotMetaId }, raw: true });
+
+            // Trigger webhooks for run failure
+            const failedWebhookPayload = {
+                robot_id: run.robotMetaId,
+                run_id: run.runId,
+                robot_name: recording ? recording.recording_meta.name : 'Unknown Robot',
+                status: 'failed',
+                started_at: run.startedAt,
+                finished_at: new Date().toLocaleString(),
+                error: {
+                    message: error.message,
+                    stack: error.stack,
+                    type: error.name || 'ExecutionError'
+                },
+                metadata: {
+                    browser_id: run.browserId,
+                    user_id: userId,
+                }
+            };
+
+            try {
+                await sendWebhook(run.robotMetaId, 'run_failed', failedWebhookPayload);
+                logger.log('info', `Failure webhooks sent successfully for run ${run.runId}`);
+            } catch (webhookError: any) {
+                logger.log('error', `Failed to send failure webhooks for run ${run.runId}: ${webhookError.message}`);
+            }
         }
         capture(
            'maxun-oss-run-created-api',
@@ -782,7 +899,7 @@ router.post("/robots/:id/runs", requireAPIKey, async (req: AuthenticatedRequest,
         if (!req.user) {
             return res.status(401).json({ ok: false, error: 'Unauthorized' });
         }
-        const runId = await handleRunRecording(req.params.id, req.user.dataValues.id);
+        const runId = await handleRunRecording(req.params.id, req.user.id);
 
         if (!runId) {
             throw new Error('Run ID is undefined');

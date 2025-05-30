@@ -21,10 +21,7 @@ import {
   Menu,
   ListItemIcon,
   ListItemText,
-  CircularProgress,
-  RadioGroup,
   FormControlLabel,
-  Radio,
   Checkbox,
 } from "@mui/material";
 import {
@@ -193,7 +190,7 @@ export const RecordingsTable = ({
           notify(notificationData.type, notificationData.message);
           
           if ((notificationData.type === 'success' && 
-               notificationData.message.includes('saved')) ||
+               (notificationData.message.includes('saved') || notificationData.message.includes('retrained'))) ||
               (notificationData.type === 'warning' && 
                notificationData.message.includes('terminated'))) {
             setRerenderRobots(true);
@@ -253,7 +250,7 @@ export const RecordingsTable = ({
         const parsedRows = recordings
         .map((recording: any, index: number) => {
           if (recording?.recording_meta) {
-            const parsedDate = parseDateString(recording.recording_meta.createdAt);
+            const parsedDate = parseDateString(recording.recording_meta.updatedAt);
             
             return {
               id: index,

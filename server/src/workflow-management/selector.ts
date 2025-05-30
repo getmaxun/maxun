@@ -332,6 +332,28 @@ export const getElementInformation = async (
 
             let deepestElement = findContainerElement(elements);
             if (!deepestElement) return null;
+
+            if (deepestElement.tagName === 'A') {
+              for (let i = 1; i < elements.length; i++) {
+                const sibling = elements[i];
+                if (!deepestElement.contains(sibling) && !sibling.contains(deepestElement)) {
+                  const anchorRect = deepestElement.getBoundingClientRect();
+                  const siblingRect = sibling.getBoundingClientRect();
+
+                  const isOverlapping = !(
+                    siblingRect.right < anchorRect.left || 
+                    siblingRect.left > anchorRect.right || 
+                    siblingRect.bottom < anchorRect.top || 
+                    siblingRect.top > anchorRect.bottom
+                  );
+
+                  if (isOverlapping) {
+                    deepestElement = sibling;
+                    break;
+                  }
+                }
+              }
+            }
           
             const traverseShadowDOM = (element: HTMLElement): HTMLElement => {
               let current = element;
@@ -2299,7 +2321,12 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
             return selectorParts.join(contextPath[0].type === 'shadow' ? ' >> ' : ' :>> ');
           }
 
-          // Regular DOM path generation
+          const elementSelector = getNonUniqueSelector(element);
+          
+          if (elementSelector.includes('.') && elementSelector.split('.').length > 1) {
+            return elementSelector;
+          }
+          
           const path: string[] = [];
           let currentElement = element;
           const MAX_DEPTH = 2;
@@ -2656,7 +2683,12 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
             return selectorParts.join(contextPath[0].type === 'shadow' ? ' >> ' : ' :>> ');
           }
 
-          // Regular DOM path generation
+          const elementSelector = getNonUniqueSelector(element);
+          
+          if (elementSelector.includes('.') && elementSelector.split('.').length > 1) {
+            return elementSelector;
+          }
+          
           const path: string[] = [];
           let currentElement = element;
           const MAX_DEPTH = 2;
@@ -2753,12 +2785,14 @@ export const getChildSelectors = async (page: Page, parentSelector: string): Pro
         const frameElement = ownerDocument?.defaultView?.frameElement;
         if (frameElement) {
           const frameSelector = getNonUniqueSelector(frameElement as HTMLElement);
-          const isFrame = frameElement.tagName === 'FRAME';
           // Use the appropriate delimiter based on whether it's a frame or iframe
           return `${frameSelector} :>> ${elementSelector}`;
         }
 
-        // Regular DOM context
+        if (elementSelector.includes('.') && elementSelector.split('.').length > 1) {
+          return elementSelector;
+        }
+        
         const parentSelector = getNonUniqueSelector(element.parentElement);
         return `${parentSelector} > ${elementSelector}`;
       }

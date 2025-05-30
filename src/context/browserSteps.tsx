@@ -6,12 +6,14 @@ export interface TextStep {
     label: string;
     data: string;
     selectorObj: SelectorObject;
+    actionId?: string; // Add actionId to track which action created this step
 }
 
 interface ScreenshotStep {
     id: number;
     type: 'screenshot';
     fullPage: boolean;
+    actionId?: string; // Add actionId to track which action created this step
 }
 
 export interface ListStep {
@@ -24,9 +26,10 @@ export interface ListStep {
         selector: string;
     };
     limit?: number;
+    actionId?: string; // Add actionId to track which action created this step
 }
 
-type BrowserStep = TextStep | ScreenshotStep | ListStep;
+export type BrowserStep = TextStep | ScreenshotStep | ListStep;
 
 export interface SelectorObject {
     selector: string;
@@ -38,13 +41,16 @@ export interface SelectorObject {
 
 interface BrowserStepsContextType {
     browserSteps: BrowserStep[];
-    addTextStep: (label: string, data: string, selectorObj: SelectorObject) => void;
-    addListStep: (listSelector: string, fields: { [key: string]: TextStep }, listId: number, pagination?: { type: string; selector: string }, limit?: number) => void
-    addScreenshotStep: (fullPage: boolean) => void;
+    addTextStep: (label: string, data: string, selectorObj: SelectorObject, actionId: string) => void;
+    addListStep: (listSelector: string, fields: { [key: string]: TextStep }, listId: number, actionId: string, pagination?: { type: string; selector: string }, limit?: number) => void
+    addScreenshotStep: (fullPage: boolean, actionId: string) => void;
     deleteBrowserStep: (id: number) => void;
     updateBrowserTextStepLabel: (id: number, newLabel: string) => void;
     updateListTextFieldLabel: (listId: number, fieldKey: string, newLabel: string) => void;
+    updateListStepLimit: (listId: number, limit: number) => void;
+    updateListStepData: (listId: number, extractedData: any[]) => void;
     removeListTextField: (listId: number, fieldKey: string) => void;
+    deleteStepsByActionId: (actionId: string) => void; // New function to delete steps by actionId
 }
 
 const BrowserStepsContext = createContext<BrowserStepsContextType | undefined>(undefined);
@@ -53,14 +59,14 @@ export const BrowserStepsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const [browserSteps, setBrowserSteps] = useState<BrowserStep[]>([]);
     const [discardedFields, setDiscardedFields] = useState<Set<string>>(new Set());
 
-    const addTextStep = (label: string, data: string, selectorObj: SelectorObject) => {
+    const addTextStep = (label: string, data: string, selectorObj: SelectorObject, actionId: string) => {
         setBrowserSteps(prevSteps => [
             ...prevSteps,
-            { id: Date.now(), type: 'text', label, data, selectorObj }
+            { id: Date.now(), type: 'text', label, data, selectorObj, actionId }
         ]);
     };
 
-    const addListStep = (listSelector: string, newFields: { [key: string]: TextStep }, listId: number, pagination?: { type: string; selector: string }, limit?: number) => {
+    const addListStep = (listSelector: string, newFields: { [key: string]: TextStep }, listId: number, actionId: string, pagination?: { type: string; selector: string }, limit?: number) => {
         setBrowserSteps(prevSteps => {
             const existingListStepIndex = prevSteps.findIndex(step => step.type === 'list' && step.id === listId);
             
@@ -75,10 +81,14 @@ export const BrowserStepsProvider: React.FC<{ children: React.ReactNode }> = ({ 
                         if (existingListStep.fields[key]) {
                             acc[key] = {
                                 ...field,
-                                label: existingListStep.fields[key].label
+                                label: existingListStep.fields[key].label,
+                                actionId
                             };
                         } else {
-                            acc[key] = field;
+                            acc[key] = {
+                                ...field,
+                                actionId
+                            };
                         }
                     }
                     return acc;
@@ -88,27 +98,40 @@ export const BrowserStepsProvider: React.FC<{ children: React.ReactNode }> = ({ 
                     ...existingListStep,
                     fields: mergedFields,
                     pagination: pagination || existingListStep.pagination,
-                    limit: limit
+                    limit: limit,
+                    actionId
                 };
                 return updatedSteps;
             } else {
+                const fieldsWithActionId = Object.entries(newFields).reduce((acc, [key, field]) => {
+                    acc[key] = {
+                        ...field,
+                        actionId
+                    };
+                    return acc;
+                }, {} as { [key: string]: TextStep });
+
                 return [
                     ...prevSteps,
-                    { id: listId, type: 'list', listSelector, fields: newFields, pagination, limit }
+                    { id: listId, type: 'list', listSelector, fields: fieldsWithActionId, pagination, limit, actionId }
                 ];
             }
         });
     };
 
-    const addScreenshotStep = (fullPage: boolean) => {
+    const addScreenshotStep = (fullPage: boolean, actionId: string) => {
         setBrowserSteps(prevSteps => [
             ...prevSteps,
-            { id: Date.now(), type: 'screenshot', fullPage }
+            { id: Date.now(), type: 'screenshot', fullPage, actionId }
         ]);
     };
 
     const deleteBrowserStep = (id: number) => {
         setBrowserSteps(prevSteps => prevSteps.filter(step => step.id !== id));
+    };
+
+    const deleteStepsByActionId = (actionId: string) => {
+        setBrowserSteps(prevSteps => prevSteps.filter(step => step.actionId !== actionId));
     };
 
     const updateBrowserTextStepLabel = (id: number, newLabel: string) => {
@@ -142,6 +165,34 @@ export const BrowserStepsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         );
     };
 
+    const updateListStepData = (listId: number, extractedData: any[]) => {
+        setBrowserSteps((prevSteps) => {
+          return prevSteps.map(step => {
+            if (step.type === 'list' && step.id === listId) {
+              return {
+                ...step,
+                data: extractedData  // Add the extracted data to the step
+              };
+            }
+            return step;
+          });
+        });
+    };
+
+    const updateListStepLimit = (listId: number, limit: number) => {
+        setBrowserSteps(prevSteps =>
+          prevSteps.map(step => {
+            if (step.type === 'list' && step.id === listId) {
+              return {
+                ...step,
+                limit: limit
+              };
+            }
+            return step;
+          })
+        );
+    };
+
     const removeListTextField = (listId: number, fieldKey: string) => {
         setBrowserSteps(prevSteps =>
             prevSteps.map(step => {
@@ -166,7 +217,10 @@ export const BrowserStepsProvider: React.FC<{ children: React.ReactNode }> = ({ 
             deleteBrowserStep,
             updateBrowserTextStepLabel,
             updateListTextFieldLabel,
+            updateListStepLimit,
+            updateListStepData,
             removeListTextField,
+            deleteStepsByActionId, // Export the new function
         }}>
             {children}
         </BrowserStepsContext.Provider>

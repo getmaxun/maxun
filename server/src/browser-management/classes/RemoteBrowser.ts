@@ -284,6 +284,7 @@ export class RemoteBrowser {
                         "--disable-dev-shm-usage",
                         "--force-color-profile=srgb",
                         "--force-device-scale-factor=2",
+                        "--ignore-certificate-errors"
                     ],
                 }));
                 
@@ -428,6 +429,541 @@ export class RemoteBrowser {
     };
 
     /**
+       * Extract data from a list of elements on a page
+       * @param page - Playwright Page object
+       * @param listSelector - CSS selector for the list container
+       * @param fields - Record of field configurations
+       * @param limit - Maximum number of items to extract (default: 5)
+       * @returns Promise<Array<Record<string, string>>> - Array of extracted data objects
+       */
+      private async extractListData(
+        page: Page, 
+        listSelector: string, 
+        fields: Record<string, {
+          label: string;
+          selectorObj: {
+            selector: string;
+            attribute: string;
+          };
+        }>,
+        limit: number = 5
+      ): Promise<Array<Record<string, string>>> {
+        return await page.evaluate(
+          async ({ listSelector, fields, limit }: { 
+            listSelector: string;
+            fields: Record<string, {
+              label: string;
+              selectorObj: {
+                selector: string;
+                attribute: string;
+              };
+            }>;
+            limit: number;
+          }) => {
+            const convertedFields: Record<string, { 
+              selector: string; 
+              attribute: string;
+            }> = {};
+            
+            for (const [key, field] of Object.entries(fields)) {
+              convertedFields[field.label] = {
+                selector: field.selectorObj.selector,
+                attribute: field.selectorObj.attribute
+              };
+            }
+            
+            const queryElement = (rootElement: Element | Document, selector: string): Element | null => {
+              if (!selector.includes('>>') && !selector.includes(':>>')) {
+                return rootElement.querySelector(selector);
+              }
+    
+              const parts = selector.split(/(?:>>|:>>)/).map(part => part.trim());
+              let currentElement: Element | Document | null = rootElement;
+    
+              for (let i = 0; i < parts.length; i++) {
+                if (!currentElement) return null;
+    
+                if ((currentElement as Element).tagName === 'IFRAME' || (currentElement as Element).tagName === 'FRAME') {
+                  try {
+                    const frameElement = currentElement as HTMLIFrameElement | HTMLFrameElement;
+                    const frameDoc = frameElement.contentDocument || frameElement.contentWindow?.document;
+                    if (!frameDoc) return null;
+                    currentElement = frameDoc.querySelector(parts[i]);
+                    continue;
+                  } catch (e) {
+                    console.warn(`Cannot access ${(currentElement as Element).tagName.toLowerCase()} content:`, e);
+                    return null;
+                  }
+                }
+    
+                let nextElement: Element | null = null;
+                
+                if ('querySelector' in currentElement) {
+                  nextElement = currentElement.querySelector(parts[i]);
+                }
+    
+                if (!nextElement && 'shadowRoot' in currentElement && (currentElement as Element).shadowRoot) {
+                  nextElement = (currentElement as Element).shadowRoot!.querySelector(parts[i]);
+                }
+    
+                if (!nextElement && 'children' in currentElement) {
+                  const children: any = Array.from((currentElement as Element).children || []);
+                  for (const child of children) {
+                    if (child.shadowRoot) {
+                      nextElement = child.shadowRoot.querySelector(parts[i]);
+                      if (nextElement) break;
+                    }
+                  }
+                }
+    
+                currentElement = nextElement;
+              }
+    
+              return currentElement as Element | null;
+            };
+    
+            const queryElementAll = (rootElement: Element | Document, selector: string): Element[] => {
+              if (!selector.includes('>>') && !selector.includes(':>>')) {
+                return Array.from(rootElement.querySelectorAll(selector));
+              }
+    
+              const parts = selector.split(/(?:>>|:>>)/).map(part => part.trim());
+              let currentElements: (Element | Document)[] = [rootElement];
+    
+              for (const part of parts) {
+                const nextElements: Element[] = [];
+    
+                for (const element of currentElements) {
+                  if ((element as Element).tagName === 'IFRAME' || (element as Element).tagName === 'FRAME') {
+                    try {
+                      const frameElement = element as HTMLIFrameElement | HTMLFrameElement;
+                      const frameDoc = frameElement.contentDocument || frameElement.contentWindow?.document;
+                      if (frameDoc) {
+                        nextElements.push(...Array.from(frameDoc.querySelectorAll(part)));
+                      }
+                    } catch (e) {
+                      console.warn(`Cannot access ${(element as Element).tagName.toLowerCase()} content:`, e);
+                      continue;
+                    }
+                  } else {
+                    if ('querySelectorAll' in element) {
+                      nextElements.push(...Array.from(element.querySelectorAll(part)));
+                    }
+                    
+                    if ('shadowRoot' in element && (element as Element).shadowRoot) {
+                      nextElements.push(...Array.from((element as Element).shadowRoot!.querySelectorAll(part)));
+                    }
+                    
+                    if ('children' in element) {
+                      const children = Array.from((element as Element).children || []);
+                      for (const child of children) {
+                        if (child.shadowRoot) {
+                          nextElements.push(...Array.from(child.shadowRoot.querySelectorAll(part)));
+                        }
+                      }
+                    }
+                  }
+                }
+    
+                currentElements = nextElements;
+              }
+    
+              return currentElements as Element[];
+            };
+    
+            function extractValue(element: Element, attribute: string): string | null {
+              if (!element) return null;
+              
+              const baseURL = element.ownerDocument?.location?.href || window.location.origin;
+              
+              if (element.shadowRoot) {
+                const shadowContent = element.shadowRoot.textContent;
+                if (shadowContent?.trim()) {
+                  return shadowContent.trim();
+                }
+              }
+              
+              if (attribute === 'innerText') {
+                return (element as HTMLElement).innerText.trim();
+              } else if (attribute === 'innerHTML') {
+                return element.innerHTML.trim();
+              } else if (attribute === 'src' || attribute === 'href') {
+                if (attribute === 'href' && element.tagName !== 'A') {
+                  const parentElement = element.parentElement;
+                  if (parentElement && parentElement.tagName === 'A') {
+                    const parentHref = parentElement.getAttribute('href');
+                    if (parentHref) {
+                      try {
+                        return new URL(parentHref, baseURL).href;
+                      } catch (e) {
+                        return parentHref;
+                      }
+                    }
+                  }
+                }
+                
+                const attrValue = element.getAttribute(attribute);
+                const dataAttr = attrValue || element.getAttribute('data-' + attribute);
+                
+                if (!dataAttr || dataAttr.trim() === '') {
+                  if (attribute === 'src') {
+                    const style = window.getComputedStyle(element);
+                    const bgImage = style.backgroundImage;
+                    if (bgImage && bgImage !== 'none') {
+                      const matches = bgImage.match(/url\(['"]?([^'")]+)['"]?\)/);
+                      return matches ? new URL(matches[1], baseURL).href : null;
+                    }
+                  }
+                  return null;
+                }
+                
+                try {
+                  return new URL(dataAttr, baseURL).href;
+                } catch (e) {
+                  console.warn('Error creating URL from', dataAttr, e);
+                  return dataAttr; // Return the original value if URL construction fails
+                }
+              }
+              return element.getAttribute(attribute);
+            }
+    
+            function findTableAncestor(element: Element): { type: string; element: Element } | null {
+              let currentElement: Element | null = element;
+              const MAX_DEPTH = 5;
+              let depth = 0;
+              
+              while (currentElement && depth < MAX_DEPTH) {
+                if (currentElement.getRootNode() instanceof ShadowRoot) {
+                  currentElement = (currentElement.getRootNode() as ShadowRoot).host;
+                  continue;
+                }
+                
+                if (currentElement.tagName === 'TD') {
+                  return { type: 'TD', element: currentElement };
+                } else if (currentElement.tagName === 'TR') {
+                  return { type: 'TR', element: currentElement };
+                }
+                
+                if (currentElement.tagName === 'IFRAME' || currentElement.tagName === 'FRAME') {
+                  try {
+                    const frameElement = currentElement as HTMLIFrameElement | HTMLFrameElement;
+                    currentElement = frameElement.contentDocument?.body || null;
+                  } catch (e) {
+                    return null;
+                  }
+                } else {
+                  currentElement = currentElement.parentElement;
+                }
+                depth++;
+              }
+              return null;
+            }
+    
+            function getCellIndex(td: Element): number {
+              if (td.getRootNode() instanceof ShadowRoot) {
+                const shadowRoot = td.getRootNode() as ShadowRoot;
+                const allCells = Array.from(shadowRoot.querySelectorAll('td'));
+                return allCells.indexOf(td as HTMLTableCellElement);
+              }
+              
+              let index = 0;
+              let sibling = td;
+              while (sibling = sibling.previousElementSibling as Element) {
+                index++;
+              }
+              return index;
+            }
+    
+            function hasThElement(row: Element, tableFields: Record<string, { selector: string; attribute: string }>): boolean {
+              for (const [_, { selector }] of Object.entries(tableFields)) {
+                const element = queryElement(row, selector);
+                if (element) {
+                  let current: Element | ShadowRoot | Document | null = element;
+                  while (current && current !== row) {
+                    if (current.getRootNode() instanceof ShadowRoot) {
+                      current = (current.getRootNode() as ShadowRoot).host;
+                      continue;
+                    }
+                    
+                    if ((current as Element).tagName === 'TH') return true;
+                    
+                    if ((current as Element).tagName === 'IFRAME' || (current as Element).tagName === 'FRAME') {
+                      try {
+                        const frameElement = current as HTMLIFrameElement | HTMLFrameElement;
+                        current = frameElement.contentDocument?.body || null;
+                      } catch (e) {
+                        break;
+                      }
+                    } else {
+                      current = (current as Element).parentElement;
+                    }
+                  }
+                }
+              }
+              return false;
+            }
+    
+            function filterRowsBasedOnTag(rows: Element[], tableFields: Record<string, { selector: string; attribute: string }>): Element[] {
+              for (const row of rows) {
+                if (hasThElement(row, tableFields)) {
+                  return rows;
+                }
+              }
+              return rows.filter(row => {
+                const directTH = row.getElementsByTagName('TH').length === 0;
+                const shadowTH = row.shadowRoot ? 
+                  row.shadowRoot.querySelector('th') === null : true;
+                return directTH && shadowTH;
+              });
+            }
+    
+            function calculateClassSimilarity(classList1: string[], classList2: string[]): number {
+              const set1 = new Set(classList1);
+              const set2 = new Set(classList2);
+              const intersection = new Set([...set1].filter(x => set2.has(x)));
+              const union = new Set([...set1, ...set2]);
+              return intersection.size / union.size;
+            }
+    
+            function findSimilarElements(baseElement: Element, similarityThreshold: number = 0.7): Element[] {
+              const baseClasses = Array.from(baseElement.classList);
+              if (baseClasses.length === 0) return [];
+    
+              const allElements: Element[] = [];
+              
+              allElements.push(...Array.from(document.getElementsByTagName(baseElement.tagName)));
+              
+              if (baseElement.getRootNode() instanceof ShadowRoot) {
+                const shadowHost = (baseElement.getRootNode() as ShadowRoot).host;
+                allElements.push(...Array.from(shadowHost.getElementsByTagName(baseElement.tagName)));
+              }
+              
+              const frames = [
+                ...Array.from(document.getElementsByTagName('iframe')),
+                ...Array.from(document.getElementsByTagName('frame'))
+              ];
+              
+              for (const frame of frames) {
+                try {
+                  const frameElement = frame as HTMLIFrameElement | HTMLFrameElement;
+                  const frameDoc = frameElement.contentDocument || frameElement.contentWindow?.document;
+                  if (frameDoc) {
+                    allElements.push(...Array.from(frameDoc.getElementsByTagName(baseElement.tagName)));
+                  }
+                } catch (e) {
+                  console.warn(`Cannot access ${frame.tagName.toLowerCase()} content:`, e);
+                }
+              }
+    
+              return allElements.filter(element => {
+                if (element === baseElement) return false;
+                const similarity = calculateClassSimilarity(
+                  baseClasses,
+                  Array.from(element.classList)
+                );
+                return similarity >= similarityThreshold;
+              });
+            }
+    
+            let containers = queryElementAll(document, listSelector);
+            
+            if (containers.length === 0) return [];
+    
+            if (limit > 1 && containers.length === 1) {
+              const baseContainer = containers[0];
+              const similarContainers = findSimilarElements(baseContainer);
+              
+              if (similarContainers.length > 0) {
+                const newContainers = similarContainers.filter(container => 
+                  !container.matches(listSelector)
+                );
+                containers = [...containers, ...newContainers];
+              }
+            }
+    
+            const containerFields = containers.map(() => ({
+              tableFields: {} as Record<string, { 
+                selector: string; 
+                attribute: string;
+                tableContext?: string;
+                cellIndex?: number;
+              }>,
+              nonTableFields: {} as Record<string, { 
+                selector: string; 
+                attribute: string; 
+              }>
+            }));
+    
+            containers.forEach((container, containerIndex) => {
+              for (const [label, field] of Object.entries(convertedFields)) {
+                const sampleElement = queryElement(container, field.selector);
+                
+                if (sampleElement) {
+                  const ancestor = findTableAncestor(sampleElement);
+                  if (ancestor) {
+                    containerFields[containerIndex].tableFields[label] = {
+                      ...field,
+                      tableContext: ancestor.type,
+                      cellIndex: ancestor.type === 'TD' ? getCellIndex(ancestor.element) : -1
+                    };
+                  } else {
+                    containerFields[containerIndex].nonTableFields[label] = field;
+                  }
+                } else {
+                  containerFields[containerIndex].nonTableFields[label] = field;
+                }
+              }
+            });
+    
+            const tableData: Array<Record<string, string>> = [];
+            const nonTableData: Array<Record<string, string>> = [];
+    
+            for (let containerIndex = 0; containerIndex < containers.length; containerIndex++) {
+              const container = containers[containerIndex];
+              const { tableFields } = containerFields[containerIndex];
+    
+              if (Object.keys(tableFields).length > 0) {
+                const firstField = Object.values(tableFields)[0];
+                const firstElement = queryElement(container, firstField.selector);
+                let tableContext: Element | null = firstElement;
+                
+                while (tableContext && tableContext.tagName !== 'TABLE' && tableContext !== container) {
+                  if (tableContext.getRootNode() instanceof ShadowRoot) {
+                    tableContext = (tableContext.getRootNode() as ShadowRoot).host;
+                    continue;
+                  }
+                  
+                  if (tableContext.tagName === 'IFRAME' || tableContext.tagName === 'FRAME') {
+                    try {
+                      const frameElement = tableContext as HTMLIFrameElement | HTMLFrameElement;
+                      tableContext = frameElement.contentDocument?.body || null;
+                    } catch (e) {
+                      break;
+                    }
+                  } else {
+                    tableContext = tableContext.parentElement;
+                  }
+                }
+    
+                if (tableContext) {
+                  const rows: Element[] = [];
+                  
+                  rows.push(...Array.from(tableContext.getElementsByTagName('TR')));
+                  
+                  if (tableContext.tagName === 'IFRAME' || tableContext.tagName === 'FRAME') {
+                    try {
+                      const frameElement = tableContext as HTMLIFrameElement | HTMLFrameElement;
+                      const frameDoc = frameElement.contentDocument || frameElement.contentWindow?.document;
+                      if (frameDoc) {
+                        rows.push(...Array.from(frameDoc.getElementsByTagName('TR')));
+                      }
+                    } catch (e) {
+                      console.warn(`Cannot access ${tableContext.tagName.toLowerCase()} rows:`, e);
+                    }
+                  }
+                  
+                  const processedRows = filterRowsBasedOnTag(rows, tableFields);
+                  
+                  for (let rowIndex = 0; rowIndex < Math.min(processedRows.length, limit); rowIndex++) {
+                    const record: Record<string, string> = {};
+                    const currentRow = processedRows[rowIndex];
+                    
+                    for (const [label, { selector, attribute, cellIndex }] of Object.entries(tableFields)) {
+                      let element: Element | null = null;
+                      
+                      if (cellIndex !== undefined && cellIndex >= 0) {
+                        let td: Element | null = currentRow.children[cellIndex] || null;
+                        
+                        if (!td && currentRow.shadowRoot) {
+                          const shadowCells = currentRow.shadowRoot.children;
+                          if (shadowCells && shadowCells.length > cellIndex) {
+                            td = shadowCells[cellIndex];
+                          }
+                        }
+                        
+                        if (td) {
+                          element = queryElement(td, selector);
+                          
+                          if (!element && selector.split(/(?:>>|:>>)/).pop()?.includes('td:nth-child')) {
+                            element = td;
+                          }
+    
+                          if (!element) {
+                            const tagOnlySelector = selector.split('.')[0];
+                            element = queryElement(td, tagOnlySelector);
+                          }
+                          
+                          if (!element) {
+                            let currentElement: Element | null = td;
+                            while (currentElement && currentElement.children.length > 0) {
+                              let foundContentChild = false;
+                              for (const child of Array.from(currentElement.children)) {
+                                if (extractValue(child, attribute)) {
+                                  currentElement = child;
+                                  foundContentChild = true;
+                                  break;
+                                }
+                              }
+                              if (!foundContentChild) break;
+                            }
+                            element = currentElement;
+                          }
+                        }
+                      } else {
+                        element = queryElement(currentRow, selector);
+                      }
+                      
+                      if (element) {
+                        const value = extractValue(element, attribute);
+                        if (value !== null) {
+                          record[label] = value;
+                        }
+                      }
+                    }
+    
+                    if (Object.keys(record).length > 0) {
+                      tableData.push(record);
+                    }
+                  }
+                }
+              }
+            }
+    
+            for (let containerIndex = 0; containerIndex < containers.length; containerIndex++) {
+              if (nonTableData.length >= limit) break;
+    
+              const container = containers[containerIndex];
+              const { nonTableFields } = containerFields[containerIndex];
+    
+              if (Object.keys(nonTableFields).length > 0) {
+                const record: Record<string, string> = {};
+    
+                for (const [label, { selector, attribute }] of Object.entries(nonTableFields)) {
+                  const relativeSelector = selector.split(/(?:>>|:>>)/).slice(-1)[0];
+                  const element = queryElement(container, relativeSelector);
+                  
+                  if (element) {
+                    const value = extractValue(element, attribute);
+                    if (value !== null) {
+                      record[label] = value;
+                    }
+                  }
+                }
+                    
+                if (Object.keys(record).length > 0) {
+                  nonTableData.push(record);
+                }
+              }  
+            }
+              
+            const scrapedData = [...tableData, ...nonTableData].slice(0, limit);
+            return scrapedData;
+          }, 
+          { listSelector, fields, limit }
+        ) as Array<Record<string, string>>;
+    }
+
+    /**
      * Registers all event listeners needed for the recording editor session.
      * Should be called only once after the full initialization of the remote browser.
      * @returns void
@@ -524,6 +1060,26 @@ export class RemoteBrowser {
             const { width, height } = data;
             if (this.context && this.browser) {
                 this.context = await this.browser.newContext({ viewport: { width, height } });
+            }
+        });
+
+        this.socket.on('extractListData', async (data: { 
+            listSelector: string, 
+            fields: Record<string, any>,
+            currentListId: number, 
+            pagination: any 
+        }) => {
+            if (this.currentPage) {
+                const extractedData = await this.extractListData(
+                    this.currentPage, 
+                    data.listSelector, 
+                    data.fields
+                );
+                
+                this.socket.emit('listDataExtracted', {
+                    currentListId: data.currentListId,
+                    data: extractedData
+                });
             }
         });
     };

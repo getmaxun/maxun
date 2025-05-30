@@ -108,7 +108,21 @@ const ApiKeyManager = () => {
 
   return (
     <Container sx={{ alignSelf: 'flex-start' }}>
-      <Typography variant="h6" gutterBottom component="div" style={{ marginBottom: '20px' }}>
+      <Typography variant="body1" sx={{ marginTop: '10px', marginBottom: '40px' }}>
+        Start by creating an API key below. Then,
+        <a href={`${apiUrl}/api-docs/`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', marginLeft: '5px', marginRight: '5px' }}>
+          test your API
+        </a>
+        or read the <a href="https://docs.maxun.dev/category/api-docs" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+          API documentation
+        </a> for setup instructions.
+      </Typography>
+      <Typography
+        variant="h6"
+        gutterBottom
+        component="div"
+        style={{ marginBottom: '20px', textAlign: 'left', width: '100%' }}
+      >
         {t('apikey.title')}
       </Typography>
       {apiKey ? (
