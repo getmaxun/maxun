@@ -259,7 +259,7 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
 
 
     // Validate input
-    if (!name && !limits && !credentials && !targetUrl) {
+    if (!name && !limit && !credentials && !targetUrl) {
       return res.status(400).json({ error: 'Either "name", "limits", "credentials" or "target_url" must be provided.' });
     }
 
@@ -311,8 +311,8 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       workflow = handleWorkflowActions(workflow, credentials);
     }
 
-    if (limits && Array.isArray(limits) && limits.length > 0) {
-      for (const limitInfo of limits) {
+    if (limit && Array.isArray(limit) && limit.length > 0) {
+      for (const limitInfo of limit) {
         const { pairIndex, actionIndex, argIndex, limit } = limitInfo;
         
         const pair = workflow[pairIndex];
