@@ -83,41 +83,6 @@ function AddGeneratedFlags(workflow: WorkflowFile) {
 };
 
 /**
- * Function to reset browser state without creating a new browser
- */
-async function resetBrowserState(browser: RemoteBrowser): Promise<boolean> {
-  try {
-    const currentPage = browser.getCurrentPage();
-    if (!currentPage) {
-      logger.log('error', 'No current page available to reset browser state');
-      return false;
-    }
-    
-    // Navigate to blank page to reset state
-    await currentPage.goto('about:blank', { waitUntil: 'networkidle', timeout: 10000 });
-    
-    // Clear browser storage
-    await currentPage.evaluate(() => {
-      try {
-        localStorage.clear();
-        sessionStorage.clear();
-      } catch (e) {
-        // Ignore errors in cleanup
-      }
-    });
-    
-    // Clear cookies
-    const context = currentPage.context();
-    await context.clearCookies();
-    
-    return true;
-  } catch (error) {
-    logger.log('error', `Failed to reset browser state`);
-    return false;
-  }
-}
-
-/**
  * Modified checkAndProcessQueuedRun function - only changes browser reset logic
  */
 async function checkAndProcessQueuedRun(userId: string, browserId: string): Promise<boolean> {
@@ -135,13 +100,6 @@ async function checkAndProcessQueuedRun(userId: string, browserId: string): Prom
     if (!queuedRun) {
       logger.log('info', `No queued runs found for browser ${browserId}`);
       return false;
-    }
-    
-    // Reset the browser state before next run
-    const browser = browserPool.getRemoteBrowser(browserId);
-    if (browser) {
-      logger.log('info', `Resetting browser state for browser ${browserId} before next run`);
-      await resetBrowserState(browser);
     }
     
     // Update the queued run to running status
@@ -251,9 +209,6 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
     }
 
     try {
-      // Reset the browser state before executing this run
-      await resetBrowserState(browser);
-      
       const isRunAborted = async (): Promise<boolean> => {
         const currentRun = await Run.findOne({ where: { runId: data.runId } });
         return currentRun ? (currentRun.status === 'aborted' || currentRun.status === 'aborting') : false;
