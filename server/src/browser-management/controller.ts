@@ -136,6 +136,19 @@ export const getActiveBrowserIdByState = (userId: string, state: "recording" | "
 };
 
 /**
+ * Checks if there are available browser slots for a user.
+ * Wrapper around {@link browserPool.hasAvailableBrowserSlots()} function.
+ * If state is provided, also checks that none of their active browsers are in that state.
+ * @param userId the user ID to check browser slots for
+ * @param state optional state to check - if provided, ensures no browser is in this state
+ * @returns {boolean} true if user has available slots (and no browsers in specified state if state is provided)
+ * @category BrowserManagement-Controller
+ */
+export const canCreateBrowserInState = (userId: string, state?: "recording" | "run"): boolean => {
+  return browserPool.hasAvailableBrowserSlots(userId, state);
+};
+
+/**
  * Returns the url string from a remote browser if exists in the browser pool.
  * @param id instance id of the remote browser
  * @returns {string | undefined}
