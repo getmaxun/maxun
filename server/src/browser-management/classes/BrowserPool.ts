@@ -507,6 +507,29 @@ export class BrowserPool {
     };
 
     /**
+     * Checks if there are available browser slots for a user.
+     * Returns true if user has available slots AND none of their active browsers are in "recording" state.
+     * @param userId the user ID to check browser slots for
+     * @returns {boolean} true if user has available slots and no recording browsers, false otherwise
+     */
+    public hasAvailableBrowserSlots = (userId: string, state?: BrowserState): boolean => {
+        const userBrowserIds = this.userToBrowserMap.get(userId) || [];
+        
+        if (userBrowserIds.length >= 2) {
+            return false;
+        }
+        
+        if (state === "recording") {
+            const hasBrowserInState = userBrowserIds.some(browserId => 
+                this.pool[browserId] && this.pool[browserId].state === "recording"
+            );
+            return !hasBrowserInState;
+        }
+        
+        return true;
+    };
+
+    /**
      * Returns the first active browser's instance id from the pool.
      * If there is no active browser, it returns null.
      * If there are multiple active browsers, it returns the first one.
