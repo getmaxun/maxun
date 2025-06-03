@@ -161,7 +161,7 @@ export interface CreateRunResponseWithQueue extends CreateRunResponse {
 export const createAndRunRecording = async (id: string, settings: RunSettings): Promise<CreateRunResponseWithQueue> => {
   try {
     const response = await axios.put(
-      `${apiUrl}/robot/runs/${id}`,
+      `${apiUrl}/storage/runs/${id}`,
       { ...settings, withCredentials: true }
     );
     if (response.status === 200) {
