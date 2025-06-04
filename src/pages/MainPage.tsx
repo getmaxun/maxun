@@ -58,6 +58,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
       } else {
         notify('error', t('main_page.notifications.abort_failed', { name: runningRecordingName }));
       }
+      setRerenderRuns(true);
     })
   }
 
