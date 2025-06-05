@@ -889,33 +889,59 @@ router.delete('/schedule/:id', requireSignIn, async (req: AuthenticatedRequest, 
  */
 router.post('/runs/abort/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
-    if (!req.user) { return res.status(401).send({ error: 'Unauthorized' }); }
-    
-    const run = await Run.findOne({ where: { 
-      runId: req.params.id,
-      runByUserId: req.user.id,
-    } });
-    
-    if (!run) {
-      return res.status(404).send(false);
+    if (!req.user) { 
+      return res.status(401).send({ error: 'Unauthorized' }); 
     }
-    
-    const userQueueName = `abort-run-user-${req.user.id}`;
-    await pgBoss.createQueue(userQueueName);
-    
-    await pgBoss.send(userQueueName, {
-      userId: req.user.id,
-      runId: req.params.id
+
+    const run = await Run.findOne({ 
+      where: { 
+        runId: req.params.id,
+        runByUserId: req.user.id,
+      } 
     });
-    
+
+    if (!run) {
+      return res.status(404).send({ error: 'Run not found' });
+    }
+
+    if (!['running', 'queued'].includes(run.status)) {
+      return res.status(400).send({ 
+        error: `Cannot abort run with status: ${run.status}` 
+      });
+    }
+
     await run.update({
       status: 'aborting'
     });
+
+    if (run.status === 'queued') {
+      await run.update({
+        status: 'aborted',
+        finishedAt: new Date().toLocaleString(),
+        log: 'Run aborted while queued'
+      });
+      
+      return res.send({ success: true, message: 'Queued run aborted' });
+    }
+
+    const userQueueName = `abort-run-user-${req.user.id}`;
+    await pgBoss.createQueue(userQueueName);
     
-    return res.send(true);
+    const jobId = await pgBoss.send(userQueueName, {
+      userId: req.user.id,
+      runId: req.params.id
+    });
+
+    logger.log('info', `Abort signal sent for run ${req.params.id}, job ID: ${jobId}`);
+
+    return res.send({ 
+      success: true, 
+      message: 'Abort signal sent',
+      jobId 
+    });
+
   } catch (e) {
     const { message } = e as Error;
-    logger.log('info', `Error while aborting run with id: ${req.params.id} - ${message}`);
-    return res.send(false);
+    logger.log('error', `Error aborting run ${req.params.id}: ${message}`);
+    return res.status(500).send({ error: 'Failed to abort run' });
   }
-});
