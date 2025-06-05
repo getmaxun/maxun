@@ -945,3 +945,5 @@ router.post('/runs/abort/:id', requireSignIn, async (req: AuthenticatedRequest, 
     logger.log('error', `Error aborting run ${req.params.id}: ${message}`);
     return res.status(500).send({ error: 'Failed to abort run' });
   }
+}
+);
