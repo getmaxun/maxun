@@ -49,14 +49,14 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
   const { notify, setRerenderRuns, setRecordingId } = useGlobalInfoStore();
   const navigate  = useNavigate();
 
-  const abortRunHandler = (runId: string) => {
+  const abortRunHandler = (runId: string, robotName: string, browserId: string) => {
     aborted = true;
     notifyAboutAbort(runId).then(async (response) => {
       if (response) {
-        notify('success', t('main_page.notifications.abort_success', { name: runningRecordingName }));
+        notify('success', t('main_page.notifications.abort_success', { name: robotName }));
         await stopRecording(ids.browserId);
       } else {
-        notify('error', t('main_page.notifications.abort_failed', { name: runningRecordingName }));
+        notify('error', t('main_page.notifications.abort_failed', { name: robotName }));
       }
       setRerenderRuns(true);
     })
@@ -157,7 +157,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
       case 'runs':
         return <Runs
           currentInterpretationLog={currentInterpretationLog}
-          abortRunHandler={() => abortRunHandler(ids.runId)}
+          abortRunHandler={abortRunHandler}
           runId={ids.runId}
           runningRecordingName={runningRecordingName}
         />;
