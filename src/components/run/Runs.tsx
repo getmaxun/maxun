@@ -4,7 +4,7 @@ import { RunsTable } from "./RunsTable";
 
 interface RunsProps {
   currentInterpretationLog: string;
-  abortRunHandler: () => void;
+  abortRunHandler: (runId: string, robotName: string, browserId: string) => void;
   runId: string;
   runningRecordingName: string;
 }
