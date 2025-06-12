@@ -254,10 +254,12 @@ function handleWorkflowActions(workflow: any[], credentials: Credentials) {
 router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
-    const { name, limits, credentials, targetUrl } = req.body;
+
+    const { name, limit, credentials, targetUrl,description } = req.body;
+
 
     // Validate input
-    if (!name && !limits && !credentials && !targetUrl) {
+    if (!name && !limit && !credentials && !targetUrl) {
       return res.status(400).json({ error: 'Either "name", "limits", "credentials" or "target_url" must be provided.' });
     }
 
@@ -272,6 +274,10 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
     if (name) {
       robot.set('recording_meta', { ...robot.recording_meta, name });
     }
+    
+     if(description){
+        robot.set('description', description);
+      }
 
     if (targetUrl) {
       const updatedWorkflow = [...robot.recording.workflow];
@@ -294,6 +300,7 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
           }
         }
       }
+
     }
 
     await robot.save();
@@ -304,8 +311,8 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       workflow = handleWorkflowActions(workflow, credentials);
     }
 
-    if (limits && Array.isArray(limits) && limits.length > 0) {
-      for (const limitInfo of limits) {
+    if (limit && Array.isArray(limit) && limit.length > 0) {
+      for (const limitInfo of limit) {
         const { pairIndex, actionIndex, argIndex, limit } = limitInfo;
 
         const pair = workflow[pairIndex];
