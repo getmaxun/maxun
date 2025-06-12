@@ -186,7 +186,7 @@ export const interpretStoredRecording = async (id: string): Promise<boolean> => 
 
 export const notifyAboutAbort = async (id: string): Promise<{ success: boolean; isQueued?: boolean }> => {
   try {
-    const response = await axios.post(`${apiUrl}/robot/runs/abort/${id}`, { withCredentials: true });
+    const response = await axios.post(`${apiUrl}/storage/runs/abort/${id}`, { withCredentials: true });
     if (response.status === 200) {
       return {
         success: response.data.success,
