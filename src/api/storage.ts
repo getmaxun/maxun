@@ -205,19 +205,23 @@ export const interpretStoredRecording = async (id: string): Promise<boolean> => 
   }
 }
 
-export const notifyAboutAbort = async (id: string): Promise<boolean> => {
+export const notifyAboutAbort = async (id: string): Promise<{ success: boolean; isQueued?: boolean }> => {
   try {
-    const response = await axios.post(`${apiUrl}/storage/runs/abort/${id}`);
+    const response = await axios.post(`${apiUrl}/storage/runs/abort/${id}`, { withCredentials: true });
     if (response.status === 200) {
-      return response.data;
+      return {
+        success: response.data.success,
+        isQueued: response.data.isQueued
+      };
     } else {
       throw new Error(`Couldn't abort a running recording with id ${id}`);
     }
   } catch (error: any) {
     console.log(error);
-    return false;
+    return { success: false };
   }
 }
+
 
 export const scheduleStoredRecording = async (id: string, settings: ScheduleSettings): Promise<ScheduleRunResponse> => {
   try {

@@ -917,32 +917,58 @@ router.post('/runs/abort/:id', requireSignIn, async (req: AuthenticatedRequest, 
   try {
     if (!req.user) { return res.status(401).send({ error: 'Unauthorized' }); }
     
-    const run = await Run.findOne({ where: { 
-      runId: req.params.id,
-      runByUserId: req.user.id,
-    } });
+    const run = await Run.findOne({ where: { runId: req.params.id } });
     
     if (!run) {
-      return res.status(404).send(false);
+      return res.status(404).send({ error: 'Run not found' });
+    }
+
+    if (!['running', 'queued'].includes(run.status)) {
+      return res.status(400).send({ 
+        error: `Cannot abort run with status: ${run.status}` 
+      });
+    }
+
+    const isQueued = run.status === 'queued';
+
+    await run.update({
+      status: 'aborting'
+    });
+
+    if (isQueued) {
+      await run.update({
+        status: 'aborted',
+        finishedAt: new Date().toLocaleString(),
+        log: 'Run aborted while queued'
+      });
+      
+      return res.send({ 
+        success: true, 
+        message: 'Queued run aborted',
+        isQueued: true 
+      });
     }
     
     const userQueueName = `abort-run-user-${req.user.id}`;
     await pgBoss.createQueue(userQueueName);
     
-    await pgBoss.send(userQueueName, {
+    const jobId = await pgBoss.send(userQueueName, {
       userId: req.user.id,
       runId: req.params.id
     });
-    
-    await run.update({
-      status: 'aborting'
-    });
-    
-    return res.send(true);
+
+    logger.log('info', `Abort signal sent for run ${req.params.id}, job ID: ${jobId}`);
+
+    return res.send({ 
+      success: true, 
+      message: 'Abort signal sent',
+      jobId,
+      isQueued: false
+    });    
   } catch (e) {
     const { message } = e as Error;
-    logger.log('info', `Error while aborting run with id: ${req.params.id} - ${message}`);
-    return res.send(false);
+    logger.log('error', `Error aborting run ${req.params.id}: ${message}`);
+    return res.status(500).send({ error: 'Failed to abort run' });
   }
 });
 
