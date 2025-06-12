@@ -14,7 +14,7 @@ interface BrowserPoolInfo {
     /**
      * The instance of remote browser.
      */
-    browser: RemoteBrowser,
+    browser: RemoteBrowser | null,
     /**
      * States if the browser's instance is being actively used.
      * Helps to persist the progress on the frontend when the application has been reloaded.
@@ -31,6 +31,11 @@ interface BrowserPoolInfo {
      * @default "recording"
      */
     state: BrowserState,
+    /**
+     * The status of the browser instance.
+     * Can be "reserved", "initializing", "ready" or "failed".
+     */
+    status?: "reserved" | "initializing" | "ready" | "failed",
 }
 
 /**
@@ -205,8 +210,18 @@ export class BrowserPool {
      * @returns remote browser instance or undefined if it does not exist in the pool
      */
     public getRemoteBrowser = (id: string): RemoteBrowser | undefined => {
-        logger.log('debug', `Remote browser with id: ${id} retrieved from the pool`);
-        return this.pool[id]?.browser;
+        const poolInfo = this.pool[id];
+        if (!poolInfo) {
+            return undefined;
+        }
+        
+        // Return undefined for reserved slots (browser is null)
+        if (poolInfo.status === "reserved") {
+            logger.log('debug', `Browser ${id} is reserved but not yet ready`);
+            return undefined;
+        }
+        
+        return poolInfo.browser || undefined;
     };
 
     /**
@@ -507,6 +522,29 @@ export class BrowserPool {
     };
 
     /**
+     * Checks if there are available browser slots for a user.
+     * Returns true if user has available slots AND none of their active browsers are in "recording" state.
+     * @param userId the user ID to check browser slots for
+     * @returns {boolean} true if user has available slots and no recording browsers, false otherwise
+     */
+    public hasAvailableBrowserSlots = (userId: string, state?: BrowserState): boolean => {
+        const userBrowserIds = this.userToBrowserMap.get(userId) || [];
+        
+        if (userBrowserIds.length >= 2) {
+            return false;
+        }
+        
+        if (state === "recording") {
+            const hasBrowserInState = userBrowserIds.some(browserId => 
+                this.pool[browserId] && this.pool[browserId].state === "recording"
+            );
+            return !hasBrowserInState;
+        }
+        
+        return true;
+    };
+
+    /**
      * Returns the first active browser's instance id from the pool.
      * If there is no active browser, it returns null.
      * If there are multiple active browsers, it returns the first one.
@@ -523,5 +561,72 @@ export class BrowserPool {
         // Don't log a warning since this behavior is expected in the user-browser model
         // logger.log('warn', `No active browser in the pool`);
         return null;
+    };
+
+    /**
+     * Reserves a browser slot immediately without creating the actual browser.
+     * This ensures slot counting is accurate for rapid successive requests.
+     * 
+     * @param id browser ID to reserve
+     * @param userId user ID that owns this reservation
+     * @param state browser state ("recording" or "run")
+     * @returns true if slot was reserved, false if user has reached limit
+     */
+    public reserveBrowserSlot = (id: string, userId: string, state: BrowserState = "run"): boolean => {
+        // Check if user has available slots first
+        if (!this.hasAvailableBrowserSlots(userId, state)) {
+            logger.log('debug', `Cannot reserve slot for user ${userId}: no available slots`);
+            return false;
+        }
+
+        // Reserve the slot with null browser
+        this.pool[id] = {
+            browser: null,
+            active: false,
+            userId,
+            state,
+            status: "reserved"
+        };
+
+        // Update the user-to-browser mapping
+        let userBrowserIds = this.userToBrowserMap.get(userId) || [];
+        if (!userBrowserIds.includes(id)) {
+            userBrowserIds.push(id);
+            this.userToBrowserMap.set(userId, userBrowserIds);
+        }
+
+        logger.log('info', `Reserved browser slot ${id} for user ${userId} in state ${state}`);
+        return true;
+    };
+
+    /**
+     * Upgrades a reserved slot to an actual browser instance.
+     * 
+     * @param id browser ID that was previously reserved
+     * @param browser the actual RemoteBrowser instance
+     * @returns true if successful, false if slot wasn't reserved
+     */
+    public upgradeBrowserSlot = (id: string, browser: RemoteBrowser): boolean => {
+        if (!this.pool[id] || this.pool[id].status !== "reserved") {
+            logger.log('warn', `Cannot upgrade browser ${id}: slot not reserved`);
+            return false;
+        }
+
+        this.pool[id].browser = browser;
+        this.pool[id].status = "ready";
+        logger.log('info', `Upgraded browser slot ${id} to ready state`);
+        return true;
+    };
+
+    /**
+     * Marks a reserved slot as failed and removes it.
+     * 
+     * @param id browser ID to mark as failed
+     */
+    public failBrowserSlot = (id: string): void => {
+        if (this.pool[id]) {
+            logger.log('info', `Marking browser slot ${id} as failed`);
+            this.deleteRemoteBrowser(id);
+        }
     };
 }

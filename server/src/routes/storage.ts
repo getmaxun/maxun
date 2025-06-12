@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import logger from "../logger";
-import { createRemoteBrowserForRun, getActiveBrowserIdByState } from "../browser-management/controller";
+import { createRemoteBrowserForRun, destroyRemoteBrowser, getActiveBrowserIdByState } from "../browser-management/controller";
 import { chromium } from 'playwright-extra';
 import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { browserPool } from "../server";
@@ -517,55 +517,118 @@ router.put('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res) =>
       return res.status(401).send({ error: 'Unauthorized' });
     }
 
-    const proxyConfig = await getDecryptedProxyConfig(req.user.id);
-    let proxyOptions: any = {};
-
-    if (proxyConfig.proxy_url) {
-      proxyOptions = {
-        server: proxyConfig.proxy_url,
-        ...(proxyConfig.proxy_username && proxyConfig.proxy_password && {
-          username: proxyConfig.proxy_username,
-          password: proxyConfig.proxy_password,
-        }),
-      };
-    }
-
-    console.log(`Proxy config for run: ${JSON.stringify(proxyOptions)}`);
-
     // Generate runId first
     const runId = uuid();
-
-    // Check if user has reached browser limit
-    const userBrowserIds = browserPool.getAllBrowserIdsForUser(req.user.id);
-    const canCreateBrowser = userBrowserIds.length < 2;
+    
+    const canCreateBrowser = await browserPool.hasAvailableBrowserSlots(req.user.id, "run");
 
     if (canCreateBrowser) {
-      // User has available browser slots, create it directly
-      const id = createRemoteBrowserForRun(req.user.id);
+      let browserId: string;
+      
+      try {
+        browserId = await createRemoteBrowserForRun(req.user.id);
+        
+        if (!browserId || browserId.trim() === '') {
+          throw new Error('Failed to generate valid browser ID');
+        }
+        
+        logger.log('info', `Created browser ${browserId} for run ${runId}`);
+        
+      } catch (browserError: any) {
+        logger.log('error', `Failed to create browser: ${browserError.message}`);
+        return res.status(500).send({ error: 'Failed to create browser instance' });
+      }
 
-      const run = await Run.create({
-        status: 'running',
+      try {
+        await Run.create({
+          status: 'running',
+          name: recording.recording_meta.name,
+          robotId: recording.id,
+          robotMetaId: recording.recording_meta.id,
+          startedAt: new Date().toLocaleString(),
+          finishedAt: '',
+          browserId: browserId, 
+          interpreterSettings: req.body,
+          log: '',
+          runId,
+          runByUserId: req.user.id,
+          serializableOutput: {},
+          binaryOutput: {},
+        });
+
+        logger.log('info', `Created run ${runId} with browser ${browserId}`);
+
+      } catch (dbError: any) {
+        logger.log('error', `Database error creating run: ${dbError.message}`);
+        
+        try {
+          await destroyRemoteBrowser(browserId, req.user.id);
+        } catch (cleanupError: any) {
+          logger.log('warn', `Failed to cleanup browser after run creation failure: ${cleanupError.message}`);
+        }
+        
+        return res.status(500).send({ error: 'Failed to create run record' });
+      }
+
+      try {
+        const userQueueName = `execute-run-user-${req.user.id}`;
+        await pgBoss.createQueue(userQueueName);
+        
+        const jobId = await pgBoss.send(userQueueName, {
+          userId: req.user.id,
+          runId: runId,
+          browserId: browserId, 
+        });
+        
+        logger.log('info', `Queued run execution job with ID: ${jobId} for run: ${runId}`);
+      } catch (queueError: any) {
+        logger.log('error', `Failed to queue run execution: ${queueError.message}`);
+        
+        try {
+          await Run.update({
+            status: 'failed',
+            finishedAt: new Date().toLocaleString(),
+            log: 'Failed to queue execution job'
+          }, { where: { runId: runId } });
+          
+          await destroyRemoteBrowser(browserId, req.user.id);
+        } catch (cleanupError: any) {
+          logger.log('warn', `Failed to cleanup after queue error: ${cleanupError.message}`);
+        }
+
+        return res.status(503).send({ error: 'Unable to queue run, please try again later' });
+      }
+
+      return res.send({
+        browserId: browserId, 
+        runId: runId,
+        robotMetaId: recording.recording_meta.id,
+        queued: false 
+      }); 
+    } else {
+      const browserId = uuid(); 
+
+      await Run.create({
+        status: 'queued',
         name: recording.recording_meta.name,
         robotId: recording.id,
         robotMetaId: recording.recording_meta.id,
         startedAt: new Date().toLocaleString(),
         finishedAt: '',
-        browserId: id,
+        browserId,
         interpreterSettings: req.body,
-        log: '',
+        log: 'Run queued - waiting for available browser slot',
         runId,
         runByUserId: req.user.id,
         serializableOutput: {},
         binaryOutput: {},
       });
-
-      const plainRun = run.toJSON();
-
+      
       return res.send({
-        browserId: id,
-        runId: plainRun.runId,
+        browserId: browserId,
+        runId: runId,
         robotMetaId: recording.recording_meta.id,
-        queued: false
+        queued: true 
       });
     } else {
       const browserId = getActiveBrowserIdByState(req.user.id, "run")
@@ -607,8 +670,8 @@ router.put('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res) =>
     }
   } catch (e) {
     const { message } = e as Error;
-    logger.log('info', `Error while creating a run with robot id: ${req.params.id} - ${message}`);
-    return res.send('');
+    logger.log('error', `Error while creating a run with robot id: ${req.params.id} - ${message}`);    
+    return res.status(500).send({ error: 'Internal server error' });
   }
 });
 
@@ -945,5 +1008,74 @@ router.post('/runs/abort/:id', requireSignIn, async (req: AuthenticatedRequest, 
     logger.log('error', `Error aborting run ${req.params.id}: ${message}`);
     return res.status(500).send({ error: 'Failed to abort run' });
   }
+});
+
+async function processQueuedRuns() {
+  try {
+    const queuedRun = await Run.findOne({
+      where: { status: 'queued' },
+      order: [['startedAt', 'ASC']]
+    });
+
+    if (!queuedRun) return;
+
+    const userId = queuedRun.runByUserId;
+    
+    const canCreateBrowser = await browserPool.hasAvailableBrowserSlots(userId, "run");
+    
+    if (canCreateBrowser) {
+      logger.log('info', `Processing queued run ${queuedRun.runId} for user ${userId}`);
+      
+      const recording = await Robot.findOne({
+        where: {
+          'recording_meta.id': queuedRun.robotMetaId
+        },
+        raw: true
+      });
+
+      if (!recording) {
+        await queuedRun.update({
+          status: 'failed',
+          finishedAt: new Date().toLocaleString(),
+          log: 'Recording not found'
+        });
+        return;
+      }
+
+      try {
+        const newBrowserId = await createRemoteBrowserForRun(userId);
+
+        logger.log('info', `Created and initialized browser ${newBrowserId} for queued run ${queuedRun.runId}`);
+
+        await queuedRun.update({
+          status: 'running',
+          browserId: newBrowserId,
+          log: 'Browser created and ready for execution'
+        });
+
+        const userQueueName = `execute-run-user-${userId}`;
+        await pgBoss.createQueue(userQueueName);
+        
+        const jobId = await pgBoss.send(userQueueName, {
+          userId: userId,
+          runId: queuedRun.runId,
+          browserId: newBrowserId,
+        });
+
+        logger.log('info', `Queued execution for run ${queuedRun.runId} with ready browser ${newBrowserId}, job ID: ${jobId}`);
+        
+      } catch (browserError: any) {
+        logger.log('error', `Failed to create browser for queued run: ${browserError.message}`);
+        await queuedRun.update({
+          status: 'failed',
+          finishedAt: new Date().toLocaleString(),
+          log: `Failed to create browser: ${browserError.message}`
+        });
+      }
+    }
+  } catch (error: any) {
+    logger.log('error', `Error processing queued runs: ${error.message}`);
+  }
 }
-);
+
+export { processQueuedRuns };

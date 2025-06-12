@@ -154,6 +154,27 @@ export const editRecordingFromStorage = async (browserId: string, id: string): P
   }
 };
 
+export interface CreateRunResponseWithQueue extends CreateRunResponse {
+  queued?: boolean;
+}
+
+export const createAndRunRecording = async (id: string, settings: RunSettings): Promise<CreateRunResponseWithQueue> => {
+  try {
+    const response = await axios.put(
+      `${apiUrl}/storage/runs/${id}`,
+      { ...settings, withCredentials: true }
+    );
+    if (response.status === 200) {
+      return response.data;
+    } else {
+      throw new Error(`Couldn't create and run recording ${id}`);
+    }
+  } catch (error: any) {
+    console.log(error);
+    return { browserId: '', runId: '', robotMetaId: '', queued: false };
+  }
+}
+
 export const createRunForStoredRecording = async (id: string, settings: RunSettings): Promise<CreateRunResponse> => {
   try {
     const response = await axios.put(
