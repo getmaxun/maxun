@@ -474,7 +474,8 @@
       "schedule_success": "Robot {{name}} programado exitosamente",
       "schedule_failed": "Error al programar el robot {{name}}",
       "abort_success": "Interpretación del robot {{name}} abortada exitosamente",
-      "abort_failed": "Error al abortar la interpretación del robot {{name}}"
+      "abort_failed": "Error al abortar la interpretación del robot {{name}}",
+      "abort_initiated": "Cancelando la interpretación del robot {{name}}"
     },
     "menu": {
       "recordings": "Robots",

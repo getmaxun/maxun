@@ -473,7 +473,8 @@
             "schedule_success": "Roboter {{name}} erfolgreich geplant",
             "schedule_failed": "Planen des Roboters {{name}} fehlgeschlagen",
             "abort_success": "Interpretation des Roboters {{name}} erfolgreich abgebrochen",
-            "abort_failed": "Abbrechen der Interpretation des Roboters {{name}} fehlgeschlagen"
+            "abort_failed": "Abbrechen der Interpretation des Roboters {{name}} fehlgeschlagen",
+            "abort_initiated": "Interpretation des Roboters {{name}} wird abgebrochen"
         },
         "menu": {
             "recordings": "Roboter",
