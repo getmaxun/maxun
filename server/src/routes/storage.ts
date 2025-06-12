@@ -949,26 +949,6 @@ router.post('/runs/abort/:id', requireSignIn, async (req: AuthenticatedRequest, 
       });
     }
 
-    if (!['running', 'queued'].includes(run.status)) {
-      return res.status(400).send({
-        error: `Cannot abort run with status: ${run.status}`
-      });
-    }
-
-    await run.update({
-      status: 'aborting'
-    });
-
-    if (run.status === 'queued') {
-      await run.update({
-        status: 'aborted',
-        finishedAt: new Date().toLocaleString(),
-        log: 'Run aborted while queued'
-      });
-
-      return res.send({ success: true, message: 'Queued run aborted' });
-    }
-
     const userQueueName = `abort-run-user-${req.user.id}`;
     await pgBoss.createQueue(userQueueName);
 
