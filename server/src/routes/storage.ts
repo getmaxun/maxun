@@ -630,44 +630,7 @@ router.put('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res) =>
         robotMetaId: recording.recording_meta.id,
         queued: true 
       });
-    } else {
-      const browserId = getActiveBrowserIdByState(req.user.id, "run")
-
-      if (browserId) {
-        // User has reached the browser limit, queue the run
-        try {
-          // Create the run record with 'queued' status
-          await Run.create({
-            status: 'queued',
-            name: recording.recording_meta.name,
-            robotId: recording.id,
-            robotMetaId: recording.recording_meta.id,
-            startedAt: new Date().toLocaleString(),
-            finishedAt: '',
-            browserId: browserId,  // Random will be updated later
-            interpreterSettings: req.body,
-            log: 'Run queued - waiting for available browser slot',
-            runId,
-            runByUserId: req.user.id,
-            serializableOutput: {},
-            binaryOutput: {},
-          });
-
-          return res.send({
-            browserId: browserId,
-            runId: runId,
-            robotMetaId: recording.recording_meta.id,
-            queued: true,
-          });
-        } catch (queueError: any) {
-          logger.log('error', `Failed to queue run job: ${queueError.message}`);
-          return res.status(503).send({ error: 'Unable to queue run, please try again later' });
-        }
-      } else {
-        logger.log('info', "Browser id does not exist");
-        return res.send('');
-      }
-    }
+    } 
   } catch (e) {
     const { message } = e as Error;
     logger.log('error', `Error while creating a run with robot id: ${req.params.id} - ${message}`);    
