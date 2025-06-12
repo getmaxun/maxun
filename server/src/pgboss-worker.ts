@@ -184,6 +184,30 @@ async function extractAndProcessScrapedData(
   };
 }
 
+// Helper function to handle integration updates
+async function triggerIntegrationUpdates(runId: string, robotMetaId: string): Promise<void> {
+  try {
+    googleSheetUpdateTasks[runId] = {
+      robotId: robotMetaId,
+      runId: runId,
+      status: 'pending',
+      retries: 5,
+    };
+
+    airtableUpdateTasks[runId] = {
+      robotId: robotMetaId,
+      runId: runId,
+      status: 'pending',
+      retries: 5,
+    };
+
+    processAirtableUpdates();
+    processGoogleSheetUpdates();
+  } catch (err: any) {
+    logger.log('error', `Failed to update integrations for run: ${runId}: ${err.message}`);
+  }
+}
+
 /**
  * Modified processRunExecution function - only add browser reset
  */
