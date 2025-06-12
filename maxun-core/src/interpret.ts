@@ -47,6 +47,7 @@ interface InterpreterOptions {
     activeId: (id: number) => void,
     debugMessage: (msg: string) => void,
     setActionType: (type: string) => void,
+    incrementScrapeListIndex: () => void,
   }>
 }
 
@@ -475,6 +476,11 @@ export default class Interpreter extends EventEmitter {
         }
 
         await this.ensureScriptsLoaded(page);
+        
+        if (this.options.debugChannel?.incrementScrapeListIndex) {
+          this.options.debugChannel.incrementScrapeListIndex();
+        }
+
         if (!config.pagination) {
           const scrapeResults: Record<string, any>[] = await page.evaluate((cfg) => window.scrapeList(cfg), config);
           await this.options.serializableCallback(scrapeResults);
@@ -624,6 +630,8 @@ export default class Interpreter extends EventEmitter {
         });
         allResults = allResults.concat(newResults);
         debugLog("Results collected:", allResults.length);
+
+        await this.options.serializableCallback(allResults);
     };
 
     const checkLimit = () => {
