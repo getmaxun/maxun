@@ -1,4 +1,3 @@
-// mcp-worker.ts
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -7,10 +6,9 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Simple logger that doesn't interfere with stdio
 const log = (message: string) => {
   if (process.env.NODE_ENV !== 'production') {
-    console.error(`[MCP Worker] ${message}`); // Use stderr for logging
+    console.error(`[MCP Worker] ${message}`); 
   }
 };
 
