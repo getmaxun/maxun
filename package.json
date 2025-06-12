@@ -100,10 +100,7 @@
     "seed": "sequelize-cli db:seed:all",
     "seed:undo:all": "sequelize-cli db:seed:undo:all",
     "migration:generate": "sequelize-cli migration:generate --name",
-    "mcp:build": "tsc --project server/tsconfig.mcp.json",
-    "mcp:start": "node dist/mcp/index.js",
-    "mcp:dev": "ts-node mcp/index.ts",
-    "mcp:inspector": "npx @modelcontextprotocol/inspector dist/mcp/index.js"
+    "mcp:build": "tsc --project server/tsconfig.mcp.json"
   },
   "eslintConfig": {
     "extends": [
