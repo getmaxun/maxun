@@ -43,22 +43,59 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
     runId: '',
     robotMetaId: ''
   });
+  const [queuedRuns, setQueuedRuns] = React.useState<Set<string>>(new Set());
 
   let aborted = false;
 
   const { notify, setRerenderRuns, setRecordingId } = useGlobalInfoStore();
   const navigate  = useNavigate();
 
-  const abortRunHandler = (runId: string) => {
+  const abortRunHandler = (runId: string, robotName: string, browserId: string) => {
+    notify('info', t('main_page.notifications.abort_initiated', { name: robotName }));
+    
     aborted = true;
+    
     notifyAboutAbort(runId).then(async (response) => {
-      if (response) {
-        notify('success', t('main_page.notifications.abort_success', { name: runningRecordingName }));
-        await stopRecording(ids.browserId);
-      } else {
-        notify('error', t('main_page.notifications.abort_failed', { name: runningRecordingName }));
+      if (!response.success) {
+        notify('error', t('main_page.notifications.abort_failed', { name: robotName }));
+        setRerenderRuns(true);
+        return;
       }
-    })
+      
+      if (response.isQueued) {
+        setRerenderRuns(true);
+        
+        notify('success', t('main_page.notifications.abort_success', { name: robotName }));
+        
+        setQueuedRuns(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(runId);
+          return newSet;
+        });
+        
+        return;
+      }
+      
+      const abortSocket = io(`${apiUrl}/${browserId}`, {
+        transports: ["websocket"],
+        rejectUnauthorized: false
+      });
+      
+      abortSocket.on('run-aborted', (abortData) => {
+        if (abortData.runId === runId) {
+          notify('success', t('main_page.notifications.abort_completed', { name: abortData.robotName || robotName }));
+          setRerenderRuns(true);
+          abortSocket.disconnect();
+        }
+      });
+      
+      abortSocket.on('connect_error', (error) => {
+        console.log('Abort socket connection error:', error);
+        notify('error', t('main_page.notifications.abort_failed', { name: robotName }));
+        setRerenderRuns(true);
+        abortSocket.disconnect();
+      });
+    });
   }
 
   const setRecordingInfo = (id: string, name: string) => {
@@ -156,7 +193,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
       case 'runs':
         return <Runs
           currentInterpretationLog={currentInterpretationLog}
-          abortRunHandler={() => abortRunHandler(ids.runId)}
+          abortRunHandler={abortRunHandler}
           runId={ids.runId}
           runningRecordingName={runningRecordingName}
         />;
