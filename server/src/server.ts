@@ -83,9 +83,48 @@ export const io = new Server(server);
  */
 export const browserPool = new BrowserPool();
 
-// app.use(bodyParser.json({ limit: '10mb' }))
-// app.use(bodyParser.urlencoded({ extended: true, limit: '10mb', parameterLimit: 9000 }));
-// parse cookies - "cookie" is true in csrfProtection
+const initializeMCPServer = async () => {
+  try {
+    const mcpEnabled = process.env.MCP_ENABLED === 'true';
+    const mcpApiKey = process.env.MCP_API_KEY;
+    
+    if (!mcpEnabled) {
+      logger.log('info', 'MCP Server disabled (set MCP_ENABLED=true to enable)');
+      return;
+    }
+
+    if (!mcpApiKey) {
+      logger.log('warning', 'MCP_API_KEY not set. MCP server will not be able to authenticate with Maxun API.');
+      return;
+    }
+    
+    const mcpWorkerPath = path.resolve(__dirname, './mcp-worker.ts');
+    const mcpWorkerProcess = fork(mcpWorkerPath, [], {
+      execArgv: process.env.NODE_ENV === 'production' ? [] : ['--inspect=5861'],
+      env: {
+        ...process.env,
+        MCP_WORKER: 'true'
+      }
+    });
+
+    mcpWorkerProcess.on('message', (message: any) => {
+      logger.log('info', `MCP Worker message: ${message}`);
+    });
+
+    mcpWorkerProcess.on('error', (error: any) => {
+      logger.log('error', `MCP Worker error: ${error}`);
+    });
+
+    mcpWorkerProcess.on('exit', (code: any) => {
+      logger.log('info', `MCP Worker exited with code: ${code}`);
+    });
+
+    logger.log('info', 'MCP Server started with stdio transport in worker process');
+  } catch (error: any) {
+    logger.log('error', `Failed to initialize MCP Server: ${error.message}`);
+  }
+};
+
 app.use(cookieParser())
 
 app.use('/webhook', webhook);
@@ -99,9 +138,9 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 readdirSync(path.join(__dirname, 'api')).forEach((r) => {
   const route = require(path.join(__dirname, 'api', r));
-  const router = route.default || route;  // Use .default if available, fallback to route
+  const router = route.default || route;
   if (typeof router === 'function') {
-    app.use('/api', router);  // Use the default export or named router
+    app.use('/api', router);
   } else {
     console.error(`Error: ${r} does not export a valid router`);
   }
@@ -151,7 +190,6 @@ app.get('/', function (req, res) {
   return res.send('Maxun server started 🚀');
 });
 
-// Add CORS headers
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', process.env.PUBLIC_URL || 'http://localhost:5173');
   res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
@@ -168,9 +206,11 @@ server.listen(SERVER_PORT, '0.0.0.0', async () => {
     await connectDB();
     await syncDB();
     logger.log('info', `Server listening on port ${SERVER_PORT}`);
+    
+    await initializeMCPServer();
   } catch (error: any) {
     logger.log('error', `Failed to connect to the database: ${error.message}`);
-    process.exit(1); // Exit the process if DB connection fails
+    process.exit(1);
   }
 });
 
