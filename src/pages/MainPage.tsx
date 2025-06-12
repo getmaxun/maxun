@@ -51,6 +51,9 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
   const { notify, setRerenderRuns, setRecordingId } = useGlobalInfoStore();
   const navigate  = useNavigate();
 
+  const { state } = useContext(AuthContext);
+  const { user } = state;
+
   const abortRunHandler = (runId: string, robotName: string, browserId: string) => {
     notify('info', t('main_page.notifications.abort_initiated', { name: robotName }));
 
