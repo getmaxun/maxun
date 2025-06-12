@@ -68,7 +68,8 @@
       "notifications": {
         "delete_warning": "The robot has associated runs. First delete runs to delete the robot",
         "delete_success": "Robot deleted successfully",
-        "auth_success": "Robot successfully authenticated"
+        "auth_success": "Robot successfully authenticated",
+        "browser_limit_warning": "Remote browsers are currently busy. Please wait for a few minutes and try again"
       }
     },
     "mainmenu":{

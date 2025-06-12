@@ -61,7 +61,8 @@
         "notifications": {
             "delete_warning": "Der Roboter hat zugehörige Ausführungen. Löschen Sie zuerst die Ausführungen, um den Roboter zu löschen",
             "delete_success": "Roboter erfolgreich gelöscht",
-            "auth_success": "Roboter erfolgreich authentifiziert"
+            "auth_success": "Roboter erfolgreich authentifiziert",
+            "browser_limit_warning": "Remote-Browser sind derzeit ausgelastet. Bitte warten Sie einige Minuten und versuchen Sie es erneut"
         }
     },
     "mainmenu": {

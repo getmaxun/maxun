@@ -217,7 +217,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
   const data = job.data;
   logger.log('info', `Processing run execution job for runId: ${data.runId}, browserId: ${data.browserId}`);
   
-  try {  
+  try { 
     // Find the run
     const run = await Run.findOne({ where: { runId: data.runId } });
     if (!run) {
@@ -232,7 +232,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
 
     const plainRun = run.toJSON();
     const browserId = data.browserId || plainRun.browserId;
-    
+
     if (!browserId) {
       throw new Error(`No browser ID available for run ${data.runId}`);
     }
@@ -261,7 +261,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
       if (!recording) {
         throw new Error(`Recording for run ${data.runId} not found`);
       }
-
+      
       const isRunAborted = async (): Promise<boolean> => {
         const currentRun = await Run.findOne({ where: { runId: data.runId } });
         return currentRun ? (currentRun.status === 'aborted' || currentRun.status === 'aborting') : false;

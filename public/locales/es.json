@@ -62,7 +62,8 @@
     "notifications": {
       "delete_warning": "El robot tiene ejecuciones asociadas. Primero elimine las ejecuciones para eliminar el robot",
       "delete_success": "Robot eliminado exitosamente",
-      "auth_success": "Robot autenticado exitosamente"
+      "auth_success": "Robot autenticado exitosamente",
+      "browser_limit_warning": "Los navegadores remotos están ocupados actualmente. Por favor, espere unos minutos e inténtelo de nuevo"
     }
   },
   "mainmenu": {

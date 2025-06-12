@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useContext, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MainMenu } from "../components/dashboard/MainMenu";
 import { Stack } from "@mui/material";
@@ -7,13 +7,14 @@ import { Runs } from "../components/run/Runs";
 import ProxyForm from '../components/proxy/ProxyForm';
 import ApiKey from '../components/api/ApiKey';
 import { useGlobalInfoStore } from "../context/globalInfo";
-import { createRunForStoredRecording, interpretStoredRecording, notifyAboutAbort, scheduleStoredRecording } from "../api/storage";
+import { createAndRunRecording, createRunForStoredRecording, CreateRunResponseWithQueue, interpretStoredRecording, notifyAboutAbort, scheduleStoredRecording } from "../api/storage";
 import { io, Socket } from "socket.io-client";
 import { stopRecording } from "../api/recording";
 import { RunSettings } from "../components/run/RunSettings";
 import { ScheduleSettings } from "../components/robot/ScheduleSettings";
 import { apiUrl } from "../apiConfig";
 import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../context/auth';
 
 interface MainPageProps {
   handleEditRecording: (id: string, fileName: string) => void;
@@ -52,7 +53,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
 
   const abortRunHandler = (runId: string, robotName: string, browserId: string) => {
     notify('info', t('main_page.notifications.abort_initiated', { name: robotName }));
-    
+   
     aborted = true;
     
     notifyAboutAbort(runId).then(async (response) => {
@@ -127,48 +128,109 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
   }, [currentInterpretationLog])
 
   const handleRunRecording = useCallback((settings: RunSettings) => {
-    createRunForStoredRecording(runningRecordingId, settings).then(({ browserId, runId, robotMetaId }: CreateRunResponse) => {
+    createAndRunRecording(runningRecordingId, settings).then((response: CreateRunResponseWithQueue) => {
+      const { browserId, runId, robotMetaId, queued } = response;
+      
       setIds({ browserId, runId, robotMetaId });
       navigate(`/runs/${robotMetaId}/run/${runId}`);
-      const socket =
-        io(`${apiUrl}/${browserId}`, {
+            
+      if (queued) {
+        console.log('Creating queue socket for queued run:', runId); 
+        
+        setQueuedRuns(prev => new Set([...prev, runId]));
+        
+        const queueSocket = io(`${apiUrl}/queued-run`, {
+          transports: ["websocket"],
+          rejectUnauthorized: false,
+          query: { userId: user?.id }
+        });
+        
+        queueSocket.on('connect', () => {
+          console.log('Queue socket connected for user:', user?.id);
+        });
+        
+        queueSocket.on('connect_error', (error) => {
+          console.log('Queue socket connection error:', error);
+        });
+        
+        queueSocket.on('run-completed', (completionData) => {
+          if (completionData.runId === runId) {  
+            setRunningRecordingName('');
+            setCurrentInterpretationLog('');          
+            setRerenderRuns(true);
+            
+            setQueuedRuns(prev => {
+              const newSet = new Set(prev);
+              newSet.delete(runId);
+              return newSet;
+            });
+            
+            const robotName = completionData.robotName || runningRecordingName;
+            
+            if (completionData.status === 'success') {
+              notify('success', t('main_page.notifications.interpretation_success', { name: robotName }));
+            } else {
+              notify('error', t('main_page.notifications.interpretation_failed', { name: robotName }));
+            }
+            
+            queueSocket.disconnect();
+          }
+        });
+        
+        setSockets(sockets => [...sockets, queueSocket]);
+        
+        notify('info', `Run queued: ${runningRecordingName}`);
+      } else {
+        const socket = io(`${apiUrl}/${browserId}`, {
           transports: ["websocket"],
           rejectUnauthorized: false
         });
-      setSockets(sockets => [...sockets, socket]);
-      socket.on('ready-for-run', () => readyForRunHandler(browserId, runId));
-      socket.on('debugMessage', debugMessageHandler);
-      socket.on('run-completed', (data) => {
-        setRerenderRuns(true);
         
-        const robotName = data.robotName;
+        setSockets(sockets => [...sockets, socket]);
         
-        if (data.status === 'success') {
-          notify('success', t('main_page.notifications.interpretation_success', { name: robotName }));
+        socket.on('debugMessage', debugMessageHandler);
+        socket.on('run-completed', (data) => {
+          setRunningRecordingName('');
+          setCurrentInterpretationLog('');
+          setRerenderRuns(true);
+          
+          const robotName = data.robotName;
+          
+          if (data.status === 'success') {
+            notify('success', t('main_page.notifications.interpretation_success', { name: robotName }));
+          } else {
+            notify('error', t('main_page.notifications.interpretation_failed', { name: robotName }));
+          }
+        });
+        
+        socket.on('connect_error', (error) => {
+          console.log('error', `Failed to connect to browser ${browserId}: ${error}`);
+          notify('error', t('main_page.notifications.connection_failed', { name: runningRecordingName }));
+        });
+
+        socket.on('disconnect', (reason) => {
+          console.log('warn', `Disconnected from browser ${browserId}: ${reason}`);
+        });
+        
+        if (runId) {
+          notify('info', t('main_page.notifications.run_started', { name: runningRecordingName }));
         } else {
-          notify('error', t('main_page.notifications.interpretation_failed', { name: robotName }));
+          notify('error', t('main_page.notifications.run_start_failed', { name: runningRecordingName }));
         }
-      });
-
-      socket.on('run-aborted', (data) => {
-        setRerenderRuns(true);
-        
-        const abortedRobotName = data.robotName;
-        notify('success', t('main_page.notifications.abort_success', { name: abortedRobotName }));
-      });
-
-      setContent('runs');
-      if (browserId) {
-        notify('info', t('main_page.notifications.run_started', { name: runningRecordingName }));
-      } else {
-        notify('error', t('main_page.notifications.run_start_failed', { name: runningRecordingName }));
       }
-    })
-    return (socket: Socket, browserId: string, runId: string) => {
-      socket.off('ready-for-run', () => readyForRunHandler(browserId, runId));
+      
+      setContent('runs');
+    }).catch((error: any) => {
+      console.error('Error in createAndRunRecording:', error); // ✅ Debug log
+    });
+
+    return (socket: Socket) => {
       socket.off('debugMessage', debugMessageHandler);
+      socket.off('run-completed');
+      socket.off('connect_error');
+      socket.off('disconnect');
     }
-  }, [runningRecordingName, sockets, ids, readyForRunHandler, debugMessageHandler])
+  }, [runningRecordingName, sockets, ids, debugMessageHandler, user?.id, t, notify, setRerenderRuns, setQueuedRuns, navigate, setContent, setIds]);
 
   const handleScheduleRecording = (settings: ScheduleSettings) => {
     scheduleStoredRecording(runningRecordingId, settings)
