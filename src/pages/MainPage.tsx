@@ -83,7 +83,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
       
       abortSocket.on('run-aborted', (abortData) => {
         if (abortData.runId === runId) {
-          notify('success', t('main_page.notifications.abort_completed', { name: abortData.robotName || robotName }));
+          notify('success', t('main_page.notifications.abort_success', { name: abortData.robotName || robotName }));
           setRerenderRuns(true);
           abortSocket.disconnect();
         }
