@@ -3,8 +3,8 @@
     "target": "ES2022",
     "module": "Node16",
     "moduleResolution": "Node16",
-    "outDir": "./dist",
-    "rootDir": "./",
+    "outDir": "../dist",
+    "rootDir": "./src",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -14,10 +14,7 @@
     "sourceMap": true
   },
   "include": [
-    "mcp/**/*",
-    "src/mcp-worker.ts",
-    "src/logger.ts",
-    "src/types/**/*"
+    "src/mcp-worker.ts"
   ],
   "exclude": [
     "node_modules",
