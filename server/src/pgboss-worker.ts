@@ -82,102 +82,13 @@ function AddGeneratedFlags(workflow: WorkflowFile) {
   return copy;
 };
 
-/**
- * Function to reset browser state without creating a new browser
- */
-async function resetBrowserState(browser: RemoteBrowser): Promise<boolean> {
-  try {
-    const currentPage = browser.getCurrentPage();
-    if (!currentPage) {
-      logger.log('error', 'No current page available to reset browser state');
-      return false;
-    }
-    
-    // Navigate to blank page to reset state
-    await currentPage.goto('about:blank', { waitUntil: 'networkidle', timeout: 10000 });
-    
-    // Clear browser storage
-    await currentPage.evaluate(() => {
-      try {
-        localStorage.clear();
-        sessionStorage.clear();
-      } catch (e) {
-        // Ignore errors in cleanup
-      }
-    });
-    
-    // Clear cookies
-    const context = currentPage.context();
-    await context.clearCookies();
-    
-    return true;
-  } catch (error) {
-    logger.log('error', `Failed to reset browser state`);
-    return false;
-  }
-}
-
-/**
- * Modified checkAndProcessQueuedRun function - only changes browser reset logic
- */
-async function checkAndProcessQueuedRun(userId: string, browserId: string): Promise<boolean> {
-  try {
-    // Find the oldest queued run for this specific browser
-    const queuedRun = await Run.findOne({
-      where: {
-        browserId: browserId,
-        runByUserId: userId,
-        status: 'queued'
-      },
-      order: [['startedAt', 'ASC']]
-    });
-    
-    if (!queuedRun) {
-      logger.log('info', `No queued runs found for browser ${browserId}`);
-      return false;
-    }
-    
-    // Reset the browser state before next run
-    const browser = browserPool.getRemoteBrowser(browserId);
-    if (browser) {
-      logger.log('info', `Resetting browser state for browser ${browserId} before next run`);
-      await resetBrowserState(browser);
-    }
-    
-    // Update the queued run to running status
-    await queuedRun.update({
-      status: 'running',
-      log: 'Run started - using browser from previous run'
-    });
-    
-    // Use user-specific queue
-    const userQueueName = `execute-run-user-${userId}`;
-    
-    // Schedule the run execution
-    await pgBoss.createQueue(userQueueName);
-    const executeJobId = await pgBoss.send(userQueueName, {
-      userId: userId,
-      runId: queuedRun.runId,
-      browserId: browserId
-    });
-    
-    logger.log('info', `Scheduled queued run ${queuedRun.runId} to use browser ${browserId}, job ID: ${executeJobId}`);
-    return true;
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.log('error', `Error checking for queued runs: ${errorMessage}`);
-    return false;
-  }
-}
-
-/**
- * Modified processRunExecution function - only add browser reset
- */
 async function processRunExecution(job: Job<ExecuteRunData>) {
-  try {
-    const data = job.data;
-    logger.log('info', `Processing run execution job for runId: ${data.runId}, browserId: ${data.browserId}`);
-    
+  const BROWSER_INIT_TIMEOUT = 30000;
+
+  const data = job.data;
+  logger.log('info', `Processing run execution job for runId: ${data.runId}`);
+  
+  try { 
     // Find the run
     const run = await Run.findOne({ where: { runId: data.runId } });
     if (!run) {
@@ -191,6 +102,11 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
     }
 
     const plainRun = run.toJSON();
+    const browserId = data.browserId || plainRun.browserId;
+
+    if (!browserId) {
+      throw new Error(`No browser ID available for run ${data.runId}`);
+    }
 
     // Find the recording
     const recording = await Robot.findOne({ where: { 'recording_meta.id': plainRun.robotMetaId }, raw: true });
@@ -231,33 +147,47 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
         }
       }
       
-      // Check for queued runs even if this one failed
-      await checkAndProcessQueuedRun(data.userId, data.browserId);
-      
       return { success: false };
     }
+
+    logger.log('info', `Looking for browser ${browserId} for run ${data.runId}`);
 
     // Get the browser and execute the run
-    const browser = browserPool.getRemoteBrowser(plainRun.browserId);
-    let currentPage = browser?.getCurrentPage();
+    let browser = browserPool.getRemoteBrowser(browserId);
+    const browserWaitStart = Date.now();
     
-    if (!browser || !currentPage) {
-      logger.log('error', `Browser or page not available for run ${data.runId}`);
-      
-      // Even if this run failed, check for queued runs
-      await checkAndProcessQueuedRun(data.userId, data.browserId);
-      
-      return { success: false };
+    while (!browser && (Date.now() - browserWaitStart) < BROWSER_INIT_TIMEOUT) {
+      logger.log('debug', `Browser ${browserId} not ready yet, waiting...`);
+      await new Promise(resolve => setTimeout(resolve, 1000)); 
+      browser = browserPool.getRemoteBrowser(browserId);
     }
 
+    if (!browser) {
+      throw new Error(`Browser ${browserId} not found in pool after timeout`);
+    }
+
+    logger.log('info', `Browser ${browserId} found and ready for execution`);
+
     try {
-      // Reset the browser state before executing this run
-      await resetBrowserState(browser);
-      
       const isRunAborted = async (): Promise<boolean> => {
         const currentRun = await Run.findOne({ where: { runId: data.runId } });
         return currentRun ? (currentRun.status === 'aborted' || currentRun.status === 'aborting') : false;
       };
+
+      let currentPage = browser.getCurrentPage();
+      
+      const pageWaitStart = Date.now();
+      while (!currentPage && (Date.now() - pageWaitStart) < 30000) {
+        logger.log('debug', `Page not ready for browser ${browserId}, waiting...`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        currentPage = browser.getCurrentPage();
+      }
+      
+      if (!currentPage) {
+        throw new Error(`No current page available for browser ${browserId} after timeout`);
+      }
+
+      logger.log('info', `Starting workflow execution for run ${data.runId}`);
       
       // Execute the workflow
       const workflow = AddGeneratedFlags(recording.recording);
@@ -271,12 +201,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
       if (await isRunAborted()) {
         logger.log('info', `Run ${data.runId} was aborted during execution, not updating status`);
         
-        const queuedRunProcessed = await checkAndProcessQueuedRun(data.userId, plainRun.browserId);
-        
-        if (!queuedRunProcessed) {
-          await destroyRemoteBrowser(plainRun.browserId, data.userId);
-          logger.log('info', `No queued runs found for browser ${plainRun.browserId}, browser destroyed`);
-        }
+        await destroyRemoteBrowser(plainRun.browserId, data.userId);
         
         return { success: true };
       }
@@ -415,14 +340,8 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
         finishedAt: new Date().toLocaleString()
       });
       
-      // Check for and process queued runs before destroying the browser
-      const queuedRunProcessed = await checkAndProcessQueuedRun(data.userId, plainRun.browserId);
-      
-      // Only destroy the browser if no queued run was found
-      if (!queuedRunProcessed) {
-        await destroyRemoteBrowser(plainRun.browserId, data.userId);
-        logger.log('info', `No queued runs found for browser ${plainRun.browserId}, browser destroyed`);
-      }
+      await destroyRemoteBrowser(plainRun.browserId, data.userId);
+      logger.log('info', `No queued runs found for browser ${plainRun.browserId}, browser destroyed`);
       
       return { success: true };
     } catch (executionError: any) {
@@ -477,18 +396,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
         logger.log('info', `Run ${data.runId} was aborted, not updating status to failed`);
       }
       
-      // Check for queued runs before destroying the browser
-      const queuedRunProcessed = await checkAndProcessQueuedRun(data.userId, plainRun.browserId);
-      
-      // Only destroy the browser if no queued run was found
-      if (!queuedRunProcessed) {
-        try {
-          await destroyRemoteBrowser(plainRun.browserId, data.userId);
-          logger.log('info', `No queued runs found for browser ${plainRun.browserId}, browser destroyed`);
-        } catch (cleanupError: any) {
-          logger.log('warn', `Failed to clean up browser for failed run ${data.runId}: ${cleanupError.message}`);
-        }
-      }
+      await destroyRemoteBrowser(plainRun.browserId, data.userId);
       
       return { success: false };
     }
@@ -607,23 +515,14 @@ async function abortRun(runId: string, userId: string): Promise<boolean> {
     } catch (socketError) {
       logger.log('warn', `Failed to emit run-aborted event: ${socketError}`);
     }
-
-    let queuedRunProcessed = false;
-    try {
-      queuedRunProcessed = await checkAndProcessQueuedRun(userId, plainRun.browserId);
-    } catch (queueError) {
-      logger.log('warn', `Error checking queued runs: ${queueError}`);
-    }
     
-    if (!queuedRunProcessed) {
-      try {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        await destroyRemoteBrowser(plainRun.browserId, userId);
-        logger.log('info', `Browser ${plainRun.browserId} destroyed successfully after abort`);
-      } catch (cleanupError) {
-        logger.log('warn', `Failed to clean up browser for aborted run ${runId}: ${cleanupError}`);
-      }
+    try {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      await destroyRemoteBrowser(plainRun.browserId, userId);
+      logger.log('info', `Browser ${plainRun.browserId} destroyed successfully after abort`);
+    } catch (cleanupError) {
+      logger.log('warn', `Failed to clean up browser for aborted run ${runId}: ${cleanupError}`);
     }
 
     return true;

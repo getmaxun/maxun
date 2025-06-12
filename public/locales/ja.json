@@ -62,7 +62,8 @@
         "notifications": {
             "delete_warning": "ロボットには関連する実行があります。ロボットを削除するには、まず実行を削除してください",
             "delete_success": "ロボットが正常に削除されました",
-            "auth_success": "ロボットの認証に成功しました"
+            "auth_success": "ロボットの認証に成功しました",
+            "browser_limit_warning": "リモートブラウザは現在ビジー状態です。数分お待ちいただいてから再度お試しください"
         }
   },
   "mainmenu": {

@@ -62,7 +62,8 @@
     "notifications": {
       "delete_warning": "该机器人有关联的运行记录。请先删除运行记录才能删除机器人",
       "delete_success": "机器人删除成功",
-      "auth_success": "机器人认证成功"
+      "auth_success": "机器人认证成功",
+      "browser_limit_warning": "远程浏览器当前繁忙。请稍等几分钟后重试"
     }
   },
   "mainmenu": {
