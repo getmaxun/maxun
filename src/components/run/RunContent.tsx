@@ -444,7 +444,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 ref={logEndRef} />
             </div>
           </Box>
-          {row.status === 'running' ? <Button
+          {row.status === 'running' || row.status === 'queued' ? <Button
             color="error"
             onClick={abortRunHandler}
           >

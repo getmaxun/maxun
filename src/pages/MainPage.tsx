@@ -53,7 +53,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
 
   const abortRunHandler = (runId: string, robotName: string, browserId: string) => {
     notify('info', t('main_page.notifications.abort_initiated', { name: robotName }));
-   
+
     aborted = true;
     
     notifyAboutAbort(runId).then(async (response) => {
