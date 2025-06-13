@@ -115,7 +115,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             {t('mainmenu.feedback')}
           </Button>
           <Button href='https://docs.maxun.dev' target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<Description />}>
-           Docs
+           Documentation
           </Button>
         </Box>
       </Box>
