@@ -30,6 +30,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
     justifyContent: 'flex-start',
     textAlign: 'left',
     fontSize: 'medium',
+    letterSpacing: '0.02857em',
     padding: '6px 16px 6px 22px',
     minHeight: '48px',
     minWidth: '100%',
