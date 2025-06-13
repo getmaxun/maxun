@@ -115,11 +115,11 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
           <Button href="https://app.maxun.dev/login" target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<CloudQueue />}>
             {t('mainmenu.feedback')}
           </Button>
-                              <Button onClick={() => {
-                                window.open('https://docs.maxun.dev', '_blank');
-                              }}>
-                                <Description sx={{ marginRight: '5px' }} /> Docs
-                              </Button>
+          <Button onClick={() => {
+            window.open('https://docs.maxun.dev', '_blank');
+          }}>
+            <Description sx={{ marginRight: '5px' }} /> Docs
+          </Button>
         </Box>
       </Box>
     </Paper>
