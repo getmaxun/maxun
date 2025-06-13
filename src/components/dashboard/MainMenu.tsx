@@ -4,8 +4,7 @@ import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
 import { useNavigate } from 'react-router-dom';
 import { Paper, Button, useTheme } from "@mui/material";
-import { AutoAwesome, FormatListBulleted, VpnKey, Usb, CloudQueue, Code, Description} from "@mui/icons-material";
-import { apiUrl } from "../../apiConfig";
+import { AutoAwesome, FormatListBulleted, VpnKey, Usb, CloudQueue, Description} from "@mui/icons-material";
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
 
