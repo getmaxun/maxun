@@ -248,7 +248,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
   const renderDataTable = (
     data: any[],
-    columns: string[],
+    columns: any[],
     title: string,
     csvFilename: string,
     jsonFilename: string,
@@ -261,6 +261,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     const currentColumns = isPaginatedList ? listColumns[currentListIndex] : columns;
 
     if (!currentData || currentData.length === 0) return null;
+
+    const downloadData = isPaginatedList ? currentData : data;
+    const downloadColumns = isPaginatedList ? currentColumns : columns;
 
     return (
       <Accordion defaultExpanded sx={{ mb: 2 }}>
@@ -280,7 +283,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
             <Box>
               <Button 
                 component="a"
-                onClick={() => downloadJSON(data, jsonFilename)}
+                onClick={() => downloadJSON(downloadData, jsonFilename)}
                 sx={{ 
                   color: '#FF00C3', 
                   textTransform: 'none',
@@ -299,7 +302,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
               <Button 
                 component="a"
-                onClick={() => downloadCSV(data, columns, csvFilename)}
+                onClick={() => downloadCSV(downloadData, downloadColumns, csvFilename)}
                 sx={{ 
                   color: '#FF00C3', 
                   textTransform: 'none',
@@ -441,7 +444,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 ref={logEndRef} />
             </div>
           </Box>
-          {row.status === 'running' ? <Button
+          {row.status === 'running' || row.status === 'queued' ? <Button
             color="error"
             onClick={abortRunHandler}
           >
@@ -481,8 +484,8 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   )}
 
                   {listData.length > 0 && renderDataTable(
-                    [],
-                    [],
+                    listData,
+                    listColumns,
                     t('run_content.captured_data.list_title'),
                     'list_data.csv',
                     'list_data.json',

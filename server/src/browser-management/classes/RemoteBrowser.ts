@@ -25,6 +25,13 @@ const MEMORY_CONFIG = {
     heapUsageThreshold: 0.7 // 70% (reduced threshold to react earlier)
 };
 
+const DEFAULT_VIEWPORT = {
+  width: 1280,
+  height: 720, 
+  deviceScaleFactor: 1,
+  mobile: false
+};
+
 const SCREENCAST_CONFIG: {
     format: "jpeg" | "png";
     maxWidth: number;
@@ -32,13 +39,17 @@ const SCREENCAST_CONFIG: {
     targetFPS: number;
     compressionQuality: number;
     maxQueueSize: number;
+    skipFrameThreshold: number, 
+    enableAdaptiveQuality: boolean, 
 } = {
-    format: 'png', 
-    maxWidth: 1280,
-    maxHeight: 720,
-    targetFPS: 15, 
-    compressionQuality: 0.95, 
-    maxQueueSize: 1 
+    format: 'jpeg', 
+    maxWidth: DEFAULT_VIEWPORT.width,
+    maxHeight: DEFAULT_VIEWPORT.height,
+    targetFPS: 30, 
+    compressionQuality: 0.8, 
+    maxQueueSize: 2,
+    skipFrameThreshold: 100, 
+    enableAdaptiveQuality: true,  
 };
 
 /**
@@ -123,6 +134,18 @@ export class RemoteBrowser {
         this.userId = userId;
         this.interpreter = new WorkflowInterpreter(socket);
         this.generator = new WorkflowGenerator(socket, poolId);
+    }
+
+    private cleanupMemory(): void {
+      if (this.screenshotQueue.length > 10) {
+          this.screenshotQueue = this.screenshotQueue.slice(-3); // Keep only last 3
+      }
+    }
+
+    private setupMemoryCleanup(): void {
+      setInterval(() => {
+          this.cleanupMemory();
+      }, 30000); // Every 30 seconds
     }
 
     private initializeMemoryManagement(): void {
@@ -412,6 +435,7 @@ export class RemoteBrowser {
             }
         }
 
+        this.setupMemoryCleanup();
         // this.initializeMemoryManagement();
     };
 
@@ -1399,7 +1423,7 @@ export class RemoteBrowser {
      */
     private emitScreenshot = async (payload: Buffer, viewportSize?: { width: number, height: number }): Promise<void> => {
         if (this.screenshotQueue.length > SCREENCAST_CONFIG.maxQueueSize) {
-            this.screenshotQueue = this.screenshotQueue.slice(-SCREENCAST_CONFIG.maxQueueSize);
+          this.screenshotQueue = this.screenshotQueue.slice(-1);
         }
         
         if (this.isProcessingScreenshot) {
@@ -1414,7 +1438,7 @@ export class RemoteBrowser {
         try {
             const optimizationPromise = this.optimizeScreenshot(payload);
             const timeoutPromise = new Promise<Buffer>((resolve) => {
-                setTimeout(() => resolve(payload), 150);
+                setTimeout(() => resolve(payload), 100);
             });
             
             const optimizedScreenshot = await Promise.race([optimizationPromise, timeoutPromise]);
@@ -1423,10 +1447,12 @@ export class RemoteBrowser {
             
             payload = null as any;
             
-            this.socket.emit('screencast', {
+            setImmediate(async () => {
+              this.socket.emit('screencast', {
                 image: dataWithMimeType,
                 userId: this.userId,
                 viewport: viewportSize || await this.currentPage?.viewportSize() || null
+              });
             });
         } catch (error) {
             logger.error('Screenshot emission failed:', error);
@@ -1434,24 +1460,27 @@ export class RemoteBrowser {
                 const base64Data = payload.toString('base64');
                 const dataWithMimeType = `data:image/png;base64,${base64Data}`;
                 
-                this.socket.emit('screencast', {
-                    image: dataWithMimeType,
-                    userId: this.userId,
-                    viewport: viewportSize || await this.currentPage?.viewportSize() || null
+                setImmediate(async () => {
+                  this.socket.emit('screencast', {
+                      image: dataWithMimeType,
+                      userId: this.userId,
+                      viewport: viewportSize || await this.currentPage?.viewportSize() || null
+                  });
                 });
             } catch (e) {
                 logger.error('Fallback screenshot emission also failed:', e);
             }
         } finally {
             this.isProcessingScreenshot = false;
-            
+        
             if (this.screenshotQueue.length > 0) {
-                const nextScreenshot = this.screenshotQueue.shift();  
-                if (nextScreenshot) {
-                    setTimeout(() => {
-                        this.emitScreenshot(nextScreenshot);
-                    }, 1000 / SCREENCAST_CONFIG.targetFPS);
-                }
+              const nextScreenshot = this.screenshotQueue.shift();
+              if (nextScreenshot) {
+                const delay = this.screenshotQueue.length > 0 ? 16 : 33;
+                setTimeout(() => {
+                  this.emitScreenshot(nextScreenshot);
+                }, delay);
+              }
             }
         }
     };

@@ -35,6 +35,19 @@ export const getActiveBrowserId = async(): Promise<string> => {
     }
 };
 
+export const canCreateBrowserInState = async(state: "recording" | "run"): Promise<boolean> => {
+    try {
+        const response = await axios.get(`${apiUrl}/record/can-create/${state}`, { withCredentials: true });
+        if (response.status === 200) {
+            return response.data.canCreate;
+        } else {
+            return false;
+        }
+    } catch(error: any) {
+        return false;
+    }
+};
+
 export const interpretCurrentRecording = async(): Promise<boolean> => {
     try {
         const response = await axios.get(`${apiUrl}/record/interpret`);

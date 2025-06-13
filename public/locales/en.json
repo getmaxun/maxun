@@ -68,7 +68,8 @@
       "notifications": {
         "delete_warning": "The robot has associated runs. First delete runs to delete the robot",
         "delete_success": "Robot deleted successfully",
-        "auth_success": "Robot successfully authenticated"
+        "auth_success": "Robot successfully authenticated",
+        "browser_limit_warning": "Remote browsers are currently busy. Please wait for a few minutes and try again"
       }
     },
     "mainmenu":{
@@ -486,7 +487,8 @@
         "schedule_success": "Robot {{name}} scheduled successfully",
         "schedule_failed": "Failed to schedule robot {{name}}",
         "abort_success": "Interpretation of robot {{name}} aborted successfully",
-        "abort_failed": "Failed to abort the interpretation of robot {{name}}"
+        "abort_failed": "Failed to abort the interpretation of robot {{name}}",
+        "abort_initiated": "Aborting the interpretation of robot {{name}}"
       },
       "menu": {
         "recordings": "Robots",

@@ -83,90 +83,128 @@ function AddGeneratedFlags(workflow: WorkflowFile) {
 };
 
 /**
- * Function to reset browser state without creating a new browser
+ * Helper function to extract and process scraped data from browser interpreter
  */
-async function resetBrowserState(browser: RemoteBrowser): Promise<boolean> {
-  try {
-    const currentPage = browser.getCurrentPage();
-    if (!currentPage) {
-      logger.log('error', 'No current page available to reset browser state');
-      return false;
-    }
-    
-    // Navigate to blank page to reset state
-    await currentPage.goto('about:blank', { waitUntil: 'networkidle', timeout: 10000 });
-    
-    // Clear browser storage
-    await currentPage.evaluate(() => {
-      try {
-        localStorage.clear();
-        sessionStorage.clear();
-      } catch (e) {
-        // Ignore errors in cleanup
+async function extractAndProcessScrapedData(
+  browser: RemoteBrowser, 
+  run: any
+): Promise<{
+  categorizedOutput: any;
+  uploadedBinaryOutput: any;
+  totalDataPointsExtracted: number;
+  totalSchemaItemsExtracted: number;
+  totalListItemsExtracted: number;
+  extractedScreenshotsCount: number;
+}> {
+  let categorizedOutput: {
+    scrapeSchema: Record<string, any>;
+    scrapeList: Record<string, any>;
+  } = {
+    scrapeSchema: {},
+    scrapeList: {}
+  };
+
+  if ((browser?.interpreter?.serializableDataByType?.scrapeSchema ?? []).length > 0) {
+    browser?.interpreter?.serializableDataByType?.scrapeSchema?.forEach((schemaItem: any, index: any) => {
+      categorizedOutput.scrapeSchema[`schema-${index}`] = schemaItem;
+    });
+  }
+  
+  if ((browser?.interpreter?.serializableDataByType?.scrapeList ?? []).length > 0) {
+    browser?.interpreter?.serializableDataByType?.scrapeList?.forEach((listItem: any, index: any) => {
+      categorizedOutput.scrapeList[`list-${index}`] = listItem;
+    });
+  }
+  
+  const binaryOutput = browser?.interpreter?.binaryData?.reduce(
+    (reducedObject: Record<string, any>, item: any, index: number): Record<string, any> => {
+      return {
+        [`item-${index}`]: item,
+        ...reducedObject,
+      };
+    }, 
+    {}
+  ) || {};
+
+  let totalDataPointsExtracted = 0;
+  let totalSchemaItemsExtracted = 0;
+  let totalListItemsExtracted = 0;
+  let extractedScreenshotsCount = 0;
+
+  if (categorizedOutput.scrapeSchema) {
+    Object.values(categorizedOutput.scrapeSchema).forEach((schemaResult: any) => {
+      if (Array.isArray(schemaResult)) {
+        schemaResult.forEach(obj => {
+          if (obj && typeof obj === 'object') {
+            totalDataPointsExtracted += Object.keys(obj).length;
+          }
+        });
+        totalSchemaItemsExtracted += schemaResult.length;
+      } else if (schemaResult && typeof schemaResult === 'object') {
+        totalDataPointsExtracted += Object.keys(schemaResult).length;
+        totalSchemaItemsExtracted += 1;
       }
     });
-    
-    // Clear cookies
-    const context = currentPage.context();
-    await context.clearCookies();
-    
-    return true;
-  } catch (error) {
-    logger.log('error', `Failed to reset browser state`);
-    return false;
   }
+
+  if (categorizedOutput.scrapeList) {
+    Object.values(categorizedOutput.scrapeList).forEach((listResult: any) => {
+      if (Array.isArray(listResult)) {
+        listResult.forEach(obj => {
+          if (obj && typeof obj === 'object') {
+            totalDataPointsExtracted += Object.keys(obj).length;
+          }
+        });
+        totalListItemsExtracted += listResult.length;
+      }
+    });
+  }
+
+  if (binaryOutput) {
+    extractedScreenshotsCount = Object.keys(binaryOutput).length;
+    totalDataPointsExtracted += extractedScreenshotsCount;
+  }
+
+  const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
+  const uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(
+    run,
+    binaryOutput
+  );
+
+  return {
+    categorizedOutput: {
+      scrapeSchema: categorizedOutput.scrapeSchema || {},
+      scrapeList: categorizedOutput.scrapeList || {}
+    },
+    uploadedBinaryOutput,
+    totalDataPointsExtracted,
+    totalSchemaItemsExtracted,
+    totalListItemsExtracted,
+    extractedScreenshotsCount
+  };
 }
 
-/**
- * Modified checkAndProcessQueuedRun function - only changes browser reset logic
- */
-async function checkAndProcessQueuedRun(userId: string, browserId: string): Promise<boolean> {
+// Helper function to handle integration updates
+async function triggerIntegrationUpdates(runId: string, robotMetaId: string): Promise<void> {
   try {
-    // Find the oldest queued run for this specific browser
-    const queuedRun = await Run.findOne({
-      where: {
-        browserId: browserId,
-        runByUserId: userId,
-        status: 'queued'
-      },
-      order: [['startedAt', 'ASC']]
-    });
-    
-    if (!queuedRun) {
-      logger.log('info', `No queued runs found for browser ${browserId}`);
-      return false;
-    }
-    
-    // Reset the browser state before next run
-    const browser = browserPool.getRemoteBrowser(browserId);
-    if (browser) {
-      logger.log('info', `Resetting browser state for browser ${browserId} before next run`);
-      await resetBrowserState(browser);
-    }
-    
-    // Update the queued run to running status
-    await queuedRun.update({
-      status: 'running',
-      log: 'Run started - using browser from previous run'
-    });
-    
-    // Use user-specific queue
-    const userQueueName = `execute-run-user-${userId}`;
-    
-    // Schedule the run execution
-    await pgBoss.createQueue(userQueueName);
-    const executeJobId = await pgBoss.send(userQueueName, {
-      userId: userId,
-      runId: queuedRun.runId,
-      browserId: browserId
-    });
-    
-    logger.log('info', `Scheduled queued run ${queuedRun.runId} to use browser ${browserId}, job ID: ${executeJobId}`);
-    return true;
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.log('error', `Error checking for queued runs: ${errorMessage}`);
-    return false;
+    googleSheetUpdateTasks[runId] = {
+      robotId: robotMetaId,
+      runId: runId,
+      status: 'pending',
+      retries: 5,
+    };
+
+    airtableUpdateTasks[runId] = {
+      robotId: robotMetaId,
+      runId: runId,
+      status: 'pending',
+      retries: 5,
+    };
+
+    processAirtableUpdates();
+    processGoogleSheetUpdates();
+  } catch (err: any) {
+    logger.log('error', `Failed to update integrations for run: ${runId}: ${err.message}`);
   }
 }
 
@@ -174,10 +212,12 @@ async function checkAndProcessQueuedRun(userId: string, browserId: string): Prom
  * Modified processRunExecution function - only add browser reset
  */
 async function processRunExecution(job: Job<ExecuteRunData>) {
-  try {
-    const data = job.data;
-    logger.log('info', `Processing run execution job for runId: ${data.runId}, browserId: ${data.browserId}`);
-    
+  const BROWSER_INIT_TIMEOUT = 30000;
+
+  const data = job.data;
+  logger.log('info', `Processing run execution job for runId: ${data.runId}, browserId: ${data.browserId}`);
+  
+  try { 
     // Find the run
     const run = await Run.findOne({ where: { runId: data.runId } });
     if (!run) {
@@ -191,73 +231,56 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
     }
 
     const plainRun = run.toJSON();
+    const browserId = data.browserId || plainRun.browserId;
 
-    // Find the recording
-    const recording = await Robot.findOne({ where: { 'recording_meta.id': plainRun.robotMetaId }, raw: true });
-    if (!recording) {
-      logger.log('error', `Recording for run ${data.runId} not found`);
-      
-      const currentRun = await Run.findOne({ where: { runId: data.runId } });
-      if (currentRun && (currentRun.status !== 'aborted' && currentRun.status !== 'aborting')) {
-        await run.update({
-          status: 'failed',
-          finishedAt: new Date().toLocaleString(),
-          log: 'Failed: Recording not found',
-        });
-
-        // Trigger webhooks for run failure
-        const failedWebhookPayload = {
-          robot_id: plainRun.robotMetaId,
-          run_id: data.runId,
-          robot_name: 'Unknown Robot',
-          status: 'failed',
-          started_at: plainRun.startedAt,
-          finished_at: new Date().toLocaleString(),
-          error: {
-            message: "Failed: Recording not found",
-            type: 'RecordingNotFoundError'
-          },
-          metadata: {
-            browser_id: plainRun.browserId,
-            user_id: data.userId,
-          }
-        };
-
-        try {
-          await sendWebhook(plainRun.robotMetaId, 'run_failed', failedWebhookPayload);
-          logger.log('info', `Failure webhooks sent successfully for run ${data.runId}`);
-        } catch (webhookError: any) {
-          logger.log('error', `Failed to send failure webhooks for run ${data.runId}: ${webhookError.message}`);
-        }
-      }
-      
-      // Check for queued runs even if this one failed
-      await checkAndProcessQueuedRun(data.userId, data.browserId);
-      
-      return { success: false };
+    if (!browserId) {
+      throw new Error(`No browser ID available for run ${data.runId}`);
     }
 
-    // Get the browser and execute the run
-    const browser = browserPool.getRemoteBrowser(plainRun.browserId);
-    let currentPage = browser?.getCurrentPage();
+    logger.log('info', `Looking for browser ${browserId} for run ${data.runId}`);
+
+    let browser = browserPool.getRemoteBrowser(browserId);
+    const browserWaitStart = Date.now();
     
-    if (!browser || !currentPage) {
-      logger.log('error', `Browser or page not available for run ${data.runId}`);
-      
-      // Even if this run failed, check for queued runs
-      await checkAndProcessQueuedRun(data.userId, data.browserId);
-      
-      return { success: false };
+    while (!browser && (Date.now() - browserWaitStart) < BROWSER_INIT_TIMEOUT) {
+      logger.log('debug', `Browser ${browserId} not ready yet, waiting...`);
+      await new Promise(resolve => setTimeout(resolve, 1000)); 
+      browser = browserPool.getRemoteBrowser(browserId);
     }
 
-    try {
-      // Reset the browser state before executing this run
-      await resetBrowserState(browser);
+    if (!browser) {
+      throw new Error(`Browser ${browserId} not found in pool after timeout`);
+    }
+
+    logger.log('info', `Browser ${browserId} found and ready for execution`);
+
+    try {  
+      // Find the recording
+      const recording = await Robot.findOne({ where: { 'recording_meta.id': plainRun.robotMetaId }, raw: true });
+      
+      if (!recording) {
+        throw new Error(`Recording for run ${data.runId} not found`);
+      }
       
       const isRunAborted = async (): Promise<boolean> => {
         const currentRun = await Run.findOne({ where: { runId: data.runId } });
         return currentRun ? (currentRun.status === 'aborted' || currentRun.status === 'aborting') : false;
       };
+
+      let currentPage = browser.getCurrentPage();
+      
+      const pageWaitStart = Date.now();
+      while (!currentPage && (Date.now() - pageWaitStart) < 30000) {
+        logger.log('debug', `Page not ready for browser ${browserId}, waiting...`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        currentPage = browser.getCurrentPage();
+      }
+
+      if (!currentPage) {
+        throw new Error(`No current page available for browser ${browserId} after timeout`);
+      }
+
+      logger.log('info', `Starting workflow execution for run ${data.runId}`);
       
       // Execute the workflow
       const workflow = AddGeneratedFlags(recording.recording);
@@ -270,30 +293,27 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
       
       if (await isRunAborted()) {
         logger.log('info', `Run ${data.runId} was aborted during execution, not updating status`);
-        
-        const queuedRunProcessed = await checkAndProcessQueuedRun(data.userId, plainRun.browserId);
-        
-        if (!queuedRunProcessed) {
-          await destroyRemoteBrowser(plainRun.browserId, data.userId);
-          logger.log('info', `No queued runs found for browser ${plainRun.browserId}, browser destroyed`);
-        }
+
+        await destroyRemoteBrowser(plainRun.browserId, data.userId);
         
         return { success: true };
       }
+
+      logger.log('info', `Workflow execution completed for run ${data.runId}`);
       
       const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
       const uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, interpretationInfo.binaryOutput);
-      
-      if (await isRunAborted()) {
-        logger.log('info', `Run ${data.runId} was aborted while processing results, not updating status`);
-        return { success: true };
-      }
       
       const categorizedOutput = {
         scrapeSchema: interpretationInfo.scrapeSchemaOutput || {},
         scrapeList: interpretationInfo.scrapeListOutput || {}
       };
       
+      if (await isRunAborted()) {
+        logger.log('info', `Run ${data.runId} was aborted while processing results, not updating status`);
+        return { success: true };
+      }
+
       await run.update({
         ...run,
         status: 'success',
@@ -308,6 +328,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
       });
 
       // Track extraction metrics
+      let totalDataPointsExtracted = 0;
       let totalSchemaItemsExtracted = 0;
       let totalListItemsExtracted = 0;
       let extractedScreenshotsCount = 0;
@@ -315,23 +336,35 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
       if (categorizedOutput.scrapeSchema) {
         Object.values(categorizedOutput.scrapeSchema).forEach((schemaResult: any) => {
           if (Array.isArray(schemaResult)) {
+            schemaResult.forEach(obj => {
+              if (obj && typeof obj === 'object') {
+                totalDataPointsExtracted += Object.keys(obj).length;
+              }
+            });
             totalSchemaItemsExtracted += schemaResult.length;
           } else if (schemaResult && typeof schemaResult === 'object') {
+            totalDataPointsExtracted += Object.keys(schemaResult).length;
             totalSchemaItemsExtracted += 1;
           }
         });
       }
-      
+
       if (categorizedOutput.scrapeList) {
         Object.values(categorizedOutput.scrapeList).forEach((listResult: any) => {
           if (Array.isArray(listResult)) {
+            listResult.forEach(obj => {
+              if (obj && typeof obj === 'object') {
+                totalDataPointsExtracted += Object.keys(obj).length;
+              }
+            });
             totalListItemsExtracted += listResult.length;
           }
         });
       }
-      
+
       if (uploadedBinaryOutput) {
         extractedScreenshotsCount = Object.keys(uploadedBinaryOutput).length;
+        totalDataPointsExtracted += extractedScreenshotsCount; 
       }
       
       const totalRowsExtracted = totalSchemaItemsExtracted + totalListItemsExtracted;
@@ -340,6 +373,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
       console.log(`Extracted List Items Count: ${totalListItemsExtracted}`);
       console.log(`Extracted Screenshots Count: ${extractedScreenshotsCount}`);
       console.log(`Total Rows Extracted: ${totalRowsExtracted}`);
+      console.log(`Total Data Points Extracted: ${totalDataPointsExtracted}`);
 
       // Capture metrics
       capture(
@@ -370,7 +404,8 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
           total_rows: totalRowsExtracted,
           captured_texts_count: totalSchemaItemsExtracted,
           captured_lists_count: totalListItemsExtracted,
-          screenshots_count: extractedScreenshotsCount
+          screenshots_count: extractedScreenshotsCount,
+          total_data_points_extracted: totalDataPointsExtracted,
         },
         metadata: {
           browser_id: plainRun.browserId,
@@ -386,128 +421,213 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
       }
 
       // Schedule updates for Google Sheets and Airtable
-      try {
-        googleSheetUpdateTasks[plainRun.runId] = {
-          robotId: plainRun.robotMetaId,
-          runId: plainRun.runId,
-          status: 'pending',
-          retries: 5,
-        };
+      await triggerIntegrationUpdates(plainRun.runId, plainRun.robotMetaId);
 
-        airtableUpdateTasks[plainRun.runId] = {
-          robotId: plainRun.robotMetaId,
-          runId: plainRun.runId,
-          status: 'pending',
-          retries: 5,
-        };
-
-        processAirtableUpdates();
-        processGoogleSheetUpdates();
-      } catch (err: any) {
-        logger.log('error', `Failed to update Google Sheet for run: ${plainRun.runId}: ${err.message}`);
-      }
-
-      serverIo.of(plainRun.browserId).emit('run-completed', {
+      const completionData = {
         runId: data.runId,
         robotMetaId: plainRun.robotMetaId,
         robotName: recording.recording_meta.name,
         status: 'success',
         finishedAt: new Date().toLocaleString()
-      });
-      
-      // Check for and process queued runs before destroying the browser
-      const queuedRunProcessed = await checkAndProcessQueuedRun(data.userId, plainRun.browserId);
-      
-      // Only destroy the browser if no queued run was found
-      if (!queuedRunProcessed) {
-        await destroyRemoteBrowser(plainRun.browserId, data.userId);
-        logger.log('info', `No queued runs found for browser ${plainRun.browserId}, browser destroyed`);
-      }
+      };
+
+      serverIo.of(browserId).emit('run-completed', completionData);
+      serverIo.of('/queued-run').to(`user-${data.userId}`).emit('run-completed', completionData);
+
+      await destroyRemoteBrowser(browserId, data.userId);
+      logger.log('info', `Browser ${browserId} destroyed after successful run ${data.runId}`);
       
       return { success: true };
     } catch (executionError: any) {
       logger.log('error', `Run execution failed for run ${data.runId}: ${executionError.message}`);
       
-      const currentRun = await Run.findOne({ where: { runId: data.runId } });
-      if (currentRun && (currentRun.status !== 'aborted' && currentRun.status !== 'aborting')) {
-        await run.update({
+      let partialDataExtracted = false;
+      let partialData: any = null;
+      let partialUpdateData: any = {
+        status: 'failed',
+        finishedAt: new Date().toLocaleString(),
+        log: `Failed: ${executionError.message}`,
+      };
+
+      try {
+        if (browser && browser.interpreter) {
+          const hasSchemaData = (browser.interpreter.serializableDataByType?.scrapeSchema ?? []).length > 0;
+          const hasListData = (browser.interpreter.serializableDataByType?.scrapeList ?? []).length > 0;
+          const hasBinaryData = (browser.interpreter.binaryData ?? []).length > 0;
+
+          if (hasSchemaData || hasListData || hasBinaryData) {
+            logger.log('info', `Extracting partial data from failed run ${data.runId}`);
+
+            partialData = await extractAndProcessScrapedData(browser, run);
+            
+            partialUpdateData.serializableOutput = {
+              scrapeSchema: Object.values(partialData.categorizedOutput.scrapeSchema),
+              scrapeList: Object.values(partialData.categorizedOutput.scrapeList),
+            };
+            partialUpdateData.binaryOutput = partialData.uploadedBinaryOutput;
+
+            partialDataExtracted = true; 
+            logger.log('info', `Partial data extracted for failed run ${data.runId}: ${partialData.totalDataPointsExtracted} data points`);
+
+            await triggerIntegrationUpdates(plainRun.runId, plainRun.robotMetaId);
+          }
+        }
+      } catch (partialDataError: any) {
+        logger.log('warn', `Failed to extract partial data for run ${data.runId}: ${partialDataError.message}`);
+      }
+
+      await run.update(partialUpdateData);
+
+      try {
+        const recording = await Robot.findOne({ where: { 'recording_meta.id': run.robotMetaId }, raw: true });
+
+        const failureData = {
+          runId: data.runId,
+          robotMetaId: plainRun.robotMetaId,
+          robotName: recording ? recording.recording_meta.name : 'Unknown Robot',
           status: 'failed',
           finishedAt: new Date().toLocaleString(),
-          log: `Failed: ${executionError.message}`,
-        });
-        
-        // Capture failure metrics
-        capture(
-          'maxun-oss-run-created-manual',
-          {
-            runId: data.runId,
-            user_id: data.userId,
-            created_at: new Date().toISOString(),
-            status: 'failed',
-            error_message: executionError.message,
-          }
-        );
-
-        // Trigger webhooks for run failure
-        const failedWebhookPayload = {
-          robot_id: plainRun.robotMetaId,
-          run_id: data.runId,
-          robot_name: recording.recording_meta.name,
-          status: 'failed',
-          started_at: plainRun.startedAt,
-          finished_at: new Date().toLocaleString(),
-          error: {
-            message: executionError.message,
-            stack: executionError.stack,
-            type: executionError.name || 'ExecutionError'
-          },
-          metadata: {
-            browser_id: plainRun.browserId,
-            user_id: data.userId,
-          }
+          hasPartialData: partialDataExtracted
         };
 
-        try {
-          await sendWebhook(plainRun.robotMetaId, 'run_failed', failedWebhookPayload);
-          logger.log('info', `Failure webhooks sent successfully for run ${data.runId}`);
-        } catch (webhookError: any) {
-          logger.log('error', `Failed to send failure webhooks for run ${data.runId}: ${webhookError.message}`);
-        }
-      } else {
-        logger.log('info', `Run ${data.runId} was aborted, not updating status to failed`);
+        serverIo.of(browserId).emit('run-completed', failureData);
+        serverIo.of('/queued-run').to(`user-${data.userId}`).emit('run-completed', failureData);
+      } catch (emitError: any) {
+        logger.log('warn', `Failed to emit failure event: ${emitError.message}`);
       }
-      
-      // Check for queued runs before destroying the browser
-      const queuedRunProcessed = await checkAndProcessQueuedRun(data.userId, plainRun.browserId);
-      
-      // Only destroy the browser if no queued run was found
-      if (!queuedRunProcessed) {
-        try {
-          await destroyRemoteBrowser(plainRun.browserId, data.userId);
-          logger.log('info', `No queued runs found for browser ${plainRun.browserId}, browser destroyed`);
-        } catch (cleanupError: any) {
-          logger.log('warn', `Failed to clean up browser for failed run ${data.runId}: ${cleanupError.message}`);
+
+      const recording = await Robot.findOne({ where: { 'recording_meta.id': run.robotMetaId }, raw: true });
+
+      const failedWebhookPayload = {
+        robot_id: plainRun.robotMetaId,
+        run_id: data.runId,
+        robot_name: recording ? recording.recording_meta.name : 'Unknown Robot',
+        status: 'failed',
+        started_at: plainRun.startedAt,
+        finished_at: new Date().toLocaleString(),
+        error: {
+          message: executionError.message,
+          stack: executionError.stack,
+          type: 'ExecutionError',
+        },
+        partial_data_extracted: partialDataExtracted,
+        extracted_data: partialDataExtracted ? {
+          captured_texts: Object.values(partialUpdateData.serializableOutput?.scrapeSchema || []).flat() || [],
+          captured_lists: partialUpdateData.serializableOutput?.scrapeList || {},
+          total_data_points_extracted: partialData?.totalDataPointsExtracted || 0,
+          captured_texts_count: partialData?.totalSchemaItemsExtracted || 0,
+          captured_lists_count: partialData?.totalListItemsExtracted || 0,
+          screenshots_count: partialData?.extractedScreenshotsCount || 0
+        } : null,
+        metadata: {
+          browser_id: plainRun.browserId,
+          user_id: data.userId,
         }
+      };
+
+      try {
+        await sendWebhook(plainRun.robotMetaId, 'run_failed', failedWebhookPayload);
+        logger.log('info', `Failure webhooks sent successfully for run ${data.runId}`);
+      } catch (webhookError: any) {
+        logger.log('error', `Failed to send failure webhooks for run ${data.runId}: ${webhookError.message}`);
       }
-      
-      return { success: false };
+
+      try {
+        const failureSocketData = {
+          runId: data.runId,
+          robotMetaId: run.robotMetaId,
+          robotName: recording ? recording.recording_meta.name : 'Unknown Robot',
+          status: 'failed',
+          finishedAt: new Date().toLocaleString()
+        };
+
+        serverIo.of(run.browserId).emit('run-completed', failureSocketData);
+        serverIo.of('/queued-run').to(`user-${data.userId}`).emit('run-completed', failureSocketData);
+      } catch (socketError: any) {
+        logger.log('warn', `Failed to emit failure event in main catch: ${socketError.message}`);
+      }
+
+      capture('maxun-oss-run-created-manual', {
+        runId: data.runId,
+        user_id: data.userId,
+        created_at: new Date().toISOString(),
+        status: 'failed',
+        error_message: executionError.message,
+        partial_data_extracted: partialDataExtracted,
+        totalRowsExtracted: partialData?.totalSchemaItemsExtracted + partialData?.totalListItemsExtracted + partialData?.extractedScreenshotsCount || 0,
+      });
+
+      await destroyRemoteBrowser(browserId, data.userId);
+      logger.log('info', `Browser ${browserId} destroyed after failed run`);
+
+      return { success: false, partialDataExtracted };
     }
     
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.log('error', `Failed to process run execution job: ${errorMessage}`);
+    
+    try {
+      const run = await Run.findOne({ where: { runId: data.runId }});
+      
+      if (run) {
+        await run.update({
+          status: 'failed',
+          finishedAt: new Date().toLocaleString(),
+          log: `Failed: ${errorMessage}`,
+        });
+
+        const recording = await Robot.findOne({ where: { 'recording_meta.id': run.robotMetaId }, raw: true });
+
+        const failedWebhookPayload = {
+          robot_id: run.robotMetaId,
+          run_id: data.runId,
+          robot_name: recording ? recording.recording_meta.name : 'Unknown Robot',
+          status: 'failed',
+          started_at: run.startedAt,
+          finished_at: new Date().toLocaleString(),
+          error: {
+            message: errorMessage,
+          },
+          metadata: {
+            browser_id: run.browserId,
+            user_id: data.userId,
+          }
+        };
+
+        try {
+          await sendWebhook(run.robotMetaId, 'run_failed', failedWebhookPayload);
+          logger.log('info', `Failure webhooks sent successfully for run ${data.runId}`);
+        } catch (webhookError: any) {
+          logger.log('error', `Failed to send failure webhooks for run ${data.runId}: ${webhookError.message}`);
+        }
+
+        try {
+          const failureSocketData = {
+            runId: data.runId,
+            robotMetaId: run.robotMetaId,
+            robotName: recording ? recording.recording_meta.name : 'Unknown Robot',
+            status: 'failed',
+            finishedAt: new Date().toLocaleString()
+          };
+
+          serverIo.of(run.browserId).emit('run-completed', failureSocketData);
+          serverIo.of('/queued-run').to(`user-${data.userId}`).emit('run-completed', failureSocketData);
+        } catch (socketError: any) {
+          logger.log('warn', `Failed to emit failure event in main catch: ${socketError.message}`);
+        }
+      }
+    } catch (updateError: any) {
+      logger.log('error', `Failed to update run status: ${updateError.message}`);
+    }
+    
     return { success: false };
   }
 }
 
 async function abortRun(runId: string, userId: string): Promise<boolean> {
   try {
-    const run = await Run.findOne({ 
-      where: { 
-        runId: runId,
-        runByUserId: userId
-      }
-    });
+    const run = await Run.findOne({ where: { runId: runId } });
 
     if (!run) {
       logger.log('warn', `Run ${runId} not found or does not belong to user ${userId}`);
@@ -558,32 +678,9 @@ async function abortRun(runId: string, userId: string): Promise<boolean> {
     }
 
     let currentLog = 'Run aborted by user';
-    let categorizedOutput = {
-      scrapeSchema: {},
-      scrapeList: {},
-    };
-    let binaryOutput: Record<string, any> = {};
-    
-    try {
-      if (browser.interpreter) {      
-        if (browser.interpreter.debugMessages) {
-          currentLog = browser.interpreter.debugMessages.join('\n') || currentLog;
-        }
-        
-        if (browser.interpreter.serializableDataByType) {
-          categorizedOutput = {
-            scrapeSchema: collectDataByType(browser.interpreter.serializableDataByType.scrapeSchema || []),
-            scrapeList: collectDataByType(browser.interpreter.serializableDataByType.scrapeList || []),
-          };
-        }
-        
-        if (browser.interpreter.binaryData) {
-          binaryOutput = collectBinaryData(browser.interpreter.binaryData);
-        }
-      }
-    } catch (interpreterError) {
-      logger.log('warn', `Error collecting data from interpreter: ${interpreterError}`);
-    }
+    const extractedData = await extractAndProcessScrapedData(browser, run);
+
+    console.log(`Total Data Points Extracted in aborted run: ${extractedData.totalDataPointsExtracted}`);
 
     await run.update({
       status: 'aborted',
@@ -591,11 +688,15 @@ async function abortRun(runId: string, userId: string): Promise<boolean> {
       browserId: plainRun.browserId,
       log: currentLog,
       serializableOutput: {
-        scrapeSchema: Object.values(categorizedOutput.scrapeSchema),
-        scrapeList: Object.values(categorizedOutput.scrapeList),
+        scrapeSchema: Object.values(extractedData.categorizedOutput.scrapeSchema),
+        scrapeList: Object.values(extractedData.categorizedOutput.scrapeList),
       },
-      binaryOutput,
+      binaryOutput: extractedData.uploadedBinaryOutput,
     });
+
+    if (extractedData.totalDataPointsExtracted > 0) {
+      await triggerIntegrationUpdates(runId, plainRun.robotMetaId);
+    }
 
     try {
       serverIo.of(plainRun.browserId).emit('run-aborted', {
@@ -608,22 +709,13 @@ async function abortRun(runId: string, userId: string): Promise<boolean> {
       logger.log('warn', `Failed to emit run-aborted event: ${socketError}`);
     }
 
-    let queuedRunProcessed = false;
     try {
-      queuedRunProcessed = await checkAndProcessQueuedRun(userId, plainRun.browserId);
-    } catch (queueError) {
-      logger.log('warn', `Error checking queued runs: ${queueError}`);
-    }
-    
-    if (!queuedRunProcessed) {
-      try {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        await destroyRemoteBrowser(plainRun.browserId, userId);
-        logger.log('info', `Browser ${plainRun.browserId} destroyed successfully after abort`);
-      } catch (cleanupError) {
-        logger.log('warn', `Failed to clean up browser for aborted run ${runId}: ${cleanupError}`);
-      }
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      await destroyRemoteBrowser(plainRun.browserId, userId);
+      logger.log('info', `Browser ${plainRun.browserId} destroyed successfully after abort`);
+    } catch (cleanupError) {
+      logger.log('warn', `Failed to clean up browser for aborted run ${runId}: ${cleanupError}`);
     }
 
     return true;
@@ -632,30 +724,6 @@ async function abortRun(runId: string, userId: string): Promise<boolean> {
     logger.log('error', `Failed to abort run ${runId}: ${errorMessage}`);
     return false;
   }
-}
-
-/**
- * Helper function to collect data from arrays into indexed objects
- * @param dataArray Array of data to be transformed into an object with indexed keys
- * @returns Object with indexed keys
- */
-function collectDataByType(dataArray: any[]): Record<string, any> {
-  return dataArray.reduce((result: Record<string, any>, item, index) => {
-    result[`item-${index}`] = item;
-    return result;
-  }, {});
-}
-
-/**
- * Helper function to collect binary data (like screenshots)
- * @param binaryDataArray Array of binary data objects to be transformed
- * @returns Object with indexed keys
- */
-function collectBinaryData(binaryDataArray: { mimetype: string, data: string, type?: string }[]): Record<string, any> {
-  return binaryDataArray.reduce((result: Record<string, any>, item, index) => {
-    result[`item-${index}`] = item;
-    return result;
-  }, {});
 }
 
 async function registerRunExecutionWorker() {

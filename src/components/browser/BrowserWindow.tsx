@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useSocketStore } from '../../context/socket';
 import { Button } from '@mui/material';
 import Canvas from "../recorder/canvas";
@@ -84,6 +84,8 @@ export const BrowserWindow = () => {
     const [fields, setFields] = useState<Record<string, TextStep>>({});
     const [paginationSelector, setPaginationSelector] = useState<string>('');
 
+    const highlighterUpdateRef = useRef<number>(0);
+
     const { socket } = useSocketStore();
     const { notify, currentTextActionId, currentListActionId } = useGlobalInfoStore();
     const { getText, getList, paginationMode, paginationType, limitMode, captureStage } = useActionContext();
@@ -103,12 +105,12 @@ export const BrowserWindow = () => {
 
     useEffect(() => {
         if (listSelector) {
-          window.sessionStorage.setItem('recordingListSelector', listSelector);
+          sessionStorage.setItem('recordingListSelector', listSelector);
         }
     }, [listSelector]);
 
     useEffect(() => {
-        const storedListSelector = window.sessionStorage.getItem('recordingListSelector');
+        const storedListSelector = sessionStorage.getItem('recordingListSelector');
         
         // Only restore state if it exists in sessionStorage
         if (storedListSelector && !listSelector) {
@@ -172,6 +174,12 @@ export const BrowserWindow = () => {
     }, [screenShot, canvasRef, socket, screencastHandler]);
 
     const highlighterHandler = useCallback((data: { rect: DOMRect, selector: string, elementInfo: ElementInfo | null, childSelectors?: string[] }) => {
+        const now = performance.now();
+        if (now - highlighterUpdateRef.current < 16) {
+            return;
+        }
+        highlighterUpdateRef.current = now;
+        
         // Map the incoming DOMRect from browser coordinates to canvas coordinates
         const mappedRect = new DOMRect(
             data.rect.x,
@@ -573,17 +581,22 @@ export const BrowserWindow = () => {
 };
 
 const drawImage = (image: string, canvas: HTMLCanvasElement): void => {
-
     const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
     const img = new Image();
-
-    img.src = image;
     img.onload = () => {
-        URL.revokeObjectURL(img.src);
-        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        requestAnimationFrame(() => {
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        });
+        if (image.startsWith('blob:')) {
+            URL.revokeObjectURL(image);
+        }
     };
-
+    img.onerror = () => {
+        console.warn('Failed to load image');
+    };
+    img.src = image;
 };
 
 const modalStyle = {

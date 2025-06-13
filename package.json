@@ -1,6 +1,6 @@
 {
   "name": "maxun",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "author": "Maxun",
   "license": "AGPL-3.0-or-later",
   "dependencies": {
@@ -23,7 +23,7 @@
     "@types/react-dom": "^18.0.1",
     "@types/uuid": "^8.3.4",
     "airtable": "^0.12.2",
-    "axios": "^0.26.0",
+    "axios": "^1.9.0",
     "bcrypt": "^5.1.1",
     "body-parser": "^1.20.3",
     "buffer": "^6.0.3",
@@ -50,7 +50,7 @@
     "lodash": "^4.17.21",
     "loglevel": "^1.8.0",
     "loglevel-plugin-remote": "^0.6.8",
-    "maxun-core": "^0.0.17",
+    "maxun-core": "^0.0.18",
     "minio": "^8.0.1",
     "moment-timezone": "^0.5.45",
     "node-cron": "^3.0.3",

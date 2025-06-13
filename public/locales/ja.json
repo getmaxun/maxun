@@ -62,7 +62,8 @@
         "notifications": {
             "delete_warning": "ロボットには関連する実行があります。ロボットを削除するには、まず実行を削除してください",
             "delete_success": "ロボットが正常に削除されました",
-            "auth_success": "ロボットの認証に成功しました"
+            "auth_success": "ロボットの認証に成功しました",
+            "browser_limit_warning": "リモートブラウザは現在ビジー状態です。数分お待ちいただいてから再度お試しください"
         }
   },
   "mainmenu": {
@@ -474,7 +475,8 @@
             "schedule_success": "ロボット{{name}}のスケジュールが正常に設定されました",
             "schedule_failed": "ロボット{{name}}のスケジュール設定に失敗しました",
             "abort_success": "ロボット{{name}}の解釈を中止しました",
-            "abort_failed": "ロボット{{name}}の解釈中止に失敗しました"
+            "abort_failed": "ロボット{{name}}の解釈中止に失敗しました",
+            "abort_initiated": "ロボット {{name}} の解釈を中止しています"
         },
         "menu": {
             "recordings": "ロボット",

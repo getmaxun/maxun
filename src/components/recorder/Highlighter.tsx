@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import styled from "styled-components";
 import { coordinateMapper } from '../../helpers/coordinateMapper';
 
@@ -14,16 +14,15 @@ const HighlighterComponent = ({ unmodifiedRect, displayedSelector = '', width, h
   if (!unmodifiedRect) {
     return null;
   } else {
-    const mappedRect = coordinateMapper.mapBrowserRectToCanvas(unmodifiedRect);
-
-    const rect = {
-      top: mappedRect.top + canvasRect.top + window.scrollY,
-      left: mappedRect.left + canvasRect.left + window.scrollX,
-      right: mappedRect.right + canvasRect.left,
-      bottom: mappedRect.bottom + canvasRect.top,
-      width: mappedRect.width,
-      height: mappedRect.height,
-    };
+    const rect = useMemo(() => {
+      const mappedRect = coordinateMapper.mapBrowserRectToCanvas(unmodifiedRect);
+      return {
+        top: mappedRect.top + canvasRect.top + window.scrollY,
+        left: mappedRect.left + canvasRect.left + window.scrollX,
+        width: mappedRect.width,
+        height: mappedRect.height,
+      };
+    }, [unmodifiedRect, canvasRect.top, canvasRect.left]);
 
 
     return (

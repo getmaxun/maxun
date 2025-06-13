@@ -33,7 +33,7 @@ interface CollapsibleRowProps {
   handleDelete: () => void;
   isOpen: boolean;
   currentLog: string;
-  abortRunHandler: () => void;
+  abortRunHandler: (runId: string, robotName: string, browserId: string) => void;
   runningRecordingName: string;
   urlRunId: string | null;
 }
@@ -60,7 +60,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, currentLog, abortRun
   }
 
   const handleAbort = () => {
-    abortRunHandler();
+    abortRunHandler(row.runId, row.name, row.browserId);
   }
 
   useEffect(() => {
