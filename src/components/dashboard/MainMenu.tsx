@@ -37,6 +37,9 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
     alignItems: 'center',
     textTransform: 'none',
     color: theme.palette.mode === 'light' ? '#6C6C6C' : 'inherit',
+    '&:hover': {
+      color: theme.palette.mode === 'light' ? '#6C6C6C' : 'inherit',
+    },
   };
 
 
