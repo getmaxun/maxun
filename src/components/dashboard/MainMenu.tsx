@@ -111,11 +111,11 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
           {/* <Button href={`${apiUrl}/api-docs/`} target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<Code />}>
             {t('mainmenu.apidocs')}
           </Button> */}
-          <Button href="https://app.maxun.dev/login" target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<CloudQueue />}>
-            {t('mainmenu.feedback')}
-          </Button>
           <Button href='https://docs.maxun.dev' target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<Description />}>
            Documentation
+          </Button>
+          <Button href="https://app.maxun.dev/login" target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<CloudQueue />}>
+            {t('mainmenu.feedback')}
           </Button>
         </Box>
       </Box>
