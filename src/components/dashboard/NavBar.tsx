@@ -391,11 +391,6 @@ export const NavBar: React.FC<NavBarProps> = ({
                     </MenuItem>
                     <hr />
                     <MenuItem onClick={() => {
-                      window.open('https://docs.maxun.dev', '_blank');
-                    }}>
-                      <Description sx={{ marginRight: '5px' }} /> Docs
-                    </MenuItem>
-                    <MenuItem onClick={() => {
                       window.open('https://github.com/getmaxun/maxun', '_blank');
                     }}>
                       <GitHub sx={{ marginRight: '5px' }} /> GitHub
