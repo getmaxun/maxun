@@ -250,7 +250,8 @@
     },
     "tooltips": {
       "saving": "Optimizando y guardando el flujo de trabajo"
-    }
+    },
+    "description": "Descripción (opcional)"
   },
   "browser_recording": {
     "modal": {
