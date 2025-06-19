@@ -229,7 +229,6 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
                       : "inherit",
                 }}
               >
-                <span>{t("common.optional")}</span>
                 <span>{50 - saveRecordingDescription.length} / 50</span>
               </span>
             }
