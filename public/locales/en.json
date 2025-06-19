@@ -262,7 +262,11 @@
       },
       "tooltips": {
         "saving": "Optimizing and saving the workflow"
-      }
+      },
+     
+      "description": "Description (optional)"
+      
+    
     },
     "browser_recording": {
       "modal": {

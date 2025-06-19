@@ -249,7 +249,8 @@
         },
         "tooltips": {
             "saving": "Workflow wird optimiert und gespeichert"
-        }
+        },
+        "description": "Beschreibung (optional)"
     },
     "browser_recording": {
         "modal": {

@@ -250,7 +250,8 @@
     },
     "tooltips": {
       "saving": "正在优化并保存工作流程"
-    }
+    },
+    "description": "描述（可选）"
   },
   "browser_recording": {
     "modal": {
