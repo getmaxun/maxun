@@ -3,6 +3,9 @@ FROM --platform=$BUILDPLATFORM mcr.microsoft.com/playwright:v1.46.0-noble
 # Set working directory
 WORKDIR /app
 
+COPY .sequelizerc .sequelizerc
+COPY .env .env
+
 # Install node dependencies
 COPY package*.json ./
 COPY src ./src
@@ -47,5 +50,5 @@ RUN apt-get update && apt-get install -y \
 EXPOSE ${BACKEND_PORT:-8080}
 
 # Run migrations & start backend using start script
-#CMD ["npm", "run", "server"]
-CMD ["sh", "-c", "npm run migrate && npm run server"]
+CMD ["npm", "run", "server"]
+# CMD ["sh", "-c", "npm run migrate && npm run server"]

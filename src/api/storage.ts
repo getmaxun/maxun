@@ -151,6 +151,27 @@ export const editRecordingFromStorage = async (browserId: string, id: string): P
   }
 };
 
+export interface CreateRunResponseWithQueue extends CreateRunResponse {
+  queued?: boolean;
+}
+
+export const createAndRunRecording = async (id: string, settings: RunSettings): Promise<CreateRunResponseWithQueue> => {
+  try {
+    const response = await axios.put(
+      `${apiUrl}/storage/runs/${id}`,
+      { ...settings, withCredentials: true }
+    );
+    if (response.status === 200) {
+      return response.data;
+    } else {
+      throw new Error(`Couldn't create and run recording ${id}`);
+    }
+  } catch (error: any) {
+    console.log(error);
+    return { browserId: '', runId: '', robotMetaId: '', queued: false };
+  }
+}
+
 export const createRunForStoredRecording = async (id: string, settings: RunSettings): Promise<CreateRunResponse> => {
   try {
     const response = await axios.put(
@@ -181,19 +202,23 @@ export const interpretStoredRecording = async (id: string): Promise<boolean> => 
   }
 }
 
-export const notifyAboutAbort = async (id: string): Promise<boolean> => {
+export const notifyAboutAbort = async (id: string): Promise<{ success: boolean; isQueued?: boolean }> => {
   try {
-    const response = await axios.post(`${apiUrl}/storage/runs/abort/${id}`);
+    const response = await axios.post(`${apiUrl}/storage/runs/abort/${id}`, { withCredentials: true });
     if (response.status === 200) {
-      return response.data;
+      return {
+        success: response.data.success,
+        isQueued: response.data.isQueued
+      };
     } else {
       throw new Error(`Couldn't abort a running recording with id ${id}`);
     }
   } catch (error: any) {
     console.log(error);
-    return false;
+    return { success: false };
   }
 }
+
 
 export const scheduleStoredRecording = async (id: string, settings: ScheduleSettings): Promise<ScheduleRunResponse> => {
   try {

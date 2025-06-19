@@ -39,7 +39,7 @@ import { useGlobalInfoStore } from "../../context/globalInfo";
 import { checkRunsForRecording, deleteRecordingFromStorage, getStoredRecordings } from "../../api/storage";
 import { Add } from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
-import { getActiveBrowserId, stopRecording } from "../../api/recording";
+import { canCreateBrowserInState, getActiveBrowserId, stopRecording } from "../../api/recording";
 import { GenericModal } from '../ui/GenericModal';
 
 declare global {
@@ -274,11 +274,16 @@ export const RecordingsTable = ({
   }, [setRecordings, notify, t]);
 
   const handleNewRecording = useCallback(async () => {
-    const activeBrowserId = await getActiveBrowserId();
+    const canCreateRecording = await canCreateBrowserInState("recording");
     
-    if (activeBrowserId) {
-      setActiveBrowserId(activeBrowserId);
-      setWarningModalOpen(true);
+    if (!canCreateRecording) {
+        const activeBrowserId = await getActiveBrowserId();
+        if (activeBrowserId) {
+          setActiveBrowserId(activeBrowserId);
+          setWarningModalOpen(true);
+        } else {
+          notify('warning', t('recordingtable.notifications.browser_limit_warning'));
+        }
     } else {
       setModalOpen(true);
     }
@@ -314,7 +319,6 @@ export const RecordingsTable = ({
   };
 
   const handleRetrainRobot = useCallback(async (id: string, name: string) => {
-    const activeBrowserId = await getActiveBrowserId();
     const robot = rows.find(row => row.id === id);
     let targetUrl;
     
@@ -340,11 +344,18 @@ export const RecordingsTable = ({
       window.sessionStorage.setItem('initialUrl', targetUrl);
     }
     
-    if (activeBrowserId) {
-      setActiveBrowserId(activeBrowserId);
-      setWarningModalOpen(true);
+    const canCreateRecording = await canCreateBrowserInState("recording");
+    
+    if (!canCreateRecording) {
+      const activeBrowserId = await getActiveBrowserId();
+      if (activeBrowserId) {
+        setActiveBrowserId(activeBrowserId);
+        setWarningModalOpen(true);
+      } else {
+        notify('warning', t('recordingtable.notifications.browser_limit_warning'));
+      }
     } else {
-      startRetrainRecording(id, name, targetUrl);
+        startRetrainRecording(id, name, targetUrl);
     }
   }, [rows, setInitialUrl, setRecordingUrl]);
 

@@ -6,6 +6,7 @@ import logger from './logger';
 import Robot from './models/Robot';
 import { handleRunRecording } from './workflow-management/scheduler';
 import { computeNextRun } from './utils/schedule';
+import { v4 as uuid } from "uuid";
 
 if (!process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_HOST || !process.env.DB_PORT || !process.env.DB_NAME) {
     throw new Error('One or more required environment variables are missing.');
@@ -32,7 +33,7 @@ interface ScheduledWorkflowData {
  */
 export async function scheduleWorkflow(id: string, userId: string, cronExpression: string, timezone: string): Promise<void> {
   try {
-    const runId = require('uuidv4').uuid();
+    const runId = uuid();
 
     const queueName = `scheduled-workflow-${id}`;
     

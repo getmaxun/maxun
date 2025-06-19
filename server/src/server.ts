@@ -20,6 +20,7 @@ import connectPgSimple from 'connect-pg-simple';
 import pg from 'pg';
 import session from 'express-session';
 import Run from './models/Run';
+import { processQueuedRuns } from './routes/storage';
 
 const app = express();
 app.use(cors({
@@ -162,6 +163,10 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+setInterval(() => {
+  processQueuedRuns();
+}, 5000);
 
 server.listen(SERVER_PORT, '0.0.0.0', async () => {
   try {

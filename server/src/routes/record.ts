@@ -11,6 +11,7 @@ import {
     getRemoteBrowserCurrentTabs,
     getActiveBrowserIdByState,
     destroyRemoteBrowser,
+    canCreateBrowserInState,
 } from '../browser-management/controller';
 import { chromium } from 'playwright-extra';
 import stealthPlugin from 'puppeteer-extra-plugin-stealth';
@@ -179,6 +180,18 @@ router.get('/active', requireSignIn, (req: AuthenticatedRequest, res) => {
     }
     const id = getActiveBrowserIdByState(req.user?.id, "recording");
     return res.send(id);
+});
+
+/**
+ * GET endpoint for checking if the user can create a new remote browser.
+ */
+router.get('/can-create/:state', requireSignIn, (req: AuthenticatedRequest, res) => {
+    if (!req.user) {
+        return res.status(401).send('User not authenticated');
+    }
+    const state = req.params.state as "recording" | "run";
+    const canCreate = canCreateBrowserInState(req.user.id, state);
+    return res.json({ canCreate });
 });
 
 /**
