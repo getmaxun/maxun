@@ -29,14 +29,19 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
   const buttonStyles = {
     justifyContent: 'flex-start',
     textAlign: 'left',
-    fontSize: 'medium',
-    padding: '6px 16px 6px 22px',
+    fontSize: '17px',
+    letterSpacing: '0.02857em',
+    padding: '20px 16px 6px 22px',
     minHeight: '48px',
     minWidth: '100%',
     display: 'flex',
     alignItems: 'center',
     textTransform: 'none',
     color: theme.palette.mode === 'light' ? '#6C6C6C' : 'inherit',
+    '&:hover': {
+      color: theme.palette.mode === 'light' ? '#6C6C6C' : 'inherit',
+      backgroundColor: theme.palette.mode === 'light' ? '#f5f5f5' : 'rgba(255, 255, 255, 0.08)',
+    },
   };
 
 
