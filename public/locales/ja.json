@@ -1,606 +1,621 @@
 {
   "login": {
-        "title": "お帰りなさい！",
-        "email": "勤務先メールアドレスを入力",
-        "password": "パスワード",
-        "button": "ログイン",
-        "loading": "読み込み中",
-        "register_prompt": "アカウントをお持ちでないですか？",
-        "register_link": "登録する",
-        "welcome_notification": "Maxunへようこそ！",
-        "validation": {
-            "required_fields": "メールアドレスとパスワードは必須です",
-            "password_length": "パスワードは6文字以上である必要があります"
-        },
-        "error": {
-            "user_not_found": "ユーザーが存在しません",
-            "invalid_credentials": "メールアドレスまたはパスワードが無効です",
-            "server_error": "ログインに失敗しました。後でもう一度お試しください",
-            "generic": "エラーが発生しました。もう一度お試しください"
-        }
+    "title": "お帰りなさい！",
+    "email": "会社のメールアドレスを入力",
+    "password": "パスワード",
+    "button": "ログイン",
+    "loading": "読み込み中",
+    "register_prompt": "アカウントをお持ちではありませんか？",
+    "register_link": "登録する",
+    "welcome_notification": "Maxunへようこそ！",
+    "validation": {
+      "required_fields": "メールアドレスとパスワードが必要です",
+      "password_length": "パスワードは6文字以上で入力してください"
+    },
+    "error": {
+      "user_not_found": "ユーザーが存在しません",
+      "invalid_credentials": "メールアドレスまたはパスワードが間違っています",
+      "server_error": "ログインに失敗しました。後で再試行してください",
+      "generic": "エラーが発生しました。再試行してください"
+    }
   },
   "register": {
-        "title": "アカウントを登録する",
-        "email": "勤務先メールアドレスを入力",
-        "password": "パスワード",
-        "button": "登録する",
-        "loading": "読み込み中",
-        "register_prompt": "既にアカウントをお持ちですか？",
-        "login_link": "ログイン",
-        "welcome_notification": "Maxunへようこそ！",
-        "validation": {
-            "email_required": "メールアドレスは必須です",
-            "password_requirements": "パスワードは6文字以上である必要があります"
-        },
-        "error": {
-            "user_exists": "このメールアドレスは既に登録されています",
-            "creation_failed": "アカウントを作成できませんでした",
-            "server_error": "サーバーエラーが発生しました",
-            "generic": "登録に失敗しました。もう一度お試しください"
-        }
+    "title": "アカウント作成",
+    "email": "会社のメールアドレスを入力",
+    "password": "パスワード",
+    "button": "登録",
+    "loading": "読み込み中",
+    "register_prompt": "既にアカウントをお持ちですか？",
+    "login_link": "ログイン",
+    "welcome_notification": "Maxunへようこそ！",
+    "validation": {
+      "email_required": "メールアドレスを入力してください",
+      "password_requirements": "パスワードは6文字以上が必要です"
+    },
+    "error": {
+      "user_exists": "このメールアドレスは既に登録されています",
+      "creation_failed": "アカウントを作成できませんでした",
+      "server_error": "サーバーエラーが発生しました",
+      "generic": "登録に失敗しました。再試行してください"
+    }
   },
   "recordingtable": {
-        "run": "実行",
-        "name": "名前",
-        "schedule": "スケジュール",
-        "integrate": "統合",
-        "settings": "設定",
-        "options": "オプション",
-        "heading": "私のロボット",
-        "new": "ロボットを作成",
-        "modal": {
-            "title": "URLを入力してください",
-            "login_title": "このサイトはログインが必要ですか?",
-            "label": "URL",
-            "button": "録画を開始"
-        },
-        "retrain": "再学習",
-        "edit": "編集",
-        "delete": "削除",
-        "duplicate": "複製",
-        "search": "ロボットを検索...",
-        "notifications": {
-            "delete_warning": "ロボットには関連する実行があります。ロボットを削除するには、まず実行を削除してください",
-            "delete_success": "ロボットが正常に削除されました",
-            "auth_success": "ロボットの認証に成功しました",
-            "browser_limit_warning": "リモートブラウザは現在ビジー状態です。数分お待ちいただいてから再度お試しください"
-        }
+    "run": "実行",
+    "name": "名前",
+    "schedule": "スケジュール",
+    "integrate": "連携",
+    "settings": "設定",
+    "options": "オプション",
+    "heading": "マイロボット",
+    "new": "ロボット作成",
+    "modal": {
+      "title": "URLを入力してください",
+      "login_title": "このウェブサイトにはログインが必要ですか？",
+      "label": "URL",
+      "button": "録画開始"
+    },
+    "warning_modal": {
+      "title": "アクティブなブラウザが検出されました",
+      "message": "既にブラウザ録画セッションが実行中です。それを破棄して新しい録画を作成しますか？",
+      "discard_and_create": "破棄して新規作成",
+      "cancel": "キャンセル"
+    },
+    "retrain": "再学習",
+    "edit": "編集",
+    "delete": "削除",
+    "duplicate": "複製",
+    "search": "ロボットを検索...",
+    "notifications": {
+      "delete_warning": "このロボットには関連する実行履歴があります。ロボットを削除する前に実行履歴を削除してください",
+      "delete_success": "ロボットが正常に削除されました",
+      "auth_success": "ロボットの認証に成功しました",
+      "browser_limit_warning": "リモートブラウザが現在使用中です。数分後に再試行してください"
+    }
   },
   "mainmenu": {
-        "recordings": "ロボット",
-        "runs": "実行",
-        "proxy": "プロキシ",
-        "apikey": "APIキー",
-        "feedback": "Maxunクラウドに参加する",
-        "apidocs": "WebサイトからAPI"
+    "recordings": "ロボット",
+    "runs": "実行履歴",
+    "proxy": "プロキシ",
+    "apikey": "APIキー",
+    "feedback": "Maxun Cloud参加",
+    "apidocs": "Webサイト → API"
   },
   "runstable": {
-        "runs": "すべての実行",
-        "runStatus": "ステータス",
-        "runName": "名前",
-        "startedAt": "開始日時",
-        "finishedAt": "終了日時",
-        "delete": "削除",
-        "settings": "設定",
-        "search": "実行を検索...",
-        "sort_tooltip": "クリックして並べ替え",
-        "notifications": {
-            "no_runs": "実行が見つかりません。もう一度お試しください。",
-            "delete_success": "実行が正常に削除されました"
-        }
+    "runs": "すべての実行",
+    "runStatus": "ステータス",
+    "runName": "名前",
+    "startedAt": "開始日時",
+    "finishedAt": "完了日時",
+    "delete": "削除",
+    "settings": "設定",
+    "search": "実行履歴を検索...",
+    "sort_tooltip": "クリックして並べ替え",
+    "notifications": {
+      "no_runs": "実行履歴がありません。再試行してください。",
+      "delete_success": "実行履歴は削除されました"
+    }
   },
   "proxy": {
-        "title": "プロキシ設定",
-        "tab_standard": "標準プロキシ",
-        "tab_rotation": "自動プロキシローテーション",
-        "server_url": "プロキシサーバーURL",
-        "server_url_helper": "すべてのロボットで使用するプロキシ。HTTPとSOCKSプロキシがサポートされています。例：http://myproxy.com:3128 または socks5://myproxy.com:3128。短縮形 myproxy.com:3128 はHTTPプロキシとして扱われます。",
-        "requires_auth": "認証が必要ですか？",
-        "username": "ユーザー名",
-        "password": "パスワード",
-        "add_proxy": "プロキシを追加",
-        "test_proxy": "プロキシをテスト",
-        "remove_proxy": "プロキシを削除",
-        "table": {
-            "proxy_url": "プロキシURL",
-            "requires_auth": "認証が必要"
-        },
-        "coming_soon": "近日公開 - オープンソース（基本ローテーション）とクラウド（高度なローテーション）。インフラストラクチャを管理したくない場合は、クラウドの待機リストに参加して早期アクセスを取得してください。",
-        "join_waitlist": "Maxun Cloud待機リストに参加",
-        "alert": {
-            "title": "プロキシにユーザー名とパスワードが必要な場合は、必ずプロキシURLとは別に指定してください。",
-            "right_way": "正しい方法",
-            "wrong_way": "間違った方法",
-            "proxy_url": "プロキシURL：",
-            "username": "ユーザー名：",
-            "password": "パスワード："
-        },
-        "notifications": {
-            "config_success": "プロキシ設定が正常に送信されました",
-            "config_error": "プロキシ設定の送信に失敗しました。もう一度お試しください。",
-            "test_success": "プロキシ設定は正常に動作しています",
-            "test_error": "プロキシ設定のテストに失敗しました。もう一度お試しください。",
-            "fetch_success": "プロキシ設定の取得に成功しました",
-            "remove_success": "プロキシ設定が正常に削除されました",
-            "remove_error": "プロキシ設定の削除に失敗しました。もう一度お試しください。"
-        }
+    "title": "プロキシ設定",
+    "tab_standard": "標準プロキシ",
+    "tab_rotation": "自動プロキシローテーション",
+    "server_url": "プロキシサーバーURL",
+    "server_url_helper": "すべてのロボットで使用するプロキシ。HTTPおよびSOCKSプロキシがサポートされています。例: http://myproxy.com:3128 または socks5://myproxy.com:3128。短縮形 myproxy.com:3128 はHTTPプロキシとして扱われます。",
+    "requires_auth": "認証が必要ですか？",
+    "username": "ユーザー名",
+    "password": "パスワード",
+    "add_proxy": "プロキシ追加",
+    "test_proxy": "プロキシテスト",
+    "remove_proxy": "プロキシ削除",
+    "table": {
+      "proxy_url": "プロキシURL",
+      "requires_auth": "認証が必要"
     },
-    "apikey": {
-        "title": "APIキーの管理",
-        "default_name": "Maxun APIキー",
-        "table": {
-            "name": "APIキー名",
-            "key": "APIキー",
-            "actions": "アクション"
-        },
-        "actions": {
-            "copy": "コピー",
-            "show": "表示",
-            "hide": "非表示",
-            "delete": "削除"
-        },
-        "no_key_message": "APIキーはまだ生成されていません。",
-        "generate_button": "APIキーを生成",
-        "notifications": {
-            "fetch_error": "APIキーの取得に失敗しました - ${error}",
-            "generate_success": "APIキーの生成に成功しました",
-            "generate_error": "APIキーの生成に失敗しました - ${error}",
-            "delete_success": "APIキーの削除に成功しました",
-            "delete_error": "APIキーの削除に失敗しました - ${error}",
-            "copy_success": "APIキーのコピーに成功しました"
-        }
+    "coming_soon": "近日公開 - オープンソース（基本ローテーション）およびクラウド（高度なローテーション）。インフラ管理をしたくない方はクラウド用ウェイトリストにご参加ください。",
+    "join_waitlist": "Maxun Cloudウェイトリスト参加",
+    "alert": {
+      "title": "プロキシがユーザー名とパスワードの認証を要求する場合、それらをプロキシURLから分離して入力してください。",
+      "right_way": "正しい方法",
+      "wrong_way": "間違った方法",
+      "proxy_url": "プロキシURL：",
+      "username": "ユーザー名：",
+      "password": "パスワード："
     },
-    "action_description": {
-        "text": {
-            "title": "テキストを取得",
-            "description": "抽出したいテキストにカーソルを合わせ、クリックして選択してください"
-        },
-        "screenshot": {
-            "title": "スクリーンショットを取得",
-            "description": "現在のページの部分的または全体のスクリーンショットを取得します。"
-        },
-        "list": {
-            "title": "リストを取得",
-            "description": "抽出したいリストにカーソルを合わせてください。選択後、選択したリスト内のすべてのテキストにカーソルを合わせることができます。クリックして選択してください。"
-        },
-        "default": {
-            "title": "どのデータを抽出しますか？",
-            "description": "ロボットは1つまたは複数のアクションを実行できます。以下のオプションから選択してください。"
-        },
-        "list_stages": {
-            "initial": "抽出したいリストとその中のテキストを選択してください",
-            "pagination": "ロボットがリストの残りをどのように取得するか選択してください",
-            "limit": "抽出するアイテムの数を選択してください",
-            "complete": "取得が完了しました"
-        }
-    },
-    "right_panel": {
-        "buttons": {
-            "capture_list": "リストを取得",
-            "capture_text": "テキストを取得",
-            "capture_screenshot": "スクリーンショットを取得",
-            "confirm": "確認",
-            "discard": "破棄",
-            "confirm_capture": "取得を確認",
-            "confirm_pagination": "確認",
-            "confirm_limit": "確認",
-            "finish_capture": "取得を完了",
-            "back": "戻る",
-            "reset": "リセット",
-            "finish": "完了",
-            "cancel": "キャンセル",
-            "delete": "削除"
-        },
-        "screenshot": {
-            "capture_fullpage": "フルページを取得",
-            "capture_visible": "表示部分を取得",
-            "display_fullpage": "フルページスクリーンショットを撮影",
-            "display_visible": "表示部分のスクリーンショットを撮影"
-        },
-        "pagination": {
-            "title": "次のリスト項目をページ上でどのように見つけますか？",
-            "click_next": "次へをクリックして次のページへ移動",
-            "click_load_more": "もっと読み込むをクリックして項目を追加",
-            "scroll_down": "下にスクロールして項目を追加",
-            "scroll_up": "上にスクロールして項目を追加",
-            "none": "これ以上読み込む項目はありません"
-        },
-        "limit": {
-            "title": "抽出する最大行数はいくつですか？",
-            "custom": "カスタム",
-            "enter_number": "数値を入力"
-        },
-        "fields": {
-            "label": "ラベル",
-            "data": "データ",
-            "field_label": "フィールドラベル",
-            "field_data": "フィールドデータ"
-        },
-        "messages": {
-            "list_selected": "リストが正常に選択されました",
-            "list_empty": "リストが選択されました。リスト内のフィールドを選択してください。"
-        },
-        "errors": {
-            "select_pagination": "ページネーションタイプを選択してください。",
-            "select_pagination_element": "まずページネーション要素を選択してください。",
-            "select_limit": "制限を選択するかカスタム制限を入力してください。",
-            "invalid_limit": "有効な制限を入力してください。",
-            "confirm_text_fields": "すべてのテキストフィールドを確認してください",
-            "unable_create_settings": "リスト設定を作成できません。リストのフィールドを定義したことを確認してください。",
-            "capture_text_discarded": "テキスト取得が破棄されました",
-            "capture_list_discarded": "リスト取得が破棄されました",
-            "label_required": "ラベルは空にできません"
-        }
-    },
-    "save_recording": {
-        "title": "ロボットを保存",
-        "robot_name": "ロボット名",
-        "buttons": {
-            "save": "保存",
-            "confirm": "確認"
-        },
-        "notifications": {
-            "save_success": "ロボットの保存に成功しました",
-            "retrain_success": "ロボットの再トレーニングに成功しました",
-            "save_error": "ロボットの保存中にエラーが発生しました"
-        },
-        "errors": {
-            "user_not_logged": "ユーザーがログインしていません。録画を保存できません。",
-            "exists_warning": "この名前のロボットは既に存在します。ロボットの上書きを確認してください。"
-        },
-        "tooltips": {
-            "saving": "ワークフローを最適化して保存中"
-        }
-    },
-    "browser_recording": {
-        "modal": {
-            "confirm_discard": "録画を破棄してもよろしいですか？",
-            "confirm_reset": "リセットしてもよろしいですか？",
-            "reset_warning": "これにより、現在のセッションの以前のキャプチャがすべてクリアされます。同じ Web サイトの記録セッションが再開されます。"
-        },
-        "notifications": {
-            "terminated": "現在の録画は終了しました",
-            "environment_reset": "ブラウザー環境がリセットされました",
-            "reset_successful": "すべてのキャプチャーを正常にリセットし、初期状態に戻りました"
-        }
-    },
-    "interpretation_log": {
-        "titles": {
-            "output_preview": "出力データプレビュー",
-            "screenshot": "スクリーンショット"
-        },
-        "messages": {
-            "additional_rows": "記録が完了すると、追加のデータ行が抽出されます。",
-            "successful_training": "ロボットのアクショントレーニングが成功しました！下のボタンをクリックすると、ロボットが抽出するデータのプレビューが表示されます。",
-            "no_selection": "まだ抽出対象が選択されていません。選択すると、ロボットがここで選択内容のプレビューを表示します。"
-        },
-        "data_sections": {
-            "binary_received": "---------- バイナリ出力データを受信 ----------",
-            "serializable_received": "---------- シリアライズ可能な出力データを受信 ----------",
-            "mimetype": "MIMEタイプ: ",
-            "image_below": "画像は以下に表示されます：",
-            "separator": "--------------------------------------------------"
-        },
-        "notifications": {
-            "reset_success": "出力プレビューが正常にリセットされました"
-        }
-    },
-    "interpretation_buttons": {
-        "buttons": {
-            "preview": "出力データのプレビューを取得",
-            "reset": "リセット",
-            "yes": "はい",
-            "no": "いいえ"
-        },
-        "messages": {
-            "extracting": "データ抽出中...10秒から1分ほどお待ちください",
-            "restart_required": "録画を更新した後、解釈を再起動してください",
-            "run_finished": "実行完了",
-            "run_failed": "実行の開始に失敗しました"
-        },
-        "modal": {
-            "use_previous": "この操作の条件として前回の選択を使用しますか？",
-            "previous_action": "前回の操作: ",
-            "element_text": "テキスト要素 "
-        }
-    },
-    "recording_page": {
-        "loader": {
-            "browser_startup": "ブラウザを起動中...{{url}}に移動中"
-        }
-    },
-    "integration_settings": {
-        "title": "連携設定",
-        "descriptions": {
-            "authenticated_as": "認証済み: {{email}}"
-        },
-        "buttons": {
-            "submit": "送信",
-            "remove_integration": "連携を解除"
-        },
-        "google": {
-            "title": "Google シートと連携",
-            "descriptions": {
-                "sync_info": "このオプションを有効にすると、このロボットがタスクを正常に実行するたびに、取得したデータがGoogle シートに追加されます。",
-                "authenticated_as": "認証済み: {{email}}"
-            },
-            "alerts": {
-                "success": {
-                    "title": "Google シートの連携に成功しました。",
-                    "content": "このロボットが正常に実行されるたびに、取得したデータが{{sheetName}}という名前のGoogle シートに追加されます。データの更新を確認できます",
-                    "here": "こちら",
-                    "note": "注意:",
-                    "sync_limitation": "Google シートとの連携前に抽出されたデータはGoogle シートに同期されません。連携後に抽出されたデータのみが同期されます。"
-                }
-            },
-            "buttons": {
-                "authenticate": "Googleで認証",
-                "fetch_sheets": "Google スプレッドシートを取得",
-                "remove_integration": "連携を解除",
-                "submit": "送信"
-            },
-            "fields": {
-                "select_sheet": "Google シートを選択",
-                "selected_sheet": "選択したシート: {{name}} (ID: {{id}})"
-            },
-            "errors": {
-                "auth_error": "Googleでの認証エラー",
-                "fetch_error": "スプレッドシートファイルの取得エラー: {{message}}",
-                "update_error": "Google シートIDの更新エラー: {{message}}",
-                "remove_error": "Google シート連携の解除エラー: {{message}}"
-            },
-            "notifications": {
-                "sheet_selected": "Google シートが正常に選択されました",
-                "integration_removed": "Google シートの連携が正常に解除されました"
-            }
-        },
-        "airtable": {
-            "title": "Airtableと連携",
-            "descriptions": {
-                "sync_info": "このオプションを有効にすると、このロボットがタスクを正常に実行するたびに、取得したデータがAirtableに追加されます。",
-                "authenticated_as": "Airtableで認証に成功しました。統合するベースとテーブルを選択できるようになりました。"
-            },
-            "alerts": {
-                "success": {
-                    "title": "Airtable ベースの統合に成功",
-                    "content": "このロボットが正常な実行を作成するたびに、キャプチャされたデータが {{baseName}} ベースと {{tableName}} テーブルに追加されます。更新情報を確認できます",
-                    "here": "こちら",
-                    "note": "注意:",
-                    "sync_limitation": "連携後に取得されたデータのみがAirtableに同期されます。"
-                }
-            },
-            "buttons": {
-                "authenticate": "Airtableと接続",
-                "fetch_bases": "Airtableベースを取得",
-                "fetch_tables": "Airtableテーブルを取得",
-                "remove_integration": "連携を解除",
-                "submit": "ベースとテーブルを選択"
-            },
-            "fields": {
-                "select_base": "Airtableベースを選択",
-                "select_table": "Airtableテーブルを選択",
-                "selected_base": "選択したベース: {{name}}",
-                "selected_table": "選択したテーブル: {{name}}"
-            },
-            "errors": {
-                "auth_error": "Airtableでの認証エラー",
-                "fetch_error": "Airtableベースの取得エラー: {{message}}",
-                "fetch_tables_error": "Airtableテーブルの取得エラー: {{message}}",
-                "update_error": "Airtableベースの更新エラー: {{message}}",
-                "remove_error": "Airtable連携の解除エラー: {{message}}"
-            },
-            "notifications": {
-                "base_selected": "Airtableベースが正常に選択されました",
-                "table_selected": "Airtableテーブルが正常に選択されました",
-                "integration_removed": "Airtable連携が正常に解除されました"
-            }
-        }
-    },
-    "robot_duplication": {
-        "title": "ロボットを複製",
-        "descriptions": {
-            "purpose": "ロボットの複製は、同じ構造のページからデータを抽出する際に便利です。",
-            "example": "例：{{url1}}用のロボットを作成した場合、ロボットを一から作り直すことなく、{{url2}}のような類似のページをスクレイピングするために複製できます。",
-            "warning": "⚠️ 新しいページが元のページと同じ構造であることを確認してください。"
-        },
-        "fields": {
-            "target_url": "ロボットのターゲットURL"
-        },
-        "buttons": {
-            "duplicate": "ロボットを複製",
-            "cancel": "キャンセル"
-        },
-        "notifications": {
-            "robot_not_found": "ロボットの詳細が見つかりません。もう一度お試しください。",
-            "url_required": "ターゲットURLが必要です。",
-            "duplicate_success": "ロボットが正常に複製されました。",
-            "duplicate_error": "ターゲットURLの更新に失敗しました。もう一度お試しください。",
-            "unknown_error": "ターゲットURLの更新中にエラーが発生しました。"
-        }
-    },
-    "robot_settings": {
-        "title": "ロボット設定",
-        "target_url": "ロボットのターゲットURL",
-        "robot_id": "ロボットID",
-        "robot_limit": "ロボットの制限",
-        "created_by_user": "作成したユーザー",
-        "created_at": "作成日時",
-        "errors": {
-            "robot_not_found": "ロボットの詳細が見つかりませんでした。もう一度試してください。"
-        }
-    },
-    "robot_edit": {
-        "title": "ロボットを編集",
-        "change_name": "ロボット名の変更",
-        "robot_limit": "ロボットの制限",
-        "save": "変更を保存",
-        "cancel": "キャンセル",
-        "notifications": {
-            "update_success": "ロボットが正常に更新されました。",
-            "update_failed": "ロボットの更新に失敗しました。もう一度試してください。",
-            "update_error": "ロボットの更新中にエラーが発生しました。"
-        }
-    },
-    "schedule_settings": {
-        "title": "スケジュール設定",
-        "run_every": "実行間隔",
-        "start_from": "開始日",
-        "on_day": "日付",
-        "at_around": "時刻",
-        "timezone": "タイムゾーン",
-        "buttons": {
-            "delete_schedule": "スケジュールを削除",
-            "save_schedule": "スケジュールを保存",
-            "cancel": "キャンセル"
-        },
-        "labels": {
-            "in_between": "間隔",
-            "run_once_every": "実行間隔",
-            "start_from_label": "開始日",
-            "on_day_of_month": "月の日付",
-            "on_day": {
-            "st": "日",
-            "nd": "日",
-            "rd": "日",
-            "th": "日"
-            }
-        }
-    },
-    "main_page": {
-        "notifications": {
-            "interpretation_success": "ロボット{{name}}の解釈に成功しました",
-            "interpretation_failed": "ロボット{{name}}の解釈に失敗しました",
-            "run_started": "ロボット{{name}}を実行中",
-            "run_start_failed": "ロボット{{name}}の実行に失敗しました",
-            "schedule_success": "ロボット{{name}}のスケジュールが正常に設定されました",
-            "schedule_failed": "ロボット{{name}}のスケジュール設定に失敗しました",
-            "abort_success": "ロボット{{name}}の解釈を中止しました",
-            "abort_failed": "ロボット{{name}}の解釈中止に失敗しました",
-            "abort_initiated": "ロボット {{name}} の解釈を中止しています"
-        },
-        "menu": {
-            "recordings": "ロボット",
-            "runs": "実行",
-            "proxy": "プロキシ",
-            "apikey": "APIキー"
-        }
-    },
-    "browser_window": {
-        "attribute_modal": {
-            "title": "属性を選択",
-            "notifications": {
-                "list_select_success": "リストが正常に選択されました。抽出するテキストデータを選択してください。",
-                "pagination_select_success": "ページネーション要素が正常に選択されました。"
-            }
-        },
-        "attribute_options": {
-            "anchor": {
-                "text": "テキスト: {{text}}",
-                "url": "URL: {{url}}"
-            },
-            "image": {
-                "alt_text": "代替テキスト: {{altText}}",
-                "image_url": "画像URL: {{imageUrl}}"
-            },
-            "default": {
-                "text": "テキスト: {{text}}"
-            }
-        }
-    },
-    "runs_table": {
-        "run_type_chips": {
-            "manual_run": "手動実行",
-            "scheduled_run": "スケジュール実行",
-            "api": "API",
-            "unknown_run_type": "不明な実行タイプ"
-        },
-        "run_status_chips": {
-            "success": "成功",
-            "running": "実行中",
-            "scheduled": "スケジュール済み",
-            "queued": "キューに入れました",
-            "failed": "失敗",
-            "aborted": "中止されました"
-        },
-        "run_settings_modal": {
-            "title": "実行設定",
-            "labels": {
-                "run_id": "実行ID",
-                "run_by_user": "ユーザーによる実行",
-                "run_by_schedule": "スケジュールによる実行",
-                "run_by_api": "APIによる実行",
-                "run_type": "実行タイプ"
-            }
-        }
-    },
-    "run_content": {
-        "tabs": {
-            "output_data": "出力データ",
-            "log": "ログ"
-        },
-        "buttons": {
-            "stop": "停止"
-        },
-        "loading": "データを読み込み中...",
-        "empty_output": "出力データがありません",
-        "captured_data": {
-            "title": "キャプチャしたデータ",
-            "download_csv": "CSVをダウンロード",
-            "view_full": "完全なデータを表示",
-            "items": "アイテム",
-            "schema_title": "キャプチャしたテキスト",
-            "list_title": "キャプチャしたリスト"
-        },
-        "captured_screenshot": {
-            "title": "キャプチャしたスクリーンショット",
-            "download": "ダウンロード",
-            "render_failed": "スクリーンショットのレンダリングに失敗しました"
-        }
-    },
-    "navbar": {
-        "project_name": "Maxun",
-        "notifications": {
-            "success": {
-                "logout": "ログアウトに成功しました"
-            },
-            "errors": {
-                "logout": {
-                "unauthorized": "この操作を実行する権限がありません",
-                "server": "ログアウト中にサーバーエラーが発生しました",
-                "network": "ログアウト中にネットワークエラーが発生しました",
-                "unknown": "ログアウト中に予期せぬエラーが発生しました"
-                }
-            }
-        },
-        "upgrade": {
-        "button": "アップグレード",
-        "modal": {
-            "up_to_date": "最新版です！",
-            "new_version_available": "新しいバージョンが利用可能です: {{version}}。バグ修正、機能強化のために最新版にアップグレードしてください。",
-            "view_updates": "すべての更新を",
-            "view_updates_link": "こちら",
-            "tabs": {
-                "manual_setup": "手動セットアップ",
-                "docker_setup": "Docker Composeセットアップ"
-            }
-        }
-        },
-        "menu_items": {
-            "logout": "ログアウト",
-            "discord": "Discord",
-            "youtube": "YouTube",
-            "twitter": "Twitter (X)",
-            "language": "言語"
-        },
-        "recording": {
-            "discard": "破棄"
-        }
-    },
-    "language_menu": {
-        "en": "英語",
-        "es": "スペイン語",
-        "ja": "日本語",
-        "zh": "中国語",
-        "de": "ドイツ語"
+    "notifications": {
+      "config_success": "プロキシ設定が正常に送信されました",
+      "config_error": "プロキシ設定の送信に失敗しました。再試行してください。",
+      "test_success": "プロキシ設定が動作しています",
+      "test_error": "プロキシ設定のテストに失敗しました。再試行してください。",
+      "fetch_success": "プロキシ設定の取得に成功しました",
+      "remove_success": "プロキシが正常に削除されました",
+      "remove_error": "プロキシ削除に失敗しました。再試行してください。"
     }
+  },
+  "apikey": {
+    "title": "APIキー管理",
+    "default_name": "Maxun APIキー",
+    "table": {
+      "name": "APIキーネーム",
+      "key": "APIキー",
+      "actions": "操作"
+    },
+    "actions": {
+      "copy": "コピー",
+      "show": "表示",
+      "hide": "非表示",
+      "delete": "削除"
+    },
+    "no_key_message": "まだAPIキーを生成していません。",
+    "generate_button": "APIキー生成",
+    "notifications": {
+      "fetch_error": "APIキーの取得に失敗しました - ${error}",
+      "generate_success": "APIキーを正常に生成しました",
+      "generate_error": "APIキーの生成に失敗しました - ${error}",
+      "delete_success": "APIキーを削除しました",
+      "delete_error": "APIキーの削除に失敗しました - ${error}",
+      "copy_success": "APIキーをコピーしました"
+    }
+  },
+  "action_description": {
+    "text": {
+      "title": "テキストを取得",
+      "description": "抽出したいテキストの上にカーソルを合わせてクリックして選択してください"
+    },
+    "screenshot": {
+      "title": "スクリーンショットを取得",
+      "description": "現在のページの一部または全体のスクリーンショットを取得します。"
+    },
+    "list": {
+      "title": "リストを取得",
+      "description": "抽出したいリストにカーソルを合わせてください。選択後、そのリスト内のテキストを選択してクリックできます。"
+    },
+    "default": {
+      "title": "どのデータを抽出しますか？",
+      "description": "ロボットは１つまたは複数のアクションを行えます。下のオプションから選択してください。"
+    },
+    "list_stages": {
+      "initial": "取得したいリストとその内容を選択してください",
+      "pagination": "ロボットがリストの続きを取得する方法を選択してください",
+      "limit": "抽出する件数を指定してください",
+      "complete": "取得完了"
+    },
+    "actions": {
+      "text": "テキストを取得",
+      "list": "リストを取得",
+      "screenshot": "スクリーンショットを取得"
+    }
+  },
+  "right_panel": {
+    "buttons": {
+      "capture_list": "リストを取得",
+      "capture_text": "テキストを取得",
+      "capture_screenshot": "スクリーンショットを取得",
+      "confirm": "確定",
+      "discard": "破棄",
+      "confirm_capture": "取得を確定",
+      "confirm_pagination": "確定",
+      "confirm_limit": "確定",
+      "confirm_reset": "確定",
+      "finish_capture": "取得完了",
+      "back": "戻る",
+      "reset": "録画をリスタート",
+      "finish": "完了",
+      "cancel": "キャンセル",
+      "delete": "削除"
+    },
+    "screenshot": {
+      "capture_fullpage": "全ページを取得",
+      "capture_visible": "表示領域を取得",
+      "display_fullpage": "全ページのスクリーンショットを撮る",
+      "display_visible": "表示部分のスクリーンショットを撮る"
+    },
+    "pagination": {
+      "title": "次のリスト項目をページ上でどう見つけますか？",
+      "click_next": "次へボタンをクリック",
+      "click_load_more": "もっと見るボタンをクリック",
+      "scroll_down": "下へスクロールしてさらに項目を取得",
+      "scroll_up": "上へスクロールしてさらに項目を取得",
+      "none": "これ以上項目なし"
+    },
+    "limit": {
+      "title": "最大でいくつの行を抽出しますか？",
+      "custom": "カスタム",
+      "enter_number": "件数を入力"
+    },
+    "fields": {
+      "label": "ラベル",
+      "data": "データ",
+      "field_label": "フィールドラベル",
+      "field_data": "フィールドデータ"
+    },
+    "messages": {
+      "list_selected": "リストが正常に選択されました",
+      "list_empty": "リストが選択されました。リスト内のフィールドを選択してください。"
+    },
+    "errors": {
+      "select_pagination": "ページネーション方式を選択してください。",
+      "select_pagination_element": "まずページネーション要素を選択してください。",
+      "select_limit": "制限を選択するか、カスタム制限値を入力してください。",
+      "invalid_limit": "有効な制限値を入力してください。",
+      "confirm_text_fields": "すべてのテキストフィールドを確定してください",
+      "unable_create_settings": "リストのフィールドを定義しているかご確認ください。リスト設定を作成できません。",
+      "capture_text_discarded": "テキスト取得を破棄しました",
+      "capture_list_discarded": "リスト取得を破棄しました",
+      "label_required": "ラベルは必須です"
+    }
+  },
+  "save_recording": {
+    "title": "ロボット保存",
+    "robot_name": "ロボット名",
+    "buttons": {
+      "save": "保存",
+      "confirm": "確定"
+    },
+    "notifications": {
+      "save_success": "ロボットが保存されました",
+      "retrain_success": "ロボット再学習が完了しました",
+      "save_error": "ロボットの保存でエラーが発生しました"
+    },
+    "errors": {
+      "user_not_logged": "未ログインのため録画を保存できません。",
+      "exists_warning": "この名前のロボットが既に存在します。上書きを確定してください。"
+    },
+    "tooltips": {
+      "saving": "ワークフローの最適化・保存中"
+    }
+  },
+  "browser_recording": {
+    "modal": {
+      "confirm_discard": "本当に録画を破棄しますか？",
+      "confirm_reset": "録画を再スタートしますか？",
+      "reset_warning": "これまでの取得内容はすべて削除され、同じサイトで録画が再スタートします。"
+    },
+    "notifications": {
+      "terminated": "現在の録画は終了しました",
+      "environment_reset": "ブラウザ環境がリセットされました",
+      "reset_successful": "全ての取得がリセットされ初期状態に戻りました"
+    }
+  },
+  "interpretation_log": {
+    "titles": {
+      "output_preview": "データ出力プレビュー",
+      "screenshot": "スクリーンショット"
+    },
+    "messages": {
+      "additional_rows": "録画完了後に、追加データが抽出されます。",
+      "successful_training": "ロボットのアクション学習が完了しました！下のボタンで、ロボットが抽出するデータのプレビューを確認できます。",
+      "no_selection": "まだ抽出対象を選択していません。選択すると、ここにプレビューが表示されます。"
+    },
+    "data_sections": {
+      "binary_received": "---------- バイナリ出力データを受信しました ----------",
+      "serializable_received": "---------- シリアライズ可能な出力データを受信 ----------",
+      "mimetype": "mimetype: ",
+      "image_below": "画像はこちらに表示されます：",
+      "separator": "--------------------------------------------------"
+    },
+    "notifications": {
+      "reset_success": "出力プレビューのリセットに成功しました"
+    }
+  },
+  "interpretation_buttons": {
+    "buttons": {
+      "preview": "出力データのプレビューを取得",
+      "reset": "リセット",
+      "yes": "はい",
+      "no": "いいえ"
+    },
+    "messages": {
+      "extracting": "データ抽出中...しばらく（10秒～1分）お待ちください",
+      "restart_required": "録画を更新後は解釈を再スタートしてください",
+      "run_finished": "実行が完了しました",
+      "run_failed": "実行開始に失敗しました"
+    },
+    "modal": {
+      "use_previous": "前回選択をこの操作の条件にしますか？",
+      "previous_action": "前回選択：",
+      "element_text": "テキストのある要素："
+    }
+  },
+  "recording_page": {
+    "loader": {
+      "browser_startup": "ブラウザ起動中... {{url}} にアクセスしています"
+    }
+  },
+  "integration_settings": {
+    "title": "連携設定",
+    "descriptions": {
+      "authenticated_as": "認証済み：{{email}}"
+    },
+    "buttons": {
+      "submit": "送信",
+      "remove_integration": "連携解除"
+    },
+    "google": {
+      "title": "Googleスプレッドシート連携",
+      "descriptions": {
+        "sync_info": "このオプションを有効にすると、タスクが成功するたびGoogleスプレッドシートにデータが追加されます。",
+        "authenticated_as": "認証済み：{{email}}"
+      },
+      "alerts": {
+        "success": {
+          "title": "Googleシートの連携に成功しました。",
+          "content": "ロボットが正常に実行される度に、そのデータが {{sheetName}} のGoogleシートに追加されます。データ更新の確認は",
+          "here": "こちら",
+          "note": "注意：",
+          "sync_limitation": "Googleシート連携前のデータは同期されません。連携後のデータのみ同期されます。"
+        }
+      },
+      "buttons": {
+        "authenticate": "Googleで認証",
+        "fetch_sheets": "スプレッドシート取得",
+        "remove_integration": "連携解除",
+        "submit": "送信"
+      },
+      "fields": {
+        "select_sheet": "Googleシートを選択",
+        "selected_sheet": "選択されたシート：{{name}}（ID: {{id}}）"
+      },
+      "errors": {
+        "auth_error": "Google認証エラー",
+        "fetch_error": "スプレッドシート取得エラー: {{message}}",
+        "update_error": "GoogleシートID更新エラー: {{message}}",
+        "remove_error": "Googleシート連携解除エラー: {{message}}"
+      },
+      "notifications": {
+        "sheet_selected": "Googleシートが選択されました",
+        "integration_removed": "Googleシート連携を解除しました"
+      }
+    },
+    "airtable": {
+      "title": "Airtable連携",
+      "descriptions": {
+        "sync_info": "このオプションを有効にすると、タスクが成功するたびAirtable Baseにデータが追加されます。",
+        "authenticated_as": "Airtable認証に成功しました。これからBaseとTableが選択できます。"
+      },
+      "alerts": {
+        "success": {
+          "title": "Airtable Base連携成功",
+          "content": "ロボットの実行データは {{baseName}} Base, {{tableName}} Table に追加されます。更新確認は",
+          "here": "こちら",
+          "note": "注意：",
+          "sync_limitation": "連携後に取得したデータのみAirtableに同期されます。"
+        }
+      },
+      "buttons": {
+        "authenticate": "Airtableに接続",
+        "fetch_bases": "Airtable Base取得",
+        "fetch_tables": "Airtable Table取得",
+        "remove_integration": "連携解除",
+        "submit": "BaseとTableを選択"
+      },
+      "fields": {
+        "select_base": "Airtable Baseを選択",
+        "select_table": "Airtable Tableを選択",
+        "selected_base": "選択されたBase：{{name}}",
+        "selected_table": "選択されたTable：{{name}}"
+      },
+      "errors": {
+        "auth_error": "Airtable認証エラー",
+        "fetch_error": "Airtable Base取得エラー: {{message}}",
+        "fetch_tables_error": "Airtable Table取得エラー: {{message}}",
+        "update_error": "Airtable Base更新エラー: {{message}}",
+        "remove_error": "Airtable連携解除エラー: {{message}}"
+      },
+      "notifications": {
+        "base_selected": "Airtable Baseが選択されました",
+        "table_selected": "Airtable Tableが選択されました",
+        "integration_removed": "Airtable連携が解除されました"
+      }
+    }
+  },
+  "robot_duplication": {
+    "title": "ロボット複製",
+    "descriptions": {
+      "purpose": "ロボットの複製は、同じ構造のページからデータを抽出する際に便利です。",
+      "example": "例：{{url1}}のロボットを作成した場合、複製機能で{{url2}}など類似ページでも初期トレーニング不要で抽出できます。",
+      "warning": "⚠️ 新しいページの構造が元ページと同じかご確認ください。"
+    },
+    "fields": {
+      "target_url": "ロボット対象URL"
+    },
+    "buttons": {
+      "duplicate": "ロボット複製",
+      "cancel": "キャンセル"
+    },
+    "notifications": {
+      "robot_not_found": "ロボットの詳細が見つかりません。再試行してください。",
+      "url_required": "対象URLを入力してください。",
+      "duplicate_success": "ロボットが正常に複製されました。",
+      "duplicate_error": "対象URLの更新に失敗しました。再試行してください。",
+      "unknown_error": "対象URLの更新中にエラーが発生しました。"
+    }
+  },
+  "robot_settings": {
+    "title": "ロボット設定",
+    "target_url": "ロボット対象URL",
+    "robot_id": "ロボットID",
+    "robot_limit": "ロボット制限",
+    "created_by_user": "作成者",
+    "created_at": "作成日時",
+    "errors": {
+      "robot_not_found": "ロボット情報が見つかりません。再試行してください。"
+    }
+  },
+  "robot_edit": {
+    "title": "ロボット編集",
+    "change_name": "ロボット名",
+    "robot_limit": "ロボット制限",
+    "save": "変更を保存",
+    "cancel": "キャンセル",
+    "notifications": {
+      "update_success": "ロボットが正常に更新されました。",
+      "update_failed": "ロボットの更新に失敗しました。再試行してください。",
+      "update_error": "ロボットの更新中にエラーが発生しました。"
+    }
+  },
+  "schedule_settings": {
+    "title": "スケジュール設定",
+    "run_every": "実行間隔",
+    "start_from": "開始日時",
+    "on_day": "曜日",
+    "at_around": "時間",
+    "timezone": "タイムゾーン",
+    "buttons": {
+      "delete_schedule": "スケジュール削除",
+      "save_schedule": "スケジュール保存",
+      "cancel": "キャンセル"
+    },
+    "labels": {
+      "in_between": "の間",
+      "run_once_every": "毎週1回実行",
+      "start_from_label": "開始日",
+      "on_day_of_month": "月の日付で実行",
+      "on_day": {
+        "st": "日",
+        "nd": "日",
+        "rd": "日",
+        "th": "日"
+      }
+    }
+  },
+  "main_page": {
+    "notifications": {
+      "interpretation_success": "ロボット{{name}}の解釈に成功しました",
+      "interpretation_failed": "ロボット{{name}}の解釈に失敗しました",
+      "run_started": "ロボット実行中: {{name}}",
+      "run_start_failed": "ロボットの実行開始に失敗: {{name}}",
+      "schedule_success": "ロボット{{name}}のスケジュールが成功しました",
+      "schedule_failed": "ロボット{{name}}のスケジュール失敗",
+      "abort_success": "ロボット{{name}}の解釈中断に成功しました",
+      "abort_failed": "ロボット{{name}}の解釈中断に失敗しました",
+      "abort_initiated": "ロボット{{name}}の解釈中断を開始しました"
+    },
+    "menu": {
+      "recordings": "ロボット",
+      "runs": "実行履歴",
+      "proxy": "プロキシ",
+      "apikey": "APIキー"
+    }
+  },
+  "browser_window": {
+    "attribute_modal": {
+      "title": "属性を選択",
+      "notifications": {
+        "list_select_success": "リストが正常に選択されました。抽出するテキストデータを選択してください。",
+        "pagination_select_success": "ページネーション要素が正常に選択されました。"
+      }
+    },
+    "attribute_options": {
+      "anchor": {
+        "text": "テキスト：{{text}}",
+        "url": "URL：{{url}}"
+      },
+      "image": {
+        "alt_text": "代替テキスト：{{altText}}",
+        "image_url": "画像URL：{{imageUrl}}"
+      },
+      "default": {
+        "text": "テキスト：{{text}}"
+      }
+    }
+  },
+  "runs_table": {
+    "run_type_chips": {
+      "manual_run": "手動実行",
+      "scheduled_run": "スケジュール実行",
+      "api": "API",
+      "unknown_run_type": "不明な実行タイプ"
+    },
+    "run_status_chips": {
+      "success": "成功",
+      "running": "実行中",
+      "scheduled": "スケジュール済み",
+      "queued": "キュー中",
+      "failed": "失敗",
+      "aborted": "中断"
+    },
+    "run_settings_modal": {
+      "title": "実行設定",
+      "labels": {
+        "run_id": "実行ID",
+        "run_by_user": "ユーザーによる実行",
+        "run_by_schedule": "スケジュールで実行",
+        "run_by_api": "APIによる実行",
+        "run_type": "実行タイプ"
+      }
+    }
+  },
+  "run_content": {
+    "tabs": {
+      "output_data": "出力データ",
+      "log": "ログ"
+    },
+    "buttons": {
+      "stop": "停止"
+    },
+    "loading": "データ読込中...",
+    "empty_output": "出力データがありません",
+    "captured_data": {
+      "title": "取得データ",
+      "download_csv": "CSVダウンロード",
+      "view_full": "全データ表示",
+      "items": "件",
+      "schema_title": "取得テキスト",
+      "list_title": "取得リスト"
+    },
+    "captured_screenshot": {
+      "title": "取得スクリーンショット",
+      "download": "ダウンロード",
+      "render_failed": "スクリーンショットの表示に失敗しました"
+    }
+  },
+  "navbar": {
+    "project_name": "Maxun",
+    "notifications": {
+      "success": {
+        "logout": "正常にログアウトしました"
+      },
+      "errors": {
+        "logout": {
+          "unauthorized": "この操作を行う権限がありません",
+          "server": "ログアウト中にサーバーエラーが発生しました",
+          "network": "ネットワークエラーでログアウトに失敗しました",
+          "unknown": "予期しないエラーでログアウトに失敗しました"
+        }
+      }
+    },
+    "upgrade": {
+      "button": "アップグレード",
+      "modal": {
+        "up_to_date": "🎉 最新バージョンです！",
+        "new_version_available": "新しいバージョンが利用可能です: {{version}}。バグ修正・機能強化・新機能のため最新バージョンにアップグレードしましょう！",
+        "view_updates": "新着情報を見る",
+        "view_updates_link": "こちら",
+        "tabs": {
+          "manual_setup": "手動アップグレード設定",
+          "docker_setup": "Docker Composeアップグレード設定"
+        }
+      }
+    },
+    "menu_items": {
+      "logout": "ログアウト",
+      "discord": "Discord",
+      "youtube": "YouTube",
+      "twitter": "Twitter（X）",
+      "language": "言語"
+    },
+    "recording": {
+      "discard": "破棄"
+    }
+  },
+  "language_menu": {
+    "en": "英語",
+    "es": "スペイン語",
+    "ja": "日本語",
+    "zh": "中国語",
+    "de": "ドイツ語",
+    "ru": "ロシア語",
+    "fr": "フランス語",
+    "ko": "韓国語"
+  }
 }
