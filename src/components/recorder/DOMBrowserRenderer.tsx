@@ -1127,10 +1127,9 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
             left: 0,
             right: 0,
             bottom: 0,
-            background: "rgba(255, 107, 53, 0.1)",
+            cursor: "pointer",
             pointerEvents: "none",
             zIndex: 999,
-            border: "2px dashed #ff6b35",
             borderRadius: "0px 0px 5px 5px",
           }}
         />
