@@ -17,6 +17,73 @@ import { WorkflowInterpreter } from "../../workflow-management/classes/Interpret
 import { getDecryptedProxyConfig } from '../../routes/proxy';
 import { getInjectableScript } from 'idcac-playwright';
 
+declare global {
+  interface Window {
+    rrwebSnapshot?: any;
+  }
+}
+
+interface RRWebSnapshot {
+  type: number;
+  childNodes?: RRWebSnapshot[];
+  tagName?: string;
+  attributes?: Record<string, string>;
+  textContent?: string;
+  id: number;
+  [key: string]: any;
+}
+
+interface ProcessedSnapshot {
+  snapshot: RRWebSnapshot;
+  resources: {
+    stylesheets: Array<{
+      href: string;
+      content: string;
+      media?: string;
+    }>;
+    images: Array<{
+      src: string;
+      dataUrl: string;
+      alt?: string;
+    }>;
+    fonts: Array<{
+      url: string;
+      dataUrl: string;
+      format?: string;
+    }>;
+    scripts: Array<{
+      src: string;
+      content: string;
+      type?: string;
+    }>;
+    media: Array<{
+      src: string;
+      dataUrl: string;
+      type: string;
+    }>;
+  };
+  baseUrl: string;
+  viewport: { width: number; height: number };
+  timestamp: number;
+  processingStats: {
+    discoveredResources: {
+      images: number;
+      stylesheets: number;
+      scripts: number;
+      fonts: number;
+      media: number;
+    };
+    cachedResources: {
+      stylesheets: number;
+      images: number;
+      fonts: number;
+      scripts: number;
+      media: number;
+    };
+    totalCacheSize: number;
+  };
+}
+
 chromium.use(stealthPlugin());
 
 const MEMORY_CONFIG = {
@@ -123,6 +190,45 @@ export class RemoteBrowser {
     private screencastInterval: NodeJS.Timeout | null = null
     private isScreencastActive: boolean = false;
 
+    private isDOMStreamingActive: boolean = false;
+    private domUpdateInterval: NodeJS.Timeout | null = null;
+    private renderingMode: "screenshot" | "dom" = "screenshot";
+
+    private lastScrollPosition = { x: 0, y: 0 };
+    private scrollThreshold = 200; // pixels
+    private snapshotDebounceTimeout: NodeJS.Timeout | null = null;
+    private isScrollTriggeredSnapshot = false;
+
+    /**
+     * Cache for network resources captured via CDP
+     * @private
+     */
+    private networkResourceCache: Map<
+      string,
+      {
+        url: string;
+        content: string;
+        mimeType: string;
+        base64Encoded: boolean;
+        timestamp: number;
+        resourceType?: string;
+        statusCode?: number;
+        headers?: Record<string, any>;
+      }
+    > = new Map();
+
+    /**
+     * Set to track active network requests
+     * @private
+     */
+    private activeRequests: Set<string> = new Set();
+
+    /**
+     * Flag to indicate if network monitoring is active
+     * @private
+     */
+    private isNetworkMonitoringActive: boolean = false;
+
     /**
      * Initializes a new instances of the {@link Generator} and {@link WorkflowInterpreter} classes and
      * assigns the socket instance everywhere.
@@ -146,6 +252,682 @@ export class RemoteBrowser {
       setInterval(() => {
           this.cleanupMemory();
       }, 30000); // Every 30 seconds
+    }
+
+    private processCSS(
+      cssContent: string,
+      cssUrl: string,
+      baseUrl: string,
+      resources?: any
+    ): string {
+      try {
+        let processedContent = cssContent;
+
+        logger.debug(`Processing CSS from: ${cssUrl}`);
+
+        // Process @font-face declarations and collect font resources
+        processedContent = processedContent.replace(
+          /@font-face\s*\{([^}]*)\}/gi,
+          (fontFaceMatch, fontFaceContent) => {
+            let newFontFaceContent = fontFaceContent;
+
+            logger.debug(
+              `Processing @font-face block: ${fontFaceContent.substring(
+                0,
+                100
+              )}...`
+            );
+
+            newFontFaceContent = newFontFaceContent.replace(
+              /src\s*:\s*([^;}]+)[;}]/gi,
+              (srcMatch: any, srcValue: any) => {
+                let newSrcValue = srcValue;
+
+                newSrcValue = newSrcValue.replace(
+                  /url\s*\(\s*['"]?([^'")]+)['"]?\s*\)(\s*format\s*\(\s*['"]?[^'")]*['"]?\s*\))?/gi,
+                  (urlMatch: any, url: string, formatPart: any) => {
+                    const originalUrl = url.trim();
+
+                    logger.debug(`Found font URL in @font-face: ${originalUrl}`);
+
+                    if (
+                      originalUrl.startsWith("data:") ||
+                      originalUrl.startsWith("blob:")
+                    ) {
+                      return urlMatch;
+                    }
+
+                    try {
+                      let absoluteUrl: string;
+                      try {
+                        absoluteUrl = new URL(originalUrl).href;
+                      } catch (e) {
+                        absoluteUrl = new URL(originalUrl, cssUrl || baseUrl)
+                          .href;
+                      }
+
+                      const cachedResource =
+                        this.networkResourceCache.get(absoluteUrl);
+                      if (cachedResource && resources) {
+                        const dataUrl = cachedResource.base64Encoded
+                          ? `data:${cachedResource.mimeType};base64,${cachedResource.content}`
+                          : `data:${cachedResource.mimeType};base64,${Buffer.from(
+                              cachedResource.content,
+                              "utf-8"
+                            ).toString("base64")}`;
+
+                        resources.fonts.push({
+                          url: absoluteUrl,
+                          dataUrl,
+                          format: originalUrl.split(".").pop()?.split("?")[0],
+                        });
+                      }
+
+                      // Keep original URL in CSS
+                      return urlMatch;
+                    } catch (e) {
+                      logger.warn(
+                        "Failed to process font URL in @font-face:",
+                        originalUrl,
+                        e
+                      );
+                      return urlMatch;
+                    }
+                  }
+                );
+
+                return `src: ${newSrcValue};`;
+              }
+            );
+
+            return `@font-face {${newFontFaceContent}}`;
+          }
+        );
+
+        // Process other url() references and collect resources
+        processedContent = processedContent.replace(
+          /url\s*\(\s*['"]?([^'")]+)['"]?\s*\)/gi,
+          (match, url) => {
+            const originalUrl = url.trim();
+
+            if (
+              originalUrl.startsWith("data:") ||
+              originalUrl.startsWith("blob:")
+            ) {
+              return match;
+            }
+
+            try {
+              let absoluteUrl: string;
+              try {
+                absoluteUrl = new URL(originalUrl).href;
+              } catch (e) {
+                absoluteUrl = new URL(originalUrl, cssUrl || baseUrl).href;
+              }
+
+              const cachedResource = this.networkResourceCache.get(absoluteUrl);
+              if (cachedResource && resources) {
+                const lowerMimeType = cachedResource.mimeType.toLowerCase();
+
+                if (lowerMimeType.includes("image/")) {
+                  const dataUrl = cachedResource.base64Encoded
+                    ? `data:${cachedResource.mimeType};base64,${cachedResource.content}`
+                    : `data:${cachedResource.mimeType};base64,${Buffer.from(
+                        cachedResource.content,
+                        "utf-8"
+                      ).toString("base64")}`;
+
+                  resources.images.push({
+                    src: absoluteUrl,
+                    dataUrl,
+                    alt: "",
+                  });
+                } else if (
+                  lowerMimeType.includes("font/") ||
+                  lowerMimeType.includes("application/font")
+                ) {
+                  const dataUrl = cachedResource.base64Encoded
+                    ? `data:${cachedResource.mimeType};base64,${cachedResource.content}`
+                    : `data:${cachedResource.mimeType};base64,${Buffer.from(
+                        cachedResource.content,
+                        "utf-8"
+                      ).toString("base64")}`;
+
+                  resources.fonts.push({
+                    url: absoluteUrl,
+                    dataUrl,
+                    format: originalUrl.split(".").pop()?.split("?")[0],
+                  });
+                }
+              }
+
+              // Keep original URL in CSS
+              return match;
+            } catch (e) {
+              logger.warn(`Failed to process CSS URL: ${originalUrl}`, e);
+              return match;
+            }
+          }
+        );
+
+        // Process @import statements and collect stylesheets
+        processedContent = processedContent.replace(
+          /@import\s+(?:url\s*\(\s*)?['"]?([^'")]+)['"]?\s*\)?([^;]*);?/gi,
+          (match, url, mediaQuery) => {
+            const originalUrl = url.trim();
+
+            if (
+              originalUrl.startsWith("data:") ||
+              originalUrl.startsWith("blob:")
+            ) {
+              return match;
+            }
+
+            try {
+              let absoluteUrl: string;
+              try {
+                absoluteUrl = new URL(originalUrl).href;
+              } catch (e) {
+                absoluteUrl = new URL(originalUrl, cssUrl || baseUrl).href;
+              }
+
+              const cachedResource = this.networkResourceCache.get(absoluteUrl);
+              if (
+                cachedResource &&
+                resources &&
+                cachedResource.mimeType.includes("css")
+              ) {
+                const content = cachedResource.base64Encoded
+                  ? Buffer.from(cachedResource.content, "base64").toString(
+                      "utf-8"
+                    )
+                  : cachedResource.content;
+
+                resources.stylesheets.push({
+                  href: absoluteUrl,
+                  content: this.processCSS(
+                    content,
+                    absoluteUrl,
+                    baseUrl,
+                    resources
+                  ),
+                  media: mediaQuery ? mediaQuery.trim() : "all",
+                });
+              }
+
+              // Keep original @import
+              return match;
+            } catch (e) {
+              logger.warn(`Failed to process CSS @import: ${originalUrl}`, e);
+              return match;
+            }
+          }
+        );
+
+        logger.debug(`CSS processing completed for: ${cssUrl}`);
+        return processedContent;
+      } catch (error) {
+        logger.error("Failed to process CSS content:", error);
+        return cssContent; // Return original content if processing fails
+      }
+    }
+
+    private async processRRWebSnapshot(
+      snapshot: RRWebSnapshot
+    ): Promise<ProcessedSnapshot> {
+      const baseUrl = this.currentPage?.url() || "";
+
+      const resources = {
+        stylesheets: [] as Array<{
+          href: string;
+          content: string;
+          media?: string;
+        }>,
+        images: [] as Array<{ src: string; dataUrl: string; alt?: string }>,
+        fonts: [] as Array<{ url: string; dataUrl: string; format?: string }>,
+        scripts: [] as Array<{ src: string; content: string; type?: string }>,
+        media: [] as Array<{ src: string; dataUrl: string; type: string }>,
+      };
+
+      const processNode = (node: RRWebSnapshot): RRWebSnapshot => {
+        const processedNode = { ...node };
+
+        // Process attributes if they exist
+        if (node.attributes) {
+          const newAttributes = { ...node.attributes };
+
+          // Process common attributes that contain URLs
+          const urlAttributes = ["src", "href", "data", "poster", "background"];
+
+          for (const attr of urlAttributes) {
+            if (newAttributes[attr]) {
+              const originalUrl = newAttributes[attr];
+
+              // Categorize and collect the resource instead of proxying
+              const lowerAttr = attr.toLowerCase();
+              const lowerUrl = originalUrl.toLowerCase();
+
+              if (lowerAttr === "src" && node.tagName?.toLowerCase() === "img") {
+                const cachedResource = this.networkResourceCache.get(originalUrl);
+                if (
+                  cachedResource &&
+                  cachedResource.mimeType.includes("image/")
+                ) {
+                  const dataUrl = cachedResource.base64Encoded
+                    ? `data:${cachedResource.mimeType};base64,${cachedResource.content}`
+                    : `data:${cachedResource.mimeType};base64,${Buffer.from(
+                        cachedResource.content,
+                        "utf-8"
+                      ).toString("base64")}`;
+
+                  resources.images.push({
+                    src: originalUrl,
+                    dataUrl,
+                    alt: newAttributes.alt,
+                  });
+                }
+              } else if (
+                lowerAttr === "href" &&
+                node.tagName?.toLowerCase() === "link"
+              ) {
+                const rel = newAttributes.rel?.toLowerCase() || "";
+
+                if (rel.includes("stylesheet")) {
+                  const cachedResource =
+                    this.networkResourceCache.get(originalUrl);
+                  if (cachedResource && cachedResource.mimeType.includes("css")) {
+                    let content = cachedResource.base64Encoded
+                      ? Buffer.from(cachedResource.content, "base64").toString(
+                          "utf-8"
+                        )
+                      : cachedResource.content;
+
+                    // Process CSS to collect embedded resources
+                    content = this.processCSS(
+                      content,
+                      originalUrl,
+                      baseUrl,
+                      resources
+                    );
+
+                    resources.stylesheets.push({
+                      href: originalUrl,
+                      content,
+                      media: newAttributes.media || "all",
+                    });
+                  }
+                } else if (
+                  rel.includes("font") ||
+                  lowerUrl.match(/\.(woff2?|ttf|otf|eot)(\?.*)?$/i)
+                ) {
+                  const cachedResource =
+                    this.networkResourceCache.get(originalUrl);
+                  if (cachedResource) {
+                    const dataUrl = cachedResource.base64Encoded
+                      ? `data:${cachedResource.mimeType};base64,${cachedResource.content}`
+                      : `data:${cachedResource.mimeType};base64,${Buffer.from(
+                          cachedResource.content,
+                          "utf-8"
+                        ).toString("base64")}`;
+
+                    resources.fonts.push({
+                      url: originalUrl,
+                      dataUrl,
+                      format: lowerUrl.split(".").pop()?.split("?")[0],
+                    });
+                  }
+                }
+              }
+            }
+          }
+
+          // Process srcset attribute - collect resources but keep original URLs
+          if (newAttributes.srcset) {
+            const originalSrcset = newAttributes.srcset;
+            originalSrcset.split(",").forEach((srcsetItem) => {
+              const parts = srcsetItem.trim().split(/\s+/);
+              const url = parts[0];
+
+              if (url && !url.startsWith("data:") && !url.startsWith("blob:")) {
+                const cachedResource = this.networkResourceCache.get(url);
+                if (
+                  cachedResource &&
+                  cachedResource.mimeType.includes("image/")
+                ) {
+                  const dataUrl = cachedResource.base64Encoded
+                    ? `data:${cachedResource.mimeType};base64,${cachedResource.content}`
+                    : `data:${cachedResource.mimeType};base64,${Buffer.from(
+                        cachedResource.content,
+                        "utf-8"
+                      ).toString("base64")}`;
+
+                  resources.images.push({
+                    src: url,
+                    dataUrl,
+                    alt: newAttributes.alt,
+                  });
+                }
+              }
+            });
+          }
+
+          processedNode.attributes = newAttributes;
+        }
+
+        // Process text content for style elements
+        if (node.tagName?.toLowerCase() === "style" && node.textContent) {
+          let content = node.textContent;
+
+          // Process CSS content to collect embedded resources
+          content = this.processCSS(content, "", baseUrl, resources);
+          processedNode.textContent = content;
+        }
+
+        // Recursively process child nodes
+        if (node.childNodes) {
+          processedNode.childNodes = node.childNodes.map(processNode);
+        }
+
+        return processedNode;
+      };
+
+      const processedSnapshot = processNode(snapshot);
+
+      // Add cached scripts and media
+      for (const [url, resource] of this.networkResourceCache.entries()) {
+        if (resource.mimeType.toLowerCase().includes("javascript")) {
+          const content = resource.base64Encoded
+            ? Buffer.from(resource.content, "base64").toString("utf-8")
+            : resource.content;
+
+          resources.scripts.push({
+            src: url,
+            content,
+            type: "text/javascript",
+          });
+        } else if (
+          resource.mimeType.toLowerCase().includes("video/") ||
+          resource.mimeType.toLowerCase().includes("audio/")
+        ) {
+          const dataUrl = resource.base64Encoded
+            ? `data:${resource.mimeType};base64,${resource.content}`
+            : `data:${resource.mimeType};base64,${Buffer.from(
+                resource.content,
+                "utf-8"
+              ).toString("base64")}`;
+
+          resources.media.push({
+            src: url,
+            dataUrl,
+            type: resource.mimeType,
+          });
+        }
+      }
+
+      const viewport = (await this.currentPage?.viewportSize()) || {
+        width: 1280,
+        height: 720,
+      };
+
+      return {
+        snapshot: processedSnapshot,
+        resources,
+        baseUrl,
+        viewport,
+        timestamp: Date.now(),
+        processingStats: {
+          discoveredResources: {
+            images: resources.images.length,
+            stylesheets: resources.stylesheets.length,
+            scripts: resources.scripts.length,
+            fonts: resources.fonts.length,
+            media: resources.media.length,
+          },
+          cachedResources: {
+            stylesheets: resources.stylesheets.length,
+            images: resources.images.length,
+            fonts: resources.fonts.length,
+            scripts: resources.scripts.length,
+            media: resources.media.length,
+          },
+          totalCacheSize: this.networkResourceCache.size,
+        },
+      };
+    }
+
+    /**
+     * Check if a resource should be cached based on its MIME type and URL
+     * @private
+     */
+    private shouldCacheResource(mimeType: string, url: string): boolean {
+      const lowerMimeType = mimeType.toLowerCase();
+      const lowerUrl = url.toLowerCase();
+
+      // CSS Resources
+      if (
+        lowerMimeType.includes("text/css") ||
+        lowerMimeType.includes("application/css") ||
+        lowerUrl.endsWith(".css")
+      ) {
+        return true;
+      }
+
+      // Font Resources
+      if (
+        lowerMimeType.includes("font/") ||
+        lowerMimeType.includes("application/font") ||
+        lowerMimeType.includes("application/x-font") ||
+        lowerUrl.match(/\.(woff2?|ttf|otf|eot)(\?.*)?$/)
+      ) {
+        return true;
+      }
+
+      // Image Resources
+      if (
+        lowerMimeType.includes("image/") ||
+        lowerUrl.match(/\.(jpg|jpeg|png|gif|webp|svg|ico|bmp|tiff|avif)(\?.*)?$/)
+      ) {
+        return true;
+      }
+
+      // JavaScript Resources
+      if (
+        lowerMimeType.includes("javascript") ||
+        lowerMimeType.includes("text/js") ||
+        lowerMimeType.includes("application/js") ||
+        lowerUrl.match(/\.js(\?.*)?$/)
+      ) {
+        return true;
+      }
+
+      // Media Resources
+      if (
+        lowerMimeType.includes("video/") ||
+        lowerMimeType.includes("audio/") ||
+        lowerUrl.match(
+          /\.(mp4|webm|ogg|avi|mov|wmv|flv|mp3|wav|m4a|aac|flac)(\?.*)?$/
+        )
+      ) {
+        return true;
+      }
+
+      // Document Resources
+      if (
+        lowerMimeType.includes("application/pdf") ||
+        lowerMimeType.includes("application/msword") ||
+        lowerMimeType.includes("application/vnd.ms-") ||
+        lowerMimeType.includes("application/vnd.openxmlformats-") ||
+        lowerUrl.match(/\.(pdf|doc|docx|xls|xlsx|ppt|pptx)(\?.*)?$/)
+      ) {
+        return true;
+      }
+
+      // Manifest and Icon Resources
+      if (
+        lowerMimeType.includes("application/manifest+json") ||
+        lowerUrl.includes("manifest.json") ||
+        lowerUrl.includes("browserconfig.xml")
+      ) {
+        return true;
+      }
+
+      // SVG Resources (can be images or fonts)
+      if (lowerMimeType.includes("image/svg+xml") || lowerUrl.endsWith(".svg")) {
+        return true;
+      }
+
+      // Other common web resources
+      if (
+        lowerMimeType.includes("application/octet-stream") &&
+        lowerUrl.match(/\.(woff2?|ttf|otf|eot|css|js)(\?.*)?$/)
+      ) {
+        return true;
+      }
+
+      return false;
+    }
+
+    /**
+     * Clean up old cached resources to prevent memory leaks
+     * @private
+     */
+    private cleanupResourceCache(): void {
+      const now = Date.now();
+      const maxAge = 5 * 60 * 1000; // 5 minutes
+
+      for (const [url, resource] of this.networkResourceCache.entries()) {
+        if (now - resource.timestamp > maxAge) {
+          this.networkResourceCache.delete(url);
+        }
+      }
+
+      if (this.networkResourceCache.size > 200) {
+        const entries = Array.from(this.networkResourceCache.entries());
+        entries.sort((a, b) => a[1].timestamp - b[1].timestamp);
+
+        for (let i = 0; i < 50; i++) {
+          this.networkResourceCache.delete(entries[i][0]);
+        }
+      }
+
+      logger.debug(
+        `Resource cache cleaned up. Current size: ${this.networkResourceCache.size}`
+      );
+    }
+
+    /**
+     * Initialize network monitoring via CDP to capture all resources
+     * @private
+     */
+    private async initializeNetworkMonitoring(): Promise<void> {
+      if (!this.client || this.isNetworkMonitoringActive) {
+        return;
+      }
+
+      try {
+        await this.client.send("Network.enable");
+        await this.client.send("Runtime.enable");
+        await this.client.send("Page.enable");
+
+        await this.client.send("Network.setRequestInterception", {
+          patterns: [
+            { urlPattern: "*", resourceType: "Stylesheet" },
+            { urlPattern: "*", resourceType: "Image" },
+            { urlPattern: "*", resourceType: "Font" },
+            { urlPattern: "*", resourceType: "Script" },
+            { urlPattern: "*", resourceType: "Media" },
+            { urlPattern: "*", resourceType: "Document" },
+            { urlPattern: "*", resourceType: "Manifest" },
+            { urlPattern: "*", resourceType: "Other" },
+          ],
+        });
+
+        this.isNetworkMonitoringActive = true;
+        logger.info("Enhanced network monitoring enabled via CDP");
+
+        this.client.on(
+          "Network.responseReceived",
+          async ({ requestId, response, type }) => {
+            const mimeType = response.mimeType?.toLowerCase() || "";
+            const url = response.url;
+            const resourceType = type;
+
+            logger.debug(
+              `Resource received: ${resourceType} - ${mimeType} - ${url}`
+            );
+
+            if (this.shouldCacheResource(mimeType, url)) {
+              this.activeRequests.add(requestId);
+
+              try {
+                const { body, base64Encoded } = await this.client!.send(
+                  "Network.getResponseBody",
+                  { requestId }
+                );
+
+                this.networkResourceCache.set(url, {
+                  url,
+                  content: body,
+                  mimeType: response.mimeType || "application/octet-stream",
+                  base64Encoded,
+                  timestamp: Date.now(),
+                  resourceType,
+                  statusCode: response.status,
+                  headers: response.headers,
+                });
+
+                logger.debug(
+                  `Cached ${resourceType} resource: ${url} (${mimeType})`
+                );
+              } catch (error) {
+                logger.warn(
+                  `Failed to capture ${resourceType} resource body for ${url}:`,
+                  error
+                );
+              } finally {
+                this.activeRequests.delete(requestId);
+              }
+            }
+          }
+        );
+
+        this.client.on(
+          "Network.requestIntercepted",
+          async ({ interceptionId, request }) => {
+            try {
+              await this.client!.send("Network.continueInterceptedRequest", {
+                interceptionId,
+              });
+              logger.debug(`Request intercepted and continued: ${request.url}`);
+            } catch (error) {
+              logger.warn(
+                `Failed to continue intercepted request for ${request.url}:`,
+                error
+              );
+            }
+          }
+        );
+
+        this.client.on(
+          "Network.loadingFailed",
+          ({ requestId, errorText, type }) => {
+            this.activeRequests.delete(requestId);
+            logger.debug(`Network request failed (${type}): ${errorText}`);
+          }
+        );
+
+        this.client.on("Network.loadingFinished", ({ requestId }) => {
+          this.activeRequests.delete(requestId);
+        });
+
+        // Clean up cache periodically
+        setInterval(() => {
+          this.cleanupResourceCache();
+        }, 60000);
+      } catch (error) {
+        logger.error("Failed to initialize enhanced network monitoring:", error);
+        this.isNetworkMonitoringActive = false;
+      }
     }
 
     private initializeMemoryManagement(): void {
@@ -237,6 +1019,90 @@ export class RemoteBrowser {
         const normalizedNew = this.normalizeUrl(newUrl);
         const normalizedLast = this.normalizeUrl(this.lastEmittedUrl);
         return normalizedNew !== normalizedLast;
+    }
+
+    /**
+     * Setup scroll event listener to track user scrolling
+     */
+    private setupScrollEventListener(): void {
+      this.socket.on(
+        "dom:scroll",
+        async (data: { deltaX: number; deltaY: number }) => {
+          if (!this.isDOMStreamingActive || !this.currentPage) return;
+
+          try {
+            logger.debug(
+              `Received scroll event: deltaX=${data.deltaX}, deltaY=${data.deltaY}`
+            );
+
+            await this.currentPage.mouse.wheel(data.deltaX, data.deltaY);
+
+            const scrollInfo = await this.currentPage.evaluate(() => ({
+              x: window.scrollX,
+              y: window.scrollY,
+              maxX: Math.max(
+                0,
+                document.documentElement.scrollWidth - window.innerWidth
+              ),
+              maxY: Math.max(
+                0,
+                document.documentElement.scrollHeight - window.innerHeight
+              ),
+              documentHeight: document.documentElement.scrollHeight,
+              viewportHeight: window.innerHeight,
+            }));
+
+            const scrollDelta =
+              Math.abs(scrollInfo.y - this.lastScrollPosition.y) +
+              Math.abs(scrollInfo.x - this.lastScrollPosition.x);
+
+            logger.debug(
+              `Scroll delta: ${scrollDelta}, threshold: ${this.scrollThreshold}`
+            );
+
+            if (scrollDelta > this.scrollThreshold) {
+              this.lastScrollPosition = { x: scrollInfo.x, y: scrollInfo.y };
+              this.isScrollTriggeredSnapshot = true;
+
+              if (this.snapshotDebounceTimeout) {
+                clearTimeout(this.snapshotDebounceTimeout);
+              }
+
+              this.snapshotDebounceTimeout = setTimeout(async () => {
+                logger.info(
+                  `Triggering snapshot due to scroll. Position: ${scrollInfo.y}/${scrollInfo.maxY}`
+                );
+
+                await this.makeAndEmitDOMSnapshot();
+              }, 300);
+            }
+          } catch (error) {
+            logger.error("Error handling scroll event:", error);
+          }
+        }
+      );
+    }
+
+    private setupPageChangeListeners(): void {
+      if (!this.currentPage) return;
+
+      this.currentPage.on("domcontentloaded", async () => {
+        logger.info("DOM content loaded - triggering snapshot");
+        await this.makeAndEmitDOMSnapshot();
+      });
+
+      this.currentPage.on("response", async (response) => {
+        const url = response.url();
+        if (
+          response.request().resourceType() === "document" ||
+          url.includes("api/") ||
+          url.includes("ajax")
+        ) {
+          setTimeout(async () => {
+            await this.makeAndEmitDOMSnapshot();
+          }, 800);
+        }
+      });
     }
 
     private async setupPageEventListeners(page: Page) {
@@ -389,6 +1255,9 @@ export class RemoteBrowser {
                 );
                 
                 this.currentPage = await this.context.newPage();
+
+                await this.currentPage.addInitScript({ path: './browser-management/classes/rrweb-bundle.js' });
+
                 await this.setupPageEventListeners(this.currentPage);
     
                 const viewportSize = await this.currentPage.viewportSize();
@@ -406,10 +1275,20 @@ export class RemoteBrowser {
                     this.client = await this.currentPage.context().newCDPSession(this.currentPage);
                     await blocker.disableBlockingInPage(this.currentPage);
                     console.log('Adblocker initialized');
+
+                    if (this.client) {
+                      await this.initializeNetworkMonitoring();
+                      logger.info("Network monitoring initialized successfully");
+                    }
                 } catch (error: any) {
                     console.warn('Failed to initialize adblocker, continuing without it:', error.message);
                     // Still need to set up the CDP session even if blocker fails
                     this.client = await this.currentPage.context().newCDPSession(this.currentPage);
+
+                    if (this.client) {
+                      await this.initializeNetworkMonitoring();
+                      logger.info("Network monitoring initialized successfully");
+                    } 
                 }
                 
                 success = true;
@@ -1147,6 +2026,204 @@ export class RemoteBrowser {
     };
 
     /**
+     * Subscribe to DOM streaming - simplified version following screenshot pattern
+     */
+    public async subscribeToDOM(): Promise<void> {
+      if (!this.client) {
+        logger.warn("DOM streaming requires scraping browser with CDP client");
+        return;
+      }
+
+      try {
+        // Enable required CDP domains
+        await this.client.send("DOM.enable");
+        await this.client.send("CSS.enable");
+
+        this.isDOMStreamingActive = true;
+        logger.info("DOM streaming started successfully");
+
+        // Initial DOM snapshot
+        await this.makeAndEmitDOMSnapshot();
+
+        this.setupScrollEventListener();
+        this.setupPageChangeListeners();
+      } catch (error) {
+        logger.error("Failed to start DOM streaming:", error);
+        this.isDOMStreamingActive = false;
+      }
+    }
+
+    /**
+     * Wait for network requests to become idle
+     * @private
+     */
+    private async waitForNetworkIdle(timeout: number = 2000): Promise<void> {
+      const startTime = Date.now();
+
+      while (this.activeRequests.size > 0 && Date.now() - startTime < timeout) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      if (this.activeRequests.size > 0) {
+        logger.debug(
+          `Network idle timeout reached with ${this.activeRequests.size} pending requests`
+        );
+      }
+    }
+
+    /**
+     * Stop network monitoring
+     * @private
+     */
+    private async stopNetworkMonitoring(): Promise<void> {
+      if (!this.client || !this.isNetworkMonitoringActive) {
+        return;
+      }
+
+      try {
+        await this.client.send("Network.disable");
+        this.isNetworkMonitoringActive = false;
+        this.networkResourceCache.clear();
+        this.activeRequests.clear();
+        logger.info("Network monitoring stopped");
+      } catch (error) {
+        logger.error("Error stopping network monitoring:", error);
+      }
+    }
+
+    /**
+     * CDP-based DOM snapshot creation using captured network resources
+     */
+    public async makeAndEmitDOMSnapshot(): Promise<void> {
+      if (
+        !this.currentPage ||
+        !this.isDOMStreamingActive
+      ) {
+        return;
+      }
+
+      try {
+        // Check if page is still valid and not closed
+        if (this.currentPage.isClosed()) {
+          logger.debug("Skipping DOM snapshot - page is closed");
+          return;
+        }
+
+        // Wait for network to become idle
+        await this.waitForNetworkIdle();
+
+        // Double-check page state after network wait
+        if (this.currentPage.isClosed()) {
+          logger.debug("Skipping DOM snapshot - page closed during network wait");
+          return;
+        }
+
+        // Get current scroll position
+        const currentScrollInfo = await this.currentPage.evaluate(() => ({
+          x: window.scrollX,
+          y: window.scrollY,
+          maxX: Math.max(
+            0,
+            document.documentElement.scrollWidth - window.innerWidth
+          ),
+          maxY: Math.max(
+            0,
+            document.documentElement.scrollHeight - window.innerHeight
+          ),
+          documentHeight: document.documentElement.scrollHeight,
+        }));
+
+        logger.info(
+          `Creating rrweb snapshot at scroll position: ${currentScrollInfo.y}/${currentScrollInfo.maxY}`
+        );
+
+        // Update our tracked scroll position
+        this.lastScrollPosition = {
+          x: currentScrollInfo.x,
+          y: currentScrollInfo.y,
+        };
+
+        // Final check before snapshot
+        if (this.currentPage.isClosed()) {
+          logger.debug("Skipping DOM snapshot - page closed before snapshot");
+          return;
+        }
+
+        // Capture snapshot using rrweb
+        const rawSnapshot = await this.currentPage.evaluate(() => {
+          if (typeof window.rrwebSnapshot === "undefined") {
+            throw new Error("rrweb-snapshot library not available");
+          }
+          return window.rrwebSnapshot.snapshot(document);
+        });
+
+        // Process the snapshot to proxy resources
+        const processedSnapshot = await this.processRRWebSnapshot(rawSnapshot);
+
+        // Add scroll position information
+        const enhancedSnapshot = {
+          ...processedSnapshot,
+          scrollPosition: currentScrollInfo,
+          captureTime: Date.now(),
+        };
+
+        // Emit the processed snapshot
+        this.emitRRWebSnapshot(enhancedSnapshot);
+      } catch (error) {
+        // Handle navigation context destruction gracefully
+        if (error instanceof Error && 
+            (error.message.includes("Execution context was destroyed") || 
+            error.message.includes("most likely because of a navigation") ||
+            error.message.includes("Target closed"))) {
+          logger.debug("DOM snapshot skipped due to page navigation or closure");
+          return; // Don't emit error for navigation - this is expected
+        }
+
+        logger.error("Failed to create rrweb snapshot:", error);
+        this.socket.emit("dom-mode-error", {
+          userId: this.userId,
+          message: "Failed to create rrweb snapshot",
+          error: error instanceof Error ? error.message : String(error),
+          timestamp: Date.now(),
+        });
+      }
+    }
+
+    /**
+     * Emit DOM snapshot to client - following screenshot pattern
+     */
+    private emitRRWebSnapshot(processedSnapshot: ProcessedSnapshot): void {
+      this.socket.emit("domcast", {
+        snapshotData: processedSnapshot,
+        userId: this.userId,
+        timestamp: Date.now(),
+      });
+    }
+
+    /**
+     * Stop DOM streaming - following screencast pattern
+     */
+    private async stopDOM(): Promise<void> {
+      this.isDOMStreamingActive = false;
+
+      if (this.domUpdateInterval) {
+        clearInterval(this.domUpdateInterval);
+        this.domUpdateInterval = null;
+      }
+
+      if (this.client) {
+        try {
+          await this.client.send("DOM.disable");
+          await this.client.send("CSS.disable");
+        } catch (error) {
+          logger.warn("Error stopping DOM stream:", error);
+        }
+      }
+
+      logger.info("DOM streaming stopped successfully");
+    }
+
+    /**
      * Terminates the screencast session and closes the remote browser.
      * If an interpretation was running it will be stopped.
      * @returns {Promise<void>}
@@ -1154,6 +2231,7 @@ export class RemoteBrowser {
     public async switchOff(): Promise<void> {
         try {
             this.isScreencastActive = false;
+            this.isDOMStreamingActive = false;
 
             await this.interpreter.stopInterpretation();
 
@@ -1163,6 +2241,8 @@ export class RemoteBrowser {
 
             if (this.client) {
                 await this.stopScreencast();
+                await this.stopDOM();
+                await this.stopNetworkMonitoring();
             }
 
             if (this.browser) {
@@ -1298,6 +2378,8 @@ export class RemoteBrowser {
             await this.stopScreencast();
             this.currentPage = page;
 
+            await this.currentPage.addInitScript({ path: './browser-management/classes/rrweb-bundle.js' });
+
             await this.setupPageEventListeners(this.currentPage);
 
             //await this.currentPage.setViewportSize({ height: 400, width: 900 })
@@ -1330,10 +2412,16 @@ export class RemoteBrowser {
         await this.currentPage?.close();
         this.currentPage = newPage;
         if (this.currentPage) {
+            await this.currentPage.addInitScript({ path: './browser-management/classes/rrweb-bundle.js' });
+
             await this.setupPageEventListeners(this.currentPage);
 
             this.client = await this.currentPage.context().newCDPSession(this.currentPage);
-            await this.subscribeToScreencast();
+            if (this.renderingMode === "dom") {
+              await this.subscribeToDOM();
+            } else {
+              await this.subscribeToScreencast();
+            }
         } else {
             logger.log('error', 'Could not get a new page, returned undefined');
         }
