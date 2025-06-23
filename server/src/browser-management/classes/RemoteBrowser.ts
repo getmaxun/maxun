@@ -1256,7 +1256,7 @@ export class RemoteBrowser {
                 
                 this.currentPage = await this.context.newPage();
 
-                await this.currentPage.addInitScript({ path: './browser-management/classes/rrweb-bundle.js' });
+                await this.currentPage.addInitScript({ path: './server/src/browser-management/classes/rrweb-bundle.js' });
 
                 await this.setupPageEventListeners(this.currentPage);
     
@@ -2378,7 +2378,7 @@ export class RemoteBrowser {
             await this.stopScreencast();
             this.currentPage = page;
 
-            await this.currentPage.addInitScript({ path: './browser-management/classes/rrweb-bundle.js' });
+            await this.currentPage.addInitScript({ path: './server/src/browser-management/classes/rrweb-bundle.js' });
 
             await this.setupPageEventListeners(this.currentPage);
 
@@ -2412,7 +2412,7 @@ export class RemoteBrowser {
         await this.currentPage?.close();
         this.currentPage = newPage;
         if (this.currentPage) {
-            await this.currentPage.addInitScript({ path: './browser-management/classes/rrweb-bundle.js' });
+            await this.currentPage.addInitScript({ path: './server/src/browser-management/classes/rrweb-bundle.js' });
 
             await this.setupPageEventListeners(this.currentPage);
 
