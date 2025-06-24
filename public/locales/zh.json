@@ -428,7 +428,8 @@
     "created_at": "机器人创建时间",
     "errors": {
       "robot_not_found": "无法找到机器人详细信息。请重试。"
-    }
+    },
+    "description": "描述（可选）"
   },
   "robot_edit": {
     "title": "编辑机器人",
