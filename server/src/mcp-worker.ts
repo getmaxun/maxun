@@ -1,5 +1,5 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio";
 import { z } from "zod";
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
@@ -86,7 +86,7 @@ class MaxunMCPWorker {
       {
         robot_id: z.string().describe("ID of the robot to get details for")
       },
-      async ({ robot_id }) => {
+      async ({ robot_id }: { robot_id: string }) => {
         try {
           const data = await this.makeApiRequest(`/api/robots/${robot_id}`);
           
@@ -115,7 +115,7 @@ class MaxunMCPWorker {
         robot_id: z.string().describe("ID of the robot to run"),
         wait_for_completion: z.boolean().default(true).describe("Whether to wait for the run to complete")
       },
-      async ({ robot_id, wait_for_completion }) => {
+      async ({ robot_id, wait_for_completion }: { robot_id: string; wait_for_completion: boolean }) => {
         try {
           const data = await this.makeApiRequest(`/api/robots/${robot_id}/runs`, {
             method: 'POST'
@@ -181,7 +181,7 @@ class MaxunMCPWorker {
       {
         robot_id: z.string().describe("ID of the robot")
       },
-      async ({ robot_id }) => {
+      async ({ robot_id }: { robot_id: string }) => {
         try {
           const data = await this.makeApiRequest(`/api/robots/${robot_id}/runs`);
           
@@ -210,7 +210,7 @@ class MaxunMCPWorker {
         robot_id: z.string().describe("ID of the robot"),
         run_id: z.string().describe("ID of the specific run")
       },
-      async ({ robot_id, run_id }) => {
+      async ({ robot_id, run_id }: { robot_id: string; run_id: string }) => {
         try {
           const data = await this.makeApiRequest(`/api/robots/${robot_id}/runs/${run_id}`);
           
@@ -261,7 +261,7 @@ class MaxunMCPWorker {
       {
         robot_id: z.string().describe("ID of the robot")
       },
-      async ({ robot_id }) => {
+      async ({ robot_id }: { robot_id: string }) => {
         try {
           const [robotData, runsData] = await Promise.all([
             this.makeApiRequest(`/api/robots/${robot_id}`),
