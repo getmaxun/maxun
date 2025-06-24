@@ -305,7 +305,7 @@
         "no": "No"
       },
       "messages": {
-        "extracting": "Extracting data...please wait for 10secs to 1min",
+        "extracting": "Extracting data...please wait",
         "restart_required": "Please restart the interpretation after updating the recording",
         "run_finished": "Run finished",
         "run_failed": "Run failed to start"
