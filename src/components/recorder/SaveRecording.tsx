@@ -276,10 +276,10 @@ const modalStyle = {
   top: "25%",
   left: "50%",
   transform: "translate(-50%, -50%)",
-  width: "400px",
+  width: "500px", // Close to the old 300px field + some padding
   maxWidth: "90vw",
   bgcolor: "background.paper",
-  boxShadow: "24px",
+  boxShadow: "0px 4px 24px rgba(0,0,0,0.2)",
   p: 3,
   borderRadius: 2,
   display: "block",
