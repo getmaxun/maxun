@@ -4,8 +4,7 @@ import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
 import { useNavigate } from 'react-router-dom';
 import { Paper, Button, useTheme } from "@mui/material";
-import { AutoAwesome, FormatListBulleted, VpnKey, Usb, CloudQueue, Code, } from "@mui/icons-material";
-import { apiUrl } from "../../apiConfig";
+import { AutoAwesome, FormatListBulleted, VpnKey, Usb, CloudQueue, Description } from "@mui/icons-material";
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
 
@@ -30,14 +29,19 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
   const buttonStyles = {
     justifyContent: 'flex-start',
     textAlign: 'left',
-    fontSize: 'medium',
-    padding: '6px 16px 6px 22px',
+    fontSize: '17px',
+    letterSpacing: '0.02857em',
+    padding: '20px 16px 6px 22px',
     minHeight: '48px',
     minWidth: '100%',
     display: 'flex',
     alignItems: 'center',
     textTransform: 'none',
     color: theme.palette.mode === 'light' ? '#6C6C6C' : 'inherit',
+    '&:hover': {
+      color: theme.palette.mode === 'light' ? '#6C6C6C' : 'inherit',
+      backgroundColor: theme.palette.mode === 'light' ? '#f5f5f5' : 'rgba(255, 255, 255, 0.08)',
+    },
   };
 
 
@@ -112,6 +116,9 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
           {/* <Button href={`${apiUrl}/api-docs/`} target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<Code />}>
             {t('mainmenu.apidocs')}
           </Button> */}
+          <Button href='https://docs.maxun.dev' target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<Description />}>
+            Documentation
+          </Button>
           <Button href="https://app.maxun.dev/login" target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<CloudQueue />}>
             {t('mainmenu.feedback')}
           </Button>

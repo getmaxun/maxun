@@ -290,7 +290,7 @@
       "no": "No"
     },
     "messages": {
-      "extracting": "Extrayendo datos...espere de 10 segundos a 1 minuto",
+      "extracting": "Extrayendo datos...espere",
       "restart_required": "Por favor, reinicie la interpretación después de actualizar la grabación",
       "run_finished": "Ejecución finalizada",
       "run_failed": "Error al iniciar la ejecución"

@@ -293,7 +293,7 @@
       "no": "否"
     },
     "messages": {
-      "extracting": "正在提取数据...请等待10秒到1分钟",
+      "extracting": "正在提取数据...请等待",
       "restart_required": "更新录制后请重新启动解释",
       "run_finished": "运行完成",
       "run_failed": "运行启动失败"

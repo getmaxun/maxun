@@ -293,7 +293,7 @@
             "no": "いいえ"
         },
         "messages": {
-            "extracting": "データ抽出中...10秒から1分ほどお待ちください",
+            "extracting": "データを抽出しています...お待ちください",
             "restart_required": "録画を更新した後、解釈を再起動してください",
             "run_finished": "実行完了",
             "run_failed": "実行の開始に失敗しました"

@@ -82,6 +82,7 @@ export class WorkflowGenerator {
     this.poolId = poolId;
     this.registerEventHandlers(socket);
     this.initializeSocketListeners();
+    this.initializeDOMListeners();
   }
 
   /**
@@ -91,6 +92,8 @@ export class WorkflowGenerator {
   private workflowRecord: WorkflowFile = {
     workflow: [],
   };
+
+  private isDOMMode: boolean = false;
 
   /**
    * Metadata of the currently recorded workflow.
@@ -132,6 +135,18 @@ export class WorkflowGenerator {
     this.socket.on('setPaginationMode', (data: { pagination: boolean }) => {
       this.paginationMode = data.pagination;
     })
+  }
+
+  private initializeDOMListeners() {
+    this.socket.on('dom-mode-enabled', () => {
+      this.isDOMMode = true;
+      logger.log('debug', 'Generator: DOM mode enabled');
+    });
+    
+    this.socket.on('screenshot-mode-enabled', () => {
+      this.isDOMMode = false;
+      logger.log('debug', 'Generator: Screenshot mode enabled');
+    });
   }
 
   /**
@@ -348,6 +363,96 @@ export class WorkflowGenerator {
     await this.addPairToWorkflowAndNotifyClient(pair, page);
   };
 
+  // Handles click events on the DOM, generating a pair for the click action
+  public onDOMClickAction = async (page: Page, data: { 
+    selector: string, 
+    url: string, 
+    userId: string,
+    elementInfo?: any,
+    coordinates?: { x: number, y: number }
+  }) => {
+    const { selector, url, elementInfo, coordinates } = data;
+
+    const pair: WhereWhatPair = {
+      where: { 
+        url: this.getBestUrl(url),
+        selectors: [selector]
+      },
+      what: [{
+        action: 'click',
+        args: [selector],
+      }],
+    };
+
+    // Handle special input elements with cursor positioning
+    if (elementInfo && coordinates && 
+        (elementInfo.tagName === 'INPUT' || elementInfo.tagName === 'TEXTAREA')) {
+      pair.what[0] = {
+        action: 'click',
+        args: [selector, { position: coordinates }, { cursorIndex: 0 }],
+      };
+    }
+
+    this.generatedData.lastUsedSelector = selector;
+    this.generatedData.lastAction = 'click';
+    
+    await this.addPairToWorkflowAndNotifyClient(pair, page);
+  };
+
+  // Handles keyboard actions on the DOM, generating a pair for the key press action
+  public onDOMKeyboardAction = async (page: Page, data: {
+    selector: string,
+    key: string,
+    url: string,
+    userId: string,
+    inputType?: string
+  }) => {
+    const { selector, key, url, inputType } = data;
+
+    const pair: WhereWhatPair = {
+      where: { 
+        url: this.getBestUrl(url),
+        selectors: [selector]
+      },
+      what: [{
+        action: 'press',
+        args: [selector, encrypt(key), inputType || 'text'],
+      }],
+    };
+
+    this.generatedData.lastUsedSelector = selector;
+    this.generatedData.lastAction = 'press';
+    
+    await this.addPairToWorkflowAndNotifyClient(pair, page);
+  };
+
+  // Handles navigation events on the DOM, generating a pair for the navigation action
+  public onDOMNavigation = async (page: Page, data: {
+    url: string,
+    currentUrl: string,
+    userId: string
+  }) => {
+    const { url, currentUrl } = data;
+
+    const pair: WhereWhatPair = {
+      where: { url: this.getBestUrl(currentUrl) },
+      what: [{
+        action: 'goto',
+        args: [url],
+      }],
+    };
+
+    this.generatedData.lastUsedSelector = '';
+    await this.addPairToWorkflowAndNotifyClient(pair, page);
+  };
+
+  // Handles workflow pair events on the DOM
+  public onDOMWorkflowPair = async (page: Page, data: { pair: WhereWhatPair, userId: string }) => {
+    const { pair } = data;
+    
+    await this.addPairToWorkflowAndNotifyClient(pair, page);
+  };
+
   /**
    * Generates a pair for the click event.
    * @param coordinates The coordinates of the click event.
@@ -357,6 +462,7 @@ export class WorkflowGenerator {
   public onClick = async (coordinates: Coordinates, page: Page) => {
     let where: WhereWhatPair["where"] = { url: this.getBestUrl(page.url()) };
     const selector = await this.generateSelector(page, coordinates, ActionType.Click);
+    console.log("COOORDINATES: ", coordinates);
     logger.log('debug', `Element's selector: ${selector}`);
 
     const elementInfo = await getElementInformation(page, coordinates, '', false);
@@ -708,6 +814,7 @@ export class WorkflowGenerator {
     this.socket = socket;
     this.registerEventHandlers(socket);
     this.initializeSocketListeners();
+    this.initializeDOMListeners();
   };
 
   /**

@@ -20,7 +20,7 @@ import logger from "../logger";
  * @returns string
  * @category BrowserManagement-Controller
  */
-export const initializeRemoteBrowserForRecording = (userId: string): string => {
+export const initializeRemoteBrowserForRecording = (userId: string, mode: string = "dom"): string => {
   const id = getActiveBrowserIdByState(userId, "recording") || uuid();
   createSocketConnection(
     io.of(id),
@@ -37,7 +37,15 @@ export const initializeRemoteBrowserForRecording = (userId: string): string => {
         browserSession.interpreter.subscribeToPausing();
         await browserSession.initialize(userId);
         await browserSession.registerEditorEvents();
-        await browserSession.subscribeToScreencast();
+
+        if (mode === "dom") {
+          await browserSession.subscribeToDOM();
+          logger.info('DOM streaming started for scraping browser in recording mode');
+        } else {
+          await browserSession.subscribeToScreencast();
+          logger.info('Screenshot streaming started for local browser in recording mode');
+        }
+        
         browserPool.addRemoteBrowser(id, browserSession, userId, false, "recording");
       }
       socket.emit('loaded');
