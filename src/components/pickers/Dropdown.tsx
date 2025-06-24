@@ -18,9 +18,65 @@ const Dropdown = ({ coordinates, selector, options, onClose }: DropdownProps) =>
     const { socket } = useSocketStore();
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
+    const updateDOMElement = (selector: string, value: string) => {
+        try {
+            let iframeElement = document.querySelector('#dom-browser-iframe') as HTMLIFrameElement;
+            
+            if (!iframeElement) {
+                iframeElement = document.querySelector('#browser-window iframe') as HTMLIFrameElement;
+            }
+
+            if (!iframeElement) {
+                const browserWindow = document.querySelector('#browser-window');
+                if (browserWindow) {
+                    iframeElement = browserWindow.querySelector('iframe') as HTMLIFrameElement;
+                }
+            }
+
+            if (!iframeElement) {
+                console.error('Could not find iframe element for DOM update');
+                return;
+            }
+
+            const iframeDoc = iframeElement.contentDocument;
+            if (!iframeDoc) {
+                console.error('Could not access iframe document');
+                return;
+            }
+
+            const selectElement = iframeDoc.querySelector(selector) as HTMLSelectElement;
+            if (selectElement) {
+                selectElement.value = value;
+                
+                const optionElements = selectElement.querySelectorAll('option');
+                optionElements.forEach(option => {
+                    if (option.value === value) {
+                        option.selected = true;
+                        option.setAttribute('selected', 'selected');
+                    } else {
+                        option.selected = false;
+                        option.removeAttribute('selected');
+                    }
+                });
+                
+                const changeEvent = new Event('change', { bubbles: true });
+                selectElement.dispatchEvent(changeEvent);
+                
+                const inputEvent = new Event('input', { bubbles: true });
+                selectElement.dispatchEvent(inputEvent);
+            } else {
+                console.warn(`Could not find select element with selector: ${selector}`);
+            }
+        } catch (error) {
+            console.error('Error updating DOM select element:', error);
+        }
+    };
+
     const handleSelect = (value: string) => {
         if (socket) {
             socket.emit('input:dropdown', { selector, value });
+            
+            updateDOMElement(selector, value);
         }
         onClose();
     };

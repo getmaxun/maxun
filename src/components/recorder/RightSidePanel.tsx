@@ -21,6 +21,7 @@ import ActionDescriptionBox from '../action/ActionDescriptionBox';
 import { useThemeMode } from '../../context/theme-provider';
 import { useTranslation } from 'react-i18next';
 import { useBrowserDimensionsStore } from '../../context/browserDimensions';
+import { clientListExtractor } from '../../helpers/clientListExtractor';
 
 const fetchWorkflow = (id: string, callback: (response: WorkflowFile) => void) => {
   getActiveWorkflow(id).then(
@@ -51,6 +52,8 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const [isCaptureTextConfirmed, setIsCaptureTextConfirmed] = useState(false);
   const [isCaptureListConfirmed, setIsCaptureListConfirmed] = useState(false);
   const { panelHeight } = useBrowserDimensionsStore();
+  const [isDOMMode, setIsDOMMode] = useState(false);
+  const [currentSnapshot, setCurrentSnapshot] = useState<any>(null);
 
   const { lastAction, notify, currentWorkflowActionsState, setCurrentWorkflowActionsState, resetInterpretationLog, currentListActionId, setCurrentListActionId, currentTextActionId, setCurrentTextActionId, currentScreenshotActionId, setCurrentScreenshotActionId } = useGlobalInfoStore();  
   const { 
@@ -69,7 +72,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     startAction, finishAction 
   } = useActionContext();
   
-  const { browserSteps, updateBrowserTextStepLabel, deleteBrowserStep, addScreenshotStep, updateListTextFieldLabel, removeListTextField, updateListStepLimit, deleteStepsByActionId } = useBrowserSteps();
+  const { browserSteps, updateBrowserTextStepLabel, deleteBrowserStep, addScreenshotStep, updateListTextFieldLabel, removeListTextField, updateListStepLimit, deleteStepsByActionId, updateListStepData } = useBrowserSteps();
   const { id, socket } = useSocketStore();
   const { t } = useTranslation();
 
@@ -78,6 +81,42 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const workflowHandler = useCallback((data: WorkflowFile) => {
     setWorkflow(data);
   }, [setWorkflow]);
+
+  useEffect(() => {
+    if (socket) {
+      const domModeHandler = (data: any) => {
+        if (!data.userId || data.userId === id) {
+          setIsDOMMode(true);
+        }
+      };
+
+      const screenshotModeHandler = (data: any) => {
+        if (!data.userId || data.userId === id) {
+          setIsDOMMode(false);
+          setCurrentSnapshot(null);
+        }
+      };
+
+      const domcastHandler = (data: any) => {
+        if (!data.userId || data.userId === id) {
+          if (data.snapshotData && data.snapshotData.snapshot) {
+            setCurrentSnapshot(data.snapshotData);
+            setIsDOMMode(true);
+          }
+        }
+      };
+
+      socket.on("dom-mode-enabled", domModeHandler);
+      socket.on("screenshot-mode-enabled", screenshotModeHandler);
+      socket.on("domcast", domcastHandler);
+
+      return () => {
+        socket.off("dom-mode-enabled", domModeHandler);
+        socket.off("screenshot-mode-enabled", screenshotModeHandler);
+        socket.off("domcast", domcastHandler);
+      };
+    }
+  }, [socket, id]);
 
   useEffect(() => {
     if (socket) {
@@ -128,6 +167,100 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     setShowCaptureScreenshot(true);
     setShowCaptureText(true);
   }, [workflow, setCurrentWorkflowActionsState]);
+
+  useEffect(() => {
+    if (socket) {
+      socket.on('listDataExtracted', (response) => {
+        if (!isDOMMode) {
+          const { currentListId, data } = response;
+          updateListStepData(currentListId, data);
+        }
+      });
+    }
+    
+    return () => {
+      socket?.off('listDataExtracted');
+    };
+  }, [socket, updateListStepData, isDOMMode]);
+
+  const extractDataClientSide = useCallback(
+    (
+      listSelector: string,
+      fields: Record<string, any>,
+      currentListId: number
+    ) => {
+      if (isDOMMode && currentSnapshot) {
+        try {
+          // Find the DOM iframe element
+          let iframeElement = document.querySelector(
+            "#dom-browser-iframe"
+          ) as HTMLIFrameElement;
+
+          if (!iframeElement) {
+            iframeElement = document.querySelector(
+              "#browser-window iframe"
+            ) as HTMLIFrameElement;
+          }
+
+          if (!iframeElement) {
+            const browserWindow = document.querySelector("#browser-window");
+            if (browserWindow) {
+              iframeElement = browserWindow.querySelector(
+                "iframe"
+              ) as HTMLIFrameElement;
+            }
+          }
+
+          if (!iframeElement) {
+            console.error(
+              "Could not find the DOM iframe element for extraction"
+            );
+            return;
+          }
+
+          const iframeDoc = iframeElement.contentDocument;
+          if (!iframeDoc) {
+            console.error("Failed to get iframe document");
+            return;
+          }
+
+          // Use client-side extraction
+          const extractedData = clientListExtractor.extractListData(
+            iframeDoc,
+            listSelector,
+            fields,
+            5 // limit for preview
+          );
+
+          updateListStepData(currentListId, extractedData);
+          console.log("✅ Client-side extraction completed:", extractedData);
+        } catch (error) {
+          console.error("Error in client-side data extraction:", error);
+          notify("error", "Failed to extract data client-side");
+        }
+      } else {
+        // Fallback to socket-based extraction for screenshot mode
+        if (!socket) {
+          console.error("Socket not available for backend extraction");
+          return;
+        }
+
+        try {
+          socket.emit("extractListData", {
+            listSelector,
+            fields,
+            currentListId,
+            pagination: { type: "", selector: "" },
+          });
+
+          console.log("📤 Sent extraction request to backend");
+        } catch (error) {
+          console.error("Error in backend data extraction:", error);
+        }
+      }
+    },
+    [isDOMMode, currentSnapshot, updateListStepData, socket, notify]
+  );
 
   const handleMouseEnter = (id: number) => {
     setHoverStates(prev => ({ ...prev, [id]: true }));
@@ -338,17 +471,22 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
 
   const stopCaptureAndEmitGetListSettings = useCallback(() => {
     const settings = getListSettingsObject();
-    if (settings) {
+    
+    const latestListStep = getLatestListStep(browserSteps);
+    if (latestListStep && settings) {
+      extractDataClientSide(latestListStep.listSelector!, latestListStep.fields, latestListStep.id);
+      
       socket?.emit('action', { action: 'scrapeList', settings });
     } else {
       notify('error', t('right_panel.errors.unable_create_settings'));
     }
+    
     handleStopGetList();
     setCurrentListActionId('');
     resetInterpretationLog();
     finishAction('list');
     onFinishCapture();
-  }, [getListSettingsObject, socket, notify, handleStopGetList, resetInterpretationLog, finishAction, onFinishCapture, t]);
+  }, [getListSettingsObject, socket, notify, handleStopGetList, resetInterpretationLog, finishAction, onFinishCapture, t, browserSteps, extractDataClientSide]);
 
   const hasUnconfirmedListTextFields = browserSteps.some(step =>
     step.type === 'list' &&
