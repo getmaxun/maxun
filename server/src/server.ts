@@ -83,48 +83,6 @@ export const io = new Server(server);
  */
 export const browserPool = new BrowserPool();
 
-const initializeMCPServer = async () => {
-  try {
-    const mcpEnabled = process.env.MCP_ENABLED === 'true';
-    const mcpApiKey = process.env.MCP_API_KEY;
-    
-    if (!mcpEnabled) {
-      logger.log('info', 'MCP Server disabled (set MCP_ENABLED=true to enable)');
-      return;
-    }
-
-    if (!mcpApiKey) {
-      logger.log('warning', 'MCP_API_KEY not set. MCP server will not be able to authenticate with Maxun API.');
-      return;
-    }
-    
-    const mcpWorkerPath = path.resolve(__dirname, './mcp-worker.ts');
-    const mcpWorkerProcess = fork(mcpWorkerPath, [], {
-      execArgv: process.env.NODE_ENV === 'production' ? [] : ['--inspect=5861'],
-      env: {
-        ...process.env,
-        MCP_WORKER: 'true'
-      }
-    });
-
-    mcpWorkerProcess.on('message', (message: any) => {
-      logger.log('info', `MCP Worker message: ${message}`);
-    });
-
-    mcpWorkerProcess.on('error', (error: any) => {
-      logger.log('error', `MCP Worker error: ${error}`);
-    });
-
-    mcpWorkerProcess.on('exit', (code: any) => {
-      logger.log('info', `MCP Worker exited with code: ${code}`);
-    });
-
-    logger.log('info', 'MCP Server started with stdio transport in worker process');
-  } catch (error: any) {
-    logger.log('error', `Failed to initialize MCP Server: ${error.message}`);
-  }
-};
-
 app.use(cookieParser())
 
 app.use('/webhook', webhook);
@@ -205,9 +163,7 @@ server.listen(SERVER_PORT, '0.0.0.0', async () => {
   try {
     await connectDB();
     await syncDB();
-    logger.log('info', `Server listening on port ${SERVER_PORT}`);
-    
-    await initializeMCPServer();
+    logger.log('info', `Server listening on port ${SERVER_PORT}`);    
   } catch (error: any) {
     logger.log('error', `Failed to connect to the database: ${error.message}`);
     process.exit(1);
