@@ -856,7 +856,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           
           /* Make everything interactive */
           * { 
-              cursor: ${isInCaptureMode ? "crosshair" : "pointer"} !important; 
+              cursor: "pointer" !important; 
           }
           
           /* Additional CSS from resources */
@@ -1127,7 +1127,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
             left: 0,
             right: 0,
             bottom: 0,
-            cursor: "pointer",
+            cursor: "pointer !important",
             pointerEvents: "none",
             zIndex: 999,
             borderRadius: "0px 0px 5px 5px",
