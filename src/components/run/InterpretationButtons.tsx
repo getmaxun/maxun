@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 
 interface InterpretationButtonsProps {
   enableStepping: (isPaused: boolean) => void;
+  onPreviewComplete?: () => void;
 }
 
 interface InterpretationInfo {
@@ -22,7 +23,7 @@ const interpretationInfo: InterpretationInfo = {
   isPaused: false,
 };
 
-export const InterpretationButtons = ({ enableStepping }: InterpretationButtonsProps) => {
+export const InterpretationButtons = ({ enableStepping, onPreviewComplete }: InterpretationButtonsProps) => {
   const { t } = useTranslation();
   const [info, setInfo] = useState<InterpretationInfo>(interpretationInfo);
   const [decisionModal, setDecisionModal] = useState<{
@@ -102,16 +103,20 @@ export const InterpretationButtons = ({ enableStepping }: InterpretationButtonsP
   }, [socket, finishedHandler, breakpointHitHandler]);
 
   const handlePlay = async () => {
-    if (!info.running) {
-      setInfo({ ...info, running: true });
-      const finished = await interpretCurrentRecording();
-      setInfo({ ...info, running: false });
-      if (finished) {
-        notify('info', t('interpretation_buttons.messages.run_finished'));
-      } else {
-        notify('error', t('interpretation_buttons.messages.run_failed'));
-      }
-    }
+    onPreviewComplete?.();
+    notify('info', t('interpretation_buttons.messages.run_finished'));
+    
+    // Legacy code for running the interpretation
+
+    // if (!info.running) {
+    //   setInfo({ ...info, running: true });
+    //   // const finished = await interpretCurrentRecording();
+    //   setInfo({ ...info, running: false });
+    //   if (finished) {
+    //   } else {
+    //     notify('error', t('interpretation_buttons.messages.run_failed'));
+    //   }
+    // }
   };
 
   // pause and stop logic (do not delete - we wil bring this back!)
