@@ -174,9 +174,11 @@ export class WorkflowGenerator {
           switch (actionType) {
             case 'customAction':
               // pair.where.selectors = [this.generatedData.lastUsedSelector];
-              pair.where.selectors = pair.where.selectors.filter(
-                (selector: string) => selector !== this.generatedData.lastUsedSelector
-              );
+              if (pair.where.selectors) {
+                pair.where.selectors = pair.where.selectors.filter(
+                  (selector: string) => selector !== this.generatedData.lastUsedSelector
+                );
+              }
               break;
             default: break;
           }
