@@ -135,6 +135,7 @@ BYOP (Bring Your Own Proxy) lets you connect external proxies to bypass anti-bot
 - ✨ Adapt To Website Layout Changes
 - ✨ Extract Behind Login
 - ✨ Integrations
+- ✨ MCP Server
 - ✨ Bypass 2FA & MFA For Extract Behind Login (coming soon)
 - +++ A lot of amazing things!
 
