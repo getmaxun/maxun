@@ -233,7 +233,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
           );
 
           updateListStepData(currentListId, extractedData);
-          console.log("✅ Client-side extraction completed:", extractedData);
+          console.log("✅ UI extraction completed:");
         } catch (error) {
           console.error("Error in client-side data extraction:", error);
           notify("error", "Failed to extract data client-side");
