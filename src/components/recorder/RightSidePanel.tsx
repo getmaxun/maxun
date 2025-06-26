@@ -253,7 +253,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
             pagination: { type: "", selector: "" },
           });
 
-          console.log("📤 Sent extraction request to backend");
+          console.log("📤 Sent extraction request to server");
         } catch (error) {
           console.error("Error in backend data extraction:", error);
         }
