@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { SyntheticEvent } from 'react';
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import { NavBarForm, NavBarInput } from "../ui/Form";
-import { UrlFormButton } from "../ui/buttons/buttons";
+import { UrlFormButton } from "../ui/buttons/Buttons";
 import { useSocketStore } from '../../context/socket';
 import { Socket } from "socket.io-client";
 
