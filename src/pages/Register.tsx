@@ -42,7 +42,6 @@ const Register = () => {
     setLoading(true);
     try {
       const { data } = await axios.post(`${apiUrl}/auth/register`, { email, password });
-      console.log(data);
       dispatch({ type: "LOGIN", payload: data });
       notify("success", t('register.welcome_notification'));
       window.localStorage.setItem("user", JSON.stringify(data));
