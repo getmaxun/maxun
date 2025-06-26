@@ -32,7 +32,7 @@ const fetchWorkflow = (id: string, callback: (response: WorkflowFile) => void) =
         throw new Error("No workflow found");
       }
     }
-  ).catch((error) => { console.log(error.message) })
+  ).catch((error) => { console.log(`Failed to fetch workflow:`,error.message) })
 };
 
 interface RightSidePanelProps {
@@ -233,7 +233,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
           );
 
           updateListStepData(currentListId, extractedData);
-          console.log("✅ Client-side extraction completed:", extractedData);
+          console.log("✅ UI extraction completed:");
         } catch (error) {
           console.error("Error in client-side data extraction:", error);
           notify("error", "Failed to extract data client-side");
@@ -253,7 +253,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
             pagination: { type: "", selector: "" },
           });
 
-          console.log("📤 Sent extraction request to backend");
+          console.log("📤 Sent extraction request to server");
         } catch (error) {
           console.error("Error in backend data extraction:", error);
         }

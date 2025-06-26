@@ -1803,21 +1803,15 @@ class ClientSelectorGenerator {
         let elements = iframeDoc.elementsFromPoint(x, y) as HTMLElement[];
         if (!elements.length) return null;
 
-        console.log("ALL ELEMENTS", elements);
-
         const dialogElement = elements.find(
           (el) => el.getAttribute("role") === "dialog"
         );
 
         if (dialogElement) {
-          console.log("FOUND DIALOG ELEMENT", dialogElement);
-
           // Filter to keep only the dialog and its children
           const dialogElements = elements.filter(
             (el) => el === dialogElement || dialogElement.contains(el)
           );
-
-          console.log("FILTERED DIALOG ELEMENTS", dialogElements);
 
           // Get deepest element within the dialog
           const findDeepestInDialog = (
@@ -1852,7 +1846,6 @@ class ClientSelectorGenerator {
           };
 
           const deepestInDialog = findDeepestInDialog(dialogElements);
-          console.log("DEEPEST IN DIALOG", deepestInDialog);
           return deepestInDialog;
         }
 
@@ -1874,13 +1867,11 @@ class ClientSelectorGenerator {
               (style.position === "fixed" || style.position === "absolute") &&
               zIndex > 50
             ) {
-              console.log("FOUND POSITIONED ELEMENT", element);
               return element;
             }
 
             // For SVG elements (like close buttons), prefer them if they're in the top elements
             if (element.tagName === "SVG" && i < 2) {
-              console.log("FOUND SVG ELEMENT", element);
               return element;
             }
           }
@@ -1912,8 +1903,6 @@ class ClientSelectorGenerator {
         };
 
         let deepestElement = findDeepestElement(elements);
-
-        console.log("DEEPEST ELEMENT", deepestElement);
 
         if (!deepestElement) return null;
 
@@ -3133,13 +3122,6 @@ class ClientSelectorGenerator {
     childSelectors?: string[];
   } | null {
     try {
-      console.log("🐛 DEBUG: generateDataForHighlighter called with:", {
-        coordinates,
-        getList: this.getList,
-        listSelector: this.listSelector,
-        isDOMMode,
-      });
-
       // Use instance variables instead of parameters
       const rect = this.getRect(
         iframeDocument,
@@ -3161,11 +3143,6 @@ class ClientSelectorGenerator {
       );
 
       if (!rect || !elementInfo || !displaySelector) {
-        console.log("🐛 DEBUG: Missing basic data:", {
-          rect: !!rect,
-          elementInfo: !!elementInfo,
-          selectors: !!displaySelector,
-        });
         return null;
       }
 
@@ -3183,24 +3160,12 @@ class ClientSelectorGenerator {
 
       if (this.getList === true) {
         if (this.listSelector !== "") {
-          console.log(
-            "🐛 DEBUG: Getting child selectors for:",
-            this.listSelector
-          );
           const childSelectors = this.getChildSelectors(
             iframeDocument,
             this.listSelector
           );
-          console.log("🐛 DEBUG: Generated child selectors:", {
-            count: childSelectors.length,
-            selectors: childSelectors.slice(0, 10), // First 10
-            listSelector: this.listSelector,
-          });
           return { ...highlighterData, childSelectors };
         } else {
-          console.log(
-            "🐛 DEBUG: No listSelector set, returning without childSelectors"
-          );
           return highlighterData;
         }
       } else {
@@ -3233,8 +3198,6 @@ class ClientSelectorGenerator {
             this.listSelector
           )
         : this.getSelectors(iframeDocument, coordinates);
-
-    console.log("SELECTOR BASED ON CUSTOM ACTION", selectorBasedOnCustomAction);
 
     if (this.paginationMode && selectorBasedOnCustomAction) {
       // Chain selectors in specific priority order

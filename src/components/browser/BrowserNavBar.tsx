@@ -63,7 +63,7 @@ const BrowserNavBar: FC<NavBarProps> = ({
         handleUrlChanged(response);
       }
     }).catch((error) => {
-      console.log("Fetching current url failed");
+      console.log(`Fetching current url failed: ${error}`);
     })
   }, []);
 
