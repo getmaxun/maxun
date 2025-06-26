@@ -1,7 +1,7 @@
-import { ScrollSettings } from './scroll';
-import { ScreenshotSettings } from "./screenshot";
+import { ScrollSettings } from './Scroll';
+import { ScreenshotSettings } from "./Screenshot";
 import { ScrapeSettings } from "./Scrape";
-import { ScrapeSchemaSettings } from "./scrapeSchema";
+import { ScrapeSchemaSettings } from "./ScrapeSchema";
 
 export {
   ScrollSettings,
