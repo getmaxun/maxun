@@ -134,8 +134,8 @@ BYOP (Bring Your Own Proxy) lets you connect external proxies to bypass anti-bot
 - ✨ Turn Websites to Spreadsheets
 - ✨ Adapt To Website Layout Changes
 - ✨ Extract Behind Login
-- ✨ Bypass Two-Factor Authentication For Extract Behind Login (coming soon)
 - ✨ Integrations
+- ✨ Bypass 2FA & MFA For Extract Behind Login (coming soon)
 - +++ A lot of amazing things!
 
 # Screenshots
