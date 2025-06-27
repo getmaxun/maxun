@@ -164,7 +164,7 @@ export const NavBar: React.FC<NavBarProps> = ({
         sx={{
           color: darkMode ? '#ffffff' : '#0000008A',
           '&:hover': {
-           
+           background: 'inherit'
           }
         }}
       >
