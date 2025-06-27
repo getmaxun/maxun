@@ -40,7 +40,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
     color: theme.palette.mode === 'light' ? '#6C6C6C' : 'inherit',
     '&:hover': {
       color: theme.palette.mode === 'light' ? '#6C6C6C' : 'inherit',
-      backgroundColor: theme.palette.mode === 'light' ? '#f5f5f5' : 'rgba(255, 255, 255, 0.08)',
+      backgroundColor: theme.palette.mode === 'light' ? '#f5f5f5' : 'inherit',
     },
   };
 
