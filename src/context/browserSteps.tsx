@@ -6,14 +6,14 @@ export interface TextStep {
     label: string;
     data: string;
     selectorObj: SelectorObject;
-    actionId?: string; // Add actionId to track which action created this step
+    actionId?: string;
 }
 
 interface ScreenshotStep {
     id: number;
     type: 'screenshot';
     fullPage: boolean;
-    actionId?: string; // Add actionId to track which action created this step
+    actionId?: string;
 }
 
 export interface ListStep {
@@ -26,7 +26,7 @@ export interface ListStep {
         selector: string;
     };
     limit?: number;
-    actionId?: string; // Add actionId to track which action created this step
+    actionId?: string;
 }
 
 export type BrowserStep = TextStep | ScreenshotStep | ListStep;
@@ -50,8 +50,7 @@ interface BrowserStepsContextType {
     updateListStepLimit: (listId: number, limit: number) => void;
     updateListStepData: (listId: number, extractedData: any[]) => void;
     removeListTextField: (listId: number, fieldKey: string) => void;
-    deleteStepsByActionId: (actionId: string) => void; // New function to delete steps by actionId
-}
+    deleteStepsByActionId: (actionId: string) => void;
 
 const BrowserStepsContext = createContext<BrowserStepsContextType | undefined>(undefined);
 
@@ -220,7 +219,7 @@ export const BrowserStepsProvider: React.FC<{ children: React.ReactNode }> = ({ 
             updateListStepLimit,
             updateListStepData,
             removeListTextField,
-            deleteStepsByActionId, // Export the new function
+            deleteStepsByActionId,
         }}>
             {children}
         </BrowserStepsContext.Provider>
