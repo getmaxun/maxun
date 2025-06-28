@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { SyntheticEvent } from 'react';
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
-import { NavBarForm, NavBarInput } from "../ui/form";
-import { UrlFormButton } from "../ui/buttons/buttons";
+import { NavBarForm, NavBarInput } from "../ui/Form";
+import { UrlFormButton } from "../ui/buttons/Buttons";
 import { useSocketStore } from '../../context/socket';
 import { Socket } from "socket.io-client";
 
@@ -40,7 +40,7 @@ export const UrlForm = ({
             lastSubmittedRef.current = url;  // Update the last submitted URL
         } catch (e) {
             //alert(`ERROR: ${url} is not a valid url!`);
-            console.log(e)
+            console.log(`Failed to submit form:`,e)
         }
     }, [setCurrentAddress]);
 

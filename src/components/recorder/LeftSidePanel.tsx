@@ -19,7 +19,7 @@ const fetchWorkflow = (id: string, callback: (response: WorkflowFile) => void) =
         throw new Error("No workflow found");
       }
     }
-  ).catch((error) => { console.log(error.message) })
+  ).catch((error) => { console.log(`Failed to fetch workflow:`,error.message) })
 };
 
 interface LeftSidePanelProps {
