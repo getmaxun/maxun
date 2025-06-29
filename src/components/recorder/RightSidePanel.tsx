@@ -72,7 +72,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     startAction, finishAction 
   } = useActionContext();
   
-  const { browserSteps, updateBrowserTextStepLabel, deleteBrowserStep, addScreenshotStep, updateListTextFieldLabel, removeListTextField, updateListStepLimit, deleteStepsByActionId, updateListStepData } = useBrowserSteps();
+  const { browserSteps, updateBrowserTextStepLabel, deleteBrowserStep, addScreenshotStep, updateListTextFieldLabel, removeListTextField, updateListStepLimit, deleteStepsByActionId, updateListStepData, updateScreenshotStepData } = useBrowserSteps();
   const { id, socket } = useSocketStore();
   const { t } = useTranslation();
 
@@ -182,6 +182,29 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
       socket?.off('listDataExtracted');
     };
   }, [socket, updateListStepData, isDOMMode]);
+
+  useEffect(() => {
+    if (socket) {
+      const handleDirectScreenshot = (data: any) => {
+        const screenshotSteps = browserSteps.filter(step => 
+          step.type === 'screenshot' && step.actionId === currentScreenshotActionId
+        );
+        
+        if (screenshotSteps.length > 0) {
+          const latestStep = screenshotSteps[screenshotSteps.length - 1];          
+          updateScreenshotStepData(latestStep.id, data.screenshot);
+        }
+        
+        setCurrentScreenshotActionId('');
+      };
+
+      socket.on('directScreenshotCaptured', handleDirectScreenshot);
+
+      return () => {
+        socket.off('directScreenshotCaptured', handleDirectScreenshot);
+      };
+    }
+  }, [socket, id, notify, t, currentScreenshotActionId, updateScreenshotStepData, setCurrentScreenshotActionId]);
 
   const extractDataClientSide = useCallback(
     (
@@ -649,14 +672,15 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   }, [currentListActionId, browserSteps, stopGetList, deleteStepsByActionId, resetListState, setShowPaginationOptions, setShowLimitOptions, setCaptureStage, notify, t]);
 
   const captureScreenshot = (fullPage: boolean) => {
-    const screenshotSettings: ScreenshotSettings = {
+    const screenshotSettings = {
       fullPage,
-      type: 'png',
+      type: 'png' as const,
       timeout: 30000,
-      animations: 'allow',
-      caret: 'hide',
-      scale: 'device',
+      animations: 'allow' as const,
+      caret: 'hide' as const,
+      scale: 'device' as const,
     };
+    socket?.emit('captureDirectScreenshot', screenshotSettings);   
     socket?.emit('action', { action: 'screenshot', settings: screenshotSettings });
     addScreenshotStep(fullPage, currentScreenshotActionId);
     stopGetScreenshot();

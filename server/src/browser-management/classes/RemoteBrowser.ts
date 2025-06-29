@@ -1867,6 +1867,63 @@ export class RemoteBrowser {
     }
 
     /**
+     * Captures a screenshot directly without running the workflow interpreter
+     * @param settings Screenshot settings containing fullPage, type, etc.
+     * @returns Promise<void>
+     */
+    public captureDirectScreenshot = async (settings: {
+      fullPage: boolean;
+      type: 'png' | 'jpeg';
+      timeout?: number;
+      animations?: 'disabled' | 'allow';
+      caret?: 'hide' | 'initial';
+      scale?: 'css' | 'device';
+    }): Promise<void> => {
+      if (!this.currentPage) {
+        logger.error("No current page available for screenshot");
+        this.socket.emit('screenshotError', {
+          userId: this.userId,
+          error: 'No active page available'
+        });
+        return;
+      }
+
+      try {
+        this.socket.emit('screenshotCaptureStarted', {
+          userId: this.userId,
+          fullPage: settings.fullPage
+        });
+
+        const screenshotBuffer = await this.currentPage.screenshot({
+          fullPage: settings.fullPage,
+          type: settings.type || 'png',
+          timeout: settings.timeout || 30000,
+          animations: settings.animations || 'allow',
+          caret: settings.caret || 'hide',
+          scale: settings.scale || 'device'
+        });
+
+        const base64Data = screenshotBuffer.toString('base64');
+        const mimeType = `image/${settings.type || 'png'}`;
+        const dataUrl = `data:${mimeType};base64,${base64Data}`;
+
+        this.socket.emit('directScreenshotCaptured', {
+          userId: this.userId,
+          screenshot: dataUrl,
+          mimeType: mimeType,
+          fullPage: settings.fullPage,
+          timestamp: Date.now()
+        });
+      } catch (error) {
+        logger.error('Failed to capture direct screenshot:', error);
+        this.socket.emit('screenshotError', {
+          userId: this.userId,
+          error: error instanceof Error ? error.message : 'Unknown error occurred'
+        });
+      }
+    };
+
+    /**
      * Registers all event listeners needed for the recording editor session.
      * Should be called only once after the full initialization of the remote browser.
      * @returns void
@@ -1874,6 +1931,16 @@ export class RemoteBrowser {
     public registerEditorEvents = (): void => {
         // For each event, include userId to make sure events are handled for the correct browser
         logger.log('debug', `Registering editor events for user: ${this.userId}`);
+
+        this.socket.on(`captureDirectScreenshot:${this.userId}`, async (settings) => {
+          logger.debug(`Direct screenshot capture requested for user ${this.userId}`);
+          await this.captureDirectScreenshot(settings);
+        });
+
+        // For backward compatibility
+        this.socket.on('captureDirectScreenshot', async (settings) => {
+          await this.captureDirectScreenshot(settings);
+        });
         
         // Listen for specific events for this user
         this.socket.on(`rerender:${this.userId}`, async () => {
