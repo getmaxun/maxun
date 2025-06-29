@@ -3,8 +3,6 @@ import SwipeableDrawer from '@mui/material/SwipeableDrawer';
 import Typography from '@mui/material/Typography';
 import { Button, Grid, Box } from '@mui/material';
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSocketStore } from "../../context/socket";
-import { Buffer } from 'buffer';
 import { useBrowserDimensionsStore } from "../../context/browserDimensions";
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -28,8 +26,6 @@ interface InterpretationLogProps {
 
 export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, setIsOpen }) => {
   const { t } = useTranslation();
-  const [log, setLog] = useState<string>('');
-  const [customValue, setCustomValue] = useState('');
   
   const [captureListData, setCaptureListData] = useState<any[]>([]);
   const [captureTextData, setCaptureTextData] = useState<any[]>([]);
@@ -44,11 +40,10 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
   const { browserSteps } = useBrowserSteps();
   
-  const [activeActionId, setActiveActionId] = useState<number | null>(null);
-
   const { browserWidth, outputPreviewHeight, outputPreviewWidth } = useBrowserDimensionsStore();
-  const { socket } = useSocketStore();
-  const { currentWorkflowActionsState, shouldResetInterpretationLog, notify } = useGlobalInfoStore();
+  const { currentWorkflowActionsState, shouldResetInterpretationLog } = useGlobalInfoStore();
+
+  const [showPreviewData, setShowPreviewData] = useState<boolean>(false);
 
   const toggleDrawer = (newOpen: boolean) => (event: React.KeyboardEvent | React.MouseEvent) => {
     if (
@@ -61,43 +56,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     setIsOpen(newOpen);
   };
 
-  const scrollLogToBottom = () => {
-    if (logEndRef.current) {
-      logEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  };
-
-  const handleLog = useCallback((msg: string, date: boolean = true) => {
-    if (!date) {
-      setLog((prevState) => prevState + '\n' + msg);
-    } else {
-      setLog((prevState) => prevState + '\n' + `[${new Date().toLocaleString()}] ` + msg);
-    }
-    scrollLogToBottom();
-  }, []);
-
-  useEffect(() => {
-    if (activeActionId !== null) {
-      const textSteps = browserSteps.filter(step => step.type === 'text');
-      if (textSteps.length > 0) {
-        const textDataRow: Record<string, string> = {};
-        
-        textSteps.forEach(step => {
-          textDataRow[step.label] = step.data;
-        });
-        
-        setCaptureTextData([textDataRow]);
-      }
-      
-      const listSteps = browserSteps.filter(step => step.type === 'list');
-      if (listSteps.length > 0) {
-        setCaptureListData(listSteps);
-      }
-      
-      updateActiveTab();
-    }
-  }, [activeActionId, browserSteps, t]);
-
   const updateActiveTab = useCallback(() => {
     const availableTabs = getAvailableTabs();
     
@@ -109,61 +67,48 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
       setActiveTab(availableTabs.findIndex(tab => tab.id === 'captureScreenshot'));
     }
   }, [captureListData.length, captureTextData.length, screenshotData.length]);
-  
-  const handleBinaryCallback = useCallback(({ data, mimetype, type }: { data: any, mimetype: string, type: string }) => {
-    const base64String = Buffer.from(data).toString('base64');
-    const imageSrc = `data:${mimetype};base64,${base64String}`;
-  
-    setLog((prevState) =>
-      prevState + '\n' + t('interpretation_log.data_sections.binary_received') + '\n'
-      + t('interpretation_log.data_sections.mimetype') + mimetype + '\n'
-      + t('interpretation_log.data_sections.image_below') + '\n'
-      + t('interpretation_log.data_sections.separator'));
-  
-    if (type === 'captureScreenshot') {
-      setScreenshotData(prev => [...prev, imageSrc]);
-      if (screenshotData.length === 0) {
-        const availableTabs = getAvailableTabs();
-        const tabIndex = availableTabs.findIndex(tab => tab.id === 'captureScreenshot');
-        if (tabIndex !== -1) setActiveTab(tabIndex);
-      }
+
+  useEffect(() => {
+    const textSteps = browserSteps.filter(step => step.type === 'text');
+    if (textSteps.length > 0) {
+      const textDataRow: Record<string, string> = {};
+      
+      textSteps.forEach(step => {
+        textDataRow[step.label] = step.data;
+      });
+      
+      setCaptureTextData([textDataRow]);
     }
     
-    scrollLogToBottom();
-  }, [screenshotData.length, t]);
+    const listSteps = browserSteps.filter(step => step.type === 'list');
+    if (listSteps.length > 0) {
+      setCaptureListData(listSteps);
+    }
 
-  const handleActivePairId = useCallback((id: number) => {
-    setActiveActionId(id);
-  }, []);
+    const screenshotSteps = browserSteps.filter(step => 
+      step.type === 'screenshot'
+    ) as Array<{ type: 'screenshot'; id: number; fullPage: boolean; actionId?: string; screenshotData?: string }>;
 
-  const handleCustomValueChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setCustomValue(event.target.value);
-  };
+    const screenshotsWithData = screenshotSteps.filter(step => step.screenshotData);
+    if (screenshotsWithData.length > 0) {
+      const screenshots = screenshotsWithData.map(step => step.screenshotData!);
+      setScreenshotData(screenshots);
+    }
+    
+    updateActiveTab();
+  }, [browserSteps, updateActiveTab]);
 
   useEffect(() => {
     if (shouldResetInterpretationLog) {
-      setLog('');
       setCaptureListData([]);
       setCaptureTextData([]);
       setScreenshotData([]);
       setActiveTab(0);
       setCaptureListPage(0);
       setScreenshotPage(0);
-      setActiveActionId(null);
+      setShowPreviewData(false);
     }
   }, [shouldResetInterpretationLog]);
-
-  useEffect(() => {
-    socket?.on('log', handleLog);
-    socket?.on('binaryCallback', handleBinaryCallback);
-    socket?.on('activePairId', handleActivePairId);
-    
-    return () => {
-      socket?.off('log', handleLog);
-      socket?.off('binaryCallback', handleBinaryCallback);
-      socket?.off('activePairId', handleActivePairId);
-    };
-  }, [socket, handleLog, handleBinaryCallback, handleActivePairId]);
 
   const getAvailableTabs = useCallback(() => {
     const tabs = [];
@@ -181,7 +126,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     }
     
     return tabs;
-  }, [captureListData.length, captureTextData.length, screenshotData.length]);
+  }, [captureListData.length, captureTextData.length, screenshotData.length, showPreviewData]);
 
   const availableTabs = getAvailableTabs();
   
@@ -264,7 +209,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
             {t('interpretation_log.titles.output_preview')}
           </Typography>
           
-          {availableTabs.length > 0 ? (
+          {showPreviewData && availableTabs.length > 0 ? (
             <>
               {shouldShowTabs && (
                 <Box 
@@ -488,7 +433,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                     <Typography variant="h6" gutterBottom align="left">
                       {t('interpretation_log.messages.successful_training')}
                     </Typography>
-                    <SidePanelHeader />
+                    <SidePanelHeader onPreviewClick={() => setShowPreviewData(true)} />
                   </>
                 ) : (
                   <Typography variant="h6" gutterBottom align="left">

@@ -1,7 +1,7 @@
 import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useSocketStore } from '../../context/socket';
 import { Button } from '@mui/material';
-import Canvas from "../recorder/canvas";
+import Canvas from "../recorder/Canvas";
 import { Highlighter } from "../recorder/Highlighter";
 import { GenericModal } from '../ui/GenericModal';
 import { useActionContext } from '../../context/browserActions';

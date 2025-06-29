@@ -130,7 +130,7 @@ export const BrowserContent = () => {
         }
       })
       .catch((error) => {
-        console.log("Fetching current url failed");
+        console.log(`Fetching current url failed: ${error}`);
       });
   }, []);
 

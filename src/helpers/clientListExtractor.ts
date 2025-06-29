@@ -464,8 +464,6 @@ class ClientListExtractor {
         }
       }
 
-      console.log("📦 Found containers:", containers.length);
-
       // Analyze fields for table vs non-table context
       const containerFields: ContainerFields[] = containers.map(() => ({
         tableFields: {},
@@ -642,7 +640,6 @@ class ClientListExtractor {
                   const value = this.extractValue(element, attribute);
                   if (value !== null && value !== "") {
                     record[label] = value;
-                    console.log(`✅ Extracted ${label}:`, value);
                   } else {
                     console.warn(
                       `❌ No value for ${label} in row ${rowIndex + 1}`
@@ -691,7 +688,6 @@ class ClientListExtractor {
               const value = this.extractValue(element, attribute);
               if (value !== null && value !== "") {
                 record[label] = value;
-                console.log(`✅ Extracted ${label}:`, value);
               } else {
                 console.warn(
                   `❌ No value for ${label} in container ${containerIndex + 1}`
@@ -715,13 +711,6 @@ class ClientListExtractor {
 
       // Combine and limit results
       const extractedData = [...tableData, ...nonTableData].slice(0, limit);
-
-      console.log("🎉 Client extraction complete:", {
-        totalRecords: extractedData.length,
-        tableRecords: tableData.length,
-        nonTableRecords: nonTableData.length,
-        data: extractedData,
-      });
 
       return extractedData;
     } catch (error) {

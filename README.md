@@ -133,9 +133,10 @@ BYOP (Bring Your Own Proxy) lets you connect external proxies to bypass anti-bot
 - ✨ Turn Websites to APIs
 - ✨ Turn Websites to Spreadsheets
 - ✨ Adapt To Website Layout Changes
-- ✨ Extract Behind Login, 
-- ✨ Bypass  Two-Factor Authentication For Extract Behind Login (coming soon)
+- ✨ Extract Behind Login
 - ✨ Integrations
+- ✨ MCP Server
+- ✨ Bypass 2FA & MFA For Extract Behind Login (coming soon)
 - +++ A lot of amazing things!
 
 # Screenshots
@@ -150,7 +151,7 @@ BYOP (Bring Your Own Proxy) lets you connect external proxies to bypass anti-bot
 ![Maxun PH Launch (1)-9-1](https://github.com/user-attachments/assets/160f46fa-0357-4c1b-ba50-b4fe64453bb7)
 
 # Note
-This project is in early stages of development. Your feedback is very important for us - we're actively working to improve the product. </a>
+This project is in early stages of development. Your feedback is very important for us - we're actively working on improvements. </a>
 
 # License
 <p>
