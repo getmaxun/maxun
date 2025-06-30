@@ -616,7 +616,9 @@ export class RemoteBrowser {
                     patchedGetter.toString();`
                 );
 
-                await this.currentPage.addInitScript({ path: './server/src/browser-management/classes/rrweb-bundle.js' });
+                await this.context.addInitScript({
+                  path: "./browser-management/classes/rrweb-bundle.js",
+                });
 
                 this.currentPage = await this.context.newPage();
 
@@ -637,20 +639,10 @@ export class RemoteBrowser {
                     this.client = await this.currentPage.context().newCDPSession(this.currentPage);
                     await blocker.disableBlockingInPage(this.currentPage);
                     console.log('Adblocker initialized');
-
-                    if (this.client) {
-                      await this.initializeNetworkMonitoring();
-                      logger.info("Network monitoring initialized successfully");
-                    }
                 } catch (error: any) {
                     console.warn('Failed to initialize adblocker, continuing without it:', error.message);
                     // Still need to set up the CDP session even if blocker fails
                     this.client = await this.currentPage.context().newCDPSession(this.currentPage);
-
-                    if (this.client) {
-                      await this.initializeNetworkMonitoring();
-                      logger.info("Network monitoring initialized successfully");
-                    } 
                 }
                 
                 success = true;
