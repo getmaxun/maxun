@@ -616,9 +616,7 @@ export class RemoteBrowser {
                     patchedGetter.toString();`
                 );
 
-                await this.context.addInitScript({
-                  path: "./browser-management/classes/rrweb-bundle.js",
-                });
+                await this.context.addInitScript({ path: './server/src/browser-management/classes/rrweb-bundle.js' });
 
                 this.currentPage = await this.context.newPage();
 
@@ -1618,7 +1616,7 @@ export class RemoteBrowser {
       logger.info("DOM streaming stopped successfully");
     }
 
-    /**
+    /**rrweb-bundle
      * Terminates the screencast session and closes the remote browser.
      * If an interpretation was running it will be stopped.
      * @returns {Promise<void>}
@@ -1775,8 +1773,6 @@ export class RemoteBrowser {
         if (page) {
             await this.stopScreencast();
             this.currentPage = page;
-
-            await this.currentPage.addInitScript({ path: './server/src/browser-management/classes/rrweb-bundle.js' });
 
             await this.setupPageEventListeners(this.currentPage);
 
