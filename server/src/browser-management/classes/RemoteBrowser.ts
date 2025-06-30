@@ -670,7 +670,7 @@ export class RemoteBrowser {
       };
 
       return {
-        snapshot: processedSnapshot,
+        snapshot: snapshot,
         resources,
         baseUrl,
         viewport,
@@ -1253,10 +1253,10 @@ export class RemoteBrowser {
                     patchedGetter.apply(navigator);
                     patchedGetter.toString();`
                 );
-                
-                this.currentPage = await this.context.newPage();
 
                 await this.currentPage.addInitScript({ path: './server/src/browser-management/classes/rrweb-bundle.js' });
+
+                this.currentPage = await this.context.newPage();
 
                 await this.setupPageEventListeners(this.currentPage);
     
@@ -2221,7 +2221,10 @@ export class RemoteBrowser {
           if (typeof window.rrwebSnapshot === "undefined") {
             throw new Error("rrweb-snapshot library not available");
           }
-          return window.rrwebSnapshot.snapshot(document);
+        return window.rrwebSnapshot.snapshot(document, {
+          inlineImages: true,
+          collectFonts: true,
+        });
         });
 
         // Process the snapshot to proxy resources
@@ -2479,8 +2482,6 @@ export class RemoteBrowser {
         await this.currentPage?.close();
         this.currentPage = newPage;
         if (this.currentPage) {
-            await this.currentPage.addInitScript({ path: './server/src/browser-management/classes/rrweb-bundle.js' });
-
             await this.setupPageEventListeners(this.currentPage);
 
             this.client = await this.currentPage.context().newCDPSession(this.currentPage);
