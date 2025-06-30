@@ -769,18 +769,19 @@ export class RemoteBrowser {
         await this.makeAndEmitDOMSnapshot();
       });
 
-      this.currentPage.on("response", async (response) => {
-        const url = response.url();
-        if (
-          response.request().resourceType() === "document" ||
-          url.includes("api/") ||
-          url.includes("ajax")
-        ) {
-          setTimeout(async () => {
-            await this.makeAndEmitDOMSnapshot();
-          }, 800);
-        }
-      });
+      // DO NOT REMOVE THIS CODE - MIGHT BE NEEDED LATER
+      // this.currentPage.on("response", async (response) => {
+      //   const url = response.url();
+      //   if (
+      //     response.request().resourceType() === "document" ||
+      //     url.includes("api/") ||
+      //     url.includes("ajax")
+      //   ) {
+      //     setTimeout(async () => {
+      //       await this.makeAndEmitDOMSnapshot();
+      //     }, 800);
+      //   }
+      // });
     }
 
     private async setupPageEventListeners(page: Page) {
