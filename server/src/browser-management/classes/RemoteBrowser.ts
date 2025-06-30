@@ -1599,6 +1599,13 @@ export class RemoteBrowser {
         this.domUpdateInterval = null;
       }
 
+      if (this.networkRequestTimeout) {
+        clearTimeout(this.networkRequestTimeout);
+        this.networkRequestTimeout = null;
+      }
+
+      this.pendingNetworkRequests = [];
+
       if (this.client) {
         try {
           await this.client.send("DOM.disable");
@@ -1625,6 +1632,10 @@ export class RemoteBrowser {
 
             if (this.screencastInterval) {
                 clearInterval(this.screencastInterval);
+            }
+
+            if (this.domUpdateInterval) {
+                clearInterval(this.domUpdateInterval);
             }
 
             if (this.client) {
