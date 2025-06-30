@@ -435,19 +435,36 @@ export class RemoteBrowser {
         await this.makeAndEmitDOMSnapshot();
       });
 
-      // DO NOT REMOVE THIS CODE - MIGHT BE NEEDED LATER
-      // this.currentPage.on("response", async (response) => {
-      //   const url = response.url();
-      //   if (
-      //     response.request().resourceType() === "document" ||
-      //     url.includes("api/") ||
-      //     url.includes("ajax")
-      //   ) {
-      //     setTimeout(async () => {
-      //       await this.makeAndEmitDOMSnapshot();
-      //     }, 800);
-      //   }
-      // });
+      this.currentPage.on("response", async (response) => {
+        const url = response.url();
+        if (
+          response.request().resourceType() === "document" ||
+          url.includes("api/") ||
+          url.includes("ajax")
+        ) {
+          this.pendingNetworkRequests.push(url);
+
+          if (this.networkRequestTimeout) {
+            clearTimeout(this.networkRequestTimeout);
+            this.networkRequestTimeout = null;
+          }
+
+          logger.debug(
+            `Network request received: ${url}. Total pending: ${this.pendingNetworkRequests.length}`
+          );
+
+          this.networkRequestTimeout = setTimeout(async () => {
+            logger.info(
+              `Network quiet period reached. Processing ${this.pendingNetworkRequests.length} requests`
+            );
+
+            this.pendingNetworkRequests = [];
+            this.networkRequestTimeout = null;
+
+            await this.makeAndEmitDOMSnapshot();
+          }, this.NETWORK_QUIET_PERIOD);
+        }
+      });
     }
 
     private async setupPageEventListeners(page: Page) {
