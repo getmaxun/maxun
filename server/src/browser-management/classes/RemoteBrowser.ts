@@ -80,7 +80,6 @@ interface ProcessedSnapshot {
       scripts: number;
       media: number;
     };
-    totalCacheSize: number;
   };
 }
 
@@ -198,36 +197,6 @@ export class RemoteBrowser {
     private scrollThreshold = 200; // pixels
     private snapshotDebounceTimeout: NodeJS.Timeout | null = null;
     private isScrollTriggeredSnapshot = false;
-
-    /**
-     * Cache for network resources captured via CDP
-     * @private
-     */
-    private networkResourceCache: Map<
-      string,
-      {
-        url: string;
-        content: string;
-        mimeType: string;
-        base64Encoded: boolean;
-        timestamp: number;
-        resourceType?: string;
-        statusCode?: number;
-        headers?: Record<string, any>;
-      }
-    > = new Map();
-
-    /**
-     * Set to track active network requests
-     * @private
-     */
-    private activeRequests: Set<string> = new Set();
-
-    /**
-     * Flag to indicate if network monitoring is active
-     * @private
-     */
-    private isNetworkMonitoringActive: boolean = false;
 
     /**
      * Initializes a new instances of the {@link Generator} and {@link WorkflowInterpreter} classes and
@@ -515,7 +484,6 @@ export class RemoteBrowser {
             scripts: resources.scripts.length,
             media: resources.media.length,
           },
-          totalCacheSize: this.networkResourceCache.size,
         },
       };
     }
@@ -638,121 +606,6 @@ export class RemoteBrowser {
       logger.debug(
         `Resource cache cleaned up. Current size: ${this.networkResourceCache.size}`
       );
-    }
-
-    /**
-     * Initialize network monitoring via CDP to capture all resources
-     * @private
-     */
-    private async initializeNetworkMonitoring(): Promise<void> {
-      if (!this.client || this.isNetworkMonitoringActive) {
-        return;
-      }
-
-      try {
-        await this.client.send("Network.enable");
-        await this.client.send("Runtime.enable");
-        await this.client.send("Page.enable");
-
-        await this.client.send("Network.setRequestInterception", {
-          patterns: [
-            { urlPattern: "*", resourceType: "Stylesheet" },
-            { urlPattern: "*", resourceType: "Image" },
-            { urlPattern: "*", resourceType: "Font" },
-            { urlPattern: "*", resourceType: "Script" },
-            { urlPattern: "*", resourceType: "Media" },
-            { urlPattern: "*", resourceType: "Document" },
-            { urlPattern: "*", resourceType: "Manifest" },
-            { urlPattern: "*", resourceType: "Other" },
-          ],
-        });
-
-        this.isNetworkMonitoringActive = true;
-        logger.info("Enhanced network monitoring enabled via CDP");
-
-        this.client.on(
-          "Network.responseReceived",
-          async ({ requestId, response, type }) => {
-            const mimeType = response.mimeType?.toLowerCase() || "";
-            const url = response.url;
-            const resourceType = type;
-
-            logger.debug(
-              `Resource received: ${resourceType} - ${mimeType} - ${url}`
-            );
-
-            if (this.shouldCacheResource(mimeType, url)) {
-              this.activeRequests.add(requestId);
-
-              try {
-                const { body, base64Encoded } = await this.client!.send(
-                  "Network.getResponseBody",
-                  { requestId }
-                );
-
-                this.networkResourceCache.set(url, {
-                  url,
-                  content: body,
-                  mimeType: response.mimeType || "application/octet-stream",
-                  base64Encoded,
-                  timestamp: Date.now(),
-                  resourceType,
-                  statusCode: response.status,
-                  headers: response.headers,
-                });
-
-                logger.debug(
-                  `Cached ${resourceType} resource: ${url} (${mimeType})`
-                );
-              } catch (error) {
-                logger.warn(
-                  `Failed to capture ${resourceType} resource body for ${url}:`,
-                  error
-                );
-              } finally {
-                this.activeRequests.delete(requestId);
-              }
-            }
-          }
-        );
-
-        this.client.on(
-          "Network.requestIntercepted",
-          async ({ interceptionId, request }) => {
-            try {
-              await this.client!.send("Network.continueInterceptedRequest", {
-                interceptionId,
-              });
-              logger.debug(`Request intercepted and continued: ${request.url}`);
-            } catch (error) {
-              logger.warn(
-                `Failed to continue intercepted request for ${request.url}:`,
-                error
-              );
-            }
-          }
-        );
-
-        this.client.on(
-          "Network.loadingFailed",
-          ({ requestId, errorText, type }) => {
-            this.activeRequests.delete(requestId);
-            logger.debug(`Network request failed (${type}): ${errorText}`);
-          }
-        );
-
-        this.client.on("Network.loadingFinished", ({ requestId }) => {
-          this.activeRequests.delete(requestId);
-        });
-
-        // Clean up cache periodically
-        setInterval(() => {
-          this.cleanupResourceCache();
-        }, 60000);
-      } catch (error) {
-        logger.error("Failed to initialize enhanced network monitoring:", error);
-        this.isNetworkMonitoringActive = false;
-      }
     }
 
     private initializeMemoryManagement(): void {
@@ -1944,45 +1797,7 @@ export class RemoteBrowser {
         this.isDOMStreamingActive = false;
       }
     }
-
-    /**
-     * Wait for network requests to become idle
-     * @private
-     */
-    private async waitForNetworkIdle(timeout: number = 2000): Promise<void> {
-      const startTime = Date.now();
-
-      while (this.activeRequests.size > 0 && Date.now() - startTime < timeout) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-
-      if (this.activeRequests.size > 0) {
-        logger.debug(
-          `Network idle timeout reached with ${this.activeRequests.size} pending requests`
-        );
-      }
-    }
-
-    /**
-     * Stop network monitoring
-     * @private
-     */
-    private async stopNetworkMonitoring(): Promise<void> {
-      if (!this.client || !this.isNetworkMonitoringActive) {
-        return;
-      }
-
-      try {
-        await this.client.send("Network.disable");
-        this.isNetworkMonitoringActive = false;
-        this.networkResourceCache.clear();
-        this.activeRequests.clear();
-        logger.info("Network monitoring stopped");
-      } catch (error) {
-        logger.error("Error stopping network monitoring:", error);
-      }
-    }
-
+   
     /**
      * CDP-based DOM snapshot creation using captured network resources
      */
@@ -2000,9 +1815,6 @@ export class RemoteBrowser {
           logger.debug("Skipping DOM snapshot - page is closed");
           return;
         }
-
-        // Wait for network to become idle
-        await this.waitForNetworkIdle();
 
         // Double-check page state after network wait
         if (this.currentPage.isClosed()) {
@@ -2137,7 +1949,6 @@ export class RemoteBrowser {
             if (this.client) {
                 await this.stopScreencast();
                 await this.stopDOM();
-                await this.stopNetworkMonitoring();
             }
 
             if (this.browser) {
