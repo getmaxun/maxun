@@ -705,6 +705,11 @@ export class RemoteBrowser {
         }>,
         limit: number = 5
       ): Promise<Array<Record<string, string>>> {
+        if (page.isClosed()) {
+          logger.warn("Page is closed, cannot extract list data");
+          return [];
+        }
+
         return await page.evaluate(
           async ({ listSelector, fields, limit }: { 
             listSelector: string;
