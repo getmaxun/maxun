@@ -734,7 +734,7 @@ export const IntegrationSettingsModal = ({
             <Button
               variant="outlined"
               onClick={() => {
-                window.open("https://docs.maxun.dev/mcp/setup", "_blank" "noopener, noreferrer");
+                window.open("https://docs.maxun.dev/mcp/setup", "_blank" "noopener,noreferrer");
               }}
               style={{ display: "flex", flexDirection: "column", alignItems: "center", background: 'white', color: '#ff00c3' }}
             >
