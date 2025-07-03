@@ -789,97 +789,35 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
         let rebuiltHTML = tempDoc.documentElement.outerHTML;
 
         rebuiltHTML = "<!DOCTYPE html>\n" + rebuiltHTML;
+        
+        const minimalCSS = `
+          <style>
+            /* Minimal styles - don't override too much */
+            html, body {
+              margin: 0;
+              padding: 8px;
+              overflow-x: hidden;
+            }
+            
+            /* Hide scrollbars but keep functionality */
+            ::-webkit-scrollbar { width: 0px; background: transparent; }
+            body { scrollbar-width: none; -ms-overflow-style: none; }
+            
+            /* Prevent form submissions and navigation */
+            form { pointer-events: none; }
+            a[href] { pointer-events: ${isInCaptureMode ? "none" : "auto"}; }
+          </style>
+        `;
 
-        const additionalCSS = [];
-
-        if (snapshotData.resources.fonts?.length > 0) {
-          const fontCSS = snapshotData.resources.fonts
-            .map((font) => {
-              const format = font.format || "woff2";
-              return `
-                @font-face {
-                    font-family: 'ProxiedFont-${
-                      font.url.split("/").pop()?.split(".")[0] ||
-                      "unknown"
-                    }';
-                    src: url("${font.dataUrl}") format("${format}");
-                    font-display: swap;
-                }
-            `;
-            })
-            .join("\n");
-          additionalCSS.push(fontCSS);
-        }
-
-        if (snapshotData.resources.stylesheets?.length > 0) {
-          const externalCSS = snapshotData.resources.stylesheets
-            .map((stylesheet) => stylesheet.content)
-            .join("\n\n");
-          additionalCSS.push(externalCSS);
-        }
-
-        const enhancedCSS = `
-          /* rrweb rebuilt content styles */
-          html, body {
-              margin: 0 !important;
-              padding: 8px !important;
-              font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
-              background: white !important;
-              overflow-x: hidden !important;
-          }
-
-          html::-webkit-scrollbar,
-          body::-webkit-scrollbar {
-              display: none !important;
-              width: 0 !important;
-              height: 0 !important;
-              background: transparent !important;
-          }
-          
-          /* Hide scrollbars for all elements */
-          *::-webkit-scrollbar {
-              display: none !important;
-              width: 0 !important;
-              height: 0 !important;
-              background: transparent !important;
-          }
-          
-          * {
-              scrollbar-width: none !important; /* Firefox */
-              -ms-overflow-style: none !important; /* Internet Explorer 10+ */
-          }
-                
-          img {
-              max-width: 100% !important;
-              height: auto !important;
-          }
-          
-          /* Make everything interactive */
-          * { 
-              cursor: "pointer" !important; 
-          }
-          
-          /* Additional CSS from resources */
-          ${additionalCSS.join("\n\n")}
-      `;
-
-        const headTagRegex = /<head[^>]*>/i;
-        const cssInjection = `
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-                <base href="${snapshotData.baseUrl}">
-                <style>${enhancedCSS}</style>
-            `;
-
-        if (headTagRegex.test(rebuiltHTML)) {
+        if (rebuiltHTML.includes("<head>")) {
           rebuiltHTML = rebuiltHTML.replace(
-            headTagRegex,
-            `<head>${cssInjection}`
+            "<head>",
+            `<head><base href="${snapshotData.baseUrl}">${minimalCSS}`
           );
-        } else {
+        } else if (rebuiltHTML.includes("<html>")) {
           rebuiltHTML = rebuiltHTML.replace(
-            /<html[^>]*>/i,
-            `<html><head>${cssInjection}</head>`
+            "<html>",
+            `<html><head><base href="${snapshotData.baseUrl}">${minimalCSS}</head>`
           );
         }
 
