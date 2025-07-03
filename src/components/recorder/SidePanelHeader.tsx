@@ -2,7 +2,11 @@ import React, { FC, useState } from 'react';
 import { InterpretationButtons } from "../run/InterpretationButtons";
 import { useSocketStore } from "../../context/socket";
 
-export const SidePanelHeader = () => {
+interface SidePanelHeaderProps {
+  onPreviewClick?: () => void;
+}
+
+export const SidePanelHeader = ({ onPreviewClick }: SidePanelHeaderProps) => {
 
   const [steppingIsDisabled, setSteppingIsDisabled] = useState(true);
 
@@ -14,7 +18,10 @@ export const SidePanelHeader = () => {
 
   return (
     <div style={{ width: 'inherit' }}>
-      <InterpretationButtons enableStepping={(isPaused) => setSteppingIsDisabled(!isPaused)} />
+      <InterpretationButtons 
+        enableStepping={(isPaused) => setSteppingIsDisabled(!isPaused)} 
+        onPreviewComplete={onPreviewClick}
+      />
       {/* <Button
        variant='outlined'
        disabled={steppingIsDisabled}
