@@ -296,23 +296,23 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           if (element) {
             setCurrentHighlight({
               element,
-              rect: rect, 
+              rect: rect,
               selector,
               elementInfo: {
                 ...elementInfo,
                 tagName: elementInfo?.tagName ?? "",
                 isDOMMode: true,
               },
-              childSelectors, 
+              childSelectors,
             });
 
             if (onHighlight) {
               onHighlight({
-                rect: rect, 
+                rect: rect,
                 elementInfo: {
                   ...elementInfo,
                   tagName: elementInfo?.tagName ?? "",
-                  isDOMMode: true, 
+                  isDOMMode: true,
                 },
                 selector,
                 childSelectors,
@@ -670,8 +670,8 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
             if (socket) {
               socket.emit("dom:scroll", {
                 deltaX,
-                deltaY
-              })
+                deltaY,
+              });
             }
             notifyLastAction("scroll");
           }
@@ -790,42 +790,12 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
 
         rebuiltHTML = "<!DOCTYPE html>\n" + rebuiltHTML;
 
-        const additionalCSS = [];
-
-        if (snapshotData.resources.fonts?.length > 0) {
-          const fontCSS = snapshotData.resources.fonts
-            .map((font) => {
-              const format = font.format || "woff2";
-              return `
-                @font-face {
-                    font-family: 'ProxiedFont-${
-                      font.url.split("/").pop()?.split(".")[0] ||
-                      "unknown"
-                    }';
-                    src: url("${font.dataUrl}") format("${format}");
-                    font-display: swap;
-                }
-            `;
-            })
-            .join("\n");
-          additionalCSS.push(fontCSS);
-        }
-
-        if (snapshotData.resources.stylesheets?.length > 0) {
-          const externalCSS = snapshotData.resources.stylesheets
-            .map((stylesheet) => stylesheet.content)
-            .join("\n\n");
-          additionalCSS.push(externalCSS);
-        }
-
         const enhancedCSS = `
           /* rrweb rebuilt content styles */
           html, body {
-              margin: 0 !important;
-              padding: 8px !important;
-              font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
-              background: white !important;
-              overflow-x: hidden !important;
+            margin: 0 !important;
+            padding: 8px !important;
+            overflow-x: hidden !important;
           }
 
           html::-webkit-scrollbar,
@@ -848,20 +818,12 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
               scrollbar-width: none !important; /* Firefox */
               -ms-overflow-style: none !important; /* Internet Explorer 10+ */
           }
-                
-          img {
-              max-width: 100% !important;
-              height: auto !important;
-          }
           
           /* Make everything interactive */
           * { 
               cursor: "pointer" !important; 
           }
-          
-          /* Additional CSS from resources */
-          ${additionalCSS.join("\n\n")}
-      `;
+        `;
 
         const headTagRegex = /<head[^>]*>/i;
         const cssInjection = `

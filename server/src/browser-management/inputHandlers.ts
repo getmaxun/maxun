@@ -492,7 +492,8 @@ const handleChangeUrl = async (activeBrowser: RemoteBrowser, page: Page, url: st
             await generator.onChangeUrl(url, page);
 
             try {
-                await page.goto(url, { waitUntil: "networkidle", timeout: 100000 });
+                await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
+                await page.waitForTimeout(2000); 
                 logger.log("debug", `Went to ${url}`);
             } catch (e) {
                 const { message } = e as Error;
