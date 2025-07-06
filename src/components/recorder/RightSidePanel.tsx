@@ -22,6 +22,7 @@ import { useThemeMode } from '../../context/theme-provider';
 import { useTranslation } from 'react-i18next';
 import { useBrowserDimensionsStore } from '../../context/browserDimensions';
 import { clientListExtractor } from '../../helpers/clientListExtractor';
+import { clientSelectorGenerator } from '../../helpers/clientSelectorGenerator';
 
 const fetchWorkflow = (id: string, callback: (response: WorkflowFile) => void) => {
   getActiveWorkflow(id).then(
@@ -214,7 +215,6 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     ) => {
       if (isDOMMode && currentSnapshot) {
         try {
-          // Find the DOM iframe element
           let iframeElement = document.querySelector(
             "#dom-browser-iframe"
           ) as HTMLIFrameElement;
@@ -247,22 +247,42 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
             return;
           }
 
-          // Use client-side extraction
+          Object.entries(fields).forEach(([key, field]) => {
+            if (field.selectorObj?.selector) {
+              const isFieldXPath =
+                field.selectorObj.selector.startsWith("//") ||
+                field.selectorObj.selector.startsWith("/");
+              console.log(
+                `Field "${key}" selector:`,
+                field.selectorObj.selector,
+                `(XPath: ${isFieldXPath})`
+              );
+            }
+          });
+
           const extractedData = clientListExtractor.extractListData(
             iframeDoc,
             listSelector,
             fields,
-            5 // limit for preview
+            5
           );
 
           updateListStepData(currentListId, extractedData);
-          console.log("✅ UI extraction completed:");
+          
+          if (extractedData.length === 0) {
+            console.warn(
+              "⚠️ No data extracted - this might indicate selector issues"
+            );
+            notify(
+              "warning",
+              "No data was extracted. Please verify your selections."
+            );
+          }
         } catch (error) {
           console.error("Error in client-side data extraction:", error);
           notify("error", "Failed to extract data client-side");
         }
       } else {
-        // Fallback to socket-based extraction for screenshot mode
         if (!socket) {
           console.error("Socket not available for backend extraction");
           return;
@@ -275,8 +295,6 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
             currentListId,
             pagination: { type: "", selector: "" },
           });
-
-          console.log("📤 Sent extraction request to server");
         } catch (error) {
           console.error("Error in backend data extraction:", error);
         }
@@ -509,6 +527,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     resetInterpretationLog();
     finishAction('list');
     onFinishCapture();
+    clientSelectorGenerator.cleanup();
   }, [getListSettingsObject, socket, notify, handleStopGetList, resetInterpretationLog, finishAction, onFinishCapture, t, browserSteps, extractDataClientSide]);
 
   const hasUnconfirmedListTextFields = browserSteps.some(step =>
