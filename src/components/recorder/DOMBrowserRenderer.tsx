@@ -296,23 +296,23 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           if (element) {
             setCurrentHighlight({
               element,
-              rect: rect, 
+              rect: rect,
               selector,
               elementInfo: {
                 ...elementInfo,
                 tagName: elementInfo?.tagName ?? "",
                 isDOMMode: true,
               },
-              childSelectors, 
+              childSelectors,
             });
 
             if (onHighlight) {
               onHighlight({
-                rect: rect, 
+                rect: rect,
                 elementInfo: {
                   ...elementInfo,
                   tagName: elementInfo?.tagName ?? "",
-                  isDOMMode: true, 
+                  isDOMMode: true,
                 },
                 selector,
                 childSelectors,
@@ -670,8 +670,8 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
             if (socket) {
               socket.emit("dom:scroll", {
                 deltaX,
-                deltaY
-              })
+                deltaY,
+              });
             }
             notifyLastAction("scroll");
           }
@@ -789,27 +789,51 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
         let rebuiltHTML = tempDoc.documentElement.outerHTML;
 
         rebuiltHTML = "<!DOCTYPE html>\n" + rebuiltHTML;
-        
-        const minimalCSS = `
-          <style>
-            /* Minimal styles - don't override too much */
-            html, body {
-              margin: 0;
-              padding: 8px;
-              overflow-x: hidden;
-            }
-            
-            /* Hide scrollbars but keep functionality */
-            ::-webkit-scrollbar { width: 0px; background: transparent; }
-            body { scrollbar-width: none; -ms-overflow-style: none; }
-            
-            /* Prevent form submissions and navigation */
-            form { pointer-events: none; }
-            a[href] { pointer-events: ${isInCaptureMode ? "none" : "auto"}; }
-          </style>
+
+        const enhancedCSS = `
+          /* rrweb rebuilt content styles */
+          html, body {
+            margin: 0 !important;
+            padding: 8px !important;
+            overflow-x: hidden !important;
+          }
+
+          html::-webkit-scrollbar,
+          body::-webkit-scrollbar {
+              display: none !important;
+              width: 0 !important;
+              height: 0 !important;
+              background: transparent !important;
+          }
+          
+          /* Hide scrollbars for all elements */
+          *::-webkit-scrollbar {
+              display: none !important;
+              width: 0 !important;
+              height: 0 !important;
+              background: transparent !important;
+          }
+          
+          * {
+              scrollbar-width: none !important; /* Firefox */
+              -ms-overflow-style: none !important; /* Internet Explorer 10+ */
+          }
+          
+          /* Make everything interactive */
+          * { 
+              cursor: "pointer" !important; 
+          }
         `;
 
-        if (rebuiltHTML.includes("<head>")) {
+        const headTagRegex = /<head[^>]*>/i;
+        const cssInjection = `
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <base href="${snapshotData.baseUrl}">
+                <style>${enhancedCSS}</style>
+            `;
+
+        if (headTagRegex.test(rebuiltHTML)) {
           rebuiltHTML = rebuiltHTML.replace(
             "<head>",
             `<head><base href="${snapshotData.baseUrl}">${minimalCSS}`
