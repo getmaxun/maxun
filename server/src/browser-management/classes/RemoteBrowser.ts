@@ -1286,129 +1286,181 @@ export class RemoteBrowser {
      * @returns void
      */
     public registerEditorEvents = (): void => {
-        // For each event, include userId to make sure events are handled for the correct browser
-        logger.log('debug', `Registering editor events for user: ${this.userId}`);
+      // For each event, include userId to make sure events are handled for the correct browser
+      logger.log("debug", `Registering editor events for user: ${this.userId}`);
 
-        this.socket.on(`captureDirectScreenshot:${this.userId}`, async (settings) => {
-          logger.debug(`Direct screenshot capture requested for user ${this.userId}`);
+      this.socket.on(
+        `captureDirectScreenshot:${this.userId}`,
+        async (settings) => {
+          logger.debug(
+            `Direct screenshot capture requested for user ${this.userId}`
+          );
           await this.captureDirectScreenshot(settings);
-        });
+        }
+      );
 
-        // For backward compatibility
-        this.socket.on('captureDirectScreenshot', async (settings) => {
-          await this.captureDirectScreenshot(settings);
-        });
-        
-        // Listen for specific events for this user
-        this.socket.on(`rerender:${this.userId}`, async () => {
-            logger.debug(`Rerender event received for user ${this.userId}`);
-            await this.makeAndEmitScreenshot();
-        });
-        
-        // For backward compatibility, also listen to the general event
-        this.socket.on('rerender', async () => {
-            logger.debug(`General rerender event received, checking if for user ${this.userId}`);
-            await this.makeAndEmitScreenshot();
-        });
-        
-        this.socket.on(`settings:${this.userId}`, (settings) => {
-            this.interpreterSettings = settings;
-            logger.debug(`Settings updated for user ${this.userId}`);
-        });
-        
-        this.socket.on(`changeTab:${this.userId}`, async (tabIndex) => {
-            logger.debug(`Tab change to ${tabIndex} requested for user ${this.userId}`);
-            await this.changeTab(tabIndex);
-        });
-        
-        this.socket.on(`addTab:${this.userId}`, async () => {
-            logger.debug(`New tab requested for user ${this.userId}`);
-            await this.currentPage?.context().newPage();
-            const lastTabIndex = this.currentPage ? this.currentPage.context().pages().length - 1 : 0;
-            await this.changeTab(lastTabIndex);
-        });
-        
-        this.socket.on(`closeTab:${this.userId}`, async (tabInfo) => {
-            logger.debug(`Close tab ${tabInfo.index} requested for user ${this.userId}`);
-            const page = this.currentPage?.context().pages()[tabInfo.index];
-            if (page) {
-                if (tabInfo.isCurrent) {
-                    if (this.currentPage?.context().pages()[tabInfo.index + 1]) {
-                        // next tab
-                        await this.changeTab(tabInfo.index + 1);
-                    } else {
-                        //previous tab
-                        await this.changeTab(tabInfo.index - 1);
-                    }
-                }
-                await page.close();
-                logger.log(
-                    'debug',
-                    `Tab ${tabInfo.index} was closed for user ${this.userId}, new tab count: ${this.currentPage?.context().pages().length}`
-                );
+      // For backward compatibility
+      this.socket.on("captureDirectScreenshot", async (settings) => {
+        await this.captureDirectScreenshot(settings);
+      });
+
+      // Listen for specific events for this user
+      this.socket.on(`rerender:${this.userId}`, async () => {
+        logger.debug(`Rerender event received for user ${this.userId}`);
+        if (this.renderingMode === "dom") {
+          await this.makeAndEmitDOMSnapshot();
+        } else {
+          await this.makeAndEmitScreenshot();
+        }
+      });
+
+      this.socket.on("rerender", async () => {
+        logger.debug(
+          `General rerender event received, checking if for user ${this.userId}`
+        );
+        if (this.renderingMode === "dom") {
+          await this.makeAndEmitDOMSnapshot();
+        } else {
+          await this.makeAndEmitScreenshot();
+        }
+      });
+
+      this.socket.on(`settings:${this.userId}`, (settings) => {
+        this.interpreterSettings = settings;
+        logger.debug(`Settings updated for user ${this.userId}`);
+      });
+
+      this.socket.on(`changeTab:${this.userId}`, async (tabIndex) => {
+        logger.debug(
+          `Tab change to ${tabIndex} requested for user ${this.userId}`
+        );
+        await this.changeTab(tabIndex);
+      });
+
+      this.socket.on(`addTab:${this.userId}`, async () => {
+        logger.debug(`New tab requested for user ${this.userId}`);
+        await this.currentPage?.context().newPage();
+        const lastTabIndex = this.currentPage
+          ? this.currentPage.context().pages().length - 1
+          : 0;
+        await this.changeTab(lastTabIndex);
+      });
+
+      this.socket.on(`closeTab:${this.userId}`, async (tabInfo) => {
+        logger.debug(
+          `Close tab ${tabInfo.index} requested for user ${this.userId}`
+        );
+        const page = this.currentPage?.context().pages()[tabInfo.index];
+        if (page) {
+          if (tabInfo.isCurrent) {
+            if (this.currentPage?.context().pages()[tabInfo.index + 1]) {
+              // next tab
+              await this.changeTab(tabInfo.index + 1);
             } else {
-                logger.log('error', `Tab index ${tabInfo.index} out of range for user ${this.userId}`);
+              //previous tab
+              await this.changeTab(tabInfo.index - 1);
             }
-        });
-        
-        this.socket.on(`setViewportSize:${this.userId}`, async (data: { width: number, height: number }) => {
-            const { width, height } = data;
-            logger.log('debug', `Viewport size change to width=${width}, height=${height} requested for user ${this.userId}`);
+          }
+          await page.close();
+          logger.log(
+            "debug",
+            `Tab ${tabInfo.index} was closed for user ${
+              this.userId
+            }, new tab count: ${this.currentPage?.context().pages().length}`
+          );
+        } else {
+          logger.log(
+            "error",
+            `Tab index ${tabInfo.index} out of range for user ${this.userId}`
+          );
+        }
+      });
 
-            // Update the browser context's viewport dynamically
-            if (this.context && this.browser) {
-                this.context = await this.browser.newContext({ viewport: { width, height } });
-                logger.log('debug', `Viewport size updated to width=${width}, height=${height} for user ${this.userId}`);
-            }
-        });
-        
-        // For backward compatibility, also register the standard events
-        this.socket.on('settings', (settings) => this.interpreterSettings = settings);
-        this.socket.on('changeTab', async (tabIndex) => await this.changeTab(tabIndex));
-        this.socket.on('addTab', async () => {
-            await this.currentPage?.context().newPage();
-            const lastTabIndex = this.currentPage ? this.currentPage.context().pages().length - 1 : 0;
-            await this.changeTab(lastTabIndex);
-        });
-        this.socket.on('closeTab', async (tabInfo) => {
-            const page = this.currentPage?.context().pages()[tabInfo.index];
-            if (page) {
-                if (tabInfo.isCurrent) {
-                    if (this.currentPage?.context().pages()[tabInfo.index + 1]) {
-                        await this.changeTab(tabInfo.index + 1);
-                    } else {
-                        await this.changeTab(tabInfo.index - 1);
-                    }
-                }
-                await page.close();
-            }
-        });
-        this.socket.on('setViewportSize', async (data: { width: number, height: number }) => {
-            const { width, height } = data;
-            if (this.context && this.browser) {
-                this.context = await this.browser.newContext({ viewport: { width, height } });
-            }
-        });
+      this.socket.on(
+        `setViewportSize:${this.userId}`,
+        async (data: { width: number; height: number }) => {
+          const { width, height } = data;
+          logger.log(
+            "debug",
+            `Viewport size change to width=${width}, height=${height} requested for user ${this.userId}`
+          );
 
-        this.socket.on('extractListData', async (data: { 
-            listSelector: string, 
-            fields: Record<string, any>,
-            currentListId: number, 
-            pagination: any 
+          // Update the browser context's viewport dynamically
+          if (this.context && this.browser) {
+            this.context = await this.browser.newContext({
+              viewport: { width, height },
+            });
+            logger.log(
+              "debug",
+              `Viewport size updated to width=${width}, height=${height} for user ${this.userId}`
+            );
+          }
+        }
+      );
+
+      // For backward compatibility, also register the standard events
+      this.socket.on(
+        "settings",
+        (settings) => (this.interpreterSettings = settings)
+      );
+      this.socket.on(
+        "changeTab",
+        async (tabIndex) => await this.changeTab(tabIndex)
+      );
+      this.socket.on("addTab", async () => {
+        await this.currentPage?.context().newPage();
+        const lastTabIndex = this.currentPage
+          ? this.currentPage.context().pages().length - 1
+          : 0;
+        await this.changeTab(lastTabIndex);
+      });
+      this.socket.on("closeTab", async (tabInfo) => {
+        const page = this.currentPage?.context().pages()[tabInfo.index];
+        if (page) {
+          if (tabInfo.isCurrent) {
+            if (this.currentPage?.context().pages()[tabInfo.index + 1]) {
+              await this.changeTab(tabInfo.index + 1);
+            } else {
+              await this.changeTab(tabInfo.index - 1);
+            }
+          }
+          await page.close();
+        }
+      });
+      this.socket.on(
+        "setViewportSize",
+        async (data: { width: number; height: number }) => {
+          const { width, height } = data;
+          if (this.context && this.browser) {
+            this.context = await this.browser.newContext({
+              viewport: { width, height },
+            });
+          }
+        }
+      );
+
+      this.socket.on(
+        "extractListData",
+        async (data: {
+          listSelector: string;
+          fields: Record<string, any>;
+          currentListId: number;
+          pagination: any;
         }) => {
-            if (this.currentPage) {
-                const extractedData = await this.extractListData(
-                    this.currentPage, 
-                    data.listSelector, 
-                    data.fields
-                );
-                
-                this.socket.emit('listDataExtracted', {
-                    currentListId: data.currentListId,
-                    data: extractedData
-                });
-            }
-        });
+          if (this.currentPage) {
+            const extractedData = await this.extractListData(
+              this.currentPage,
+              data.listSelector,
+              data.fields
+            );
+
+            this.socket.emit("listDataExtracted", {
+              currentListId: data.currentListId,
+              data: extractedData,
+            });
+          }
+        }
+      );
     };
     /**
      * Subscribes the remote browser for a screencast session
@@ -1782,8 +1834,13 @@ export class RemoteBrowser {
                 url: this.currentPage.url(),
                 userId: this.userId
             });
-            await this.makeAndEmitScreenshot();
-            await this.subscribeToScreencast();
+            if (this.isDOMStreamingActive) {
+              await this.makeAndEmitDOMSnapshot();
+              await this.subscribeToDOM();
+            } else {
+              await this.makeAndEmitScreenshot();
+              await this.subscribeToScreencast();
+            }
         } else {
             logger.log('error', `${tabIndex} index out of range of pages`)
         }
