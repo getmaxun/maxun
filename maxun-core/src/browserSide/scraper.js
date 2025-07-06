@@ -423,50 +423,155 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
  * @returns {Array.<Array.<Object>>} Array of arrays of scraped items, one sub-array per list
  */
   window.scrapeList = async function ({ listSelector, fields, limit = 10 }) {
-    // Enhanced query function to handle iframe, frame and shadow DOM
+    // XPath evaluation functions
+    const evaluateXPath = (rootElement, xpath) => {
+      try {
+        const ownerDoc =
+          rootElement.nodeType === Node.DOCUMENT_NODE
+            ? rootElement
+            : rootElement.ownerDocument;
+
+        if (!ownerDoc) return null;
+
+        const result = ownerDoc.evaluate(
+          xpath,
+          rootElement,
+          null,
+          XPathResult.FIRST_ORDERED_NODE_TYPE,
+          null
+        );
+
+        return result.singleNodeValue;
+      } catch (error) {
+        console.warn("XPath evaluation failed:", xpath, error);
+        return null;
+      }
+    };
+
+    const evaluateXPathAll = (rootElement, xpath) => {
+      try {
+        const ownerDoc =
+          rootElement.nodeType === Node.DOCUMENT_NODE
+            ? rootElement
+            : rootElement.ownerDocument;
+
+        if (!ownerDoc) return [];
+
+        const result = ownerDoc.evaluate(
+          xpath,
+          rootElement,
+          null,
+          XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+          null
+        );
+
+        const elements = [];
+        for (let i = 0; i < result.snapshotLength; i++) {
+          const node = result.snapshotItem(i);
+          if (node && node.nodeType === Node.ELEMENT_NODE) {
+            elements.push(node);
+          }
+        }
+
+        return elements;
+      } catch (error) {
+        console.warn("XPath evaluation failed:", xpath, error);
+        return [];
+      }
+    };
+
+    // Helper function to detect selector type
+    const isXPathSelector = (selector) => {
+      return (
+        selector.startsWith("//") ||
+        selector.startsWith("/") ||
+        selector.startsWith("./")
+      );
+    };
+
+    // Enhanced query function to handle iframe, frame, shadow DOM, CSS selectors, and XPath
     const queryElement = (rootElement, selector) => {
-      if (!selector.includes('>>') && !selector.includes(':>>')) {
+      if (!selector.includes(">>") && !selector.includes(":>>")) {
+        // Check if it's an XPath selector
+        if (isXPathSelector(selector)) {
+          return evaluateXPath(rootElement, selector);
+        } else {
           return rootElement.querySelector(selector);
+        }
       }
 
-      const parts = selector.split(/(?:>>|:>>)/).map(part => part.trim());
+      const parts = selector.split(/(?:>>|:>>)/).map((part) => part.trim());
       let currentElement = rootElement;
 
       for (let i = 0; i < parts.length; i++) {
-          if (!currentElement) return null;
+        if (!currentElement) return null;
 
-          // Handle iframe and frame traversal
-          if (currentElement.tagName === 'IFRAME' || currentElement.tagName === 'FRAME') {
-              try {
-                  const frameDoc = currentElement.contentDocument || currentElement.contentWindow.document;
-                  currentElement = frameDoc.querySelector(parts[i]);
-                  continue;
-              } catch (e) {
-                  console.warn(`Cannot access ${currentElement.tagName.toLowerCase()} content:`, e);
-                  return null;
+        // Handle iframe and frame traversal
+        if (
+          currentElement.tagName === "IFRAME" ||
+          currentElement.tagName === "FRAME"
+        ) {
+          try {
+            const frameDoc =
+              currentElement.contentDocument ||
+              currentElement.contentWindow.document;
+            if (!frameDoc) return null;
+
+            if (isXPathSelector(parts[i])) {
+              currentElement = evaluateXPath(frameDoc, parts[i]);
+            } else {
+              currentElement = frameDoc.querySelector(parts[i]);
+            }
+            continue;
+          } catch (e) {
+            console.warn(
+              `Cannot access ${currentElement.tagName.toLowerCase()} content:`,
+              e
+            );
+            return null;
+          }
+        }
+
+        let nextElement = null;
+
+        // Try regular DOM first
+        if ("querySelector" in currentElement) {
+          if (isXPathSelector(parts[i])) {
+            nextElement = evaluateXPath(currentElement, parts[i]);
+          } else {
+            nextElement = currentElement.querySelector(parts[i]);
+          }
+        }
+
+        // Try shadow DOM if not found
+        if (
+          !nextElement &&
+          "shadowRoot" in currentElement &&
+          currentElement.shadowRoot
+        ) {
+          if (isXPathSelector(parts[i])) {
+            nextElement = evaluateXPath(currentElement.shadowRoot, parts[i]);
+          } else {
+            nextElement = currentElement.shadowRoot.querySelector(parts[i]);
+          }
+        }
+
+        // Check children's shadow roots if still not found
+        if (!nextElement && "children" in currentElement) {
+          const children = Array.from(currentElement.children || []);
+          for (const child of children) {
+            if (child.shadowRoot) {
+              if (isXPathSelector(parts[i])) {
+                nextElement = evaluateXPath(child.shadowRoot, parts[i]);
+              } else {
+                nextElement = child.shadowRoot.querySelector(parts[i]);
               }
+              if (nextElement) break;
+            }
           }
+        }
 
-          // Try regular DOM first
-          let nextElement = currentElement.querySelector(parts[i]);
-
-          // Try shadow DOM if not found
-          if (!nextElement && currentElement.shadowRoot) {
-              nextElement = currentElement.shadowRoot.querySelector(parts[i]);
-          }
-
-          // Check children's shadow roots if still not found
-          if (!nextElement) {
-              const children = Array.from(currentElement.children || []);
-              for (const child of children) {
-                  if (child.shadowRoot) {
-                      nextElement = child.shadowRoot.querySelector(parts[i]);
-                      if (nextElement) break;
-                  }
-              }
-          }
-
-          currentElement = nextElement;
+        currentElement = nextElement;
       }
 
       return currentElement;
@@ -474,322 +579,492 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
 
     // Enhanced query all function for both contexts
     const queryElementAll = (rootElement, selector) => {
-      if (!selector.includes('>>') && !selector.includes(':>>')) {
-          return rootElement.querySelectorAll(selector);
+      if (!selector.includes(">>") && !selector.includes(":>>")) {
+        if (isXPathSelector(selector)) {
+          return evaluateXPathAll(rootElement, selector);
+        } else {
+          return Array.from(rootElement.querySelectorAll(selector));
+        }
       }
 
-      const parts = selector.split(/(?:>>|:>>)/).map(part => part.trim());
+      const parts = selector.split(/(?:>>|:>>)/).map((part) => part.trim());
       let currentElements = [rootElement];
 
       for (const part of parts) {
-          const nextElements = [];
+        const nextElements = [];
 
-          for (const element of currentElements) {
-              // Handle iframe and frame traversal
-              if (element.tagName === 'IFRAME' || element.tagName === 'FRAME') {
-                  try {
-                      const frameDoc = element.contentDocument || element.contentWindow.document;
-                      nextElements.push(...frameDoc.querySelectorAll(part));
-                  } catch (e) {
-                      console.warn(`Cannot access ${element.tagName.toLowerCase()} content:`, e);
-                      continue;
-                  }
-              } else {
-                  // Regular DOM elements
-                  if (element.querySelectorAll) {
-                      nextElements.push(...element.querySelectorAll(part));
-                  }
-                  
-                  // Shadow DOM elements
-                  if (element.shadowRoot) {
-                      nextElements.push(...element.shadowRoot.querySelectorAll(part));
-                  }
-                  
-                  // Check children's shadow roots
-                  const children = Array.from(element.children || []);
-                  for (const child of children) {
-                      if (child.shadowRoot) {
-                          nextElements.push(...child.shadowRoot.querySelectorAll(part));
-                      }
-                  }
+        for (const element of currentElements) {
+          // Handle iframe and frame traversal
+          if (element.tagName === "IFRAME" || element.tagName === "FRAME") {
+            try {
+              const frameDoc =
+                element.contentDocument || element.contentWindow.document;
+              if (frameDoc) {
+                if (isXPathSelector(part)) {
+                  nextElements.push(...evaluateXPathAll(frameDoc, part));
+                } else {
+                  nextElements.push(
+                    ...Array.from(frameDoc.querySelectorAll(part))
+                  );
+                }
               }
-          }
+            } catch (e) {
+              console.warn(
+                `Cannot access ${element.tagName.toLowerCase()} content:`,
+                e
+              );
+              continue;
+            }
+          } else {
+            // Regular DOM elements
+            if (element.querySelectorAll) {
+              if (isXPathSelector(part)) {
+                nextElements.push(...evaluateXPathAll(element, part));
+              } else {
+                nextElements.push(
+                  ...Array.from(element.querySelectorAll(part))
+                );
+              }
+            }
 
-          currentElements = nextElements;
+            // Shadow DOM elements
+            if (element.shadowRoot) {
+              if (isXPathSelector(part)) {
+                nextElements.push(
+                  ...evaluateXPathAll(element.shadowRoot, part)
+                );
+              } else {
+                nextElements.push(
+                  ...Array.from(element.shadowRoot.querySelectorAll(part))
+                );
+              }
+            }
+
+            // Check children's shadow roots
+            const children = Array.from(element.children || []);
+            for (const child of children) {
+              if (child.shadowRoot) {
+                if (isXPathSelector(part)) {
+                  nextElements.push(
+                    ...evaluateXPathAll(child.shadowRoot, part)
+                  );
+                } else {
+                  nextElements.push(
+                    ...Array.from(child.shadowRoot.querySelectorAll(part))
+                  );
+                }
+              }
+            }
+          }
+        }
+
+        currentElements = nextElements;
       }
 
       return currentElements;
     };
 
     // Enhanced value extraction with context awareness
-    function extractValue(element, attribute) {
-        if (!element) return null;
-      
-        // Get context-aware base URL
-        const baseURL = element.ownerDocument?.location?.href || window.location.origin;
-        
-        // Check shadow root first
-        if (element.shadowRoot) {
-            const shadowContent = element.shadowRoot.textContent;
-            if (shadowContent?.trim()) {
-                return shadowContent.trim();
-            }
+    const extractValue = (element, attribute) => {
+      if (!element) return null;
+
+      // Get context-aware base URL
+      const baseURL =
+        element.ownerDocument?.location?.href || window.location.origin;
+
+      // Check shadow root first
+      if (element.shadowRoot) {
+        const shadowContent = element.shadowRoot.textContent;
+        if (shadowContent?.trim()) {
+          return shadowContent.trim();
         }
-      
-        if (attribute === 'innerText') {
-            return element.innerText.trim();
-        } else if (attribute === 'innerHTML') {
-            return element.innerHTML.trim();
-        } else if (attribute === 'src' || attribute === 'href') {
-            if (attribute === 'href' && element.tagName !== 'A') {
-                const parentElement = element.parentElement;
-                if (parentElement && parentElement.tagName === 'A') {
-                    const parentHref = parentElement.getAttribute('href');
-                    if (parentHref) {
-                        try {
-                            return new URL(parentHref, baseURL).href;
-                        } catch (e) {
-                            return parentHref;
-                        }
-                    }
-                }
-            }
-            
-            const attrValue = element.getAttribute(attribute);
-            const dataAttr = attrValue || element.getAttribute('data-' + attribute);
-            
-            if (!dataAttr || dataAttr.trim() === '') {
-                if (attribute === 'src') {
-                    const style = window.getComputedStyle(element);
-                    const bgImage = style.backgroundImage;
-                    if (bgImage && bgImage !== 'none') {
-                        const matches = bgImage.match(/url\(['"]?([^'")]+)['"]?\)/);
-                        return matches ? new URL(matches[1], baseURL).href : null;
-                    }
-                }
-                return null;
-            }
-            
-            try {
-                return new URL(dataAttr, baseURL).href;
-            } catch (e) {
-                console.warn('Error creating URL from', dataAttr, e);
-                return dataAttr; // Return the original value if URL construction fails
-            }
-        }
-        return element.getAttribute(attribute);
       }
 
+      if (attribute === "innerText") {
+        // First try standard innerText/textContent
+        let textContent =
+          element.innerText?.trim() || element.textContent?.trim();
+
+        // If empty, check for common data attributes that might contain the text
+        if (!textContent) {
+          const dataAttributes = [
+            "data-600",
+            "data-text",
+            "data-label",
+            "data-value",
+            "data-content",
+          ];
+          for (const attr of dataAttributes) {
+            const dataValue = element.getAttribute(attr);
+            if (dataValue && dataValue.trim()) {
+              textContent = dataValue.trim();
+              break;
+            }
+          }
+        }
+
+        return textContent || null;
+      } else if (attribute === "innerHTML") {
+        return element.innerHTML?.trim() || null;
+      } else if (attribute === "src" || attribute === "href") {
+        if (attribute === "href" && element.tagName !== "A") {
+          const parentElement = element.parentElement;
+          if (parentElement && parentElement.tagName === "A") {
+            const parentHref = parentElement.getAttribute("href");
+            if (parentHref) {
+              try {
+                return new URL(parentHref, baseURL).href;
+              } catch (e) {
+                return parentHref;
+              }
+            }
+          }
+        }
+
+        const attrValue = element.getAttribute(attribute);
+        const dataAttr = attrValue || element.getAttribute("data-" + attribute);
+
+        if (!dataAttr || dataAttr.trim() === "") {
+          if (attribute === "src") {
+            const style = window.getComputedStyle(element);
+            const bgImage = style.backgroundImage;
+            if (bgImage && bgImage !== "none") {
+              const matches = bgImage.match(/url\(['"]?([^'")]+)['"]?\)/);
+              return matches ? new URL(matches[1], baseURL).href : null;
+            }
+          }
+          return null;
+        }
+
+        try {
+          return new URL(dataAttr, baseURL).href;
+        } catch (e) {
+          console.warn("Error creating URL from", dataAttr, e);
+          return dataAttr;
+        }
+      }
+      return element.getAttribute(attribute);
+    };
+
     // Enhanced table ancestor finding with context support
-    function findTableAncestor(element) {
+    const findTableAncestor = (element) => {
       let currentElement = element;
       const MAX_DEPTH = 5;
       let depth = 0;
-      
+
       while (currentElement && depth < MAX_DEPTH) {
-          // Handle shadow DOM
-          if (currentElement.getRootNode() instanceof ShadowRoot) {
-              currentElement = currentElement.getRootNode().host;
-              continue;
+        // Handle shadow DOM
+        if (currentElement.getRootNode() instanceof ShadowRoot) {
+          currentElement = currentElement.getRootNode().host;
+          continue;
+        }
+
+        if (currentElement.tagName === "TD") {
+          return { type: "TD", element: currentElement };
+        } else if (currentElement.tagName === "TR") {
+          return { type: "TR", element: currentElement };
+        }
+
+        // Handle iframe and frame crossing
+        if (
+          currentElement.tagName === "IFRAME" ||
+          currentElement.tagName === "FRAME"
+        ) {
+          try {
+            currentElement = currentElement.contentDocument.body;
+          } catch (e) {
+            return null;
           }
-          
-          if (currentElement.tagName === 'TD') {
-              return { type: 'TD', element: currentElement };
-          } else if (currentElement.tagName === 'TR') {
-              return { type: 'TR', element: currentElement };
-          }
-          
-          // Handle iframe and frame crossing
-          if (currentElement.tagName === 'IFRAME' || currentElement.tagName === 'FRAME') {
-              try {
-                  currentElement = currentElement.contentDocument.body;
-              } catch (e) {
-                  return null;
-              }
-          } else {
-              currentElement = currentElement.parentElement;
-          }
-          depth++;
+        } else {
+          currentElement = currentElement.parentElement;
+        }
+        depth++;
       }
       return null;
-    }
+    };
 
     // Helper function to get cell index
-    function getCellIndex(td) {
+    const getCellIndex = (td) => {
       if (td.getRootNode() instanceof ShadowRoot) {
-          const shadowRoot = td.getRootNode();
-          const allCells = Array.from(shadowRoot.querySelectorAll('td'));
-          return allCells.indexOf(td);
+        const shadowRoot = td.getRootNode();
+        const allCells = Array.from(shadowRoot.querySelectorAll("td"));
+        return allCells.indexOf(td);
       }
-      
+
       let index = 0;
       let sibling = td;
-      while (sibling = sibling.previousElementSibling) {
-          index++;
+      while ((sibling = sibling.previousElementSibling)) {
+        index++;
       }
       return index;
-    }
+    };
 
     // Helper function to check for TH elements
-    function hasThElement(row, tableFields) {
+    const hasThElement = (row, tableFields) => {
       for (const [_, { selector }] of Object.entries(tableFields)) {
-          const element = queryElement(row, selector);
-          if (element) {
-              let current = element;
-              while (current && current !== row) {
-                  if (current.getRootNode() instanceof ShadowRoot) {
-                      current = current.getRootNode().host;
-                      continue;
-                  }
-                  
-                  if (current.tagName === 'TH') return true;
-                  
-                  if (current.tagName === 'IFRAME' || current.tagName === 'FRAME') {
-                      try {
-                          current = current.contentDocument.body;
-                      } catch (e) {
-                          break;
-                      }
-                  } else {
-                      current = current.parentElement;
-                  }
+        const element = queryElement(row, selector);
+        if (element) {
+          let current = element;
+          while (current && current !== row) {
+            if (current.getRootNode() instanceof ShadowRoot) {
+              current = current.getRootNode().host;
+              continue;
+            }
+
+            if (current.tagName === "TH") return true;
+
+            if (current.tagName === "IFRAME" || current.tagName === "FRAME") {
+              try {
+                current = current.contentDocument.body;
+              } catch (e) {
+                break;
               }
+            } else {
+              current = current.parentElement;
+            }
           }
+        }
       }
       return false;
-    }
+    };
 
     // Helper function to filter rows
-    function filterRowsBasedOnTag(rows, tableFields) {
-        for (const row of rows) {
-            if (hasThElement(row, tableFields)) {
-                return rows;
-            }
+    const filterRowsBasedOnTag = (rows, tableFields) => {
+      for (const row of rows) {
+        if (hasThElement(row, tableFields)) {
+          return rows;
         }
-        // Include shadow DOM in TH search
-        return rows.filter(row => {
-            const directTH = row.getElementsByTagName('TH').length === 0;
-            const shadowTH = row.shadowRoot ? 
-                row.shadowRoot.querySelector('th') === null : true;
-            return directTH && shadowTH;
-        });
-    }
+      }
+      return rows.filter((row) => {
+        const directTH = row.getElementsByTagName("TH").length === 0;
+        const shadowTH = row.shadowRoot
+          ? row.shadowRoot.querySelector("th") === null
+          : true;
+        return directTH && shadowTH;
+      });
+    };
 
     // Class similarity comparison functions
-    function calculateClassSimilarity(classList1, classList2) {
-        const set1 = new Set(classList1);
-        const set2 = new Set(classList2);
-        const intersection = new Set([...set1].filter(x => set2.has(x)));
-        const union = new Set([...set1, ...set2]);
-        return intersection.size / union.size;
-    }
+    const calculateClassSimilarity = (classList1, classList2) => {
+      const set1 = new Set(classList1);
+      const set2 = new Set(classList2);
+      const intersection = new Set([...set1].filter((x) => set2.has(x)));
+      const union = new Set([...set1, ...set2]);
+      return intersection.size / union.size;
+    };
 
     // Enhanced similar elements finding with context support
-    function findSimilarElements(baseElement, similarityThreshold = 0.7) {
+    const findSimilarElements = (baseElement, similarityThreshold = 0.7) => {
       const baseClasses = Array.from(baseElement.classList);
       if (baseClasses.length === 0) return [];
 
       const allElements = [];
-      
+
       // Get elements from main document
       allElements.push(...document.getElementsByTagName(baseElement.tagName));
-      
+
       // Get elements from shadow DOM
       if (baseElement.getRootNode() instanceof ShadowRoot) {
-          const shadowHost = baseElement.getRootNode().host;
-          allElements.push(...shadowHost.getElementsByTagName(baseElement.tagName));
+        const shadowHost = baseElement.getRootNode().host;
+        allElements.push(
+          ...shadowHost.getElementsByTagName(baseElement.tagName)
+        );
       }
-      
+
       // Get elements from iframes and frames
       const frames = [
-          ...Array.from(document.getElementsByTagName('iframe')),
-          ...Array.from(document.getElementsByTagName('frame'))
+        ...Array.from(document.getElementsByTagName("iframe")),
+        ...Array.from(document.getElementsByTagName("frame")),
       ];
-      
+
       for (const frame of frames) {
-          try {
-              const frameDoc = frame.contentDocument || frame.contentWindow.document;
-              allElements.push(...frameDoc.getElementsByTagName(baseElement.tagName));
-          } catch (e) {
-              console.warn(`Cannot access ${frame.tagName.toLowerCase()} content:`, e);
-          }
+        try {
+          const frameDoc =
+            frame.contentDocument || frame.contentWindow.document;
+          allElements.push(
+            ...frameDoc.getElementsByTagName(baseElement.tagName)
+          );
+        } catch (e) {
+          console.warn(
+            `Cannot access ${frame.tagName.toLowerCase()} content:`,
+            e
+          );
+        }
       }
 
-      return allElements.filter(element => {
-          if (element === baseElement) return false;
-          const similarity = calculateClassSimilarity(
-              baseClasses,
-              Array.from(element.classList)
-          );
-          return similarity >= similarityThreshold;
+      return allElements.filter((element) => {
+        if (element === baseElement) return false;
+        const similarity = calculateClassSimilarity(
+          baseClasses,
+          Array.from(element.classList)
+        );
+        return similarity >= similarityThreshold;
       });
-    }
+    };
 
-    function tryFallbackSelector(rootElement, originalSelector) {
-        let element = queryElement(rootElement, originalSelector);
-        
-        if (!element && originalSelector.includes('nth-child')) {
-            const match = originalSelector.match(/nth-child\((\d+)\)/);
-            if (match) {
-            const position = parseInt(match[1], 10);
-            
-            for (let i = position - 1; i >= 1; i--) {
-                const fallbackSelector = originalSelector.replace(/nth-child\(\d+\)/, `nth-child(${i})`);
-                element = queryElement(rootElement, fallbackSelector);
-                if (element) break;
-            }
-            
-            if (!element) {
-                const baseSelector = originalSelector.replace(/\:nth-child\(\d+\)/, '');
-                element = queryElement(rootElement, baseSelector);
-            }
-            }
+    const tryFallbackSelector = (rootElement, originalSelector) => {
+      let element = queryElement(rootElement, originalSelector);
+
+      if (!element && originalSelector.includes("nth-child")) {
+        const match = originalSelector.match(/nth-child\((\d+)\)/);
+        if (match) {
+          const position = parseInt(match[1], 10);
+
+          for (let i = position - 1; i >= 1; i--) {
+            const fallbackSelector = originalSelector.replace(
+              /nth-child\(\d+\)/,
+              `nth-child(${i})`
+            );
+            element = queryElement(rootElement, fallbackSelector);
+            if (element) break;
+          }
+
+          if (!element) {
+            const baseSelector = originalSelector.replace(
+              /\:nth-child\(\d+\)/,
+              ""
+            );
+            element = queryElement(rootElement, baseSelector);
+          }
         }
-        
-        return element;
-    }
+      }
 
-    // Main scraping logic with context support
+      return element;
+    };
+
+    // Create indexed XPath for specific container instance
+    const createIndexedXPath = (
+      childSelector,
+      listSelector,
+      containerIndex
+    ) => {
+      // Check if the child selector contains the list selector pattern
+      if (childSelector.includes(listSelector.replace("//", ""))) {
+        // Replace the list selector part with indexed version
+        const listPattern = listSelector.replace("//", "");
+        const indexedListSelector = `(${listSelector})[${containerIndex}]`;
+
+        const indexedSelector = childSelector.replace(
+          `//${listPattern}`,
+          indexedListSelector
+        );
+
+        return indexedSelector;
+      } else {
+        // If pattern doesn't match, create a more generic indexed selector
+        return `(${listSelector})[${containerIndex}]${childSelector.replace(
+          "//",
+          "/"
+        )}`;
+      }
+    };
+
+    // Main scraping logic with unified support for both CSS and XPath
+    console.log("🚀 Starting unified list data extraction");
+    console.log("List Selector:", listSelector);
+    console.log("Fields:", fields);
+
     let containers = queryElementAll(document, listSelector);
     containers = Array.from(containers);
 
-    if (containers.length === 0) return [];
+    if (containers.length === 0) {
+      console.warn("❌ No containers found for listSelector:", listSelector);
+      return [];
+    }
 
-    if (limit > 1 && containers.length === 1) {
+    console.log(`📦 Found ${containers.length} list containers`);
+
+    // For CSS selectors, try to find similar containers if needed
+    if (
+      !isXPathSelector(listSelector) &&
+      limit > 1 &&
+      containers.length === 1
+    ) {
       const baseContainer = containers[0];
       const similarContainers = findSimilarElements(baseContainer);
-      
+
       if (similarContainers.length > 0) {
-          const newContainers = similarContainers.filter(container => 
-              !container.matches(listSelector)
-          );
-          containers = [...containers, ...newContainers];
+        const newContainers = similarContainers.filter(
+          (container) => !container.matches(listSelector)
+        );
+        containers = [...containers, ...newContainers];
       }
     }
 
     const containerFields = containers.map(() => ({
       tableFields: {},
-      nonTableFields: {}
+      nonTableFields: {},
     }));
 
-    // Classify fields
+    // For XPath selectors, use the new approach
+    if (isXPathSelector(listSelector)) {
+      const extractedData = [];
+      const containersToProcess = Math.min(containers.length, limit);
+
+      for (
+        let containerIndex = 0;
+        containerIndex < containersToProcess;
+        containerIndex++
+      ) {
+        const record = {};
+
+        for (const [label, field] of Object.entries(fields)) {
+          let element = null;
+
+          if (isXPathSelector(field.selector)) {
+            // Create indexed absolute XPath
+            const indexedSelector = createIndexedXPath(
+              field.selector,
+              listSelector,
+              containerIndex + 1
+            );
+            element = evaluateXPath(document, indexedSelector);
+          } else {
+            // Fallback for CSS selectors within XPath containers
+            const container = containers[containerIndex];
+            element = queryElement(container, field.selector);
+          }
+
+          if (element) {
+            const value = extractValue(element, field.attribute);
+            if (value !== null && value !== "") {
+              record[label] = value;
+            } else {
+              record[label] = "";
+            }
+          } else {
+            record[label] = "";
+          }
+        }
+
+        if (Object.values(record).some((value) => value !== "")) {
+          extractedData.push(record);
+        }
+      }
+
+      console.log(`📊 Total records extracted: ${extractedData.length}`);
+      return extractedData;
+    }
+
+    // For CSS selectors, use the original table-aware approach
     containers.forEach((container, containerIndex) => {
       for (const [label, field] of Object.entries(fields)) {
         const sampleElement = queryElement(container, field.selector);
-        
+
         if (sampleElement) {
-            const ancestor = findTableAncestor(sampleElement);
-            if (ancestor) {
-                containerFields[containerIndex].tableFields[label] = {
-                    ...field,
-                    tableContext: ancestor.type,
-                    cellIndex: ancestor.type === 'TD' ? getCellIndex(ancestor.element) : -1
-                };
-            } else {
-                containerFields[containerIndex].nonTableFields[label] = field;
-            }
-        } else {
+          const ancestor = findTableAncestor(sampleElement);
+          if (ancestor) {
+            containerFields[containerIndex].tableFields[label] = {
+              ...field,
+              tableContext: ancestor.type,
+              cellIndex:
+                ancestor.type === "TD" ? getCellIndex(ancestor.element) : -1,
+            };
+          } else {
             containerFields[containerIndex].nonTableFields[label] = field;
+          }
+        } else {
+          containerFields[containerIndex].nonTableFields[label] = field;
         }
       }
     });
@@ -798,149 +1073,192 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
     const nonTableData = [];
 
     // Process table data with support for iframes, frames, and shadow DOM
-    for (let containerIndex = 0; containerIndex < containers.length; containerIndex++) {
+    for (
+      let containerIndex = 0;
+      containerIndex < containers.length;
+      containerIndex++
+    ) {
       const container = containers[containerIndex];
       const { tableFields } = containerFields[containerIndex];
 
       if (Object.keys(tableFields).length > 0) {
-          const firstField = Object.values(tableFields)[0];
-          const firstElement = queryElement(container, firstField.selector);
-          let tableContext = firstElement;
-          
-          // Find table context including iframe, frame and shadow DOM
-          while (tableContext && tableContext.tagName !== 'TABLE' && tableContext !== container) {
-              if (tableContext.getRootNode() instanceof ShadowRoot) {
-                  tableContext = tableContext.getRootNode().host;
-                  continue;
-              }
-              
-              if (tableContext.tagName === 'IFRAME' || tableContext.tagName === 'FRAME') {
-                  try {
-                      tableContext = tableContext.contentDocument.body;
-                  } catch (e) {
-                      break;
+        const firstField = Object.values(tableFields)[0];
+        const firstElement = queryElement(container, firstField.selector);
+        let tableContext = firstElement;
+
+        // Find table context including iframe, frame and shadow DOM
+        while (
+          tableContext &&
+          tableContext.tagName !== "TABLE" &&
+          tableContext !== container
+        ) {
+          if (tableContext.getRootNode() instanceof ShadowRoot) {
+            tableContext = tableContext.getRootNode().host;
+            continue;
+          }
+
+          if (
+            tableContext.tagName === "IFRAME" ||
+            tableContext.tagName === "FRAME"
+          ) {
+            try {
+              tableContext = tableContext.contentDocument.body;
+            } catch (e) {
+              break;
+            }
+          } else {
+            tableContext = tableContext.parentElement;
+          }
+        }
+
+        if (tableContext) {
+          // Get rows from all contexts
+          const rows = [];
+
+          // Get rows from regular DOM
+          rows.push(...tableContext.getElementsByTagName("TR"));
+
+          // Get rows from shadow DOM
+          if (tableContext.shadowRoot) {
+            rows.push(...tableContext.shadowRoot.getElementsByTagName("TR"));
+          }
+
+          // Get rows from iframes and frames
+          if (
+            tableContext.tagName === "IFRAME" ||
+            tableContext.tagName === "FRAME"
+          ) {
+            try {
+              const frameDoc =
+                tableContext.contentDocument ||
+                tableContext.contentWindow.document;
+              rows.push(...frameDoc.getElementsByTagName("TR"));
+            } catch (e) {
+              console.warn(
+                `Cannot access ${tableContext.tagName.toLowerCase()} rows:`,
+                e
+              );
+            }
+          }
+
+          const processedRows = filterRowsBasedOnTag(rows, tableFields);
+
+          for (
+            let rowIndex = 0;
+            rowIndex < Math.min(processedRows.length, limit);
+            rowIndex++
+          ) {
+            const record = {};
+            const currentRow = processedRows[rowIndex];
+
+            for (const [
+              label,
+              { selector, attribute, cellIndex },
+            ] of Object.entries(tableFields)) {
+              let element = null;
+
+              if (cellIndex >= 0) {
+                // Get TD element considering both contexts
+                let td = currentRow.children[cellIndex];
+
+                // Check shadow DOM for td
+                if (!td && currentRow.shadowRoot) {
+                  const shadowCells = currentRow.shadowRoot.children;
+                  if (shadowCells && shadowCells.length > cellIndex) {
+                    td = shadowCells[cellIndex];
                   }
+                }
+
+                if (td) {
+                  element = queryElement(td, selector);
+
+                  if (
+                    !element &&
+                    selector
+                      .split(/(?:>>|:>>)/)
+                      .pop()
+                      .includes("td:nth-child")
+                  ) {
+                    element = td;
+                  }
+
+                  if (!element) {
+                    const tagOnlySelector = selector.split(".")[0];
+                    element = queryElement(td, tagOnlySelector);
+                  }
+
+                  if (!element) {
+                    let currentElement = td;
+                    while (
+                      currentElement &&
+                      currentElement.children.length > 0
+                    ) {
+                      let foundContentChild = false;
+                      for (const child of currentElement.children) {
+                        if (extractValue(child, attribute)) {
+                          currentElement = child;
+                          foundContentChild = true;
+                          break;
+                        }
+                      }
+                      if (!foundContentChild) break;
+                    }
+                    element = currentElement;
+                  }
+                }
               } else {
-                  tableContext = tableContext.parentElement;
+                element = queryElement(currentRow, selector);
               }
+
+              if (element) {
+                record[label] = extractValue(element, attribute);
+              }
+            }
+
+            if (Object.keys(record).length > 0) {
+              tableData.push(record);
+            }
           }
-
-          if (tableContext) {
-              // Get rows from all contexts
-              const rows = [];
-              
-              // Get rows from regular DOM
-              rows.push(...tableContext.getElementsByTagName('TR'));
-              
-              // Get rows from shadow DOM
-              if (tableContext.shadowRoot) {
-                  rows.push(...tableContext.shadowRoot.getElementsByTagName('TR'));
-              }
-              
-              // Get rows from iframes and frames
-              if (tableContext.tagName === 'IFRAME' || tableContext.tagName === 'FRAME') {
-                  try {
-                      const frameDoc = tableContext.contentDocument || tableContext.contentWindow.document;
-                      rows.push(...frameDoc.getElementsByTagName('TR'));
-                  } catch (e) {
-                      console.warn(`Cannot access ${tableContext.tagName.toLowerCase()} rows:`, e);
-                  }
-              }
-              
-              const processedRows = filterRowsBasedOnTag(rows, tableFields);
-              
-              for (let rowIndex = 0; rowIndex < Math.min(processedRows.length, limit); rowIndex++) {
-                  const record = {};
-                  const currentRow = processedRows[rowIndex];
-                  
-                  for (const [label, { selector, attribute, cellIndex }] of Object.entries(tableFields)) {
-                      let element = null;
-                      
-                      if (cellIndex >= 0) {
-                          // Get TD element considering both contexts
-                          let td = currentRow.children[cellIndex];
-                          
-                          // Check shadow DOM for td
-                          if (!td && currentRow.shadowRoot) {
-                              const shadowCells = currentRow.shadowRoot.children;
-                              if (shadowCells && shadowCells.length > cellIndex) {
-                                  td = shadowCells[cellIndex];
-                              }
-                          }
-                          
-                          if (td) {
-                              element = queryElement(td, selector);
-                              
-                              if (!element && selector.split(/(?:>>|:>>)/).pop().includes('td:nth-child')) {
-                                  element = td;
-                              }
-
-                              if (!element) {
-                                  const tagOnlySelector = selector.split('.')[0];
-                                  element = queryElement(td, tagOnlySelector);
-                              }
-                              
-                              if (!element) {
-                                  let currentElement = td;
-                                  while (currentElement && currentElement.children.length > 0) {
-                                      let foundContentChild = false;
-                                      for (const child of currentElement.children) {
-                                          if (extractValue(child, attribute)) {
-                                              currentElement = child;
-                                              foundContentChild = true;
-                                              break;
-                                          }
-                                      }
-                                      if (!foundContentChild) break;
-                                  }
-                                  element = currentElement;
-                              }
-                          }
-                      } else {
-                          element = queryElement(currentRow, selector);
-                      }
-                      
-                      if (element) {
-                          record[label] = extractValue(element, attribute);
-                      }
-                  }
-
-                  if (Object.keys(record).length > 0) {
-                      tableData.push(record);
-                  }
-              }
-          }
+        }
       }
     }
 
     // Process non-table data with all contexts support
-    for (let containerIndex = 0; containerIndex < containers.length; containerIndex++) {
+    for (
+      let containerIndex = 0;
+      containerIndex < containers.length;
+      containerIndex++
+    ) {
       if (nonTableData.length >= limit) break;
 
       const container = containers[containerIndex];
       const { nonTableFields } = containerFields[containerIndex];
 
       if (Object.keys(nonTableFields).length > 0) {
-          const record = {};
+        const record = {};
 
-          for (const [label, { selector, attribute }] of Object.entries(nonTableFields)) {
-              // Get the last part of the selector after any context delimiter
-              const relativeSelector = selector.split(/(?:>>|:>>)/).slice(-1)[0];
-              const element = tryFallbackSelector(container, relativeSelector);
-              
-              if (element) {
-                  record[label] = extractValue(element, attribute);
-              }
+        for (const [label, { selector, attribute }] of Object.entries(
+          nonTableFields
+        )) {
+          // Get the last part of the selector after any context delimiter
+          const relativeSelector = selector.split(/(?:>>|:>>)/).slice(-1)[0];
+          const element = tryFallbackSelector(container, relativeSelector);
+
+          if (element) {
+            record[label] = extractValue(element, attribute);
           }
-              
-          if (Object.keys(record).length > 0) {
-              nonTableData.push(record);
-          }
-      }  
+        }
+
+        if (Object.keys(record).length > 0) {
+          nonTableData.push(record);
+        }
+      }
     }
-      
+
     // Merge and limit the results
     const scrapedData = [...tableData, ...nonTableData];
+    console.log(`📊 Total records extracted: ${scrapedData.length}`);
+
     return scrapedData;
   };
 

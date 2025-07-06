@@ -27,6 +27,41 @@ interface ScheduleConfig {
     cronExpression?: string;
 }
 
+interface ProcessedSnapshot {
+  snapshot: any;
+  resources: {
+    stylesheets: Array<{
+      href: string;
+      content: string;
+      media?: string;
+    }>;
+    images: Array<{
+      src: string;
+      dataUrl: string;
+      alt?: string;
+    }>;
+    fonts: Array<{
+      url: string;
+      dataUrl: string;
+      format?: string;
+    }>;
+    scripts: Array<{
+      src: string;
+      content: string;
+      type?: string;
+    }>;
+    media: Array<{
+      src: string;
+      dataUrl: string;
+      type: string;
+    }>;
+  };
+  baseUrl: string;
+  viewport: { width: number; height: number };
+  timestamp: number;
+  processingStats: any;
+}
+
 export interface RobotSettings {
     id: string;
     userId?: number;
@@ -86,6 +121,11 @@ interface GlobalInfo {
   setCurrentListActionId: (actionId: string) => void;
   currentScreenshotActionId: string;
   setCurrentScreenshotActionId: (actionId: string) => void;
+  isDOMMode: boolean;
+  setIsDOMMode: (isDOMMode: boolean) => void;
+  currentSnapshot: ProcessedSnapshot | null;
+  setCurrentSnapshot: (snapshot: ProcessedSnapshot | null) => void;
+  updateDOMMode: (isDOMMode: boolean, snapshot?: ProcessedSnapshot | null) => void;
 };
 
 class GlobalInfoStore implements Partial<GlobalInfo> {
@@ -115,6 +155,8 @@ class GlobalInfoStore implements Partial<GlobalInfo> {
   currentTextActionId = '';
   currentListActionId = '';
   currentScreenshotActionId = '';
+  isDOMMode = false;
+  currentSnapshot = null;
 };
 
 const globalInfoStore = new GlobalInfoStore();
@@ -141,6 +183,8 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
   const [currentTextActionId, setCurrentTextActionId] = useState<string>('');
   const [currentListActionId, setCurrentListActionId] = useState<string>('');
   const [currentScreenshotActionId, setCurrentScreenshotActionId] = useState<string>('');
+  const [isDOMMode, setIsDOMMode] = useState<boolean>(globalInfoStore.isDOMMode);
+  const [currentSnapshot, setCurrentSnapshot] = useState<ProcessedSnapshot | null>(globalInfoStore.currentSnapshot);
 
   const notify = (severity: 'error' | 'warning' | 'info' | 'success', message: string) => {
     setNotification({ severity, message, isOpen: true });
@@ -163,6 +207,18 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
     setTimeout(() => {
       setShouldResetInterpretationLog(false);
     }, 100);
+  }
+
+  const updateDOMMode = (mode: boolean, snapshot?: ProcessedSnapshot | null) => {
+    setIsDOMMode(mode);
+    
+    if (snapshot !== undefined) {
+      setCurrentSnapshot(snapshot);
+    }
+    
+    if (!mode) {
+      setCurrentSnapshot(null);
+    }
   }
 
   return (
@@ -205,6 +261,11 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
         setCurrentListActionId,
         currentScreenshotActionId,
         setCurrentScreenshotActionId,
+        isDOMMode,
+        setIsDOMMode,
+        currentSnapshot,
+        setCurrentSnapshot,
+        updateDOMMode,
       }}
     >
       {children}
