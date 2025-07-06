@@ -835,13 +835,13 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
 
         if (headTagRegex.test(rebuiltHTML)) {
           rebuiltHTML = rebuiltHTML.replace(
-            headTagRegex,
-            `<head>${cssInjection}`
+            "<head>",
+            `<head><base href="${snapshotData.baseUrl}">${minimalCSS}`
           );
-        } else {
+        } else if (rebuiltHTML.includes("<html>")) {
           rebuiltHTML = rebuiltHTML.replace(
-            /<html[^>]*>/i,
-            `<html><head>${cssInjection}</head>`
+            "<html>",
+            `<html><head><base href="${snapshotData.baseUrl}">${minimalCSS}</head>`
           );
         }
 
