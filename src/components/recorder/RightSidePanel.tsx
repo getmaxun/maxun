@@ -53,10 +53,8 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const [isCaptureTextConfirmed, setIsCaptureTextConfirmed] = useState(false);
   const [isCaptureListConfirmed, setIsCaptureListConfirmed] = useState(false);
   const { panelHeight } = useBrowserDimensionsStore();
-  const [isDOMMode, setIsDOMMode] = useState(false);
-  const [currentSnapshot, setCurrentSnapshot] = useState<any>(null);
 
-  const { lastAction, notify, currentWorkflowActionsState, setCurrentWorkflowActionsState, resetInterpretationLog, currentListActionId, setCurrentListActionId, currentTextActionId, setCurrentTextActionId, currentScreenshotActionId, setCurrentScreenshotActionId } = useGlobalInfoStore();  
+  const { lastAction, notify, currentWorkflowActionsState, setCurrentWorkflowActionsState, resetInterpretationLog, currentListActionId, setCurrentListActionId, currentTextActionId, setCurrentTextActionId, currentScreenshotActionId, setCurrentScreenshotActionId, updateDOMMode, currentSnapshot, isDOMMode } = useGlobalInfoStore();  
   const { 
     getText, startGetText, stopGetText, 
     getList, startGetList, stopGetList, 
@@ -87,22 +85,20 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     if (socket) {
       const domModeHandler = (data: any) => {
         if (!data.userId || data.userId === id) {
-          setIsDOMMode(true);
+          updateDOMMode(true);
         }
       };
 
       const screenshotModeHandler = (data: any) => {
         if (!data.userId || data.userId === id) {
-          setIsDOMMode(false);
-          setCurrentSnapshot(null);
+          updateDOMMode(false);
         }
       };
 
       const domcastHandler = (data: any) => {
         if (!data.userId || data.userId === id) {
           if (data.snapshotData && data.snapshotData.snapshot) {
-            setCurrentSnapshot(data.snapshotData);
-            setIsDOMMode(true);
+            updateDOMMode(true, data.snapshotData);
           }
         }
       };
@@ -117,7 +113,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         socket.off("domcast", domcastHandler);
       };
     }
-  }, [socket, id]);
+  }, [socket, id, updateDOMMode]);
 
   useEffect(() => {
     if (socket) {
@@ -461,6 +457,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     resetInterpretationLog();
     finishAction('text'); 
     onFinishCapture();
+    clientSelectorGenerator.cleanup();
   }, [stopGetText, getTextSettingsObject, socket, browserSteps, confirmedTextSteps, resetInterpretationLog, finishAction, notify, onFinishCapture, t]);
 
   const getListSettingsObject = useCallback(() => {
@@ -512,6 +509,8 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
 
   const stopCaptureAndEmitGetListSettings = useCallback(() => {
     const settings = getListSettingsObject();
+
+    console.log("rrwebSnapshotHandler", settings);
     
     const latestListStep = getLatestListStep(browserSteps);
     if (latestListStep && settings) {
@@ -657,6 +656,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     
     setCurrentTextActionId('');
     setIsCaptureTextConfirmed(false);
+    clientSelectorGenerator.cleanup();
     notify('error', t('right_panel.errors.capture_text_discarded'));
   }, [currentTextActionId, browserSteps, stopGetText, deleteStepsByActionId, notify, t]);
 
@@ -687,6 +687,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     setCaptureStage('initial');
     setCurrentListActionId('');
     setIsCaptureListConfirmed(false);
+    clientSelectorGenerator.cleanup();
     notify('error', t('right_panel.errors.capture_list_discarded'));
   }, [currentListActionId, browserSteps, stopGetList, deleteStepsByActionId, resetListState, setShowPaginationOptions, setShowLimitOptions, setCaptureStage, notify, t]);
 
@@ -705,6 +706,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     stopGetScreenshot();
     resetInterpretationLog();
     finishAction('screenshot');
+    clientSelectorGenerator.cleanup();
     onFinishCapture();
   };
 
