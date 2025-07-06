@@ -153,8 +153,6 @@ export const BrowserWindow = () => {
     const [selectedElement, setSelectedElement] = useState<{ selector: string, info: ElementInfo | null } | null>(null);
     const [currentListId, setCurrentListId] = useState<number | null>(null);
     const [viewportInfo, setViewportInfo] = useState<ViewportInfo>({ width: browserWidth, height: browserHeight });
-    const [isDOMMode, setIsDOMMode] = useState(false);
-    const [currentSnapshot, setCurrentSnapshot] = useState<ProcessedSnapshot | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [cachedChildSelectors, setCachedChildSelectors] = useState<string[]>([]);
 
@@ -165,7 +163,7 @@ export const BrowserWindow = () => {
     const highlighterUpdateRef = useRef<number>(0);
 
     const { socket } = useSocketStore();
-    const { notify, currentTextActionId, currentListActionId } = useGlobalInfoStore();
+    const { notify, currentTextActionId, currentListActionId, updateDOMMode, isDOMMode, currentSnapshot } = useGlobalInfoStore();
     const { getText, getList, paginationMode, paginationType, limitMode, captureStage } = useActionContext();
     const { addTextStep, addListStep, updateListStepData } = useBrowserSteps();
 
@@ -250,51 +248,47 @@ export const BrowserWindow = () => {
         (data: RRWebDOMCastData) => {
         if (!data.userId || data.userId === user?.id) {
             if (data.snapshotData && data.snapshotData.snapshot) {
-                setCurrentSnapshot(data.snapshotData);
-                setIsDOMMode(true);
+                updateDOMMode(true, data.snapshotData);
                 socket?.emit("dom-mode-enabled");
-
                 setIsLoading(false);
             } else {
                 setIsLoading(false);
             }
         }
         },
-        [user?.id, socket]
+        [user?.id, socket, updateDOMMode]
     );
 
     const domModeHandler = useCallback(
         (data: any) => {
             if (!data.userId || data.userId === user?.id) {
-                setIsDOMMode(true);
+                updateDOMMode(true);
                 socket?.emit("dom-mode-enabled");
                 setIsLoading(false);
             }
         },
-        [user?.id, socket]
+        [user?.id, socket, updateDOMMode]
     );
 
     const screenshotModeHandler = useCallback(
         (data: any) => {
             if (!data.userId || data.userId === user?.id) {
-                setIsDOMMode(false);
+                updateDOMMode(false);
                 socket?.emit("screenshot-mode-enabled");
-                setCurrentSnapshot(null);
                 setIsLoading(false);
             }
         },
-        [user?.id]
+        [user?.id, updateDOMMode]
     );
 
     const domModeErrorHandler = useCallback(
         (data: any) => {
             if (!data.userId || data.userId === user?.id) {
-                setIsDOMMode(false);
-                setCurrentSnapshot(null);
+                updateDOMMode(false);
                 setIsLoading(false);
             }
         },
-        [user?.id]
+        [user?.id, updateDOMMode]
     );
 
     useEffect(() => {
@@ -395,7 +389,7 @@ export const BrowserWindow = () => {
             socket.on("screencast", screencastHandler);
             socket.on("domcast", rrwebSnapshotHandler);
             socket.on("dom-mode-enabled", domModeHandler);
-            socket.on("screenshot-mode-enabled", screenshotModeHandler);
+            // socket.on("screenshot-mode-enabled", screenshotModeHandler);
             socket.on("dom-mode-error", domModeErrorHandler);
         }
 
@@ -409,7 +403,7 @@ export const BrowserWindow = () => {
                 socket.off("screencast", screencastHandler);
                 socket.off("domcast", rrwebSnapshotHandler);
                 socket.off("dom-mode-enabled", domModeHandler);
-                socket.off("screenshot-mode-enabled", screenshotModeHandler);
+                // socket.off("screenshot-mode-enabled", screenshotModeHandler);
                 socket.off("dom-mode-error", domModeErrorHandler);
             }
         };
@@ -421,7 +415,7 @@ export const BrowserWindow = () => {
         screencastHandler,
         rrwebSnapshotHandler,
         domModeHandler,
-        screenshotModeHandler,
+        // screenshotModeHandler,
         domModeErrorHandler,
     ]);
 
