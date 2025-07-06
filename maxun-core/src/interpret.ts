@@ -805,10 +805,53 @@ export default class Interpreter extends EventEmitter {
             let retryCount = 0;
             let paginationSuccess = false;
             
-            // Capture basic content signature before click
+            // Capture basic content signature before click - with XPath support
             const captureContentSignature = async () => {
-              return await page.evaluate((selector) => {
-                const items = document.querySelectorAll(selector);
+              return await page.evaluate((listSelector) => {
+                const isXPath = (selector: string) => {
+                  return selector.startsWith('//') || selector.startsWith('./') || selector.includes('::');
+                };
+                
+                let items: NodeListOf<Element> | Element[] = [];
+                
+                if (isXPath(listSelector)) {
+                  try {
+                    // Use XPath to find elements
+                    const xpathResult = document.evaluate(
+                      listSelector,
+                      document,
+                      null,
+                      XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+                      null
+                    );
+                    
+                    items = [];
+                    for (let i = 0; i < xpathResult.snapshotLength; i++) {
+                      const node = xpathResult.snapshotItem(i);
+                      if (node && node.nodeType === Node.ELEMENT_NODE) {
+                        items.push(node as Element);
+                      }
+                    }
+                  } catch (xpathError) {
+                    console.warn('XPath evaluation failed, trying CSS selector as fallback:', xpathError);
+                    // Fallback to CSS selector
+                    try {
+                      items = document.querySelectorAll(listSelector);
+                    } catch (cssError) {
+                      console.warn('CSS selector fallback also failed:', cssError);
+                      items = [];
+                    }
+                  }
+                } else {
+                  try {
+                    // Use CSS selector
+                    items = document.querySelectorAll(listSelector);
+                  } catch (cssError) {
+                    console.warn('CSS selector failed:', cssError);
+                    items = [];
+                  }
+                }
+                
                 return {
                   url: window.location.href,
                   itemCount: items.length,
