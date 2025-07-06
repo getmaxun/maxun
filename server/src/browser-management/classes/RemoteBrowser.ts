@@ -1654,6 +1654,8 @@ export class RemoteBrowser {
         this.networkRequestTimeout = null;
       }
 
+      this.pendingNetworkRequests = [];
+
       if (this.client) {
         try {
           await this.client.send("DOM.disable");
@@ -1666,7 +1668,7 @@ export class RemoteBrowser {
       logger.info("DOM streaming stopped successfully");
     }
 
-    /**
+    /**rrweb-bundle
      * Terminates the screencast session and closes the remote browser.
      * If an interpretation was running it will be stopped.
      * @returns {Promise<void>}

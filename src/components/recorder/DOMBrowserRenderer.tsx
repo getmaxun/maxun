@@ -859,15 +859,17 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
               max-width: 100% !important;
               height: auto !important;
           }
+
           
           /* Make everything interactive */
           * { 
               cursor: "pointer" !important; 
           }
-          
+
           /* Additional CSS from resources */
           ${additionalCSS.join("\n\n")}
       `;
+
 
         const headTagRegex = /<head[^>]*>/i;
         const cssInjection = `
