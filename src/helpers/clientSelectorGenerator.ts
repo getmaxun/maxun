@@ -3508,14 +3508,7 @@ class ClientSelectorGenerator {
       this.getList
     );
 
-    const selectorBasedOnCustomAction =
-      this.getList === true
-        ? this.getNonUniqueSelectors(
-            iframeDocument,
-            coordinates,
-            this.listSelector
-          )
-        : this.getSelectors(iframeDocument, coordinates);
+    const selectorBasedOnCustomAction = this.getSelectors(iframeDocument, coordinates);
 
     if (this.paginationMode && selectorBasedOnCustomAction) {
       // Chain selectors in specific priority order
