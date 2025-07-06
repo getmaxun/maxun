@@ -741,7 +741,7 @@ export const BrowserWindow = () => {
           notify(
             `info`,
             t(
-              "browser_window.attribute_modal.notifications.group_select_success",
+              "browser_window.attribute_modal.notifications.list_select_success",
               {
                 count: highlighterData.groupInfo.groupSize,
               }
