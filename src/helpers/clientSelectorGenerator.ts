@@ -2820,6 +2820,11 @@ class ClientSelectorGenerator {
     contextNode: Document | ShadowRoot
   ): HTMLElement[] {
     try {
+      if (!this.isXPathSelector(xpath)) {
+        console.warn("Selector doesn't appear to be XPath:", xpath);
+        return [];
+      }
+
       const document =
         contextNode instanceof ShadowRoot
           ? (contextNode.host as HTMLElement).ownerDocument
@@ -2847,11 +2852,28 @@ class ClientSelectorGenerator {
     }
   }
 
+  private isXPathSelector(selector: string): boolean {
+    return selector.startsWith('//') || 
+      selector.startsWith('/') || 
+      selector.startsWith('./') ||
+      selector.includes('contains(@') ||
+      selector.includes('[count(') ||
+      selector.includes('@class=') ||
+      selector.includes('@id=') ||
+      selector.includes(' and ') ||
+      selector.includes(' or ');
+  }
+
   private fallbackXPathEvaluation(
     xpath: string,
     contextNode: Document | ShadowRoot
   ): HTMLElement[] {
     try {
+      if (this.isXPathSelector(xpath)) {
+        console.warn("⚠️ Complex XPath not supported in fallback:", xpath);
+        return [];
+      }
+
       const simpleTagMatch = xpath.match(/^\/\/(\w+)$/);
       if (simpleTagMatch) {
         const tagName = simpleTagMatch[1];
