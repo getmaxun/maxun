@@ -2,7 +2,7 @@ import {
   ONE_PERCENT_OF_VIEWPORT_H,
   ONE_PERCENT_OF_VIEWPORT_W,
 } from "../constants/const";
-import { Coordinates } from '../components/recorder/canvas';
+import { Coordinates } from '../components/recorder/Canvas';
 
 export const throttle = (callback: any, limit: number) => {
   let wait = false;
