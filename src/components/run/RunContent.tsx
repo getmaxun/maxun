@@ -194,17 +194,27 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   };
 
   // Function to convert table data to CSV format
-  const convertToCSV = (data: any[], columns: string[]): string => {
-    const header = columns.join(',');
-    const rows = data.map(row =>
-      columns.map(col => JSON.stringify(row[col] || "", null, 2)).join(',')
-    );
-    return [header, ...rows].join('\n');
+  const convertToCSV = (data: any[], columns: string[], isSchemaData: boolean = false): string => {
+    if (isSchemaData) {
+      // For schema data, export as Label-Value pairs
+      const header = 'Label,Value';
+      const rows = columns.map(column => 
+        `"${column}","${data[0][column] || ""}"`
+      );
+      return [header, ...rows].join('\n');
+    } else {
+      // For regular table data, export as normal table
+      const header = columns.join(',');
+      const rows = data.map(row =>
+        columns.map(col => JSON.stringify(row[col] || "", null, 2)).join(',')
+      );
+      return [header, ...rows].join('\n');
+    }
   };
 
   // Function to download a specific dataset as CSV
-  const downloadCSV = (data: any[], columns: string[], filename: string) => {
-    const csvContent = convertToCSV(data, columns);
+  const downloadCSV = (data: any[], columns: string[], filename: string, isSchemaData: boolean = false) => {
+    const csvContent = convertToCSV(data, columns, isSchemaData);
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
 
@@ -304,7 +314,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
               <Button 
                 component="a"
-                onClick={() => downloadCSV(currentData, currentColumns, csvFilename)}
+                onClick={() => downloadCSV(currentData, currentColumns, csvFilename, isSchemaData)}
                 sx={{ 
                   color: '#FF00C3', 
                   textTransform: 'none',
