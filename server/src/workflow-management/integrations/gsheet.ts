@@ -114,7 +114,16 @@ async function processOutputType(
     
     await ensureSheetExists(spreadsheetId, sheetName, robotConfig);
     
-    await writeDataToSheet(robotId, spreadsheetId, data, sheetName, robotConfig);
+    let formattedData = data;
+    if (outputType === 'Text' && data.length > 0) {
+      const schemaItem = data[0];
+      formattedData = Object.entries(schemaItem).map(([key, value]) => ({
+        Label: key,
+        Value: value
+      }));
+    }
+    
+    await writeDataToSheet(robotId, spreadsheetId, formattedData, sheetName, robotConfig);
     console.log(`Data written to ${sheetName} sheet for ${outputType} data`);
   }
 }
