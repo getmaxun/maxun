@@ -48,14 +48,6 @@ async function refreshAirtableToken(refreshToken: string) {
 function mergeRelatedData(serializableOutput: SerializableOutput, binaryOutput: Record<string, string>) {
   const allRecords: Record<string, any>[] = [];
   
-  // Process all data types together, not separately
-  // This creates an interleaved/mixed result like in your image
-  
-  let schemaIndex = 0;
-  let listIndex = 0;
-  let screenshotIndex = 0;
-  
-  // Flatten all data arrays for processing
   const schemaData: Array<{key: string, value: any}> = [];
   const listData: any[] = [];
   const screenshotData: Array<{key: string, url: string}> = [];
@@ -104,13 +96,11 @@ function mergeRelatedData(serializableOutput: SerializableOutput, binaryOutput: 
   for (let i = 0; i < maxLength; i++) {
     const record: Record<string, any> = {};
     
-    // Add schema data if available
     if (i < schemaData.length) {
       record.Label = schemaData[i].key;
       record.Value = schemaData[i].value;
     }
     
-    // Add list data if available
     if (i < listData.length) {
       Object.entries(listData[i]).forEach(([key, value]) => {
         if (value !== null && value !== undefined && value !== '') {
@@ -119,22 +109,16 @@ function mergeRelatedData(serializableOutput: SerializableOutput, binaryOutput: 
       });
     }
     
-    // Add screenshot data if available
     if (i < screenshotData.length) {
       record.Key = screenshotData[i].key;
       record.Screenshot = screenshotData[i].url;
     }
     
-    // Only add record if it has at least one value
     if (Object.keys(record).length > 0) {
       allRecords.push(record);
     }
   }
   
-  // Add any remaining data that didn't fit in the parallel processing
-  // This handles cases where one data type has significantly more records than others
-  
-  // Add remaining schema data
   for (let i = maxLength; i < schemaData.length; i++) {
     allRecords.push({
       Label: schemaData[i].key,
@@ -142,12 +126,10 @@ function mergeRelatedData(serializableOutput: SerializableOutput, binaryOutput: 
     });
   }
   
-  // Add remaining list data
   for (let i = maxLength; i < listData.length; i++) {
     allRecords.push(listData[i]);
   }
   
-  // Add remaining screenshot data
   for (let i = maxLength; i < screenshotData.length; i++) {
     allRecords.push({
       Key: screenshotData[i].key,
