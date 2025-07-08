@@ -1,7 +1,7 @@
 import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useSocketStore } from '../../context/socket';
 import { Button } from '@mui/material';
-import Canvas from "../recorder/canvas";
+import Canvas from "../recorder/Canvas";
 import { Highlighter } from "../recorder/Highlighter";
 import { GenericModal } from '../ui/GenericModal';
 import { useActionContext } from '../../context/browserActions';
@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../../context/auth';
 import { coordinateMapper } from '../../helpers/coordinateMapper';
 import { useBrowserDimensionsStore } from '../../context/browserDimensions';
-import { clientSelectorGenerator } from "../../helpers/clientSelectorGenerator";
+import { clientSelectorGenerator, ElementFingerprint } from "../../helpers/clientSelectorGenerator";
 import DatePicker from "../pickers/DatePicker";
 import Dropdown from "../pickers/Dropdown";
 import TimePicker from "../pickers/TimePicker";
@@ -147,15 +147,14 @@ export const BrowserWindow = () => {
     const { browserWidth, browserHeight } = useBrowserDimensionsStore();
     const [canvasRef, setCanvasReference] = useState<React.RefObject<HTMLCanvasElement> | undefined>(undefined);
     const [screenShot, setScreenShot] = useState<string>("");
-    const [highlighterData, setHighlighterData] = useState<{ rect: DOMRect, selector: string, elementInfo: ElementInfo | null, childSelectors?: string[] } | null>(null);
+    const [highlighterData, setHighlighterData] = useState<{ rect: DOMRect, selector: string, elementInfo: ElementInfo | null, childSelectors?: string[], groupElements?: Array<{ element: HTMLElement; rect: DOMRect } >} | null>(null);
     const [showAttributeModal, setShowAttributeModal] = useState(false);
     const [attributeOptions, setAttributeOptions] = useState<AttributeOption[]>([]);
     const [selectedElement, setSelectedElement] = useState<{ selector: string, info: ElementInfo | null } | null>(null);
     const [currentListId, setCurrentListId] = useState<number | null>(null);
     const [viewportInfo, setViewportInfo] = useState<ViewportInfo>({ width: browserWidth, height: browserHeight });
-    const [isDOMMode, setIsDOMMode] = useState(false);
-    const [currentSnapshot, setCurrentSnapshot] = useState<ProcessedSnapshot | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [cachedChildSelectors, setCachedChildSelectors] = useState<string[]>([]);
 
     const [listSelector, setListSelector] = useState<string | null>(null);
     const [fields, setFields] = useState<Record<string, TextStep>>({});
@@ -164,9 +163,15 @@ export const BrowserWindow = () => {
     const highlighterUpdateRef = useRef<number>(0);
 
     const { socket } = useSocketStore();
-    const { notify, currentTextActionId, currentListActionId } = useGlobalInfoStore();
+    const { notify, currentTextActionId, currentListActionId, updateDOMMode, isDOMMode, currentSnapshot } = useGlobalInfoStore();
     const { getText, getList, paginationMode, paginationType, limitMode, captureStage } = useActionContext();
     const { addTextStep, addListStep, updateListStepData } = useBrowserSteps();
+
+    const [currentGroupInfo, setCurrentGroupInfo] = useState<{
+        isGroupElement: boolean;
+        groupSize: number;
+        groupElements: HTMLElement[];
+    } | null>(null);
   
     const { state } = useContext(AuthContext);
     const { user } = state;
@@ -243,51 +248,47 @@ export const BrowserWindow = () => {
         (data: RRWebDOMCastData) => {
         if (!data.userId || data.userId === user?.id) {
             if (data.snapshotData && data.snapshotData.snapshot) {
-                setCurrentSnapshot(data.snapshotData);
-                setIsDOMMode(true);
+                updateDOMMode(true, data.snapshotData);
                 socket?.emit("dom-mode-enabled");
-
                 setIsLoading(false);
             } else {
                 setIsLoading(false);
             }
         }
         },
-        [user?.id, socket]
+        [user?.id, socket, updateDOMMode]
     );
 
     const domModeHandler = useCallback(
         (data: any) => {
             if (!data.userId || data.userId === user?.id) {
-                setIsDOMMode(true);
+                updateDOMMode(true);
                 socket?.emit("dom-mode-enabled");
                 setIsLoading(false);
             }
         },
-        [user?.id, socket]
+        [user?.id, socket, updateDOMMode]
     );
 
     const screenshotModeHandler = useCallback(
         (data: any) => {
             if (!data.userId || data.userId === user?.id) {
-                setIsDOMMode(false);
+                updateDOMMode(false);
                 socket?.emit("screenshot-mode-enabled");
-                setCurrentSnapshot(null);
                 setIsLoading(false);
             }
         },
-        [user?.id]
+        [user?.id, updateDOMMode]
     );
 
     const domModeErrorHandler = useCallback(
         (data: any) => {
             if (!data.userId || data.userId === user?.id) {
-                setIsDOMMode(false);
-                setCurrentSnapshot(null);
+                updateDOMMode(false);
                 setIsLoading(false);
             }
         },
-        [user?.id]
+        [user?.id, updateDOMMode]
     );
 
     useEffect(() => {
@@ -304,8 +305,23 @@ export const BrowserWindow = () => {
             socket?.emit("listSelector", { selector: listSelector });
 
             clientSelectorGenerator.setListSelector(listSelector);
+
+            setCachedChildSelectors([]);
+
+            if (currentSnapshot) {
+                const iframeElement = document.querySelector(
+                "#dom-browser-iframe"
+                ) as HTMLIFrameElement;
+                if (iframeElement?.contentDocument) {
+                    const childSelectors = clientSelectorGenerator.getChildSelectors(
+                        iframeElement.contentDocument,
+                        listSelector
+                    );
+                    setCachedChildSelectors(childSelectors);
+                }
+            }
         }
-    }, [isDOMMode, listSelector, socket, getList]);
+    }, [isDOMMode, listSelector, socket, getList, currentSnapshot]);
 
     useEffect(() => {
         coordinateMapper.updateDimensions(dimensions.width, dimensions.height, viewportInfo.width, viewportInfo.height);
@@ -345,6 +361,7 @@ export const BrowserWindow = () => {
         setListSelector(null);
         setFields({});
         setCurrentListId(null);
+        setCachedChildSelectors([]);
     }, []);
 
     useEffect(() => {
@@ -372,7 +389,7 @@ export const BrowserWindow = () => {
             socket.on("screencast", screencastHandler);
             socket.on("domcast", rrwebSnapshotHandler);
             socket.on("dom-mode-enabled", domModeHandler);
-            socket.on("screenshot-mode-enabled", screenshotModeHandler);
+            // socket.on("screenshot-mode-enabled", screenshotModeHandler);
             socket.on("dom-mode-error", domModeErrorHandler);
         }
 
@@ -386,7 +403,7 @@ export const BrowserWindow = () => {
                 socket.off("screencast", screencastHandler);
                 socket.off("domcast", rrwebSnapshotHandler);
                 socket.off("dom-mode-enabled", domModeHandler);
-                socket.off("screenshot-mode-enabled", screenshotModeHandler);
+                // socket.off("screenshot-mode-enabled", screenshotModeHandler);
                 socket.off("dom-mode-error", domModeErrorHandler);
             }
         };
@@ -398,7 +415,7 @@ export const BrowserWindow = () => {
         screencastHandler,
         rrwebSnapshotHandler,
         domModeHandler,
-        screenshotModeHandler,
+        // screenshotModeHandler,
         domModeErrorHandler,
     ]);
 
@@ -408,8 +425,19 @@ export const BrowserWindow = () => {
             selector: string;
             elementInfo: ElementInfo | null;
             childSelectors?: string[];
+            groupInfo?: {
+                isGroupElement: boolean;
+                groupSize: number;
+                groupElements: HTMLElement[];
+                groupFingerprint: ElementFingerprint;
+            };
             isDOMMode?: boolean;
         }) => {
+            if (!getText && !getList) {
+                setHighlighterData(null);
+                return;
+            }
+
             if (!isDOMMode || !currentSnapshot) {
                 return;
             }
@@ -420,17 +448,8 @@ export const BrowserWindow = () => {
 
             if (!iframeElement) {
                 iframeElement = document.querySelector(
-                "#browser-window iframe"
+                    "#browser-window iframe"
                 ) as HTMLIFrameElement;
-            }
-
-            if (!iframeElement) {
-                const browserWindow = document.querySelector("#browser-window");
-                if (browserWindow) {
-                iframeElement = browserWindow.querySelector(
-                    "iframe"
-                ) as HTMLIFrameElement;
-                }
             }
 
             if (!iframeElement) {
@@ -440,6 +459,12 @@ export const BrowserWindow = () => {
 
             const iframeRect = iframeElement.getBoundingClientRect();
             const IFRAME_BODY_PADDING = 16;
+
+            if (data.groupInfo) {
+                setCurrentGroupInfo(data.groupInfo);
+            } else {
+                setCurrentGroupInfo(null);
+            }
 
             const absoluteRect = new DOMRect(
                 data.rect.x + iframeRect.left - IFRAME_BODY_PADDING,
@@ -451,12 +476,36 @@ export const BrowserWindow = () => {
             const mappedData = {
                 ...data,
                 rect: absoluteRect,
+                childSelectors: data.childSelectors || cachedChildSelectors,
             };
 
             if (getList === true) {
-                if (listSelector) {
-                    socket?.emit("listSelector", { selector: listSelector });
-                    const hasValidChildSelectors =
+                if (!listSelector && data.groupInfo?.isGroupElement) {
+                    const updatedGroupElements = data.groupInfo.groupElements.map(
+                        (element) => {
+                            const elementRect = element.getBoundingClientRect();
+                            return {
+                                element,
+                                rect: new DOMRect(
+                                elementRect.x + iframeRect.left - IFRAME_BODY_PADDING,
+                                elementRect.y + iframeRect.top - IFRAME_BODY_PADDING,
+                                elementRect.width,
+                                elementRect.height
+                                ),
+                            };
+                        }
+                    );
+
+                    const mappedData = {
+                        ...data,
+                        rect: absoluteRect,
+                        groupElements: updatedGroupElements,
+                        childSelectors: data.childSelectors || cachedChildSelectors,
+                    };
+
+                    setHighlighterData(mappedData);
+                } else if (listSelector) {
+                    const hasChildSelectors =
                         Array.isArray(mappedData.childSelectors) &&
                         mappedData.childSelectors.length > 0;
 
@@ -464,69 +513,15 @@ export const BrowserWindow = () => {
                         setHighlighterData(null);
                     } else if (paginationMode) {
                         if (
-                        paginationType !== "" &&
-                        !["none", "scrollDown", "scrollUp"].includes(paginationType)
+                            paginationType !== "" &&
+                            !["none", "scrollDown", "scrollUp"].includes(paginationType)
                         ) {
                             setHighlighterData(mappedData);
                         } else {
                             setHighlighterData(null);
                         }
-                    } else if (
-                        mappedData.childSelectors &&
-                        mappedData.childSelectors.includes(mappedData.selector)
-                    ) {
+                    } else if (hasChildSelectors) {
                         setHighlighterData(mappedData);
-                    } else if (
-                        mappedData.elementInfo?.isIframeContent &&
-                        mappedData.childSelectors
-                    ) {
-                        const isIframeChild = mappedData.childSelectors.some(
-                            (childSelector) =>
-                                mappedData.selector.includes(":>>") &&
-                                childSelector
-                                .split(":>>")
-                                .some((part) => mappedData.selector.includes(part.trim()))
-                            );
-                        setHighlighterData(isIframeChild ? mappedData : null);
-                    } else if (
-                        mappedData.selector.includes(":>>") &&
-                        hasValidChildSelectors
-                    ) {
-                        const selectorParts = mappedData.selector
-                            .split(":>>")
-                            .map((part) => part.trim());
-                            const isValidMixedSelector = selectorParts.some((part) =>
-                            mappedData.childSelectors!.some((childSelector) =>
-                                childSelector.includes(part)
-                                )
-                            );
-                        setHighlighterData(isValidMixedSelector ? mappedData : null);
-                    } else if (
-                        mappedData.elementInfo?.isShadowRoot &&
-                        mappedData.childSelectors
-                    ) {
-                        const isShadowChild = mappedData.childSelectors.some(
-                            (childSelector) =>
-                                mappedData.selector.includes(">>") &&
-                                childSelector
-                                .split(">>")
-                                .some((part) => mappedData.selector.includes(part.trim()))
-                            );
-                        setHighlighterData(isShadowChild ? mappedData : null);
-                    } else if (
-                        mappedData.selector.includes(">>") &&
-                        hasValidChildSelectors
-                    ) {
-                        const selectorParts = mappedData.selector
-                            .split(">>")
-                            .map((part) => part.trim());
-                            const isValidMixedSelector = selectorParts.some((part) =>
-                            mappedData.childSelectors!.some((childSelector) =>
-                                childSelector.includes(part)
-                            )
-                        );
-
-                        setHighlighterData(isValidMixedSelector ? mappedData : null);
                     } else {
                         setHighlighterData(null);
                     }
@@ -534,23 +529,29 @@ export const BrowserWindow = () => {
                     setHighlighterData(mappedData);
                 }
             } else {
-                // getText mode
                 setHighlighterData(mappedData);
             }
         },
         [
             isDOMMode,
             currentSnapshot,
+            getText,
             getList,
             socket,
             listSelector,
             paginationMode,
             paginationType,
             limitMode,
+            cachedChildSelectors,
         ]
     );
 
-    const highlighterHandler = useCallback((data: { rect: DOMRect, selector: string, elementInfo: ElementInfo | null, childSelectors?: string[] }) => {
+    const highlighterHandler = useCallback((data: { rect: DOMRect, selector: string, elementInfo: ElementInfo | null, childSelectors?: string[], isDOMMode?: boolean; }) => {
+        if (isDOMMode || data.isDOMMode) {
+            domHighlighterHandler(data);
+            return;
+        }
+        
         const now = performance.now();
         if (now - highlighterUpdateRef.current < 16) {
             return;
@@ -653,6 +654,20 @@ export const BrowserWindow = () => {
     }, [socket, highlighterHandler, onMouseMove, getList, listSelector]);
 
     useEffect(() => {
+        document.addEventListener("mousemove", onMouseMove, false);
+        if (socket) {
+            socket.off("highlighter", highlighterHandler);
+            socket.on("highlighter", highlighterHandler);
+        }
+        return () => {
+            document.removeEventListener("mousemove", onMouseMove);
+            if (socket) {
+                socket.off("highlighter", highlighterHandler);
+            }
+        };
+    }, [socket, highlighterHandler, getList, listSelector]);
+
+    useEffect(() => {
         if (socket && listSelector) {
           console.log('Syncing list selector with server:', listSelector);
           socket.emit('setGetList', { getList: true });
@@ -668,312 +683,355 @@ export const BrowserWindow = () => {
     }, [captureStage, listSelector, socket]);
 
     const handleDOMElementSelection = useCallback(
-        (highlighterData: {
-            rect: DOMRect;
-            selector: string;
-            elementInfo: ElementInfo | null;
-            childSelectors?: string[];
-        }) => {
-            setShowAttributeModal(false);
-            setSelectedElement(null);
-            setAttributeOptions([]);
-
-        const options = getAttributeOptions(
-            highlighterData.elementInfo?.tagName || "",
-            highlighterData.elementInfo
-        );
-
-        if (getText === true) {
-            if (options.length === 1) {
-                const attribute = options[0].value;
-                const data =
-                    attribute === "href"
-                    ? highlighterData.elementInfo?.url || ""
-                    : attribute === "src"
-                    ? highlighterData.elementInfo?.imageUrl || ""
-                    : highlighterData.elementInfo?.innerText || "";
-
-                addTextStep(
-                    "",
-                    data,
-                    {
-                        selector: highlighterData.selector,
-                        tag: highlighterData.elementInfo?.tagName,
-                        shadow: highlighterData.elementInfo?.isShadowRoot,
-                        attribute,
-                    },
-                    currentTextActionId || `text-${crypto.randomUUID()}`
-                );
-            } else {
-                setAttributeOptions(options);
-                setSelectedElement({
-                    selector: highlighterData.selector,
-                    info: highlighterData.elementInfo,
-                });
-                setShowAttributeModal(true);
-            }
-        }
+      (highlighterData: {
+        rect: DOMRect;
+        selector: string;
+        elementInfo: ElementInfo | null;
+        childSelectors?: string[];
+        groupInfo?: {
+          isGroupElement: boolean;
+          groupSize: number;
+          groupElements: HTMLElement[];
+        };
+      }) => {
+        setShowAttributeModal(false);
+        setSelectedElement(null);
+        setAttributeOptions([]);
 
         if (paginationMode && getList) {
-            if (
-                paginationType !== "" &&
-                paginationType !== "scrollDown" &&
-                paginationType !== "scrollUp" &&
-                paginationType !== "none"
-            ) {
-                setPaginationSelector(highlighterData.selector);
-                notify(
-                    `info`,
-                    t(
-                    "browser_window.attribute_modal.notifications.pagination_select_success"
-                    )
-                );
-                addListStep(
-                    listSelector!,
-                    fields,
-                    currentListId || 0,
-                    currentListActionId || `list-${crypto.randomUUID()}`,
-                    { type: paginationType, selector: highlighterData.selector }
-                );
-                socket?.emit("setPaginationMode", { pagination: false });
-            }
-            return;
+          if (
+            paginationType !== "" &&
+            paginationType !== "scrollDown" &&
+            paginationType !== "scrollUp" &&
+            paginationType !== "none"
+          ) {
+            setPaginationSelector(highlighterData.selector);
+            notify(
+              `info`,
+              t(
+                "browser_window.attribute_modal.notifications.pagination_select_success"
+              )
+            );
+            addListStep(
+              listSelector!,
+              fields,
+              currentListId || 0,
+              currentListActionId || `list-${crypto.randomUUID()}`,
+              { type: paginationType, selector: highlighterData.selector }
+            );
+            socket?.emit("setPaginationMode", { pagination: false });
+          }
+          return;
         }
 
-        if (getList === true && !listSelector) {
-            let cleanedSelector = highlighterData.selector;
-            if (cleanedSelector.includes("nth-child")) {
-                cleanedSelector = cleanedSelector.replace(/:nth-child\(\d+\)/g, "");
+        if (
+          getList === true &&
+          !listSelector &&
+          highlighterData.groupInfo?.isGroupElement
+        ) {
+          let cleanedSelector = highlighterData.selector;
+
+          setListSelector(cleanedSelector);
+          notify(
+            `info`,
+            t(
+              "browser_window.attribute_modal.notifications.list_select_success",
+              {
+                count: highlighterData.groupInfo.groupSize,
+              }
+            ) ||
+              `Selected group with ${highlighterData.groupInfo.groupSize} similar elements`
+          );
+          setCurrentListId(Date.now());
+          setFields({});
+
+          socket?.emit("setGetList", { getList: true });
+          socket?.emit("listSelector", { selector: cleanedSelector });
+
+          return;
+        }
+
+        if (getList === true && listSelector && currentListId) {
+          const options = getAttributeOptions(
+            highlighterData.elementInfo?.tagName || "",
+            highlighterData.elementInfo
+          );
+
+          if (options.length === 1) {
+            const attribute = options[0].value;
+            let currentSelector = highlighterData.selector;
+
+            const data =
+              attribute === "href"
+                ? highlighterData.elementInfo?.url || ""
+                : attribute === "src"
+                ? highlighterData.elementInfo?.imageUrl || ""
+                : highlighterData.elementInfo?.innerText || "";
+
+            const newField: TextStep = {
+              id: Date.now(),
+              type: "text",
+              label: `Label ${Object.keys(fields).length + 1}`,
+              data: data,
+              selectorObj: {
+                selector: currentSelector,
+                tag: highlighterData.elementInfo?.tagName,
+                shadow: highlighterData.elementInfo?.isShadowRoot,
+                attribute,
+              },
+            };
+
+            const updatedFields = {
+              ...fields,
+              [newField.id]: newField,
+            };
+
+            setFields(updatedFields);
+
+            if (listSelector) {
+              addListStep(
+                listSelector,
+                updatedFields,
+                currentListId,
+                currentListActionId || `list-${crypto.randomUUID()}`,
+                { type: "", selector: paginationSelector }
+              );
             }
-
-            setListSelector(cleanedSelector);
-            notify(
-                `info`,
-                t("browser_window.attribute_modal.notifications.list_select_success")
-            );
-            setCurrentListId(Date.now());
-            setFields({});
-
-            socket?.emit("setGetList", { getList: true });
-            socket?.emit("listSelector", { selector: cleanedSelector });
-        } else if (getList === true && listSelector && currentListId) {
-            if (options.length === 1) {
-                const attribute = options[0].value;
-                let currentSelector = highlighterData.selector;
-
-                if (currentSelector.includes(">")) {
-                    const [firstPart, ...restParts] = currentSelector
-                        .split(">")
-                        .map((p) => p.trim());
-                    const listSelectorRightPart = listSelector
-                        .split(">")
-                        .pop()
-                        ?.trim()
-                        .replace(/:nth-child\(\d+\)/g, "");
-
-                    if (
-                    firstPart.includes("nth-child") &&
-                    firstPart.replace(/:nth-child\(\d+\)/g, "") ===
-                        listSelectorRightPart
-                    ) {
-                    currentSelector = `${firstPart.replace(
-                        /:nth-child\(\d+\)/g,
-                        ""
-                    )} > ${restParts.join(" > ")}`;
-                    }
-                }
-
-                const data =
-                    attribute === "href"
-                    ? highlighterData.elementInfo?.url || ""
-                    : attribute === "src"
-                    ? highlighterData.elementInfo?.imageUrl || ""
-                    : highlighterData.elementInfo?.innerText || "";
-
-                const newField: TextStep = {
-                    id: Date.now(),
-                    type: "text",
-                    label: `Label ${Object.keys(fields).length + 1}`,
-                    data: data,
-                    selectorObj: {
-                        selector: currentSelector,
-                        tag: highlighterData.elementInfo?.tagName,
-                        shadow: highlighterData.elementInfo?.isShadowRoot,
-                        attribute,
-                    },
-                };
-
-                const updatedFields = {
-                    ...fields,
-                    [newField.id]: newField,
-                };
-
-                setFields(updatedFields);
-
-                if (listSelector) {
-                    addListStep(
-                        listSelector,
-                        updatedFields,
-                        currentListId,
-                        currentListActionId || `list-${crypto.randomUUID()}`,
-                        { type: "", selector: paginationSelector }
-                    );
-                }
-            } else {
+          } else {
             setAttributeOptions(options);
             setSelectedElement({
-                selector: highlighterData.selector,
-                info: highlighterData.elementInfo,
+              selector: highlighterData.selector,
+              info: highlighterData.elementInfo,
             });
             setShowAttributeModal(true);
-            }
+          }
+          return;
         }
-        },
-        [
-            getText,
-            getList,
-            listSelector,
-            paginationMode,
-            paginationType,
-            fields,
-            currentListId,
-            currentTextActionId,
-            currentListActionId,
-            addTextStep,
-            addListStep,
-            notify,
-            socket,
-            t,
-            paginationSelector,
-        ]
+
+        if (getText === true) {
+          const options = getAttributeOptions(
+            highlighterData.elementInfo?.tagName || "",
+            highlighterData.elementInfo
+          );
+
+          if (options.length === 1) {
+            const attribute = options[0].value;
+            const data =
+              attribute === "href"
+                ? highlighterData.elementInfo?.url || ""
+                : attribute === "src"
+                ? highlighterData.elementInfo?.imageUrl || ""
+                : highlighterData.elementInfo?.innerText || "";
+
+            addTextStep(
+              "",
+              data,
+              {
+                selector: highlighterData.selector,
+                tag: highlighterData.elementInfo?.tagName,
+                shadow: highlighterData.elementInfo?.isShadowRoot,
+                attribute,
+              },
+              currentTextActionId || `text-${crypto.randomUUID()}`
+            );
+          } else {
+            setAttributeOptions(options);
+            setSelectedElement({
+              selector: highlighterData.selector,
+              info: highlighterData.elementInfo,
+            });
+            setShowAttributeModal(true);
+          }
+        }
+      },
+      [
+        getText,
+        getList,
+        listSelector,
+        paginationMode,
+        paginationType,
+        limitMode,
+        fields,
+        currentListId,
+        currentTextActionId,
+        currentListActionId,
+        addTextStep,
+        addListStep,
+        notify,
+        socket,
+        t,
+        paginationSelector,
+      ]
     );
 
 
     const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (highlighterData && canvasRef?.current) {
-            const canvasRect = canvasRef.current.getBoundingClientRect();
-            const clickX = e.clientX - canvasRect.left;
-            const clickY = e.clientY - canvasRect.top;
+      if (highlighterData) {
+        let shouldProcessClick = false;
 
-            const highlightRect = highlighterData.rect;
+        if (!isDOMMode && canvasRef?.current) {
+          const canvasRect = canvasRef.current.getBoundingClientRect();
+          const clickX = e.clientX - canvasRect.left;
+          const clickY = e.clientY - canvasRect.top;
+          const highlightRect = highlighterData.rect;
+          const mappedRect =
+            coordinateMapper.mapBrowserRectToCanvas(highlightRect);
 
-            const mappedRect = coordinateMapper.mapBrowserRectToCanvas(highlightRect);
-            if (
-                clickX >= mappedRect.left &&
-                clickX <= mappedRect.right &&
-                clickY >= mappedRect.top &&
-                clickY <= mappedRect.bottom
-            ) {
-
-                const options = getAttributeOptions(highlighterData.elementInfo?.tagName || '', highlighterData.elementInfo);
-
-                if (getText === true) {
-                    if (options.length === 1) {
-                        // Directly use the available attribute if only one option is present
-                        const attribute = options[0].value;
-                        const data = attribute === 'href' ? highlighterData.elementInfo?.url || '' :
-                            attribute === 'src' ? highlighterData.elementInfo?.imageUrl || '' :
-                                highlighterData.elementInfo?.innerText || '';
-
-                        addTextStep('', data, {
-                            selector: highlighterData.selector,
-                            tag: highlighterData.elementInfo?.tagName,
-                            shadow: highlighterData.elementInfo?.isShadowRoot,
-                            attribute,
-                        }, currentTextActionId || `text-${crypto.randomUUID()}`);
-                    } else {
-                        // Show the modal if there are multiple options
-                        setAttributeOptions(options);
-                        setSelectedElement({
-                            selector: highlighterData.selector,
-                            info: highlighterData.elementInfo,
-                        });
-                        setShowAttributeModal(true);
-                    }
-                }
-
-                if (paginationMode && getList) {
-                    // Only allow selection in pagination mode if type is not empty, 'scrollDown', or 'scrollUp'
-                    if (paginationType !== '' && paginationType !== 'scrollDown' && paginationType !== 'scrollUp' && paginationType !== 'none') {
-                        setPaginationSelector(highlighterData.selector);
-                        notify(`info`, t('browser_window.attribute_modal.notifications.pagination_select_success'));
-                        addListStep(listSelector!, fields, currentListId || 0, currentListActionId || `list-${crypto.randomUUID()}`, { type: paginationType, selector: highlighterData.selector });
-                        socket?.emit('setPaginationMode', { pagination: false });
-                    }
-                    return;
-                }
-
-                if (getList === true && !listSelector) {
-                    let cleanedSelector = highlighterData.selector;
-                    if (cleanedSelector.includes('nth-child')) {
-                        cleanedSelector = cleanedSelector.replace(/:nth-child\(\d+\)/g, '');
-                    }
-
-                    setListSelector(cleanedSelector);
-                    notify(`info`, t('browser_window.attribute_modal.notifications.list_select_success'));
-                    setCurrentListId(Date.now());
-                    setFields({});
-                } else if (getList === true && listSelector && currentListId) {
-                    const attribute = options[0].value;
-                    const data = attribute === 'href' ? highlighterData.elementInfo?.url || '' :
-                        attribute === 'src' ? highlighterData.elementInfo?.imageUrl || '' :
-                            highlighterData.elementInfo?.innerText || '';
-                    // Add fields to the list
-                    if (options.length === 1) {
-                        const attribute = options[0].value;
-                        let currentSelector = highlighterData.selector;
-
-                        if (currentSelector.includes('>')) {
-                            const [firstPart, ...restParts] = currentSelector.split('>').map(p => p.trim());
-                            const listSelectorRightPart = listSelector.split('>').pop()?.trim().replace(/:nth-child\(\d+\)/g, '');
-
-                            if (firstPart.includes('nth-child') && 
-                                firstPart.replace(/:nth-child\(\d+\)/g, '') === listSelectorRightPart) {
-                                currentSelector = `${firstPart.replace(/:nth-child\(\d+\)/g, '')} > ${restParts.join(' > ')}`;
-                            }
-                        }
-
-                        const newField: TextStep = {
-                            id: Date.now(),
-                            type: 'text',
-                            label: `Label ${Object.keys(fields).length + 1}`,
-                            data: data,
-                            selectorObj: {
-                                selector: currentSelector,
-                                tag: highlighterData.elementInfo?.tagName,
-                                shadow: highlighterData.elementInfo?.isShadowRoot,
-                                attribute
-                            }
-                        };
-
-                        const updatedFields = {
-                            ...fields,
-                            [newField.id]: newField
-                          };
-                          
-                        setFields(updatedFields);
-
-                        if (listSelector) {
-                            addListStep(
-                                listSelector, 
-                                updatedFields, 
-                                currentListId, 
-                                currentListActionId || `list-${crypto.randomUUID()}`,
-                                { type: '', selector: paginationSelector }
-                            );
-                        }
-
-                    } else {
-                        setAttributeOptions(options);
-                        setSelectedElement({
-                            selector: highlighterData.selector,
-                            info: highlighterData.elementInfo
-                        });
-                        setShowAttributeModal(true);
-                    }
-                }
-            }
+          shouldProcessClick =
+            clickX >= mappedRect.left &&
+            clickX <= mappedRect.right &&
+            clickY >= mappedRect.top &&
+            clickY <= mappedRect.bottom;
+        } else {
+          shouldProcessClick = true;
         }
+
+        if (shouldProcessClick) {
+          const options = getAttributeOptions(
+            highlighterData.elementInfo?.tagName || "",
+            highlighterData.elementInfo
+          );
+
+          if (getText === true) {
+            if (options.length === 1) {
+              const attribute = options[0].value;
+              const data =
+                attribute === "href"
+                  ? highlighterData.elementInfo?.url || ""
+                  : attribute === "src"
+                  ? highlighterData.elementInfo?.imageUrl || ""
+                  : highlighterData.elementInfo?.innerText || "";
+
+              addTextStep(
+                "",
+                data,
+                {
+                  selector: highlighterData.selector,
+                  tag: highlighterData.elementInfo?.tagName,
+                  shadow: highlighterData.elementInfo?.isShadowRoot,
+                  attribute,
+                },
+                currentTextActionId || `text-${crypto.randomUUID()}`
+              );
+            } else {
+              setAttributeOptions(options);
+              setSelectedElement({
+                selector: highlighterData.selector,
+                info: highlighterData.elementInfo,
+              });
+              setShowAttributeModal(true);
+            }
+          }
+
+          if (paginationMode && getList) {
+            if (
+              paginationType !== "" &&
+              paginationType !== "scrollDown" &&
+              paginationType !== "scrollUp" &&
+              paginationType !== "none"
+            ) {
+              setPaginationSelector(highlighterData.selector);
+              notify(
+                `info`,
+                t(
+                  "browser_window.attribute_modal.notifications.pagination_select_success"
+                )
+              );
+              addListStep(
+                listSelector!,
+                fields,
+                currentListId || 0,
+                currentListActionId || `list-${crypto.randomUUID()}`,
+                { type: paginationType, selector: highlighterData.selector }
+              );
+              socket?.emit("setPaginationMode", { pagination: false });
+            }
+            return;
+          }
+
+          if (getList === true && !listSelector) {
+            let cleanedSelector = highlighterData.selector;
+            if (
+              cleanedSelector.includes("[") &&
+              cleanedSelector.match(/\[\d+\]/)
+            ) {
+              cleanedSelector = cleanedSelector.replace(/\[\d+\]/g, "");
+            }
+
+            setListSelector(cleanedSelector);
+            notify(
+              `info`,
+              t(
+                "browser_window.attribute_modal.notifications.list_select_success"
+              )
+            );
+            setCurrentListId(Date.now());
+            setFields({});
+          } else if (getList === true && listSelector && currentListId) {
+            const attribute = options[0].value;
+            const data =
+              attribute === "href"
+                ? highlighterData.elementInfo?.url || ""
+                : attribute === "src"
+                ? highlighterData.elementInfo?.imageUrl || ""
+                : highlighterData.elementInfo?.innerText || "";
+
+            if (options.length === 1) {
+              let currentSelector = highlighterData.selector;
+
+              if (currentSelector.includes("/")) {
+                const xpathParts = currentSelector
+                  .split("/")
+                  .filter((part) => part);
+                const cleanedParts = xpathParts.map((part) => {
+                  return part.replace(/\[\d+\]/g, "");
+                });
+
+                if (cleanedParts.length > 0) {
+                  currentSelector = "//" + cleanedParts.join("/");
+                }
+              }
+
+              const newField: TextStep = {
+                id: Date.now(),
+                type: "text",
+                label: `Label ${Object.keys(fields).length + 1}`,
+                data: data,
+                selectorObj: {
+                  selector: currentSelector,
+                  tag: highlighterData.elementInfo?.tagName,
+                  shadow: highlighterData.elementInfo?.isShadowRoot,
+                  attribute,
+                },
+              };
+
+              const updatedFields = {
+                ...fields,
+                [newField.id]: newField,
+              };
+
+              setFields(updatedFields);
+
+              if (listSelector) {
+                addListStep(
+                  listSelector,
+                  updatedFields,
+                  currentListId,
+                  currentListActionId || `list-${crypto.randomUUID()}`,
+                  { type: "", selector: paginationSelector }
+                );
+              }
+            } else {
+              setAttributeOptions(options);
+              setSelectedElement({
+                selector: highlighterData.selector,
+                info: highlighterData.elementInfo,
+              });
+              setShowAttributeModal(true);
+            }
+          }
+        }
+      }
     };
 
     const handleAttributeSelection = (attribute: string) => {
@@ -1149,31 +1207,88 @@ export const BrowserWindow = () => {
                     )}
 
                     {isDOMMode && highlighterData && (
-                        <>
-                            <div
-                                style={{
-                                    position: "absolute",
-                                    left: Math.max(0, highlighterData.rect.x),
-                                    top: Math.max(0, highlighterData.rect.y),
-                                    width: Math.min(
-                                        highlighterData.rect.width,
-                                        dimensions.width
-                                    ),
-                                    height: Math.min(
-                                        highlighterData.rect.height,
-                                        dimensions.height
-                                    ),
-                                    background: "rgba(255, 0, 195, 0.15)",
-                                    border: "2px solid #ff00c3",
-                                    borderRadius: "3px",
-                                    pointerEvents: "none",
-                                    zIndex: 1000,
-                                    boxShadow: "0 0 0 1px rgba(255, 255, 255, 0.8)",
-                                    transition: "all 0.1s ease-out",
-                                }}
-                            />
-                        </>
-                    )}
+                            <>
+                            {/* Individual element highlight (for non-group or hovered element) */}
+                            {(!getList ||
+                                listSelector ||
+                                !currentGroupInfo?.isGroupElement) && (
+                                <div
+                                    style={{
+                                        position: "absolute",
+                                        left: Math.max(0, highlighterData.rect.x),
+                                        top: Math.max(0, highlighterData.rect.y),
+                                        width: Math.min(
+                                            highlighterData.rect.width,
+                                            dimensions.width
+                                        ),
+                                        height: Math.min(
+                                            highlighterData.rect.height,
+                                            dimensions.height
+                                        ),
+                                        background: "rgba(255, 0, 195, 0.15)",
+                                        border: "2px solid #ff00c3",
+                                        borderRadius: "3px",
+                                        pointerEvents: "none",
+                                        zIndex: 1000,
+                                        boxShadow: "0 0 0 1px rgba(255, 255, 255, 0.8)",
+                                        transition: "all 0.1s ease-out",
+                                    }}
+                                />
+                            )}
+
+                            {/* Group elements highlighting with real-time coordinates */}
+                            {getList &&
+                                !listSelector &&
+                                currentGroupInfo?.isGroupElement &&
+                                highlighterData.groupElements &&
+                                highlighterData.groupElements.map((groupElement, index) => (
+                                <React.Fragment key={index}>
+                                    {/* Highlight box */}
+                                    <div
+                                        style={{
+                                            position: "absolute",
+                                            left: Math.max(0, groupElement.rect.x),
+                                            top: Math.max(0, groupElement.rect.y),
+                                            width: Math.min(
+                                                groupElement.rect.width,
+                                                dimensions.width
+                                            ),
+                                            height: Math.min(
+                                                groupElement.rect.height,
+                                                dimensions.height
+                                            ),
+                                            background: "rgba(255, 0, 195, 0.15)",
+                                            border: "2px dashed #ff00c3",
+                                            borderRadius: "3px",
+                                            pointerEvents: "none",
+                                            zIndex: 1000,
+                                            boxShadow: "0 0 0 1px rgba(255, 255, 255, 0.8)",
+                                            transition: "all 0.1s ease-out",
+                                        }}
+                                    />
+
+                                    <div
+                                        style={{
+                                            position: "absolute",
+                                            left: Math.max(0, groupElement.rect.x),
+                                            top: Math.max(0, groupElement.rect.y - 20),
+                                            background: "#ff00c3",
+                                            color: "white",
+                                            padding: "2px 6px",
+                                            fontSize: "10px",
+                                            fontWeight: "bold",
+                                            borderRadius: "2px",
+                                            pointerEvents: "none",
+                                            zIndex: 1001,
+                                            whiteSpace: "nowrap",
+                                        }}
+                                    >
+                                        List item {index + 1}
+                                    </div>
+                                </React.Fragment>
+                                ))}
+                            </>
+                        )}
                     </>
                 )}
 
@@ -1186,6 +1301,7 @@ export const BrowserWindow = () => {
                             getList={getList}
                             getText={getText}
                             listSelector={listSelector}
+                            cachedChildSelectors={cachedChildSelectors}
                             paginationMode={paginationMode}
                             paginationType={paginationType}
                             limitMode={limitMode}

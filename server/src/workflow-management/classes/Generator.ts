@@ -174,9 +174,11 @@ export class WorkflowGenerator {
           switch (actionType) {
             case 'customAction':
               // pair.where.selectors = [this.generatedData.lastUsedSelector];
-              pair.where.selectors = pair.where.selectors.filter(
-                (selector: string) => selector !== this.generatedData.lastUsedSelector
-              );
+              if (pair.where.selectors) {
+                pair.where.selectors = pair.where.selectors.filter(
+                  (selector: string) => selector !== this.generatedData.lastUsedSelector
+                );
+              }
               break;
             default: break;
           }
@@ -462,7 +464,6 @@ export class WorkflowGenerator {
   public onClick = async (coordinates: Coordinates, page: Page) => {
     let where: WhereWhatPair["where"] = { url: this.getBestUrl(page.url()) };
     const selector = await this.generateSelector(page, coordinates, ActionType.Click);
-    console.log("COOORDINATES: ", coordinates);
     logger.log('debug', `Element's selector: ${selector}`);
 
     const elementInfo = await getElementInformation(page, coordinates, '', false);
@@ -997,6 +998,7 @@ export class WorkflowGenerator {
         rect,
         selector: displaySelector,
         elementInfo,
+        isDOMMode: this.isDOMMode,
         // Include shadow DOM specific information
         shadowInfo: elementInfo?.isShadowRoot ? {
           mode: elementInfo.shadowRootMode,

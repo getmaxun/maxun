@@ -730,6 +730,17 @@ export const IntegrationSettingsModal = ({
               <img src="/svg/webhook.svg" alt="Webhook" style={{ margin: "6px" }} />
               Webhooks
             </Button>
+
+            <Button
+              variant="outlined"
+              onClick={() => {
+                window.open("https://docs.maxun.dev/mcp/setup", "_blank", "noopener,noreferrer");
+              }}
+              style={{ display: "flex", flexDirection: "column", alignItems: "center", background: 'white', color: '#ff00c3' }}
+            >
+              <img src="/svg/mcp.svg" alt="MCP" style={{ margin: "6px" }} />
+              MCP
+            </Button>
           </div>
         </div>
       </GenericModal>

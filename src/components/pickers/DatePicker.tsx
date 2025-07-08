@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useSocketStore } from '../../context/socket';
-import { Coordinates } from '../recorder/canvas';
+import { Coordinates } from '../recorder/Canvas';
 
 interface DatePickerProps {
   coordinates: Coordinates;

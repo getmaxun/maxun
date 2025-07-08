@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import ReplayIcon from '@mui/icons-material/Replay';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import { NavBarButton } from '../ui/buttons/buttons';
+import { NavBarButton } from '../ui/buttons/Buttons';
 import { UrlForm } from './UrlForm';
 import { useCallback, useEffect } from "react";
 import { useSocketStore } from "../../context/socket";
@@ -63,7 +63,7 @@ const BrowserNavBar: FC<NavBarProps> = ({
         handleUrlChanged(response);
       }
     }).catch((error) => {
-      console.log("Fetching current url failed");
+      console.log(`Fetching current url failed: ${error}`);
     })
   }, []);
 

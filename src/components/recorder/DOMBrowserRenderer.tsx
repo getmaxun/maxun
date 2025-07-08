@@ -98,6 +98,7 @@ interface RRWebDOMBrowserRendererProps {
   getList?: boolean;
   getText?: boolean;
   listSelector?: string | null;
+  cachedChildSelectors?: string[];
   paginationMode?: boolean;
   paginationType?: string;
   limitMode?: boolean;
@@ -106,12 +107,14 @@ interface RRWebDOMBrowserRendererProps {
     selector: string;
     elementInfo: ElementInfo | null;
     childSelectors?: string[];
+    groupInfo?: any;
   }) => void;
   onElementSelect?: (data: {
     rect: DOMRect;
     selector: string;
     elementInfo: ElementInfo | null;
     childSelectors?: string[];
+    groupInfo?: any;
   }) => void;
   onShowDatePicker?: (info: {
     coordinates: { x: number; y: number };
@@ -144,6 +147,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
   getList = false,
   getText = false,
   listSelector = null,
+  cachedChildSelectors = [],
   paginationMode = false,
   paginationType = "",
   limitMode = false,
@@ -205,11 +209,24 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
   const handleDOMHighlighting = useCallback(
     (x: number, y: number, iframeDoc: Document) => {
       try {
+        if (!getText && !getList) {
+          setCurrentHighlight(null);
+          if (onHighlight) {
+            onHighlight({
+              rect: new DOMRect(0, 0, 0, 0),
+              selector: "",
+              elementInfo: null,
+            });
+          }
+          return;
+        }
+
         const highlighterData =
           clientSelectorGenerator.generateDataForHighlighter(
             { x, y },
             iframeDoc,
-            true
+            true,
+            cachedChildSelectors
           );
 
         if (!highlighterData) {
@@ -224,70 +241,40 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           return;
         }
 
-        const { rect, selector, elementInfo, childSelectors } = highlighterData;
+        const { rect, selector, elementInfo, childSelectors, groupInfo } =
+          highlighterData;
 
         let shouldHighlight = false;
 
         if (getList) {
-          if (listSelector) {
-            const hasValidChildSelectors =
-              Array.isArray(childSelectors) && childSelectors.length > 0;
-
+          // First phase: Allow any group to be highlighted for selection
+          if (!listSelector && groupInfo?.isGroupElement) {
+            shouldHighlight = true;
+          }
+          // Second phase: Show valid children within selected group
+          else if (listSelector) {
             if (limitMode) {
               shouldHighlight = false;
-            } else if (paginationMode) {
-              if (
-                paginationType !== "" &&
-                !["none", "scrollDown", "scrollUp"].includes(paginationType)
-              ) {
-                shouldHighlight = true;
-              } else {
-                shouldHighlight = false;
-              }
-            } else if (childSelectors && childSelectors.includes(selector)) {
+            } else if (
+              paginationMode &&
+              paginationType !== "" &&
+              !["none", "scrollDown", "scrollUp"].includes(paginationType)
+            ) {
               shouldHighlight = true;
-            } else if (elementInfo?.isIframeContent && childSelectors) {
-              const isIframeChild = childSelectors.some(
-                (childSelector: string) =>
-                  selector.includes(":>>") &&
-                  childSelector
-                    .split(":>>")
-                    .some((part) => selector.includes(part.trim()))
-              );
-              shouldHighlight = isIframeChild;
-            } else if (selector.includes(":>>") && hasValidChildSelectors) {
-              const selectorParts = selector
-                .split(":>>")
-                .map((part: string) => part.trim());
-              const isValidMixedSelector = selectorParts.some((part: any) =>
-                childSelectors!.some((childSelector) =>
-                  childSelector.includes(part)
-                )
-              );
-            } else if (elementInfo?.isShadowRoot && childSelectors) {
-              const isShadowChild = childSelectors.some(
-                (childSelector: string) =>
-                  selector.includes(">>") &&
-                  childSelector
-                    .split(">>")
-                    .some((part) => selector.includes(part.trim()))
-              );
-            } else if (selector.includes(">>") && hasValidChildSelectors) {
-              const selectorParts = selector
-                .split(">>")
-                .map((part: string) => part.trim());
-              const isValidMixedSelector = selectorParts.some((part: any) =>
-                childSelectors!.some((childSelector) =>
-                  childSelector.includes(part)
-                )
-              );
+            } else if (childSelectors && childSelectors.length > 0) {
+              console.log("✅ Child selectors present, highlighting enabled");
+              shouldHighlight = true;
             } else {
+              console.log("❌ No child selectors available");
               shouldHighlight = false;
             }
-          } else {
+          }
+          // No list selector - show regular highlighting
+          else {
             shouldHighlight = true;
           }
         } else {
+          // getText mode - always highlight
           shouldHighlight = true;
         }
 
@@ -296,26 +283,27 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           if (element) {
             setCurrentHighlight({
               element,
-              rect: rect, 
+              rect: rect,
               selector,
               elementInfo: {
                 ...elementInfo,
                 tagName: elementInfo?.tagName ?? "",
                 isDOMMode: true,
               },
-              childSelectors, 
+              childSelectors,
             });
 
             if (onHighlight) {
               onHighlight({
-                rect: rect, 
+                rect: rect,
                 elementInfo: {
                   ...elementInfo,
                   tagName: elementInfo?.tagName ?? "",
-                  isDOMMode: true, 
+                  isDOMMode: true,
                 },
                 selector,
                 childSelectors,
+                groupInfo, 
               });
             }
           }
@@ -335,9 +323,11 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
       }
     },
     [
+      getText,
       getList,
       listSelector,
       paginationMode,
+      cachedChildSelectors,
       paginationType,
       limitMode,
       onHighlight,
@@ -360,6 +350,10 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
 
       const mouseMoveHandler: EventListener = (e: Event) => {
         if (e.target && !iframeDoc.contains(e.target as Node)) {
+          return;
+        }
+
+        if (!isInCaptureMode) {
           return;
         }
 
@@ -401,11 +395,24 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           e.stopPropagation();
 
           if (currentHighlight && onElementSelect) {
+            // Get the group info for the current highlight
+            const highlighterData =
+              clientSelectorGenerator.generateDataForHighlighter(
+                { x: iframeX, y: iframeY },
+                iframeDoc,
+                true,
+                cachedChildSelectors
+              );
+
             onElementSelect({
               rect: currentHighlight.rect,
               selector: currentHighlight.selector,
               elementInfo: currentHighlight.elementInfo,
-              childSelectors: currentHighlight.childSelectors || [],
+              childSelectors:
+                cachedChildSelectors.length > 0
+                  ? cachedChildSelectors
+                  : highlighterData?.childSelectors || [],
+              groupInfo: highlighterData?.groupInfo,
             });
           }
           notifyLastAction("select element");
@@ -670,8 +677,8 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
             if (socket) {
               socket.emit("dom:scroll", {
                 deltaX,
-                deltaY
-              })
+                deltaY,
+              });
             }
             notifyLastAction("scroll");
           }
@@ -749,20 +756,86 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
         return;
       }
 
-      const iframe = iframeRef.current;
+      if (isInCaptureMode) {
+        return; // Skip rendering in capture mode
+      }
 
       try {
         setRenderError(null);
         setIsRendered(false);
 
-        const tempDoc =
-          document.implementation.createHTMLDocument("RRWeb Snapshot");
+        const iframe = iframeRef.current!;
+        const iframeDoc = iframe.contentDocument!;
+
+        const styleTags = Array.from(
+          document.querySelectorAll('link[rel="stylesheet"], style')
+        )
+          .map((tag) => tag.outerHTML)
+          .join("\n");
+
+        const enhancedCSS = `
+          /* rrweb rebuilt content styles */
+          html, body {
+            margin: 0 !important;
+            padding: 8px !important;
+            overflow-x: hidden !important;
+          }
+
+          html::-webkit-scrollbar,
+          body::-webkit-scrollbar {
+              display: none !important;
+              width: 0 !important;
+              height: 0 !important;
+              background: transparent !important;
+          }
+          
+          /* Hide scrollbars for all elements */
+          *::-webkit-scrollbar {
+              display: none !important;
+              width: 0 !important;
+              height: 0 !important;
+              background: transparent !important;
+          }
+          
+          * {
+              scrollbar-width: none !important; /* Firefox */
+              -ms-overflow-style: none !important; /* Internet Explorer 10+ */
+          }
+          
+          /* Make everything interactive */
+          * { 
+              cursor: "pointer" !important; 
+          }
+        `;
+
+        const skeleton = `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <base href="${snapshotData.baseUrl}">
+              ${styleTags}
+              <style>${enhancedCSS}</style>
+            </head>
+            <body></body>
+          </html>
+        `;
+
+        if (!iframeDoc) {
+          throw new Error("Cannot access iframe document");
+        }
+
+        // Write the skeleton into the iframe
+        iframeDoc.open();
+        iframeDoc.write(skeleton);
+        iframeDoc.close();
 
         const mirror = createMirror();
 
         try {
           rebuild(snapshotData.snapshot, {
-            doc: tempDoc,
+            doc: iframeDoc,
             mirror: mirror,
             cache: { stylesWithHoverClass: new Map() },
             afterAppend: (node) => {
@@ -786,125 +859,8 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           throw new Error(`rrweb rebuild failed: ${rebuildError}`);
         }
 
-        let rebuiltHTML = tempDoc.documentElement.outerHTML;
-
-        rebuiltHTML = "<!DOCTYPE html>\n" + rebuiltHTML;
-
-        const additionalCSS = [];
-
-        if (snapshotData.resources.fonts?.length > 0) {
-          const fontCSS = snapshotData.resources.fonts
-            .map((font) => {
-              const format = font.format || "woff2";
-              return `
-                @font-face {
-                    font-family: 'ProxiedFont-${
-                      font.url.split("/").pop()?.split(".")[0] ||
-                      "unknown"
-                    }';
-                    src: url("${font.dataUrl}") format("${format}");
-                    font-display: swap;
-                }
-            `;
-            })
-            .join("\n");
-          additionalCSS.push(fontCSS);
-        }
-
-        if (snapshotData.resources.stylesheets?.length > 0) {
-          const externalCSS = snapshotData.resources.stylesheets
-            .map((stylesheet) => stylesheet.content)
-            .join("\n\n");
-          additionalCSS.push(externalCSS);
-        }
-
-        const enhancedCSS = `
-          /* rrweb rebuilt content styles */
-          html, body {
-              margin: 0 !important;
-              padding: 8px !important;
-              font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
-              background: white !important;
-              overflow-x: hidden !important;
-          }
-
-          html::-webkit-scrollbar,
-          body::-webkit-scrollbar {
-              display: none !important;
-              width: 0 !important;
-              height: 0 !important;
-              background: transparent !important;
-          }
-          
-          /* Hide scrollbars for all elements */
-          *::-webkit-scrollbar {
-              display: none !important;
-              width: 0 !important;
-              height: 0 !important;
-              background: transparent !important;
-          }
-          
-          * {
-              scrollbar-width: none !important; /* Firefox */
-              -ms-overflow-style: none !important; /* Internet Explorer 10+ */
-          }
-                
-          img {
-              max-width: 100% !important;
-              height: auto !important;
-          }
-          
-          /* Make everything interactive */
-          * { 
-              cursor: ${isInCaptureMode ? "crosshair" : "pointer"} !important; 
-          }
-          
-          /* Additional CSS from resources */
-          ${additionalCSS.join("\n\n")}
-      `;
-
-        const headTagRegex = /<head[^>]*>/i;
-        const cssInjection = `
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-                <base href="${snapshotData.baseUrl}">
-                <style>${enhancedCSS}</style>
-            `;
-
-        if (headTagRegex.test(rebuiltHTML)) {
-          rebuiltHTML = rebuiltHTML.replace(
-            headTagRegex,
-            `<head>${cssInjection}`
-          );
-        } else {
-          rebuiltHTML = rebuiltHTML.replace(
-            /<html[^>]*>/i,
-            `<html><head>${cssInjection}</head>`
-          );
-        }
-
-        rebuiltHTML = rebuiltHTML
-          .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-          .replace(/\s*on\w+\s*=\s*"[^"]*"/gi, "")
-          .replace(/\s*on\w+\s*=\s*'[^']*'/gi, "")
-          .replace(/javascript:/gi, "void:")
-          .replace(/<form\b/gi, '<form onsubmit="return false;"');
-
-        const iframeDoc =
-          iframe.contentDocument || iframe.contentWindow?.document;
-
-        if (!iframeDoc) {
-          throw new Error("Cannot access iframe document");
-        }
-
-        iframeDoc.open();
-        iframeDoc.write(rebuiltHTML);
-        iframeDoc.close();
-
-        iframe.onload = () => {
-          setIsRendered(true);
-          setupIframeInteractions(iframeDoc);
-        };
+        setIsRendered(true);
+        setupIframeInteractions(iframeDoc);
       } catch (error) {
         console.error("Error rendering rrweb snapshot:", error);
         setRenderError(error instanceof Error ? error.message : String(error));
@@ -1127,7 +1083,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
             left: 0,
             right: 0,
             bottom: 0,
-            cursor: "pointer",
+            cursor: "pointer !important",
             pointerEvents: "none",
             zIndex: 999,
             borderRadius: "0px 0px 5px 5px",
