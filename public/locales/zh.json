@@ -306,7 +306,7 @@
   },
   "recording_page": {
     "loader": {
-      "browser_startup": "正在启动浏览器...正在导航至{{url}}"
+      "browser_startup": "正在启动浏览器...抓紧"
     }
   },
   "integration_settings": {
