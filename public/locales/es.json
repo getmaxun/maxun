@@ -306,7 +306,7 @@
   },
   "recording_page": {
     "loader": {
-      "browser_startup": "Iniciando el navegador...Navegando a {{url}}"
+      "browser_startup": "Iniciando el navegador...Mantener apretado"
     }
   },
   "integration_settings": {
