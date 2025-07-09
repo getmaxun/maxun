@@ -306,7 +306,7 @@
     },
     "recording_page": {
         "loader": {
-            "browser_startup": "ブラウザを起動中...{{url}}に移動中"
+            "browser_startup": "ブラウザを起動中...しっかり握って"
         }
     },
     "integration_settings": {
