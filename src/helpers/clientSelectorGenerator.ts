@@ -1553,15 +1553,29 @@ class ClientSelectorGenerator {
         );
 
         return attrs.map(
-          (attr): Node => ({
-            name:
-              "[" +
-              cssesc(attr.name, { isIdentifier: true }) +
-              '="' +
-              cssesc(attr.value) +
-              '"]',
-            penalty: 0.5,
-          })
+          (attr): Node => {
+            let attrValue = attr.value;
+            
+            if (attr.name === "href" && attr.value.includes("://")) {
+              try {
+                const url = new URL(attr.value);
+                const siteOrigin = `${url.protocol}//${url.host}`;
+                attrValue = attr.value.replace(siteOrigin, "");
+              } catch (e) {
+                // Keep original if URL parsing fails
+              }
+            }
+            
+            return {
+              name:
+                "[" +
+                cssesc(attr.name, { isIdentifier: true }) +
+                '="' +
+                cssesc(attrValue) +
+                '"]',
+              penalty: 0.5,
+            };
+          }
         );
       }
 
@@ -3526,8 +3540,8 @@ class ClientSelectorGenerator {
     const elementInfo = this.getElementInformation(
       iframeDocument,
       coordinates,
-      this.listSelector,
-      this.getList
+      '',
+      false
     );
 
     const selectorBasedOnCustomAction = this.getSelectors(iframeDocument, coordinates);
