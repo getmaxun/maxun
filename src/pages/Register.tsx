@@ -39,18 +39,11 @@ const Register = () => {
   const submitForm = async (e: any) => {
     e.preventDefault();
 
-    // Basic "@" check (minimal)
-    if (!email.includes("@")) {
-      notify("error", "Invalid email format");
-      return;
-    }
-
-    // Optional: Better regex-based email format check
-    // const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    // if (!emailRegex.test(email)) {
-    //   notify("error", t('register.error.invalid_email') || "Invalid email format");
-    //   return;
-    // }
+     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+     if (!emailRegex.test(email)) {
+       notify("error", "Invalid email format");
+       return;
+     }
 
     setLoading(true);
     try {
