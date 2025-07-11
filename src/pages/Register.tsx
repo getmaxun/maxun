@@ -39,11 +39,11 @@ const Register = () => {
   const submitForm = async (e: any) => {
     e.preventDefault();
 
-     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-     if (!emailRegex.test(email)) {
-       notify("error", "Invalid email format");
-       return;
-     }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      notify("error", "Invalid email format");
+      return;
+    }
 
     setLoading(true);
     try {
