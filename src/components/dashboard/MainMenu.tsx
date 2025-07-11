@@ -31,7 +31,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
     textAlign: 'left',
     fontSize: '17px',
     letterSpacing: '0.02857em',
-    padding: '20px 16px 6px 22px',
+    padding: '20px 16px 20px 22px',
     minHeight: '48px',
     minWidth: '100%',
     display: 'flex',
