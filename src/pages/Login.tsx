@@ -42,6 +42,12 @@ const Login = () => {
 
   const submitForm = async (e: any) => {
     e.preventDefault();
+
+if (!email.includes("@")) {
+  notify("error", "Please enter a valid email.");
+  return;
+}
+
     setLoading(true);
     try {
       const { data } = await axios.post(
