@@ -42,6 +42,12 @@ const Login = () => {
 
   const submitForm = async (e: any) => {
     e.preventDefault();
+
+    if (!email.includes("@")) {
+      notify("error", "Please enter a valid email.");
+      return;
+    }
+
     setLoading(true);
     try {
       const { data } = await axios.post(
@@ -55,11 +61,11 @@ const Login = () => {
       navigate("/");
     } catch (err: any) {
       const errorResponse = err.response?.data;
-    
-      const errorMessage = errorResponse?.code 
-      ? t(errorResponse.code)
-      : t('login.error.generic');
-      
+
+      const errorMessage = errorResponse?.code
+        ? t(errorResponse.code)
+        : t('login.error.generic');
+
       notify("error", errorMessage);
       setLoading(false);
     }

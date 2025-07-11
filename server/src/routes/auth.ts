@@ -33,6 +33,14 @@ router.post("/register", async (req, res) => {
       });
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        error: "VALIDATION_ERROR",
+        code: "register.validation.invalid_email_format"
+      });
+    }
+
     if (!password || password.length < 6) {
       return res.status(400).json({
         error: "VALIDATION_ERROR",
@@ -74,16 +82,16 @@ router.post("/register", async (req, res) => {
     res.cookie("token", token, {
       httpOnly: true,
     });
-    
+
     capture("maxun-oss-user-registered", {
       email: user.email,
       userId: user.id,
       registeredAt: new Date().toISOString(),
     });
-    
+
     console.log(`User registered`);
     res.json(user);
-    
+
   } catch (error: any) {
     console.log(`Could not register user - ${error}`);
     return res.status(500).json({
@@ -150,23 +158,23 @@ router.post("/login", async (req, res) => {
 });
 
 router.get("/logout", async (req, res) => {
-    try {
-      res.clearCookie("token");
-      return res.status(200).json({
-        ok: true,
-        message: "Logged out successfully",
-        code: "success"
-      });
-    } catch (error) {
-      console.error('Logout error:', error);
-      return res.status(500).json({
-        ok: false,
-        message: "Error during logout",
-        code: "server",
-        error: process.env.NODE_ENV === 'development' ? error : undefined
-      });
-    }
+  try {
+    res.clearCookie("token");
+    return res.status(200).json({
+      ok: true,
+      message: "Logged out successfully",
+      code: "success"
+    });
+  } catch (error) {
+    console.error('Logout error:', error);
+    return res.status(500).json({
+      ok: false,
+      message: "Error during logout",
+      code: "server",
+      error: process.env.NODE_ENV === 'development' ? error : undefined
+    });
   }
+}
 );
 
 router.get(
@@ -678,7 +686,7 @@ router.get("/airtable", requireSignIn, (req: Request, res) => {
 router.get("/airtable/callback", requireSignIn, async (req: Request, res) => {
   const authenticatedReq = req as AuthenticatedRequest;
   const baseUrl = process.env.PUBLIC_URL || "http://localhost:5173";
-  
+
   try {
     const { code, state, error } = authenticatedReq.query;
 
@@ -694,7 +702,7 @@ router.get("/airtable/callback", requireSignIn, async (req: Request, res) => {
 
     // Verify session data
     if (!authenticatedReq.session?.code_verifier || authenticatedReq.session.robotId !== state.toString()) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: "Session expired - please restart the OAuth flow"
       });
     }
@@ -708,7 +716,7 @@ router.get("/airtable/callback", requireSignIn, async (req: Request, res) => {
       body: new URLSearchParams({
         grant_type: "authorization_code",
         code: code.toString(),
-        client_id: process.env.AIRTABLE_CLIENT_ID!, 
+        client_id: process.env.AIRTABLE_CLIENT_ID!,
         redirect_uri: process.env.AIRTABLE_REDIRECT_URI!,
         code_verifier: authenticatedReq.session.code_verifier
       }),
@@ -811,7 +819,7 @@ router.get("/airtable/bases", requireSignIn, async (req: Request, res) => {
 // Update robot with selected base
 router.post("/airtable/update", requireSignIn, async (req: Request, res) => {
   const authenticatedReq = req as AuthenticatedRequest;
-  const { baseId, robotId , baseName, tableName, tableId} = req.body;
+  const { baseId, robotId, baseName, tableName, tableId } = req.body;
 
   if (!baseId || !robotId) {
     return res.status(400).json({ message: "Base ID and Robot ID are required" });
