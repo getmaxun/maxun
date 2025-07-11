@@ -41,7 +41,7 @@ const Register = () => {
 
     // Basic "@" check (minimal)
     if (!email.includes("@")) {
-      notify("error", t('register.error.invalid_email') || "Invalid email format");
+      notify("error", "Invalid email format");
       return;
     }
 
