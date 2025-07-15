@@ -305,7 +305,7 @@
     },
     "recording_page": {
         "loader": {
-            "browser_startup": "Browser wird gestartet...Navigation zu {{url}}"
+            "browser_startup": "Browser wird gestartet...Festhalten"
         }
     },
     "integration_settings": {

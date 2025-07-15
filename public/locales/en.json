@@ -318,7 +318,7 @@
     },
     "recording_page": {
       "loader": {
-        "browser_startup": "Spinning up a browser...Navigating to {{url}}"
+        "browser_startup": "Spinning up a browser...Hold tight"
       }
     },
     "integration_settings": {
