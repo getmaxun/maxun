@@ -9,9 +9,8 @@ import { useThemeMode } from "../context/theme-provider";
 import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
 
-
 const Register = () => {
-  const {t} = useTranslation();
+  const { t } = useTranslation();
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -39,6 +38,13 @@ const Register = () => {
 
   const submitForm = async (e: any) => {
     e.preventDefault();
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      notify("error", "Invalid email format");
+      return;
+    }
+
     setLoading(true);
     try {
       const { data } = await axios.post(`${apiUrl}/auth/register`, { email, password });
@@ -46,12 +52,12 @@ const Register = () => {
       notify("success", t('register.welcome_notification'));
       window.localStorage.setItem("user", JSON.stringify(data));
       navigate("/");
-    } catch (error:any) {
+    } catch (error: any) {
       const errorResponse = error.response?.data;
 
-      const errorMessage = errorResponse?.code 
-      ? t(errorResponse.code)
-      : t('register.error.generic');
+      const errorMessage = errorResponse?.code
+        ? t(errorResponse.code)
+        : t('register.error.generic');
 
       notify("error", errorMessage);
       setLoading(false);
@@ -68,7 +74,6 @@ const Register = () => {
         mt: 6,
         padding: 4,
         backgroundColor: darkMode ? "#121212" : "#ffffff",
-       
       }}
     >
       <Box
@@ -80,7 +85,8 @@ const Register = () => {
           color: darkMode ? "#ffffff" : "#333333",
           padding: 6,
           borderRadius: 5,
-          boxShadow: "0px 20px 40px rgba(0, 0, 0, 0.2), 0px -5px 10px rgba(0, 0, 0, 0.15)",
+          boxShadow:
+            "0px 20px 40px rgba(0, 0, 0, 0.2), 0px -5px 10px rgba(0, 0, 0, 0.15)",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -143,9 +149,13 @@ const Register = () => {
             t('register.button')
           )}
         </Button>
-        <Typography variant="body2" align="center" sx={{ color: darkMode ? "#ffffff" : "#333333" }}>
+        <Typography
+          variant="body2"
+          align="center"
+          sx={{ color: darkMode ? "#ffffff" : "#333333" }}
+        >
           {t('register.register_prompt')}{" "}
-          <Link to="/login" style={{ textDecoration: "none", color: "#ff33cc" }}> 
+          <Link to="/login" style={{ textDecoration: "none", color: "#ff33cc" }}>
             {t('register.login_link')}
           </Link>
         </Typography>
