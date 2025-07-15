@@ -147,7 +147,18 @@ export const BrowserWindow = () => {
     const { browserWidth, browserHeight } = useBrowserDimensionsStore();
     const [canvasRef, setCanvasReference] = useState<React.RefObject<HTMLCanvasElement> | undefined>(undefined);
     const [screenShot, setScreenShot] = useState<string>("");
-    const [highlighterData, setHighlighterData] = useState<{ rect: DOMRect, selector: string, elementInfo: ElementInfo | null, childSelectors?: string[], groupElements?: Array<{ element: HTMLElement; rect: DOMRect } >} | null>(null);
+    const [highlighterData, setHighlighterData] = useState<{
+        rect: DOMRect;
+        selector: string;
+        elementInfo: ElementInfo | null;
+        isShadow?: boolean;
+        childSelectors?: string[];
+        groupElements?: Array<{ element: HTMLElement; rect: DOMRect }>;
+        similarElements?: {
+            elements: HTMLElement[];
+            rects: DOMRect[];
+        };
+    } | null>(null);
     const [showAttributeModal, setShowAttributeModal] = useState(false);
     const [attributeOptions, setAttributeOptions] = useState<AttributeOption[]>([]);
     const [selectedElement, setSelectedElement] = useState<{ selector: string, info: ElementInfo | null } | null>(null);
@@ -161,11 +172,20 @@ export const BrowserWindow = () => {
     const [paginationSelector, setPaginationSelector] = useState<string>('');
 
     const highlighterUpdateRef = useRef<number>(0);
+    const [isCachingChildSelectors, setIsCachingChildSelectors] = useState(false);
+    const [cachedListSelector, setCachedListSelector] = useState<string | null>(
+        null
+    );
+    const [pendingNotification, setPendingNotification] = useState<{
+        type: "error" | "warning" | "info" | "success";
+        message: string;
+        count?: number;
+    } | null>(null);
 
     const { socket } = useSocketStore();
     const { notify, currentTextActionId, currentListActionId, updateDOMMode, isDOMMode, currentSnapshot } = useGlobalInfoStore();
     const { getText, getList, paginationMode, paginationType, limitMode, captureStage } = useActionContext();
-    const { addTextStep, addListStep, updateListStepData } = useBrowserSteps();
+    const { addTextStep, addListStep } = useBrowserSteps();
 
     const [currentGroupInfo, setCurrentGroupInfo] = useState<{
         isGroupElement: boolean;
@@ -270,17 +290,6 @@ export const BrowserWindow = () => {
         [user?.id, socket, updateDOMMode]
     );
 
-    const screenshotModeHandler = useCallback(
-        (data: any) => {
-            if (!data.userId || data.userId === user?.id) {
-                updateDOMMode(false);
-                socket?.emit("screenshot-mode-enabled");
-                setIsLoading(false);
-            }
-        },
-        [user?.id, updateDOMMode]
-    );
-
     const domModeErrorHandler = useCallback(
         (data: any) => {
             if (!data.userId || data.userId === user?.id) {
@@ -300,28 +309,68 @@ export const BrowserWindow = () => {
     }, [isDOMMode, getList, listSelector, paginationMode]);
 
     useEffect(() => {
-        if (isDOMMode && listSelector) {
-            socket?.emit("setGetList", { getList: true });
-            socket?.emit("listSelector", { selector: listSelector });
+      if (isDOMMode && listSelector) {
+        socket?.emit("setGetList", { getList: true });
+        socket?.emit("listSelector", { selector: listSelector });
 
-            clientSelectorGenerator.setListSelector(listSelector);
+        clientSelectorGenerator.setListSelector(listSelector);
 
-            setCachedChildSelectors([]);
+        if (currentSnapshot && cachedListSelector !== listSelector) {
+          setCachedChildSelectors([]);
+          setIsCachingChildSelectors(true);
+          setCachedListSelector(listSelector);
 
-            if (currentSnapshot) {
-                const iframeElement = document.querySelector(
-                "#dom-browser-iframe"
-                ) as HTMLIFrameElement;
-                if (iframeElement?.contentDocument) {
-                    const childSelectors = clientSelectorGenerator.getChildSelectors(
-                        iframeElement.contentDocument,
-                        listSelector
-                    );
-                    setCachedChildSelectors(childSelectors);
+          const iframeElement = document.querySelector(
+            "#dom-browser-iframe"
+          ) as HTMLIFrameElement;
+
+          if (iframeElement?.contentDocument) {
+            setTimeout(() => {
+              try {
+                const childSelectors =
+                  clientSelectorGenerator.getChildSelectors(
+                    iframeElement.contentDocument as Document,
+                    listSelector
+                  );
+
+                clientSelectorGenerator.precomputeChildSelectorMappings(
+                  childSelectors,
+                  iframeElement.contentDocument as Document
+                );
+
+                setCachedChildSelectors(childSelectors);
+              } catch (error) {
+                console.error("Error during child selector caching:", error);
+              } finally {
+                setIsCachingChildSelectors(false);
+
+                if (pendingNotification) {
+                  notify(pendingNotification.type, pendingNotification.message);
+                  setPendingNotification(null);
                 }
-            }
+              }
+            }, 100);
+          } else {
+            setIsCachingChildSelectors(false);
+          }
         }
-    }, [isDOMMode, listSelector, socket, getList, currentSnapshot]);
+      }
+    }, [
+      isDOMMode,
+      listSelector,
+      socket,
+      getList,
+      currentSnapshot,
+      cachedListSelector,
+      pendingNotification,
+      notify,
+    ]);
+
+    useEffect(() => {
+        if (!listSelector) {
+            setCachedListSelector(null);
+        }
+    }, [listSelector]);
 
     useEffect(() => {
         coordinateMapper.updateDimensions(dimensions.width, dimensions.height, viewportInfo.width, viewportInfo.height);
@@ -389,7 +438,6 @@ export const BrowserWindow = () => {
             socket.on("screencast", screencastHandler);
             socket.on("domcast", rrwebSnapshotHandler);
             socket.on("dom-mode-enabled", domModeHandler);
-            // socket.on("screenshot-mode-enabled", screenshotModeHandler);
             socket.on("dom-mode-error", domModeErrorHandler);
         }
 
@@ -403,7 +451,6 @@ export const BrowserWindow = () => {
                 socket.off("screencast", screencastHandler);
                 socket.off("domcast", rrwebSnapshotHandler);
                 socket.off("dom-mode-enabled", domModeHandler);
-                // socket.off("screenshot-mode-enabled", screenshotModeHandler);
                 socket.off("dom-mode-error", domModeErrorHandler);
             }
         };
@@ -415,7 +462,6 @@ export const BrowserWindow = () => {
         screencastHandler,
         rrwebSnapshotHandler,
         domModeHandler,
-        // screenshotModeHandler,
         domModeErrorHandler,
     ]);
 
@@ -425,11 +471,16 @@ export const BrowserWindow = () => {
             selector: string;
             elementInfo: ElementInfo | null;
             childSelectors?: string[];
+            isShadow?: boolean;
             groupInfo?: {
                 isGroupElement: boolean;
                 groupSize: number;
                 groupElements: HTMLElement[];
                 groupFingerprint: ElementFingerprint;
+            };
+            similarElements?: {
+                elements: HTMLElement[];
+                rects: DOMRect[];
             };
             isDOMMode?: boolean;
         }) => {
@@ -459,6 +510,22 @@ export const BrowserWindow = () => {
 
             const iframeRect = iframeElement.getBoundingClientRect();
             const IFRAME_BODY_PADDING = 16;
+
+            let mappedSimilarElements;
+            if (data.similarElements) {
+                mappedSimilarElements = {
+                elements: data.similarElements.elements,
+                rects: data.similarElements.rects.map(
+                    (rect) =>
+                    new DOMRect(
+                        rect.x + iframeRect.left - IFRAME_BODY_PADDING,
+                        rect.y + iframeRect.top - IFRAME_BODY_PADDING,
+                        rect.width,
+                        rect.height
+                    )
+                ),
+                };
+            }
 
             if (data.groupInfo) {
                 setCurrentGroupInfo(data.groupInfo);
@@ -686,6 +753,7 @@ export const BrowserWindow = () => {
       (highlighterData: {
         rect: DOMRect;
         selector: string;
+        isShadow?: boolean;
         elementInfo: ElementInfo | null;
         childSelectors?: string[];
         groupInfo?: {
@@ -713,11 +781,17 @@ export const BrowserWindow = () => {
               )
             );
             addListStep(
-              listSelector!,
-              fields,
-              currentListId || 0,
-              currentListActionId || `list-${crypto.randomUUID()}`,
-              { type: paginationType, selector: highlighterData.selector }
+                listSelector!,
+                fields,
+                currentListId || 0,
+                currentListActionId || `list-${crypto.randomUUID()}`,
+                { 
+                    type: paginationType, 
+                    selector: highlighterData.selector,
+                    isShadow: highlighterData.isShadow 
+                },
+                undefined,
+                highlighterData.isShadow
             );
             socket?.emit("setPaginationMode", { pagination: false });
           }
@@ -776,7 +850,7 @@ export const BrowserWindow = () => {
               selectorObj: {
                 selector: currentSelector,
                 tag: highlighterData.elementInfo?.tagName,
-                shadow: highlighterData.elementInfo?.isShadowRoot,
+                isShadow: highlighterData.elementInfo?.isShadowRoot,
                 attribute,
               },
             };
@@ -794,7 +868,9 @@ export const BrowserWindow = () => {
                 updatedFields,
                 currentListId,
                 currentListActionId || `list-${crypto.randomUUID()}`,
-                { type: "", selector: paginationSelector }
+                { type: "", selector: paginationSelector },
+                undefined,
+                highlighterData.isShadow
               );
             }
           } else {
@@ -829,7 +905,7 @@ export const BrowserWindow = () => {
               {
                 selector: highlighterData.selector,
                 tag: highlighterData.elementInfo?.tagName,
-                shadow: highlighterData.elementInfo?.isShadowRoot,
+                isShadow: highlighterData.isShadow || highlighterData.elementInfo?.isShadowRoot,
                 attribute,
               },
               currentTextActionId || `text-${crypto.randomUUID()}`
@@ -908,7 +984,7 @@ export const BrowserWindow = () => {
                 {
                   selector: highlighterData.selector,
                   tag: highlighterData.elementInfo?.tagName,
-                  shadow: highlighterData.elementInfo?.isShadowRoot,
+                  isShadow: highlighterData.isShadow || highlighterData.elementInfo?.isShadowRoot,
                   attribute,
                 },
                 currentTextActionId || `text-${crypto.randomUUID()}`
@@ -942,7 +1018,9 @@ export const BrowserWindow = () => {
                 fields,
                 currentListId || 0,
                 currentListActionId || `list-${crypto.randomUUID()}`,
-                { type: paginationType, selector: highlighterData.selector }
+                { type: paginationType, selector: highlighterData.selector, isShadow: highlighterData.isShadow },
+                undefined,
+                highlighterData.isShadow
               );
               socket?.emit("setPaginationMode", { pagination: false });
             }
@@ -1000,7 +1078,7 @@ export const BrowserWindow = () => {
                 selectorObj: {
                   selector: currentSelector,
                   tag: highlighterData.elementInfo?.tagName,
-                  shadow: highlighterData.elementInfo?.isShadowRoot,
+                  isShadow: highlighterData.elementInfo?.isShadowRoot,
                   attribute,
                 },
               };
@@ -1018,7 +1096,9 @@ export const BrowserWindow = () => {
                   updatedFields,
                   currentListId,
                   currentListActionId || `list-${crypto.randomUUID()}`,
-                  { type: "", selector: paginationSelector }
+                  { type: "", selector: paginationSelector, isShadow: highlighterData.isShadow },
+                  undefined,
+                  highlighterData.isShadow
                 );
               }
             } else {
@@ -1052,7 +1132,7 @@ export const BrowserWindow = () => {
                     addTextStep('', data, {
                         selector: selectedElement.selector,
                         tag: selectedElement.info?.tagName,
-                        shadow: selectedElement.info?.isShadowRoot,
+                        isShadow: highlighterData?.isShadow || selectedElement.info?.isShadowRoot,
                         attribute: attribute
                     }, currentTextActionId || `text-${crypto.randomUUID()}`);
                 }
@@ -1065,7 +1145,7 @@ export const BrowserWindow = () => {
                         selectorObj: {
                             selector: selectedElement.selector,
                             tag: selectedElement.info?.tagName,
-                            shadow: selectedElement.info?.isShadowRoot,
+                            isShadow: selectedElement.info?.isShadowRoot,
                             attribute: attribute
                         }
                     };
@@ -1083,7 +1163,9 @@ export const BrowserWindow = () => {
                             updatedFields, 
                             currentListId, 
                             currentListActionId || `list-${crypto.randomUUID()}`,
-                            { type: '', selector: paginationSelector }
+                            { type: "", selector: paginationSelector, isShadow: highlighterData?.isShadow },
+                            undefined,
+                            highlighterData?.isShadow
                         );
                     }
                 }
@@ -1110,260 +1192,370 @@ export const BrowserWindow = () => {
     }, [paginationMode, resetPaginationSelector]);
 
     return (
-        <div onClick={handleClick} style={{ width: browserWidth }} id="browser-window">
-            {
-                getText === true || getList === true ? (
-                    <GenericModal
-                        isOpen={showAttributeModal}
-                        onClose={() => {
-                            setShowAttributeModal(false);
-                            setSelectedElement(null);
-                            setAttributeOptions([]);
-                        }}
-                        canBeClosed={true}
-                        modalStyle={modalStyle}
+      <div
+        onClick={handleClick}
+        style={{ width: browserWidth }}
+        id="browser-window"
+      >
+        {/* Attribute selection modal */}
+        {(getText === true || getList === true) && (
+          <GenericModal
+            isOpen={showAttributeModal}
+            onClose={() => {
+              setShowAttributeModal(false);
+              setSelectedElement(null);
+              setAttributeOptions([]);
+            }}
+            canBeClosed={true}
+            modalStyle={modalStyle}
+          >
+            <div>
+              <h2>Select Attribute</h2>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "20px",
+                  marginTop: "30px",
+                }}
+              >
+                {attributeOptions.map((option) => (
+                  <Button
+                    variant="outlined"
+                    size="medium"
+                    key={option.value}
+                    onClick={() => {
+                      handleAttributeSelection(option.value);
+                    }}
+                    style={{
+                      justifyContent: "flex-start",
+                      maxWidth: "80%",
+                      overflow: "hidden",
+                    }}
+                    sx={{
+                      color: "#ff00c3 !important",
+                      borderColor: "#ff00c3 !important",
+                      backgroundColor: "whitesmoke !important",
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: "block",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        maxWidth: "100%",
+                      }}
                     >
-                        <div>
-                            <h2>Select Attribute</h2>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '30px' }}>
-                                {attributeOptions.map((option) => (
-                                    <Button
-                                        variant="outlined"
-                                        size="medium"
-                                        key={option.value}
-                                        onClick={() => handleAttributeSelection(option.value)}
-                                        style={{
-                                            justifyContent: 'flex-start',
-                                            maxWidth: '80%',
-                                            overflow: 'hidden',
-                                            padding: '5px 10px',
-                                        }}
-                                        sx={{
-                                            color: '#ff00c3 !important',
-                                            borderColor: '#ff00c3 !important',
-                                            backgroundColor: 'whitesmoke !important',
-                                        }}
-                                    >
-                                        <span style={{
-                                            display: 'block',
-                                            whiteSpace: 'nowrap',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            maxWidth: '100%'
-                                        }}>
-                                            {option.label}
-                                        </span>
-                                    </Button>
-                                ))}
-                            </div>
-                        </div>
-                    </GenericModal>
-                ) : null
-            }
+                      {option.label}
+                    </span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </GenericModal>
+        )}
 
-            {datePickerInfo && (
-                <DatePicker
-                    coordinates={datePickerInfo.coordinates}
-                    selector={datePickerInfo.selector}
-                    onClose={() => setDatePickerInfo(null)}
-                />
-            )}
-            {dropdownInfo && (
-                <Dropdown
-                    coordinates={dropdownInfo.coordinates}
-                    selector={dropdownInfo.selector}
-                    options={dropdownInfo.options}
-                    onClose={() => setDropdownInfo(null)}
-                />
-            )}
-            {timePickerInfo && (
-                <TimePicker
-                    coordinates={timePickerInfo.coordinates}
-                    selector={timePickerInfo.selector}
-                    onClose={() => setTimePickerInfo(null)}
-                />
-            )}
-            {dateTimeLocalInfo && (
-                <DateTimeLocalPicker
-                    coordinates={dateTimeLocalInfo.coordinates}
-                    selector={dateTimeLocalInfo.selector}
-                    onClose={() => setDateTimeLocalInfo(null)}
-                />
-            )}
+        {datePickerInfo && (
+          <DatePicker
+            coordinates={datePickerInfo.coordinates}
+            selector={datePickerInfo.selector}
+            onClose={() => setDatePickerInfo(null)}
+          />
+        )}
+        {dropdownInfo && (
+          <Dropdown
+            coordinates={dropdownInfo.coordinates}
+            selector={dropdownInfo.selector}
+            options={dropdownInfo.options}
+            onClose={() => setDropdownInfo(null)}
+          />
+        )}
+        {timePickerInfo && (
+          <TimePicker
+            coordinates={timePickerInfo.coordinates}
+            selector={timePickerInfo.selector}
+            onClose={() => setTimePickerInfo(null)}
+          />
+        )}
+        {dateTimeLocalInfo && (
+          <DateTimeLocalPicker
+            coordinates={dateTimeLocalInfo.coordinates}
+            selector={dateTimeLocalInfo.selector}
+            onClose={() => setDateTimeLocalInfo(null)}
+          />
+        )}
 
-            <div style={{ height: dimensions.height, overflow: "hidden" }}>
-                {(getText === true || getList === true) &&
-                !showAttributeModal &&
-                highlighterData?.rect != null && (
-                    <>
-                    {!isDOMMode && canvasRef?.current && (
-                        <Highlighter
-                            unmodifiedRect={highlighterData?.rect}
-                            displayedSelector={highlighterData?.selector}
-                            width={dimensions.width}
-                            height={dimensions.height}
-                            canvasRect={canvasRef.current.getBoundingClientRect()}
-                        />
+        {/* Main content area */}
+        <div style={{ height: dimensions.height, overflow: "hidden" }}>
+          {/* Add CSS for the spinner animation */}
+          <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+
+          {(getText === true || getList === true) &&
+            !showAttributeModal &&
+            highlighterData?.rect != null && (
+              <>
+                {!isDOMMode && canvasRef?.current && (
+                  <Highlighter
+                    unmodifiedRect={highlighterData?.rect}
+                    displayedSelector={highlighterData?.selector}
+                    width={dimensions.width}
+                    height={dimensions.height}
+                    canvasRect={canvasRef.current.getBoundingClientRect()}
+                  />
+                )}
+
+                {isDOMMode && highlighterData && (
+                  <>
+                    {/* Individual element highlight (for non-group or hovered element) */}
+                    {getText && !listSelector && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          left: Math.max(0, highlighterData.rect.x),
+                          top: Math.max(0, highlighterData.rect.y),
+                          width: Math.min(
+                            highlighterData.rect.width,
+                            dimensions.width
+                          ),
+                          height: Math.min(
+                            highlighterData.rect.height,
+                            dimensions.height
+                          ),
+                          background: "rgba(255, 0, 195, 0.15)",
+                          border: "2px solid #ff00c3",
+                          borderRadius: "3px",
+                          pointerEvents: "none",
+                          zIndex: 1000,
+                          boxShadow: "0 0 0 1px rgba(255, 255, 255, 0.8)",
+                          transition: "all 0.1s ease-out",
+                        }}
+                      />
                     )}
 
-                    {isDOMMode && highlighterData && (
-                            <>
-                            {/* Individual element highlight (for non-group or hovered element) */}
-                            {(!getList ||
-                                listSelector ||
-                                !currentGroupInfo?.isGroupElement) && (
-                                <div
-                                    style={{
-                                        position: "absolute",
-                                        left: Math.max(0, highlighterData.rect.x),
-                                        top: Math.max(0, highlighterData.rect.y),
-                                        width: Math.min(
-                                            highlighterData.rect.width,
-                                            dimensions.width
-                                        ),
-                                        height: Math.min(
-                                            highlighterData.rect.height,
-                                            dimensions.height
-                                        ),
-                                        background: "rgba(255, 0, 195, 0.15)",
-                                        border: "2px solid #ff00c3",
-                                        borderRadius: "3px",
-                                        pointerEvents: "none",
-                                        zIndex: 1000,
-                                        boxShadow: "0 0 0 1px rgba(255, 255, 255, 0.8)",
-                                        transition: "all 0.1s ease-out",
-                                    }}
-                                />
-                            )}
+                    {/* Group elements highlighting with real-time coordinates */}
+                    {getList &&
+                      !listSelector &&
+                      currentGroupInfo?.isGroupElement &&
+                      highlighterData.groupElements &&
+                      highlighterData.groupElements.map(
+                        (groupElement, index) => (
+                          <React.Fragment key={index}>
+                            {/* Highlight box */}
+                            <div
+                              style={{
+                                position: "absolute",
+                                left: Math.max(0, groupElement.rect.x),
+                                top: Math.max(0, groupElement.rect.y),
+                                width: Math.min(
+                                  groupElement.rect.width,
+                                  dimensions.width
+                                ),
+                                height: Math.min(
+                                  groupElement.rect.height,
+                                  dimensions.height
+                                ),
+                                background: "rgba(255, 0, 195, 0.15)",
+                                border: "2px dashed #ff00c3",
+                                borderRadius: "3px",
+                                pointerEvents: "none",
+                                zIndex: 1000,
+                                boxShadow: "0 0 0 1px rgba(255, 255, 255, 0.8)",
+                                transition: "all 0.1s ease-out",
+                              }}
+                            />
 
-                            {/* Group elements highlighting with real-time coordinates */}
-                            {getList &&
-                                !listSelector &&
-                                currentGroupInfo?.isGroupElement &&
-                                highlighterData.groupElements &&
-                                highlighterData.groupElements.map((groupElement, index) => (
-                                <React.Fragment key={index}>
-                                    {/* Highlight box */}
-                                    <div
-                                        style={{
-                                            position: "absolute",
-                                            left: Math.max(0, groupElement.rect.x),
-                                            top: Math.max(0, groupElement.rect.y),
-                                            width: Math.min(
-                                                groupElement.rect.width,
-                                                dimensions.width
-                                            ),
-                                            height: Math.min(
-                                                groupElement.rect.height,
-                                                dimensions.height
-                                            ),
-                                            background: "rgba(255, 0, 195, 0.15)",
-                                            border: "2px dashed #ff00c3",
-                                            borderRadius: "3px",
-                                            pointerEvents: "none",
-                                            zIndex: 1000,
-                                            boxShadow: "0 0 0 1px rgba(255, 255, 255, 0.8)",
-                                            transition: "all 0.1s ease-out",
-                                        }}
-                                    />
+                            <div
+                              style={{
+                                position: "absolute",
+                                left: Math.max(0, groupElement.rect.x),
+                                top: Math.max(0, groupElement.rect.y - 20),
+                                background: "#ff00c3",
+                                color: "white",
+                                padding: "2px 6px",
+                                fontSize: "10px",
+                                fontWeight: "bold",
+                                borderRadius: "2px",
+                                pointerEvents: "none",
+                                zIndex: 1001,
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              List item {index + 1}
+                            </div>
+                          </React.Fragment>
+                        )
+                      )}
 
-                                    <div
-                                        style={{
-                                            position: "absolute",
-                                            left: Math.max(0, groupElement.rect.x),
-                                            top: Math.max(0, groupElement.rect.y - 20),
-                                            background: "#ff00c3",
-                                            color: "white",
-                                            padding: "2px 6px",
-                                            fontSize: "10px",
-                                            fontWeight: "bold",
-                                            borderRadius: "2px",
-                                            pointerEvents: "none",
-                                            zIndex: 1001,
-                                            whiteSpace: "nowrap",
-                                        }}
-                                    >
-                                        List item {index + 1}
-                                    </div>
-                                </React.Fragment>
-                                ))}
-                            </>
-                        )}
-                    </>
+                    {getList &&
+                      listSelector &&
+                      !paginationMode &&
+                      !limitMode &&
+                      highlighterData?.similarElements &&
+                      highlighterData.similarElements.rects.map(
+                        (rect, index) => (
+                          <React.Fragment key={`item-${index}`}>
+                            {/* Highlight box for similar element */}
+                            <div
+                              style={{
+                                position: "absolute",
+                                left: Math.max(0, rect.x),
+                                top: Math.max(0, rect.y),
+                                width: Math.min(rect.width, dimensions.width),
+                                height: Math.min(
+                                  rect.height,
+                                  dimensions.height
+                                ),
+                                background: "rgba(255, 0, 195, 0.15)",
+                                border: "2px dashed #ff00c3",
+                                borderRadius: "3px",
+                                pointerEvents: "none",
+                                zIndex: 1000,
+                                boxShadow: "0 0 0 1px rgba(255, 255, 255, 0.8)",
+                                transition: "all 0.1s ease-out",
+                              }}
+                            />
+
+                            {/* Label for similar element */}
+                            <div
+                              style={{
+                                position: "absolute",
+                                left: Math.max(0, rect.x),
+                                top: Math.max(0, rect.y - 20),
+                                background: "#ff00c3",
+                                color: "white",
+                                padding: "2px 6px",
+                                fontSize: "10px",
+                                fontWeight: "bold",
+                                borderRadius: "2px",
+                                pointerEvents: "none",
+                                zIndex: 1001,
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              Item {index + 1}
+                            </div>
+                          </React.Fragment>
+                        )
+                      )}
+                  </>
                 )}
+              </>
+            )}
 
-                {isDOMMode ? (
-                    currentSnapshot ? (
-                        <DOMBrowserRenderer
-                            width={dimensions.width}
-                            height={dimensions.height}
-                            snapshot={currentSnapshot}
-                            getList={getList}
-                            getText={getText}
-                            listSelector={listSelector}
-                            cachedChildSelectors={cachedChildSelectors}
-                            paginationMode={paginationMode}
-                            paginationType={paginationType}
-                            limitMode={limitMode}
-                            onHighlight={(data: any) => {
-                                domHighlighterHandler(data);
-                            }}
-                            onElementSelect={handleDOMElementSelection}
-                            onShowDatePicker={handleShowDatePicker}
-                            onShowDropdown={handleShowDropdown}
-                            onShowTimePicker={handleShowTimePicker}
-                            onShowDateTimePicker={handleShowDateTimePicker}
-                        />
-                    ) : (
-                        <div
-                        style={{
-                            width: dimensions.width,
-                            height: dimensions.height,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            background: "#f5f5f5",
-                            borderRadius: "5px",
-                            flexDirection: "column",
-                            gap: "20px",
-                        }}
-                        >
-                        <div
-                            style={{
-                            width: "60px",
-                            height: "60px",
-                            borderTop: "4px solid transparent",
-                            borderRadius: "50%",
-                            animation: "spin 1s linear infinite",
-                            }}
-                        />
-                        <div
-                            style={{
-                            fontSize: "18px",
-                            color: "#ff00c3",
-                            fontWeight: "bold",
-                            }}
-                        >
-                            Loading website...
-                        </div>
-                        <style>{`
-                            @keyframes spin {
-                                0% { transform: rotate(0deg); }
-                                100% { transform: rotate(360deg); }
-                            }
-                        `}</style>
-                        </div>
-                    )
-                ) : (
-                    /* Screenshot mode canvas */
-                    <Canvas
-                        onCreateRef={setCanvasReference}
-                        width={dimensions.width}
-                        height={dimensions.height}
-                    />
-                )}
+          {isDOMMode ? (
+            <div
+              style={{ position: "relative", width: "100%", height: "100%" }}
+            >
+              {currentSnapshot ? (
+                <DOMBrowserRenderer
+                  width={dimensions.width}
+                  height={dimensions.height}
+                  snapshot={currentSnapshot}
+                  getList={getList}
+                  getText={getText}
+                  listSelector={listSelector}
+                  cachedChildSelectors={cachedChildSelectors}
+                  paginationMode={paginationMode}
+                  paginationType={paginationType}
+                  limitMode={limitMode}
+                  onHighlight={(data) => {
+                    domHighlighterHandler(data);
+                  }}
+                  isCachingChildSelectors={isCachingChildSelectors}
+                  onElementSelect={handleDOMElementSelection}
+                  onShowDatePicker={handleShowDatePicker}
+                  onShowDropdown={handleShowDropdown}
+                  onShowTimePicker={handleShowTimePicker}
+                  onShowDateTimePicker={handleShowDateTimePicker}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: dimensions.width,
+                    height: dimensions.height,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "#f5f5f5",
+                    borderRadius: "5px",
+                    flexDirection: "column",
+                    gap: "20px",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "60px",
+                      height: "60px",
+                      borderTop: "4px solid transparent",
+                      borderRadius: "50%",
+                      animation: "spin 1s linear infinite",
+                    }}
+                  />
+                  <div
+                    style={{
+                      fontSize: "18px",
+                      color: "#ff00c3",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    Loading website...
+                  </div>
+                  <style>{`
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        `}</style>
+                </div>
+              )}
+
+              {/* Loading overlay positioned specifically over DOM content */}
+              {isCachingChildSelectors && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: "100%",
+                    background: "rgba(255, 255, 255, 0.8)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    zIndex: 9999,
+                    pointerEvents: "none",
+                    borderRadius: "0px 0px 5px 5px", // Match the DOM renderer border radius
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "40px",
+                      height: "40px",
+                      border: "4px solid #f3f3f3",
+                      borderTop: "4px solid #ff00c3",
+                      borderRadius: "50%",
+                      animation: "spin 1s linear infinite",
+                    }}
+                  />
+                </div>
+              )}
             </div>
+          ) : (
+            /* Screenshot mode canvas */
+            <Canvas
+              onCreateRef={setCanvasReference}
+              width={dimensions.width}
+              height={dimensions.height}
+            />
+          )}
         </div>
+      </div>
     );
 };
 
