@@ -447,7 +447,6 @@ export const BrowserWindow = () => {
 
         return () => {
             if (socket) {
-                console.log("Cleaning up DOM streaming event listeners");
                 socket.off("screencast", screencastHandler);
                 socket.off("domcast", rrwebSnapshotHandler);
                 socket.off("dom-mode-enabled", domModeHandler);
@@ -544,6 +543,7 @@ export const BrowserWindow = () => {
                 ...data,
                 rect: absoluteRect,
                 childSelectors: data.childSelectors || cachedChildSelectors,
+                similarElements: mappedSimilarElements,
             };
 
             if (getList === true) {
@@ -706,21 +706,6 @@ export const BrowserWindow = () => {
     }, [getList, socket, listSelector, paginationMode, paginationType, limitMode]);
 
     useEffect(() => {
-        document.addEventListener('mousemove', onMouseMove, false);
-        if (socket) {
-          socket.off("highlighter", highlighterHandler);
-          
-          socket.on("highlighter", highlighterHandler);
-        }
-        return () => {
-          document.removeEventListener('mousemove', onMouseMove);
-          if (socket) {
-            socket.off("highlighter", highlighterHandler);
-          }
-        };
-    }, [socket, highlighterHandler, onMouseMove, getList, listSelector]);
-
-    useEffect(() => {
         document.addEventListener("mousemove", onMouseMove, false);
         if (socket) {
             socket.off("highlighter", highlighterHandler);
@@ -736,7 +721,6 @@ export const BrowserWindow = () => {
 
     useEffect(() => {
         if (socket && listSelector) {
-          console.log('Syncing list selector with server:', listSelector);
           socket.emit('setGetList', { getList: true });
           socket.emit('listSelector', { selector: listSelector });
         }
@@ -850,7 +834,7 @@ export const BrowserWindow = () => {
               selectorObj: {
                 selector: currentSelector,
                 tag: highlighterData.elementInfo?.tagName,
-                isShadow: highlighterData.elementInfo?.isShadowRoot,
+                isShadow: highlighterData.isShadow || highlighterData.elementInfo?.isShadowRoot,
                 attribute,
               },
             };
@@ -1078,7 +1062,7 @@ export const BrowserWindow = () => {
                 selectorObj: {
                   selector: currentSelector,
                   tag: highlighterData.elementInfo?.tagName,
-                  isShadow: highlighterData.elementInfo?.isShadowRoot,
+                  isShadow: highlighterData.isShadow || highlighterData.elementInfo?.isShadowRoot,
                   attribute,
                 },
               };
@@ -1145,7 +1129,7 @@ export const BrowserWindow = () => {
                         selectorObj: {
                             selector: selectedElement.selector,
                             tag: selectedElement.info?.tagName,
-                            isShadow: selectedElement.info?.isShadowRoot,
+                            isShadow: highlighterData?.isShadow || highlighterData?.elementInfo?.isShadowRoot,
                             attribute: attribute
                         }
                     };
