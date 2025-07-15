@@ -424,26 +424,214 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
  */
   window.scrapeList = async function ({ listSelector, fields, limit = 10 }) {
     // XPath evaluation functions
-    const evaluateXPath = (rootElement, xpath) => {
+    const queryInsideContext = (context, part) => {
       try {
-        const ownerDoc =
-          rootElement.nodeType === Node.DOCUMENT_NODE
-            ? rootElement
-            : rootElement.ownerDocument;
+        const { tagName, conditions } = parseXPathPart(part);
 
-        if (!ownerDoc) return null;
+        const candidateElements = Array.from(context.querySelectorAll(tagName));
+        if (candidateElements.length === 0) {
+          return [];
+        }
 
-        const result = ownerDoc.evaluate(
+        const matchingElements = candidateElements.filter((el) => {
+          return elementMatchesConditions(el, conditions);
+        });
+
+        return matchingElements;
+      } catch (err) {
+        console.error("Error in queryInsideContext:", err);
+        return [];
+      }
+    };
+
+    // Helper function to parse XPath part
+    const parseXPathPart = (part) => {
+      const tagMatch = part.match(/^([a-zA-Z0-9-]+)/);
+      const tagName = tagMatch ? tagMatch[1] : "*";
+
+      const conditionMatches = part.match(/\[([^\]]+)\]/g);
+      const conditions = conditionMatches
+        ? conditionMatches.map((c) => c.slice(1, -1))
+        : [];
+
+      return { tagName, conditions };
+    };
+
+    // Helper function to check if element matches all conditions
+    const elementMatchesConditions = (element, conditions) => {
+      for (const condition of conditions) {
+        if (!elementMatchesCondition(element, condition)) {
+          return false;
+        }
+      }
+      return true;
+    };
+
+    // Helper function to check if element matches a single condition
+    const elementMatchesCondition = (element, condition) => {
+      condition = condition.trim();
+
+      if (/^\d+$/.test(condition)) {
+        return true;
+      }
+
+      // Handle @attribute="value"
+      const attrMatch = condition.match(/^@([^=]+)=["']([^"']+)["']$/);
+      if (attrMatch) {
+        const [, attr, value] = attrMatch;
+        const elementValue = element.getAttribute(attr);
+        return elementValue === value;
+      }
+
+      // Handle contains(@class, 'value')
+      const classContainsMatch = condition.match(
+        /^contains\(@class,\s*["']([^"']+)["']\)$/
+      );
+      if (classContainsMatch) {
+        const className = classContainsMatch[1];
+        return element.classList.contains(className);
+      }
+
+      // Handle contains(@attribute, 'value')
+      const attrContainsMatch = condition.match(
+        /^contains\(@([^,]+),\s*["']([^"']+)["']\)$/
+      );
+      if (attrContainsMatch) {
+        const [, attr, value] = attrContainsMatch;
+        const elementValue = element.getAttribute(attr) || "";
+        return elementValue.includes(value);
+      }
+
+      // Handle text()="value"
+      const textMatch = condition.match(/^text\(\)=["']([^"']+)["']$/);
+      if (textMatch) {
+        const expectedText = textMatch[1];
+        const elementText = element.textContent?.trim() || "";
+        return elementText === expectedText;
+      }
+
+      // Handle contains(text(), 'value')
+      const textContainsMatch = condition.match(
+        /^contains\(text\(\),\s*["']([^"']+)["']\)$/
+      );
+      if (textContainsMatch) {
+        const expectedText = textContainsMatch[1];
+        const elementText = element.textContent?.trim() || "";
+        return elementText.includes(expectedText);
+      }
+
+      // Handle count(*)=0 (element has no children)
+      if (condition === "count(*)=0") {
+        return element.children.length === 0;
+      }
+
+      // Handle other count conditions
+      const countMatch = condition.match(/^count\(\*\)=(\d+)$/);
+      if (countMatch) {
+        const expectedCount = parseInt(countMatch[1]);
+        return element.children.length === expectedCount;
+      }
+
+      return true;
+    };
+
+    const evaluateXPath = (document, xpath, isShadow = false) => {
+      try {
+        const result = document.evaluate(
           xpath,
-          rootElement,
+          document,
           null,
           XPathResult.FIRST_ORDERED_NODE_TYPE,
           null
-        );
+        ).singleNodeValue;
 
-        return result.singleNodeValue;
-      } catch (error) {
-        console.warn("XPath evaluation failed:", xpath, error);
+        if (!isShadow) {
+          if (result === null) {
+            return null;
+          }
+          return result;
+        }
+
+        let cleanPath = xpath;
+        let isIndexed = false;
+
+        const indexedMatch = xpath.match(/^\((.*?)\)\[(\d+)\](.*)$/);
+        if (indexedMatch) {
+          cleanPath = indexedMatch[1] + indexedMatch[3];
+          isIndexed = true;
+        }
+
+        const pathParts = cleanPath
+          .replace(/^\/\//, "")
+          .split("/")
+          .map((p) => p.trim())
+          .filter((p) => p.length > 0);
+
+        let currentContexts = [document];
+
+        for (let i = 0; i < pathParts.length; i++) {
+          const part = pathParts[i];
+          const nextContexts = [];
+
+          for (const ctx of currentContexts) {
+            const positionalMatch = part.match(/^([^[]+)\[(\d+)\]$/);
+            let partWithoutPosition = part;
+            let requestedPosition = null;
+
+            if (positionalMatch) {
+              partWithoutPosition = positionalMatch[1];
+              requestedPosition = parseInt(positionalMatch[2]);
+            }
+
+            const matched = queryInsideContext(ctx, partWithoutPosition);
+
+            let elementsToAdd = matched;
+            if (requestedPosition !== null) {
+              const index = requestedPosition - 1; // XPath is 1-based, arrays are 0-based
+              if (index >= 0 && index < matched.length) {
+                elementsToAdd = [matched[index]];
+              } else {
+                console.warn(
+                  `Position ${requestedPosition} out of range (${matched.length} elements found)`
+                );
+                elementsToAdd = [];
+              }
+            }
+
+            elementsToAdd.forEach((el) => {
+              nextContexts.push(el);
+              if (el.shadowRoot) {
+                nextContexts.push(el.shadowRoot);
+              }
+            });
+          }
+
+          if (nextContexts.length === 0) {
+            return null;
+          }
+
+          currentContexts = nextContexts;
+        }
+
+        if (currentContexts.length > 0) {
+          if (isIndexed && indexedMatch) {
+            const requestedIndex = parseInt(indexedMatch[2]) - 1;
+            if (requestedIndex >= 0 && requestedIndex < currentContexts.length) {
+              return currentContexts[requestedIndex];
+            } else {
+              console.warn(
+                `Requested index ${requestedIndex + 1} out of range (${currentContexts.length} elements found)`
+              );
+              return null;
+            }
+          }
+
+          return currentContexts[0];
+        }
+
+        return null;
+      } catch (err) {
+        console.error("Critical XPath failure:", xpath, err);
         return null;
       }
     };
@@ -1018,7 +1206,7 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
               listSelector,
               containerIndex + 1
             );
-            element = evaluateXPath(document, indexedSelector);
+            element = evaluateXPath(document, indexedSelector, field.isShadow);
           } else {
             // Fallback for CSS selectors within XPath containers
             const container = containers[containerIndex];
