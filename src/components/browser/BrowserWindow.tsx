@@ -1297,7 +1297,9 @@ export const BrowserWindow = () => {
                 {isDOMMode && highlighterData && (
                   <>
                     {/* Individual element highlight (for non-group or hovered element) */}
-                    {getText && !listSelector && (
+                    {((getText && !listSelector) || 
+                      (getList && paginationMode && paginationType !== "" && 
+                      !["none", "scrollDown", "scrollUp"].includes(paginationType))) && (
                       <div
                         style={{
                           position: "absolute",
