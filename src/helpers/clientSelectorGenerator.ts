@@ -3109,34 +3109,28 @@ class ClientSelectorGenerator {
     targetElement: HTMLElement,
     rootElement: HTMLElement
   ): string | null {
-    if (
-      !this.elementContains(rootElement, targetElement) ||
-      targetElement === rootElement
-    ) {
+    if (!this.elementContains(rootElement, targetElement) || targetElement === rootElement) {
       return null;
     }
-
-    // First, check if target element has conflicting classes
-    const classes = Array.from(targetElement.classList);
-    const hasConflictingElement =
-      classes.length > 0 && rootElement
-        ? this.queryElementsInScope(
-            rootElement,
-            targetElement.tagName.toLowerCase()
-          )
-            .filter((el) => el !== targetElement)
-            .some((el) =>
-              classes.every((cls) =>
-                (el as HTMLElement).classList.contains(cls)
-              )
-            )
-        : false;
 
     const pathParts: string[] = [];
     let current: HTMLElement | null = targetElement;
 
     // Build path from target up to root
     while (current && current !== rootElement) {
+      // Calculate conflicts for each element in the path
+      const classes = Array.from(current.classList);
+      const hasConflictingElement =
+        classes.length > 0 && rootElement
+          ? this.queryElementsInScope(rootElement, current.tagName.toLowerCase())
+              .filter((el) => el !== current)
+              .some((el) =>
+                classes.every((cls) =>
+                  (el as HTMLElement).classList.contains(cls)
+                )
+              )
+          : false;
+
       const pathPart = this.generateOptimizedStructuralStep(
         current,
         rootElement,
@@ -3147,8 +3141,7 @@ class ClientSelectorGenerator {
       }
 
       // Move to parent (either regular parent or shadow host)
-      current =
-        current.parentElement ||
+      current = current.parentElement || 
         ((current.getRootNode() as ShadowRoot).host as HTMLElement | null);
 
       if (!current) break;
@@ -3158,10 +3151,7 @@ class ClientSelectorGenerator {
   }
 
   // Helper method to check containment (works for both light and shadow DOM)
-  private elementContains(
-    container: HTMLElement,
-    element: HTMLElement
-  ): boolean {
+  private elementContains(container: HTMLElement, element: HTMLElement): boolean {
     // Standard containment check
     if (container.contains(element)) {
       return true;
@@ -3175,8 +3165,7 @@ class ClientSelectorGenerator {
       }
 
       // Move to parent or shadow host
-      current =
-        current.parentElement ||
+      current = current.parentElement || 
         ((current.getRootNode() as ShadowRoot).host as HTMLElement | null);
     }
 
