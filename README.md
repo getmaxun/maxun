@@ -24,9 +24,11 @@ Maxun lets you train a robot in 2 minutes and scrape the web on auto-pilot. Web 
     <br />
     <br />
 <a href="https://trendshift.io/repositories/12113" target="_blank"><img src="https://trendshift.io/api/badge/repositories/12113" alt="getmaxun%2Fmaxun | Trendshift" style="width: 250px; height: 55px; margin-top: 10px;" width="250" height="55"/></a>
+<br />
+    
+![maxun_nike](https://github.com/user-attachments/assets/1dd76920-70f3-46a0-a251-17a48b702fdc)
 </p>
 
-![maxun_demo](https://github.com/user-attachments/assets/a61ba670-e56a-4ae1-9681-0b4bd6ba9cdc)
 
 <img src="https://static.scarf.sh/a.png?x-pxid=c12a77cc-855e-4602-8a0f-614b2d0da56a" />
 
