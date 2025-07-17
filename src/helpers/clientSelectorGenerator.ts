@@ -4080,67 +4080,63 @@ class ClientSelectorGenerator {
   }
 
   private getDeepestElementFromPoint(
-    elements: HTMLElement[],
-    x: number,
-    y: number
-  ): HTMLElement | null {
-    if (!elements.length) return null;
+  elements: HTMLElement[],
+  x: number,
+  y: number
+): HTMLElement | null {
+  if (!elements.length) return null;
 
-    const visited = new Set<HTMLElement>();
-    return this.findDeepestElementRecursive(elements, x, y, visited);
-  }
+  const visited = new Set<HTMLElement>();
+  return this.findTrulyDeepestElement(elements, x, y, visited);
+}
 
-  private findDeepestElementRecursive(
-    elements: HTMLElement[],
-    x: number,
-    y: number,
-    visited: Set<HTMLElement>
-  ): HTMLElement | null {
-    if (!elements.length) return null;
+private findTrulyDeepestElement(
+  elements: HTMLElement[],
+  x: number,
+  y: number,
+  visited: Set<HTMLElement>
+): HTMLElement | null {
+  let deepestElement: HTMLElement | null = null;
+  let maxDepth = -1;
 
-    for (const element of elements) {
-      if (visited.has(element)) continue;
-      visited.add(element);
+  for (const element of elements) {
+    if (visited.has(element)) continue;
+    visited.add(element);
 
-      if (element.shadowRoot) {
-        let shadowElements = element.shadowRoot.elementsFromPoint(
-          x,
-          y
-        ) as HTMLElement[];
-
-        if (shadowElements.length > 0) {
-          let deepestShadowElement = shadowElements[0];
-
-          if (deepestShadowElement.shadowRoot) {
-            const evenDeeperElement = this.findDeepestElementRecursive(
-              [deepestShadowElement],
-              x,
-              y,
-              visited
-            );
-            if (evenDeeperElement) {
-              return evenDeeperElement;
-            }
-          }
-
-          return deepestShadowElement;
+    if (element.shadowRoot) {
+      const shadowElements = element.shadowRoot.elementsFromPoint(x, y) as HTMLElement[];
+      const deeper = this.findTrulyDeepestElement(shadowElements, x, y, visited);
+      if (deeper) {
+        const depth = this.getElementDepth(deeper);
+        if (depth > maxDepth) {
+          maxDepth = depth;
+          deepestElement = deeper;
         }
       }
     }
 
-    return elements[0];
+    const depth = this.getElementDepth(element);
+    if (depth > maxDepth) {
+      maxDepth = depth;
+      deepestElement = element;
+    }
   }
 
-  private getElementDepth(element: HTMLElement): number {
-    let depth = 0;
-    let current = element;
-    while (current && current !== this.lastAnalyzedDocument?.body) {
-      depth++;
-      current = current.parentElement as HTMLElement;
-      if (depth > 50) break;
-    }
-    return depth;
+  return deepestElement;
+}
+
+private getElementDepth(element: HTMLElement): number {
+  let depth = 0;
+  let current: HTMLElement | null = element;
+
+  while (current && current !== this.lastAnalyzedDocument?.body) {
+    depth++;
+    current = current.parentElement || (current.getRootNode() as ShadowRoot).host as HTMLElement | null;
+    if (depth > 50) break;
   }
+  return depth;
+}
+
 
   /**
    * Clean up when component unmounts or mode changes
