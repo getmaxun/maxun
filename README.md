@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/getmaxun-maxun-badge.png)](https://mseep.ai/app/getmaxun-maxun)
+
 <h1 align="center">
     <div>
         <a href="https://www.maxun.dev/?ref=ghread">
