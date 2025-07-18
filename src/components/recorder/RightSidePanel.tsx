@@ -463,14 +463,15 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const getListSettingsObject = useCallback(() => {
     let settings: {
       listSelector?: string;
-      fields?: Record<string, { selector: string; tag?: string;[key: string]: any }>;
-      pagination?: { type: string; selector?: string };
+      fields?: Record<string, { selector: string; tag?: string; [key: string]: any; isShadow?: boolean }>;
+      pagination?: { type: string; selector?: string; isShadow?: boolean };
       limit?: number;
+      isShadow?: boolean
     } = {};
 
     browserSteps.forEach(step => {
       if (step.type === 'list' && step.listSelector && Object.keys(step.fields).length > 0) {
-        const fields: Record<string, { selector: string; tag?: string;[key: string]: any }> = {};
+        const fields: Record<string, { selector: string; tag?: string;[key: string]: any; isShadow?: boolean }> = {};
 
         Object.entries(step.fields).forEach(([id, field]) => {
           if (field.selectorObj?.selector) {
@@ -478,6 +479,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
               selector: field.selectorObj.selector,
               tag: field.selectorObj.tag,
               attribute: field.selectorObj.attribute,
+              isShadow: field.selectorObj.isShadow
             };
           }
         });
@@ -485,8 +487,9 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         settings = {
           listSelector: step.listSelector,
           fields: fields,
-          pagination: { type: paginationType, selector: step.pagination?.selector },
+          pagination: { type: paginationType, selector: step.pagination?.selector, isShadow: step.isShadow },
           limit: parseInt(limitType === 'custom' ? customLimit : limitType),
+          isShadow: step.isShadow
         };
       }
     });

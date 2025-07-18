@@ -950,9 +950,9 @@ export default class Interpreter extends EventEmitter {
             if (checkLimit()) return allResults;
             
             let loadMoreCounter = 0;
-            let previousResultCount = allResults.length;
-            let noNewItemsCounter = 0;
-            const MAX_NO_NEW_ITEMS = 2;
+            // let previousResultCount = allResults.length;
+            // let noNewItemsCounter = 0;
+            // const MAX_NO_NEW_ITEMS = 2;
             
             while (true) {
               // Find working button with retry mechanism
@@ -1019,21 +1019,21 @@ export default class Interpreter extends EventEmitter {
               
               await scrapeCurrentPage();
               
-              const currentResultCount = allResults.length;
-              const newItemsAdded = currentResultCount > previousResultCount;
+              // const currentResultCount = allResults.length;
+              // const newItemsAdded = currentResultCount > previousResultCount;
                           
-              if (!newItemsAdded) {
-                noNewItemsCounter++;
-                debugLog(`No new items added after click (${noNewItemsCounter}/${MAX_NO_NEW_ITEMS})`);
+              // if (!newItemsAdded) {
+              //   noNewItemsCounter++;
+              //   debugLog(`No new items added after click (${noNewItemsCounter}/${MAX_NO_NEW_ITEMS})`);
                 
-                if (noNewItemsCounter >= MAX_NO_NEW_ITEMS) {
-                  debugLog(`Stopping after ${MAX_NO_NEW_ITEMS} clicks with no new items`);
-                  return allResults;
-                }
-              } else {
-                noNewItemsCounter = 0;
-                previousResultCount = currentResultCount;
-              }
+              //   if (noNewItemsCounter >= MAX_NO_NEW_ITEMS) {
+              //     debugLog(`Stopping after ${MAX_NO_NEW_ITEMS} clicks with no new items`);
+              //     return allResults;
+              //   }
+              // } else {
+              //   noNewItemsCounter = 0;
+              //   previousResultCount = currentResultCount;
+              // }
               
               if (checkLimit()) return allResults;     
               

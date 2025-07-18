@@ -6,7 +6,7 @@ interface TextStep {
   selectorObj: {
     selector: string;
     tag?: string;
-    shadow?: boolean;
+    isShadow?: boolean;
     attribute: string;
   };
 }
@@ -18,6 +18,8 @@ interface ExtractedListData {
 interface Field {
   selector: string;
   attribute: string;
+  tag?: string;
+  isShadow?: boolean;
 }
 
 class ClientListExtractor {
@@ -156,50 +158,6 @@ class ClientListExtractor {
         }
       }
 
-      if (
-        !nextElement &&
-        "shadowRoot" in currentElement &&
-        (currentElement as Element).shadowRoot
-      ) {
-        if (
-          parts[i].startsWith("//") ||
-          parts[i].startsWith("/") ||
-          parts[i].startsWith("./")
-        ) {
-          nextElement = this.evaluateXPath(
-            (currentElement as Element).shadowRoot as unknown as Document,
-            parts[i]
-          );
-        } else {
-          nextElement = (currentElement as Element).shadowRoot!.querySelector(
-            parts[i]
-          );
-        }
-      }
-
-      if (!nextElement && "children" in currentElement) {
-        const children: any = Array.from(
-          (currentElement as Element).children || []
-        );
-        for (const child of children) {
-          if (child.shadowRoot) {
-            if (
-              parts[i].startsWith("//") ||
-              parts[i].startsWith("/") ||
-              parts[i].startsWith("./")
-            ) {
-              nextElement = this.evaluateXPath(
-                child.shadowRoot as unknown as Document,
-                parts[i]
-              );
-            } else {
-              nextElement = child.shadowRoot.querySelector(parts[i]);
-            }
-            if (nextElement) break;
-          }
-        }
-      }
-
       currentElement = nextElement;
     }
 
@@ -265,43 +223,6 @@ class ClientListExtractor {
               nextElements.push(...Array.from(element.querySelectorAll(part)));
             }
           }
-
-          if ("shadowRoot" in element && (element as Element).shadowRoot) {
-            if (part.startsWith("//") || part.startsWith("/")) {
-              nextElements.push(
-                ...this.evaluateXPathAll(
-                  (element as Element).shadowRoot as unknown as Document,
-                  part
-                )
-              );
-            } else {
-              nextElements.push(
-                ...Array.from(
-                  (element as Element).shadowRoot!.querySelectorAll(part)
-                )
-              );
-            }
-          }
-
-          if ("children" in element) {
-            const children = Array.from((element as Element).children || []);
-            for (const child of children) {
-              if (child.shadowRoot) {
-                if (part.startsWith("//") || part.startsWith("/")) {
-                  nextElements.push(
-                    ...this.evaluateXPathAll(
-                      child.shadowRoot as unknown as Document,
-                      part
-                    )
-                  );
-                } else {
-                  nextElements.push(
-                    ...Array.from(child.shadowRoot.querySelectorAll(part))
-                  );
-                }
-              }
-            }
-          }
         }
       }
 
@@ -328,14 +249,11 @@ class ClientListExtractor {
     }
 
     if (attribute === "innerText") {
-      // First try standard innerText/textContent
       let textContent =
         (element as HTMLElement).innerText?.trim() ||
         (element as HTMLElement).textContent?.trim();
 
-      // If empty, check for common data attributes that might contain the text
       if (!textContent) {
-        // Check for data-* attributes that commonly contain text values
         const dataAttributes = [
           "data-600",
           "data-text",
@@ -356,10 +274,8 @@ class ClientListExtractor {
     } else if (attribute === "innerHTML") {
       return element.innerHTML?.trim() || null;
     } else if (attribute === "href") {
-      // For href, we need to find the anchor tag if the current element isn't one
       let anchorElement = element;
 
-      // If current element is not an anchor, look for parent anchor
       if (element.tagName !== "A") {
         anchorElement =
           element.closest("a") ||
@@ -410,6 +326,7 @@ class ClientListExtractor {
       convertedFields[typedField.label] = {
         selector: typedField.selectorObj.selector,
         attribute: typedField.selectorObj.attribute,
+        isShadow: typedField.selectorObj.isShadow || false,
       };
     }
 
@@ -423,10 +340,8 @@ class ClientListExtractor {
     limit: number = 5
   ): ExtractedListData[] => {
     try {
-      // Convert fields to the format expected by the extraction logic
       const convertedFields = this.convertFields(fields);
 
-      // Step 1: Get all container elements matching the list selector
       const containers = this.queryElementAll(iframeDocument, listSelector);
 
       if (containers.length === 0) {
@@ -434,7 +349,6 @@ class ClientListExtractor {
         return [];
       }
 
-      // Step 2: Extract data from each container up to the limit
       const extractedData: ExtractedListData[] = [];
       const containersToProcess = Math.min(containers.length, limit);
 
@@ -446,28 +360,27 @@ class ClientListExtractor {
         const container = containers[containerIndex];
         const record: ExtractedListData = {};
 
-        // Step 3: For each field, extract data from the current container
-        for (const [label, { selector, attribute }] of Object.entries(
+        for (const [label, { selector, attribute, isShadow }] of Object.entries(
           convertedFields
         )) {
           let element: Element | null = null;
 
-          // CORRECT APPROACH: Create indexed absolute XPath
           if (selector.startsWith("//")) {
-            // Convert the absolute selector to target the specific container instance
             const indexedSelector = this.createIndexedXPath(
               selector,
               listSelector,
               containerIndex + 1
             );
 
-            element = this.evaluateXPathSingle(iframeDocument, indexedSelector);
+            element = this.evaluateXPathSingle(
+              iframeDocument,
+              indexedSelector,
+              isShadow
+            );
           } else {
-            // Fallback for non-XPath selectors
             element = this.queryElement(container, selector);
           }
 
-          // Step 4: Extract the value from the found element
           if (element) {
             const value = this.extractValue(element, attribute);
             if (value !== null && value !== "") {
@@ -482,7 +395,6 @@ class ClientListExtractor {
           }
         }
 
-        // Step 5: Add record if it has any non-empty values
         if (Object.values(record).some((value) => value !== "")) {
           extractedData.push(record);
         } else {
@@ -499,15 +411,12 @@ class ClientListExtractor {
     }
   };
 
-  // Create indexed XPath for specific container instance
   private createIndexedXPath(
     childSelector: string,
     listSelector: string,
     containerIndex: number
   ): string {
-    // Check if the child selector contains the list selector pattern
     if (childSelector.includes(listSelector.replace("//", ""))) {
-      // Replace the list selector part with indexed version
       const listPattern = listSelector.replace("//", "");
       const indexedListSelector = `(${listSelector})[${containerIndex}]`;
 
@@ -518,8 +427,6 @@ class ClientListExtractor {
 
       return indexedSelector;
     } else {
-      // If pattern doesn't match, create a more generic indexed selector
-      // This is a fallback approach
       console.warn(`    ⚠️ Pattern doesn't match, using fallback approach`);
       return `(${listSelector})[${containerIndex}]${childSelector.replace(
         "//",
@@ -531,7 +438,8 @@ class ClientListExtractor {
   // Helper method for single XPath evaluation
   private evaluateXPathSingle = (
     document: Document,
-    xpath: string
+    xpath: string,
+    isShadow: boolean = false
   ): Element | null => {
     try {
       const result = document.evaluate(
@@ -540,19 +448,227 @@ class ClientListExtractor {
         null,
         XPathResult.FIRST_ORDERED_NODE_TYPE,
         null
-      );
+      ).singleNodeValue as Element | null;
 
-      const element = result.singleNodeValue as Element | null;
-
-      if (!element) {
-        console.warn(`❌ XPath found no element for: ${xpath}`);
+      if (!isShadow) {
+        if (result === null) {
+          return null;
+        }
+        return result;
       }
 
-      return element;
-    } catch (error) {
-      console.error("❌ XPath evaluation failed:", xpath, error);
+      let cleanPath = xpath;
+      let isIndexed = false;
+
+      const indexedMatch = xpath.match(/^\((.*?)\)\[(\d+)\](.*)$/);
+      if (indexedMatch) {
+        cleanPath = indexedMatch[1] + indexedMatch[3];
+        isIndexed = true;
+      }
+
+      const pathParts = cleanPath
+        .replace(/^\/\//, "")
+        .split("/")
+        .map((p) => p.trim())
+        .filter((p) => p.length > 0);
+
+      let currentContexts: (Document | Element | ShadowRoot)[] = [document];
+
+      for (let i = 0; i < pathParts.length; i++) {
+        const part = pathParts[i];
+        const nextContexts: (Element | ShadowRoot)[] = [];
+
+        for (const ctx of currentContexts) {
+          const positionalMatch = part.match(/^([^[]+)\[(\d+)\]$/);
+          let partWithoutPosition = part;
+          let requestedPosition: number | null = null;
+
+          if (positionalMatch) {
+            partWithoutPosition = positionalMatch[1];
+            requestedPosition = parseInt(positionalMatch[2]);
+          }
+
+          const matched = this.queryInsideContext(ctx, partWithoutPosition);
+
+          let elementsToAdd = matched;
+          if (requestedPosition !== null) {
+            const index = requestedPosition - 1; // XPath is 1-based, arrays are 0-based
+            if (index >= 0 && index < matched.length) {
+              elementsToAdd = [matched[index]];
+            } else {
+              console.warn(
+                `  ⚠️ Position ${requestedPosition} out of range (${matched.length} elements found)`
+              );
+              elementsToAdd = [];
+            }
+          }
+
+          elementsToAdd.forEach((el) => {
+            nextContexts.push(el);
+            if (el.shadowRoot) {
+              nextContexts.push(el.shadowRoot);
+            }
+          });
+        }
+
+        if (nextContexts.length === 0) {
+          return null;
+        }
+
+        currentContexts = nextContexts;
+      }
+
+      if (currentContexts.length > 0) {
+        if (isIndexed && indexedMatch) {
+          const requestedIndex = parseInt(indexedMatch[2]) - 1; // XPath is 1-based, array is 0-based
+          if (requestedIndex >= 0 && requestedIndex < currentContexts.length) {
+            return currentContexts[requestedIndex] as Element;
+          } else {
+            console.warn(
+              `⚠️ Requested index ${requestedIndex + 1} out of range (${
+                currentContexts.length
+              } elements found)`
+            );
+            return null;
+          }
+        }
+
+        return currentContexts[0] as Element;
+      }
+
+      return null;
+    } catch (err) {
+      console.error("💥 Critical XPath failure:", xpath, err);
       return null;
     }
+  };
+
+  private queryInsideContext = (
+    context: Document | Element | ShadowRoot,
+    part: string
+  ): Element[] => {
+    try {
+      const { tagName, conditions } = this.parseXPathPart(part);
+
+      const candidateElements = Array.from(context.querySelectorAll(tagName));
+      if (candidateElements.length === 0) {
+        return [];
+      }
+
+      const matchingElements = candidateElements.filter((el) => {
+        const matches = this.elementMatchesConditions(el, conditions);
+        return matches;
+      });
+
+      return matchingElements;
+    } catch (err) {
+      console.error("Error in queryInsideContext:", err);
+      return [];
+    }
+  };
+
+  private parseXPathPart = (
+    part: string
+  ): { tagName: string; conditions: string[] } => {
+    const tagMatch = part.match(/^([a-zA-Z0-9-]+)/);
+    const tagName = tagMatch ? tagMatch[1] : "*";
+
+    const conditionMatches = part.match(/\[([^\]]+)\]/g);
+    const conditions = conditionMatches
+      ? conditionMatches.map((c) => c.slice(1, -1))
+      : [];
+
+    return { tagName, conditions };
+  };
+
+  // Check if element matches all given conditions
+  private elementMatchesConditions = (
+    element: Element,
+    conditions: string[]
+  ): boolean => {
+    for (const condition of conditions) {
+      if (!this.elementMatchesCondition(element, condition)) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  private elementMatchesCondition = (
+    element: Element,
+    condition: string
+  ): boolean => {
+    condition = condition.trim();
+
+    if (/^\d+$/.test(condition)) {
+      return true;
+    }
+
+    // Handle @attribute="value"
+    const attrMatch = condition.match(/^@([^=]+)=["']([^"']+)["']$/);
+    if (attrMatch) {
+      const [, attr, value] = attrMatch;
+      const elementValue = element.getAttribute(attr);
+      const matches = elementValue === value;
+      return matches;
+    }
+
+    // Handle contains(@class, 'value')
+    const classContainsMatch = condition.match(
+      /^contains\(@class,\s*["']([^"']+)["']\)$/
+    );
+    if (classContainsMatch) {
+      const className = classContainsMatch[1];
+      const matches = element.classList.contains(className);
+      return matches;
+    }
+
+    // Handle contains(@attribute, 'value')
+    const attrContainsMatch = condition.match(
+      /^contains\(@([^,]+),\s*["']([^"']+)["']\)$/
+    );
+    if (attrContainsMatch) {
+      const [, attr, value] = attrContainsMatch;
+      const elementValue = element.getAttribute(attr) || "";
+      const matches = elementValue.includes(value);
+      return matches;
+    }
+
+    // Handle text()="value"
+    const textMatch = condition.match(/^text\(\)=["']([^"']+)["']$/);
+    if (textMatch) {
+      const expectedText = textMatch[1];
+      const elementText = element.textContent?.trim() || "";
+      const matches = elementText === expectedText;
+      return matches;
+    }
+
+    // Handle contains(text(), 'value')
+    const textContainsMatch = condition.match(
+      /^contains\(text\(\),\s*["']([^"']+)["']\)$/
+    );
+    if (textContainsMatch) {
+      const expectedText = textContainsMatch[1];
+      const elementText = element.textContent?.trim() || "";
+      const matches = elementText.includes(expectedText);
+      return matches;
+    }
+
+    // Handle count(*)=0 (element has no children)
+    if (condition === "count(*)=0") {
+      const matches = element.children.length === 0;
+      return matches;
+    }
+
+    // Handle other count conditions
+    const countMatch = condition.match(/^count\(\*\)=(\d+)$/);
+    if (countMatch) {
+      const expectedCount = parseInt(countMatch[1]);
+      const matches = element.children.length === expectedCount;
+      return matches;
+    }
+
+    return true;
   };
 }
 

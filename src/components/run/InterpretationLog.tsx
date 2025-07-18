@@ -379,49 +379,63 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                 )}
                 
                 {(activeTab === availableTabs.findIndex(tab => tab.id === 'captureText') || singleContentType === 'captureText') && captureTextData.length > 0 && (
-                  <TableContainer component={Paper} sx={{ boxShadow: 'none', borderRadius: 0 }}>
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          {getCaptureTextColumns.map((column) => (
+                  <Box sx={{ p: 2 }}>
+                    <TableContainer component={Paper} sx={{ boxShadow: 'none', borderRadius: 0 }}>
+                      <Table>
+                        <TableHead>
+                          <TableRow>
                             <TableCell 
-                              key={column}
                               sx={{ 
                                 borderBottom: '1px solid',
                                 borderColor: darkMode ? '#3a4453' : '#dee2e6',
-                                backgroundColor: darkMode ? '#2a3441' : '#f8f9fa'
+                                backgroundColor: darkMode ? '#2a3441' : '#f8f9fa',
                               }}
                             >
-                              {column}
+                              Label
                             </TableCell>
-                          ))}
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {captureTextData.map((row, idx) => (
-                          <TableRow 
-                            key={idx}
-                            sx={{ 
-                              borderBottom: '1px solid',
-                              borderColor: darkMode ? '#3a4453' : '#dee2e6'
-                            }}
-                          >
-                            {getCaptureTextColumns.map((column) => (
+                            <TableCell 
+                              sx={{ 
+                                borderBottom: '1px solid',
+                                borderColor: darkMode ? '#3a4453' : '#dee2e6',
+                                backgroundColor: darkMode ? '#2a3441' : '#f8f9fa',
+                              }}
+                            >
+                              Value
+                            </TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {getCaptureTextColumns.map((column, index) => (
+                            <TableRow 
+                              key={column}
+                              sx={{ 
+                                borderBottom: index < getCaptureTextColumns.length - 1 ? '1px solid' : 'none',
+                                borderColor: darkMode ? '#3a4453' : '#dee2e6'
+                              }}
+                            >
                               <TableCell 
-                                key={column}
+                                sx={{ 
+                                  borderBottom: 'none',
+                                  py: 2,
+                                  fontWeight: 500
+                                }}
+                              >
+                                {column}
+                              </TableCell>
+                              <TableCell 
                                 sx={{ 
                                   borderBottom: 'none',
                                   py: 2
                                 }}
                               >
-                                {row[column]}
+                                {captureTextData[0][column]}
                               </TableCell>
-                            ))}
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Box>
                 )}
               </Box>
             </>

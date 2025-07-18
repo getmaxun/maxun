@@ -27,6 +27,7 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import 'highlight.js/styles/github.css';
 import { useTranslation } from "react-i18next";
+import { useThemeMode } from "../../context/theme-provider";
 
 interface RunContentProps {
   row: Data,
@@ -53,6 +54,8 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   const [legacyData, setLegacyData] = useState<any[]>([]);
   const [legacyColumns, setLegacyColumns] = useState<string[]>([]);
   const [isLegacyData, setIsLegacyData] = useState<boolean>(false);
+
+  const { darkMode } = useThemeMode();
 
   useEffect(() => {
     setTab(tab);
@@ -191,17 +194,27 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   };
 
   // Function to convert table data to CSV format
-  const convertToCSV = (data: any[], columns: string[]): string => {
-    const header = columns.join(',');
-    const rows = data.map(row =>
-      columns.map(col => JSON.stringify(row[col] || "", null, 2)).join(',')
-    );
-    return [header, ...rows].join('\n');
+  const convertToCSV = (data: any[], columns: string[], isSchemaData: boolean = false): string => {
+    if (isSchemaData) {
+      // For schema data, export as Label-Value pairs
+      const header = 'Label,Value';
+      const rows = columns.map(column => 
+        `"${column}","${data[0][column] || ""}"`
+      );
+      return [header, ...rows].join('\n');
+    } else {
+      // For regular table data, export as normal table
+      const header = columns.join(',');
+      const rows = data.map(row =>
+        columns.map(col => JSON.stringify(row[col] || "", null, 2)).join(',')
+      );
+      return [header, ...rows].join('\n');
+    }
   };
 
   // Function to download a specific dataset as CSV
-  const downloadCSV = (data: any[], columns: string[], filename: string) => {
-    const csvContent = convertToCSV(data, columns);
+  const downloadCSV = (data: any[], columns: string[], filename: string, isSchemaData: boolean = false) => {
+    const csvContent = convertToCSV(data, columns, isSchemaData);
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
 
@@ -262,8 +275,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
     if (!currentData || currentData.length === 0) return null;
 
-    const downloadData = isPaginatedList ? currentData : data;
-    const downloadColumns = isPaginatedList ? currentColumns : columns;
+    const isSchemaData = title.toLowerCase().includes('text') || title.toLowerCase().includes('schema');
 
     return (
       <Accordion defaultExpanded sx={{ mb: 2 }}>
@@ -283,7 +295,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
             <Box>
               <Button 
                 component="a"
-                onClick={() => downloadJSON(downloadData, jsonFilename)}
+                onClick={() => downloadJSON(currentData, jsonFilename)}
                 sx={{ 
                   color: '#FF00C3', 
                   textTransform: 'none',
@@ -297,12 +309,12 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   }
                 }}
               >
-                Download as JSON
+                {t('run_content.captured_data.download_json', 'Download as JSON')}
               </Button>
 
               <Button 
                 component="a"
-                onClick={() => downloadCSV(downloadData, downloadColumns, csvFilename)}
+                onClick={() => downloadCSV(currentData, currentColumns, csvFilename, isSchemaData)}
                 sx={{ 
                   color: '#FF00C3', 
                   textTransform: 'none',
@@ -315,7 +327,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   }
                 }}
               >
-                Download as CSV
+                {t('run_content.captured_data.download_csv', 'Download as CSV')}
               </Button>
             </Box>
 
@@ -338,6 +350,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   onClick={() => navigateListTable('next')}
                   disabled={currentListIndex === listData.length - 1}
                   sx={{
+                    borderColor: '#FF00C3',
                     color: currentListIndex === listData.length - 1 ? 'gray' : '#FF00C3',
                     '&.Mui-disabled': {
                       borderColor: 'rgba(0, 0, 0, 0.12)'
@@ -353,21 +366,66 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
             <Table stickyHeader aria-label="sticky table">
               <TableHead>
                 <TableRow>
-                  {(isPaginatedList ? currentColumns : columns).map((column) => (
-                    <TableCell key={column}>{column}</TableCell>
-                  ))}
+                  {isSchemaData ? (
+                    <>
+                      <TableCell 
+                        sx={{ 
+                          borderBottom: '1px solid',
+                          borderColor: darkMode ? '#3a4453' : '#dee2e6',
+                          backgroundColor: darkMode ? '#2a3441' : '#f8f9fa'
+                        }}
+                      >
+                        Label
+                      </TableCell>
+                      <TableCell 
+                        sx={{ 
+                          borderBottom: '1px solid',
+                          borderColor: darkMode ? '#3a4453' : '#dee2e6',
+                          backgroundColor: darkMode ? '#2a3441' : '#f8f9fa'
+                        }}
+                      >
+                        Value
+                      </TableCell>
+                    </>
+                  ) : (
+                    (isPaginatedList ? currentColumns : columns).map((column) => (
+                      <TableCell 
+                        key={column}
+                        sx={{ 
+                          borderBottom: '1px solid',
+                          borderColor: darkMode ? '#3a4453' : '#dee2e6',
+                          backgroundColor: darkMode ? '#2a3441' : '#f8f9fa'
+                        }}
+                      >
+                        {column}
+                      </TableCell>
+                    ))
+                  )}
                 </TableRow>
               </TableHead>
               <TableBody>
-                {(isPaginatedList ? currentData : data).map((row, index) => (
-                  <TableRow key={index}>
-                    {(isPaginatedList ? currentColumns : columns).map((column) => (
-                      <TableCell key={column}>
-                        {row[column] === undefined || row[column] === "" ? "-" : row[column]}
+                {isSchemaData ? (
+                  currentColumns.map((column) => (
+                    <TableRow key={column}>
+                      <TableCell sx={{ fontWeight: 500 }}>
+                        {column}
                       </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
+                      <TableCell>
+                        {currentData[0][column] === undefined || currentData[0][column] === "" ? "-" : currentData[0][column]}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  currentData.map((row, index) => (
+                    <TableRow key={index}>
+                      {(isPaginatedList ? currentColumns : columns).map((column) => (
+                        <TableCell key={column}>
+                          {row[column] === undefined || row[column] === "" ? "-" : row[column]}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </TableContainer>

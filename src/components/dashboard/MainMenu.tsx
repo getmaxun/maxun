@@ -31,7 +31,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
     textAlign: 'left',
     fontSize: '17px',
     letterSpacing: '0.02857em',
-    padding: '20px 16px 6px 22px',
+    padding: '20px 16px 20px 22px',
     minHeight: '48px',
     minWidth: '100%',
     display: 'flex',
@@ -112,7 +112,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
           />
         </Tabs>
         <hr />
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: '1rem', textAlign: 'left' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
           {/* <Button href={`${apiUrl}/api-docs/`} target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<Code />}>
             {t('mainmenu.apidocs')}
           </Button> */}
