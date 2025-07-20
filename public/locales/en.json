@@ -148,11 +148,11 @@
       "no_key_message": "You haven't generated an API key yet.",
       "generate_button": "Generate API Key",
       "notifications": {
-        "fetch_error": "Failed to fetch API Key - ${error}",
+        "fetch_error": "Failed to fetch API Key - {{error}}",
         "generate_success": "Generated API Key successfully",
-        "generate_error": "Failed to generate API Key - ${error}",
+        "generate_error": "Failed to generate API Key - {{error}}",
         "delete_success": "API Key deleted successfully",
-        "delete_error": "Failed to delete API Key - ${error}",
+        "delete_error": "Failed to delete API Key - {{error}}",
         "copy_success": "Copied API Key successfully"
       }
     },
@@ -613,6 +613,7 @@
       "es": "Spanish",
       "ja": "Japanese",
       "zh": "Chinese",
-      "de": "German"
+      "de": "German",
+      "tr": "Turkish"
     }
 } 

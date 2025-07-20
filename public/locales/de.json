@@ -141,11 +141,11 @@
         "no_key_message": "Sie haben noch keinen API-Schlüssel generiert.",
         "generate_button": "API-Schlüssel generieren",
         "notifications": {
-            "fetch_error": "API-Schlüssel konnte nicht abgerufen werden - ${error}",
+            "fetch_error": "API-Schlüssel konnte nicht abgerufen werden - {{error}}",
             "generate_success": "API-Schlüssel erfolgreich generiert",
-            "generate_error": "API-Schlüssel konnte nicht generiert werden - ${error}",
+            "generate_error": "API-Schlüssel konnte nicht generiert werden - {{error}}",
             "delete_success": "API-Schlüssel erfolgreich gelöscht",
-            "delete_error": "API-Schlüssel konnte nicht gelöscht werden - ${error}",
+            "delete_error": "API-Schlüssel konnte nicht gelöscht werden - {{error}}",
             "copy_success": "API-Schlüssel erfolgreich kopiert"
         }
     },
@@ -600,6 +600,7 @@
         "es": "Spanisch",
         "ja": "Japanisch",
         "zh": "Chinesisch",
-        "de": "Deutsch"
+        "de": "Deutsch",
+        "tr": "Türkisch"
     }
 }
