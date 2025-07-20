@@ -142,11 +142,11 @@
     "no_key_message": "Aún no has generado una clave API.",
     "generate_button": "Generar Clave API",
     "notifications": {
-      "fetch_error": "Error al obtener la clave API - ${error}",
+      "fetch_error": "Error al obtener la clave API - {{error}}",
       "generate_success": "Clave API generada con éxito",
-      "generate_error": "Error al generar la clave API - ${error}",
+      "generate_error": "Error al generar la clave API - {{error}}",
       "delete_success": "Clave API eliminada con éxito",
-      "delete_error": "Error al eliminar la clave API - ${error}",
+      "delete_error": "Error al eliminar la clave API - {{error}}",
       "copy_success": "Clave API copiada con éxito"
     }
   },

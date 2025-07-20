@@ -142,11 +142,11 @@
     "no_key_message": "您还未生成API密钥。",
     "generate_button": "生成API密钥",
     "notifications": {
-      "fetch_error": "获取API密钥失败 - ${error}",
+      "fetch_error": "获取API密钥失败 - {{error}}",
       "generate_success": "成功生成API密钥",
-      "generate_error": "生成API密钥失败 - ${error}",
+      "generate_error": "生成API密钥失败 - {{error}}",
       "delete_success": "成功删除API密钥",
-      "delete_error": "删除API密钥失败 - ${error}",
+      "delete_error": "删除API密钥失败 - {{error}}",
       "copy_success": "成功复制API密钥"
     }
   },

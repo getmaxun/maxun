@@ -142,11 +142,11 @@
         "no_key_message": "APIキーはまだ生成されていません。",
         "generate_button": "APIキーを生成",
         "notifications": {
-            "fetch_error": "APIキーの取得に失敗しました - ${error}",
+            "fetch_error": "APIキーの取得に失敗しました - {{error}}",
             "generate_success": "APIキーの生成に成功しました",
-            "generate_error": "APIキーの生成に失敗しました - ${error}",
+            "generate_error": "APIキーの生成に失敗しました - {{error}}",
             "delete_success": "APIキーの削除に成功しました",
-            "delete_error": "APIキーの削除に失敗しました - ${error}",
+            "delete_error": "APIキーの削除に失敗しました - {{error}}",
             "copy_success": "APIキーのコピーに成功しました"
         }
     },

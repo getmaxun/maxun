@@ -148,11 +148,11 @@
     "no_key_message": "Henüz bir API anahtarı oluşturmadınız.",
     "generate_button": "API Anahtarı Oluştur",
     "notifications": {
-      "fetch_error": "API Anahtarı alınamadı - ${error}",
+      "fetch_error": "API Anahtarı alınamadı - {{error}}",
       "generate_success": "API anahtarı oluşturuldu",
-      "generate_error": "API anahtarı oluşturulamadı - ${error}",
+      "generate_error": "API anahtarı oluşturulamadı - {{error}}",
       "delete_success": "API anahtarı silindi",
-      "delete_error": "API anahtarı silinemedi - ${error}",
+      "delete_error": "API anahtarı silinemedi - {{error}}",
       "copy_success": "API anahtarı kopyalandı"
     }
   },
