@@ -336,6 +336,11 @@ export const NavBar: React.FC<NavBarProps> = ({
                                 docker-compose down
                                 <br />
                                 <br />
+                                 # Remove existing backend and frontend images
+                                <br />
+                                docker rmi getmaxun/maxun-frontend:latest getmaxun/maxun-backend:latest
+                                <br />
+                                <br />
                                 # pull latest docker images
                                 <br />
                                 docker-compose pull backend frontend
