@@ -267,7 +267,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                         top: "50%",
                         left: "50%",
                         transform: "translate(-50%, -50%)",
-                        width: 500,
+                        width: 700,
                         bgcolor: "background.paper",
                         boxShadow: 24,
                         p: 4,
@@ -291,8 +291,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                           <Tabs
                             value={tab}
                             onChange={handleUpdateTabChange}
-                            sx={{ marginTop: 2, marginBottom: 2 }}
-                            centered
+                            sx={{ marginTop: 2, marginBottom: 2, marginLeft: '30px' }}
                           >
                             <Tab label={t('navbar.upgrade.modal.tabs.manual_setup')} />
                             <Tab label={t('navbar.upgrade.modal.tabs.docker_setup')} />
