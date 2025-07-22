@@ -439,30 +439,29 @@ export default class Interpreter extends EventEmitter {
           await this.options.serializableCallback({});
           return;
         }
-      
+
         await this.ensureScriptsLoaded(page);
-      
+
         const scrapeResult = await page.evaluate((schemaObj) => window.scrapeSchema(schemaObj), schema);
-      
+
         if (!this.cumulativeResults || !Array.isArray(this.cumulativeResults)) {
           this.cumulativeResults = [];
         }
-      
-        if (this.cumulativeResults.length === 0) {
-          this.cumulativeResults.push({});
-        }
-      
-        const mergedResult = this.cumulativeResults[0];
+
         const resultToProcess = Array.isArray(scrapeResult) ? scrapeResult[0] : scrapeResult;
         
+        const newRow = {};
         Object.entries(resultToProcess).forEach(([key, value]) => {
           if (value !== undefined) {
-            mergedResult[key] = value;
+            newRow[key] = value;
           }
         });
-      
-        console.log("Updated merged result:", mergedResult);
-        await this.options.serializableCallback([mergedResult]);
+
+        this.cumulativeResults.push(newRow);
+
+        console.log("Added new result row:", newRow);
+        console.log("Total accumulated rows:", this.cumulativeResults.length);
+        await this.options.serializableCallback(this.cumulativeResults);
       },
 
       scrapeList: async (config: { listSelector: string, fields: any, limit?: number, pagination: any }) => {
