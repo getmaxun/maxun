@@ -135,7 +135,6 @@ const TableRowMemoized = memo(({ row, columns, handlers }: any) => {
                 <MemoizedTableCell key={column.id} align={column.align}>
                   <MemoizedDeepExtractButton
                     handleDeepExtract={() => handlers.handleDeepExtractRobot(row.id, row.name, row.params || [])}
-                    showDeepExtract={shouldShowDeepExtract(row.content.workflow)}
                   />
                 </MemoizedTableCell>
               );
@@ -693,30 +692,6 @@ interface OptionsButtonProps {
   handleDuplicate: () => void;
 }
 
-const shouldShowDeepExtract = (workflow: any[]): boolean => {
-  let scrapeSchemaCount = 0;
-  let scrapeListCount = 0;
-  let screenshotCount = 0;
-
-  workflow.forEach(step => {
-    if (step.what && Array.isArray(step.what)) {
-      step.what.forEach((action: any) => {
-        if (action.action === 'scrapeSchema') {
-          scrapeSchemaCount++;
-        } else if (action.action === 'scrapeList') {
-          scrapeListCount++;
-        } else if (action.action === 'screenshot') {
-          screenshotCount++;
-        }
-      });
-    }
-  });
-
-  // Only show if exactly one of these action types exists
-  const totalActions = scrapeSchemaCount + scrapeListCount + screenshotCount;
-  return totalActions === 1;
-};
-
 const OptionsButton = ({ handleRetrain, handleEdit, handleDelete, handleDuplicate }: OptionsButtonProps) => {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
 
@@ -778,16 +753,14 @@ const OptionsButton = ({ handleRetrain, handleEdit, handleDelete, handleDuplicat
 
 interface DeepExtractButtonProps {
   handleDeepExtract: () => void;
-  showDeepExtract: boolean;
 }
 
-const DeepExtractButton = ({ handleDeepExtract, showDeepExtract }: DeepExtractButtonProps) => {
+const DeepExtractButton = ({ handleDeepExtract }: DeepExtractButtonProps) => {
   return (
     <IconButton
       aria-label="options"
       size="small"
       onClick={handleDeepExtract}
-      disabled={!showDeepExtract}
     >
       <Unarchive />
     </IconButton>
