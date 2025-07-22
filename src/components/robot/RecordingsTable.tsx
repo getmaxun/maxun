@@ -789,7 +789,7 @@ const DeepExtractButton = ({ handleDeepExtract, showDeepExtract }: DeepExtractBu
         onClick={handleDeepExtract}
         disabled={!showDeepExtract}
       >
-        <MoreHoriz />
+        <Unarchive />
       {showDeepExtract ? 'Deep Extract' : 'N/A'}
     </IconButton>
   );
