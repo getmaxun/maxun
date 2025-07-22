@@ -33,7 +33,8 @@ import {
   Power,
   ContentCopy,
   MoreHoriz,
-  Refresh
+  Refresh,
+  Unarchive
 } from "@mui/icons-material";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { checkRunsForRecording, deleteRecordingFromStorage, getStoredRecordings } from "../../api/storage";
@@ -77,6 +78,7 @@ interface RecordingsTableProps {
   handleSettingsRecording: (id: string, fileName: string, params: string[]) => void;
   handleEditRobot: (id: string, name: string, params: string[]) => void;
   handleDuplicateRobot: (id: string, name: string, params: string[]) => void;
+  handleDeepExtractRobot: (id: string, name: string, params: string[]) => void; 
 }
 
 // Virtualized row component for efficient rendering
@@ -119,6 +121,8 @@ const TableRowMemoized = memo(({ row, columns, handlers }: any) => {
                     handleEdit={() => handlers.handleEditRobot(row.id, row.name, row.params || [])}
                     handleDuplicate={() => handlers.handleDuplicateRobot(row.id, row.name, row.params || [])}
                     handleDelete={() => handlers.handleDelete(row.id)}
+                    handleDeepExtract={() => handlers.handleDeepExtractRobot(row.id, row.name, row.params || [])}
+                    showDeepExtract={shouldShowDeepExtract(row.content?.workflow || [])}
                   />
                 </MemoizedTableCell>
               );
@@ -145,7 +149,8 @@ export const RecordingsTable = ({
   handleIntegrateRecording,
   handleSettingsRecording,
   handleEditRobot,
-  handleDuplicateRobot }: RecordingsTableProps) => {
+  handleDuplicateRobot,
+  handleDeepExtractRobot }: RecordingsTableProps) => {
   const { t } = useTranslation();
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
@@ -456,6 +461,7 @@ export const RecordingsTable = ({
     handleSettingsRecording,
     handleEditRobot,
     handleDuplicateRobot,
+    handleDeepExtractRobot,
     handleRetrainRobot,
     handleDelete: async (id: string) => {
       const hasRuns = await checkRunsForRecording(id);
@@ -471,7 +477,7 @@ export const RecordingsTable = ({
         fetchRecordings();
       }
     }
-  }), [handleRunRecording, handleScheduleRecording, handleIntegrateRecording, handleSettingsRecording, handleEditRobot, handleDuplicateRobot, handleRetrainRobot, notify, t]);
+  }), [handleRunRecording, handleScheduleRecording, handleIntegrateRecording, handleSettingsRecording, handleEditRobot, handleDuplicateRobot, handleRetrainRobot, handleDeepExtractRobot, notify, t]);
 
   return (
     <React.Fragment>
@@ -677,9 +683,35 @@ interface OptionsButtonProps {
   handleEdit: () => void;
   handleDelete: () => void;
   handleDuplicate: () => void;
+  handleDeepExtract: () => void;
+  showDeepExtract: boolean;
 }
 
-const OptionsButton = ({ handleRetrain, handleEdit, handleDelete, handleDuplicate }: OptionsButtonProps) => {
+const shouldShowDeepExtract = (workflow: any[]): boolean => {
+  let scrapeSchemaCount = 0;
+  let scrapeListCount = 0;
+  let screenshotCount = 0;
+
+  workflow.forEach(step => {
+    if (step.what && Array.isArray(step.what)) {
+      step.what.forEach((action: any) => {
+        if (action.action === 'scrapeSchema') {
+          scrapeSchemaCount++;
+        } else if (action.action === 'scrapeList') {
+          scrapeListCount++;
+        } else if (action.action === 'screenshot') {
+          screenshotCount++;
+        }
+      });
+    }
+  });
+
+  // Only show if exactly one of these action types exists
+  const totalActions = scrapeSchemaCount + scrapeListCount + screenshotCount;
+  return totalActions === 1;
+};
+
+const OptionsButton = ({ handleRetrain, handleEdit, handleDelete, handleDuplicate, handleDeepExtract, showDeepExtract }: OptionsButtonProps) => {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -733,6 +765,15 @@ const OptionsButton = ({ handleRetrain, handleEdit, handleDelete, handleDuplicat
           </ListItemIcon>
           <ListItemText>{t('recordingtable.duplicate')}</ListItemText>
         </MenuItem>
+
+        {showDeepExtract && (
+          <MenuItem onClick={() => { handleDeepExtract(); handleClose(); }}>
+            <ListItemIcon>
+              <Unarchive fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>{t('recordingtable.deep_extract') || 'Deep Extract'}</ListItemText>
+          </MenuItem>
+        )}
       </Menu>
     </>
   );
