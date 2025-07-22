@@ -346,12 +346,32 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
 
   const handleTextStepConfirm = (id: number) => {
     const label = textLabels[id]?.trim();
-    if (label) {
-      updateBrowserTextStepLabel(id, label);
-      setConfirmedTextSteps(prev => ({ ...prev, [id]: true }));
-    } else {
+    if (!label) {
       setErrors(prevErrors => ({ ...prevErrors, [id]: t('right_panel.errors.label_required') }));
+      return;
     }
+
+    const existingLabels = browserSteps
+      .filter(step => 
+        step.type === 'text' && 
+        step.id !== id &&
+        confirmedTextSteps[step.id] &&
+        'label' in step &&
+        step.label
+      )
+      .map(step => (step as any).label);
+
+    if (existingLabels.includes(label)) {
+      setErrors(prevErrors => ({ 
+        ...prevErrors, 
+        [id]: t('right_panel.errors.duplicate_label') || `Label "${label}" already exists. Please use a unique label.`
+      }));
+      return;
+    }
+
+    updateBrowserTextStepLabel(id, label);
+    setConfirmedTextSteps(prev => ({ ...prev, [id]: true }));
+    setErrors(prevErrors => ({ ...prevErrors, [id]: '' }));
   };
 
   const handleTextStepDiscard = (id: number) => {
