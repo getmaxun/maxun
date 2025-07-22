@@ -10,6 +10,7 @@ import { RobotDuplicationModal } from "./RobotDuplicate";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { useTranslation } from "react-i18next";
+import { RobotDeepExtractionModal } from "./RobotDeepExtraction";
 
 interface RecordingsProps {
   handleEditRecording: (id: string, fileName: string) => void;
@@ -155,6 +156,14 @@ export const Recordings = ({
           handleStart={() => {}}
         />
       );
+    } else if (currentPath.endsWith("/deep-extract")) {
+      return (
+        <RobotDeepExtractionModal
+          isOpen={true}
+          handleClose={handleClose}
+          handleStart={() => {}}
+        />
+      );
     }
     return null;
   };
@@ -183,6 +192,9 @@ export const Recordings = ({
             }
             handleDuplicateRobot={(id, name, params) =>
               handleNavigate(`/robots/${id}/duplicate`, id, name, params)
+            }
+            handleDeepExtractRobot={(id, name, params) =>
+              handleNavigate(`/robots/${id}/deep-extract`, id, name, params)
             }
           />
         </Grid>
