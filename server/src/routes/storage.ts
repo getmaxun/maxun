@@ -430,6 +430,139 @@ router.post('/recordings/:id/duplicate', requireSignIn, async (req: Authenticate
 });
 
 /**
+ * POST endpoint to update existing robot with deep extraction workflow for multiple URLs.
+ */
+router.post('/recordings/:id/deep-extract', requireSignIn, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { targetUrls } = req.body;
+
+    if (!targetUrls || !Array.isArray(targetUrls) || targetUrls.length === 0) {
+      return res.status(400).json({ error: 'The "targetUrls" field is required and must be a non-empty array.' });
+    }
+
+    const robot = await Robot.findOne({ where: { 
+      'recording_meta.id': id,
+      userId: req.user.id,
+    } });
+
+    if (!robot) {
+      return res.status(404).json({ error: 'Robot not found.' });
+    }
+
+    const clonedWorkflow = cloneWorkflowForDeepExtraction(robot.recording.workflow, targetUrls);
+
+    const currentTimestamp = new Date().toISOString();
+
+    const newRobot = await Robot.create({
+      id: uuid(), 
+      userId: robot.userId, 
+      recording_meta: {
+        ...robot.recording_meta,
+        id: uuid(),
+        name: `${robot.recording_meta.name} (Deep Extract - ${targetUrls.length} URLs)`,
+        createdAt: currentTimestamp, 
+        updatedAt: currentTimestamp, 
+      }, 
+      recording: { ...robot.recording, workflow: clonedWorkflow }, 
+      google_sheet_email: null, 
+      google_sheet_name: null,
+      google_sheet_id: null,
+      google_access_token: null,
+      google_refresh_token: null,
+      schedule: null, 
+    });
+
+    logger.log('info', `Robot ${id} created for deep extraction with ${targetUrls.length} URLs.`);
+
+    return res.status(200).json({
+      message: 'Robot created for deep extraction successfully.',
+      robot: newRobot,
+      extractedUrls: targetUrls.length
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      logger.log('error', `Error updating robot for deep extraction ID ${req.params.id}: ${error.message}`);
+      return res.status(500).json({ error: error.message });
+    } else {
+      logger.log('error', `Unknown error updating robot for deep extraction ID ${req.params.id}`);
+      return res.status(500).json({ error: 'An unknown error occurred.' });
+    }
+  }
+});
+
+/**
+ * Helper function to clone workflow for deep extraction
+ */
+function cloneWorkflowForDeepExtraction(originalWorkflow: any[], targetUrls: string[]): any[] {
+  let originalTargetUrl = '';
+  for (const step of originalWorkflow) {
+    if (step.where?.url && step.where.url !== 'about:blank') {
+      originalTargetUrl = step.where.url;
+      break;
+    }
+  }
+
+  const uniqueUrls = [...new Set(targetUrls)];
+  const additionalUrls = uniqueUrls.filter(url => url !== originalTargetUrl);
+  
+  const clonedWorkflow: any[] = [...originalWorkflow];
+  
+  additionalUrls.forEach((url, index) => {
+    const previousUrl = index === 0 ? originalTargetUrl : additionalUrls[index - 1];
+    
+    const scrapingSteps = originalWorkflow.filter(step => 
+      step.where?.url !== 'about:blank' && 
+      !step.what?.some((action: any) => action.action === 'goto')
+    );
+    
+    clonedWorkflow.unshift({
+      where: { url: previousUrl },
+      what: [
+        {
+          action: 'goto',
+          args: [url]
+        },
+        {
+          action: 'waitForLoadState',
+          args: ['networkidle']
+        }
+      ]
+    });
+    
+    scrapingSteps.forEach((step) => {
+      const clonedStep = {
+        where: {
+          ...step.where,
+          url: url
+        },
+        what: step.what.map((action: any) => {
+          const clonedAction = { ...action };
+          
+          if (action.action === 'scrapeSchema' && action.args?.[0]) {
+            clonedAction.args = [action.args[0]];
+          }
+          
+          else if (action.action === 'scrapeList' && action.args?.[0]) {
+            clonedAction.args = [action.args[0]];
+          }
+
+          else if (action.action === 'screenshot' && action.args?.[0]) {
+            clonedAction.args = [action.args[0]];
+          }
+          
+          return clonedAction;
+        })
+      };
+      
+      clonedWorkflow.unshift(clonedStep);
+    });
+  });
+  
+  return clonedWorkflow;
+}
+
+/**
  * DELETE endpoint for deleting a recording from the storage.
  */
 router.delete('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
