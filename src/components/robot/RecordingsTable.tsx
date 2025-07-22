@@ -790,7 +790,6 @@ const DeepExtractButton = ({ handleDeepExtract, showDeepExtract }: DeepExtractBu
         disabled={!showDeepExtract}
       >
         <Unarchive />
-      {showDeepExtract ? 'Deep Extract' : 'N/A'}
     </IconButton>
   );
 };
