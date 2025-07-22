@@ -132,6 +132,18 @@ const TableRowMemoized = memo(({ row, columns, handlers }: any) => {
                   <MemoizedSettingsButton handleSettings={() => handlers.handleSettingsRecording(row.id, row.name, row.params || [])} />
                 </MemoizedTableCell>
               );
+            case 'deep_extract':
+              return (
+                <MemoizedTableCell key={column.id} align={column.align}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => handlers.handleDeepExtractRobot(row.id, row.name, row.params || [])}
+                  >
+                    {row.content?.workflow && shouldShowDeepExtract(row.content.workflow) ? 'Deep Extract' : 'N/A'}
+                  </Button>
+                </MemoizedTableCell>
+              );
             default:
               return null;
           }
