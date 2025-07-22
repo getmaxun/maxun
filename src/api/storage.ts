@@ -77,6 +77,23 @@ export const getStoredRuns = async (): Promise<string[] | null> => {
   }
 };
 
+export const deepExtractRecording = async (id: string, targetUrls: string[]): Promise<any> => {
+  try {
+    const response = await axios.post(`${apiUrl}/storage/recordings/${id}/deep-extract`, {
+      targetUrls,
+      withCredentials: true
+    });
+    if (response.status === 201 || response.status === 200) {
+      return response.data;
+    } else {
+      throw new Error(`Couldn't start deep extraction for recording with id ${id}`);
+    }
+  } catch (error: any) {
+    console.error(`Error starting deep extraction: ${error.message}`);
+    return null;
+  }
+};
+
 export const getStoredRecording = async (id: string) => {
   try {
     const response = await axios.get(`${apiUrl}/storage/recordings/${id}`);
