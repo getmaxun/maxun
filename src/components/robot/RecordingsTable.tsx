@@ -781,7 +781,6 @@ const OptionsButton = ({ handleRetrain, handleEdit, handleDelete, handleDuplicat
 
 const MemoizedTableCell = memo(TableCell);
 
-// Memoized action buttons
 const MemoizedInterpretButton = memo(InterpretButton);
 const MemoizedScheduleButton = memo(ScheduleButton);
 const MemoizedIntegrateButton = memo(IntegrateButton);
