@@ -133,13 +133,10 @@ const TableRowMemoized = memo(({ row, columns, handlers }: any) => {
             case 'deep_extract':
               return (
                 <MemoizedTableCell key={column.id} align={column.align}>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={() => handlers.handleDeepExtractRobot(row.id, row.name, row.params || [])}
-                  >
-                    {row.content?.workflow && shouldShowDeepExtract(row.content.workflow) ? 'Deep Extract' : 'N/A'}
-                  </Button>
+                  <MemoizedDeepExtractButton
+                    handleDeepExtract={() => handlers.handleDeepExtractRobot(row.id, row.name, row.params || [])}
+                    showDeepExtract={shouldShowDeepExtract(row.content.workflow)}
+                  />
                 </MemoizedTableCell>
               );
             default:
@@ -779,6 +776,24 @@ const OptionsButton = ({ handleRetrain, handleEdit, handleDelete, handleDuplicat
   );
 };
 
+interface DeepExtractButtonProps {
+  handleDeepExtract: () => void;
+  showDeepExtract: boolean;
+}
+
+const DeepExtractButton = ({ handleDeepExtract, showDeepExtract }: DeepExtractButtonProps) => {
+  return (
+     <IconButton
+        aria-label="options"
+        size="small"
+        onClick={handleDeepExtract}
+        disabled={!showDeepExtract}
+      >
+        <MoreHoriz />
+      {showDeepExtract ? 'Deep Extract' : 'N/A'}
+    </IconButton>
+  );
+};
 const MemoizedTableCell = memo(TableCell);
 
 const MemoizedInterpretButton = memo(InterpretButton);
@@ -786,6 +801,7 @@ const MemoizedScheduleButton = memo(ScheduleButton);
 const MemoizedIntegrateButton = memo(IntegrateButton);
 const MemoizedSettingsButton = memo(SettingsButton);
 const MemoizedOptionsButton = memo(OptionsButton);
+const MemoizedDeepExtractButton = memo(DeepExtractButton);
 
 const modalStyle = {
   top: '50%',
