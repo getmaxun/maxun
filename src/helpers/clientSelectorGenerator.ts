@@ -164,7 +164,12 @@ class ClientSelectorGenerator {
     return Array.from(classList)
       .filter((cls) => {
         // Filter out classes that look like they contain IDs or dynamic content
-        return !cls.match(/\d{3,}|uuid|hash|id-|_\d+$/i);
+        return (
+          !cls.match(/\d{3,}|uuid|hash|id-|_\d+$/i) &&
+          !cls.startsWith("_ngcontent-") &&
+          !cls.startsWith("_nghost-") &&
+          !cls.match(/^ng-tns-c\d+-\d+$/)
+        );
       })
       .sort()
       .join(" ");
@@ -2950,7 +2955,7 @@ class ClientSelectorGenerator {
       return tagName;
     }
 
-    const classes = Array.from(element.classList);
+    const classes = this.normalizeClasses(element.classList).split(" ");
     if (classes.length > 0 && !addPositionToAll) {
       const classSelector = classes
         .map((cls) => `contains(@class, '${cls}')`)
@@ -2961,7 +2966,7 @@ class ClientSelectorGenerator {
             .filter((el) => el !== element)
             .some((el) =>
               classes.every((cls) =>
-                (el as HTMLElement).classList.contains(cls)
+                this.normalizeClasses((el as HTMLElement).classList).split(" ").includes(cls)
               )
             )
         : false;
@@ -3119,14 +3124,14 @@ class ClientSelectorGenerator {
     // Build path from target up to root
     while (current && current !== rootElement) {
       // Calculate conflicts for each element in the path
-      const classes = Array.from(current.classList);
+      const classes = this.normalizeClasses(current.classList).split(" ");
       const hasConflictingElement =
         classes.length > 0 && rootElement
           ? this.queryElementsInScope(rootElement, current.tagName.toLowerCase())
               .filter((el) => el !== current)
               .some((el) =>
                 classes.every((cls) =>
-                  (el as HTMLElement).classList.contains(cls)
+                  this.normalizeClasses((el as HTMLElement).classList).split(" ").includes(cls)
                 )
               )
           : false;
@@ -4002,6 +4007,7 @@ class ClientSelectorGenerator {
     const commonAttributes = this.getCommonAttributes(elements, [
       "id",
       "style",
+      "class"
     ]);
     for (const [attr, value] of Object.entries(commonAttributes)) {
       predicates.push(`@${attr}='${value}'`);
@@ -4052,7 +4058,19 @@ class ClientSelectorGenerator {
     const attrMap: Record<string, string> = {};
 
     for (const attr of Array.from(firstEl.attributes)) {
-      if (excludeAttrs.includes(attr.name)) continue;
+      if (excludeAttrs.includes(attr.name) || !attr.value || attr.value.trim() === '') {
+        continue;
+      }
+      
+      if (attr.name.startsWith('_ngcontent-') || attr.name.startsWith('_nghost-')) {
+        continue;
+      }
+      
+      if (attr.name.match(/^(data-reactid|data-react-checksum|ng-reflect-)/) || 
+          attr.name.includes('-c') && attr.name.match(/\d+$/)) {
+        continue;
+      }
+      
       attrMap[attr.name] = attr.value;
     }
 
