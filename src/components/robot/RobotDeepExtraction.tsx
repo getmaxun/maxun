@@ -90,7 +90,7 @@ export const RobotDeepExtractionModal = ({
     const [importedFile, setImportedFile] = useState<ImportedFile | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [dragActive, setDragActive] = useState(false);
-    const { recordingId, notify } = useGlobalInfoStore();
+    const { recordingId, notify, setRerenderRobots } = useGlobalInfoStore();
 
     useEffect(() => {
         if (isOpen) {
@@ -350,6 +350,8 @@ export const RobotDeepExtractionModal = ({
             const result = await deepExtractRecording(robot?.recording_meta.id || '', importedFile.validUrls);
             
             if (result) {
+                setRerenderRobots(true);
+
                 handleStart(deepExtractionSettings);
                 handleClose();
                 
