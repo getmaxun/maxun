@@ -72,6 +72,50 @@
         "browser_limit_warning": "Remote browsers are currently busy. Please wait for a few minutes and try again"
       }
     },
+    "robot_deep_extraction": {
+      "title": "Deep Extract - Batch URL Processing",
+      "info": {
+        "title": "What is Deep Extract?",
+        "description": "Deep Extract allows you to run your robot on multiple URLs that follow the same pattern as your robot's target URL. Upload a CSV or JSON file containing URLs, and the robot will extract data from each matching URL using the same workflow."
+      },
+      "robot_info": {
+        "title": "Robot Information",
+        "name": "Robot Name",
+        "target_pattern": "Target URL Pattern"
+      },
+      "file_upload": {
+        "title": "Upload URL File",
+        "guidelines": "Guidelines: All URLs in your file must match the domain and structure of your robot's target URL. Only matching URLs will be processed.",
+        "sample_files": "Download sample files to see the expected format:",
+        "download_csv": "Download CSV Sample",
+        "download_json": "Download JSON Sample",
+        "drag_drop": "Drag and drop your file here, or click to browse",
+        "processing": "Processing file...",
+        "supported_formats": "Supported formats: CSV, JSON (Max 10MB)",
+        "urls_found": "{{total}} URLs found - {{valid}} valid, {{invalid}} invalid",
+        "valid_urls": "Valid URLs",
+        "invalid_urls": "Invalid URLs",
+        "invalid_urls_note": "These URLs don't match your robot's domain pattern and will be skipped.",
+        "and_more": "... and {{count}} more URLs"
+      },
+      "buttons": {
+        "cancel": "Cancel",
+        "start_extraction": "Start Deep Extraction"
+      },
+      "notifications": {
+        "robot_not_found": "Robot not found. Please try again.",
+        "invalid_file_type": "Invalid file type. Please upload a CSV or JSON file.",
+        "no_urls_found": "No URLs found in the uploaded file.",
+        "no_matching_urls": "No URLs in your file match the robot's target pattern.",
+        "file_processed": "File processed successfully! {{valid}} out of {{total}} URLs are valid.",
+        "file_processing_error": "Error processing file. Please check the file format and try again.",
+        "no_valid_urls": "No valid URLs to process. Please upload a file with matching URLs.",
+        "insufficient_credits": "Insufficient credits to run deep extraction. Please upgrade your plan.",
+        "website_limit_warning": "Website limit reached. Please upgrade your plan to process more websites.",
+        "extraction_started": "Deep extraction started for {{count}} URLs. You will receive notifications as the process completes.",
+        "extraction_error": "Error starting deep extraction. Please try again."
+      }
+    },
     "mainmenu":{
       "recordings": "Robots",
       "runs": "Runs",
@@ -241,7 +285,8 @@
         "unable_create_settings": "Unable to create list settings. Make sure you have defined a field for the list.",
         "capture_text_discarded": "Capture Text Discarded",
         "capture_list_discarded": "Capture List Discarded",
-        "label_required": "Label cannot be empty"
+        "label_required": "Label cannot be empty",
+        "duplicate_label": "This label already exists. Please use a unique label."
       }
     },
     "save_recording": {
