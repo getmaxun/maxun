@@ -313,7 +313,8 @@ export class WorkflowInterpreter {
 
     const processedWorkflow = processWorkflow(workflow);
 
-    let mergedScrapeSchema = {};
+    let cumulativeScrapeSchemaData: any[] = [];
+    let scrapeSchemaExecutionCount = 0;
 
     const options = {
       ...settings,
@@ -335,13 +336,14 @@ export class WorkflowInterpreter {
       },
       serializableCallback: (data: any) => {
         if (this.currentActionType === 'scrapeSchema') {
-          if (Array.isArray(data) && data.length > 0) {
-            mergedScrapeSchema = { ...mergedScrapeSchema, ...data[0] };
-            this.serializableDataByType.scrapeSchema.push(data);
+          if (Array.isArray(data)) {
+            cumulativeScrapeSchemaData = [...data];
+            this.serializableDataByType.scrapeSchema = cumulativeScrapeSchemaData;
           } else {
-            mergedScrapeSchema = { ...mergedScrapeSchema, ...data };
-            this.serializableDataByType.scrapeSchema.push([data]);
+            cumulativeScrapeSchemaData.push(data);
+            this.serializableDataByType.scrapeSchema = cumulativeScrapeSchemaData;
           }
+          scrapeSchemaExecutionCount++;
         } else if (this.currentActionType === 'scrapeList') {
           this.serializableDataByType.scrapeList[this.currentScrapeListIndex] = data;
         } 
@@ -380,12 +382,9 @@ export class WorkflowInterpreter {
     const result = {
       log: this.debugMessages,
       result: status,
-      scrapeSchemaOutput: Object.keys(mergedScrapeSchema).length > 0 
-      ? { "schema_merged": [mergedScrapeSchema] }
-      : this.serializableDataByType.scrapeSchema.reduce((reducedObject, item, index) => {
-        reducedObject[`schema_${index}`] = item;
-        return reducedObject;
-      }, {} as Record<string, any>),
+      scrapeSchemaOutput: cumulativeScrapeSchemaData.length > 0 
+        ? { "schema-tabular": cumulativeScrapeSchemaData }  // Return as tabular data
+        : {},
       scrapeListOutput: this.serializableDataByType.scrapeList.reduce((reducedObject, item, index) => {
         reducedObject[`list_${index}`] = item;
         return reducedObject;
