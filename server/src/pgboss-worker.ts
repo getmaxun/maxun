@@ -104,10 +104,10 @@ async function extractAndProcessScrapedData(
     scrapeList: {}
   };
 
-  if ((browser?.interpreter?.serializableDataByType?.scrapeSchema ?? []).length > 0) {
-    browser?.interpreter?.serializableDataByType?.scrapeSchema?.forEach((schemaItem: any, index: any) => {
-      categorizedOutput.scrapeSchema[`schema-${index}`] = schemaItem;
-    });
+  if (browser?.interpreter?.serializableDataByType?.scrapeSchema) {
+    categorizedOutput.scrapeSchema = { "schema-tabular": browser.interpreter.serializableDataByType.scrapeSchema };
+  } else {
+    categorizedOutput.scrapeSchema = {};
   }
   
   if ((browser?.interpreter?.serializableDataByType?.scrapeList ?? []).length > 0) {
@@ -399,7 +399,8 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
         started_at: plainRun.startedAt,
         finished_at: new Date().toLocaleString(),
         extracted_data: {
-          captured_texts: Object.values(categorizedOutput.scrapeSchema).flat() || [],
+          captured_texts: categorizedOutput.scrapeSchema['schema-tabular'] || 
+                     Object.values(categorizedOutput.scrapeSchema).flat() || [],
           captured_lists: categorizedOutput.scrapeList,
           total_rows: totalRowsExtracted,
           captured_texts_count: totalSchemaItemsExtracted,
@@ -512,7 +513,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
         },
         partial_data_extracted: partialDataExtracted,
         extracted_data: partialDataExtracted ? {
-          captured_texts: Object.values(partialUpdateData.serializableOutput?.scrapeSchema || []).flat() || [],
+          captured_texts: partialUpdateData.serializableOutput?.scrapeSchema['schema-tabular'] || Object.values(partialUpdateData.serializableOutput?.scrapeSchema || []).flat() || [],
           captured_lists: partialUpdateData.serializableOutput?.scrapeList || {},
           total_data_points_extracted: partialData?.totalDataPointsExtracted || 0,
           captured_texts_count: partialData?.totalSchemaItemsExtracted || 0,
