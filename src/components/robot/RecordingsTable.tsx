@@ -121,8 +121,6 @@ const TableRowMemoized = memo(({ row, columns, handlers }: any) => {
                     handleEdit={() => handlers.handleEditRobot(row.id, row.name, row.params || [])}
                     handleDuplicate={() => handlers.handleDuplicateRobot(row.id, row.name, row.params || [])}
                     handleDelete={() => handlers.handleDelete(row.id)}
-                    handleDeepExtract={() => handlers.handleDeepExtractRobot(row.id, row.name, row.params || [])}
-                    showDeepExtract={shouldShowDeepExtract(row.content?.workflow || [])}
                   />
                 </MemoizedTableCell>
               );
@@ -696,8 +694,6 @@ interface OptionsButtonProps {
   handleEdit: () => void;
   handleDelete: () => void;
   handleDuplicate: () => void;
-  handleDeepExtract: () => void;
-  showDeepExtract: boolean;
 }
 
 const shouldShowDeepExtract = (workflow: any[]): boolean => {
@@ -724,7 +720,7 @@ const shouldShowDeepExtract = (workflow: any[]): boolean => {
   return totalActions === 1;
 };
 
-const OptionsButton = ({ handleRetrain, handleEdit, handleDelete, handleDuplicate, handleDeepExtract, showDeepExtract }: OptionsButtonProps) => {
+const OptionsButton = ({ handleRetrain, handleEdit, handleDelete, handleDuplicate }: OptionsButtonProps) => {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -778,15 +774,6 @@ const OptionsButton = ({ handleRetrain, handleEdit, handleDelete, handleDuplicat
           </ListItemIcon>
           <ListItemText>{t('recordingtable.duplicate')}</ListItemText>
         </MenuItem>
-
-        {showDeepExtract && (
-          <MenuItem onClick={() => { handleDeepExtract(); handleClose(); }}>
-            <ListItemIcon>
-              <Unarchive fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>{t('recordingtable.deep_extract') || 'Deep Extract'}</ListItemText>
-          </MenuItem>
-        )}
       </Menu>
     </>
   );
