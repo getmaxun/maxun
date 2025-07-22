@@ -179,6 +179,7 @@ export const RecordingsTable = ({
     { id: 'integrate', label: t('recordingtable.integrate'), minWidth: 80 },
     { id: 'settings', label: t('recordingtable.settings'), minWidth: 80 },
     { id: 'options', label: t('recordingtable.options'), minWidth: 80 },
+    { id: 'deep_extract', label: t('recordingtable.deep_extract'), minWidth: 80 }
   ], [t]);
 
   const {
