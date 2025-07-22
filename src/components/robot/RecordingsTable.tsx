@@ -54,7 +54,7 @@ declare global {
 */
 
 interface Column {
-  id: 'interpret' | 'name' | 'options' | 'schedule' | 'integrate' | 'settings';
+  id: 'interpret' | 'name' | 'options' | 'schedule' | 'integrate' | 'settings' | 'deep_extract';
   label: string;
   minWidth?: number;
   align?: 'right';
