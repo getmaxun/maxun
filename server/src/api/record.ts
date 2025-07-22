@@ -350,7 +350,15 @@ function formatRunResponse(run: any) {
 
     if (run.serializableOutput) {
         if (run.serializableOutput.scrapeSchema && run.serializableOutput.scrapeSchema.length > 0) {
-            formattedRun.data.textData = run.serializableOutput.scrapeSchema;
+            if (Array.isArray(run.serializableOutput.scrapeSchema)) {
+                const hasNestedArrays = run.serializableOutput.scrapeSchema.some((item: any) => Array.isArray(item));
+                
+                if (hasNestedArrays) {
+                    formattedRun.data.textData = run.serializableOutput.scrapeSchema.flat();
+                } else {
+                    formattedRun.data.textData = run.serializableOutput.scrapeSchema;
+                }
+            }
         }
 
         if (run.serializableOutput.scrapeList && run.serializableOutput.scrapeList.length > 0) {
@@ -677,7 +685,8 @@ async function executeRun(id: string, userId: string) {
             started_at: plainRun.startedAt,
             finished_at: new Date().toLocaleString(),
             extracted_data: {
-                captured_texts: Object.values(categorizedOutput.scrapeSchema).flat() || [],
+                captured_texts: categorizedOutput.scrapeSchema['schema-tabular'] || 
+                   Object.values(categorizedOutput.scrapeSchema).flat() || [],
                 captured_lists: categorizedOutput.scrapeList,
                 total_rows: totalRowsExtracted,
                 captured_texts_count: totalSchemaItemsExtracted,
