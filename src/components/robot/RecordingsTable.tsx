@@ -78,7 +78,7 @@ interface RecordingsTableProps {
   handleSettingsRecording: (id: string, fileName: string, params: string[]) => void;
   handleEditRobot: (id: string, name: string, params: string[]) => void;
   handleDuplicateRobot: (id: string, name: string, params: string[]) => void;
-  handleDeepExtractRobot: (id: string, name: string, params: string[]) => void; 
+  handleDeepExtractRobot: (id: string, name: string, params: string[]) => void;
 }
 
 // Virtualized row component for efficient rendering
@@ -117,7 +117,7 @@ const TableRowMemoized = memo(({ row, columns, handlers }: any) => {
               return (
                 <MemoizedTableCell key={column.id} align={column.align}>
                   <MemoizedOptionsButton
-                    handleRetrain={() =>handlers.handleRetrainRobot(row.id, row.name)}
+                    handleRetrain={() => handlers.handleRetrainRobot(row.id, row.name)}
                     handleEdit={() => handlers.handleEditRobot(row.id, row.name, row.params || [])}
                     handleDuplicate={() => handlers.handleDuplicateRobot(row.id, row.name, row.params || [])}
                     handleDelete={() => handlers.handleDelete(row.id)}
@@ -201,11 +201,11 @@ export const RecordingsTable = ({
         const notificationData = event.data.notification;
         if (notificationData) {
           notify(notificationData.type, notificationData.message);
-          
-          if ((notificationData.type === 'success' && 
-               (notificationData.message.includes('saved') || notificationData.message.includes('retrained'))) ||
-              (notificationData.type === 'warning' && 
-               notificationData.message.includes('terminated'))) {
+
+          if ((notificationData.type === 'success' &&
+            (notificationData.message.includes('saved') || notificationData.message.includes('retrained'))) ||
+            (notificationData.type === 'warning' &&
+              notificationData.message.includes('terminated'))) {
             setRerenderRobots(true);
           }
         }
@@ -222,9 +222,9 @@ export const RecordingsTable = ({
         window.sessionStorage.removeItem('initialUrl');
       }
     };
-    
+
     window.addEventListener('message', handleMessage);
-    
+
     return () => {
       window.removeEventListener('message', handleMessage);
     };
@@ -249,7 +249,7 @@ export const RecordingsTable = ({
       if (dateStr.includes('PM') || dateStr.includes('AM')) {
         return new Date(dateStr);
       }
-      
+
       return new Date(dateStr.replace(/(\d+)\/(\d+)\//, '$2/$1/'))
     } catch {
       return new Date(0);
@@ -261,22 +261,22 @@ export const RecordingsTable = ({
       const recordings = await getStoredRecordings();
       if (recordings) {
         const parsedRows = recordings
-        .map((recording: any, index: number) => {
-          if (recording?.recording_meta) {
-            const parsedDate = parseDateString(recording.recording_meta.updatedAt);
-            
-            return {
-              id: index,
-              ...recording.recording_meta,
-              content: recording.recording,
-              parsedDate
-            };
-          }
-          return null;
-        })
-        .filter(Boolean) 
-        .sort((a, b) => b.parsedDate.getTime() - a.parsedDate.getTime());
-  
+          .map((recording: any, index: number) => {
+            if (recording?.recording_meta) {
+              const parsedDate = parseDateString(recording.recording_meta.updatedAt);
+
+              return {
+                id: index,
+                ...recording.recording_meta,
+                content: recording.recording,
+                parsedDate
+              };
+            }
+            return null;
+          })
+          .filter(Boolean)
+          .sort((a, b) => b.parsedDate.getTime() - a.parsedDate.getTime());
+
         setRecordings(parsedRows.map((recording) => recording.name));
         setRows(parsedRows);
       }
@@ -288,15 +288,15 @@ export const RecordingsTable = ({
 
   const handleNewRecording = useCallback(async () => {
     const canCreateRecording = await canCreateBrowserInState("recording");
-    
+
     if (!canCreateRecording) {
-        const activeBrowserId = await getActiveBrowserId();
-        if (activeBrowserId) {
-          setActiveBrowserId(activeBrowserId);
-          setWarningModalOpen(true);
-        } else {
-          notify('warning', t('recordingtable.notifications.browser_limit_warning'));
-        }
+      const activeBrowserId = await getActiveBrowserId();
+      if (activeBrowserId) {
+        setActiveBrowserId(activeBrowserId);
+        setWarningModalOpen(true);
+      } else {
+        notify('warning', t('recordingtable.notifications.browser_limit_warning'));
+      }
     } else {
       setModalOpen(true);
     }
@@ -309,7 +309,7 @@ export const RecordingsTable = ({
       timestamp: Date.now()
     };
     window.sessionStorage.setItem('recordingTabCloseMessage', JSON.stringify(closeMessage));
-    
+
     if (window.openedRecordingWindow && !window.openedRecordingWindow.closed) {
       try {
         window.openedRecordingWindow.close();
@@ -323,10 +323,10 @@ export const RecordingsTable = ({
     if (activeBrowserId) {
       await stopRecording(activeBrowserId);
       notify('warning', t('browser_recording.notifications.terminated'));
-      
+
       notifyRecordingTabsToClose(activeBrowserId);
     }
-    
+
     setWarningModalOpen(false);
     setModalOpen(true);
   };
@@ -334,31 +334,31 @@ export const RecordingsTable = ({
   const handleRetrainRobot = useCallback(async (id: string, name: string) => {
     const robot = rows.find(row => row.id === id);
     let targetUrl;
-    
+
     if (robot?.content?.workflow && robot.content.workflow.length > 0) {
       const lastPair = robot.content.workflow[robot.content.workflow.length - 1];
-      
+
       if (lastPair?.what) {
         if (Array.isArray(lastPair.what)) {
-          const gotoAction = lastPair.what.find(action => 
+          const gotoAction = lastPair.what.find(action =>
             action && typeof action === 'object' && 'action' in action && action.action === "goto"
           ) as any;
-          
+
           if (gotoAction?.args?.[0]) {
             targetUrl = gotoAction.args[0];
           }
         }
       }
     }
-    
+
     if (targetUrl) {
       setInitialUrl(targetUrl);
       setRecordingUrl(targetUrl);
       window.sessionStorage.setItem('initialUrl', targetUrl);
     }
-    
+
     const canCreateRecording = await canCreateBrowserInState("recording");
-    
+
     if (!canCreateRecording) {
       const activeBrowserId = await getActiveBrowserId();
       if (activeBrowserId) {
@@ -368,45 +368,45 @@ export const RecordingsTable = ({
         notify('warning', t('recordingtable.notifications.browser_limit_warning'));
       }
     } else {
-        startRetrainRecording(id, name, targetUrl);
+      startRetrainRecording(id, name, targetUrl);
     }
   }, [rows, setInitialUrl, setRecordingUrl]);
 
   const startRetrainRecording = (id: string, name: string, url?: string) => {
     setBrowserId('new-recording');
-    setRecordingName(name);  
-    setRecordingId(id);      
-    
+    setRecordingName(name);
+    setRecordingId(id);
+
     window.sessionStorage.setItem('browserId', 'new-recording');
     window.sessionStorage.setItem('robotToRetrain', id);
     window.sessionStorage.setItem('robotName', name);
-    
+
     window.sessionStorage.setItem('recordingUrl', url || recordingUrl);
-    
+
     const sessionId = Date.now().toString();
     window.sessionStorage.setItem('recordingSessionId', sessionId);
-    
+
     window.openedRecordingWindow = window.open(`/recording-setup?session=${sessionId}`, '_blank');
-    
+
     window.sessionStorage.setItem('nextTabIsRecording', 'true');
   };
 
   const startRecording = () => {
     setModalOpen(false);
-    
+
     // Set local state
     setBrowserId('new-recording');
     setRecordingName('');
     setRecordingId('');
-    
+
     window.sessionStorage.setItem('browserId', 'new-recording');
-    
+
     const sessionId = Date.now().toString();
     window.sessionStorage.setItem('recordingSessionId', sessionId);
     window.sessionStorage.setItem('recordingUrl', recordingUrl);
-    
+
     window.openedRecordingWindow = window.open(`/recording-setup?session=${sessionId}`, '_blank');
-    
+
     window.sessionStorage.setItem('nextTabIsRecording', 'true');
   };
 
@@ -433,17 +433,17 @@ export const RecordingsTable = ({
 
   function useDebounce<T>(value: T, delay: number): T {
     const [debouncedValue, setDebouncedValue] = React.useState<T>(value);
-  
+
     useEffect(() => {
       const handler = setTimeout(() => {
         setDebouncedValue(value);
       }, delay);
-  
+
       return () => {
         clearTimeout(handler);
       };
     }, [value, delay]);
-  
+
     return debouncedValue;
   }
 
@@ -569,7 +569,7 @@ export const RecordingsTable = ({
           <Typography variant="body1" style={{ marginBottom: '20px' }}>
             {t('recordingtable.warning_modal.message')}
           </Typography>
-          
+
           <Box display="flex" justifyContent="space-between" mt={2}>
             <Button
               onClick={handleDiscardAndCreate}
@@ -783,13 +783,13 @@ interface DeepExtractButtonProps {
 
 const DeepExtractButton = ({ handleDeepExtract, showDeepExtract }: DeepExtractButtonProps) => {
   return (
-     <IconButton
-        aria-label="options"
-        size="small"
-        onClick={handleDeepExtract}
-        disabled={!showDeepExtract}
-      >
-        <Unarchive />
+    <IconButton
+      aria-label="options"
+      size="small"
+      onClick={handleDeepExtract}
+      disabled={!showDeepExtract}
+    >
+      <Unarchive />
     </IconButton>
   );
 };
