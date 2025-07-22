@@ -55,6 +55,7 @@
       "button": "开始录制"
     },
     "retrain": "重新训练",
+    "deep_extract": "深度提取",
     "edit": "编辑",
     "delete": "删除",
     "duplicate": "复制",

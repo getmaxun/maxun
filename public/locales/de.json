@@ -55,6 +55,7 @@
             "button": "Aufnahme starten"
         },
         "retrain": "Neu trainieren",
+        "deep_extract": "Tiefe Extraktion",
         "edit": "Bearbeiten",
         "delete": "Löschen",
         "duplicate": "Duplizieren",

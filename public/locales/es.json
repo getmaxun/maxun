@@ -55,6 +55,7 @@
       "button": "Comenzar grabación"
     },
     "retrain": "Reentrenar",
+    "deep_extract": "Extracción Profunda",
     "edit": "Editar",
     "delete": "Eliminar",
     "duplicate": "Duplicar",

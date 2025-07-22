@@ -61,6 +61,7 @@
         "cancel":"Cancel"
       },
       "retrain": "Retrain",
+      "deep_extract": "Deep Extract",
       "edit":"Edit",
       "delete":"Delete",
       "duplicate":"Duplicate",
