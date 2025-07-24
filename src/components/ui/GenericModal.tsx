@@ -15,7 +15,7 @@ export const GenericModal: FC<ModalProps> = (
 
   return (
     <Modal open={isOpen} onClose={canBeClosed ? onClose : () => { }} >
-      <Box sx={modalStyle ? { ...modalStyle, boxShadow: 24, position: 'absolute', borderRadius: 5 } : defaultModalStyle}>
+      <Box sx={modalStyle ? { ...modalStyle, boxShadow: 24, position: 'absolute', borderRadius: 5 } : defaultModalStyle} onClick={(e) => e.stopPropagation()}>
         {canBeClosed ?
           <IconButton onClick={onClose} sx={{ float: "right" }}>
             <Clear sx={{ fontSize: 20 }} />
