@@ -1159,10 +1159,6 @@ export const BrowserWindow = () => {
         setShowAttributeModal(false);
         setSelectedElement(null);
         setAttributeOptions([]);
-
-        setTimeout(() => {
-        setShowAttributeModal(false);
-        }, 0);
     };
 
     const resetPaginationSelector = useCallback(() => {
