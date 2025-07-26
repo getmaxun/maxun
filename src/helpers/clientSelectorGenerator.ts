@@ -123,6 +123,7 @@ class ClientSelectorGenerator {
   private selectorElementCache = new Map<string, HTMLElement[]>();
   private elementSelectorCache = new WeakMap<HTMLElement, string[]>();
   private lastCachedDocument: Document | null = null;
+  private classCache = new Map<string, string[]>();
   private spatialIndex = new Map<string, string[]>();
 
   private performanceConfig = {
@@ -164,7 +165,12 @@ class ClientSelectorGenerator {
     return Array.from(classList)
       .filter((cls) => {
         // Filter out classes that look like they contain IDs or dynamic content
-        return !cls.match(/\d{3,}|uuid|hash|id-|_\d+$/i);
+        return (
+          !cls.match(/\d{3,}|uuid|hash|id-|_\d+$/i) &&
+          !cls.startsWith("_ngcontent-") &&
+          !cls.startsWith("_nghost-") &&
+          !cls.match(/^ng-tns-c\d+-\d+$/)
+        );
       })
       .sort()
       .join(" ");
@@ -887,41 +893,68 @@ class ClientSelectorGenerator {
 
       elementsAtPoint.forEach((element) => {
         if (element.tagName === "TD" || element.tagName === "TH") {
-          // Find parent TR for table cells
           const parentRow = element.closest("tr") as HTMLElement;
           if (parentRow && !transformedElements.includes(parentRow)) {
             transformedElements.push(parentRow);
           }
         } else {
-          // Keep non-table-cell elements as is
           if (!transformedElements.includes(element)) {
             transformedElements.push(element);
           }
         }
       });
 
-      // Now filter for grouped elements from the transformed list
       const groupedElementsAtPoint = transformedElements.filter((element) =>
         this.isElementGrouped(element)
       );
 
       if (groupedElementsAtPoint.length > 0) {
+        const hasAnchorTag = groupedElementsAtPoint.some(
+          (el) => el.tagName === "A"
+        );
+
+        let filteredElements = groupedElementsAtPoint;
+
+        if (hasAnchorTag) {
+          // Apply parent-child filtering when anchor tags are present
+          filteredElements = this.filterParentChildGroupedElements(
+            groupedElementsAtPoint
+          );
+        }
+
         // Sort by DOM depth (deeper elements first for more specificity)
-        groupedElementsAtPoint.sort((a, b) => {
+        filteredElements.sort((a, b) => {
           const aDepth = this.getElementDepth(a);
           const bDepth = this.getElementDepth(b);
           return bDepth - aDepth;
         });
 
-        const selectedElement = groupedElementsAtPoint[0];
+        const selectedElement = filteredElements[0];
         return selectedElement;
       }
 
       return null;
     }
 
-    // For other modes or when list selector exists, return regular element
     return this.getDeepestElementFromPoint(x, y, iframeDoc);
+  }
+
+  private filterParentChildGroupedElements(
+    groupedElements: HTMLElement[]
+  ): HTMLElement[] {
+    const result: HTMLElement[] = [];
+
+    for (const element of groupedElements) {
+      const hasGroupedChild = groupedElements.some(
+        (other) => other !== element && element.contains(other)
+      );
+
+      if (hasGroupedChild) {
+        result.push(element);
+      }
+    }
+
+    return result.length > 0 ? result : groupedElements;
   }
 
   public getElementInformation = (
