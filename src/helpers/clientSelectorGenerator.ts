@@ -2447,31 +2447,11 @@ class ClientSelectorGenerator {
     parentSelector: string
   ): string[] => {
     try {
-      let parentElements: HTMLElement[] = [];
-
-      if (parentSelector.includes(">>")) {
-        const selectorParts = parentSelector
-          .split(">>")
-          .map((part) => part.trim());
-
-        parentElements = this.evaluateXPath(selectorParts[0], iframeDoc);
-
-        for (let i = 1; i < selectorParts.length; i++) {
-          const newParentElements: HTMLElement[] = [];
-          for (const element of parentElements) {
-            if (element.shadowRoot) {
-              const shadowChildren = this.evaluateXPath(
-                selectorParts[i],
-                element.shadowRoot as any
-              );
-              newParentElements.push(...shadowChildren);
-            }
-          }
-          parentElements = newParentElements;
-        }
-      } else {
-        parentElements = this.evaluateXPath(parentSelector, iframeDoc);
-      }
+      // Use XPath evaluation to find parent elements
+      let parentElements: HTMLElement[] = this.evaluateXPath(
+        parentSelector,
+        iframeDoc
+      );
 
       if (parentElements.length === 0) {
         console.warn("No parent elements found for selector:", parentSelector);
@@ -2481,14 +2461,20 @@ class ClientSelectorGenerator {
       const allChildSelectors = new Set<string>();
 
       parentElements.forEach((parentElement) => {
+        const otherListElements = parentElements.filter(
+          (el) => el !== parentElement
+        );
+
         const childSelectors = this.generateOptimizedChildXPaths(
           parentElement,
           parentSelector,
-          iframeDoc
+          iframeDoc,
+          otherListElements
         );
         childSelectors.forEach((selector) => allChildSelectors.add(selector));
       });
 
+      // Convert Set back to array and sort for consistency
       const childSelectors = Array.from(allChildSelectors).sort();
       return childSelectors;
     } catch (error) {
@@ -2568,7 +2554,8 @@ class ClientSelectorGenerator {
   private generateOptimizedChildXPaths(
     parentElement: HTMLElement,
     listSelector: string,
-    document: Document
+    document: Document,
+    otherListElements: HTMLElement[] = []
   ): string[] {
     const selectors: string[] = [];
     const processedElements = new Set<HTMLElement>();
@@ -2584,24 +2571,12 @@ class ClientSelectorGenerator {
         descendant,
         listSelector,
         parentElement,
-        document
+        document,
+        otherListElements
       );
 
       if (absolutePath) {
         selectors.push(absolutePath);
-      }
-    });
-
-    const shadowElements = this.getShadowDOMDescendants(parentElement);
-    shadowElements.forEach((shadowElement) => {
-      const shadowPath = this.buildOptimizedAbsoluteXPath(
-        shadowElement,
-        listSelector,
-        parentElement,
-        document
-      );
-      if (shadowPath) {
-        selectors.push(shadowPath);
       }
     });
 
@@ -2611,7 +2586,8 @@ class ClientSelectorGenerator {
   private generateOptimizedStructuralStep(
     element: HTMLElement,
     rootElement?: HTMLElement,
-    addPositionToAll: boolean = false
+    addPositionToAll: boolean = false,
+    otherListElements: HTMLElement[] = []
   ): string {
     const tagName = element.tagName.toLowerCase();
 
@@ -2623,7 +2599,10 @@ class ClientSelectorGenerator {
       return tagName;
     }
 
-    const classes = Array.from(element.classList);
+    const classes = this.getCommonClassesAcrossLists(
+      element,
+      otherListElements
+    );
     if (classes.length > 0 && !addPositionToAll) {
       const classSelector = classes
         .map((cls) => `contains(@class, '${cls}')`)
@@ -2634,7 +2613,9 @@ class ClientSelectorGenerator {
             .filter((el) => el !== element)
             .some((el) =>
               classes.every((cls) =>
-                (el as HTMLElement).classList.contains(cls)
+                this.normalizeClasses((el as HTMLElement).classList)
+                  .split(" ")
+                  .includes(cls)
               )
             )
         : false;
@@ -2747,28 +2728,20 @@ class ClientSelectorGenerator {
     targetElement: HTMLElement,
     listSelector: string,
     listElement: HTMLElement,
-    document: Document
+    document: Document,
+    otherListElements: HTMLElement[] = []
   ): string | null {
     try {
       let xpath = listSelector;
       const pathFromList = this.getOptimizedStructuralPath(
         targetElement,
-        listElement
+        listElement,
+        otherListElements
       );
 
       if (!pathFromList) return null;
 
       const fullXPath = xpath + pathFromList;
-
-      if (targetElement.tagName.toLowerCase() === "a") {
-        // Ensure the XPath ends with an anchor selector
-        if (!fullXPath.includes("/a[") && !fullXPath.endsWith("/a")) {
-          console.warn(
-            "Generated XPath for anchor element does not target anchor:",
-            fullXPath
-          );
-        }
-      }
 
       return fullXPath;
     } catch (error) {
@@ -2780,7 +2753,8 @@ class ClientSelectorGenerator {
   // Unified path optimization (works for both light and shadow DOM)
   private getOptimizedStructuralPath(
     targetElement: HTMLElement,
-    rootElement: HTMLElement
+    rootElement: HTMLElement,
+    otherListElements: HTMLElement[] = []
   ): string | null {
     if (!this.elementContains(rootElement, targetElement) || targetElement === rootElement) {
       return null;
@@ -2792,14 +2766,22 @@ class ClientSelectorGenerator {
     // Build path from target up to root
     while (current && current !== rootElement) {
       // Calculate conflicts for each element in the path
-      const classes = Array.from(current.classList);
+      const classes = this.getCommonClassesAcrossLists(
+        current,
+        otherListElements
+      );
       const hasConflictingElement =
         classes.length > 0 && rootElement
-          ? this.queryElementsInScope(rootElement, current.tagName.toLowerCase())
+          ? this.queryElementsInScope(
+              rootElement,
+              current.tagName.toLowerCase()
+            )
               .filter((el) => el !== current)
               .some((el) =>
                 classes.every((cls) =>
-                  (el as HTMLElement).classList.contains(cls)
+                  this.normalizeClasses((el as HTMLElement).classList)
+                    .split(" ")
+                    .includes(cls)
                 )
               )
           : false;
@@ -2807,7 +2789,8 @@ class ClientSelectorGenerator {
       const pathPart = this.generateOptimizedStructuralStep(
         current,
         rootElement,
-        hasConflictingElement
+        hasConflictingElement,
+        otherListElements
       );
       if (pathPart) {
         pathParts.unshift(pathPart);
@@ -2821,6 +2804,69 @@ class ClientSelectorGenerator {
     }
 
     return pathParts.length > 0 ? "/" + pathParts.join("/") : null;
+  }
+
+  private getCommonClassesAcrossLists(
+    targetElement: HTMLElement, 
+    otherListElements: HTMLElement[]
+  ): string[] {
+    const targetClasses = this.normalizeClasses(targetElement.classList).split(" ").filter(Boolean);
+
+    const otherListsKey = otherListElements.map(el => `${el.tagName}-${el.className}`).sort().join('|');
+    const cacheKey = `${targetElement.tagName}-${targetClasses.sort().join(',')}-${otherListsKey}`;
+
+    if (this.classCache.has(cacheKey)) {
+      return this.classCache.get(cacheKey)!;
+    }
+
+    if (otherListElements.length === 0) {
+      this.classCache.set(cacheKey, targetClasses);
+      return targetClasses;
+    }
+
+    const similarElements = otherListElements.flatMap(listEl => 
+      this.getAllDescendantsIncludingShadow(listEl).filter(child => 
+        child.tagName === targetElement.tagName
+      )
+    );
+
+    if (similarElements.length === 0) {
+      this.classCache.set(cacheKey, targetClasses);
+      return targetClasses;
+    }
+
+    const exactMatches = similarElements.filter(el => {
+      const elClasses = this.normalizeClasses(el.classList).split(" ").filter(Boolean);
+      return targetClasses.length === elClasses.length && 
+            targetClasses.every(cls => elClasses.includes(cls));
+    });
+
+    if (exactMatches.length > 0) {
+      this.classCache.set(cacheKey, targetClasses);
+      return targetClasses;
+    }
+
+    const commonClasses: string[] = [];
+
+    for (const targetClass of targetClasses) {
+      const existsInAllOtherLists = otherListElements.every(listEl => {
+        const elementsInThisList = this.getAllDescendantsIncludingShadow(listEl).filter(child => 
+          child.tagName === targetElement.tagName
+        );
+
+        return elementsInThisList.some(el => 
+          this.normalizeClasses(el.classList).split(" ").includes(targetClass)
+        );
+      });
+
+      if (existsInAllOtherLists) {
+        commonClasses.push(targetClass);
+      }
+    }
+
+    // Cache the result
+    this.classCache.set(cacheKey, commonClasses);
+    return commonClasses;
   }
 
   // Helper method to check containment (works for both light and shadow DOM)
@@ -3315,25 +3361,6 @@ class ClientSelectorGenerator {
     }
   }
 
-  private getShadowDOMDescendants(element: HTMLElement): HTMLElement[] {
-    const shadowDescendants: HTMLElement[] = [];
-
-    const traverse = (el: HTMLElement) => {
-      if (el.shadowRoot) {
-        const shadowElements = Array.from(
-          el.shadowRoot.querySelectorAll("*")
-        ) as HTMLElement[];
-        shadowDescendants.push(...shadowElements);
-
-        // Recursively check shadow elements for more shadow roots
-        shadowElements.forEach((shadowEl) => traverse(shadowEl));
-      }
-    };
-
-    traverse(element);
-    return shadowDescendants;
-  }
-
   private getBestSelectorForAction = (action: Action) => {
     switch (action.type) {
       case ActionType.Click:
@@ -3675,6 +3702,7 @@ class ClientSelectorGenerator {
     const commonAttributes = this.getCommonAttributes(elements, [
       "id",
       "style",
+      "class"
     ]);
     for (const [attr, value] of Object.entries(commonAttributes)) {
       predicates.push(`@${attr}='${value}'`);
@@ -3689,19 +3717,6 @@ class ClientSelectorGenerator {
     // 5. Build XPath
     if (predicates.length > 0) {
       xpath += `[${predicates.join(" and ")}]`;
-    }
-
-    // 6. Post-validate that XPath matches all elements
-    const matched = document.evaluate(
-      xpath,
-      document,
-      null,
-      XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
-      null
-    );
-    const matchedSet = new Set<HTMLElement>();
-    for (let i = 0; i < matched.snapshotLength; i++) {
-      matchedSet.add(matched.snapshotItem(i) as HTMLElement);
     }
 
     return xpath;
@@ -3725,7 +3740,28 @@ class ClientSelectorGenerator {
     const attrMap: Record<string, string> = {};
 
     for (const attr of Array.from(firstEl.attributes)) {
-      if (excludeAttrs.includes(attr.name)) continue;
+      if (
+        excludeAttrs.includes(attr.name) ||
+        !attr.value ||
+        attr.value.trim() === ""
+      ) {
+        continue;
+      }
+
+      if (
+        attr.name.startsWith("_ngcontent-") ||
+        attr.name.startsWith("_nghost-")
+      ) {
+        continue;
+      }
+
+      if (
+        attr.name.match(/^(data-reactid|data-react-checksum|ng-reflect-)/) ||
+        (attr.name.includes("-c") && attr.name.match(/\d+$/))
+      ) {
+        continue;
+      }
+
       attrMap[attr.name] = attr.value;
     }
 
@@ -3902,6 +3938,7 @@ class ClientSelectorGenerator {
     this.elementSelectorCache = new WeakMap();
     this.spatialIndex.clear();
     this.lastCachedDocument = null;
+    this.classCache.clear();
   }
 
   // Update generateSelector to use instance variables
