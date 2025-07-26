@@ -921,7 +921,7 @@ class ClientSelectorGenerator {
     }
 
     // For other modes or when list selector exists, return regular element
-    return this.getDeepestElementFromPoint(elementsAtPoint, x, y);
+    return this.getDeepestElementFromPoint(x, y, iframeDoc);
   }
 
   public getElementInformation = (
@@ -932,191 +932,11 @@ class ClientSelectorGenerator {
   ) => {
     try {
       if (!getList || listSelector !== "") {
-        const getDeepestElementFromPoint = (
-          x: number,
-          y: number
-        ): HTMLElement | null => {
-          let elements = iframeDoc.elementsFromPoint(x, y) as HTMLElement[];
-          if (!elements.length) return null;
-
-          const findDeepestElement = (
-            elements: HTMLElement[]
-          ): HTMLElement | null => {
-            if (!elements.length) return null;
-            if (elements.length === 1) return elements[0];
-
-            let deepestElement = elements[0];
-            let maxDepth = 0;
-
-            for (const element of elements) {
-              let depth = 0;
-              let current = element;
-
-              while (current) {
-                depth++;
-                if (current.parentElement) {
-                  current = current.parentElement;
-                } else {
-                  break;
-                }
-              }
-
-              if (depth > maxDepth) {
-                maxDepth = depth;
-                deepestElement = element;
-              }
-            }
-
-            return deepestElement;
-          };
-
-          let deepestElement = findDeepestElement(elements);
-          if (!deepestElement) return null;
-
-          const traverseShadowDOM = (element: HTMLElement): HTMLElement => {
-            let current = element;
-            let shadowRoot = current.shadowRoot;
-            let deepest = current;
-            let depth = 0;
-            const MAX_SHADOW_DEPTH = 4;
-
-            while (shadowRoot && depth < MAX_SHADOW_DEPTH) {
-              const shadowElement = shadowRoot.elementFromPoint(
-                x,
-                y
-              ) as HTMLElement;
-              if (!shadowElement || shadowElement === current) break;
-
-              deepest = shadowElement;
-              current = shadowElement;
-              shadowRoot = current.shadowRoot;
-              depth++;
-            }
-
-            return deepest;
-          };
-
-          const isInFrameset = () => {
-            let node = deepestElement;
-            while (node && node.parentElement) {
-              if (node.tagName === "FRAMESET" || node.tagName === "FRAME") {
-                return true;
-              }
-              node = node.parentElement;
-            }
-            return false;
-          };
-
-          if (deepestElement.tagName === "IFRAME") {
-            let currentIframe = deepestElement as HTMLIFrameElement;
-            let depth = 0;
-            const MAX_IFRAME_DEPTH = 4;
-
-            while (currentIframe && depth < MAX_IFRAME_DEPTH) {
-              try {
-                const iframeRect = currentIframe.getBoundingClientRect();
-                const iframeX = x - iframeRect.left;
-                const iframeY = y - iframeRect.top;
-
-                const iframeDocument =
-                  currentIframe.contentDocument ||
-                  currentIframe.contentWindow?.document;
-                if (!iframeDocument) break;
-
-                const iframeElement = iframeDocument.elementFromPoint(
-                  iframeX,
-                  iframeY
-                ) as HTMLElement;
-                if (!iframeElement) break;
-
-                deepestElement = traverseShadowDOM(iframeElement);
-
-                if (iframeElement.tagName === "IFRAME") {
-                  currentIframe = iframeElement as HTMLIFrameElement;
-                  depth++;
-                } else {
-                  break;
-                }
-              } catch (error) {
-                console.warn("Cannot access iframe content:", error);
-                break;
-              }
-            }
-          } else if (deepestElement.tagName === "FRAME" || isInFrameset()) {
-            const framesToCheck = [];
-
-            if (deepestElement.tagName === "FRAME") {
-              framesToCheck.push(deepestElement as HTMLFrameElement);
-            }
-
-            if (isInFrameset()) {
-              iframeDoc.querySelectorAll("frame").forEach((frame) => {
-                framesToCheck.push(frame as HTMLFrameElement);
-              });
-            }
-
-            let frameDepth = 0;
-            const MAX_FRAME_DEPTH = 4;
-
-            const processFrames = (
-              frames: HTMLFrameElement[],
-              currentDepth: number
-            ) => {
-              if (currentDepth >= MAX_FRAME_DEPTH) return;
-
-              for (const frameElement of frames) {
-                try {
-                  const frameRect = frameElement.getBoundingClientRect();
-                  const frameX = x - frameRect.left;
-                  const frameY = y - frameRect.top;
-
-                  if (
-                    frameX < 0 ||
-                    frameY < 0 ||
-                    frameX > frameRect.width ||
-                    frameY > frameRect.height
-                  ) {
-                    continue;
-                  }
-
-                  const frameDocument =
-                    frameElement.contentDocument ||
-                    frameElement.contentWindow?.document;
-
-                  if (!frameDocument) continue;
-
-                  const frameElementAtPoint = frameDocument.elementFromPoint(
-                    frameX,
-                    frameY
-                  ) as HTMLElement;
-                  if (!frameElementAtPoint) continue;
-
-                  deepestElement = traverseShadowDOM(frameElementAtPoint);
-
-                  if (frameElementAtPoint.tagName === "FRAME") {
-                    processFrames(
-                      [frameElementAtPoint as HTMLFrameElement],
-                      currentDepth + 1
-                    );
-                  }
-
-                  break;
-                } catch (error) {
-                  console.warn("Cannot access frame content:", error);
-                  continue;
-                }
-              }
-            };
-
-            processFrames(framesToCheck, frameDepth);
-          } else {
-            deepestElement = traverseShadowDOM(deepestElement);
-          }
-
-          return deepestElement;
-        };
-
-        const el = getDeepestElementFromPoint(coordinates.x, coordinates.y);
+        const el = this.getDeepestElementFromPoint(
+          coordinates.x,
+          coordinates.y,
+          iframeDoc
+        );
 
         if (el) {
           // Prioritize Link (DO NOT REMOVE)
@@ -1389,191 +1209,11 @@ class ClientSelectorGenerator {
   ) => {
     try {
       if (!getList || listSelector !== "") {
-        const getDeepestElementFromPoint = (
-          x: number,
-          y: number
-        ): HTMLElement | null => {
-          let elements = iframeDoc.elementsFromPoint(x, y) as HTMLElement[];
-          if (!elements.length) return null;
-
-          const findDeepestElement = (
-            elements: HTMLElement[]
-          ): HTMLElement | null => {
-            if (!elements.length) return null;
-            if (elements.length === 1) return elements[0];
-
-            let deepestElement = elements[0];
-            let maxDepth = 0;
-
-            for (const element of elements) {
-              let depth = 0;
-              let current = element;
-
-              while (current) {
-                depth++;
-                if (current.parentElement) {
-                  current = current.parentElement;
-                } else {
-                  break;
-                }
-              }
-
-              if (depth > maxDepth) {
-                maxDepth = depth;
-                deepestElement = element;
-              }
-            }
-
-            return deepestElement;
-          };
-
-          let deepestElement = findDeepestElement(elements);
-          if (!deepestElement) return null;
-
-          const traverseShadowDOM = (element: HTMLElement): HTMLElement => {
-            let current = element;
-            let shadowRoot = current.shadowRoot;
-            let deepest = current;
-            let depth = 0;
-            const MAX_SHADOW_DEPTH = 4;
-
-            while (shadowRoot && depth < MAX_SHADOW_DEPTH) {
-              const shadowElement = shadowRoot.elementFromPoint(
-                x,
-                y
-              ) as HTMLElement;
-              if (!shadowElement || shadowElement === current) break;
-
-              deepest = shadowElement;
-              current = shadowElement;
-              shadowRoot = current.shadowRoot;
-              depth++;
-            }
-
-            return deepest;
-          };
-
-          const isInFrameset = () => {
-            let node = deepestElement;
-            while (node && node.parentElement) {
-              if (node.tagName === "FRAMESET" || node.tagName === "FRAME") {
-                return true;
-              }
-              node = node.parentElement;
-            }
-            return false;
-          };
-
-          if (deepestElement.tagName === "IFRAME") {
-            let currentIframe = deepestElement as HTMLIFrameElement;
-            let depth = 0;
-            const MAX_IFRAME_DEPTH = 4;
-
-            while (currentIframe && depth < MAX_IFRAME_DEPTH) {
-              try {
-                const iframeRect = currentIframe.getBoundingClientRect();
-                const iframeX = x - iframeRect.left;
-                const iframeY = y - iframeRect.top;
-
-                const iframeDocument =
-                  currentIframe.contentDocument ||
-                  currentIframe.contentWindow?.document;
-                if (!iframeDocument) break;
-
-                const iframeElement = iframeDocument.elementFromPoint(
-                  iframeX,
-                  iframeY
-                ) as HTMLElement;
-                if (!iframeElement) break;
-
-                deepestElement = traverseShadowDOM(iframeElement);
-
-                if (iframeElement.tagName === "IFRAME") {
-                  currentIframe = iframeElement as HTMLIFrameElement;
-                  depth++;
-                } else {
-                  break;
-                }
-              } catch (error) {
-                console.warn("Cannot access iframe content:", error);
-                break;
-              }
-            }
-          } else if (deepestElement.tagName === "FRAME" || isInFrameset()) {
-            const framesToCheck = [];
-
-            if (deepestElement.tagName === "FRAME") {
-              framesToCheck.push(deepestElement as HTMLFrameElement);
-            }
-
-            if (isInFrameset()) {
-              iframeDoc.querySelectorAll("frame").forEach((frame) => {
-                framesToCheck.push(frame as HTMLFrameElement);
-              });
-            }
-
-            let frameDepth = 0;
-            const MAX_FRAME_DEPTH = 4;
-
-            const processFrames = (
-              frames: HTMLFrameElement[],
-              currentDepth: number
-            ) => {
-              if (currentDepth >= MAX_FRAME_DEPTH) return;
-
-              for (const frameElement of frames) {
-                try {
-                  const frameRect = frameElement.getBoundingClientRect();
-                  const frameX = x - frameRect.left;
-                  const frameY = y - frameRect.top;
-
-                  if (
-                    frameX < 0 ||
-                    frameY < 0 ||
-                    frameX > frameRect.width ||
-                    frameY > frameRect.height
-                  ) {
-                    continue;
-                  }
-
-                  const frameDocument =
-                    frameElement.contentDocument ||
-                    frameElement.contentWindow?.document;
-
-                  if (!frameDocument) continue;
-
-                  const frameElementAtPoint = frameDocument.elementFromPoint(
-                    frameX,
-                    frameY
-                  ) as HTMLElement;
-                  if (!frameElementAtPoint) continue;
-
-                  deepestElement = traverseShadowDOM(frameElementAtPoint);
-
-                  if (frameElementAtPoint.tagName === "FRAME") {
-                    processFrames(
-                      [frameElementAtPoint as HTMLFrameElement],
-                      currentDepth + 1
-                    );
-                  }
-
-                  break;
-                } catch (error) {
-                  console.warn("Cannot access frame content:", error);
-                  continue;
-                }
-              }
-            };
-
-            processFrames(framesToCheck, frameDepth);
-          } else {
-            deepestElement = traverseShadowDOM(deepestElement);
-          }
-
-          return deepestElement;
-        };
-
-        const el = getDeepestElementFromPoint(coordinates.x, coordinates.y);
+        const el = this.getDeepestElementFromPoint(
+          coordinates.x,
+          coordinates.y,
+          iframeDoc
+        );
         if (el) {
           // Prioritize Link (DO NOT REMOVE)
           const { parentElement } = el;
@@ -4068,63 +3708,154 @@ class ClientSelectorGenerator {
     return attrMap;
   }
 
+  /**
+   * Unified getDeepestElementFromPoint method that combines all features
+   * from the different implementations in getRect, getElementInformation, and the private method
+   */
   private getDeepestElementFromPoint(
-  elements: HTMLElement[],
-  x: number,
-  y: number
-): HTMLElement | null {
-  if (!elements.length) return null;
+    x: number,
+    y: number,
+    iframeDoc: Document
+  ): HTMLElement | null {
+    let elements = iframeDoc.elementsFromPoint(x, y) as HTMLElement[];
+    if (!elements.length) return null;
 
-  const visited = new Set<HTMLElement>();
-  return this.findTrulyDeepestElement(elements, x, y, visited);
-}
+    const filteredElements = this.filterLogicalElements(elements, x, y);
+    const targetElements =
+      filteredElements.length > 0 ? filteredElements : elements;
 
-private findTrulyDeepestElement(
-  elements: HTMLElement[],
-  x: number,
-  y: number,
-  visited: Set<HTMLElement>
-): HTMLElement | null {
-  let deepestElement: HTMLElement | null = null;
-  let maxDepth = -1;
+    const visited = new Set<HTMLElement>();
+    let deepestElement = this.findTrulyDeepestElement(
+      targetElements,
+      x,
+      y,
+      visited
+    );
+    if (!deepestElement) return null;
 
-  for (const element of elements) {
-    if (visited.has(element)) continue;
-    visited.add(element);
+    return deepestElement;
+  }
 
-    if (element.shadowRoot) {
-      const shadowElements = element.shadowRoot.elementsFromPoint(x, y) as HTMLElement[];
-      const deeper = this.findTrulyDeepestElement(shadowElements, x, y, visited);
-      if (deeper) {
-        const depth = this.getElementDepth(deeper);
-        if (depth > maxDepth) {
-          maxDepth = depth;
-          deepestElement = deeper;
+  /**
+   * Helper methods used by the unified getDeepestElementFromPoint
+   */
+  private filterLogicalElements(
+    elements: HTMLElement[],
+    x: number,
+    y: number
+  ): HTMLElement[] {
+    if (elements.length <= 1) return elements;
+
+    const elementsWithContent = elements.filter((element) => {
+      return this.elementHasRelevantContentAtPoint(element, x, y);
+    });
+
+    if (elementsWithContent.length > 0) {
+      return elementsWithContent;
+    }
+
+    return elements;
+  }
+
+  private elementHasRelevantContentAtPoint(
+    element: HTMLElement,
+    x: number,
+    y: number
+  ): boolean {
+    const rect = element.getBoundingClientRect();
+
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      return false;
+    }
+
+    const hasDirectText = Array.from(element.childNodes).some(
+      (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim()
+    );
+
+    if (hasDirectText) {
+      return true;
+    }
+
+    if (element.tagName === "IMG") {
+      return true;
+    }
+
+    const contentTags = [
+      "INPUT",
+      "BUTTON",
+      "SELECT",
+      "TEXTAREA",
+      "VIDEO",
+      "AUDIO",
+      "CANVAS",
+      "SVG",
+    ];
+    if (contentTags.includes(element.tagName)) {
+      return true;
+    }
+
+    const childElements = Array.from(element.children) as HTMLElement[];
+    return childElements.some(child => 
+      this.elementHasRelevantContentAtPoint(child, x, y)
+    );
+  }
+
+  private findTrulyDeepestElement(
+    elements: HTMLElement[],
+    x: number,
+    y: number,
+    visited: Set<HTMLElement>
+  ): HTMLElement | null {
+    let deepestElement: HTMLElement | null = null;
+    let maxDepth = -1;
+
+    for (const element of elements) {
+      if (visited.has(element)) continue;
+      visited.add(element);
+
+      if (element.shadowRoot) {
+        const shadowElements = element.shadowRoot.elementsFromPoint(
+          x,
+          y
+        ) as HTMLElement[];
+        const deeper = this.findTrulyDeepestElement(
+          shadowElements,
+          x,
+          y,
+          visited
+        );
+        if (deeper) {
+          const depth = this.getElementDepth(deeper);
+          if (depth > maxDepth) {
+            maxDepth = depth;
+            deepestElement = deeper;
+          }
         }
+      }
+
+      const depth = this.getElementDepth(element);
+      if (depth > maxDepth) {
+        maxDepth = depth;
+        deepestElement = element;
       }
     }
 
-    const depth = this.getElementDepth(element);
-    if (depth > maxDepth) {
-      maxDepth = depth;
-      deepestElement = element;
+    return deepestElement;
+  }
+
+  private getElementDepth(element: HTMLElement): number {
+    let depth = 0;
+    let current: HTMLElement | null = element;
+
+    while (current && current !== this.lastAnalyzedDocument?.body) {
+      depth++;
+      current =
+        current.parentElement ||
+        ((current.getRootNode() as ShadowRoot).host as HTMLElement | null);
+      if (depth > 50) break;
     }
+    return depth;
   }
-
-  return deepestElement;
-}
-
-private getElementDepth(element: HTMLElement): number {
-  let depth = 0;
-  let current: HTMLElement | null = element;
-
-  while (current && current !== this.lastAnalyzedDocument?.body) {
-    depth++;
-    current = current.parentElement || (current.getRootNode() as ShadowRoot).host as HTMLElement | null;
-    if (depth > 50) break;
-  }
-  return depth;
-}
 
 
   /**
