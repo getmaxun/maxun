@@ -308,6 +308,386 @@ export const BrowserWindow = () => {
         }
     }, [isDOMMode, getList, listSelector, paginationMode]);
 
+    const createFieldsFromChildSelectors = useCallback(
+      (childSelectors: string[], listSelector: string) => {
+        if (!childSelectors.length || !currentSnapshot) return {};
+
+        const iframeElement = document.querySelector(
+          "#dom-browser-iframe"
+        ) as HTMLIFrameElement;
+
+        if (!iframeElement?.contentDocument) return {};
+
+        const candidateFields: Array<{
+          id: number;
+          field: TextStep;
+          element: HTMLElement;
+          isLeaf: boolean;
+          depth: number;
+        }> = [];
+
+        const uniqueChildSelectors = [...new Set(childSelectors)];
+
+        const isElementVisible = (element: HTMLElement): boolean => {
+          try {
+            const rect = element.getBoundingClientRect();
+            return rect.width > 0 && rect.height > 0;
+          } catch (error) {
+            return false;
+          }
+        };
+
+        const isValidData = (data: string): boolean => {
+          if (!data || data.trim().length === 0) return false;
+
+          const trimmed = data.trim();
+
+          // Filter out single symbols
+          if (trimmed.length === 1) {
+            return /^[a-zA-Z0-9]$/.test(trimmed);
+          }
+
+          // Filter out pure symbols/punctuation
+          if (trimmed.length < 3 && /^[^\w\s]+$/.test(trimmed)) {
+            return false;
+          }
+
+          // Filter out whitespace and punctuation only
+          if (/^[\s\p{P}\p{S}]*$/u.test(trimmed)) return false;
+
+          return trimmed.length > 0;
+        };
+
+        // Simple deepest child finder - limit depth to prevent hanging
+        const findDeepestChild = (element: HTMLElement): HTMLElement => {
+          let deepest = element;
+          let maxDepth = 0;
+
+          const traverse = (el: HTMLElement, depth: number) => {
+            if (depth > 3) return;
+
+            const text = el.textContent?.trim() || "";
+            if (isValidData(text) && depth > maxDepth) {
+              maxDepth = depth;
+              deepest = el;
+            }
+
+            const children = Array.from(el.children).slice(0, 3);
+            children.forEach((child) => {
+              if (child instanceof HTMLElement) {
+                traverse(child, depth + 1);
+              }
+            });
+          };
+
+          traverse(element, 0);
+          return deepest;
+        };
+
+        uniqueChildSelectors.forEach((childSelector, index) => {
+          try {
+            const result = iframeElement.contentDocument!.evaluate(
+              childSelector,
+              iframeElement.contentDocument!,
+              null,
+              XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+              null
+            );
+
+            if (result.snapshotLength > 0) {
+              const element = result.snapshotItem(0) as HTMLElement;
+
+              if (element && isElementVisible(element)) {
+                const tagName = element.tagName.toLowerCase();
+
+                if (tagName === "a") {
+                  const anchor = element as HTMLAnchorElement;
+                  const href = anchor.href;
+                  const text = anchor.textContent?.trim() || "";
+
+                  if (
+                    href &&
+                    href.trim() !== "" &&
+                    href !== window.location.href &&
+                    !href.startsWith("javascript:") &&
+                    !href.startsWith("#")
+                  ) {
+                    const fieldIdHref = Date.now() + index * 1000;
+
+                    candidateFields.push({
+                      id: fieldIdHref,
+                      element: element,
+                      isLeaf: true,
+                      depth: 0,
+                      field: {
+                        id: fieldIdHref,
+                        type: "text",
+                        label: `Label ${index * 2 + 1}`,
+                        data: href,
+                        selectorObj: {
+                          selector: childSelector,
+                          tag: element.tagName,
+                          isShadow: element.getRootNode() instanceof ShadowRoot,
+                          attribute: "href",
+                        },
+                      },
+                    });
+                  }
+
+                  const fieldIdText = Date.now() + index * 1000 + 1;
+
+                  if (isValidData(text)) {
+                    candidateFields.push({
+                      id: fieldIdText,
+                      element: element,
+                      isLeaf: true,
+                      depth: 0,
+                      field: {
+                        id: fieldIdText,
+                        type: "text",
+                        label: `Label ${index * 2 + 2}`,
+                        data: text,
+                        selectorObj: {
+                          selector: childSelector,
+                          tag: element.tagName,
+                          isShadow: element.getRootNode() instanceof ShadowRoot,
+                          attribute: "innerText",
+                        },
+                      },
+                    });
+                  }
+                } else if (tagName === "img") {
+                  const img = element as HTMLImageElement;
+                  const src = img.src;
+                  const alt = img.alt?.trim() || "";
+
+                  if (src && !src.startsWith("data:") && src.length > 10) {
+                    const fieldId = Date.now() + index * 1000;
+
+                    candidateFields.push({
+                      id: fieldId,
+                      element: element,
+                      isLeaf: true,
+                      depth: 0,
+                      field: {
+                        id: fieldId,
+                        type: "text",
+                        label: `Label ${index + 1}`,
+                        data: src,
+                        selectorObj: {
+                          selector: childSelector,
+                          tag: element.tagName,
+                          isShadow: element.getRootNode() instanceof ShadowRoot,
+                          attribute: "src",
+                        },
+                      },
+                    });
+                  }
+
+                  if (isValidData(alt)) {
+                    const fieldId = Date.now() + index * 1000 + 1;
+
+                    candidateFields.push({
+                      id: fieldId,
+                      element: element,
+                      isLeaf: true,
+                      depth: 0,
+                      field: {
+                        id: fieldId,
+                        type: "text",
+                        label: `Label ${index + 2}`,
+                        data: alt,
+                        selectorObj: {
+                          selector: childSelector,
+                          tag: element.tagName,
+                          isShadow: element.getRootNode() instanceof ShadowRoot,
+                          attribute: "alt",
+                        },
+                      },
+                    });
+                  }
+                } else {
+                  const deepestElement = findDeepestChild(element);
+                  const data = deepestElement.textContent?.trim() || "";
+
+                  if (isValidData(data)) {
+                    const isLeaf = isLeafElement(deepestElement);
+                    const depth = getElementDepthFromList(
+                      deepestElement,
+                      listSelector,
+                      iframeElement.contentDocument!
+                    );
+
+                    const fieldId = Date.now() + index;
+
+                    candidateFields.push({
+                      id: fieldId,
+                      element: deepestElement,
+                      isLeaf: isLeaf,
+                      depth: depth,
+                      field: {
+                        id: fieldId,
+                        type: "text",
+                        label: `Label ${index + 1}`,
+                        data: data,
+                        selectorObj: {
+                          selector: childSelector,
+                          tag: deepestElement.tagName,
+                          isShadow:
+                            deepestElement.getRootNode() instanceof ShadowRoot,
+                          attribute: "innerText",
+                        },
+                      },
+                    });
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            console.warn(
+              `Failed to process child selector ${childSelector}:`,
+              error
+            );
+          }
+        });
+
+        const filteredCandidates = removeParentChildDuplicates(candidateFields);
+
+        const finalFields = removeDuplicateContent(filteredCandidates);
+        return finalFields;
+      },
+      [currentSnapshot]
+    );
+
+    const isLeafElement = (element: HTMLElement): boolean => {
+      const children = Array.from(element.children) as HTMLElement[];
+
+      if (children.length === 0) return true;
+
+      const hasContentfulChildren = children.some((child) => {
+        const text = child.textContent?.trim() || "";
+        return text.length > 0 && text !== element.textContent?.trim();
+      });
+
+      return !hasContentfulChildren;
+    };
+
+    const getElementDepthFromList = (
+      element: HTMLElement,
+      listSelector: string,
+      document: Document
+    ): number => {
+      try {
+        const listResult = document.evaluate(
+          listSelector,
+          document,
+          null,
+          XPathResult.FIRST_ORDERED_NODE_TYPE,
+          null
+        );
+
+        const listElement = listResult.singleNodeValue as HTMLElement;
+        if (!listElement) return 0;
+
+        let depth = 0;
+        let current = element;
+
+        while (current && current !== listElement && current.parentElement) {
+          depth++;
+          current = current.parentElement;
+          if (depth > 20) break;
+        }
+
+        return current === listElement ? depth : 0;
+      } catch (error) {
+        return 0;
+      }
+    };
+
+    const removeParentChildDuplicates = (
+      candidates: Array<{
+        id: number;
+        field: TextStep;
+        element: HTMLElement;
+        isLeaf: boolean;
+        depth: number;
+      }>
+    ): Array<{
+      id: number;
+      field: TextStep;
+      element: HTMLElement;
+      isLeaf: boolean;
+      depth: number;
+    }> => {
+      const filtered: Array<{
+        id: number;
+        field: TextStep;
+        element: HTMLElement;
+        isLeaf: boolean;
+        depth: number;
+      }> = [];
+
+      for (const candidate of candidates) {
+        let shouldInclude = true;
+
+        for (const existing of filtered) {
+          if (candidate.element.contains(existing.element)) {
+            shouldInclude = false;
+            break;
+          } else if (existing.element.contains(candidate.element)) {
+            const existingIndex = filtered.indexOf(existing);
+            filtered.splice(existingIndex, 1);
+            break;
+          }
+        }
+
+        if (candidate.element.tagName.toLowerCase() === "a") {
+          shouldInclude = true;
+        }
+
+        if (shouldInclude) {
+          filtered.push(candidate);
+        }
+      }
+
+      filtered.sort((a, b) => {
+        if (a.isLeaf !== b.isLeaf) {
+          return a.isLeaf ? -1 : 1;
+        }
+        return b.depth - a.depth;
+      });
+
+      return filtered;
+    };
+
+    const removeDuplicateContent = (
+      candidates: Array<{
+        id: number;
+        field: TextStep;
+        element: HTMLElement;
+        isLeaf: boolean;
+        depth: number;
+      }>
+    ): Record<string, TextStep> => {
+      const finalFields: Record<string, TextStep> = {};
+      const seenContent = new Set<string>();
+      let labelCounter = 1;
+
+      for (const candidate of candidates) {
+        const content = candidate.field.data.trim().toLowerCase();
+
+        if (!seenContent.has(content)) {
+          seenContent.add(content);
+          finalFields[candidate.id] = {
+            ...candidate.field,
+            label: `Label ${labelCounter++}`,
+          };
+        }
+      }
+
+      return finalFields;
+    };
+
     useEffect(() => {
       if (isDOMMode && listSelector) {
         socket?.emit("setGetList", { getList: true });
@@ -339,6 +719,25 @@ export const BrowserWindow = () => {
                 );
 
                 setCachedChildSelectors(childSelectors);
+
+                const autoFields = createFieldsFromChildSelectors(
+                  childSelectors,
+                  listSelector
+                );
+
+                if (Object.keys(autoFields).length > 0) {
+                  setFields(autoFields);
+
+                  addListStep(
+                    listSelector,
+                    autoFields,
+                    currentListId || Date.now(),
+                    currentListActionId || `list-${crypto.randomUUID()}`,
+                    { type: "", selector: paginationSelector },
+                    undefined,
+                    false
+                  );
+                }
               } catch (error) {
                 console.error("Error during child selector caching:", error);
               } finally {
