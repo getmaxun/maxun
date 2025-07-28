@@ -329,6 +329,94 @@ export const BrowserWindow = () => {
 
         const uniqueChildSelectors = [...new Set(childSelectors)];
 
+        // Filter child selectors that occur in at least 2 out of first 10 list elements
+        const validateChildSelectors = (selectors: string[]): string[] => {
+          try {
+            // Get first 10 list elements
+            const listElements = evaluateXPathAllWithShadowSupport(
+              iframeElement.contentDocument!,
+              listSelector,
+              listSelector.includes('>>') || listSelector.startsWith('//')
+            ).slice(0, 10);
+
+            if (listElements.length < 2) {
+              return selectors;
+            }
+
+            const validSelectors: string[] = [];
+
+            for (const selector of selectors) {
+              let occurrenceCount = 0;
+
+              // Get all elements that match this child selector
+              const childElements = evaluateXPathAllWithShadowSupport(
+                iframeElement.contentDocument!,
+                selector,
+                selector.includes('>>') || selector.startsWith('//')
+              );
+
+              // Check how many of these child elements are contained within our list elements
+              for (const childElement of childElements) {
+                for (const listElement of listElements) {
+                  if (listElement.contains(childElement)) {
+                    occurrenceCount++;
+                    break;
+                  }
+                }
+              }
+
+              // Only include selectors that occur in at least 2 list elements
+              if (occurrenceCount >= 2) {
+                validSelectors.push(selector);
+              }
+            }
+
+            return validSelectors;
+          } catch (error) {
+            console.warn("Failed to validate child selectors:", error);
+            return selectors;
+          }
+        };
+
+        // Enhanced XPath evaluation for multiple elements
+        const evaluateXPathAllWithShadowSupport = (
+          document: Document,
+          xpath: string,
+          isShadow: boolean = false
+        ): Element[] => {
+          try {
+            // First try regular XPath evaluation
+            const result = document.evaluate(
+              xpath,
+              document,
+              null,
+              XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+              null
+            );
+
+            const elements: Element[] = [];
+            for (let i = 0; i < result.snapshotLength; i++) {
+              const node = result.snapshotItem(i);
+              if (node && node.nodeType === Node.ELEMENT_NODE) {
+                elements.push(node as Element);
+              }
+            }
+
+            if (!isShadow || elements.length > 0) {
+              return elements;
+            }
+
+            // If shadow DOM is indicated and regular XPath fails, use shadow DOM traversal
+            // This is a simplified version - for multiple elements, we'll primarily rely on regular XPath
+            return elements;
+          } catch (err) {
+            console.error("XPath evaluation failed:", xpath, err);
+            return [];
+          }
+        };
+
+        const validatedChildSelectors = validateChildSelectors(uniqueChildSelectors);
+
         const isElementVisible = (element: HTMLElement): boolean => {
           try {
             const rect = element.getBoundingClientRect();
@@ -343,9 +431,9 @@ export const BrowserWindow = () => {
 
           const trimmed = data.trim();
 
-          // Filter out single symbols
+          // Filter out single letters
           if (trimmed.length === 1) {
-            return /^[a-zA-Z0-9]$/.test(trimmed);
+            return false;
           }
 
           // Filter out pure symbols/punctuation
@@ -691,7 +779,7 @@ export const BrowserWindow = () => {
           return deepest;
         };
 
-        uniqueChildSelectors.forEach((childSelector, index) => {
+        validatedChildSelectors.forEach((childSelector, index) => {
           try {
             // Detect if this selector should use shadow DOM traversal
             const isShadowSelector = childSelector.includes('>>') || 
