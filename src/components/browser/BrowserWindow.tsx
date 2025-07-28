@@ -935,7 +935,7 @@ export const BrowserWindow = () => {
         element: HTMLElement;
         isLeaf: boolean;
         depth: number;
-        position: { x: number; y: number }; // Add position property
+        position: { x: number; y: number };
       }>
     ): Array<{
       id: number;
@@ -943,7 +943,7 @@ export const BrowserWindow = () => {
       element: HTMLElement;
       isLeaf: boolean;
       depth: number;
-      position: { x: number; y: number }; // Add position property
+      position: { x: number; y: number };
     }> => {
       const filtered: Array<{
         id: number;
@@ -977,8 +977,6 @@ export const BrowserWindow = () => {
         }
       }
 
-      // Remove the sorting here since we want to maintain position-based order
-      // The candidates are already sorted by position before this function is called
       return filtered;
     };
 
@@ -989,7 +987,7 @@ export const BrowserWindow = () => {
         element: HTMLElement;
         isLeaf: boolean;
         depth: number;
-        position: { x: number; y: number }; // Add position property
+        position: { x: number; y: number };
       }>
     ): Record<string, TextStep> => {
       const finalFields: Record<string, TextStep> = {};
