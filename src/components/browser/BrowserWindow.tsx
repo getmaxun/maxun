@@ -166,7 +166,7 @@ export const BrowserWindow = () => {
     const [viewportInfo, setViewportInfo] = useState<ViewportInfo>({ width: browserWidth, height: browserHeight });
     const [isLoading, setIsLoading] = useState(false);
     const [cachedChildSelectors, setCachedChildSelectors] = useState<string[]>([]);
-
+    const [processingGroupCoordinates, setProcessingGroupCoordinates] = useState<Array<{ element: HTMLElement; rect: DOMRect }>>([]);
     const [listSelector, setListSelector] = useState<string | null>(null);
     const [fields, setFields] = useState<Record<string, TextStep>>({});
     const [paginationSelector, setPaginationSelector] = useState<string>('');
@@ -787,6 +787,15 @@ export const BrowserWindow = () => {
           !listSelector &&
           highlighterData.groupInfo?.isGroupElement
         ) {
+          if (highlighterData?.groupInfo.groupElements) {
+            setProcessingGroupCoordinates(
+              highlighterData.groupInfo.groupElements.map((element) => ({
+                element,
+                rect: element.getBoundingClientRect(),
+              }))
+            );
+          }
+
           let cleanedSelector = highlighterData.selector;
 
           setListSelector(cleanedSelector);
@@ -1503,6 +1512,8 @@ export const BrowserWindow = () => {
 
               {/* Loading overlay positioned specifically over DOM content */}
               {isCachingChildSelectors && (
+              <>
+                {/* Background overlay */}
                 <div
                   style={{
                     position: "absolute",
@@ -1511,26 +1522,126 @@ export const BrowserWindow = () => {
                     width: "100%",
                     height: "100%",
                     background: "rgba(255, 255, 255, 0.8)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
                     zIndex: 9999,
                     pointerEvents: "none",
-                    borderRadius: "0px 0px 5px 5px", // Match the DOM renderer border radius
+                    borderRadius: "0px 0px 5px 5px",
                   }}
-                >
+                />
+
+                {/* Use processing coordinates captured before listSelector was set */}
+                {processingGroupCoordinates.map((groupElement, index) => (
+                  <React.Fragment key={`group-highlight-${index}`}>
+                    {/* Original highlight box */}
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: groupElement.rect.x,
+                        top: groupElement.rect.y,
+                        width: groupElement.rect.width,
+                        height: groupElement.rect.height,
+                        background: "rgba(255, 0, 195, 0.15)",
+                        border: "2px dashed #ff00c3",
+                        borderRadius: "3px",
+                        pointerEvents: "none",
+                        zIndex: 10000,
+                        boxShadow: "0 0 0 1px rgba(255, 255, 255, 0.8)",
+                        transition: "all 0.1s ease-out",
+                      }}
+                    />
+
+                    {/* Label */}
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: groupElement.rect.x,
+                        top: groupElement.rect.y - 20,
+                        background: "#ff00c3",
+                        color: "white",
+                        padding: "2px 6px",
+                        fontSize: "10px",
+                        fontWeight: "bold",
+                        borderRadius: "2px",
+                        pointerEvents: "none",
+                        zIndex: 10001,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      List item {index + 1}
+                    </div>
+
+                    {/* Scanning animation */}
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: groupElement.rect.x,
+                        top: groupElement.rect.y,
+                        width: groupElement.rect.width,
+                        height: groupElement.rect.height,
+                        overflow: "hidden",
+                        zIndex: 10002,
+                        pointerEvents: "none",
+                        borderRadius: "3px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          position: "absolute",
+                          left: 0,
+                          width: "100%",
+                          height: "8px",
+                          background:
+                            "linear-gradient(90deg, transparent 0%, rgba(255, 0, 195, 0.6) 50%, transparent 100%)",
+                          animation: `scanDown-${index} 2s ease-in-out infinite`,
+                          willChange: "transform",
+                        }}
+                      />
+                    </div>
+
+                    <style>{`
+                    @keyframes scanDown-${index} {
+                        0% {
+                        transform: translateY(-8px);
+                        }
+                        100% {
+                        transform: translateY(${groupElement.rect.height}px);
+                        }
+                    }
+                    `}</style>
+                  </React.Fragment>
+                ))}
+
+                {/* Fallback loader */}
+                {processingGroupCoordinates.length === 0 && (
                   <div
                     style={{
-                      width: "40px",
-                      height: "40px",
-                      border: "4px solid #f3f3f3",
-                      borderTop: "4px solid #ff00c3",
-                      borderRadius: "50%",
-                      animation: "spin 1s linear infinite",
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      height: "100%",
+                      background: "rgba(255, 255, 255, 0.8)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      zIndex: 9999,
+                      pointerEvents: "none",
+                      borderRadius: "0px 0px 5px 5px",
                     }}
-                  />
-                </div>
-              )}
+                  >
+                    <div
+                      style={{
+                        width: "40px",
+                        height: "40px",
+                        border: "4px solid #f3f3f3",
+                        borderTop: "4px solid #ff00c3",
+                        borderRadius: "50%",
+                        animation: "spin 1s linear infinite",
+                      }}
+                    />
+                  </div>
+                )}
+              </>
+            )}
             </div>
           ) : (
             /* Screenshot mode canvas */
