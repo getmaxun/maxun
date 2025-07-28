@@ -358,6 +358,312 @@ export const BrowserWindow = () => {
           return trimmed.length > 0;
         };
 
+        // Enhanced shadow DOM-aware element evaluation
+        const evaluateXPathWithShadowSupport = (
+          document: Document,
+          xpath: string,
+          isShadow: boolean = false
+        ): Element | null => {
+          try {
+            // First try regular XPath evaluation
+            const result = document.evaluate(
+              xpath,
+              document,
+              null,
+              XPathResult.FIRST_ORDERED_NODE_TYPE,
+              null
+            ).singleNodeValue as Element | null;
+
+            if (!isShadow || result) {
+              return result;
+            }
+
+            // If shadow DOM is indicated and regular XPath fails, use shadow DOM traversal
+            let cleanPath = xpath;
+            let isIndexed = false;
+
+            const indexedMatch = xpath.match(/^\((.*?)\)\[(\d+)\](.*)$/);
+            if (indexedMatch) {
+              cleanPath = indexedMatch[1] + indexedMatch[3];
+              isIndexed = true;
+            }
+
+            const pathParts = cleanPath
+              .replace(/^\/\//, "")
+              .split("/")
+              .map((p) => p.trim())
+              .filter((p) => p.length > 0);
+
+            let currentContexts: (Document | Element | ShadowRoot)[] = [document];
+
+            for (let i = 0; i < pathParts.length; i++) {
+              const part = pathParts[i];
+              const nextContexts: (Element | ShadowRoot)[] = [];
+
+              for (const ctx of currentContexts) {
+                const positionalMatch = part.match(/^([^[]+)\[(\d+)\]$/);
+                let partWithoutPosition = part;
+                let requestedPosition: number | null = null;
+
+                if (positionalMatch) {
+                  partWithoutPosition = positionalMatch[1];
+                  requestedPosition = parseInt(positionalMatch[2]);
+                }
+
+                const matched = queryInsideContext(ctx, partWithoutPosition);
+
+                let elementsToAdd = matched;
+                if (requestedPosition !== null) {
+                  const index = requestedPosition - 1;
+                  if (index >= 0 && index < matched.length) {
+                    elementsToAdd = [matched[index]];
+                  } else {
+                    elementsToAdd = [];
+                  }
+                }
+
+                elementsToAdd.forEach((el) => {
+                  nextContexts.push(el);
+                  if (el.shadowRoot) {
+                    nextContexts.push(el.shadowRoot);
+                  }
+                });
+              }
+
+              if (nextContexts.length === 0) {
+                return null;
+              }
+
+              currentContexts = nextContexts;
+            }
+
+            if (currentContexts.length > 0) {
+              if (isIndexed && indexedMatch) {
+                const requestedIndex = parseInt(indexedMatch[2]) - 1;
+                if (requestedIndex >= 0 && requestedIndex < currentContexts.length) {
+                  return currentContexts[requestedIndex] as Element;
+                } else {
+                  return null;
+                }
+              }
+
+              return currentContexts[0] as Element;
+            }
+
+            return null;
+          } catch (err) {
+            console.error("XPath evaluation failed:", xpath, err);
+            return null;
+          }
+        };
+
+        const queryInsideContext = (
+          context: Document | Element | ShadowRoot,
+          part: string
+        ): Element[] => {
+          try {
+            const { tagName, conditions } = parseXPathPart(part);
+
+            const candidateElements = Array.from(context.querySelectorAll(tagName));
+            if (candidateElements.length === 0) {
+              return [];
+            }
+
+            const matchingElements = candidateElements.filter((el) => {
+              return elementMatchesConditions(el, conditions);
+            });
+
+            return matchingElements;
+          } catch (err) {
+            console.error("Error in queryInsideContext:", err);
+            return [];
+          }
+        };
+
+        const parseXPathPart = (
+          part: string
+        ): { tagName: string; conditions: string[] } => {
+          const tagMatch = part.match(/^([a-zA-Z0-9-]+)/);
+          const tagName = tagMatch ? tagMatch[1] : "*";
+
+          const conditionMatches = part.match(/\[([^\]]+)\]/g);
+          const conditions = conditionMatches
+            ? conditionMatches.map((c) => c.slice(1, -1))
+            : [];
+
+          return { tagName, conditions };
+        };
+
+        const elementMatchesConditions = (
+          element: Element,
+          conditions: string[]
+        ): boolean => {
+          for (const condition of conditions) {
+            if (!elementMatchesCondition(element, condition)) {
+              return false;
+            }
+          }
+          return true;
+        };
+
+        const elementMatchesCondition = (
+          element: Element,
+          condition: string
+        ): boolean => {
+          condition = condition.trim();
+
+          if (/^\d+$/.test(condition)) {
+            return true;
+          }
+
+          // Handle @attribute="value"
+          const attrMatch = condition.match(/^@([^=]+)=["']([^"']+)["']$/);
+          if (attrMatch) {
+            const [, attr, value] = attrMatch;
+            const elementValue = element.getAttribute(attr);
+            return elementValue === value;
+          }
+
+          // Handle contains(@class, 'value')
+          const classContainsMatch = condition.match(
+            /^contains\(@class,\s*["']([^"']+)["']\)$/
+          );
+          if (classContainsMatch) {
+            const className = classContainsMatch[1];
+            return element.classList.contains(className);
+          }
+
+          // Handle contains(@attribute, 'value')
+          const attrContainsMatch = condition.match(
+            /^contains\(@([^,]+),\s*["']([^"']+)["']\)$/
+          );
+          if (attrContainsMatch) {
+            const [, attr, value] = attrContainsMatch;
+            const elementValue = element.getAttribute(attr) || "";
+            return elementValue.includes(value);
+          }
+
+          // Handle text()="value"
+          const textMatch = condition.match(/^text\(\)=["']([^"']+)["']$/);
+          if (textMatch) {
+            const expectedText = textMatch[1];
+            const elementText = element.textContent?.trim() || "";
+            return elementText === expectedText;
+          }
+
+          // Handle contains(text(), 'value')
+          const textContainsMatch = condition.match(
+            /^contains\(text\(\),\s*["']([^"']+)["']\)$/
+          );
+          if (textContainsMatch) {
+            const expectedText = textContainsMatch[1];
+            const elementText = element.textContent?.trim() || "";
+            return elementText.includes(expectedText);
+          }
+
+          // Handle count(*)=0 (element has no children)
+          if (condition === "count(*)=0") {
+            return element.children.length === 0;
+          }
+
+          // Handle other count conditions
+          const countMatch = condition.match(/^count\(\*\)=(\d+)$/);
+          if (countMatch) {
+            const expectedCount = parseInt(countMatch[1]);
+            return element.children.length === expectedCount;
+          }
+
+          return true;
+        };
+
+        // Enhanced value extraction with shadow DOM support
+        const extractValueWithShadowSupport = (
+          element: Element,
+          attribute: string
+        ): string | null => {
+          if (!element) return null;
+
+          const baseURL =
+            element.ownerDocument?.location?.href || window.location.origin;
+
+          // Check shadow DOM content first
+          if (element.shadowRoot) {
+            const shadowContent = element.shadowRoot.textContent;
+            if (shadowContent?.trim()) {
+              return shadowContent.trim();
+            }
+          }
+
+          if (attribute === "innerText") {
+            let textContent =
+              (element as HTMLElement).innerText?.trim() ||
+              (element as HTMLElement).textContent?.trim();
+
+            if (!textContent) {
+              const dataAttributes = [
+                "data-600",
+                "data-text",
+                "data-label",
+                "data-value",
+                "data-content",
+              ];
+              for (const attr of dataAttributes) {
+                const dataValue = element.getAttribute(attr);
+                if (dataValue && dataValue.trim()) {
+                  textContent = dataValue.trim();
+                  break;
+                }
+              }
+            }
+
+            return textContent || null;
+          } else if (attribute === "innerHTML") {
+            return element.innerHTML?.trim() || null;
+          } else if (attribute === "href") {
+            let anchorElement = element;
+
+            if (element.tagName !== "A") {
+              anchorElement =
+                element.closest("a") ||
+                element.parentElement?.closest("a") ||
+                element;
+            }
+
+            const hrefValue = anchorElement.getAttribute("href");
+            if (!hrefValue || hrefValue.trim() === "") {
+              return null;
+            }
+
+            try {
+              return new URL(hrefValue, baseURL).href;
+            } catch (e) {
+              console.warn("Error creating URL from", hrefValue, e);
+              return hrefValue;
+            }
+          } else if (attribute === "src") {
+            const attrValue = element.getAttribute(attribute);
+            const dataAttr = attrValue || element.getAttribute("data-" + attribute);
+
+            if (!dataAttr || dataAttr.trim() === "") {
+              const style = window.getComputedStyle(element as HTMLElement);
+              const bgImage = style.backgroundImage;
+              if (bgImage && bgImage !== "none") {
+                const matches = bgImage.match(/url\(['"]?([^'")]+)['"]?\)/);
+                return matches ? new URL(matches[1], baseURL).href : null;
+              }
+              return null;
+            }
+
+            try {
+              return new URL(dataAttr, baseURL).href;
+            } catch (e) {
+              console.warn("Error creating URL from", dataAttr, e);
+              return dataAttr;
+            }
+          }
+          return element.getAttribute(attribute);
+        };
+
         // Simple deepest child finder - limit depth to prevent hanging
         const findDeepestChild = (element: HTMLElement): HTMLElement => {
           let deepest = element;
@@ -386,160 +692,159 @@ export const BrowserWindow = () => {
 
         uniqueChildSelectors.forEach((childSelector, index) => {
           try {
-            const result = iframeElement.contentDocument!.evaluate(
-              childSelector,
+            // Detect if this selector should use shadow DOM traversal
+            const isShadowSelector = childSelector.includes('>>') || 
+                                   childSelector.startsWith('//') && 
+                                   (listSelector.includes('>>') || currentSnapshot?.snapshot);
+
+            const element = evaluateXPathWithShadowSupport(
               iframeElement.contentDocument!,
-              null,
-              XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
-              null
-            );
+              childSelector,
+              isShadowSelector
+            ) as HTMLElement;
 
-            if (result.snapshotLength > 0) {
-              const element = result.snapshotItem(0) as HTMLElement;
+            if (element && isElementVisible(element)) {
+              const tagName = element.tagName.toLowerCase();
+              const isShadow = element.getRootNode() instanceof ShadowRoot;
 
-              if (element && isElementVisible(element)) {
-                const tagName = element.tagName.toLowerCase();
+              if (tagName === "a") {
+                const anchor = element as HTMLAnchorElement;
+                const href = extractValueWithShadowSupport(anchor, "href");
+                const text = extractValueWithShadowSupport(anchor, "innerText");
 
-                if (tagName === "a") {
-                  const anchor = element as HTMLAnchorElement;
-                  const href = anchor.href;
-                  const text = anchor.textContent?.trim() || "";
+                if (
+                  href &&
+                  href.trim() !== "" &&
+                  href !== window.location.href &&
+                  !href.startsWith("javascript:") &&
+                  !href.startsWith("#")
+                ) {
+                  const fieldIdHref = Date.now() + index * 1000;
 
-                  if (
-                    href &&
-                    href.trim() !== "" &&
-                    href !== window.location.href &&
-                    !href.startsWith("javascript:") &&
-                    !href.startsWith("#")
-                  ) {
-                    const fieldIdHref = Date.now() + index * 1000;
-
-                    candidateFields.push({
+                  candidateFields.push({
+                    id: fieldIdHref,
+                    element: element,
+                    isLeaf: true,
+                    depth: 0,
+                    field: {
                       id: fieldIdHref,
-                      element: element,
-                      isLeaf: true,
-                      depth: 0,
-                      field: {
-                        id: fieldIdHref,
-                        type: "text",
-                        label: `Label ${index * 2 + 1}`,
-                        data: href,
-                        selectorObj: {
-                          selector: childSelector,
-                          tag: element.tagName,
-                          isShadow: element.getRootNode() instanceof ShadowRoot,
-                          attribute: "href",
-                        },
+                      type: "text",
+                      label: `Label ${index * 2 + 1}`,
+                      data: href,
+                      selectorObj: {
+                        selector: childSelector,
+                        tag: element.tagName,
+                        isShadow: isShadow,
+                        attribute: "href",
                       },
-                    });
-                  }
+                    },
+                  });
+                }
 
-                  const fieldIdText = Date.now() + index * 1000 + 1;
+                const fieldIdText = Date.now() + index * 1000 + 1;
 
-                  if (isValidData(text)) {
-                    candidateFields.push({
+                if (text && isValidData(text)) {
+                  candidateFields.push({
+                    id: fieldIdText,
+                    element: element,
+                    isLeaf: true,
+                    depth: 0,
+                    field: {
                       id: fieldIdText,
-                      element: element,
-                      isLeaf: true,
-                      depth: 0,
-                      field: {
-                        id: fieldIdText,
-                        type: "text",
-                        label: `Label ${index * 2 + 2}`,
-                        data: text,
-                        selectorObj: {
-                          selector: childSelector,
-                          tag: element.tagName,
-                          isShadow: element.getRootNode() instanceof ShadowRoot,
-                          attribute: "innerText",
-                        },
+                      type: "text",
+                      label: `Label ${index * 2 + 2}`,
+                      data: text,
+                      selectorObj: {
+                        selector: childSelector,
+                        tag: element.tagName,
+                        isShadow: isShadow,
+                        attribute: "innerText",
                       },
-                    });
-                  }
-                } else if (tagName === "img") {
-                  const img = element as HTMLImageElement;
-                  const src = img.src;
-                  const alt = img.alt?.trim() || "";
+                    },
+                  });
+                }
+              } else if (tagName === "img") {
+                const img = element as HTMLImageElement;
+                const src = extractValueWithShadowSupport(img, "src");
+                const alt = extractValueWithShadowSupport(img, "alt");
 
-                  if (src && !src.startsWith("data:") && src.length > 10) {
-                    const fieldId = Date.now() + index * 1000;
+                if (src && !src.startsWith("data:") && src.length > 10) {
+                  const fieldId = Date.now() + index * 1000;
 
-                    candidateFields.push({
+                  candidateFields.push({
+                    id: fieldId,
+                    element: element,
+                    isLeaf: true,
+                    depth: 0,
+                    field: {
                       id: fieldId,
-                      element: element,
-                      isLeaf: true,
-                      depth: 0,
-                      field: {
-                        id: fieldId,
-                        type: "text",
-                        label: `Label ${index + 1}`,
-                        data: src,
-                        selectorObj: {
-                          selector: childSelector,
-                          tag: element.tagName,
-                          isShadow: element.getRootNode() instanceof ShadowRoot,
-                          attribute: "src",
-                        },
+                      type: "text",
+                      label: `Label ${index + 1}`,
+                      data: src,
+                      selectorObj: {
+                        selector: childSelector,
+                        tag: element.tagName,
+                        isShadow: isShadow,
+                        attribute: "src",
                       },
-                    });
-                  }
+                    },
+                  });
+                }
 
-                  if (isValidData(alt)) {
-                    const fieldId = Date.now() + index * 1000 + 1;
+                if (alt && isValidData(alt)) {
+                  const fieldId = Date.now() + index * 1000 + 1;
 
-                    candidateFields.push({
+                  candidateFields.push({
+                    id: fieldId,
+                    element: element,
+                    isLeaf: true,
+                    depth: 0,
+                    field: {
                       id: fieldId,
-                      element: element,
-                      isLeaf: true,
-                      depth: 0,
-                      field: {
-                        id: fieldId,
-                        type: "text",
-                        label: `Label ${index + 2}`,
-                        data: alt,
-                        selectorObj: {
-                          selector: childSelector,
-                          tag: element.tagName,
-                          isShadow: element.getRootNode() instanceof ShadowRoot,
-                          attribute: "alt",
-                        },
+                      type: "text",
+                      label: `Label ${index + 2}`,
+                      data: alt,
+                      selectorObj: {
+                        selector: childSelector,
+                        tag: element.tagName,
+                        isShadow: isShadow,
+                        attribute: "alt",
                       },
-                    });
-                  }
-                } else {
-                  const deepestElement = findDeepestChild(element);
-                  const data = deepestElement.textContent?.trim() || "";
+                    },
+                  });
+                }
+              } else {
+                const deepestElement = findDeepestChild(element);
+                const data = extractValueWithShadowSupport(deepestElement, "innerText");
 
-                  if (isValidData(data)) {
-                    const isLeaf = isLeafElement(deepestElement);
-                    const depth = getElementDepthFromList(
-                      deepestElement,
-                      listSelector,
-                      iframeElement.contentDocument!
-                    );
+                if (data && isValidData(data)) {
+                  const isLeaf = isLeafElement(deepestElement);
+                  const depth = getElementDepthFromList(
+                    deepestElement,
+                    listSelector,
+                    iframeElement.contentDocument!
+                  );
 
-                    const fieldId = Date.now() + index;
+                  const fieldId = Date.now() + index;
 
-                    candidateFields.push({
+                  candidateFields.push({
+                    id: fieldId,
+                    element: deepestElement,
+                    isLeaf: isLeaf,
+                    depth: depth,
+                    field: {
                       id: fieldId,
-                      element: deepestElement,
-                      isLeaf: isLeaf,
-                      depth: depth,
-                      field: {
-                        id: fieldId,
-                        type: "text",
-                        label: `Label ${index + 1}`,
-                        data: data,
-                        selectorObj: {
-                          selector: childSelector,
-                          tag: deepestElement.tagName,
-                          isShadow:
-                            deepestElement.getRootNode() instanceof ShadowRoot,
-                          attribute: "innerText",
-                        },
+                      type: "text",
+                      label: `Label ${index + 1}`,
+                      data: data,
+                      selectorObj: {
+                        selector: childSelector,
+                        tag: deepestElement.tagName,
+                        isShadow: deepestElement.getRootNode() instanceof ShadowRoot,
+                        attribute: "innerText",
                       },
-                    });
-                  }
+                    },
+                  });
                 }
               }
             }
