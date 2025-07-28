@@ -667,6 +667,12 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           return;
         }
 
+        if (isCachingChildSelectors) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+
         e.preventDefault();
 
         if (!isInCaptureMode) {
@@ -1009,7 +1015,8 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           height: "100%",
           border: "none",
           display: "block",
-          overflow: "hidden !important",
+          overflow: isCachingChildSelectors ? "hidden !important" : "hidden !important",
+          pointerEvents: isCachingChildSelectors ? "none" : "auto",
         }}
         sandbox="allow-same-origin allow-forms allow-scripts"
         title="DOM Browser Content"
