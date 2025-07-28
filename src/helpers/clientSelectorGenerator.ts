@@ -3761,7 +3761,6 @@ class ClientSelectorGenerator {
       ) {
         continue;
       }
-
       attrMap[attr.name] = attr.value;
     }
 
