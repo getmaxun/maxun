@@ -324,6 +324,7 @@ export const BrowserWindow = () => {
           element: HTMLElement;
           isLeaf: boolean;
           depth: number;
+          position: { x: number; y: number };
         }> = [];
 
         const uniqueChildSelectors = [...new Set(childSelectors)];
@@ -704,6 +705,9 @@ export const BrowserWindow = () => {
             ) as HTMLElement;
 
             if (element && isElementVisible(element)) {
+              const rect = element.getBoundingClientRect();
+              const position = { x: rect.left, y: rect.top };
+
               const tagName = element.tagName.toLowerCase();
               const isShadow = element.getRootNode() instanceof ShadowRoot;
 
@@ -726,6 +730,7 @@ export const BrowserWindow = () => {
                     element: element,
                     isLeaf: true,
                     depth: 0,
+                    position: position,
                     field: {
                       id: fieldIdHref,
                       type: "text",
@@ -749,6 +754,7 @@ export const BrowserWindow = () => {
                     element: element,
                     isLeaf: true,
                     depth: 0,
+                    position: position,
                     field: {
                       id: fieldIdText,
                       type: "text",
@@ -776,6 +782,7 @@ export const BrowserWindow = () => {
                     element: element,
                     isLeaf: true,
                     depth: 0,
+                    position: position,
                     field: {
                       id: fieldId,
                       type: "text",
@@ -799,6 +806,7 @@ export const BrowserWindow = () => {
                     element: element,
                     isLeaf: true,
                     depth: 0,
+                    position: position,
                     field: {
                       id: fieldId,
                       type: "text",
@@ -832,6 +840,7 @@ export const BrowserWindow = () => {
                     element: deepestElement,
                     isLeaf: isLeaf,
                     depth: depth,
+                    position: position,
                     field: {
                       id: fieldId,
                       type: "text",
@@ -854,6 +863,16 @@ export const BrowserWindow = () => {
               error
             );
           }
+        });
+
+        candidateFields.sort((a, b) => {
+          const yDiff = a.position.y - b.position.y;
+          
+          if (Math.abs(yDiff) <= 5) {
+            return a.position.x - b.position.x;
+          }
+          
+          return yDiff;
         });
 
         const filteredCandidates = removeParentChildDuplicates(candidateFields);
@@ -916,6 +935,7 @@ export const BrowserWindow = () => {
         element: HTMLElement;
         isLeaf: boolean;
         depth: number;
+        position: { x: number; y: number }; // Add position property
       }>
     ): Array<{
       id: number;
@@ -923,6 +943,7 @@ export const BrowserWindow = () => {
       element: HTMLElement;
       isLeaf: boolean;
       depth: number;
+      position: { x: number; y: number }; // Add position property
     }> => {
       const filtered: Array<{
         id: number;
@@ -930,6 +951,7 @@ export const BrowserWindow = () => {
         element: HTMLElement;
         isLeaf: boolean;
         depth: number;
+        position: { x: number; y: number };
       }> = [];
 
       for (const candidate of candidates) {
@@ -955,13 +977,8 @@ export const BrowserWindow = () => {
         }
       }
 
-      filtered.sort((a, b) => {
-        if (a.isLeaf !== b.isLeaf) {
-          return a.isLeaf ? -1 : 1;
-        }
-        return b.depth - a.depth;
-      });
-
+      // Remove the sorting here since we want to maintain position-based order
+      // The candidates are already sorted by position before this function is called
       return filtered;
     };
 
@@ -972,6 +989,7 @@ export const BrowserWindow = () => {
         element: HTMLElement;
         isLeaf: boolean;
         depth: number;
+        position: { x: number; y: number }; // Add position property
       }>
     ): Record<string, TextStep> => {
       const finalFields: Record<string, TextStep> = {};
