@@ -102,16 +102,20 @@ interface RRWebDOMBrowserRendererProps {
   paginationMode?: boolean;
   paginationType?: string;
   limitMode?: boolean;
+  isCachingChildSelectors?: boolean;
   onHighlight?: (data: {
     rect: DOMRect;
     selector: string;
+    isShadow?: boolean;
     elementInfo: ElementInfo | null;
     childSelectors?: string[];
     groupInfo?: any;
+    similarElements?: any;
   }) => void;
   onElementSelect?: (data: {
     rect: DOMRect;
     selector: string;
+    isShadow?: boolean;
     elementInfo: ElementInfo | null;
     childSelectors?: string[];
     groupInfo?: any;
@@ -151,6 +155,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
   paginationMode = false,
   paginationType = "",
   limitMode = false,
+  isCachingChildSelectors = false,
   onHighlight,
   onElementSelect,
   onShowDatePicker,
@@ -241,17 +246,15 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           return;
         }
 
-        const { rect, selector, elementInfo, childSelectors, groupInfo } =
+        const { rect, selector, elementInfo, childSelectors, groupInfo, similarElements, isShadow } =
           highlighterData;
 
         let shouldHighlight = false;
 
         if (getList) {
-          // First phase: Allow any group to be highlighted for selection
           if (!listSelector && groupInfo?.isGroupElement) {
             shouldHighlight = true;
           }
-          // Second phase: Show valid children within selected group
           else if (listSelector) {
             if (limitMode) {
               shouldHighlight = false;
@@ -262,19 +265,15 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
             ) {
               shouldHighlight = true;
             } else if (childSelectors && childSelectors.length > 0) {
-              console.log("✅ Child selectors present, highlighting enabled");
               shouldHighlight = true;
             } else {
-              console.log("❌ No child selectors available");
               shouldHighlight = false;
             }
           }
-          // No list selector - show regular highlighting
           else {
             shouldHighlight = true;
           }
         } else {
-          // getText mode - always highlight
           shouldHighlight = true;
         }
 
@@ -302,8 +301,10 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
                   isDOMMode: true,
                 },
                 selector,
+                isShadow,
                 childSelectors,
-                groupInfo, 
+                groupInfo,
+                similarElements, // Pass similar elements data
               });
             }
           }
@@ -333,7 +334,6 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
       onHighlight,
     ]
   );
-
   /**
    * Set up enhanced interaction handlers for DOM mode
    */
@@ -408,6 +408,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
               rect: currentHighlight.rect,
               selector: currentHighlight.selector,
               elementInfo: currentHighlight.elementInfo,
+              isShadow: highlighterData?.isShadow,
               childSelectors:
                 cachedChildSelectors.length > 0
                   ? cachedChildSelectors
@@ -666,6 +667,12 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           return;
         }
 
+        if (isCachingChildSelectors) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+
         e.preventDefault();
 
         if (!isInCaptureMode) {
@@ -756,7 +763,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
         return;
       }
 
-      if (isInCaptureMode) {
+      if (isInCaptureMode || isCachingChildSelectors) {
         return; // Skip rendering in capture mode
       }
 
@@ -867,7 +874,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
         showErrorInIframe(error);
       }
     },
-    [setupIframeInteractions, isInCaptureMode]
+    [setupIframeInteractions, isInCaptureMode, isCachingChildSelectors]
   );
 
   useEffect(() => {
@@ -1008,7 +1015,8 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           height: "100%",
           border: "none",
           display: "block",
-          overflow: "hidden !important",
+          overflow: isCachingChildSelectors ? "hidden !important" : "hidden !important",
+          pointerEvents: isCachingChildSelectors ? "none" : "auto",
         }}
         sandbox="allow-same-origin allow-forms allow-scripts"
         title="DOM Browser Content"
@@ -1083,7 +1091,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
             left: 0,
             right: 0,
             bottom: 0,
-            cursor: "pointer !important",
+            cursor: "pointer",
             pointerEvents: "none",
             zIndex: 999,
             borderRadius: "0px 0px 5px 5px",

@@ -24,10 +24,6 @@ interface ElementInfo {
   shadowRootContent?: string;
 }
 
-interface SelectorResult {
-  generalSelector: string;
-}
-
 interface Selectors {
   id?: string | null;
   generalSelector?: string | null;
@@ -124,6 +120,19 @@ class ClientSelectorGenerator {
     excludeSelectors: ["script", "style", "meta", "link", "title", "head"],
   };
 
+  private selectorElementCache = new Map<string, HTMLElement[]>();
+  private elementSelectorCache = new WeakMap<HTMLElement, string[]>();
+  private lastCachedDocument: Document | null = null;
+  private classCache = new Map<string, string[]>();
+  private spatialIndex = new Map<string, string[]>();
+
+  private performanceConfig = {
+    enableSpatialIndexing: true,
+    maxSelectorBatchSize: 50,
+    useElementCache: true,
+    debounceMs: 16, // ~60fps
+  };
+
   // Add setter methods for state management
   public setListSelector(selector: string): void {
     this.listSelector = selector;
@@ -156,7 +165,12 @@ class ClientSelectorGenerator {
     return Array.from(classList)
       .filter((cls) => {
         // Filter out classes that look like they contain IDs or dynamic content
-        return !cls.match(/\d{3,}|uuid|hash|id-|_\d+$/i);
+        return (
+          !cls.match(/\d{3,}|uuid|hash|id-|_\d+$/i) &&
+          !cls.startsWith("_ngcontent-") &&
+          !cls.startsWith("_nghost-") &&
+          !cls.match(/^ng-tns-c\d+-\d+$/)
+        );
       })
       .sort()
       .join(" ");
@@ -171,6 +185,21 @@ class ClientSelectorGenerator {
     if (element.nodeType !== Node.ELEMENT_NODE) return null;
 
     const tagName = element.tagName.toLowerCase();
+
+    const isCustomElement = tagName.includes("-");
+
+    const standardExcludeSelectors = [
+      "script",
+      "style",
+      "meta",
+      "link",
+      "title",
+      "head",
+    ];
+    if (!isCustomElement && standardExcludeSelectors.includes(tagName)) {
+      return null;
+    }
+
     if (this.groupingConfig.excludeSelectors.includes(tagName)) return null;
 
     const children = Array.from(element.children);
@@ -182,20 +211,26 @@ class ClientSelectorGenerator {
 
     const normalizedClasses = this.normalizeClasses(element.classList);
 
-    // Get attributes (excluding unique identifiers)
     const relevantAttributes = Array.from(element.attributes)
-      .filter(
-        (attr) =>
-          !["id", "style", "data-reactid", "data-react-checksum"].includes(
-            attr.name.toLowerCase()
-          )
-      )
-      .filter(
-        (attr) =>
-          !attr.name.startsWith("data-") ||
-          attr.name === "data-type" ||
-          attr.name === "data-role"
-      )
+      .filter((attr) => {
+        if (isCustomElement) {
+          return ![
+            "id",
+            "style",
+            "data-reactid",
+            "data-react-checksum",
+          ].includes(attr.name.toLowerCase());
+        } else {
+          return (
+            !["id", "style", "data-reactid", "data-react-checksum"].includes(
+              attr.name.toLowerCase()
+            ) &&
+            (!attr.name.startsWith("data-") ||
+              attr.name === "data-type" ||
+              attr.name === "data-role")
+          );
+        }
+      })
       .map((attr) => `${attr.name}=${attr.value}`)
       .sort();
 
@@ -301,6 +336,41 @@ class ClientSelectorGenerator {
     return maxScore > 0 ? score / maxScore : 0;
   }
 
+  private getAllVisibleElementsWithShadow(doc: Document): HTMLElement[] {
+    const allElements: HTMLElement[] = [];
+    const visited = new Set<HTMLElement>();
+
+    const traverseContainer = (container: Document | ShadowRoot) => {
+      try {
+        const elements = Array.from(container.querySelectorAll("*")).filter(
+          (el) => {
+            const rect = el.getBoundingClientRect();
+            return rect.width > 0 && rect.height > 0; // Only visible elements
+          }
+        ) as HTMLElement[];
+
+        elements.forEach((element) => {
+          if (!visited.has(element)) {
+            visited.add(element);
+            allElements.push(element);
+
+            // Traverse shadow DOM if it exists
+            if (element.shadowRoot) {
+              traverseContainer(element.shadowRoot);
+            }
+          }
+        });
+      } catch (error) {
+        console.warn(`⚠️ Error traversing container:`, error);
+      }
+    };
+
+    // Start from main document
+    traverseContainer(doc);
+
+    return allElements;
+  }
+
   public analyzeElementGroups(iframeDoc: Document): void {
     // Only re-analyze if document changed
     if (
@@ -315,13 +385,8 @@ class ClientSelectorGenerator {
     this.groupedElements.clear();
     this.lastAnalyzedDocument = iframeDoc;
 
-    // Get all visible elements
-    const allElements = Array.from(iframeDoc.querySelectorAll("*")).filter(
-      (el) => {
-        const rect = el.getBoundingClientRect();
-        return rect.width > 0 && rect.height > 0; // Only visible elements
-      }
-    ) as HTMLElement[];
+    // Get all visible elements INCLUDING shadow DOM
+    const allElements = this.getAllVisibleElementsWithShadow(iframeDoc);
 
     // Create fingerprints for all elements
     const elementFingerprints = new Map<HTMLElement, ElementFingerprint>();
@@ -351,6 +416,7 @@ class ClientSelectorGenerator {
           fingerprint,
           otherFingerprint
         );
+
         if (similarity >= this.groupingConfig.similarityThreshold) {
           currentGroup.push(otherElement);
           processedElements.add(otherElement);
@@ -410,7 +476,9 @@ class ClientSelectorGenerator {
   private getMeaningfulChildren(element: HTMLElement): HTMLElement[] {
     const meaningfulChildren: HTMLElement[] = [];
 
-    const traverse = (el: HTMLElement) => {
+    const traverse = (el: HTMLElement, depth: number = 0) => {
+      if (depth > 5) return;
+
       Array.from(el.children).forEach((child) => {
         const htmlChild = child as HTMLElement;
 
@@ -419,9 +487,20 @@ class ClientSelectorGenerator {
           meaningfulChildren.push(htmlChild);
         } else {
           // If not meaningful itself, check its children
-          traverse(htmlChild);
+          traverse(htmlChild, depth + 1);
         }
       });
+
+      if (el.shadowRoot) {
+        Array.from(el.shadowRoot.children).forEach((shadowChild) => {
+          const htmlShadowChild = shadowChild as HTMLElement;
+          if (this.isMeaningfulElement(htmlShadowChild)) {
+            meaningfulChildren.push(htmlShadowChild);
+          } else {
+            traverse(htmlShadowChild, depth + 1);
+          }
+        });
+      }
     };
 
     traverse(element);
@@ -436,8 +515,25 @@ class ClientSelectorGenerator {
     const text = (element.textContent || "").trim();
     const hasHref = element.hasAttribute("href");
     const hasSrc = element.hasAttribute("src");
+    const isCustomElement = tagName.includes("-");
 
-    // Meaningful if it has text content, is a link, image, or input
+    if (isCustomElement) {
+      const hasChildren = element.children.length > 0;
+      const hasSignificantAttributes = Array.from(element.attributes).some(
+        (attr) => !["class", "style", "id"].includes(attr.name.toLowerCase())
+      );
+
+      return (
+        text.length > 0 ||
+        hasHref ||
+        hasSrc ||
+        hasChildren ||
+        hasSignificantAttributes ||
+        element.hasAttribute("role") ||
+        element.hasAttribute("aria-label")
+      );
+    }
+
     return (
       text.length > 0 ||
       hasHref ||
@@ -458,6 +554,322 @@ class ClientSelectorGenerator {
    */
   public getElementGroup(element: HTMLElement): ElementGroup | null {
     return this.elementGroups.get(element) || null;
+  }
+
+  public getAllMatchingElements(
+    hoveredSelector: string,
+    childSelectors: string[],
+    iframeDoc: Document
+  ): HTMLElement[] {
+    try {
+      const matchingElements: HTMLElement[] = [];
+
+      if (childSelectors.includes(hoveredSelector)) {
+        const directElements = this.evaluateXPath(hoveredSelector, iframeDoc);
+        matchingElements.push(...directElements);
+
+        if (directElements.length === 0) {
+          const shadowElements = this.findElementsInShadowDOM(
+            hoveredSelector,
+            iframeDoc
+          );
+          matchingElements.push(...shadowElements);
+        }
+      } else {
+        const hoveredPattern = this.extractSelectorPattern(hoveredSelector);
+
+        childSelectors.forEach((childSelector) => {
+          const childPattern = this.extractSelectorPattern(childSelector);
+
+          if (this.arePatternsRelated(hoveredPattern, childPattern)) {
+            const directElements = this.evaluateXPath(childSelector, iframeDoc);
+            matchingElements.push(...directElements);
+
+            if (directElements.length === 0) {
+              const shadowElements = this.findElementsInShadowDOM(
+                childSelector,
+                iframeDoc
+              );
+              matchingElements.push(...shadowElements);
+            }
+          }
+        });
+      }
+
+      return [...new Set(matchingElements)];
+    } catch (error) {
+      console.error("Error getting matching elements:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Extract pattern components from selector for comparison
+   */
+  private extractSelectorPattern(selector: string): {
+    tag: string;
+    classes: string[];
+    hasPosition: boolean;
+    structure: string;
+  } {
+    // Handle XPath selectors
+    if (selector.startsWith("//") || selector.startsWith("/")) {
+      const tagMatch = selector.match(/\/\/(\w+)/);
+      const classMatches =
+        selector.match(/contains\(@class,'([^']+)'\)/g) || [];
+      const classes = classMatches
+        .map((match) => {
+          const classMatch = match.match(/contains\(@class,'([^']+)'\)/);
+          return classMatch ? classMatch[1] : "";
+        })
+        .filter((cls) => cls);
+
+      return {
+        tag: tagMatch ? tagMatch[1] : "",
+        classes,
+        hasPosition: /\[\d+\]/.test(selector),
+        structure: selector.replace(/\[\d+\]/g, "").replace(/\/\/\w+/, "//TAG"),
+      };
+    }
+
+    // Handle CSS selectors
+    const parts = selector.split(" ").pop() || "";
+    const tagMatch = parts.match(/^(\w+)/);
+    const classMatches = parts.match(/\.([^.#[\s]+)/g) || [];
+    const classes = classMatches.map((cls) => cls.substring(1));
+
+    return {
+      tag: tagMatch ? tagMatch[1] : "",
+      classes,
+      hasPosition: /:nth-child\(\d+\)/.test(selector),
+      structure: selector
+        .replace(/:nth-child\(\d+\)/g, "")
+        .replace(/\w+/g, "TAG"),
+    };
+  }
+
+  /**
+   * Check if two selector patterns are related/similar
+   */
+  private arePatternsRelated(pattern1: any, pattern2: any): boolean {
+    if (pattern1.tag !== pattern2.tag || !pattern1.tag) {
+      return false;
+    }
+
+    const commonClasses = pattern1.classes.filter((cls: any) =>
+      pattern2.classes.includes(cls)
+    );
+
+    return (
+      commonClasses.length > 0 || pattern1.structure === pattern2.structure
+    );
+  }
+
+  /**
+   * Find elements that match a child selector XPath by traversing shadow DOMs
+   * This handles cases where the child elements are nested within shadow roots of parent elements
+   */
+  private findElementsInShadowDOM(
+    xpath: string,
+    iframeDoc: Document
+  ): HTMLElement[] {
+    try {
+      const matchingElements: HTMLElement[] = [];
+
+      const xpathParts = this.parseChildXPath(xpath);
+      if (!xpathParts) {
+        console.warn("Could not parse child XPath:", xpath);
+        return [];
+      }
+
+      const parentElements = this.evaluateXPath(
+        xpathParts.parentXPath,
+        iframeDoc
+      );
+
+      parentElements.forEach((parentElement, index) => {
+        const childElements = this.findChildrenInElementShadowDOM(
+          parentElement,
+          xpathParts.childPath,
+          xpathParts.childFilters
+        );
+
+        matchingElements.push(...childElements);
+      });
+
+      return matchingElements;
+    } catch (error) {
+      console.error("Error in findElementsInShadowDOM:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Parse a child XPath to extract parent selector and child path
+   */
+  private parseChildXPath(xpath: string): {
+    parentXPath: string;
+    childPath: string[];
+    childFilters: string[];
+  } | null {
+    try {
+      const xpathPattern =
+        /^(\/\/[^\/]+(?:\[[^\]]*\])*)((?:\/[^\/]+(?:\[[^\]]*\])*)*)$/;
+      const match = xpath.match(xpathPattern);
+
+      if (!match) {
+        console.warn("Could not match XPath pattern:", xpath);
+        return null;
+      }
+
+      const parentXPath = match[1];
+      const childPathString = match[2];
+
+      const childPath = childPathString
+        .split("/")
+        .filter((part) => part.length > 0);
+
+      const childFilters = childPath
+        .map((part) => {
+          const filterMatch = part.match(/\[([^\]]+)\]/);
+          return filterMatch ? filterMatch[1] : "";
+        })
+        .filter((filter) => filter.length > 0);
+
+      return {
+        parentXPath,
+        childPath,
+        childFilters,
+      };
+    } catch (error) {
+      console.error("Error parsing child XPath:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Find child elements within a parent element's shadow DOM tree
+   */
+  private findChildrenInElementShadowDOM(
+    parentElement: HTMLElement,
+    childPath: string[],
+    childFilters: string[]
+  ): HTMLElement[] {
+    const matchingChildren: HTMLElement[] = [];
+    const visited = new Set<HTMLElement>();
+
+    const traverseElement = (element: HTMLElement, depth: number = 0) => {
+      if (depth > 10 || visited.has(element)) return;
+      visited.add(element);
+
+      if (element.shadowRoot) {
+        this.searchWithinShadowRoot(
+          element.shadowRoot,
+          childPath,
+          childFilters,
+          matchingChildren
+        );
+      }
+
+      Array.from(element.children).forEach((child) => {
+        traverseElement(child as HTMLElement, depth + 1);
+      });
+    };
+
+    traverseElement(parentElement);
+
+    return matchingChildren;
+  }
+
+  /**
+   * Search within a shadow root for elements matching the child path
+   */
+  private searchWithinShadowRoot(
+    shadowRoot: ShadowRoot,
+    childPath: string[],
+    childFilters: string[],
+    matchingChildren: HTMLElement[]
+  ): void {
+    try {
+      if (childPath.length === 0) {
+        const allElements = shadowRoot.querySelectorAll("*");
+        matchingChildren.push(...(Array.from(allElements) as HTMLElement[]));
+        return;
+      }
+
+      let currentElements: HTMLElement[] = Array.from(
+        shadowRoot.querySelectorAll("*")
+      ) as HTMLElement[];
+
+      for (let i = 0; i < childPath.length; i++) {
+        const pathPart = childPath[i];
+
+        const tagMatch = pathPart.match(/^([^[]+)/);
+        if (!tagMatch) continue;
+
+        const tagName = tagMatch[1];
+        const classMatches = pathPart.match(/contains\(@class,\s*'([^']+)'\)/g);
+        const requiredClasses = classMatches
+          ? classMatches
+              .map((classMatch) => {
+                const classNameMatch = classMatch.match(
+                  /contains\(@class,\s*'([^']+)'\)/
+                );
+                return classNameMatch ? classNameMatch[1] : "";
+              })
+              .filter((cls) => cls.length > 0)
+          : [];
+
+        const filteredElements = currentElements.filter((element) => {
+          if (element.tagName.toLowerCase() !== tagName.toLowerCase()) {
+            return false;
+          }
+
+          for (const requiredClass of requiredClasses) {
+            if (!element.classList.contains(requiredClass)) {
+              return false;
+            }
+          }
+
+          return true;
+        });
+
+        if (i === childPath.length - 1) {
+          matchingChildren.push(...filteredElements);
+        } else {
+          const nextElements: HTMLElement[] = [];
+          filteredElements.forEach((element) => {
+            Array.from(element.children).forEach((child) => {
+              nextElements.push(child as HTMLElement);
+            });
+
+            if (element.shadowRoot) {
+              Array.from(element.shadowRoot.querySelectorAll("*")).forEach(
+                (shadowChild) => {
+                  nextElements.push(shadowChild as HTMLElement);
+                }
+              );
+            }
+          });
+          currentElements = nextElements;
+        }
+      }
+
+      const elementsWithShadow = shadowRoot.querySelectorAll("*");
+      elementsWithShadow.forEach((element) => {
+        const htmlElement = element as HTMLElement;
+        if (htmlElement.shadowRoot) {
+          this.searchWithinShadowRoot(
+            htmlElement.shadowRoot,
+            childPath,
+            childFilters,
+            matchingChildren
+          );
+        }
+      });
+    } catch (error) {
+      console.error("Error searching within shadow root:", error);
+    }
   }
 
   /**
@@ -481,52 +893,68 @@ class ClientSelectorGenerator {
 
       elementsAtPoint.forEach((element) => {
         if (element.tagName === "TD" || element.tagName === "TH") {
-          // Find parent TR for table cells
           const parentRow = element.closest("tr") as HTMLElement;
           if (parentRow && !transformedElements.includes(parentRow)) {
             transformedElements.push(parentRow);
           }
         } else {
-          // Keep non-table-cell elements as is
           if (!transformedElements.includes(element)) {
             transformedElements.push(element);
           }
         }
       });
 
-      // Now filter for grouped elements from the transformed list
       const groupedElementsAtPoint = transformedElements.filter((element) =>
         this.isElementGrouped(element)
       );
 
       if (groupedElementsAtPoint.length > 0) {
+        const hasAnchorTag = groupedElementsAtPoint.some(
+          (el) => el.tagName === "A"
+        );
+
+        let filteredElements = groupedElementsAtPoint;
+
+        if (hasAnchorTag) {
+          // Apply parent-child filtering when anchor tags are present
+          filteredElements = this.filterParentChildGroupedElements(
+            groupedElementsAtPoint
+          );
+        }
+
         // Sort by DOM depth (deeper elements first for more specificity)
-        groupedElementsAtPoint.sort((a, b) => {
+        filteredElements.sort((a, b) => {
           const aDepth = this.getElementDepth(a);
           const bDepth = this.getElementDepth(b);
           return bDepth - aDepth;
         });
 
-        const selectedElement = groupedElementsAtPoint[0];
+        const selectedElement = filteredElements[0];
         return selectedElement;
       }
 
       return null;
     }
 
-    // For other modes or when list selector exists, return regular element
-    return this.getDeepestElementFromPoint(elementsAtPoint);
+    return this.getDeepestElementFromPoint(x, y, iframeDoc);
   }
 
-  private getElementDepth(element: HTMLElement): number {
-    let depth = 0;
-    let current = element;
-    while (current && current !== this.lastAnalyzedDocument?.body) {
-      depth++;
-      current = current.parentElement as HTMLElement;
-      if (depth > 50) break;
+  private filterParentChildGroupedElements(
+    groupedElements: HTMLElement[]
+  ): HTMLElement[] {
+    const result: HTMLElement[] = [];
+
+    for (const element of groupedElements) {
+      const hasGroupedChild = groupedElements.some(
+        (other) => other !== element && element.contains(other)
+      );
+
+      if (hasGroupedChild) {
+        result.push(element);
+      }
     }
-    return depth;
+
+    return result.length > 0 ? result : groupedElements;
   }
 
   public getElementInformation = (
@@ -537,191 +965,11 @@ class ClientSelectorGenerator {
   ) => {
     try {
       if (!getList || listSelector !== "") {
-        const getDeepestElementFromPoint = (
-          x: number,
-          y: number
-        ): HTMLElement | null => {
-          let elements = iframeDoc.elementsFromPoint(x, y) as HTMLElement[];
-          if (!elements.length) return null;
-
-          const findDeepestElement = (
-            elements: HTMLElement[]
-          ): HTMLElement | null => {
-            if (!elements.length) return null;
-            if (elements.length === 1) return elements[0];
-
-            let deepestElement = elements[0];
-            let maxDepth = 0;
-
-            for (const element of elements) {
-              let depth = 0;
-              let current = element;
-
-              while (current) {
-                depth++;
-                if (current.parentElement) {
-                  current = current.parentElement;
-                } else {
-                  break;
-                }
-              }
-
-              if (depth > maxDepth) {
-                maxDepth = depth;
-                deepestElement = element;
-              }
-            }
-
-            return deepestElement;
-          };
-
-          let deepestElement = findDeepestElement(elements);
-          if (!deepestElement) return null;
-
-          const traverseShadowDOM = (element: HTMLElement): HTMLElement => {
-            let current = element;
-            let shadowRoot = current.shadowRoot;
-            let deepest = current;
-            let depth = 0;
-            const MAX_SHADOW_DEPTH = 4;
-
-            while (shadowRoot && depth < MAX_SHADOW_DEPTH) {
-              const shadowElement = shadowRoot.elementFromPoint(
-                x,
-                y
-              ) as HTMLElement;
-              if (!shadowElement || shadowElement === current) break;
-
-              deepest = shadowElement;
-              current = shadowElement;
-              shadowRoot = current.shadowRoot;
-              depth++;
-            }
-
-            return deepest;
-          };
-
-          const isInFrameset = () => {
-            let node = deepestElement;
-            while (node && node.parentElement) {
-              if (node.tagName === "FRAMESET" || node.tagName === "FRAME") {
-                return true;
-              }
-              node = node.parentElement;
-            }
-            return false;
-          };
-
-          if (deepestElement.tagName === "IFRAME") {
-            let currentIframe = deepestElement as HTMLIFrameElement;
-            let depth = 0;
-            const MAX_IFRAME_DEPTH = 4;
-
-            while (currentIframe && depth < MAX_IFRAME_DEPTH) {
-              try {
-                const iframeRect = currentIframe.getBoundingClientRect();
-                const iframeX = x - iframeRect.left;
-                const iframeY = y - iframeRect.top;
-
-                const iframeDocument =
-                  currentIframe.contentDocument ||
-                  currentIframe.contentWindow?.document;
-                if (!iframeDocument) break;
-
-                const iframeElement = iframeDocument.elementFromPoint(
-                  iframeX,
-                  iframeY
-                ) as HTMLElement;
-                if (!iframeElement) break;
-
-                deepestElement = traverseShadowDOM(iframeElement);
-
-                if (iframeElement.tagName === "IFRAME") {
-                  currentIframe = iframeElement as HTMLIFrameElement;
-                  depth++;
-                } else {
-                  break;
-                }
-              } catch (error) {
-                console.warn("Cannot access iframe content:", error);
-                break;
-              }
-            }
-          } else if (deepestElement.tagName === "FRAME" || isInFrameset()) {
-            const framesToCheck = [];
-
-            if (deepestElement.tagName === "FRAME") {
-              framesToCheck.push(deepestElement as HTMLFrameElement);
-            }
-
-            if (isInFrameset()) {
-              iframeDoc.querySelectorAll("frame").forEach((frame) => {
-                framesToCheck.push(frame as HTMLFrameElement);
-              });
-            }
-
-            let frameDepth = 0;
-            const MAX_FRAME_DEPTH = 4;
-
-            const processFrames = (
-              frames: HTMLFrameElement[],
-              currentDepth: number
-            ) => {
-              if (currentDepth >= MAX_FRAME_DEPTH) return;
-
-              for (const frameElement of frames) {
-                try {
-                  const frameRect = frameElement.getBoundingClientRect();
-                  const frameX = x - frameRect.left;
-                  const frameY = y - frameRect.top;
-
-                  if (
-                    frameX < 0 ||
-                    frameY < 0 ||
-                    frameX > frameRect.width ||
-                    frameY > frameRect.height
-                  ) {
-                    continue;
-                  }
-
-                  const frameDocument =
-                    frameElement.contentDocument ||
-                    frameElement.contentWindow?.document;
-
-                  if (!frameDocument) continue;
-
-                  const frameElementAtPoint = frameDocument.elementFromPoint(
-                    frameX,
-                    frameY
-                  ) as HTMLElement;
-                  if (!frameElementAtPoint) continue;
-
-                  deepestElement = traverseShadowDOM(frameElementAtPoint);
-
-                  if (frameElementAtPoint.tagName === "FRAME") {
-                    processFrames(
-                      [frameElementAtPoint as HTMLFrameElement],
-                      currentDepth + 1
-                    );
-                  }
-
-                  break;
-                } catch (error) {
-                  console.warn("Cannot access frame content:", error);
-                  continue;
-                }
-              }
-            };
-
-            processFrames(framesToCheck, frameDepth);
-          } else {
-            deepestElement = traverseShadowDOM(deepestElement);
-          }
-
-          return deepestElement;
-        };
-
-        const el = getDeepestElementFromPoint(coordinates.x, coordinates.y);
+        const el = this.getDeepestElementFromPoint(
+          coordinates.x,
+          coordinates.y,
+          iframeDoc
+        );
 
         if (el) {
           // Prioritize Link (DO NOT REMOVE)
@@ -994,191 +1242,11 @@ class ClientSelectorGenerator {
   ) => {
     try {
       if (!getList || listSelector !== "") {
-        const getDeepestElementFromPoint = (
-          x: number,
-          y: number
-        ): HTMLElement | null => {
-          let elements = iframeDoc.elementsFromPoint(x, y) as HTMLElement[];
-          if (!elements.length) return null;
-
-          const findDeepestElement = (
-            elements: HTMLElement[]
-          ): HTMLElement | null => {
-            if (!elements.length) return null;
-            if (elements.length === 1) return elements[0];
-
-            let deepestElement = elements[0];
-            let maxDepth = 0;
-
-            for (const element of elements) {
-              let depth = 0;
-              let current = element;
-
-              while (current) {
-                depth++;
-                if (current.parentElement) {
-                  current = current.parentElement;
-                } else {
-                  break;
-                }
-              }
-
-              if (depth > maxDepth) {
-                maxDepth = depth;
-                deepestElement = element;
-              }
-            }
-
-            return deepestElement;
-          };
-
-          let deepestElement = findDeepestElement(elements);
-          if (!deepestElement) return null;
-
-          const traverseShadowDOM = (element: HTMLElement): HTMLElement => {
-            let current = element;
-            let shadowRoot = current.shadowRoot;
-            let deepest = current;
-            let depth = 0;
-            const MAX_SHADOW_DEPTH = 4;
-
-            while (shadowRoot && depth < MAX_SHADOW_DEPTH) {
-              const shadowElement = shadowRoot.elementFromPoint(
-                x,
-                y
-              ) as HTMLElement;
-              if (!shadowElement || shadowElement === current) break;
-
-              deepest = shadowElement;
-              current = shadowElement;
-              shadowRoot = current.shadowRoot;
-              depth++;
-            }
-
-            return deepest;
-          };
-
-          const isInFrameset = () => {
-            let node = deepestElement;
-            while (node && node.parentElement) {
-              if (node.tagName === "FRAMESET" || node.tagName === "FRAME") {
-                return true;
-              }
-              node = node.parentElement;
-            }
-            return false;
-          };
-
-          if (deepestElement.tagName === "IFRAME") {
-            let currentIframe = deepestElement as HTMLIFrameElement;
-            let depth = 0;
-            const MAX_IFRAME_DEPTH = 4;
-
-            while (currentIframe && depth < MAX_IFRAME_DEPTH) {
-              try {
-                const iframeRect = currentIframe.getBoundingClientRect();
-                const iframeX = x - iframeRect.left;
-                const iframeY = y - iframeRect.top;
-
-                const iframeDocument =
-                  currentIframe.contentDocument ||
-                  currentIframe.contentWindow?.document;
-                if (!iframeDocument) break;
-
-                const iframeElement = iframeDocument.elementFromPoint(
-                  iframeX,
-                  iframeY
-                ) as HTMLElement;
-                if (!iframeElement) break;
-
-                deepestElement = traverseShadowDOM(iframeElement);
-
-                if (iframeElement.tagName === "IFRAME") {
-                  currentIframe = iframeElement as HTMLIFrameElement;
-                  depth++;
-                } else {
-                  break;
-                }
-              } catch (error) {
-                console.warn("Cannot access iframe content:", error);
-                break;
-              }
-            }
-          } else if (deepestElement.tagName === "FRAME" || isInFrameset()) {
-            const framesToCheck = [];
-
-            if (deepestElement.tagName === "FRAME") {
-              framesToCheck.push(deepestElement as HTMLFrameElement);
-            }
-
-            if (isInFrameset()) {
-              iframeDoc.querySelectorAll("frame").forEach((frame) => {
-                framesToCheck.push(frame as HTMLFrameElement);
-              });
-            }
-
-            let frameDepth = 0;
-            const MAX_FRAME_DEPTH = 4;
-
-            const processFrames = (
-              frames: HTMLFrameElement[],
-              currentDepth: number
-            ) => {
-              if (currentDepth >= MAX_FRAME_DEPTH) return;
-
-              for (const frameElement of frames) {
-                try {
-                  const frameRect = frameElement.getBoundingClientRect();
-                  const frameX = x - frameRect.left;
-                  const frameY = y - frameRect.top;
-
-                  if (
-                    frameX < 0 ||
-                    frameY < 0 ||
-                    frameX > frameRect.width ||
-                    frameY > frameRect.height
-                  ) {
-                    continue;
-                  }
-
-                  const frameDocument =
-                    frameElement.contentDocument ||
-                    frameElement.contentWindow?.document;
-
-                  if (!frameDocument) continue;
-
-                  const frameElementAtPoint = frameDocument.elementFromPoint(
-                    frameX,
-                    frameY
-                  ) as HTMLElement;
-                  if (!frameElementAtPoint) continue;
-
-                  deepestElement = traverseShadowDOM(frameElementAtPoint);
-
-                  if (frameElementAtPoint.tagName === "FRAME") {
-                    processFrames(
-                      [frameElementAtPoint as HTMLFrameElement],
-                      currentDepth + 1
-                    );
-                  }
-
-                  break;
-                } catch (error) {
-                  console.warn("Cannot access frame content:", error);
-                  continue;
-                }
-              }
-            };
-
-            processFrames(framesToCheck, frameDepth);
-          } else {
-            deepestElement = traverseShadowDOM(deepestElement);
-          }
-
-          return deepestElement;
-        };
-
-        const el = getDeepestElementFromPoint(coordinates.x, coordinates.y);
+        const el = this.getDeepestElementFromPoint(
+          coordinates.x,
+          coordinates.y,
+          iframeDoc
+        );
         if (el) {
           // Prioritize Link (DO NOT REMOVE)
           const { parentElement } = el;
@@ -1552,17 +1620,29 @@ class ClientSelectorGenerator {
           config.attr(attr.name, attr.value)
         );
 
-        return attrs.map(
-          (attr): Node => ({
+        return attrs.map((attr): Node => {
+          let attrValue = attr.value;
+
+          if (attr.name === "href" && attr.value.includes("://")) {
+            try {
+              const url = new URL(attr.value);
+              const siteOrigin = `${url.protocol}//${url.host}`;
+              attrValue = attr.value.replace(siteOrigin, "");
+            } catch (e) {
+              // Keep original if URL parsing fails
+            }
+          }
+
+          return {
             name:
               "[" +
               cssesc(attr.name, { isIdentifier: true }) +
               '="' +
-              cssesc(attr.value) +
+              cssesc(attrValue) +
               '"]',
             penalty: 0.5,
-          })
-        );
+          };
+        });
       }
 
       function classNames(input: Element): Node[] {
@@ -2362,433 +2442,16 @@ class ClientSelectorGenerator {
     return null;
   };
 
-  private getNonUniqueSelectors = (
-    iframeDoc: Document,
-    coordinates: Coordinates,
-    listSelector: string
-  ): SelectorResult => {
-    interface DOMContext {
-      type: "shadow";
-      element: HTMLElement;
-      container: ShadowRoot;
-      host: HTMLElement;
-    }
-
-    try {
-      if (!listSelector) {
-        function generateXPathSelector(
-          element: HTMLElement,
-          relative: boolean = false
-        ): string {
-          let xpath = relative
-            ? element.tagName.toLowerCase()
-            : `//${element.tagName.toLowerCase()}`;
-
-          // Handle table cells specially
-          if (element.tagName === "TD" || element.tagName === "TH") {
-            if (element.parentElement) {
-              const siblings = Array.from(element.parentElement.children);
-              const position = siblings.indexOf(element) + 1;
-              return relative
-                ? `${element.tagName.toLowerCase()}[${position}]`
-                : `//tr/${element.tagName.toLowerCase()}[${position}]`;
-            }
-          }
-
-          // Add class-based predicates
-          if (element.className) {
-            const classes = element.className
-              .split(/\s+/)
-              .filter((cls: string) => Boolean(cls))
-              .filter(
-                (cls: string) => !cls.startsWith("!") && !cls.includes(":")
-              );
-
-            if (classes.length > 0) {
-              const classPredicates = classes
-                .map((cls) => `contains(@class,'${cls}')`)
-                .join(" and ");
-              xpath += `[${classPredicates}]`;
-            }
-          }
-
-          // Add positional predicate if there are similar siblings
-          if (element.parentElement) {
-            const siblings = Array.from(element.parentElement.children);
-            const elementClasses = Array.from(element.classList || []);
-
-            const similarSiblings = siblings.filter((sibling) => {
-              if (sibling === element) return false;
-              const siblingClasses = Array.from(sibling.classList || []);
-              return siblingClasses.some((cls) => elementClasses.includes(cls));
-            });
-
-            if (similarSiblings.length > 0) {
-              const position = siblings.indexOf(element) + 1;
-              // Remove existing predicates and add position-based one
-              const baseXpath = relative
-                ? element.tagName.toLowerCase()
-                : `//${element.tagName.toLowerCase()}`;
-              xpath = `${baseXpath}[${position}]`;
-            }
-          }
-
-          return xpath;
-        }
-
-        function getContextPath(element: HTMLElement): DOMContext[] {
-          const path: DOMContext[] = [];
-          let current = element;
-          let depth = 0;
-          const MAX_DEPTH = 4;
-
-          while (current && depth < MAX_DEPTH) {
-            const rootNode = current.getRootNode();
-            if (rootNode instanceof ShadowRoot) {
-              path.unshift({
-                type: "shadow",
-                element: current,
-                container: rootNode,
-                host: rootNode.host as HTMLElement,
-              });
-              current = rootNode.host as HTMLElement;
-              depth++;
-              continue;
-            }
-            break;
-          }
-
-          return path;
-        }
-
-        function getXPathSelectorPath(element: HTMLElement | null): string {
-          if (!element) return "";
-
-          const contextPath = getContextPath(element);
-          if (contextPath.length > 0) {
-            const selectorParts: string[] = [];
-
-            contextPath.forEach((context, index) => {
-              const containerSelector = generateXPathSelector(context.host);
-
-              if (index === contextPath.length - 1) {
-                const elementSelector = generateXPathSelector(element);
-                selectorParts.push(
-                  `${containerSelector} >> ${elementSelector}`
-                );
-              } else {
-                selectorParts.push(containerSelector);
-              }
-            });
-
-            return selectorParts.join(" >> ");
-          }
-
-          const elementSelector = generateXPathSelector(element);
-
-          // For simple cases, return the element selector
-          if (
-            elementSelector.includes("contains(@class") ||
-            elementSelector.includes("[")
-          ) {
-            return elementSelector;
-          }
-
-          // Build path with limited depth
-          const path: string[] = [];
-          let currentElement = element;
-          const MAX_DEPTH = 2;
-          let depth = 0;
-
-          while (
-            currentElement &&
-            currentElement !== iframeDoc.body &&
-            depth < MAX_DEPTH
-          ) {
-            const selector = generateXPathSelector(currentElement);
-            path.unshift(selector.replace("//", ""));
-
-            if (!currentElement.parentElement) break;
-            currentElement = currentElement.parentElement;
-            depth++;
-          }
-
-          return "//" + path.join("/");
-        }
-
-        const originalEl = this.findGroupedContainerAtPoint(
-          coordinates.x,
-          coordinates.y,
-          iframeDoc
-        );
-        if (!originalEl) return { generalSelector: "" };
-
-        let element = originalEl;
-
-        if (element.tagName === "TD" || element.tagName === "TH") {
-          const tableParent = element.closest("table");
-          if (tableParent) {
-            element = tableParent;
-          }
-        }
-
-        const generalSelector = getXPathSelectorPath(element);
-        return { generalSelector };
-      } else {
-        // Similar logic for when listSelector exists
-        const getDeepestElementFromPoint = (
-          x: number,
-          y: number
-        ): HTMLElement | null => {
-          let elements = iframeDoc.elementsFromPoint(x, y) as HTMLElement[];
-          if (!elements.length) return null;
-
-          const findDeepestElement = (
-            elements: HTMLElement[]
-          ): HTMLElement | null => {
-            if (!elements.length) return null;
-            if (elements.length === 1) return elements[0];
-
-            let deepestElement = elements[0];
-            let maxDepth = 0;
-
-            for (const element of elements) {
-              let depth = 0;
-              let current = element;
-
-              while (current) {
-                depth++;
-                if (current.parentElement) {
-                  current = current.parentElement;
-                } else {
-                  break;
-                }
-              }
-
-              if (depth > maxDepth) {
-                maxDepth = depth;
-                deepestElement = element;
-              }
-            }
-
-            return deepestElement;
-          };
-
-          let deepestElement = findDeepestElement(elements);
-          if (!deepestElement) return null;
-
-          const traverseShadowDOM = (element: HTMLElement): HTMLElement => {
-            let current = element;
-            let shadowRoot = current.shadowRoot;
-            let deepest = current;
-            let depth = 0;
-            const MAX_SHADOW_DEPTH = 4;
-
-            while (shadowRoot && depth < MAX_SHADOW_DEPTH) {
-              const shadowElement = shadowRoot.elementFromPoint(
-                x,
-                y
-              ) as HTMLElement;
-              if (!shadowElement || shadowElement === current) break;
-
-              deepest = shadowElement;
-              current = shadowElement;
-              shadowRoot = current.shadowRoot;
-              depth++;
-            }
-
-            return deepest;
-          };
-
-          deepestElement = traverseShadowDOM(deepestElement);
-          return deepestElement;
-        };
-
-        function generateRelativeXPathSelector(element: HTMLElement): string {
-          let xpath = element.tagName.toLowerCase();
-
-          if (xpath === "td" && element.parentElement) {
-            const siblings = Array.from(element.parentElement.children);
-            const position = siblings.indexOf(element) + 1;
-            return `${xpath}[${position}]`;
-          }
-
-          const className =
-            typeof element.className === "string" ? element.className : "";
-
-          if (element.parentElement) {
-            const allSiblings = Array.from(element.parentElement.children);
-            const sameTagSiblings = allSiblings.filter(
-              (sibling) => sibling.tagName === element.tagName
-            );
-
-            if (sameTagSiblings.length > 1) {
-              // Multiple siblings with same tag - MUST use position
-              const position = sameTagSiblings.indexOf(element) + 1;
-
-              if (className) {
-                const classes = className
-                  .split(/\s+/)
-                  .filter((cls: string) => Boolean(cls))
-                  .filter(
-                    (cls: string) => !cls.startsWith("!") && !cls.includes(":")
-                  );
-
-                if (classes.length > 0) {
-                  const classPredicates = classes
-                    .map((cls) => `contains(@class,'${cls}')`)
-                    .join(" and ");
-                  xpath += `[${classPredicates}][${position}]`;
-                } else {
-                  xpath += `[${position}]`;
-                }
-              } else {
-                xpath += `[${position}]`;
-              }
-            } else {
-              // Only one sibling with this tag - classes are sufficient
-              if (className) {
-                const classes = className
-                  .split(/\s+/)
-                  .filter((cls: string) => Boolean(cls))
-                  .filter(
-                    (cls: string) => !cls.startsWith("!") && !cls.includes(":")
-                  );
-
-                if (classes.length > 0) {
-                  const classPredicates = classes
-                    .map((cls) => `contains(@class,'${cls}')`)
-                    .join(" and ");
-                  xpath += `[${classPredicates}]`;
-                }
-              }
-            }
-          } else if (className) {
-            // No parent but has classes
-            const classes = className
-              .split(/\s+/)
-              .filter((cls: string) => Boolean(cls))
-              .filter(
-                (cls: string) => !cls.startsWith("!") && !cls.includes(":")
-              );
-
-            if (classes.length > 0) {
-              const classPredicates = classes
-                .map((cls) => `contains(@class,'${cls}')`)
-                .join(" and ");
-              xpath += `[${classPredicates}]`;
-            }
-          }
-
-          return `./${xpath}`; // Make it relative
-        }
-        function getContextPath(element: HTMLElement): DOMContext[] {
-          const path: DOMContext[] = [];
-          let current = element;
-          let depth = 0;
-          const MAX_DEPTH = 4;
-
-          while (current && depth < MAX_DEPTH) {
-            const rootNode = current.getRootNode();
-            if (rootNode instanceof ShadowRoot) {
-              path.unshift({
-                type: "shadow",
-                element: current,
-                container: rootNode,
-                host: rootNode.host as HTMLElement,
-              });
-              current = rootNode.host as HTMLElement;
-              depth++;
-              continue;
-            }
-            break;
-          }
-
-          return path;
-        }
-
-        function getRelativeXPathSelectorPath(
-          element: HTMLElement | null
-        ): string {
-          if (!element) return "";
-
-          const contextPath = getContextPath(element);
-          if (contextPath.length > 0) {
-            const selectorParts: string[] = [];
-
-            contextPath.forEach((context, index) => {
-              const containerSelector = generateRelativeXPathSelector(
-                context.host
-              );
-
-              if (index === contextPath.length - 1) {
-                const elementSelector = generateRelativeXPathSelector(element);
-                selectorParts.push(
-                  `${containerSelector} >> ${elementSelector}`
-                );
-              } else {
-                selectorParts.push(containerSelector);
-              }
-            });
-
-            return selectorParts.join(" >> ");
-          }
-
-          const elementSelector = generateRelativeXPathSelector(element);
-          return elementSelector;
-        }
-
-        const originalEl = getDeepestElementFromPoint(
-          coordinates.x,
-          coordinates.y
-        );
-        if (!originalEl) return { generalSelector: "" };
-
-        let element = originalEl;
-        const generalSelector = getRelativeXPathSelectorPath(element);
-        return { generalSelector };
-      }
-    } catch (error) {
-      console.error("Error in getNonUniqueSelectors:", error);
-      return { generalSelector: "" };
-    }
-  };
-
   public getChildSelectors = (
     iframeDoc: Document,
     parentSelector: string
   ): string[] => {
     try {
       // Use XPath evaluation to find parent elements
-      let parentElements: HTMLElement[] = [];
-
-      if (parentSelector.includes(">>")) {
-        // Handle shadow DOM
-        const selectorParts = parentSelector
-          .split(">>")
-          .map((part) => part.trim());
-
-        // Evaluate the first part with XPath
-        parentElements = this.evaluateXPath(selectorParts[0], iframeDoc);
-
-        // Handle shadow DOM traversal
-        for (let i = 1; i < selectorParts.length; i++) {
-          const newParentElements: HTMLElement[] = [];
-          for (const element of parentElements) {
-            if (element.shadowRoot) {
-              const shadowChildren = this.evaluateXPath(
-                selectorParts[i],
-                element.shadowRoot as any
-              );
-              newParentElements.push(...shadowChildren);
-            }
-          }
-          parentElements = newParentElements;
-        }
-      } else {
-        // Use XPath evaluation directly for regular DOM
-        parentElements = this.evaluateXPath(parentSelector, iframeDoc);
-      }
+      let parentElements: HTMLElement[] = this.evaluateXPath(
+        parentSelector,
+        iframeDoc
+      );
 
       if (parentElements.length === 0) {
         console.warn("No parent elements found for selector:", parentSelector);
@@ -2798,22 +2461,810 @@ class ClientSelectorGenerator {
       const allChildSelectors = new Set<string>();
 
       parentElements.forEach((parentElement) => {
-        const childSelectors = this.generateAbsoluteChildXPaths(
+        const otherListElements = parentElements.filter(
+          (el) => el !== parentElement
+        );
+
+        const childSelectors = this.generateOptimizedChildXPaths(
           parentElement,
-          parentSelector
+          parentSelector,
+          iframeDoc,
+          otherListElements
         );
         childSelectors.forEach((selector) => allChildSelectors.add(selector));
       });
 
-      // Convert Set back to array to get unique selectors
-      const childSelectors = Array.from(allChildSelectors);
-
+      // Convert Set back to array and sort for consistency
+      const childSelectors = Array.from(allChildSelectors).sort();
       return childSelectors;
     } catch (error) {
-      console.error("Error in optimized getChildSelectors:", error);
+      console.error("Error in getChildSelectors:", error);
       return [];
     }
   };
+
+  private getAllDescendantsIncludingShadow(
+    parentElement: HTMLElement
+  ): HTMLElement[] {
+    const allDescendants: HTMLElement[] = [];
+    const visited = new Set<HTMLElement>();
+    const shadowRootsSeen = new Set<ShadowRoot>();
+
+    const traverseShadowRoot = (shadowRoot: ShadowRoot, depth: number = 0) => {
+      if (depth > 10) return;
+
+      try {
+        const shadowElements = Array.from(
+          shadowRoot.querySelectorAll("*")
+        ) as HTMLElement[];
+
+        shadowElements.forEach((shadowElement) => {
+          if (!visited.has(shadowElement)) {
+            visited.add(shadowElement);
+            allDescendants.push(shadowElement);
+
+            if (
+              shadowElement.shadowRoot &&
+              !shadowRootsSeen.has(shadowElement.shadowRoot)
+            ) {
+              shadowRootsSeen.add(shadowElement.shadowRoot);
+              traverseShadowRoot(shadowElement.shadowRoot, depth + 1);
+            }
+          }
+        });
+
+        Array.from(shadowRoot.children).forEach((child) => {
+          const htmlChild = child as HTMLElement;
+          if (
+            htmlChild.shadowRoot &&
+            !shadowRootsSeen.has(htmlChild.shadowRoot)
+          ) {
+            shadowRootsSeen.add(htmlChild.shadowRoot);
+            traverseShadowRoot(htmlChild.shadowRoot, depth + 1);
+          }
+        });
+      } catch (error) {
+        console.warn(`Error traversing shadow root:`, error);
+      }
+    };
+
+    const regularDescendants = Array.from(
+      parentElement.querySelectorAll("*")
+    ) as HTMLElement[];
+    regularDescendants.forEach((descendant) => {
+      if (!visited.has(descendant)) {
+        visited.add(descendant);
+        allDescendants.push(descendant);
+      }
+    });
+
+    const elementsWithShadow = [parentElement, ...regularDescendants].filter(
+      (el) => el.shadowRoot
+    );
+    elementsWithShadow.forEach((element) => {
+      if (!shadowRootsSeen.has(element.shadowRoot!)) {
+        shadowRootsSeen.add(element.shadowRoot!);
+        traverseShadowRoot(element.shadowRoot!, 0);
+      }
+    });
+
+    return allDescendants;
+  }
+
+  private generateOptimizedChildXPaths(
+    parentElement: HTMLElement,
+    listSelector: string,
+    document: Document,
+    otherListElements: HTMLElement[] = []
+  ): string[] {
+    const selectors: string[] = [];
+    const processedElements = new Set<HTMLElement>();
+
+    // Get all meaningful descendants (not just direct children)
+    const allDescendants = this.getAllDescendantsIncludingShadow(parentElement);
+
+    allDescendants.forEach((descendant, i) => {
+      if (processedElements.has(descendant)) return;
+      processedElements.add(descendant);
+
+      const absolutePath = this.buildOptimizedAbsoluteXPath(
+        descendant,
+        listSelector,
+        parentElement,
+        document,
+        otherListElements
+      );
+
+      if (absolutePath) {
+        selectors.push(absolutePath);
+      }
+    });
+
+    return [...new Set(selectors)];
+  }
+
+  private generateOptimizedStructuralStep(
+    element: HTMLElement,
+    rootElement?: HTMLElement,
+    addPositionToAll: boolean = false,
+    otherListElements: HTMLElement[] = []
+  ): string {
+    const tagName = element.tagName.toLowerCase();
+
+    const parent =
+      element.parentElement ||
+      ((element.getRootNode() as ShadowRoot).host as HTMLElement | null);
+
+    if (!parent) {
+      return tagName;
+    }
+
+    const classes = this.getCommonClassesAcrossLists(
+      element,
+      otherListElements
+    );
+    if (classes.length > 0 && !addPositionToAll) {
+      const classSelector = classes
+        .map((cls) => `contains(@class, '${cls}')`)
+        .join(" and ");
+
+      const hasConflictingElement = rootElement
+        ? this.queryElementsInScope(rootElement, element.tagName.toLowerCase())
+            .filter((el) => el !== element)
+            .some((el) =>
+              classes.every((cls) =>
+                this.normalizeClasses((el as HTMLElement).classList)
+                  .split(" ")
+                  .includes(cls)
+              )
+            )
+        : false;
+
+      if (!hasConflictingElement) {
+        return `${tagName}[${classSelector}]`;
+      } else {
+        const position = this.getSiblingPosition(element, parent);
+        return `${tagName}[${classSelector}][${position}]`;
+      }
+    }
+
+    if (!addPositionToAll) {
+      const meaningfulAttrs = ["role", "type", "name", "src", "aria-label"];
+      for (const attrName of meaningfulAttrs) {
+        if (element.hasAttribute(attrName)) {
+          const value = element.getAttribute(attrName)!.replace(/'/g, "\\'");
+          return `${tagName}[@${attrName}='${value}']`;
+        }
+      }
+    }
+
+    const testId = element.getAttribute("data-testid");
+    if (testId && !addPositionToAll) {
+      return `${tagName}[@data-testid='${testId}']`;
+    }
+
+    if (element.id && !element.id.match(/^\d/) && !addPositionToAll) {
+      return `${tagName}[@id='${element.id}']`;
+    }
+
+    if (!addPositionToAll) {
+      for (const attr of Array.from(element.attributes)) {
+        if (
+          attr.name.startsWith("data-") &&
+          attr.name !== "data-testid" &&
+          attr.name !== "data-mx-id" &&
+          attr.value
+        ) {
+          return `${tagName}[@${attr.name}='${attr.value}']`;
+        }
+      }
+    }
+
+    const position = this.getSiblingPosition(element, parent);
+
+    if (addPositionToAll || classes.length === 0) {
+      return `${tagName}[${position}]`;
+    }
+
+    return tagName;
+  }
+
+  // Helper method to get sibling position (works for both light and shadow DOM)
+  private getSiblingPosition(
+    element: HTMLElement,
+    parent: HTMLElement
+  ): number {
+    const siblings = Array.from(parent.children || []).filter(
+      (child) => child.tagName === element.tagName
+    );
+    return siblings.indexOf(element) + 1;
+  }
+
+  // Helper method to query elements in scope (handles both light and shadow DOM)
+  private queryElementsInScope(
+    rootElement: HTMLElement,
+    tagName: string
+  ): HTMLElement[] {
+    // Check if we're dealing with shadow DOM
+    if (rootElement.shadowRoot || this.isInShadowDOM(rootElement)) {
+      return this.deepQuerySelectorAll(rootElement, tagName);
+    } else {
+      // Standard light DOM query
+      return Array.from(rootElement.querySelectorAll(tagName));
+    }
+  }
+
+  // Helper method to check if element is in shadow DOM
+  private isInShadowDOM(element: HTMLElement): boolean {
+    return element.getRootNode() instanceof ShadowRoot;
+  }
+
+  // Deep query selector for shadow DOM (from second version)
+  private deepQuerySelectorAll(
+    root: HTMLElement | ShadowRoot,
+    selector: string
+  ): HTMLElement[] {
+    const elements: HTMLElement[] = [];
+
+    const process = (node: Element | ShadowRoot) => {
+      if (node instanceof Element && node.matches(selector)) {
+        elements.push(node as HTMLElement);
+      }
+
+      for (const child of node.children) {
+        process(child);
+      }
+
+      if (node instanceof HTMLElement && node.shadowRoot) {
+        process(node.shadowRoot);
+      }
+    };
+
+    process(root);
+    return elements;
+  }
+
+  private buildOptimizedAbsoluteXPath(
+    targetElement: HTMLElement,
+    listSelector: string,
+    listElement: HTMLElement,
+    document: Document,
+    otherListElements: HTMLElement[] = []
+  ): string | null {
+    try {
+      let xpath = listSelector;
+      const pathFromList = this.getOptimizedStructuralPath(
+        targetElement,
+        listElement,
+        otherListElements
+      );
+
+      if (!pathFromList) return null;
+
+      const fullXPath = xpath + pathFromList;
+
+      return fullXPath;
+    } catch (error) {
+      console.error("Error building optimized absolute XPath:", error);
+      return null;
+    }
+  }
+
+  // Unified path optimization (works for both light and shadow DOM)
+  private getOptimizedStructuralPath(
+    targetElement: HTMLElement,
+    rootElement: HTMLElement,
+    otherListElements: HTMLElement[] = []
+  ): string | null {
+    if (!this.elementContains(rootElement, targetElement) || targetElement === rootElement) {
+      return null;
+    }
+
+    const pathParts: string[] = [];
+    let current: HTMLElement | null = targetElement;
+
+    // Build path from target up to root
+    while (current && current !== rootElement) {
+      // Calculate conflicts for each element in the path
+      const classes = this.getCommonClassesAcrossLists(
+        current,
+        otherListElements
+      );
+      const hasConflictingElement =
+        classes.length > 0 && rootElement
+          ? this.queryElementsInScope(
+              rootElement,
+              current.tagName.toLowerCase()
+            )
+              .filter((el) => el !== current)
+              .some((el) =>
+                classes.every((cls) =>
+                  this.normalizeClasses((el as HTMLElement).classList)
+                    .split(" ")
+                    .includes(cls)
+                )
+              )
+          : false;
+
+      const pathPart = this.generateOptimizedStructuralStep(
+        current,
+        rootElement,
+        hasConflictingElement,
+        otherListElements
+      );
+      if (pathPart) {
+        pathParts.unshift(pathPart);
+      }
+
+      // Move to parent (either regular parent or shadow host)
+      current = current.parentElement || 
+        ((current.getRootNode() as ShadowRoot).host as HTMLElement | null);
+
+      if (!current) break;
+    }
+
+    return pathParts.length > 0 ? "/" + pathParts.join("/") : null;
+  }
+
+  private getCommonClassesAcrossLists(
+    targetElement: HTMLElement, 
+    otherListElements: HTMLElement[]
+  ): string[] {
+    const targetClasses = this.normalizeClasses(targetElement.classList).split(" ").filter(Boolean);
+
+    const otherListsKey = otherListElements.map(el => `${el.tagName}-${el.className}`).sort().join('|');
+    const cacheKey = `${targetElement.tagName}-${targetClasses.sort().join(',')}-${otherListsKey}`;
+
+    if (this.classCache.has(cacheKey)) {
+      return this.classCache.get(cacheKey)!;
+    }
+
+    if (otherListElements.length === 0) {
+      this.classCache.set(cacheKey, targetClasses);
+      return targetClasses;
+    }
+
+    const similarElements = otherListElements.flatMap(listEl => 
+      this.getAllDescendantsIncludingShadow(listEl).filter(child => 
+        child.tagName === targetElement.tagName
+      )
+    );
+
+    if (similarElements.length === 0) {
+      this.classCache.set(cacheKey, targetClasses);
+      return targetClasses;
+    }
+
+    const exactMatches = similarElements.filter(el => {
+      const elClasses = this.normalizeClasses(el.classList).split(" ").filter(Boolean);
+      return targetClasses.length === elClasses.length && 
+            targetClasses.every(cls => elClasses.includes(cls));
+    });
+
+    if (exactMatches.length > 0) {
+      this.classCache.set(cacheKey, targetClasses);
+      return targetClasses;
+    }
+
+    const commonClasses: string[] = [];
+
+    for (const targetClass of targetClasses) {
+      const existsInAllOtherLists = otherListElements.every(listEl => {
+        const elementsInThisList = this.getAllDescendantsIncludingShadow(listEl).filter(child => 
+          child.tagName === targetElement.tagName
+        );
+
+        return elementsInThisList.some(el => 
+          this.normalizeClasses(el.classList).split(" ").includes(targetClass)
+        );
+      });
+
+      if (existsInAllOtherLists) {
+        commonClasses.push(targetClass);
+      }
+    }
+
+    // Cache the result
+    this.classCache.set(cacheKey, commonClasses);
+    return commonClasses;
+  }
+
+  // Helper method to check containment (works for both light and shadow DOM)
+  private elementContains(container: HTMLElement, element: HTMLElement): boolean {
+    // Standard containment check
+    if (container.contains(element)) {
+      return true;
+    }
+
+    // Check shadow DOM containment
+    let current: HTMLElement | null = element;
+    while (current) {
+      if (current === container) {
+        return true;
+      }
+
+      // Move to parent or shadow host
+      current = current.parentElement || 
+        ((current.getRootNode() as ShadowRoot).host as HTMLElement | null);
+    }
+
+    return false;
+  }
+
+  // Simplified validation
+  private validateXPath(xpath: string, document: Document): boolean {
+    try {
+      const result = document.evaluate(
+        xpath,
+        document,
+        null,
+        XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+        null
+      );
+      return result.snapshotLength > 0;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  // findMatchingAbsoluteXPath with better matching algorithm
+  private precomputeSelectorMappings(
+    childSelectors: string[],
+    document: Document
+  ): void {
+    if (
+      this.lastCachedDocument === document &&
+      this.selectorElementCache.size > 0
+    ) {
+      return;
+    }
+
+    console.time("Precomputing selector mappings");
+    this.selectorElementCache.clear();
+    this.elementSelectorCache = new WeakMap();
+    this.spatialIndex.clear();
+
+    // Batch process selectors to avoid blocking
+    const batchSize = this.performanceConfig.maxSelectorBatchSize;
+
+    for (let i = 0; i < childSelectors.length; i += batchSize) {
+      const batch = childSelectors.slice(i, i + batchSize);
+
+      batch.forEach((selector) => {
+        try {
+          const elements = this.evaluateXPath(selector, document);
+          this.selectorElementCache.set(selector, elements);
+
+          // Build reverse mapping: element -> selectors that match it
+          elements.forEach((element) => {
+            const existingSelectors =
+              this.elementSelectorCache.get(element) || [];
+            existingSelectors.push(selector);
+            this.elementSelectorCache.set(element, existingSelectors);
+
+            // Add to spatial index if enabled
+            if (this.performanceConfig.enableSpatialIndexing) {
+              const gridKey = this.getElementGridKey(element);
+              const gridSelectors = this.spatialIndex.get(gridKey) || [];
+              gridSelectors.push(selector);
+              this.spatialIndex.set(gridKey, gridSelectors);
+            }
+          });
+        } catch (error) {
+          // Skip invalid selectors silently
+        }
+      });
+    }
+
+    this.lastCachedDocument = document;
+    console.timeEnd("Precomputing selector mappings");
+  }
+
+  // Simple spatial indexing for proximity-based filtering
+  private getElementGridKey(element: HTMLElement): string {
+    const rect = element.getBoundingClientRect();
+    const gridSize = 100; // 100px grid cells
+    const x = Math.floor(rect.left / gridSize);
+    const y = Math.floor(rect.top / gridSize);
+    return `${x},${y}`;
+  }
+
+  // Get nearby selectors using spatial indexing
+  private getNearbySelectorCandidates(element: HTMLElement): string[] {
+    if (!this.performanceConfig.enableSpatialIndexing) {
+      return Array.from(this.selectorElementCache.keys());
+    }
+
+    const gridKey = this.getElementGridKey(element);
+    const rect = element.getBoundingClientRect();
+    const gridSize = 100;
+
+    // Check current cell and adjacent cells
+    const candidates = new Set<string>();
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        const x = Math.floor(rect.left / gridSize) + dx;
+        const y = Math.floor(rect.top / gridSize) + dy;
+        const key = `${x},${y}`;
+        const selectors = this.spatialIndex.get(key) || [];
+        selectors.forEach((s) => candidates.add(s));
+      }
+    }
+
+    return Array.from(candidates);
+  }
+
+  // Ultra-fast direct lookup using cached mappings
+  private findDirectMatches(
+    targetElement: HTMLElement,
+    childSelectors: string[],
+    document: Document
+  ): string[] {
+    // Use cached reverse mapping if available
+    if (
+      this.performanceConfig.useElementCache &&
+      this.elementSelectorCache.has(targetElement)
+    ) {
+      const cachedSelectors =
+        this.elementSelectorCache.get(targetElement) || [];
+      // Filter to only selectors in the current child selectors list
+      const matches = cachedSelectors.filter((selector) =>
+        childSelectors.includes(selector)
+      );
+
+      // positional selectors over non-positional ones
+      return this.sortByPositionalPriority(matches);
+    }
+
+    // Fallback to spatial filtering + selective evaluation
+    const candidateSelectors = this.getNearbySelectorCandidates(targetElement);
+    const relevantCandidates = candidateSelectors.filter((selector) =>
+      childSelectors.includes(selector)
+    );
+
+    const matches: string[] = [];
+
+    // Process in smaller batches to avoid blocking
+    for (const selector of relevantCandidates.slice(0, 20)) {
+      // Limit to top 20 candidates
+      try {
+        const cachedElements = this.selectorElementCache.get(selector);
+        if (cachedElements && cachedElements.includes(targetElement)) {
+          matches.push(selector);
+        }
+      } catch (error) {
+        continue;
+      }
+    }
+
+    // positional selectors and sort by specificity
+    return this.sortByPositionalPriority(matches);
+  }
+
+  /**
+   * Sort selectors to prioritize positional ones over non-positional
+   */
+  private sortByPositionalPriority(selectors: string[]): string[] {
+    return selectors.sort((a, b) => {
+      const aIsPositional = /\[\d+\]/.test(a);
+      const bIsPositional = /\[\d+\]/.test(b);
+
+      // Positional selectors get higher priority
+      if (aIsPositional && !bIsPositional) return -1;
+      if (!aIsPositional && bIsPositional) return 1;
+
+      // If both are positional or both are non-positional, sort by specificity
+      return (
+        this.calculateXPathSpecificity(b) - this.calculateXPathSpecificity(a)
+      );
+    });
+  }
+
+  // Fast element proximity check instead of full similarity calculation
+  private findProximityMatch(
+    targetElement: HTMLElement,
+    childSelectors: string[],
+    document: Document
+  ): string | null {
+    const targetRect = targetElement.getBoundingClientRect();
+    const targetCenter = {
+      x: targetRect.left + targetRect.width / 2,
+      y: targetRect.top + targetRect.height / 2,
+    };
+
+    let bestMatch = null;
+    let bestDistance = Infinity;
+    let bestScore = 0;
+
+    // Use spatial filtering to reduce candidates
+    const candidateSelectors = this.getNearbySelectorCandidates(targetElement)
+      .filter((selector) => childSelectors.includes(selector))
+      .slice(0, 30); // Limit candidates
+
+    for (const selector of candidateSelectors) {
+      try {
+        const cachedElements = this.selectorElementCache.get(selector) || [];
+
+        for (const element of cachedElements.slice(0, 5)) {
+          // Check max 5 elements per selector
+          const rect = element.getBoundingClientRect();
+          const center = {
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2,
+          };
+
+          const distance = Math.sqrt(
+            Math.pow(center.x - targetCenter.x, 2) +
+              Math.pow(center.y - targetCenter.y, 2)
+          );
+
+          // Quick element similarity check (just tag + basic attributes)
+          const similarity = this.calculateQuickSimilarity(
+            targetElement,
+            element
+          );
+
+          if (similarity > 0.7 && distance < bestDistance) {
+            bestDistance = distance;
+            bestMatch = selector;
+            bestScore = similarity;
+          }
+        }
+      } catch (error) {
+        continue;
+      }
+    }
+
+    return bestMatch;
+  }
+
+  // Lightweight similarity calculation for real-time use
+  private calculateQuickSimilarity(
+    element1: HTMLElement,
+    element2: HTMLElement
+  ): number {
+    if (element1 === element2) return 1.0;
+
+    let score = 0;
+    let maxScore = 0;
+
+    // Tag name (most important)
+    maxScore += 4;
+    if (element1.tagName === element2.tagName) {
+      score += 4;
+    } else {
+      return 0;
+    }
+
+    // Quick class check (just count common classes)
+    maxScore += 3;
+    const classes1 = element1.classList;
+    const classes2 = element2.classList;
+    let commonClasses = 0;
+    for (const cls of classes1) {
+      if (classes2.contains(cls)) commonClasses++;
+    }
+    if (classes1.length > 0 && classes2.length > 0) {
+      score += (commonClasses / Math.max(classes1.length, classes2.length)) * 3;
+    }
+
+    // Quick attribute check (just a few key ones)
+    maxScore += 2;
+    const keyAttrs = ["data-testid", "role", "type"];
+    let matchingAttrs = 0;
+    for (const attr of keyAttrs) {
+      if (element1.getAttribute(attr) === element2.getAttribute(attr)) {
+        matchingAttrs++;
+      }
+    }
+    score += (matchingAttrs / keyAttrs.length) * 2;
+
+    return maxScore > 0 ? score / maxScore : 0;
+  }
+
+  // Main matching function with early exits and caching
+  private findMatchingAbsoluteXPath(
+    targetElement: HTMLElement,
+    childSelectors: string[],
+    listSelector: string,
+    iframeDocument: Document
+  ): string | null {
+    try {
+      // Ensure mappings are precomputed
+      this.precomputeSelectorMappings(childSelectors, iframeDocument);
+
+      // Strategy 1: Ultra-fast direct lookup (usually finds match immediately)
+      const directMatches = this.findDirectMatches(
+        targetElement,
+        childSelectors,
+        iframeDocument
+      );
+
+      if (directMatches.length > 0) {
+        return directMatches[0]; // Return best direct match
+      }
+
+      const proximityMatch = this.findProximityMatch(
+        targetElement,
+        childSelectors,
+        iframeDocument
+      );
+      if (proximityMatch) {
+        return proximityMatch;
+      }
+
+      // Strategy 3: Build and validate new XPath only if no cached matches found
+      const builtXPath = this.buildTargetXPath(
+        targetElement,
+        listSelector,
+        iframeDocument
+      );
+      if (builtXPath) {
+        return builtXPath;
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Error in optimized matching:", error);
+      return null;
+    }
+  }
+
+  // Public method to precompute mappings when child selectors are first generated
+  public precomputeChildSelectorMappings(
+    childSelectors: string[],
+    document: Document
+  ): void {
+    this.precomputeSelectorMappings(childSelectors, document);
+  }
+
+  // Calculate XPath specificity for better matching
+  private calculateXPathSpecificity(xpath: string): number {
+    let score = 0;
+
+    // Count specific attributes
+    score += (xpath.match(/@id=/g) || []).length * 10;
+    score += (xpath.match(/@data-testid=/g) || []).length * 8;
+    score += (xpath.match(/contains\(@class/g) || []).length * 3;
+    score += (xpath.match(/@\w+=/g) || []).length * 2;
+    score += (xpath.match(/\[\d+\]/g) || []).length * 1; // Position predicates
+
+    // Penalty for overly generic selectors
+    if (xpath.match(/^\/\/\w+$/) && !xpath.includes("[")) {
+      score -= 5; // Just a tag name
+    }
+
+    return score;
+  }
+
+  // Build XPath for target element
+  private buildTargetXPath(
+    targetElement: HTMLElement,
+    listSelector: string,
+    document: Document
+  ): string | null {
+    try {
+      const parentElements = this.evaluateXPath(listSelector, document);
+      const containingParent = parentElements[0];
+
+      if (!containingParent) {
+        return null;
+      }
+
+      const structuralPath = this.getOptimizedStructuralPath(
+        targetElement,
+        containingParent
+      );
+      if (!structuralPath) {
+        return null;
+      }
+
+      return listSelector + structuralPath;
+    } catch (error) {
+      console.error("Error building target XPath:", error);
+      return null;
+    }
+  }
 
   private evaluateXPath(
     xpath: string,
@@ -2853,15 +3304,17 @@ class ClientSelectorGenerator {
   }
 
   private isXPathSelector(selector: string): boolean {
-    return selector.startsWith('//') || 
-      selector.startsWith('/') || 
-      selector.startsWith('./') ||
-      selector.includes('contains(@') ||
-      selector.includes('[count(') ||
-      selector.includes('@class=') ||
-      selector.includes('@id=') ||
-      selector.includes(' and ') ||
-      selector.includes(' or ');
+    return (
+      selector.startsWith("//") ||
+      selector.startsWith("/") ||
+      selector.startsWith("./") ||
+      selector.includes("contains(@") ||
+      selector.includes("[count(") ||
+      selector.includes("@class=") ||
+      selector.includes("@id=") ||
+      selector.includes(" and ") ||
+      selector.includes(" or ")
+    );
   }
 
   private fallbackXPathEvaluation(
@@ -2905,135 +3358,6 @@ class ClientSelectorGenerator {
     } catch (error) {
       console.error("❌ Fallback XPath evaluation also failed:", error);
       return [];
-    }
-  }
-
-  private generateAbsoluteChildXPaths(
-    parentElement: HTMLElement,
-    listSelector: string
-  ): string[] {
-    const selectors: string[] = [];
-    const processedElements = new Set<HTMLElement>();
-
-    // More efficient traversal - use querySelectorAll to get all descendants at once
-    const allDescendants = Array.from(
-      parentElement.querySelectorAll("*")
-    ) as HTMLElement[];
-
-    allDescendants.forEach((descendant, index) => {
-      if (processedElements.has(descendant)) return;
-      processedElements.add(descendant);
-
-      const absolutePath = this.buildAbsoluteXPath(
-        descendant,
-        listSelector,
-        parentElement
-      );
-
-      if (absolutePath) {
-        selectors.push(absolutePath);
-      }
-    });
-
-    // Handle shadow DOM descendants
-    const shadowElements = this.getShadowDOMDescendants(parentElement);
-    shadowElements.forEach((shadowElement) => {
-      const shadowPath = this.buildAbsoluteXPath(
-        shadowElement,
-        listSelector,
-        parentElement
-      );
-      if (shadowPath) {
-        selectors.push(shadowPath);
-      }
-    });
-
-    return selectors;
-  }
-
-  private getShadowDOMDescendants(element: HTMLElement): HTMLElement[] {
-    const shadowDescendants: HTMLElement[] = [];
-
-    const traverse = (el: HTMLElement) => {
-      if (el.shadowRoot) {
-        const shadowElements = Array.from(
-          el.shadowRoot.querySelectorAll("*")
-        ) as HTMLElement[];
-        shadowDescendants.push(...shadowElements);
-
-        // Recursively check shadow elements for more shadow roots
-        shadowElements.forEach((shadowEl) => traverse(shadowEl));
-      }
-    };
-
-    traverse(element);
-    return shadowDescendants;
-  }
-
-  private buildAbsoluteXPath(
-    targetElement: HTMLElement,
-    listSelector: string,
-    listElement: HTMLElement
-  ): string | null {
-    try {
-      // Start with the list selector as base
-      let xpath = listSelector;
-
-      // Build path from list element to target element
-      const pathFromList = this.getStructuralPath(targetElement, listElement);
-
-      if (!pathFromList) return null;
-
-      // Append the structural path to the list selector
-      return xpath + pathFromList;
-    } catch (error) {
-      console.error("Error building absolute XPath:", error);
-      return null;
-    }
-  }
-
-  private getStructuralPath(
-    targetElement: HTMLElement,
-    rootElement: HTMLElement
-  ): string | null {
-    if (!rootElement.contains(targetElement) || targetElement === rootElement) {
-      return null;
-    }
-
-    const pathParts: string[] = [];
-    let current = targetElement;
-
-    // Build path from target up to root
-    while (current && current !== rootElement && current.parentElement) {
-      const pathPart = this.generateStructuralStep(current);
-      if (pathPart) {
-        pathParts.unshift(pathPart);
-      }
-      current = current.parentElement;
-    }
-
-    return pathParts.length > 0 ? "/" + pathParts.join("/") : null;
-  }
-
-  private generateStructuralStep(element: HTMLElement): string {
-    const tagName = element.tagName.toLowerCase();
-
-    if (!element.parentElement) {
-      return tagName;
-    }
-
-    // Get all sibling elements with the same tag name
-    const siblings = Array.from(element.parentElement.children).filter(
-      (sibling) => sibling.tagName === element.tagName
-    );
-
-    if (siblings.length === 1) {
-      // Only one element with this tag - no position needed
-      return tagName;
-    } else {
-      // Multiple elements with same tag - use position
-      const position = siblings.indexOf(element) + 1;
-      return `${tagName}[${position}]`;
     }
   }
 
@@ -3137,6 +3461,23 @@ class ClientSelectorGenerator {
   };
 
   /**
+   * Determines if an element is within a Shadow DOM
+   */
+  private isElementInShadowDOM(element: HTMLElement): boolean {
+    try {
+      const rootNode = element.getRootNode();
+
+      return (
+        rootNode.constructor.name === "ShadowRoot" ||
+        (rootNode && "host" in rootNode && "mode" in rootNode)
+      );
+    } catch (error) {
+      console.warn("Error checking shadow DOM:", error);
+      return false;
+    }
+  }
+
+  /**
    * Enhanced highlighting that detects and highlights entire groups
    */
   public generateDataForHighlighter(
@@ -3149,11 +3490,16 @@ class ClientSelectorGenerator {
     selector: string;
     elementInfo: ElementInfo | null;
     childSelectors?: string[];
+    isShadow?: boolean;
     groupInfo?: {
       isGroupElement: boolean;
       groupSize: number;
       groupElements: HTMLElement[];
       groupFingerprint: ElementFingerprint;
+    };
+    similarElements?: {
+      elements: HTMLElement[];
+      rects: DOMRect[];
     };
   } | null {
     try {
@@ -3170,6 +3516,9 @@ class ClientSelectorGenerator {
 
       const elementGroup = this.getElementGroup(elementAtPoint);
       const isGroupElement = elementGroup !== null;
+
+      let isShadow = false;
+      let targetElement = elementAtPoint;
 
       const rect = this.getRect(
         iframeDocument,
@@ -3192,21 +3541,35 @@ class ClientSelectorGenerator {
 
       let displaySelector: string | null;
       let childSelectors: string[] = [];
+      let similarElements:
+        | { elements: HTMLElement[]; rects: DOMRect[] }
+        | undefined;
 
       if (this.getList === true && this.listSelector !== "") {
         childSelectors =
           cachedChildSelectors.length > 0
             ? cachedChildSelectors
             : this.getChildSelectors(iframeDocument, this.listSelector);
+
+        if (cachedChildSelectors.length > 0) {
+          this.precomputeChildSelectorMappings(
+            cachedChildSelectors,
+            iframeDocument
+          );
+        }
       }
 
       if (isGroupElement && this.getList === true && this.listSelector === "") {
         displaySelector = this.generateGroupContainerSelector(elementGroup!);
 
+        targetElement = elementGroup!.representative;
+        isShadow = this.isElementInShadowDOM(targetElement);
+
         return {
           rect,
           selector: displaySelector,
           elementInfo,
+          isShadow,
           groupInfo: {
             isGroupElement: true,
             groupSize: elementGroup!.elements.length,
@@ -3220,15 +3583,56 @@ class ClientSelectorGenerator {
         childSelectors.length > 0 &&
         this.paginationMode === false
       ) {
-        // For child elements within a list, find the matching absolute XPath
         displaySelector = this.findMatchingAbsoluteXPath(
           elementAtPoint,
           childSelectors,
           this.listSelector,
           iframeDocument
         );
+
+        if (displaySelector) {
+          const matchingElements = this.getAllMatchingElements(
+            displaySelector,
+            childSelectors,
+            iframeDocument
+          );
+
+          if (matchingElements.length > 1) {
+            const rects = matchingElements.map((el) => {
+              const elementRect = el.getBoundingClientRect();
+              if (isDOMMode) {
+                return elementRect;
+              } else {
+                let adjustedRect = elementRect;
+                let currentWindow = el.ownerDocument.defaultView;
+
+                while (currentWindow !== window.top) {
+                  const frameElement =
+                    currentWindow?.frameElement as HTMLIFrameElement;
+                  if (!frameElement) break;
+
+                  const frameRect = frameElement.getBoundingClientRect();
+                  adjustedRect = new DOMRect(
+                    adjustedRect.x + frameRect.x,
+                    adjustedRect.y + frameRect.y,
+                    adjustedRect.width,
+                    adjustedRect.height
+                  );
+
+                  currentWindow = frameElement.ownerDocument.defaultView;
+                }
+
+                return adjustedRect;
+              }
+            });
+
+            similarElements = {
+              elements: matchingElements,
+              rects,
+            };
+          }
+        }
       } else {
-        // Fall back to regular selector generation for non-list elements
         displaySelector = this.generateSelector(
           iframeDocument,
           coordinates,
@@ -3240,11 +3644,15 @@ class ClientSelectorGenerator {
         return null;
       }
 
+      targetElement = elementAtPoint;
+      isShadow = this.isElementInShadowDOM(targetElement);
+
       return {
         rect,
         selector: displaySelector,
         elementInfo,
         childSelectors: childSelectors.length > 0 ? childSelectors : undefined,
+        isShadow,
         groupInfo: isGroupElement
           ? {
               isGroupElement: true,
@@ -3253,137 +3661,12 @@ class ClientSelectorGenerator {
               groupFingerprint: elementGroup!.fingerprint,
             }
           : undefined,
+        similarElements,
       };
     } catch (error) {
       console.error("Error generating highlighter data:", error);
       return null;
     }
-  }
-
-  private findMatchingAbsoluteXPath(
-    targetElement: HTMLElement,
-    childSelectors: string[],
-    listSelector: string,
-    iframeDocument: Document
-  ): string | null {
-    try {
-      // Use XPath evaluation directly instead of CSS conversion
-      const parentElements = this.evaluateXPath(listSelector, iframeDocument);
-
-      const containingParent = parentElements.find((parent) =>
-        parent.contains(targetElement)
-      );
-
-      if (!containingParent) {
-        console.warn("Could not find containing parent for target element");
-        return null;
-      }
-
-      // Get the structural path from parent to target
-      const structuralPath = this.getStructuralPath(
-        targetElement,
-        containingParent
-      );
-
-      if (!structuralPath) {
-        console.warn("Could not determine structural path");
-        return null;
-      }
-
-      // Construct the absolute XPath
-      const absoluteXPath = listSelector + structuralPath;
-
-      // Check if this XPath exists in our child selectors
-      const matchingSelector = childSelectors.find(
-        (selector) =>
-          selector === absoluteXPath ||
-          this.isEquivalentXPath(selector, absoluteXPath)
-      );
-
-      if (matchingSelector) {
-        return matchingSelector;
-      }
-
-      // If no exact match, find the closest matching selector
-      const closestMatch = this.findClosestXPathMatch(
-        absoluteXPath,
-        childSelectors
-      );
-
-      if (closestMatch) {
-        return closestMatch;
-      }
-
-      return absoluteXPath;
-    } catch (error) {
-      console.error("Error finding matching absolute XPath:", error);
-      return null;
-    }
-  }
-
-  private isEquivalentXPath(xpath1: string, xpath2: string): boolean {
-    // Normalize both XPaths for comparison
-    const normalize = (xpath: string) => {
-      return xpath
-        .replace(/\s+/g, " ") // Normalize whitespace
-        .replace(
-          /\[\s*contains\s*\(\s*@class\s*,\s*'([^']+)'\s*\)\s*\]/g,
-          "[contains(@class,'$1')]"
-        ) // Normalize class predicates
-        .trim();
-    };
-
-    return normalize(xpath1) === normalize(xpath2);
-  }
-
-  private findClosestXPathMatch(
-    targetXPath: string,
-    candidateSelectors: string[]
-  ): string | null {
-    // Extract the path components for comparison
-    const getPathComponents = (xpath: string) => {
-      // Remove the list selector prefix and get just the relative path
-      const pathMatch = xpath.match(/\/([^\/].*)$/);
-      return pathMatch ? pathMatch[1].split("/") : [];
-    };
-
-    const targetComponents = getPathComponents(targetXPath);
-
-    let bestMatch = null;
-    let bestScore = 0;
-
-    for (const selector of candidateSelectors) {
-      const selectorComponents = getPathComponents(selector);
-
-      // Calculate similarity score
-      const commonLength = Math.min(
-        targetComponents.length,
-        selectorComponents.length
-      );
-      let score = 0;
-
-      for (let i = 0; i < commonLength; i++) {
-        if (targetComponents[i] === selectorComponents[i]) {
-          score++;
-        } else {
-          // Check if they're the same tag with different positions
-          const targetTag = targetComponents[i].replace(/\[\d+\]/, "");
-          const selectorTag = selectorComponents[i].replace(/\[\d+\]/, "");
-          if (targetTag === selectorTag) {
-            score += 0.5; // Partial match for same tag
-          }
-          break; // Stop at first mismatch
-        }
-      }
-
-      if (score > bestScore) {
-        bestScore = score;
-        bestMatch = selector;
-      }
-    }
-
-    // Only return a match if we have reasonable confidence
-    return bestScore >= targetComponents.length * 0.7 ? bestMatch : null;
   }
 
   /**
@@ -3419,6 +3702,7 @@ class ClientSelectorGenerator {
     const commonAttributes = this.getCommonAttributes(elements, [
       "id",
       "style",
+      "class"
     ]);
     for (const [attr, value] of Object.entries(commonAttributes)) {
       predicates.push(`@${attr}='${value}'`);
@@ -3435,19 +3719,6 @@ class ClientSelectorGenerator {
       xpath += `[${predicates.join(" and ")}]`;
     }
 
-    // 6. Post-validate that XPath matches all elements
-    const matched = document.evaluate(
-      xpath,
-      document,
-      null,
-      XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
-      null
-    );
-    const matchedSet = new Set<HTMLElement>();
-    for (let i = 0; i < matched.snapshotLength; i++) {
-      matchedSet.add(matched.snapshotItem(i) as HTMLElement);
-    }
-  
     return xpath;
   }
 
@@ -3469,7 +3740,27 @@ class ClientSelectorGenerator {
     const attrMap: Record<string, string> = {};
 
     for (const attr of Array.from(firstEl.attributes)) {
-      if (excludeAttrs.includes(attr.name)) continue;
+      if (
+        excludeAttrs.includes(attr.name) ||
+        !attr.value ||
+        attr.value.trim() === ""
+      ) {
+        continue;
+      }
+
+      if (
+        attr.name.startsWith("_ngcontent-") ||
+        attr.name.startsWith("_nghost-")
+      ) {
+        continue;
+      }
+
+      if (
+        attr.name.match(/^(data-reactid|data-react-checksum|ng-reflect-)/) ||
+        (attr.name.includes("-c") && attr.name.match(/\d+$/))
+      ) {
+        continue;
+      }
       attrMap[attr.name] = attr.value;
     }
 
@@ -3486,18 +3777,130 @@ class ClientSelectorGenerator {
   }
 
   /**
-   * Get deepest element from a list of elements
+   * Unified getDeepestElementFromPoint method that combines all features
+   * from the different implementations in getRect, getElementInformation, and the private method
    */
   private getDeepestElementFromPoint(
-    elements: HTMLElement[]
+    x: number,
+    y: number,
+    iframeDoc: Document
   ): HTMLElement | null {
+    let elements = iframeDoc.elementsFromPoint(x, y) as HTMLElement[];
     if (!elements.length) return null;
-    if (elements.length === 1) return elements[0];
 
-    let deepestElement = elements[0];
-    let maxDepth = 0;
+    const filteredElements = this.filterLogicalElements(elements, x, y);
+    const targetElements =
+      filteredElements.length > 0 ? filteredElements : elements;
+
+    const visited = new Set<HTMLElement>();
+    let deepestElement = this.findTrulyDeepestElement(
+      targetElements,
+      x,
+      y,
+      visited
+    );
+    if (!deepestElement) return null;
+
+    return deepestElement;
+  }
+
+  /**
+   * Helper methods used by the unified getDeepestElementFromPoint
+   */
+  private filterLogicalElements(
+    elements: HTMLElement[],
+    x: number,
+    y: number
+  ): HTMLElement[] {
+    if (elements.length <= 1) return elements;
+
+    const elementsWithContent = elements.filter((element) => {
+      return this.elementHasRelevantContentAtPoint(element, x, y);
+    });
+
+    if (elementsWithContent.length > 0) {
+      return elementsWithContent;
+    }
+
+    return elements;
+  }
+
+  private elementHasRelevantContentAtPoint(
+    element: HTMLElement,
+    x: number,
+    y: number
+  ): boolean {
+    const rect = element.getBoundingClientRect();
+
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      return false;
+    }
+
+    const hasDirectText = Array.from(element.childNodes).some(
+      (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim()
+    );
+
+    if (hasDirectText) {
+      return true;
+    }
+
+    if (element.tagName === "IMG") {
+      return true;
+    }
+
+    const contentTags = [
+      "INPUT",
+      "BUTTON",
+      "SELECT",
+      "TEXTAREA",
+      "VIDEO",
+      "AUDIO",
+      "CANVAS",
+      "SVG",
+    ];
+    if (contentTags.includes(element.tagName)) {
+      return true;
+    }
+
+    const childElements = Array.from(element.children) as HTMLElement[];
+    return childElements.some(child => 
+      this.elementHasRelevantContentAtPoint(child, x, y)
+    );
+  }
+
+  private findTrulyDeepestElement(
+    elements: HTMLElement[],
+    x: number,
+    y: number,
+    visited: Set<HTMLElement>
+  ): HTMLElement | null {
+    let deepestElement: HTMLElement | null = null;
+    let maxDepth = -1;
 
     for (const element of elements) {
+      if (visited.has(element)) continue;
+      visited.add(element);
+
+      if (element.shadowRoot) {
+        const shadowElements = element.shadowRoot.elementsFromPoint(
+          x,
+          y
+        ) as HTMLElement[];
+        const deeper = this.findTrulyDeepestElement(
+          shadowElements,
+          x,
+          y,
+          visited
+        );
+        if (deeper) {
+          const depth = this.getElementDepth(deeper);
+          if (depth > maxDepth) {
+            maxDepth = depth;
+            deepestElement = deeper;
+          }
+        }
+      }
+
       const depth = this.getElementDepth(element);
       if (depth > maxDepth) {
         maxDepth = depth;
@@ -3508,6 +3911,21 @@ class ClientSelectorGenerator {
     return deepestElement;
   }
 
+  private getElementDepth(element: HTMLElement): number {
+    let depth = 0;
+    let current: HTMLElement | null = element;
+
+    while (current && current !== this.lastAnalyzedDocument?.body) {
+      depth++;
+      current =
+        current.parentElement ||
+        ((current.getRootNode() as ShadowRoot).host as HTMLElement | null);
+      if (depth > 50) break;
+    }
+    return depth;
+  }
+
+
   /**
    * Clean up when component unmounts or mode changes
    */
@@ -3515,6 +3933,11 @@ class ClientSelectorGenerator {
     this.elementGroups.clear();
     this.groupedElements.clear();
     this.lastAnalyzedDocument = null;
+    this.selectorElementCache.clear();
+    this.elementSelectorCache = new WeakMap();
+    this.spatialIndex.clear();
+    this.lastCachedDocument = null;
+    this.classCache.clear();
   }
 
   // Update generateSelector to use instance variables
@@ -3526,11 +3949,14 @@ class ClientSelectorGenerator {
     const elementInfo = this.getElementInformation(
       iframeDocument,
       coordinates,
-      this.listSelector,
-      this.getList
+      "",
+      false
     );
 
-    const selectorBasedOnCustomAction = this.getSelectors(iframeDocument, coordinates);
+    const selectorBasedOnCustomAction = this.getSelectors(
+      iframeDocument,
+      coordinates
+    );
 
     if (this.paginationMode && selectorBasedOnCustomAction) {
       // Chain selectors in specific priority order

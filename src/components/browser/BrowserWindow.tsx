@@ -147,7 +147,18 @@ export const BrowserWindow = () => {
     const { browserWidth, browserHeight } = useBrowserDimensionsStore();
     const [canvasRef, setCanvasReference] = useState<React.RefObject<HTMLCanvasElement> | undefined>(undefined);
     const [screenShot, setScreenShot] = useState<string>("");
-    const [highlighterData, setHighlighterData] = useState<{ rect: DOMRect, selector: string, elementInfo: ElementInfo | null, childSelectors?: string[], groupElements?: Array<{ element: HTMLElement; rect: DOMRect } >} | null>(null);
+    const [highlighterData, setHighlighterData] = useState<{
+        rect: DOMRect;
+        selector: string;
+        elementInfo: ElementInfo | null;
+        isShadow?: boolean;
+        childSelectors?: string[];
+        groupElements?: Array<{ element: HTMLElement; rect: DOMRect }>;
+        similarElements?: {
+            elements: HTMLElement[];
+            rects: DOMRect[];
+        };
+    } | null>(null);
     const [showAttributeModal, setShowAttributeModal] = useState(false);
     const [attributeOptions, setAttributeOptions] = useState<AttributeOption[]>([]);
     const [selectedElement, setSelectedElement] = useState<{ selector: string, info: ElementInfo | null } | null>(null);
@@ -155,17 +166,26 @@ export const BrowserWindow = () => {
     const [viewportInfo, setViewportInfo] = useState<ViewportInfo>({ width: browserWidth, height: browserHeight });
     const [isLoading, setIsLoading] = useState(false);
     const [cachedChildSelectors, setCachedChildSelectors] = useState<string[]>([]);
-
+    const [processingGroupCoordinates, setProcessingGroupCoordinates] = useState<Array<{ element: HTMLElement; rect: DOMRect }>>([]);
     const [listSelector, setListSelector] = useState<string | null>(null);
     const [fields, setFields] = useState<Record<string, TextStep>>({});
     const [paginationSelector, setPaginationSelector] = useState<string>('');
 
     const highlighterUpdateRef = useRef<number>(0);
+    const [isCachingChildSelectors, setIsCachingChildSelectors] = useState(false);
+    const [cachedListSelector, setCachedListSelector] = useState<string | null>(
+        null
+    );
+    const [pendingNotification, setPendingNotification] = useState<{
+        type: "error" | "warning" | "info" | "success";
+        message: string;
+        count?: number;
+    } | null>(null);
 
     const { socket } = useSocketStore();
     const { notify, currentTextActionId, currentListActionId, updateDOMMode, isDOMMode, currentSnapshot } = useGlobalInfoStore();
     const { getText, getList, paginationMode, paginationType, limitMode, captureStage } = useActionContext();
-    const { addTextStep, addListStep, updateListStepData } = useBrowserSteps();
+    const { addTextStep, addListStep } = useBrowserSteps();
 
     const [currentGroupInfo, setCurrentGroupInfo] = useState<{
         isGroupElement: boolean;
@@ -270,17 +290,6 @@ export const BrowserWindow = () => {
         [user?.id, socket, updateDOMMode]
     );
 
-    const screenshotModeHandler = useCallback(
-        (data: any) => {
-            if (!data.userId || data.userId === user?.id) {
-                updateDOMMode(false);
-                socket?.emit("screenshot-mode-enabled");
-                setIsLoading(false);
-            }
-        },
-        [user?.id, updateDOMMode]
-    );
-
     const domModeErrorHandler = useCallback(
         (data: any) => {
             if (!data.userId || data.userId === user?.id) {
@@ -299,29 +308,877 @@ export const BrowserWindow = () => {
         }
     }, [isDOMMode, getList, listSelector, paginationMode]);
 
-    useEffect(() => {
-        if (isDOMMode && listSelector) {
-            socket?.emit("setGetList", { getList: true });
-            socket?.emit("listSelector", { selector: listSelector });
+    const createFieldsFromChildSelectors = useCallback(
+      (childSelectors: string[], listSelector: string) => {
+        if (!childSelectors.length || !currentSnapshot) return {};
 
-            clientSelectorGenerator.setListSelector(listSelector);
+        const iframeElement = document.querySelector(
+          "#dom-browser-iframe"
+        ) as HTMLIFrameElement;
 
-            setCachedChildSelectors([]);
+        if (!iframeElement?.contentDocument) return {};
 
-            if (currentSnapshot) {
-                const iframeElement = document.querySelector(
-                "#dom-browser-iframe"
-                ) as HTMLIFrameElement;
-                if (iframeElement?.contentDocument) {
-                    const childSelectors = clientSelectorGenerator.getChildSelectors(
-                        iframeElement.contentDocument,
-                        listSelector
-                    );
-                    setCachedChildSelectors(childSelectors);
-                }
+        const candidateFields: Array<{
+          id: number;
+          field: TextStep;
+          element: HTMLElement;
+          isLeaf: boolean;
+          depth: number;
+          position: { x: number; y: number };
+        }> = [];
+
+        const uniqueChildSelectors = [...new Set(childSelectors)];
+
+        // Filter child selectors that occur in at least 2 out of first 10 list elements
+        const validateChildSelectors = (selectors: string[]): string[] => {
+          try {
+            // Get first 10 list elements
+            const listElements = evaluateXPathAllWithShadowSupport(
+              iframeElement.contentDocument!,
+              listSelector,
+              listSelector.includes('>>') || listSelector.startsWith('//')
+            ).slice(0, 10);
+
+            if (listElements.length < 2) {
+              return selectors;
             }
+
+            const validSelectors: string[] = [];
+
+            for (const selector of selectors) {
+              let occurrenceCount = 0;
+
+              // Get all elements that match this child selector
+              const childElements = evaluateXPathAllWithShadowSupport(
+                iframeElement.contentDocument!,
+                selector,
+                selector.includes('>>') || selector.startsWith('//')
+              );
+
+              // Check how many of these child elements are contained within our list elements
+              for (const childElement of childElements) {
+                for (const listElement of listElements) {
+                  if (listElement.contains(childElement)) {
+                    occurrenceCount++;
+                    break;
+                  }
+                }
+              }
+
+              // Only include selectors that occur in at least 2 list elements
+              if (occurrenceCount >= 2) {
+                validSelectors.push(selector);
+              }
+            }
+
+            return validSelectors;
+          } catch (error) {
+            console.warn("Failed to validate child selectors:", error);
+            return selectors;
+          }
+        };
+
+        // Enhanced XPath evaluation for multiple elements
+        const evaluateXPathAllWithShadowSupport = (
+          document: Document,
+          xpath: string,
+          isShadow: boolean = false
+        ): Element[] => {
+          try {
+            // First try regular XPath evaluation
+            const result = document.evaluate(
+              xpath,
+              document,
+              null,
+              XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+              null
+            );
+
+            const elements: Element[] = [];
+            for (let i = 0; i < result.snapshotLength; i++) {
+              const node = result.snapshotItem(i);
+              if (node && node.nodeType === Node.ELEMENT_NODE) {
+                elements.push(node as Element);
+              }
+            }
+
+            if (!isShadow || elements.length > 0) {
+              return elements;
+            }
+
+            // If shadow DOM is indicated and regular XPath fails, use shadow DOM traversal
+            // This is a simplified version - for multiple elements, we'll primarily rely on regular XPath
+            return elements;
+          } catch (err) {
+            console.error("XPath evaluation failed:", xpath, err);
+            return [];
+          }
+        };
+
+        const validatedChildSelectors = validateChildSelectors(uniqueChildSelectors);
+
+        const isElementVisible = (element: HTMLElement): boolean => {
+          try {
+            const rect = element.getBoundingClientRect();
+            return rect.width > 0 && rect.height > 0;
+          } catch (error) {
+            return false;
+          }
+        };
+
+        const isValidData = (data: string): boolean => {
+          if (!data || data.trim().length === 0) return false;
+
+          const trimmed = data.trim();
+
+          // Filter out single letters
+          if (trimmed.length === 1) {
+            return false;
+          }
+
+          // Filter out pure symbols/punctuation
+          if (trimmed.length < 3 && /^[^\w\s]+$/.test(trimmed)) {
+            return false;
+          }
+
+          // Filter out whitespace and punctuation only
+          if (/^[\s\p{P}\p{S}]*$/u.test(trimmed)) return false;
+
+          return trimmed.length > 0;
+        };
+
+        // Enhanced shadow DOM-aware element evaluation
+        const evaluateXPathWithShadowSupport = (
+          document: Document,
+          xpath: string,
+          isShadow: boolean = false
+        ): Element | null => {
+          try {
+            // First try regular XPath evaluation
+            const result = document.evaluate(
+              xpath,
+              document,
+              null,
+              XPathResult.FIRST_ORDERED_NODE_TYPE,
+              null
+            ).singleNodeValue as Element | null;
+
+            if (!isShadow || result) {
+              return result;
+            }
+
+            // If shadow DOM is indicated and regular XPath fails, use shadow DOM traversal
+            let cleanPath = xpath;
+            let isIndexed = false;
+
+            const indexedMatch = xpath.match(/^\((.*?)\)\[(\d+)\](.*)$/);
+            if (indexedMatch) {
+              cleanPath = indexedMatch[1] + indexedMatch[3];
+              isIndexed = true;
+            }
+
+            const pathParts = cleanPath
+              .replace(/^\/\//, "")
+              .split("/")
+              .map((p) => p.trim())
+              .filter((p) => p.length > 0);
+
+            let currentContexts: (Document | Element | ShadowRoot)[] = [document];
+
+            for (let i = 0; i < pathParts.length; i++) {
+              const part = pathParts[i];
+              const nextContexts: (Element | ShadowRoot)[] = [];
+
+              for (const ctx of currentContexts) {
+                const positionalMatch = part.match(/^([^[]+)\[(\d+)\]$/);
+                let partWithoutPosition = part;
+                let requestedPosition: number | null = null;
+
+                if (positionalMatch) {
+                  partWithoutPosition = positionalMatch[1];
+                  requestedPosition = parseInt(positionalMatch[2]);
+                }
+
+                const matched = queryInsideContext(ctx, partWithoutPosition);
+
+                let elementsToAdd = matched;
+                if (requestedPosition !== null) {
+                  const index = requestedPosition - 1;
+                  if (index >= 0 && index < matched.length) {
+                    elementsToAdd = [matched[index]];
+                  } else {
+                    elementsToAdd = [];
+                  }
+                }
+
+                elementsToAdd.forEach((el) => {
+                  nextContexts.push(el);
+                  if (el.shadowRoot) {
+                    nextContexts.push(el.shadowRoot);
+                  }
+                });
+              }
+
+              if (nextContexts.length === 0) {
+                return null;
+              }
+
+              currentContexts = nextContexts;
+            }
+
+            if (currentContexts.length > 0) {
+              if (isIndexed && indexedMatch) {
+                const requestedIndex = parseInt(indexedMatch[2]) - 1;
+                if (requestedIndex >= 0 && requestedIndex < currentContexts.length) {
+                  return currentContexts[requestedIndex] as Element;
+                } else {
+                  return null;
+                }
+              }
+
+              return currentContexts[0] as Element;
+            }
+
+            return null;
+          } catch (err) {
+            console.error("XPath evaluation failed:", xpath, err);
+            return null;
+          }
+        };
+
+        const queryInsideContext = (
+          context: Document | Element | ShadowRoot,
+          part: string
+        ): Element[] => {
+          try {
+            const { tagName, conditions } = parseXPathPart(part);
+
+            const candidateElements = Array.from(context.querySelectorAll(tagName));
+            if (candidateElements.length === 0) {
+              return [];
+            }
+
+            const matchingElements = candidateElements.filter((el) => {
+              return elementMatchesConditions(el, conditions);
+            });
+
+            return matchingElements;
+          } catch (err) {
+            console.error("Error in queryInsideContext:", err);
+            return [];
+          }
+        };
+
+        const parseXPathPart = (
+          part: string
+        ): { tagName: string; conditions: string[] } => {
+          const tagMatch = part.match(/^([a-zA-Z0-9-]+)/);
+          const tagName = tagMatch ? tagMatch[1] : "*";
+
+          const conditionMatches = part.match(/\[([^\]]+)\]/g);
+          const conditions = conditionMatches
+            ? conditionMatches.map((c) => c.slice(1, -1))
+            : [];
+
+          return { tagName, conditions };
+        };
+
+        const elementMatchesConditions = (
+          element: Element,
+          conditions: string[]
+        ): boolean => {
+          for (const condition of conditions) {
+            if (!elementMatchesCondition(element, condition)) {
+              return false;
+            }
+          }
+          return true;
+        };
+
+        const elementMatchesCondition = (
+          element: Element,
+          condition: string
+        ): boolean => {
+          condition = condition.trim();
+
+          if (/^\d+$/.test(condition)) {
+            return true;
+          }
+
+          // Handle @attribute="value"
+          const attrMatch = condition.match(/^@([^=]+)=["']([^"']+)["']$/);
+          if (attrMatch) {
+            const [, attr, value] = attrMatch;
+            const elementValue = element.getAttribute(attr);
+            return elementValue === value;
+          }
+
+          // Handle contains(@class, 'value')
+          const classContainsMatch = condition.match(
+            /^contains\(@class,\s*["']([^"']+)["']\)$/
+          );
+          if (classContainsMatch) {
+            const className = classContainsMatch[1];
+            return element.classList.contains(className);
+          }
+
+          // Handle contains(@attribute, 'value')
+          const attrContainsMatch = condition.match(
+            /^contains\(@([^,]+),\s*["']([^"']+)["']\)$/
+          );
+          if (attrContainsMatch) {
+            const [, attr, value] = attrContainsMatch;
+            const elementValue = element.getAttribute(attr) || "";
+            return elementValue.includes(value);
+          }
+
+          // Handle text()="value"
+          const textMatch = condition.match(/^text\(\)=["']([^"']+)["']$/);
+          if (textMatch) {
+            const expectedText = textMatch[1];
+            const elementText = element.textContent?.trim() || "";
+            return elementText === expectedText;
+          }
+
+          // Handle contains(text(), 'value')
+          const textContainsMatch = condition.match(
+            /^contains\(text\(\),\s*["']([^"']+)["']\)$/
+          );
+          if (textContainsMatch) {
+            const expectedText = textContainsMatch[1];
+            const elementText = element.textContent?.trim() || "";
+            return elementText.includes(expectedText);
+          }
+
+          // Handle count(*)=0 (element has no children)
+          if (condition === "count(*)=0") {
+            return element.children.length === 0;
+          }
+
+          // Handle other count conditions
+          const countMatch = condition.match(/^count\(\*\)=(\d+)$/);
+          if (countMatch) {
+            const expectedCount = parseInt(countMatch[1]);
+            return element.children.length === expectedCount;
+          }
+
+          return true;
+        };
+
+        // Enhanced value extraction with shadow DOM support
+        const extractValueWithShadowSupport = (
+          element: Element,
+          attribute: string
+        ): string | null => {
+          if (!element) return null;
+
+          const baseURL =
+            element.ownerDocument?.location?.href || window.location.origin;
+
+          // Check shadow DOM content first
+          if (element.shadowRoot) {
+            const shadowContent = element.shadowRoot.textContent;
+            if (shadowContent?.trim()) {
+              return shadowContent.trim();
+            }
+          }
+
+          if (attribute === "innerText") {
+            let textContent =
+              (element as HTMLElement).innerText?.trim() ||
+              (element as HTMLElement).textContent?.trim();
+
+            if (!textContent) {
+              const dataAttributes = [
+                "data-600",
+                "data-text",
+                "data-label",
+                "data-value",
+                "data-content",
+              ];
+              for (const attr of dataAttributes) {
+                const dataValue = element.getAttribute(attr);
+                if (dataValue && dataValue.trim()) {
+                  textContent = dataValue.trim();
+                  break;
+                }
+              }
+            }
+
+            return textContent || null;
+          } else if (attribute === "innerHTML") {
+            return element.innerHTML?.trim() || null;
+          } else if (attribute === "href") {
+            let anchorElement = element;
+
+            if (element.tagName !== "A") {
+              anchorElement =
+                element.closest("a") ||
+                element.parentElement?.closest("a") ||
+                element;
+            }
+
+            const hrefValue = anchorElement.getAttribute("href");
+            if (!hrefValue || hrefValue.trim() === "") {
+              return null;
+            }
+
+            try {
+              return new URL(hrefValue, baseURL).href;
+            } catch (e) {
+              console.warn("Error creating URL from", hrefValue, e);
+              return hrefValue;
+            }
+          } else if (attribute === "src") {
+            const attrValue = element.getAttribute(attribute);
+            const dataAttr = attrValue || element.getAttribute("data-" + attribute);
+
+            if (!dataAttr || dataAttr.trim() === "") {
+              const style = window.getComputedStyle(element as HTMLElement);
+              const bgImage = style.backgroundImage;
+              if (bgImage && bgImage !== "none") {
+                const matches = bgImage.match(/url\(['"]?([^'")]+)['"]?\)/);
+                return matches ? new URL(matches[1], baseURL).href : null;
+              }
+              return null;
+            }
+
+            try {
+              return new URL(dataAttr, baseURL).href;
+            } catch (e) {
+              console.warn("Error creating URL from", dataAttr, e);
+              return dataAttr;
+            }
+          }
+          return element.getAttribute(attribute);
+        };
+
+        // Simple deepest child finder - limit depth to prevent hanging
+        const findDeepestChild = (element: HTMLElement): HTMLElement => {
+          let deepest = element;
+          let maxDepth = 0;
+
+          const traverse = (el: HTMLElement, depth: number) => {
+            if (depth > 3) return;
+
+            const text = el.textContent?.trim() || "";
+            if (isValidData(text) && depth > maxDepth) {
+              maxDepth = depth;
+              deepest = el;
+            }
+
+            const children = Array.from(el.children).slice(0, 3);
+            children.forEach((child) => {
+              if (child instanceof HTMLElement) {
+                traverse(child, depth + 1);
+              }
+            });
+          };
+
+          traverse(element, 0);
+          return deepest;
+        };
+
+        validatedChildSelectors.forEach((childSelector, index) => {
+          try {
+            // Detect if this selector should use shadow DOM traversal
+            const isShadowSelector = childSelector.includes('>>') || 
+                                   childSelector.startsWith('//') && 
+                                   (listSelector.includes('>>') || currentSnapshot?.snapshot);
+
+            const element = evaluateXPathWithShadowSupport(
+              iframeElement.contentDocument!,
+              childSelector,
+              isShadowSelector
+            ) as HTMLElement;
+
+            if (element && isElementVisible(element)) {
+              const rect = element.getBoundingClientRect();
+              const position = { x: rect.left, y: rect.top };
+
+              const tagName = element.tagName.toLowerCase();
+              const isShadow = element.getRootNode() instanceof ShadowRoot;
+
+              if (tagName === "a") {
+                const anchor = element as HTMLAnchorElement;
+                const href = extractValueWithShadowSupport(anchor, "href");
+                const text = extractValueWithShadowSupport(anchor, "innerText");
+
+                if (
+                  href &&
+                  href.trim() !== "" &&
+                  href !== window.location.href &&
+                  !href.startsWith("javascript:") &&
+                  !href.startsWith("#")
+                ) {
+                  const fieldIdHref = Date.now() + index * 1000;
+
+                  candidateFields.push({
+                    id: fieldIdHref,
+                    element: element,
+                    isLeaf: true,
+                    depth: 0,
+                    position: position,
+                    field: {
+                      id: fieldIdHref,
+                      type: "text",
+                      label: `Label ${index * 2 + 1}`,
+                      data: href,
+                      selectorObj: {
+                        selector: childSelector,
+                        tag: element.tagName,
+                        isShadow: isShadow,
+                        attribute: "href",
+                      },
+                    },
+                  });
+                }
+
+                const fieldIdText = Date.now() + index * 1000 + 1;
+
+                if (text && isValidData(text)) {
+                  candidateFields.push({
+                    id: fieldIdText,
+                    element: element,
+                    isLeaf: true,
+                    depth: 0,
+                    position: position,
+                    field: {
+                      id: fieldIdText,
+                      type: "text",
+                      label: `Label ${index * 2 + 2}`,
+                      data: text,
+                      selectorObj: {
+                        selector: childSelector,
+                        tag: element.tagName,
+                        isShadow: isShadow,
+                        attribute: "innerText",
+                      },
+                    },
+                  });
+                }
+              } else if (tagName === "img") {
+                const img = element as HTMLImageElement;
+                const src = extractValueWithShadowSupport(img, "src");
+                const alt = extractValueWithShadowSupport(img, "alt");
+
+                if (src && !src.startsWith("data:") && src.length > 10) {
+                  const fieldId = Date.now() + index * 1000;
+
+                  candidateFields.push({
+                    id: fieldId,
+                    element: element,
+                    isLeaf: true,
+                    depth: 0,
+                    position: position,
+                    field: {
+                      id: fieldId,
+                      type: "text",
+                      label: `Label ${index + 1}`,
+                      data: src,
+                      selectorObj: {
+                        selector: childSelector,
+                        tag: element.tagName,
+                        isShadow: isShadow,
+                        attribute: "src",
+                      },
+                    },
+                  });
+                }
+
+                if (alt && isValidData(alt)) {
+                  const fieldId = Date.now() + index * 1000 + 1;
+
+                  candidateFields.push({
+                    id: fieldId,
+                    element: element,
+                    isLeaf: true,
+                    depth: 0,
+                    position: position,
+                    field: {
+                      id: fieldId,
+                      type: "text",
+                      label: `Label ${index + 2}`,
+                      data: alt,
+                      selectorObj: {
+                        selector: childSelector,
+                        tag: element.tagName,
+                        isShadow: isShadow,
+                        attribute: "alt",
+                      },
+                    },
+                  });
+                }
+              } else {
+                const deepestElement = findDeepestChild(element);
+                const data = extractValueWithShadowSupport(deepestElement, "innerText");
+
+                if (data && isValidData(data)) {
+                  const isLeaf = isLeafElement(deepestElement);
+                  const depth = getElementDepthFromList(
+                    deepestElement,
+                    listSelector,
+                    iframeElement.contentDocument!
+                  );
+
+                  const fieldId = Date.now() + index;
+
+                  candidateFields.push({
+                    id: fieldId,
+                    element: deepestElement,
+                    isLeaf: isLeaf,
+                    depth: depth,
+                    position: position,
+                    field: {
+                      id: fieldId,
+                      type: "text",
+                      label: `Label ${index + 1}`,
+                      data: data,
+                      selectorObj: {
+                        selector: childSelector,
+                        tag: deepestElement.tagName,
+                        isShadow: deepestElement.getRootNode() instanceof ShadowRoot,
+                        attribute: "innerText",
+                      },
+                    },
+                  });
+                }
+              }
+            }
+          } catch (error) {
+            console.warn(
+              `Failed to process child selector ${childSelector}:`,
+              error
+            );
+          }
+        });
+
+        candidateFields.sort((a, b) => {
+          const yDiff = a.position.y - b.position.y;
+          
+          if (Math.abs(yDiff) <= 5) {
+            return a.position.x - b.position.x;
+          }
+          
+          return yDiff;
+        });
+
+        const filteredCandidates = removeParentChildDuplicates(candidateFields);
+
+        const finalFields = removeDuplicateContent(filteredCandidates);
+        return finalFields;
+      },
+      [currentSnapshot]
+    );
+
+    const isLeafElement = (element: HTMLElement): boolean => {
+      const children = Array.from(element.children) as HTMLElement[];
+
+      if (children.length === 0) return true;
+
+      const hasContentfulChildren = children.some((child) => {
+        const text = child.textContent?.trim() || "";
+        return text.length > 0 && text !== element.textContent?.trim();
+      });
+
+      return !hasContentfulChildren;
+    };
+
+    const getElementDepthFromList = (
+      element: HTMLElement,
+      listSelector: string,
+      document: Document
+    ): number => {
+      try {
+        const listResult = document.evaluate(
+          listSelector,
+          document,
+          null,
+          XPathResult.FIRST_ORDERED_NODE_TYPE,
+          null
+        );
+
+        const listElement = listResult.singleNodeValue as HTMLElement;
+        if (!listElement) return 0;
+
+        let depth = 0;
+        let current = element;
+
+        while (current && current !== listElement && current.parentElement) {
+          depth++;
+          current = current.parentElement;
+          if (depth > 20) break;
         }
-    }, [isDOMMode, listSelector, socket, getList, currentSnapshot]);
+
+        return current === listElement ? depth : 0;
+      } catch (error) {
+        return 0;
+      }
+    };
+
+    const removeParentChildDuplicates = (
+      candidates: Array<{
+        id: number;
+        field: TextStep;
+        element: HTMLElement;
+        isLeaf: boolean;
+        depth: number;
+        position: { x: number; y: number };
+      }>
+    ): Array<{
+      id: number;
+      field: TextStep;
+      element: HTMLElement;
+      isLeaf: boolean;
+      depth: number;
+      position: { x: number; y: number };
+    }> => {
+      const filtered: Array<{
+        id: number;
+        field: TextStep;
+        element: HTMLElement;
+        isLeaf: boolean;
+        depth: number;
+        position: { x: number; y: number };
+      }> = [];
+
+      for (const candidate of candidates) {
+        let shouldInclude = true;
+
+        for (const existing of filtered) {
+          if (candidate.element.contains(existing.element)) {
+            shouldInclude = false;
+            break;
+          } else if (existing.element.contains(candidate.element)) {
+            const existingIndex = filtered.indexOf(existing);
+            filtered.splice(existingIndex, 1);
+            break;
+          }
+        }
+
+        if (candidate.element.tagName.toLowerCase() === "a") {
+          shouldInclude = true;
+        }
+
+        if (shouldInclude) {
+          filtered.push(candidate);
+        }
+      }
+
+      return filtered;
+    };
+
+    const removeDuplicateContent = (
+      candidates: Array<{
+        id: number;
+        field: TextStep;
+        element: HTMLElement;
+        isLeaf: boolean;
+        depth: number;
+        position: { x: number; y: number };
+      }>
+    ): Record<string, TextStep> => {
+      const finalFields: Record<string, TextStep> = {};
+      const seenContent = new Set<string>();
+      let labelCounter = 1;
+
+      for (const candidate of candidates) {
+        const content = candidate.field.data.trim().toLowerCase();
+
+        if (!seenContent.has(content)) {
+          seenContent.add(content);
+          finalFields[candidate.id] = {
+            ...candidate.field,
+            label: `Label ${labelCounter++}`,
+          };
+        }
+      }
+
+      return finalFields;
+    };
+
+    useEffect(() => {
+      if (isDOMMode && listSelector) {
+        socket?.emit("setGetList", { getList: true });
+        socket?.emit("listSelector", { selector: listSelector });
+
+        clientSelectorGenerator.setListSelector(listSelector);
+
+        if (currentSnapshot && cachedListSelector !== listSelector) {
+          setCachedChildSelectors([]);
+          setIsCachingChildSelectors(true);
+          setCachedListSelector(listSelector);
+
+          const iframeElement = document.querySelector(
+            "#dom-browser-iframe"
+          ) as HTMLIFrameElement;
+
+          if (iframeElement?.contentDocument) {
+            setTimeout(() => {
+              try {
+                const childSelectors =
+                  clientSelectorGenerator.getChildSelectors(
+                    iframeElement.contentDocument as Document,
+                    listSelector
+                  );
+
+                clientSelectorGenerator.precomputeChildSelectorMappings(
+                  childSelectors,
+                  iframeElement.contentDocument as Document
+                );
+
+                setCachedChildSelectors(childSelectors);
+
+                const autoFields = createFieldsFromChildSelectors(
+                  childSelectors,
+                  listSelector
+                );
+
+                if (Object.keys(autoFields).length > 0) {
+                  setFields(autoFields);
+
+                  addListStep(
+                    listSelector,
+                    autoFields,
+                    currentListId || Date.now(),
+                    currentListActionId || `list-${crypto.randomUUID()}`,
+                    { type: "", selector: paginationSelector },
+                    undefined,
+                    false
+                  );
+                }
+              } catch (error) {
+                console.error("Error during child selector caching:", error);
+              } finally {
+                setIsCachingChildSelectors(false);
+
+                if (pendingNotification) {
+                  notify(pendingNotification.type, pendingNotification.message);
+                  setPendingNotification(null);
+                }
+              }
+            }, 100);
+          } else {
+            setIsCachingChildSelectors(false);
+          }
+        }
+      }
+    }, [
+      isDOMMode,
+      listSelector,
+      socket,
+      getList,
+      currentSnapshot,
+      cachedListSelector,
+      pendingNotification,
+      notify,
+    ]);
+
+    useEffect(() => {
+        if (!listSelector) {
+            setCachedListSelector(null);
+        }
+    }, [listSelector]);
 
     useEffect(() => {
         coordinateMapper.updateDimensions(dimensions.width, dimensions.height, viewportInfo.width, viewportInfo.height);
@@ -389,7 +1246,6 @@ export const BrowserWindow = () => {
             socket.on("screencast", screencastHandler);
             socket.on("domcast", rrwebSnapshotHandler);
             socket.on("dom-mode-enabled", domModeHandler);
-            // socket.on("screenshot-mode-enabled", screenshotModeHandler);
             socket.on("dom-mode-error", domModeErrorHandler);
         }
 
@@ -399,11 +1255,9 @@ export const BrowserWindow = () => {
 
         return () => {
             if (socket) {
-                console.log("Cleaning up DOM streaming event listeners");
                 socket.off("screencast", screencastHandler);
                 socket.off("domcast", rrwebSnapshotHandler);
                 socket.off("dom-mode-enabled", domModeHandler);
-                // socket.off("screenshot-mode-enabled", screenshotModeHandler);
                 socket.off("dom-mode-error", domModeErrorHandler);
             }
         };
@@ -415,7 +1269,6 @@ export const BrowserWindow = () => {
         screencastHandler,
         rrwebSnapshotHandler,
         domModeHandler,
-        // screenshotModeHandler,
         domModeErrorHandler,
     ]);
 
@@ -425,11 +1278,16 @@ export const BrowserWindow = () => {
             selector: string;
             elementInfo: ElementInfo | null;
             childSelectors?: string[];
+            isShadow?: boolean;
             groupInfo?: {
                 isGroupElement: boolean;
                 groupSize: number;
                 groupElements: HTMLElement[];
                 groupFingerprint: ElementFingerprint;
+            };
+            similarElements?: {
+                elements: HTMLElement[];
+                rects: DOMRect[];
             };
             isDOMMode?: boolean;
         }) => {
@@ -460,6 +1318,22 @@ export const BrowserWindow = () => {
             const iframeRect = iframeElement.getBoundingClientRect();
             const IFRAME_BODY_PADDING = 16;
 
+            let mappedSimilarElements;
+            if (data.similarElements) {
+                mappedSimilarElements = {
+                elements: data.similarElements.elements,
+                rects: data.similarElements.rects.map(
+                    (rect) =>
+                    new DOMRect(
+                        rect.x + iframeRect.left - IFRAME_BODY_PADDING,
+                        rect.y + iframeRect.top - IFRAME_BODY_PADDING,
+                        rect.width,
+                        rect.height
+                    )
+                ),
+                };
+            }
+
             if (data.groupInfo) {
                 setCurrentGroupInfo(data.groupInfo);
             } else {
@@ -477,6 +1351,7 @@ export const BrowserWindow = () => {
                 ...data,
                 rect: absoluteRect,
                 childSelectors: data.childSelectors || cachedChildSelectors,
+                similarElements: mappedSimilarElements,
             };
 
             if (getList === true) {
@@ -639,21 +1514,6 @@ export const BrowserWindow = () => {
     }, [getList, socket, listSelector, paginationMode, paginationType, limitMode]);
 
     useEffect(() => {
-        document.addEventListener('mousemove', onMouseMove, false);
-        if (socket) {
-          socket.off("highlighter", highlighterHandler);
-          
-          socket.on("highlighter", highlighterHandler);
-        }
-        return () => {
-          document.removeEventListener('mousemove', onMouseMove);
-          if (socket) {
-            socket.off("highlighter", highlighterHandler);
-          }
-        };
-    }, [socket, highlighterHandler, onMouseMove, getList, listSelector]);
-
-    useEffect(() => {
         document.addEventListener("mousemove", onMouseMove, false);
         if (socket) {
             socket.off("highlighter", highlighterHandler);
@@ -669,7 +1529,6 @@ export const BrowserWindow = () => {
 
     useEffect(() => {
         if (socket && listSelector) {
-          console.log('Syncing list selector with server:', listSelector);
           socket.emit('setGetList', { getList: true });
           socket.emit('listSelector', { selector: listSelector });
         }
@@ -686,6 +1545,7 @@ export const BrowserWindow = () => {
       (highlighterData: {
         rect: DOMRect;
         selector: string;
+        isShadow?: boolean;
         elementInfo: ElementInfo | null;
         childSelectors?: string[];
         groupInfo?: {
@@ -713,11 +1573,17 @@ export const BrowserWindow = () => {
               )
             );
             addListStep(
-              listSelector!,
-              fields,
-              currentListId || 0,
-              currentListActionId || `list-${crypto.randomUUID()}`,
-              { type: paginationType, selector: highlighterData.selector }
+                listSelector!,
+                fields,
+                currentListId || 0,
+                currentListActionId || `list-${crypto.randomUUID()}`,
+                { 
+                    type: paginationType, 
+                    selector: highlighterData.selector,
+                    isShadow: highlighterData.isShadow 
+                },
+                undefined,
+                highlighterData.isShadow
             );
             socket?.emit("setPaginationMode", { pagination: false });
           }
@@ -729,6 +1595,15 @@ export const BrowserWindow = () => {
           !listSelector &&
           highlighterData.groupInfo?.isGroupElement
         ) {
+          if (highlighterData?.groupInfo.groupElements) {
+            setProcessingGroupCoordinates(
+              highlighterData.groupInfo.groupElements.map((element) => ({
+                element,
+                rect: element.getBoundingClientRect(),
+              }))
+            );
+          }
+
           let cleanedSelector = highlighterData.selector;
 
           setListSelector(cleanedSelector);
@@ -776,7 +1651,7 @@ export const BrowserWindow = () => {
               selectorObj: {
                 selector: currentSelector,
                 tag: highlighterData.elementInfo?.tagName,
-                shadow: highlighterData.elementInfo?.isShadowRoot,
+                isShadow: highlighterData.isShadow || highlighterData.elementInfo?.isShadowRoot,
                 attribute,
               },
             };
@@ -794,7 +1669,9 @@ export const BrowserWindow = () => {
                 updatedFields,
                 currentListId,
                 currentListActionId || `list-${crypto.randomUUID()}`,
-                { type: "", selector: paginationSelector }
+                { type: "", selector: paginationSelector },
+                undefined,
+                highlighterData.isShadow
               );
             }
           } else {
@@ -829,7 +1706,7 @@ export const BrowserWindow = () => {
               {
                 selector: highlighterData.selector,
                 tag: highlighterData.elementInfo?.tagName,
-                shadow: highlighterData.elementInfo?.isShadowRoot,
+                isShadow: highlighterData.isShadow || highlighterData.elementInfo?.isShadowRoot,
                 attribute,
               },
               currentTextActionId || `text-${crypto.randomUUID()}`
@@ -908,7 +1785,7 @@ export const BrowserWindow = () => {
                 {
                   selector: highlighterData.selector,
                   tag: highlighterData.elementInfo?.tagName,
-                  shadow: highlighterData.elementInfo?.isShadowRoot,
+                  isShadow: highlighterData.isShadow || highlighterData.elementInfo?.isShadowRoot,
                   attribute,
                 },
                 currentTextActionId || `text-${crypto.randomUUID()}`
@@ -942,7 +1819,9 @@ export const BrowserWindow = () => {
                 fields,
                 currentListId || 0,
                 currentListActionId || `list-${crypto.randomUUID()}`,
-                { type: paginationType, selector: highlighterData.selector }
+                { type: paginationType, selector: highlighterData.selector, isShadow: highlighterData.isShadow },
+                undefined,
+                highlighterData.isShadow
               );
               socket?.emit("setPaginationMode", { pagination: false });
             }
@@ -1000,7 +1879,7 @@ export const BrowserWindow = () => {
                 selectorObj: {
                   selector: currentSelector,
                   tag: highlighterData.elementInfo?.tagName,
-                  shadow: highlighterData.elementInfo?.isShadowRoot,
+                  isShadow: highlighterData.isShadow || highlighterData.elementInfo?.isShadowRoot,
                   attribute,
                 },
               };
@@ -1018,7 +1897,9 @@ export const BrowserWindow = () => {
                   updatedFields,
                   currentListId,
                   currentListActionId || `list-${crypto.randomUUID()}`,
-                  { type: "", selector: paginationSelector }
+                  { type: "", selector: paginationSelector, isShadow: highlighterData.isShadow },
+                  undefined,
+                  highlighterData.isShadow
                 );
               }
             } else {
@@ -1052,7 +1933,7 @@ export const BrowserWindow = () => {
                     addTextStep('', data, {
                         selector: selectedElement.selector,
                         tag: selectedElement.info?.tagName,
-                        shadow: selectedElement.info?.isShadowRoot,
+                        isShadow: highlighterData?.isShadow || selectedElement.info?.isShadowRoot,
                         attribute: attribute
                     }, currentTextActionId || `text-${crypto.randomUUID()}`);
                 }
@@ -1065,7 +1946,7 @@ export const BrowserWindow = () => {
                         selectorObj: {
                             selector: selectedElement.selector,
                             tag: selectedElement.info?.tagName,
-                            shadow: selectedElement.info?.isShadowRoot,
+                            isShadow: highlighterData?.isShadow || highlighterData?.elementInfo?.isShadowRoot,
                             attribute: attribute
                         }
                     };
@@ -1083,7 +1964,9 @@ export const BrowserWindow = () => {
                             updatedFields, 
                             currentListId, 
                             currentListActionId || `list-${crypto.randomUUID()}`,
-                            { type: '', selector: paginationSelector }
+                            { type: "", selector: paginationSelector, isShadow: highlighterData?.isShadow },
+                            undefined,
+                            highlighterData?.isShadow
                         );
                     }
                 }
@@ -1093,10 +1976,6 @@ export const BrowserWindow = () => {
         setShowAttributeModal(false);
         setSelectedElement(null);
         setAttributeOptions([]);
-
-        setTimeout(() => {
-        setShowAttributeModal(false);
-        }, 0);
     };
 
     const resetPaginationSelector = useCallback(() => {
@@ -1110,260 +1989,474 @@ export const BrowserWindow = () => {
     }, [paginationMode, resetPaginationSelector]);
 
     return (
-        <div onClick={handleClick} style={{ width: browserWidth }} id="browser-window">
-            {
-                getText === true || getList === true ? (
-                    <GenericModal
-                        isOpen={showAttributeModal}
-                        onClose={() => {
-                            setShowAttributeModal(false);
-                            setSelectedElement(null);
-                            setAttributeOptions([]);
-                        }}
-                        canBeClosed={true}
-                        modalStyle={modalStyle}
+      <div
+        onClick={handleClick}
+        style={{ width: browserWidth }}
+        id="browser-window"
+      >
+        {/* Attribute selection modal */}
+        {(getText === true || getList === true) && (
+          <GenericModal
+            isOpen={showAttributeModal}
+            onClose={() => {
+              setShowAttributeModal(false);
+              setSelectedElement(null);
+              setAttributeOptions([]);
+            }}
+            canBeClosed={true}
+            modalStyle={modalStyle}
+          >
+            <div>
+              <h2>Select Attribute</h2>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "20px",
+                  marginTop: "30px",
+                }}
+              >
+                {attributeOptions.map((option) => (
+                  <Button
+                    variant="outlined"
+                    size="medium"
+                    key={option.value}
+                    onClick={() => {
+                      handleAttributeSelection(option.value);
+                    }}
+                    style={{
+                      justifyContent: "flex-start",
+                      maxWidth: "80%",
+                      overflow: "hidden",
+                    }}
+                    sx={{
+                      color: "#ff00c3 !important",
+                      borderColor: "#ff00c3 !important",
+                      backgroundColor: "whitesmoke !important",
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: "block",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        maxWidth: "100%",
+                      }}
                     >
-                        <div>
-                            <h2>Select Attribute</h2>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '30px' }}>
-                                {attributeOptions.map((option) => (
-                                    <Button
-                                        variant="outlined"
-                                        size="medium"
-                                        key={option.value}
-                                        onClick={() => handleAttributeSelection(option.value)}
-                                        style={{
-                                            justifyContent: 'flex-start',
-                                            maxWidth: '80%',
-                                            overflow: 'hidden',
-                                            padding: '5px 10px',
-                                        }}
-                                        sx={{
-                                            color: '#ff00c3 !important',
-                                            borderColor: '#ff00c3 !important',
-                                            backgroundColor: 'whitesmoke !important',
-                                        }}
-                                    >
-                                        <span style={{
-                                            display: 'block',
-                                            whiteSpace: 'nowrap',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            maxWidth: '100%'
-                                        }}>
-                                            {option.label}
-                                        </span>
-                                    </Button>
-                                ))}
-                            </div>
-                        </div>
-                    </GenericModal>
-                ) : null
-            }
+                      {option.label}
+                    </span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </GenericModal>
+        )}
 
-            {datePickerInfo && (
-                <DatePicker
-                    coordinates={datePickerInfo.coordinates}
-                    selector={datePickerInfo.selector}
-                    onClose={() => setDatePickerInfo(null)}
-                />
-            )}
-            {dropdownInfo && (
-                <Dropdown
-                    coordinates={dropdownInfo.coordinates}
-                    selector={dropdownInfo.selector}
-                    options={dropdownInfo.options}
-                    onClose={() => setDropdownInfo(null)}
-                />
-            )}
-            {timePickerInfo && (
-                <TimePicker
-                    coordinates={timePickerInfo.coordinates}
-                    selector={timePickerInfo.selector}
-                    onClose={() => setTimePickerInfo(null)}
-                />
-            )}
-            {dateTimeLocalInfo && (
-                <DateTimeLocalPicker
-                    coordinates={dateTimeLocalInfo.coordinates}
-                    selector={dateTimeLocalInfo.selector}
-                    onClose={() => setDateTimeLocalInfo(null)}
-                />
-            )}
+        {datePickerInfo && (
+          <DatePicker
+            coordinates={datePickerInfo.coordinates}
+            selector={datePickerInfo.selector}
+            onClose={() => setDatePickerInfo(null)}
+          />
+        )}
+        {dropdownInfo && (
+          <Dropdown
+            coordinates={dropdownInfo.coordinates}
+            selector={dropdownInfo.selector}
+            options={dropdownInfo.options}
+            onClose={() => setDropdownInfo(null)}
+          />
+        )}
+        {timePickerInfo && (
+          <TimePicker
+            coordinates={timePickerInfo.coordinates}
+            selector={timePickerInfo.selector}
+            onClose={() => setTimePickerInfo(null)}
+          />
+        )}
+        {dateTimeLocalInfo && (
+          <DateTimeLocalPicker
+            coordinates={dateTimeLocalInfo.coordinates}
+            selector={dateTimeLocalInfo.selector}
+            onClose={() => setDateTimeLocalInfo(null)}
+          />
+        )}
 
-            <div style={{ height: dimensions.height, overflow: "hidden" }}>
-                {(getText === true || getList === true) &&
-                !showAttributeModal &&
-                highlighterData?.rect != null && (
-                    <>
-                    {!isDOMMode && canvasRef?.current && (
-                        <Highlighter
-                            unmodifiedRect={highlighterData?.rect}
-                            displayedSelector={highlighterData?.selector}
-                            width={dimensions.width}
-                            height={dimensions.height}
-                            canvasRect={canvasRef.current.getBoundingClientRect()}
-                        />
+        {/* Main content area */}
+        <div style={{ height: dimensions.height, overflow: "hidden" }}>
+          {/* Add CSS for the spinner animation */}
+          <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+
+          {(getText === true || getList === true) &&
+            !showAttributeModal &&
+            highlighterData?.rect != null && (
+              <>
+                {!isDOMMode && canvasRef?.current && (
+                  <Highlighter
+                    unmodifiedRect={highlighterData?.rect}
+                    displayedSelector={highlighterData?.selector}
+                    width={dimensions.width}
+                    height={dimensions.height}
+                    canvasRect={canvasRef.current.getBoundingClientRect()}
+                  />
+                )}
+
+                {isDOMMode && highlighterData && (
+                  <>
+                    {/* Individual element highlight (for non-group or hovered element) */}
+                    {((getText && !listSelector) || 
+                      (getList && paginationMode && paginationType !== "" && 
+                      !["none", "scrollDown", "scrollUp"].includes(paginationType))) && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          left: Math.max(0, highlighterData.rect.x),
+                          top: Math.max(0, highlighterData.rect.y),
+                          width: Math.min(
+                            highlighterData.rect.width,
+                            dimensions.width
+                          ),
+                          height: Math.min(
+                            highlighterData.rect.height,
+                            dimensions.height
+                          ),
+                          background: "rgba(255, 0, 195, 0.15)",
+                          border: "2px solid #ff00c3",
+                          borderRadius: "3px",
+                          pointerEvents: "none",
+                          zIndex: 1000,
+                          boxShadow: "0 0 0 1px rgba(255, 255, 255, 0.8)",
+                          transition: "all 0.1s ease-out",
+                        }}
+                      />
                     )}
 
-                    {isDOMMode && highlighterData && (
-                            <>
-                            {/* Individual element highlight (for non-group or hovered element) */}
-                            {(!getList ||
-                                listSelector ||
-                                !currentGroupInfo?.isGroupElement) && (
-                                <div
-                                    style={{
-                                        position: "absolute",
-                                        left: Math.max(0, highlighterData.rect.x),
-                                        top: Math.max(0, highlighterData.rect.y),
-                                        width: Math.min(
-                                            highlighterData.rect.width,
-                                            dimensions.width
-                                        ),
-                                        height: Math.min(
-                                            highlighterData.rect.height,
-                                            dimensions.height
-                                        ),
-                                        background: "rgba(255, 0, 195, 0.15)",
-                                        border: "2px solid #ff00c3",
-                                        borderRadius: "3px",
-                                        pointerEvents: "none",
-                                        zIndex: 1000,
-                                        boxShadow: "0 0 0 1px rgba(255, 255, 255, 0.8)",
-                                        transition: "all 0.1s ease-out",
-                                    }}
-                                />
-                            )}
+                    {/* Group elements highlighting with real-time coordinates */}
+                    {getList &&
+                      !listSelector &&
+                      currentGroupInfo?.isGroupElement &&
+                      highlighterData.groupElements &&
+                      highlighterData.groupElements.map(
+                        (groupElement, index) => (
+                          <React.Fragment key={index}>
+                            {/* Highlight box */}
+                            <div
+                              style={{
+                                position: "absolute",
+                                left: Math.max(0, groupElement.rect.x),
+                                top: Math.max(0, groupElement.rect.y),
+                                width: Math.min(
+                                  groupElement.rect.width,
+                                  dimensions.width
+                                ),
+                                height: Math.min(
+                                  groupElement.rect.height,
+                                  dimensions.height
+                                ),
+                                background: "rgba(255, 0, 195, 0.15)",
+                                border: "2px dashed #ff00c3",
+                                borderRadius: "3px",
+                                pointerEvents: "none",
+                                zIndex: 1000,
+                                boxShadow: "0 0 0 1px rgba(255, 255, 255, 0.8)",
+                                transition: "all 0.1s ease-out",
+                              }}
+                            />
 
-                            {/* Group elements highlighting with real-time coordinates */}
-                            {getList &&
-                                !listSelector &&
-                                currentGroupInfo?.isGroupElement &&
-                                highlighterData.groupElements &&
-                                highlighterData.groupElements.map((groupElement, index) => (
-                                <React.Fragment key={index}>
-                                    {/* Highlight box */}
-                                    <div
-                                        style={{
-                                            position: "absolute",
-                                            left: Math.max(0, groupElement.rect.x),
-                                            top: Math.max(0, groupElement.rect.y),
-                                            width: Math.min(
-                                                groupElement.rect.width,
-                                                dimensions.width
-                                            ),
-                                            height: Math.min(
-                                                groupElement.rect.height,
-                                                dimensions.height
-                                            ),
-                                            background: "rgba(255, 0, 195, 0.15)",
-                                            border: "2px dashed #ff00c3",
-                                            borderRadius: "3px",
-                                            pointerEvents: "none",
-                                            zIndex: 1000,
-                                            boxShadow: "0 0 0 1px rgba(255, 255, 255, 0.8)",
-                                            transition: "all 0.1s ease-out",
-                                        }}
-                                    />
+                            <div
+                              style={{
+                                position: "absolute",
+                                left: Math.max(0, groupElement.rect.x),
+                                top: Math.max(0, groupElement.rect.y - 20),
+                                background: "#ff00c3",
+                                color: "white",
+                                padding: "2px 6px",
+                                fontSize: "10px",
+                                fontWeight: "bold",
+                                borderRadius: "2px",
+                                pointerEvents: "none",
+                                zIndex: 1001,
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              List item {index + 1}
+                            </div>
+                          </React.Fragment>
+                        )
+                      )}
 
-                                    <div
-                                        style={{
-                                            position: "absolute",
-                                            left: Math.max(0, groupElement.rect.x),
-                                            top: Math.max(0, groupElement.rect.y - 20),
-                                            background: "#ff00c3",
-                                            color: "white",
-                                            padding: "2px 6px",
-                                            fontSize: "10px",
-                                            fontWeight: "bold",
-                                            borderRadius: "2px",
-                                            pointerEvents: "none",
-                                            zIndex: 1001,
-                                            whiteSpace: "nowrap",
-                                        }}
-                                    >
-                                        List item {index + 1}
-                                    </div>
-                                </React.Fragment>
-                                ))}
-                            </>
-                        )}
-                    </>
+                    {getList &&
+                      listSelector &&
+                      !paginationMode &&
+                      !limitMode &&
+                      highlighterData?.similarElements &&
+                      highlighterData.similarElements.rects.map(
+                        (rect, index) => (
+                          <React.Fragment key={`item-${index}`}>
+                            {/* Highlight box for similar element */}
+                            <div
+                              style={{
+                                position: "absolute",
+                                left: Math.max(0, rect.x),
+                                top: Math.max(0, rect.y),
+                                width: Math.min(rect.width, dimensions.width),
+                                height: Math.min(
+                                  rect.height,
+                                  dimensions.height
+                                ),
+                                background: "rgba(255, 0, 195, 0.15)",
+                                border: "2px dashed #ff00c3",
+                                borderRadius: "3px",
+                                pointerEvents: "none",
+                                zIndex: 1000,
+                                boxShadow: "0 0 0 1px rgba(255, 255, 255, 0.8)",
+                                transition: "all 0.1s ease-out",
+                              }}
+                            />
+
+                            {/* Label for similar element */}
+                            <div
+                              style={{
+                                position: "absolute",
+                                left: Math.max(0, rect.x),
+                                top: Math.max(0, rect.y - 20),
+                                background: "#ff00c3",
+                                color: "white",
+                                padding: "2px 6px",
+                                fontSize: "10px",
+                                fontWeight: "bold",
+                                borderRadius: "2px",
+                                pointerEvents: "none",
+                                zIndex: 1001,
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              Item {index + 1}
+                            </div>
+                          </React.Fragment>
+                        )
+                      )}
+                  </>
                 )}
+              </>
+            )}
 
-                {isDOMMode ? (
-                    currentSnapshot ? (
-                        <DOMBrowserRenderer
-                            width={dimensions.width}
-                            height={dimensions.height}
-                            snapshot={currentSnapshot}
-                            getList={getList}
-                            getText={getText}
-                            listSelector={listSelector}
-                            cachedChildSelectors={cachedChildSelectors}
-                            paginationMode={paginationMode}
-                            paginationType={paginationType}
-                            limitMode={limitMode}
-                            onHighlight={(data: any) => {
-                                domHighlighterHandler(data);
-                            }}
-                            onElementSelect={handleDOMElementSelection}
-                            onShowDatePicker={handleShowDatePicker}
-                            onShowDropdown={handleShowDropdown}
-                            onShowTimePicker={handleShowTimePicker}
-                            onShowDateTimePicker={handleShowDateTimePicker}
-                        />
-                    ) : (
-                        <div
-                        style={{
-                            width: dimensions.width,
-                            height: dimensions.height,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            background: "#f5f5f5",
-                            borderRadius: "5px",
-                            flexDirection: "column",
-                            gap: "20px",
-                        }}
-                        >
-                        <div
-                            style={{
-                            width: "60px",
-                            height: "60px",
-                            borderTop: "4px solid transparent",
-                            borderRadius: "50%",
-                            animation: "spin 1s linear infinite",
-                            }}
-                        />
-                        <div
-                            style={{
-                            fontSize: "18px",
-                            color: "#ff00c3",
-                            fontWeight: "bold",
-                            }}
-                        >
-                            Loading website...
-                        </div>
-                        <style>{`
-                            @keyframes spin {
-                                0% { transform: rotate(0deg); }
-                                100% { transform: rotate(360deg); }
-                            }
-                        `}</style>
-                        </div>
-                    )
-                ) : (
-                    /* Screenshot mode canvas */
-                    <Canvas
-                        onCreateRef={setCanvasReference}
-                        width={dimensions.width}
-                        height={dimensions.height}
+          {isDOMMode ? (
+            <div
+              style={{ position: "relative", width: "100%", height: "100%" }}
+            >
+              {currentSnapshot ? (
+                <DOMBrowserRenderer
+                  width={dimensions.width}
+                  height={dimensions.height}
+                  snapshot={currentSnapshot}
+                  getList={getList}
+                  getText={getText}
+                  listSelector={listSelector}
+                  cachedChildSelectors={cachedChildSelectors}
+                  paginationMode={paginationMode}
+                  paginationType={paginationType}
+                  limitMode={limitMode}
+                  onHighlight={(data) => {
+                    domHighlighterHandler(data);
+                  }}
+                  isCachingChildSelectors={isCachingChildSelectors}
+                  onElementSelect={handleDOMElementSelection}
+                  onShowDatePicker={handleShowDatePicker}
+                  onShowDropdown={handleShowDropdown}
+                  onShowTimePicker={handleShowTimePicker}
+                  onShowDateTimePicker={handleShowDateTimePicker}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: dimensions.width,
+                    height: dimensions.height,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "#f5f5f5",
+                    borderRadius: "5px",
+                    flexDirection: "column",
+                    gap: "20px",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "60px",
+                      height: "60px",
+                      borderTop: "4px solid transparent",
+                      borderRadius: "50%",
+                      animation: "spin 1s linear infinite",
+                    }}
+                  />
+                  <div
+                    style={{
+                      fontSize: "18px",
+                      color: "#ff00c3",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    Loading website...
+                  </div>
+                  <style>{`
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        `}</style>
+                </div>
+              )}
+
+              {/* Loading overlay positioned specifically over DOM content */}
+              {isCachingChildSelectors && (
+              <>
+                {/* Background overlay */}
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: "100%",
+                    background: "rgba(255, 255, 255, 0.8)",
+                    zIndex: 9999,
+                    pointerEvents: "none",
+                    borderRadius: "0px 0px 5px 5px",
+                  }}
+                />
+
+                {/* Use processing coordinates captured before listSelector was set */}
+                {processingGroupCoordinates.map((groupElement, index) => (
+                  <React.Fragment key={`group-highlight-${index}`}>
+                    {/* Original highlight box */}
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: groupElement.rect.x,
+                        top: groupElement.rect.y,
+                        width: groupElement.rect.width,
+                        height: groupElement.rect.height,
+                        background: "rgba(255, 0, 195, 0.15)",
+                        border: "2px dashed #ff00c3",
+                        borderRadius: "3px",
+                        pointerEvents: "none",
+                        zIndex: 10000,
+                        boxShadow: "0 0 0 1px rgba(255, 255, 255, 0.8)",
+                        transition: "all 0.1s ease-out",
+                      }}
                     />
+
+                    {/* Label */}
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: groupElement.rect.x,
+                        top: groupElement.rect.y - 20,
+                        background: "#ff00c3",
+                        color: "white",
+                        padding: "2px 6px",
+                        fontSize: "10px",
+                        fontWeight: "bold",
+                        borderRadius: "2px",
+                        pointerEvents: "none",
+                        zIndex: 10001,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      List item {index + 1}
+                    </div>
+
+                    {/* Scanning animation */}
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: groupElement.rect.x,
+                        top: groupElement.rect.y,
+                        width: groupElement.rect.width,
+                        height: groupElement.rect.height,
+                        overflow: "hidden",
+                        zIndex: 10002,
+                        pointerEvents: "none",
+                        borderRadius: "3px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          position: "absolute",
+                          left: 0,
+                          width: "100%",
+                          height: "8px",
+                          background:
+                            "linear-gradient(90deg, transparent 0%, rgba(255, 0, 195, 0.6) 50%, transparent 100%)",
+                          animation: `scanDown-${index} 2s ease-in-out infinite`,
+                          willChange: "transform",
+                        }}
+                      />
+                    </div>
+
+                    <style>{`
+                    @keyframes scanDown-${index} {
+                        0% {
+                        transform: translateY(-8px);
+                        }
+                        100% {
+                        transform: translateY(${groupElement.rect.height}px);
+                        }
+                    }
+                    `}</style>
+                  </React.Fragment>
+                ))}
+
+                {/* Fallback loader */}
+                {processingGroupCoordinates.length === 0 && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      height: "100%",
+                      background: "rgba(255, 255, 255, 0.8)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      zIndex: 9999,
+                      pointerEvents: "none",
+                      borderRadius: "0px 0px 5px 5px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "40px",
+                        height: "40px",
+                        border: "4px solid #f3f3f3",
+                        borderTop: "4px solid #ff00c3",
+                        borderRadius: "50%",
+                        animation: "spin 1s linear infinite",
+                      }}
+                    />
+                  </div>
                 )}
+              </>
+            )}
             </div>
+          ) : (
+            /* Screenshot mode canvas */
+            <Canvas
+              onCreateRef={setCanvasReference}
+              width={dimensions.width}
+              height={dimensions.height}
+            />
+          )}
         </div>
+      </div>
     );
 };
 
