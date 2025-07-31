@@ -92,9 +92,9 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
           </Typography>
           <Typography variant="body1" gutterBottom>
             Extract web data without getting blocked on Maxun Cloud.
-            As a thank-you, OSS users get <strong>5% off</strong>.
+            As a thank-you, OSS users get <strong>8% off</strong>.
           </Typography>
-          <Button href="https://app.maxun.dev/login" target="_blank" variant="contained" fullWidth sx={{ mt: 2 }}>
+          <Button href="https://app.maxun.dev/login" target="_blank"  fullWidth sx={{ mt: 2 }}>
             Go to Maxun Cloud
           </Button>
         </Box>
