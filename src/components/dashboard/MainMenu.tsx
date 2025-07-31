@@ -113,10 +113,10 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
           </Typography>
           <Stack direction="row" spacing={2} mt={2}>
             <Button href="https://github.com/sponsors/YOUR_GITHUB" target="_blank" variant="outlined" fullWidth>
-              One-Time
+              Sponsor $5 One-Time
             </Button>
             <Button href="https://github.com/sponsors/YOUR_GITHUB" target="_blank" variant="outlined" fullWidth>
-              Monthly
+              Sponsor $5 Monthly
             </Button>
           </Stack>
         </Box>
