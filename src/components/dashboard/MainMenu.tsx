@@ -107,7 +107,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             Unlock reliable web data extraction. Maxun Cloud ensures you bypass blocks and scale with ease.
           </Typography>
           <Typography variant="body1" gutterBottom>
-            As a thank-you to Open Source users, enjoy 8% off your subscription!
+            As a thank-you to open source users, enjoy 8% off your subscription!
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 2, mb: 0.5, fontSize: 13 }}>
             Use the discount code
