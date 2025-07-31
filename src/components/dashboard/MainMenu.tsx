@@ -3,9 +3,10 @@ import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
 import { useNavigate } from 'react-router-dom';
-import { Paper, Button, useTheme, Modal, Typography, Stack } from "@mui/material";
-import { AutoAwesome, FormatListBulleted, VpnKey, Usb, CloudQueue, Description, Favorite } from "@mui/icons-material";
+import { Paper, Button, useTheme, Modal, Typography, Stack, TextField, InputAdornment, IconButton } from "@mui/material"; // Added TextField, InputAdornment, IconButton
+import { AutoAwesome, FormatListBulleted, VpnKey, Usb, CloudQueue, Description, Favorite, ContentCopy } from "@mui/icons-material"; // Added ContentCopy
 import { useTranslation } from 'react-i18next';
+import { useGlobalInfoStore } from "../../context/globalInfo";
 
 interface MainMenuProps {
   value: string;
@@ -16,13 +17,25 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
   const theme = useTheme();
   const { t } = useTranslation();
   const navigate = useNavigate();
-
+  const { notify } = useGlobalInfoStore();
+  
   const [cloudModalOpen, setCloudModalOpen] = useState(false);
   const [sponsorModalOpen, setSponsorModalOpen] = useState(false);
+
+  const ossDiscountCode = "MAXUNOSS8"; 
 
   const handleChange = (event: React.SyntheticEvent, newValue: string) => {
     navigate(`/${newValue}`);
     handleChangeContent(newValue);
+  };
+
+  const copyDiscountCode = () => {
+    navigator.clipboard.writeText(ossDiscountCode).then(() => {
+      notify("success", "Discount code copied to clipboard!");
+    }).catch(err => {
+      console.error('Failed to copy text: ', err);
+      notify("error", "Failed to copy discount code.");
+    });
   };
 
   const defaultcolor = theme.palette.mode === 'light' ? 'black' : 'white';
@@ -92,9 +105,31 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
           </Typography>
           <Typography variant="body1" gutterBottom>
             Extract web data without getting blocked on Maxun Cloud.
-            As a thank-you, OSS users get <strong>8% off</strong>.
           </Typography>
-          <Button href="https://app.maxun.dev/login" target="_blank"  fullWidth sx={{ mt: 2 }}>
+          <Typography variant="body1" gutterBottom>
+            As a thank-you to Open Source users, enjoy 8% off your subscription!
+          </Typography>
+
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 3, mb: 1 }}>
+            Use the following discount code at checkout:
+          </Typography>
+          <TextField
+            fullWidth
+            value={ossDiscountCode}
+            InputProps={{
+              readOnly: true,
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton onClick={copyDiscountCode} edge="end" aria-label="copy discount code">
+                    <ContentCopy />
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+            sx={{ mb: 3 }}
+          />
+
+          <Button href="https://app.maxun.dev/login" target="_blank" fullWidth variant="outlined" sx={{ mt: 2 }}>
             Go to Maxun Cloud
           </Button>
         </Box>
@@ -109,7 +144,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             Maxun is built by a small, full-time team. Your donations directly contribute to making it better.
             <br />
             <br />
-           Thank you for your support! 💙
+            Thank you for your support! 💙
           </Typography>
           <Stack direction="row" spacing={2} mt={2}>
             <Button href="https://github.com/sponsors/YOUR_GITHUB" target="_blank" variant="outlined" fullWidth>
