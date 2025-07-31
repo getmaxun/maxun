@@ -100,7 +100,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
 
       <Modal open={cloudModalOpen} onClose={() => setCloudModalOpen(false)}>
         <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', bgcolor: 'background.paper', borderRadius: 2, p: 4, width: 600 }}>
-          <Typography variant="h6" gutterBottom>
+          <Typography variant="h6" marginBottom={4}>
             Join Maxun Cloud
           </Typography>
           <Typography variant="body1" gutterBottom>
@@ -111,7 +111,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
           </Typography>
 
             <Typography variant="body2" color="text.secondary" sx={{ mt: 2, mb: 0.5, fontSize: 13 }}>
-            Use the discount code:
+            Use the discount code
             </Typography>
             <TextField
             size="small"
