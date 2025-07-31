@@ -106,7 +106,10 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             Support Maxun Open Source
           </Typography>
           <Typography variant="body1" gutterBottom>
-            Maxun is built with love and maintained by a small team. Help us keep it alive and growing 💙
+            Maxun is built by a small, full-time team. Your donations directly contribute to making it better.
+            <br />
+            <br />
+           Thank you for your support! 💙
           </Typography>
           <Stack direction="row" spacing={2} mt={2}>
             <Button href="https://github.com/sponsors/YOUR_GITHUB" target="_blank" variant="outlined" fullWidth>
