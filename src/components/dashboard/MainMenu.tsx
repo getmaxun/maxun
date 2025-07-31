@@ -18,11 +18,11 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { notify } = useGlobalInfoStore();
-  
+
   const [cloudModalOpen, setCloudModalOpen] = useState(false);
   const [sponsorModalOpen, setSponsorModalOpen] = useState(false);
 
-  const ossDiscountCode = "MAXUNOSS8"; 
+  const ossDiscountCode = "MAXUNOSS8";
 
   const handleChange = (event: React.SyntheticEvent, newValue: string) => {
     navigate(`/${newValue}`);
@@ -110,24 +110,24 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             As a thank-you to Open Source users, enjoy 8% off your subscription!
           </Typography>
 
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 2, mb: 0.5, fontSize: 13 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2, mb: 0.5, fontSize: 13 }}>
             Use the discount code
-            </Typography>
-            <TextField
+          </Typography>
+          <TextField
             size="small"
             value={ossDiscountCode}
             InputProps={{
               readOnly: true,
               endAdornment: (
-              <InputAdornment position="end">
-                <IconButton onClick={copyDiscountCode} edge="end" aria-label="copy discount code" size="small">
-                <ContentCopy fontSize="small" />
-                </IconButton>
-              </InputAdornment>
+                <InputAdornment position="end">
+                  <IconButton onClick={copyDiscountCode} edge="end" aria-label="copy discount code" size="small">
+                    <ContentCopy fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
               ),
             }}
             sx={{ mb: 2, fontSize: 13 }}
-            />
+          />
 
           <Button href="https://app.maxun.dev/login" target="_blank" fullWidth variant="outlined" sx={{ mt: 2 }}>
             Go to Maxun Cloud
