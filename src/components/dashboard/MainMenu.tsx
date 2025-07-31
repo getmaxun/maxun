@@ -102,7 +102,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
 
       <Modal open={sponsorModalOpen} onClose={() => setSponsorModalOpen(false)}>
         <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', bgcolor: 'background.paper', borderRadius: 2, p: 4, width: 600 }}>
-          <Typography variant="h6" gutterBottom>
+          <Typography variant="h6" marginBottom={4}>
             Support Maxun Open Source
           </Typography>
           <Typography variant="body1" gutterBottom>
