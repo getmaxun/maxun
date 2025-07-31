@@ -104,7 +104,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             Join Maxun Cloud
           </Typography>
           <Typography variant="body1" gutterBottom>
-            Extract web data without getting blocked on Maxun Cloud.
+            Unlock reliable web data extraction. Maxun Cloud ensures you bypass blocks and scale with ease.
           </Typography>
           <Typography variant="body1" gutterBottom>
             As a thank-you to Open Source users, enjoy 8% off your subscription!
