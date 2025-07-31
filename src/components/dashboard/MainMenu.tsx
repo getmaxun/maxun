@@ -109,7 +109,6 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
           <Typography variant="body1" gutterBottom>
             As a thank-you to Open Source users, enjoy 8% off your subscription!
           </Typography>
-
           <Typography variant="body2" color="text.secondary" sx={{ mt: 2, mb: 0.5, fontSize: 13 }}>
             Use the discount code
           </Typography>
