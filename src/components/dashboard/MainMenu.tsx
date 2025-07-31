@@ -112,7 +112,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             <Button href="https://github.com/sponsors/YOUR_GITHUB" target="_blank" variant="outlined" fullWidth>
               One-Time
             </Button>
-            <Button href="https://github.com/sponsors/YOUR_GITHUB" target="_blank" variant="contained" fullWidth>
+            <Button href="https://github.com/sponsors/YOUR_GITHUB" target="_blank" variant="outlined" fullWidth>
               Monthly
             </Button>
           </Stack>
