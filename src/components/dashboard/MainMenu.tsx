@@ -110,24 +110,24 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             As a thank-you to Open Source users, enjoy 8% off your subscription!
           </Typography>
 
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 3, mb: 1 }}>
-            Use the following discount code at checkout:
-          </Typography>
-          <TextField
-            fullWidth
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 2, mb: 0.5, fontSize: 13 }}>
+            Use the discount code:
+            </Typography>
+            <TextField
+            size="small"
             value={ossDiscountCode}
             InputProps={{
               readOnly: true,
               endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton onClick={copyDiscountCode} edge="end" aria-label="copy discount code">
-                    <ContentCopy />
-                  </IconButton>
-                </InputAdornment>
+              <InputAdornment position="end">
+                <IconButton onClick={copyDiscountCode} edge="end" aria-label="copy discount code" size="small">
+                <ContentCopy fontSize="small" />
+                </IconButton>
+              </InputAdornment>
               ),
             }}
-            sx={{ mb: 3 }}
-          />
+            sx={{ mb: 2, fontSize: 13 }}
+            />
 
           <Button href="https://app.maxun.dev/login" target="_blank" fullWidth variant="outlined" sx={{ mt: 2 }}>
             Go to Maxun Cloud
