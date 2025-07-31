@@ -146,10 +146,10 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             Thank you for your support! 💙
           </Typography>
           <Stack direction="row" spacing={2} mt={2}>
-            <Button href="https://github.com/sponsors/YOUR_GITHUB" target="_blank" variant="outlined" fullWidth>
+            <Button href="https://checkout.dodopayments.com/buy/pdt_1Bdstszcg9VY8WYGwNBPM?quantity=1" target="_blank" variant="outlined" fullWidth>
               Sponsor $5 One-Time
             </Button>
-            <Button href="https://github.com/sponsors/YOUR_GITHUB" target="_blank" variant="outlined" fullWidth>
+            <Button href="https://checkout.dodopayments.com/buy/pdt_HDalaYf8hEGVG7hXcfNBj?quantity=1" target="_blank" variant="outlined" fullWidth>
               Sponsor $5 Monthly
             </Button>
           </Stack>
