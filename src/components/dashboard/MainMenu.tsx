@@ -76,7 +76,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               Documentation
             </Button>
             <Button onClick={() => setCloudModalOpen(true)} sx={buttonStyles} startIcon={<CloudQueue />}>
-              Maxun Cloud
+              Join Maxun Cloud
             </Button>
             <Button onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite />}>
               Sponsor Us
@@ -85,14 +85,13 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
         </Box>
       </Paper>
 
-      {/* Maxun Cloud Modal */}
       <Modal open={cloudModalOpen} onClose={() => setCloudModalOpen(false)}>
         <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', bgcolor: 'background.paper', borderRadius: 2, p: 4, width: 400 }}>
           <Typography variant="h6" gutterBottom>
-            Upgrade to Maxun Cloud
+            Join Maxun Cloud
           </Typography>
           <Typography variant="body1" gutterBottom>
-            Hosting, scaling, and support — all done for you. No setup, no stress.
+            Extract web data without getting blocked on Maxun Cloud.
             As a thank-you, OSS users get <strong>5% off</strong>.
           </Typography>
           <Button href="https://app.maxun.dev/login" target="_blank" variant="contained" fullWidth sx={{ mt: 2 }}>
@@ -101,7 +100,6 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
         </Box>
       </Modal>
 
-      {/* Sponsor Modal */}
       <Modal open={sponsorModalOpen} onClose={() => setSponsorModalOpen(false)}>
         <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', bgcolor: 'background.paper', borderRadius: 2, p: 4, width: 400 }}>
           <Typography variant="h6" gutterBottom>
