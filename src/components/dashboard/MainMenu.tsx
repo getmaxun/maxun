@@ -86,7 +86,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
       </Paper>
 
       <Modal open={cloudModalOpen} onClose={() => setCloudModalOpen(false)}>
-        <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', bgcolor: 'background.paper', borderRadius: 2, p: 4, width: 400 }}>
+        <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', bgcolor: 'background.paper', borderRadius: 2, p: 4, width: 600 }}>
           <Typography variant="h6" gutterBottom>
             Join Maxun Cloud
           </Typography>
