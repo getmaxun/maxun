@@ -126,7 +126,7 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
     <RobotConfigPage
       title={t("robot_settings.title")}
       onCancel={handleCancel}
-      cancelButtonText={t("Close")}
+      cancelButtonText={t("robot_settings.buttons.close")}
       showSaveButton={false}
     >
       <>
