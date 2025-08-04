@@ -144,18 +144,10 @@ export const RobotConfigPage: React.FC<RobotConfigPageProps> = ({
               onClick={handleBack}
               disabled={isLoading}
               sx={{
-                color: '#ff00c3',
-                borderColor: '#ff00c3',
-                bgcolor: 'white',
-                '&:hover': {
-                  borderColor: '#cc0099',
-                  bgcolor: '#fff5fc',
-                },
-                textTransform: 'none',
-                fontWeight: 500,
-                px: 3
-              }}
-            >
+                color: '#ff00c3 !important',
+                borderColor: '#ff00c3 !important',
+                backgroundColor: 'whitesmoke !important',
+              }} >
               {cancelButtonText}
             </Button>
           )}
