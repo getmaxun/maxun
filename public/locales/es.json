@@ -427,6 +427,9 @@
     "created_at": "Fecha de Creación del Robot",
     "errors": {
       "robot_not_found": "No se pudieron encontrar los detalles del robot. Inténtelo de nuevo."
+    },
+    "buttons": {
+      "close": "Cerrar"
     }
   },
   "robot_edit": {
