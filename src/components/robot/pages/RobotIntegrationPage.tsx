@@ -73,7 +73,6 @@ export const RobotIntegrationPage = ({
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Extract robotId and integrationType from URL
   const pathSegments = location.pathname.split('/');
   const robotsIndex = pathSegments.findIndex(segment => segment === 'robots' || segment === 'prebuilt-robots');
   const integrateIndex = pathSegments.findIndex(segment => segment === 'integrate');
@@ -103,7 +102,6 @@ export const RobotIntegrationPage = ({
   const [airtableTables, setAirtableTables] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoadingAction] = useState(false);
 
   const [showWebhookForm, setShowWebhookForm] = useState(false);
   const [editingWebhook, setEditingWebhook] = useState<string | null>(null);
@@ -130,7 +128,6 @@ export const RobotIntegrationPage = ({
     "googleSheets" | "airtable" | "webhook" | null
   >(integrationType);
 
-  // --- AUTHENTICATION ---
   const authenticateWithGoogle = () => {
     if (!recordingId) {
       console.error("Cannot authenticate: recordingId is null");
@@ -151,7 +148,6 @@ export const RobotIntegrationPage = ({
     window.location.href = `${apiUrl}/auth/airtable?robotId=${recordingId}&redirectUrl=${encodeURIComponent(redirectUrl)}`;
   };
 
-  // --- WEBHOOKS ---
   const validateWebhookData = (
     url: string,
     events: string[],
@@ -296,7 +292,6 @@ export const RobotIntegrationPage = ({
     }
   };
 
-  // --- DATA FETCHING & STATE MANAGEMENT ---
   useEffect(() => {
     setSelectedIntegrationType(integrationType);
     setSettings(prev => ({ ...prev, integrationType: integrationType || "airtable" }));
@@ -319,21 +314,11 @@ export const RobotIntegrationPage = ({
     }
   }, [recordingId, selectedIntegrationType]);
 
-  // --- NAVIGATION & ACTIONS ---
-  const handleTabChange = (event: React.SyntheticEvent, newValue: string) => {
-    if (!recordingId) return;
-    const newIntegrationType = newValue as "googleSheets" | "airtable" | "webhook";
-    setSelectedIntegrationType(newIntegrationType);
-    const basePath = robotPath === "prebuilt-robots" ? "/prebuilt-robots" : "/robots";
-    navigate(`${basePath}/${recordingId}/integrate/${newValue}`);
-  };
-
   const handleCancel = () => {
     const basePath = robotPath === "prebuilt-robots" ? "/prebuilt-robots" : "/robots";
     navigate(basePath);
   };
 
-  // --- GOOGLE SHEETS ---
   const fetchSpreadsheetFiles = async () => {
     try {
       setLoading(true);
@@ -402,7 +387,6 @@ export const RobotIntegrationPage = ({
     }
   };
 
-  // --- AIRTABLE ---
   const fetchAirtableBases = async () => {
     try {
       setLoading(true);
@@ -497,7 +481,6 @@ export const RobotIntegrationPage = ({
     }
   };
 
-  // --- RENDER METHODS ---
   const renderGoogleSheetsIntegration = () => (
     <>
       <Typography variant="h6">
@@ -618,49 +601,6 @@ export const RobotIntegrationPage = ({
         </>
       )}
     </>
-  );
-
-  const renderWebhookIntegration = () => (
-    <Box sx={{ width: "100%" }}>
-      <Typography variant="h6" gutterBottom>Webhook Integration</Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Configure webhooks to receive real-time notifications about robot events</Typography>
-      {!showWebhookForm && (
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setShowWebhookForm(true)} sx={{ mb: 2 }}>Add Webhook</Button>
-      )}
-      {showWebhookForm && (
-        <Card sx={{ mb: 2 }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>{editingWebhook ? "Edit Webhook" : "Add New Webhook"}</Typography>
-            <TextField fullWidth label="Webhook URL" value={newWebhook.url} onChange={(e) => setNewWebhook((prev) => ({ ...prev, url: e.target.value }))} error={!!urlError} helperText={urlError} sx={{ mb: 2 }}/>
-            <FormControlLabel control={<Switch checked={newWebhook.active} onChange={(e) => setNewWebhook((prev) => ({ ...prev, active: e.target.checked }))}/>} label="Active"/>
-          </CardContent>
-          <CardActions>
-            <Button variant="contained" onClick={editingWebhook ? updateWebhookSetting : addWebhookSetting} disabled={loading}>{editingWebhook ? "Update" : "Add"}</Button>
-            <Button onClick={() => { setShowWebhookForm(false); setEditingWebhook(null); setNewWebhook({ id: "", url: "", events: ["run_completed"], active: true }); setUrlError(null); }}>Cancel</Button>
-          </CardActions>
-        </Card>
-      )}
-      {settings.webhooks && settings.webhooks.length > 0 && (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead><TableRow><TableCell>URL</TableCell><TableCell>Status</TableCell><TableCell>Actions</TableCell></TableRow></TableHead>
-            <TableBody>
-              {settings.webhooks.map((webhook) => (
-                <TableRow key={webhook.id}>
-                  <TableCell>{webhook.url}</TableCell>
-                  <TableCell><Chip label={webhook.active ? "Active" : "Inactive"} color={webhook.active ? "success" : "default"} size="small"/></TableCell>
-                  <TableCell>
-                    <IconButton onClick={() => { setNewWebhook(webhook); setEditingWebhook(webhook.id); setShowWebhookForm(true); }} size="small"><EditIcon /></IconButton>
-                    <IconButton onClick={() => testWebhookSetting(webhook.id)} size="small" disabled={loading}><ScienceIcon /></IconButton>
-                    <IconButton onClick={() => deleteWebhookSetting(webhook.id)} size="small" color="error"><DeleteIcon /></IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
-    </Box>
   );
 
   const getIntegrationTitle = () => {
