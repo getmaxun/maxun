@@ -146,7 +146,7 @@ export const RobotConfigPage: React.FC<RobotConfigPageProps> = ({
               sx={{
                 color: '#ff00c3 !important',
                 borderColor: '#ff00c3 !important',
-                backgroundColor: 'whitesmoke !important',
+                backgroundColor: 'white !important',
               }} >
               {cancelButtonText}
             </Button>
