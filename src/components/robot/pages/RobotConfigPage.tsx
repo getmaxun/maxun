@@ -124,15 +124,10 @@ export const RobotConfigPage: React.FC<RobotConfigPageProps> = ({
               onClick={onBackToSelection}
               disabled={isLoading}
               sx={{
-                color: '#ff00c3',
-                borderColor: '#ff00c3',
-                bgcolor: 'whitesmoke',
-                '&:hover': {
-                  bgcolor: '#f0f0f0',
-                  borderColor: '#cc0099'
-                }
-              }}
-            >
+                color: '#ff00c3 !important',
+                borderColor: '#ff00c3 !important',
+                backgroundColor: 'white !important',
+              }} >
               {backToSelectionText}
             </Button>
           )}
