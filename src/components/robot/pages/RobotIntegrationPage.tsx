@@ -680,7 +680,7 @@ export const RobotIntegrationPage = ({
   // --- MAIN RENDER ---
   if (!selectedIntegrationType && !integrationType) {
     return (
-      <RobotConfigPage title="Integration Settings" onCancel={handleCancel} cancelButtonText="Cancel" showSaveButton={false}>
+      <RobotConfigPage title="Integration Settings" onCancel={handleCancel} cancelButtonText={t("robot_edit.cancel")} showSaveButton={false} backToSelectionText={"← " + t("right_panel.buttons.back")} onBackToSelection={() => navigate(`/${robotPath}/${recordingId}/integrate`)}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", position: "relative", minHeight: "400px" }}>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "20px", width: "100%" }}>
             <div style={{ display: "flex", gap: "20px" }}>
@@ -733,7 +733,7 @@ export const RobotIntegrationPage = ({
   };
 
   return (
-    <RobotConfigPage title={getIntegrationTitle()} onCancel={handleCancel} cancelButtonText="Cancel" showSaveButton={false} onBackToSelection={handleBack} backToSelectionText="← Back">
+    <RobotConfigPage title={getIntegrationTitle()} onCancel={handleCancel} cancelButtonText={t("robot_edit.cancel")} showSaveButton={false} onBackToSelection={handleBack} backToSelectionText={"← " + t("right_panel.buttons.back")}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", position: "relative", minHeight: "400px" }}>
         <div style={{ width: "100%" }}>
           {(selectedIntegrationType === "googleSheets" || integrationType === "googleSheets") && (
