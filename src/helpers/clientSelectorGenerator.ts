@@ -185,7 +185,6 @@ class ClientSelectorGenerator {
     if (element.nodeType !== Node.ELEMENT_NODE) return null;
 
     const tagName = element.tagName.toLowerCase();
-
     const isCustomElement = tagName.includes("-");
 
     const standardExcludeSelectors = [
@@ -203,38 +202,55 @@ class ClientSelectorGenerator {
     if (this.groupingConfig.excludeSelectors.includes(tagName)) return null;
 
     const children = Array.from(element.children);
-    const childrenStructure = children.map((child) => ({
-      tag: child.tagName.toLowerCase(),
-      classes: this.normalizeClasses(child.classList),
-      hasText: (child.textContent ?? "").trim().length > 0,
-    }));
+    let childrenStructureString: string;
+
+    if (tagName === 'table') {
+        // For tables, the fingerprint is based on the header or first row's structure.
+        const thead = element.querySelector('thead');
+        const representativeRow = thead ? thead.querySelector('tr') : element.querySelector('tr');
+        
+        if (representativeRow) {
+            const structure = Array.from(representativeRow.children).map(child => ({
+                tag: child.tagName.toLowerCase(),
+                classes: this.normalizeClasses(child.classList),
+            }));
+            childrenStructureString = JSON.stringify(structure);
+        } else {
+            childrenStructureString = JSON.stringify([]);
+        }
+    } else if (tagName === 'tr') {
+        // For rows, the fingerprint is based on the cell structure, ignoring the cell's inner content.
+        const structure = children.map((child) => ({
+            tag: child.tagName.toLowerCase(),
+            classes: this.normalizeClasses(child.classList),
+        }));
+        childrenStructureString = JSON.stringify(structure);
+    } else {
+        // Original logic for all other elements.
+        const structure = children.map((child) => ({
+            tag: child.tagName.toLowerCase(),
+            classes: this.normalizeClasses(child.classList),
+            hasText: (child.textContent ?? "").trim().length > 0,
+        }));
+        childrenStructureString = JSON.stringify(structure);
+    }
 
     const normalizedClasses = this.normalizeClasses(element.classList);
 
     const relevantAttributes = Array.from(element.attributes)
       .filter((attr) => {
         if (isCustomElement) {
-          return ![
-            "id",
-            "style",
-            "data-reactid",
-            "data-react-checksum",
-          ].includes(attr.name.toLowerCase());
+          return !["id", "style", "data-reactid", "data-react-checksum"].includes(attr.name.toLowerCase());
         } else {
           return (
-            !["id", "style", "data-reactid", "data-react-checksum"].includes(
-              attr.name.toLowerCase()
-            ) &&
-            (!attr.name.startsWith("data-") ||
-              attr.name === "data-type" ||
-              attr.name === "data-role")
+            !["id", "style", "data-reactid", "data-react-checksum"].includes(attr.name.toLowerCase()) &&
+            (!attr.name.startsWith("data-") || attr.name === "data-type" || attr.name === "data-role")
           );
         }
       })
       .map((attr) => `${attr.name}=${attr.value}`)
       .sort();
 
-    // Calculate element depth
     let depth = 0;
     let parent = element.parentElement;
     while (parent && depth < 20) {
@@ -242,27 +258,22 @@ class ClientSelectorGenerator {
       parent = parent.parentElement;
     }
 
-    // Get text content characteristics
     const textContent = (element.textContent ?? "").trim();
     const textCharacteristics = {
       hasText: textContent.length > 0,
       textLength: Math.floor(textContent.length / 20) * 20,
       hasLinks: element.querySelectorAll("a").length,
       hasImages: element.querySelectorAll("img").length,
-      hasButtons: element.querySelectorAll(
-        'button, input[type="button"], input[type="submit"]'
-      ).length,
+      hasButtons: element.querySelectorAll('button, input[type="button"], input[type="submit"]').length,
     };
 
-    const signature = `${tagName}::${normalizedClasses}::${
-      children.length
-    }::${JSON.stringify(childrenStructure)}::${relevantAttributes.join("|")}`;
+    const signature = `${tagName}::${normalizedClasses}::${children.length}::${childrenStructureString}::${relevantAttributes.join("|")}`;
 
     return {
       tagName,
       normalizedClasses,
       childrenCount: children.length,
-      childrenStructure: JSON.stringify(childrenStructure),
+      childrenStructure: childrenStructureString,
       attributes: relevantAttributes.join("|"),
       depth,
       textCharacteristics,
@@ -379,86 +390,85 @@ class ClientSelectorGenerator {
     ) {
       return;
     }
-
+  
     // Clear previous analysis
     this.elementGroups.clear();
     this.groupedElements.clear();
     this.lastAnalyzedDocument = iframeDoc;
-
+  
     // Get all visible elements INCLUDING shadow DOM
     const allElements = this.getAllVisibleElementsWithShadow(iframeDoc);
+    const processedInTables = new Set<HTMLElement>();
+  
+    // 1. Specifically find and group rows within each table, bypassing normal similarity checks.
+    const tables = allElements.filter(el => el.tagName === 'TABLE');
+    
+    tables.forEach(table => {
+      const rows = Array.from(table.querySelectorAll('tbody > tr')).filter(row => {
+        const parent = row.parentElement;
+        if (!parent || !table.contains(parent)) return false; // Ensure row belongs to this table
+        
+        const rect = row.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      }) as HTMLElement[];
+  
+      // If the table has enough rows, force them into a single group.
+      if (rows.length >= this.groupingConfig.minGroupSize) {
+        const representativeFingerprint = this.getStructuralFingerprint(rows[0]);
+        if (!representativeFingerprint) return;
 
-    // Create fingerprints for all elements
+        const group: ElementGroup = {
+          elements: rows,
+          fingerprint: representativeFingerprint,
+          representative: rows[0],
+        };
+  
+        rows.forEach(row => {
+          this.elementGroups.set(row, group);
+          this.groupedElements.add(row);
+          processedInTables.add(row);
+        });
+      }
+    });
+  
+    // 2. Group all other elements, excluding table rows that were already grouped.
+    const remainingElements = allElements.filter(el => !processedInTables.has(el));
     const elementFingerprints = new Map<HTMLElement, ElementFingerprint>();
-
-    allElements.forEach((element) => {
+    remainingElements.forEach((element) => {
       const fingerprint = this.getStructuralFingerprint(element);
       if (fingerprint) {
         elementFingerprints.set(element, fingerprint);
       }
     });
-
-    // Find similar groups using similarity scoring
-    const similarGroups: ElementGroup[] = [];
+  
     const processedElements = new Set<HTMLElement>();
-
     elementFingerprints.forEach((fingerprint, element) => {
       if (processedElements.has(element)) return;
-
+  
       const currentGroup = [element];
       processedElements.add(element);
-
-      // Find similar elements
+  
       elementFingerprints.forEach((otherFingerprint, otherElement) => {
         if (processedElements.has(otherElement)) return;
-
-        const similarity = this.calculateSimilarity(
-          fingerprint,
-          otherFingerprint
-        );
-
+  
+        const similarity = this.calculateSimilarity(fingerprint, otherFingerprint);
         if (similarity >= this.groupingConfig.similarityThreshold) {
           currentGroup.push(otherElement);
           processedElements.add(otherElement);
         }
       });
-
-      // Add group if it has enough members AND has meaningful children
-      if (currentGroup.length >= this.groupingConfig.minGroupSize) {
-        // Check if the representative element has meaningful children
-        const hasChildren = this.hasAnyMeaningfulChildren(element);
-
-        if (hasChildren) {
-          const group: ElementGroup = {
-            elements: currentGroup,
-            fingerprint,
-            representative: element,
-          };
-          similarGroups.push(group);
-
-          // Map each element to its group
-          currentGroup.forEach((el) => {
-            this.elementGroups.set(el, group);
-            this.groupedElements.add(el);
-          });
-        }
+  
+      if (currentGroup.length >= this.groupingConfig.minGroupSize && this.hasAnyMeaningfulChildren(element)) {
+        const group: ElementGroup = {
+          elements: currentGroup,
+          fingerprint,
+          representative: element,
+        };
+        currentGroup.forEach((el) => {
+          this.elementGroups.set(el, group);
+          this.groupedElements.add(el);
+        });
       }
-    });
-
-    // Sort groups by size and relevance
-    similarGroups.sort((a, b) => {
-      // Prioritize by size first
-      if (b.elements.length !== a.elements.length)
-        return b.elements.length - a.elements.length;
-
-      // Then by element size
-      const aSize =
-        a.representative.getBoundingClientRect().width *
-        a.representative.getBoundingClientRect().height;
-      const bSize =
-        b.representative.getBoundingClientRect().width *
-        b.representative.getBoundingClientRect().height;
-      return bSize - aSize;
     });
   }
 
