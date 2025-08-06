@@ -314,6 +314,9 @@
       "use_previous": "Bu işlem için önceki seçiminizi koşul olarak kullanmak ister misiniz?",
       "previous_action": "Önceki işleminiz:",
       "element_text": " metnine sahip öğe"
+    },
+    "notifications": {
+      "reset_success": "Önizleme başarıyla sıfırlandı"
     }
   },
   "recording_page": {

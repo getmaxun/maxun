@@ -58,6 +58,13 @@
         "edit": "Bearbeiten",
         "delete": "Löschen",
         "duplicate": "Duplizieren",
+        "search": "Roboter suchen...",
+        "warning_modal": {
+            "title": "Aktiver Browser erkannt",
+            "message": "Es läuft bereits eine Browser-Aufzeichnungssitzung. Möchten Sie sie verwerfen und eine neue Aufzeichnung erstellen?",
+            "discard_and_create": "Verwerfen & Neu erstellen",
+            "cancel": "Abbrechen"
+        },
         "notifications": {
             "delete_warning": "Der Roboter hat zugehörige Ausführungen. Löschen Sie zuerst die Ausführungen, um den Roboter zu löschen",
             "delete_success": "Roboter erfolgreich gelöscht",
@@ -171,6 +178,11 @@
             "pagination": "Wählen Sie aus, wie der Roboter den Rest der Liste erfassen kann",
             "limit": "Wählen Sie die Anzahl der zu extrahierenden Elemente",
             "complete": "Erfassung ist abgeschlossen"
+        },
+        "actions": {
+            "text": "Text erfassen",
+            "list": "Liste erfassen",
+            "screenshot": "Screenshot erfassen"
         }
     },
     "right_panel": {
@@ -183,6 +195,7 @@
             "confirm_capture": "Erfassung bestätigen",
             "confirm_pagination": "Bestätigen",
             "confirm_limit": "Bestätigen",
+            "confirm_reset": "Bestätigen",
             "finish_capture": "Erfassung abschließen",
             "back": "Zurück",
             "reset": "Starten Sie die Aufnahme neu",
@@ -301,6 +314,9 @@
             "use_previous": "Möchten Sie Ihre vorherige Auswahl als Bedingung für diese Aktion verwenden?",
             "previous_action": "Ihre vorherige Aktion war: ",
             "element_text": "auf einem Element mit Text "
+        },
+        "notifications": {
+            "reset_success": "Ausgabevorschau erfolgreich zurückgesetzt"
         }
     },
     "recording_page": {
