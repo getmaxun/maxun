@@ -123,6 +123,15 @@ export const Recordings = ({
           preSelectedIntegrationType="webhook"
         />
       );
+    } else if (currentPath.endsWith("/integrate/n8n")) {
+      return (
+        <IntegrationSettingsModal
+          isOpen={true}
+          handleClose={handleClose}
+          handleStart={() => {}}
+          preSelectedIntegrationType="n8n"
+        />
+      );
     } else if (currentPath.endsWith("/integrate")) {
       return (
         <IntegrationSettingsModal
