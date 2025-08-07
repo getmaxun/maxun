@@ -240,9 +240,9 @@ async function executeRun(id: string, userId: string) {
         retries: 5,
       };
 
-      n8nUpdateTasks[id] = {
+      n8nUpdateTasks[plainRun.runId] = {
         robotId: plainRun.robotMetaId,
-        runId: id,
+        runId: plainRun.runId,
         status: 'pending',
         retries: 5,
       };
