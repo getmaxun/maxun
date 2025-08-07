@@ -284,6 +284,7 @@ export const processN8nUpdates = async () => {
             n8nUpdateTasks[runId].status = 'failed';
             console.log(`Max retries reached for runId: ${runId}. Marking task as failed.`);
             logger.log('error', `Permanent failure for run ${runId}: ${error.message}`);
+            delete n8nUpdateTasks[runId];
           }
         }
       }
