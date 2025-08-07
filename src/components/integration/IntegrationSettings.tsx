@@ -37,12 +37,13 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
 import { addWebhook, updateWebhook, removeWebhook, getWebhooks, testWebhook,WebhookConfig } from "../../api/webhook";
+import { updateN8nIntegration, removeN8nIntegration, testN8nWebhook } from "../../api/integration";
 
 interface IntegrationProps {
   isOpen: boolean;
   handleStart: (data: IntegrationSettings) => void;
   handleClose: () => void;
-  preSelectedIntegrationType?: "googleSheets" | "airtable" | "webhook" | null;
+  preSelectedIntegrationType?: "googleSheets" | "airtable" | "webhook" | "n8n" | null;
 }
 
 export interface IntegrationSettings {
@@ -53,8 +54,12 @@ export interface IntegrationSettings {
   airtableTableName?: string,
   airtableTableId?: string,
   webhooks?: WebhookConfig[];
+  n8nWebhookUrl?: string;
+  n8nWebhookName?: string;
+  n8nApiKey?: string;
+  n8nInstanceUrl?: string;
   data: string;
-  integrationType: "googleSheets" | "airtable" | "webhook";
+  integrationType: "googleSheets" | "airtable" | "webhook" | "n8n";
 }
 
 const getCookie = (name: string): string | null => {
@@ -84,6 +89,10 @@ export const IntegrationSettingsModal = ({
     airtableBaseName: "",
     airtableTableName: "",
     airtableTableId: "",
+    n8nWebhookUrl: "",
+    n8nWebhookName: "",
+    n8nApiKey: "",
+    n8nInstanceUrl: "",
     webhooks: [],
     data: "",
     integrationType: preSelectedIntegrationType || "googleSheets",
@@ -94,6 +103,12 @@ export const IntegrationSettingsModal = ({
   const [airtableTables, setAirtableTables] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [n8nLoading, setN8nLoading] = useState({
+    update: false,
+    remove: false,
+    test: false
+  });
 
   const [showWebhookForm, setShowWebhookForm] = useState(false);
   const [editingWebhook, setEditingWebhook] = useState<string | null>(null);
@@ -115,7 +130,7 @@ export const IntegrationSettingsModal = ({
   const navigate = useNavigate();
 
   const [selectedIntegrationType, setSelectedIntegrationType] = useState<
-    "googleSheets" | "airtable" | "webhook" | null
+    "googleSheets" | "airtable" | "webhook" | "n8n" | null
   >(preSelectedIntegrationType);
 
   const authenticateWithGoogle = () => {
@@ -349,6 +364,85 @@ export const IntegrationSettingsModal = ({
     setShowWebhookForm(false);
     setEditingWebhook(null);
     setUrlError(null); 
+  };
+
+  // n8n Integration Functions
+  const updateN8nSettings = async () => {
+    if (!recordingId || !settings.n8nWebhookUrl || !settings.n8nWebhookName) {
+      notify("error", "Please provide webhook URL and name");
+      return;
+    }
+
+    try {
+      setN8nLoading(prev => ({ ...prev, update: true }));
+      const response = await updateN8nIntegration(
+        recordingId,
+        settings.n8nWebhookUrl,
+        settings.n8nWebhookName,
+        settings.n8nApiKey,
+        settings.n8nInstanceUrl
+      );
+
+      if (response.ok) {
+        await refreshRecordingData();
+        notify("success", "n8n integration updated successfully");
+      } else {
+        notify("error", response.error || "Failed to update n8n integration");
+      }
+      setN8nLoading(prev => ({ ...prev, update: false }));
+    } catch (error: any) {
+      setN8nLoading(prev => ({ ...prev, update: false }));
+      console.error("Error updating n8n integration:", error);
+      notify("error", "Failed to update n8n integration");
+    }
+  };
+
+  const removeN8nSettings = async () => {
+    if (!recordingId) return;
+
+    try {
+      setN8nLoading(prev => ({ ...prev, remove: true }));
+      const response = await removeN8nIntegration(recordingId);
+
+      if (response.ok) {
+        setSettings({
+          ...settings,
+          n8nWebhookUrl: "",
+          n8nWebhookName: "",
+          n8nApiKey: "",
+          n8nInstanceUrl: ""
+        });
+        await refreshRecordingData();
+        notify("success", "n8n integration removed successfully");
+      } else {
+        notify("error", response.error || "Failed to remove n8n integration");
+      }
+      setN8nLoading(prev => ({ ...prev, remove: false }));
+    } catch (error: any) {
+      setN8nLoading(prev => ({ ...prev, remove: false }));
+      console.error("Error removing n8n integration:", error);
+      notify("error", "Failed to remove n8n integration");
+    }
+  };
+
+  const testN8nSettings = async () => {
+    if (!recordingId) return;
+
+    try {
+      setN8nLoading(prev => ({ ...prev, test: true }));
+      const response = await testN8nWebhook(recordingId);
+
+      if (response.ok) {
+        notify("success", "Test webhook sent successfully to n8n");
+      } else {
+        notify("error", response.error || "Failed to test n8n webhook");
+      }
+      setN8nLoading(prev => ({ ...prev, test: false }));
+    } catch (error: any) {
+      setN8nLoading(prev => ({ ...prev, test: false }));
+      console.error("Error testing n8n webhook:", error);
+      notify("error", "Failed to test n8n webhook");
+    }
   };
 
   // Fetch Google Sheets files
@@ -600,6 +694,15 @@ export const IntegrationSettingsModal = ({
             airtableTableId: recording.airtable_table_id || "",
             integrationType: "airtable"
           }));
+        } else if (recording.n8n_webhook_url) {
+          setSettings(prev => ({
+            ...prev,
+            n8nWebhookUrl: recording.n8n_webhook_url || "",
+            n8nWebhookName: recording.n8n_webhook_name || "",
+            n8nApiKey: recording.n8n_api_key || "",
+            n8nInstanceUrl: recording.n8n_instance_url || "",
+            integrationType: "n8n"
+          }));
         }
 
         await fetchWebhooks();
@@ -716,6 +819,19 @@ export const IntegrationSettingsModal = ({
             >
               <img src="/svg/airtable.svg" alt="Airtable" style={{ margin: "6px" }} />
               Airtable
+            </Button>
+
+            <Button
+              variant="outlined"
+              onClick={() => {
+                setSelectedIntegrationType("n8n");
+                setSettings({ ...settings, integrationType: "n8n" });
+                navigate(`/robots/${recordingId}/integrate/n8n`);
+              }}
+              style={{ display: "flex", flexDirection: "column", alignItems: "center", background: 'white', color: '#ff00c3' }}
+            >
+              <img src="/svg/n8n.svg" alt="n8n" style={{ margin: "6px" }} />
+              N8N
             </Button>
 
             <Button
@@ -1181,6 +1297,104 @@ export const IntegrationSettingsModal = ({
                   </Button>
                 </CardActions>
               </Card>
+            )}
+          </>
+        )}
+
+        {settings.integrationType === "n8n" && (
+          <>
+            <Typography variant="h6" sx={{ marginBottom: "20px" }}>
+              Integrate with n8n
+            </Typography>
+
+            {recording?.n8n_webhook_url ? (
+              <>
+                <Alert severity="info" sx={{ marginTop: "10px", border: "1px solid #ff00c3" }}>
+                  <AlertTitle>n8n Integration Active</AlertTitle>
+                  Connected to webhook: {recording.n8n_webhook_name}
+                  <br />
+                  URL: {recording.n8n_webhook_url}
+                </Alert>
+                
+                <Box sx={{ display: "flex", gap: "15px", marginTop: "15px" }}>
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    onClick={testN8nSettings}
+                    disabled={n8nLoading.test || n8nLoading.remove}
+                  >
+                    {n8nLoading.test ? <CircularProgress size={24} /> : "Test Webhook"}
+                  </Button>
+                  
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    onClick={removeN8nSettings}
+                    disabled={n8nLoading.remove || n8nLoading.test}
+                  >
+                    {n8nLoading.remove ? <CircularProgress size={24} /> : "Remove Integration"}
+                  </Button>
+                </Box>
+              </>
+            ) : (
+              <>
+                <Typography variant="body1" sx={{ marginBottom: "20px" }}>
+                  Connect your robot to an n8n workflow by providing a webhook URL. 
+                  When your robot finishes extracting data, it will automatically send the results to your n8n workflow.
+                </Typography>
+
+                <TextField
+                  fullWidth
+                  label="Webhook URL"
+                  value={settings.n8nWebhookUrl}
+                  onChange={(e) => setSettings({ ...settings, n8nWebhookUrl: e.target.value })}
+                  sx={{ marginBottom: "15px" }}
+                  placeholder="https://your-n8n-instance.com/webhook/your-webhook-id"
+                  required
+                  helperText="The webhook URL from your n8n workflow"
+                />
+
+                <TextField
+                  fullWidth
+                  label="Webhook Name"
+                  value={settings.n8nWebhookName}
+                  onChange={(e) => setSettings({ ...settings, n8nWebhookName: e.target.value })}
+                  sx={{ marginBottom: "15px" }}
+                  placeholder="My n8n Workflow"
+                  required
+                  helperText="A descriptive name for this integration"
+                />
+
+                <TextField
+                  fullWidth
+                  label="API Key (Optional)"
+                  value={settings.n8nApiKey}
+                  onChange={(e) => setSettings({ ...settings, n8nApiKey: e.target.value })}
+                  sx={{ marginBottom: "15px" }}
+                  placeholder="Optional API key for authentication"
+                  helperText="If your n8n instance requires authentication, provide the API key here"
+                />
+
+                <TextField
+                  fullWidth
+                  label="n8n Instance URL (Optional)"
+                  value={settings.n8nInstanceUrl}
+                  onChange={(e) => setSettings({ ...settings, n8nInstanceUrl: e.target.value })}
+                  sx={{ marginBottom: "20px" }}
+                  placeholder="https://your-n8n-instance.com"
+                  helperText="The base URL of your n8n instance (for documentation purposes)"
+                />
+
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={updateN8nSettings}
+                  disabled={!settings.n8nWebhookUrl || !settings.n8nWebhookName || n8nLoading.update}
+                  sx={{ marginTop: "10px" }}
+                >
+                  {n8nLoading.update ? <CircularProgress size={24} /> : "Connect to n8n"}
+                </Button>
+              </>
             )}
           </>
         )}
