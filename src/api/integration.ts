@@ -14,3 +14,70 @@ export const handleUploadCredentials = async (fileName: string, credentials: any
         return false;
     }
 };
+
+export const updateN8nIntegration = async (robotId: string, webhookUrl: string, webhookName: string, apiKey?: string, instanceUrl?: string) => {
+    try {
+        const response = await axios.post(
+            `${apiUrl}/auth/n8n/update`,
+            {
+                robotId,
+                webhookUrl,
+                webhookName,
+                apiKey: apiKey || null,
+                instanceUrl: instanceUrl || null,
+            },
+            { withCredentials: true }
+        );
+        
+        return {
+            ok: response.status === 200,
+            data: response.data
+        };
+    } catch (error: any) {
+        return {
+            ok: false,
+            error: error.response?.data?.error || error.message
+        };
+    }
+};
+
+export const removeN8nIntegration = async (robotId: string) => {
+    try {
+        const response = await axios.post(
+            `${apiUrl}/auth/n8n/remove`,
+            { robotId },
+            { withCredentials: true }
+        );
+        
+        return {
+            ok: response.status === 200,
+            data: response.data
+        };
+    } catch (error: any) {
+        return {
+            ok: false,
+            error: error.response?.data?.error || error.message
+        };
+    }
+};
+
+export const testN8nWebhook = async (robotId: string) => {
+    try {
+        const response = await axios.post(
+            `${apiUrl}/auth/n8n/test`,
+            { robotId },
+            { withCredentials: true }
+        );
+        
+        return {
+            ok: response.status === 200,
+            data: response.data
+        };
+    } catch (error: any) {
+        return {
+            ok: false,
+            error: error.response?.data?.error || error.message
+        };
+    }
+};
+
