@@ -8,6 +8,9 @@ import { genAPIKey } from "../utils/api";
 import { google } from "googleapis";
 import { capture } from "../utils/analytics";
 import crypto from 'crypto';
+import { default as axios } from "axios";
+import { uuid } from "uuidv4";
+import logger from "../logger";
 
 declare module "express-session" {
   interface SessionData {
@@ -934,6 +937,160 @@ router.get("/airtable/tables", requireSignIn, async (req: Request, res) => {
 
   } catch (error: any) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+// n8n Integration Routes
+router.post('/n8n/update', requireSignIn, async (req: Request, res) => {
+  const authenticatedReq = req as AuthenticatedRequest;
+  try {
+    const { robotId, webhookUrl, webhookName, apiKey, instanceUrl } = req.body;
+
+    if (!robotId || !webhookUrl || !webhookName) {
+      return res.status(400).json({ error: 'Missing required fields: robotId, webhookUrl, webhookName' });
+    }
+
+    const robot = await Robot.findOne({
+      where: {
+        'recording_meta.id': robotId,
+        userId: authenticatedReq.user?.id,
+      }
+    });
+
+    if (!robot) {
+      return res.status(404).json({ error: 'Robot not found' });
+    }
+
+    await robot.update({
+      n8n_webhook_url: webhookUrl,
+      n8n_webhook_name: webhookName,
+      n8n_api_key: apiKey || null,
+      n8n_instance_url: instanceUrl || null,
+    });
+
+    res.status(200).json({ 
+      success: true,
+      message: 'n8n integration updated successfully' 
+    });
+  } catch (error: any) {
+    logger.log('error', `Error updating n8n integration: ${error.message}`);
+    res.status(500).json({ error: 'Failed to update n8n integration' });
+  }
+});
+
+router.post('/n8n/remove', requireSignIn, async (req: Request, res) => {
+  const authenticatedReq = req as AuthenticatedRequest;
+  try {
+    const { robotId } = req.body;
+
+    if (!robotId) {
+      return res.status(400).json({ error: 'Missing robotId' });
+    }
+
+    const robot = await Robot.findOne({
+      where: {
+        'recording_meta.id': robotId,
+        userId: authenticatedReq.user?.id,
+      }
+    });
+
+    if (!robot) {
+      return res.status(404).json({ error: 'Robot not found' });
+    }
+
+    await robot.update({
+      n8n_webhook_url: null,
+      n8n_webhook_name: null,
+      n8n_api_key: null,
+      n8n_instance_url: null,
+    });
+
+    res.status(200).json({ 
+      success: true,
+      message: 'n8n integration removed successfully' 
+    });
+  } catch (error: any) {
+    logger.log('error', `Error removing n8n integration: ${error.message}`);
+    res.status(500).json({ error: 'Failed to remove n8n integration' });
+  }
+});
+
+router.post('/n8n/test', requireSignIn, async (req: Request, res) => {
+  const authenticatedReq = req as AuthenticatedRequest;
+  try {
+    const { robotId } = req.body;
+
+    if (!robotId) {
+      return res.status(400).json({ error: 'Missing robotId' });
+    }
+
+    const robot = await Robot.findOne({
+      where: {
+        'recording_meta.id': robotId,
+        userId: authenticatedReq.user?.id,
+      }
+    });
+
+    if (!robot) {
+      return res.status(404).json({ error: 'Robot not found' });
+    }
+
+    const plainRobot = robot.toJSON();
+    
+    if (!plainRobot.n8n_webhook_url) {
+      return res.status(400).json({ error: 'n8n integration not configured' });
+    }
+
+    // Send test data to n8n webhook
+    const testPayload = {
+      robot_id: robotId,
+      run_id: 'test-run-' + uuid(),
+      robot_name: plainRobot.recording_meta.name,
+      status: 'test',
+      timestamp: new Date().toISOString(),
+      test: true,
+      data: [
+        {
+          Label: 'Test Field',
+          Value: 'Test Value'
+        }
+      ],
+      metadata: {
+        total_records: 1,
+        test_webhook: true
+      }
+    };
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (plainRobot.n8n_api_key) {
+      headers['Authorization'] = `Bearer ${plainRobot.n8n_api_key}`;
+    }
+
+    await axios.post(plainRobot.n8n_webhook_url, testPayload, {
+      headers,
+      timeout: 10000,
+    });
+
+    res.status(200).json({ 
+      success: true,
+      message: 'Test webhook sent successfully to n8n' 
+    });
+  } catch (error: any) {
+    logger.log('error', `Error testing n8n webhook: ${error.message}`);
+    
+    let errorMessage = 'Failed to test n8n webhook';
+    if (error.code === 'ECONNREFUSED') {
+      errorMessage = 'Could not connect to n8n webhook URL';
+    } else if (error.response?.status === 401) {
+      errorMessage = 'Authentication failed. Please check your API key';
+    } else if (error.response?.status === 404) {
+      errorMessage = 'n8n webhook URL not found';
+    }
+    
+    res.status(500).json({ error: errorMessage });
   }
 });
 
