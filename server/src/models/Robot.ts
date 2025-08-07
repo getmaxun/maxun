@@ -42,7 +42,11 @@ interface RobotAttributes {
   airtable_base_name?: string | null; 
   airtable_table_name?: string | null; 
   airtable_access_token?: string | null; 
-  airtable_refresh_token?: string | null; 
+  airtable_refresh_token?: string | null;
+  n8n_webhook_url?: string | null;
+  n8n_webhook_name?: string | null;
+  n8n_api_key?: string | null;
+  n8n_instance_url?: string | null;
   schedule?: ScheduleConfig | null;
   airtable_table_id?: string | null;
   webhooks?: WebhookConfig[] | null; 
@@ -78,7 +82,11 @@ class Robot extends Model<RobotAttributes, RobotCreationAttributes> implements R
   public airtable_table_name!: string | null; 
   public airtable_access_token!: string | null; 
   public airtable_refresh_token!: string | null; 
-  public airtable_table_id!: string | null; 
+  public airtable_table_id!: string | null;
+  public n8n_webhook_url!: string | null;
+  public n8n_webhook_name!: string | null;
+  public n8n_api_key!: string | null;
+  public n8n_instance_url!: string | null;
   public schedule!: ScheduleConfig | null;
   public webhooks!: WebhookConfig[] | null;
 }
@@ -144,6 +152,22 @@ Robot.init(
     },
     airtable_refresh_token: {
       type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    n8n_webhook_url: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    n8n_webhook_name: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    n8n_api_key: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    n8n_instance_url: {
+      type: DataTypes.STRING,
       allowNull: true,
     },
     schedule: {
