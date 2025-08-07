@@ -18,6 +18,7 @@ import { BinaryOutputService } from './storage/mino';
 import { capture } from './utils/analytics';
 import { googleSheetUpdateTasks, processGoogleSheetUpdates } from './workflow-management/integrations/gsheet';
 import { airtableUpdateTasks, processAirtableUpdates } from './workflow-management/integrations/airtable';
+import { n8nUpdateTasks, processN8nUpdates } from './workflow-management/integrations/n8n';
 import { RemoteBrowser } from './browser-management/classes/RemoteBrowser';
 import { io as serverIo } from "./server";
 import { sendWebhook } from './routes/webhook';
@@ -201,8 +202,16 @@ async function triggerIntegrationUpdates(runId: string, robotMetaId: string): Pr
       retries: 5,
     };
 
+    n8nUpdateTasks[runId] = {
+      robotId: robotMetaId,
+      runId: runId,
+      status: 'pending',
+      retries: 5,
+    };
+
     processAirtableUpdates();
     processGoogleSheetUpdates();
+    processN8nUpdates();
   } catch (err: any) {
     logger.log('error', `Failed to update integrations for run: ${runId}: ${err.message}`);
   }

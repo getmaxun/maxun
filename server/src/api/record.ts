@@ -19,6 +19,7 @@ import { Page } from "playwright";
 import { WorkflowFile } from "maxun-core";
 import { googleSheetUpdateTasks, processGoogleSheetUpdates } from "../workflow-management/integrations/gsheet";
 import { airtableUpdateTasks, processAirtableUpdates } from "../workflow-management/integrations/airtable";
+import { n8nUpdateTasks, processN8nUpdates } from "../workflow-management/integrations/n8n";
 import { sendWebhook } from "../routes/webhook";
 chromium.use(stealthPlugin());
 
@@ -711,9 +712,17 @@ async function executeRun(id: string, userId: string) {
                 status: 'pending',
                 retries: 5,
             };
+
+            n8nUpdateTasks[id] = {
+                robotId: plainRun.robotMetaId,
+                runId: id,
+                status: 'pending',
+                retries: 5,
+            };
     
             processAirtableUpdates();
             processGoogleSheetUpdates();
+            processN8nUpdates();
         } catch (err: any) {
             logger.log('error', `Failed to update Google Sheet for run: ${plainRun.runId}: ${err.message}`);
         }
