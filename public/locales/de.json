@@ -262,7 +262,8 @@
         },
         "tooltips": {
             "saving": "Workflow wird optimiert und gespeichert"
-        }
+        },
+        "description": "Beschreibung (optional)"
     },
     "browser_recording": {
         "modal": {
@@ -442,7 +443,8 @@
         "created_at": "Erstellungsdatum des Roboters",
         "errors": {
             "robot_not_found": "Roboterdetails konnten nicht gefunden werden. Bitte versuchen Sie es erneut."
-        }
+        },
+        "description": "Beschreibung (optional)"
     },
     "robot_edit": {
         "title": "Roboter bearbeiten",
