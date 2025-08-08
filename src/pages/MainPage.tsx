@@ -235,15 +235,14 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
     }
   }, [runningRecordingName, sockets, ids, debugMessageHandler, user?.id, t, notify, setRerenderRuns, setQueuedRuns, navigate, setContent, setIds]);
 
-  const handleScheduleRecording = (settings: ScheduleSettings) => {
-    scheduleStoredRecording(runningRecordingId, settings)
-      .then(({ message, runId }: ScheduleRunResponse) => {
-        if (message === 'success') {
-          notify('success', t('main_page.notifications.schedule_success', { name: runningRecordingName }));
-        } else {
-          notify('error', t('main_page.notifications.schedule_failed', { name: runningRecordingName }));
-        }
-      });
+  const handleScheduleRecording = async (settings: ScheduleSettings) => {
+    const { message, runId }: ScheduleRunResponse = await scheduleStoredRecording(runningRecordingId, settings);
+    if (message === 'success') {
+      notify('success', t('main_page.notifications.schedule_success', { name: runningRecordingName }));
+    } else {
+      notify('error', t('main_page.notifications.schedule_failed', { name: runningRecordingName }));
+    }
+    return message === 'success';
   }
 
   const DisplayContent = () => {
