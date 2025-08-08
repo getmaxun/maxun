@@ -314,6 +314,9 @@
         "use_previous": "Do you want to use your previous selection as a condition for performing this action?",
         "previous_action": "Your previous action was: ",
         "element_text": "on an element with text "
+      },
+      "notifications": {
+        "reset_success": "Output Preview reset successfully"
       }
     },
     "recording_page": {
