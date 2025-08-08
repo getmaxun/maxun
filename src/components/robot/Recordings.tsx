@@ -14,7 +14,7 @@ import { useTranslation } from "react-i18next";
 interface RecordingsProps {
   handleEditRecording: (id: string, fileName: string) => void;
   handleRunRecording: (settings: RunSettings) => void;
-  handleScheduleRecording: (settings: ScheduleSettings) => void;
+  handleScheduleRecording: (settings: ScheduleSettings) => Promise<boolean>;
   setRecordingInfo: (id: string, name: string) => void;
 }
 
