@@ -56,7 +56,10 @@ interface AbortRunData {
   runId: string;
 }
 
-const pgBoss = new PgBoss({connectionString: pgBossConnectionString });
+const pgBoss = new PgBoss({
+  connectionString: pgBossConnectionString,
+  expireInHours: 23
+});
 
 /**
  * Extract data safely from a job (single job or job array)
