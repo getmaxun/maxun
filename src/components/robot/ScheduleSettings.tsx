@@ -10,7 +10,7 @@ import { getSchedule, deleteSchedule } from '../../api/storage';
 
 interface ScheduleSettingsProps {
   isOpen: boolean;
-  handleStart: (settings: ScheduleSettings) => void;
+  handleStart: (settings: ScheduleSettings) => Promise<boolean>;
   handleClose: () => void;
   initialSettings?: ScheduleSettings | null;
 }
@@ -272,7 +272,12 @@ export const ScheduleSettingsModal = ({ isOpen, handleStart, handleClose, initia
                 </Dropdown>
               </Box>
               <Box mt={2} display="flex" justifyContent="flex-end">
-                <Button onClick={() => handleStart(settings)} variant="contained" color="primary">
+                <Button onClick={async () => {
+                  const success = await handleStart(settings);
+                  if (success) {
+                    await getRobotSchedule();
+                  }
+                }} variant="contained" color="primary">
                   {t('schedule_settings.buttons.save_schedule')}
                 </Button>
                 <Button

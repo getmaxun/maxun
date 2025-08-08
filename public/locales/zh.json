@@ -59,6 +59,12 @@
     "delete": "删除",
     "duplicate": "复制",
     "search": "搜索机器人...",
+    "warning_modal": {
+      "title": "检测到活跃浏览器",
+      "message": "已经有一个浏览器录制会话正在运行。您想要放弃它并创建新的录制吗？",
+      "discard_and_create": "放弃并创建新的",
+      "cancel": "取消"
+    },
     "notifications": {
       "delete_warning": "该机器人有关联的运行记录。请先删除运行记录才能删除机器人",
       "delete_success": "机器人删除成功",
@@ -172,6 +178,11 @@
       "pagination": "选择机器人如何捕获列表的其余部分",
       "limit": "选择要提取的项目数量",
       "complete": "捕获完成"
+    },
+    "actions": {
+      "text": "捕获文本",
+      "list": "捕获列表",
+      "screenshot": "捕获截图"
     }
   },
   "right_panel": {
@@ -184,6 +195,7 @@
       "confirm_capture": "确认捕获",
       "confirm_pagination": "确认",
       "confirm_limit": "确认",
+      "confirm_reset": "确认",
       "finish_capture": "完成捕获",
       "back": "返回",
       "reset": "重置",
@@ -302,6 +314,9 @@
       "use_previous": "您要将之前的选择用作执行此操作的条件吗？",
       "previous_action": "您之前的操作是：",
       "element_text": "在文本元素上 "
+    },
+    "notifications": {
+      "reset_success": "输出预览已成功重置"
     }
   },
   "recording_page": {

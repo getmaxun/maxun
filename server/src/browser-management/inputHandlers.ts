@@ -718,6 +718,8 @@ const handleKeyboardAction = async (
     }
 
     const generator = activeBrowser.generator;
+
+    await page.press(data.selector, data.key);    
     await generator.onDOMKeyboardAction(page, data);
     logger.log(
       "debug",

@@ -41,6 +41,10 @@ export default class Concurrency {
       job().then(() => {
         // console.debug("Job finished, running the next waiting job...");
         this.runNextJob();
+      }).catch((error) => {
+        console.error(`Job failed with error: ${error.message}`);
+        // Continue processing other jobs even if one fails
+        this.runNextJob();
       });
     } else {
       // console.debug("No waiting job found!");

@@ -336,7 +336,7 @@ export const BrowserWindow = () => {
             const listElements = evaluateXPathAllWithShadowSupport(
               iframeElement.contentDocument!,
               listSelector,
-              listSelector.includes('>>') || listSelector.startsWith('//')
+              listSelector.includes(">>") || listSelector.startsWith("//")
             ).slice(0, 10);
 
             if (listElements.length < 2) {
@@ -346,13 +346,36 @@ export const BrowserWindow = () => {
             const validSelectors: string[] = [];
 
             for (const selector of selectors) {
+              // First, try to access the element directly
+              try {
+                const testElement = iframeElement.contentDocument!.evaluate(
+                  selector,
+                  iframeElement.contentDocument!,
+                  null,
+                  XPathResult.FIRST_ORDERED_NODE_TYPE,
+                  null
+                ).singleNodeValue;
+
+                // If we can't access the element, it's likely in shadow DOM - include it
+                if (!testElement) {
+                  console.log(`Including potentially shadow DOM selector: ${selector}`);
+                  validSelectors.push(selector);
+                  continue;
+                }
+              } catch (accessError) {
+                // If there's an error accessing, assume shadow DOM and include it
+                console.log(`Including selector due to access error: ${selector}`);
+                validSelectors.push(selector);
+                continue;
+              }
+
               let occurrenceCount = 0;
 
               // Get all elements that match this child selector
               const childElements = evaluateXPathAllWithShadowSupport(
                 iframeElement.contentDocument!,
                 selector,
-                selector.includes('>>') || selector.startsWith('//')
+                selector.includes(">>") || selector.startsWith("//")
               );
 
               // Check how many of these child elements are contained within our list elements

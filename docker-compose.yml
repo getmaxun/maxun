@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:13
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -17,6 +18,7 @@ services:
 
   minio:
     image: minio/minio
+    restart: unless-stopped
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
@@ -32,6 +34,7 @@ services:
       #context: .
       #dockerfile: server/Dockerfile
     image: getmaxun/maxun-backend:latest
+    restart: unless-stopped
     ports:
       - "${BACKEND_PORT:-8080}:${BACKEND_PORT:-8080}"
     env_file: .env
@@ -58,6 +61,7 @@ services:
       #context: .
       #dockerfile: Dockerfile
     image: getmaxun/maxun-frontend:latest
+    restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-5173}:${FRONTEND_PORT:-5173}"
     env_file: .env
