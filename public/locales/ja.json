@@ -59,6 +59,12 @@
         "delete": "削除",
         "duplicate": "複製",
         "search": "ロボットを検索...",
+        "warning_modal": {
+            "title": "アクティブなブラウザが検出されました",
+            "message": "既にブラウザ録画セッションが実行されています。破棄して新しい録画を作成しますか？",
+            "discard_and_create": "破棄して新規作成",
+            "cancel": "キャンセル"
+        },
         "notifications": {
             "delete_warning": "ロボットには関連する実行があります。ロボットを削除するには、まず実行を削除してください",
             "delete_success": "ロボットが正常に削除されました",
@@ -172,6 +178,11 @@
             "pagination": "ロボットがリストの残りをどのように取得するか選択してください",
             "limit": "抽出するアイテムの数を選択してください",
             "complete": "取得が完了しました"
+        },
+        "actions": {
+            "text": "テキストを取得",
+            "list": "リストを取得",
+            "screenshot": "スクリーンショットを取得"
         }
     },
     "right_panel": {
@@ -184,6 +195,7 @@
             "confirm_capture": "取得を確認",
             "confirm_pagination": "確認",
             "confirm_limit": "確認",
+            "confirm_reset": "確認",
             "finish_capture": "取得を完了",
             "back": "戻る",
             "reset": "リセット",
@@ -302,6 +314,9 @@
             "use_previous": "この操作の条件として前回の選択を使用しますか？",
             "previous_action": "前回の操作: ",
             "element_text": "テキスト要素 "
+        },
+        "notifications": {
+            "reset_success": "出力プレビューが正常にリセットされました"
         }
     },
     "recording_page": {

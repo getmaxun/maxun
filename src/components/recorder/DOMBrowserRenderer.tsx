@@ -611,19 +611,34 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
         if (!isInCaptureMode && socket && snapshot?.baseUrl) {
           const iframe = iframeRef.current;
           if (iframe) {
-            const iframeRect = iframe.getBoundingClientRect();
-            const iframeX = lastMousePosition.x - iframeRect.left;
-            const iframeY = lastMousePosition.y - iframeRect.top;
+            const focusedElement = iframeDoc.activeElement as HTMLElement;
+            let coordinates = { x: 0, y: 0 };
+            
+            if (focusedElement && focusedElement !== iframeDoc.body) {
+              // Get coordinates from the focused element
+              const rect = focusedElement.getBoundingClientRect();
+              coordinates = {
+                x: rect.left + rect.width / 2,
+                y: rect.top + rect.height / 2
+              };
+            } else {
+              // Fallback to last mouse position if no focused element
+              const iframeRect = iframe.getBoundingClientRect();
+              coordinates = {
+                x: lastMousePosition.x - iframeRect.left,
+                y: lastMousePosition.y - iframeRect.top
+              };
+            }
 
             const selector = clientSelectorGenerator.generateSelector(
               iframeDoc,
-              { x: iframeX, y: iframeY },
+              coordinates,
               ActionType.Keydown
             );
 
             const elementInfo = clientSelectorGenerator.getElementInformation(
               iframeDoc,
-              { x: iframeX, y: iframeY },
+              coordinates,
               clientSelectorGenerator.getCurrentState().listSelector,
               clientSelectorGenerator.getCurrentState().getList
             );

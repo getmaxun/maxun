@@ -108,7 +108,9 @@ export default class Interpreter extends EventEmitter {
     PlaywrightBlocker.fromLists(fetch, ['https://easylist.to/easylist/easylist.txt']).then(blocker => {
       this.blocker = blocker;
     }).catch(err => {
-      this.log(`Failed to initialize ad-blocker:`, Level.ERROR);
+      this.log(`Failed to initialize ad-blocker: ${err.message}`, Level.ERROR);
+      // Continue without ad-blocker rather than crashing
+      this.blocker = null;
     })
   }
 
@@ -522,11 +524,16 @@ export default class Interpreter extends EventEmitter {
           this.options.debugChannel.setActionType('script');
         }
 
-        const AsyncFunction: FunctionConstructor = Object.getPrototypeOf(
-          async () => { },
-        ).constructor;
-        const x = new AsyncFunction('page', 'log', code);
-        await x(page, this.log);
+        try {
+          const AsyncFunction: FunctionConstructor = Object.getPrototypeOf(
+            async () => { },
+          ).constructor;
+          const x = new AsyncFunction('page', 'log', code);
+          await x(page, this.log);
+        } catch (error) {
+          this.log(`Script execution failed: ${error.message}`, Level.ERROR);
+          throw new Error(`Script execution error: ${error.message}`);
+        }
       },
 
       flag: async () => new Promise((res) => {
@@ -590,11 +597,18 @@ export default class Interpreter extends EventEmitter {
             try{
               await executeAction(invokee, methodName, [step.args[0], { force: true }]);
             } catch (error) {
-              continue
+              this.log(`Click action failed: ${error.message}`, Level.WARN);
+              continue;
             }
           }
         } else {
-          await executeAction(invokee, methodName, step.args);
+          try {
+            await executeAction(invokee, methodName, step.args);
+          } catch (error) {
+            this.log(`Action ${methodName} failed: ${error.message}`, Level.ERROR);
+            // Continue with next action instead of crashing
+            continue;
+          }
         }
       }
 
@@ -1132,7 +1146,16 @@ export default class Interpreter extends EventEmitter {
     });
 
     /* eslint no-constant-condition: ["warn", { "checkLoops": false }] */
+    let loopIterations = 0;
+    const MAX_LOOP_ITERATIONS = 1000; // Circuit breaker
+    
     while (true) {
+      // Circuit breaker to prevent infinite loops
+      if (++loopIterations > MAX_LOOP_ITERATIONS) {
+        this.log('Maximum loop iterations reached, terminating to prevent infinite loop', Level.ERROR);
+        return;
+      }
+      
       // Checks whether the page was closed from outside,
       //  or the workflow execution has been stopped via `interpreter.stop()`
       if (p.isClosed() || !this.stopper) {
@@ -1147,14 +1170,25 @@ export default class Interpreter extends EventEmitter {
       }
 
       let pageState = {};
-      let getStateTest = "Hello";
       try {
+        // Check if page is still valid before accessing state
+        if (p.isClosed()) {
+          this.log('Page was closed during execution', Level.WARN);
+          return;
+        }
+        
         pageState = await this.getState(p, workflowCopy, selectors);
         selectors = [];
         console.log("Empty selectors:", selectors)
       } catch (e: any) {
-        this.log('The browser has been closed.');
-        return;
+        this.log(`Failed to get page state: ${e.message}`, Level.ERROR);
+        // If state access fails, attempt graceful recovery
+        if (p.isClosed()) {
+          this.log('Browser has been closed, terminating workflow', Level.WARN);
+          return;
+        }
+        // For other errors, continue with empty state to avoid complete failure
+        pageState = { url: p.url(), selectors: [], cookies: {} };
       }
 
       if (this.options.debug) {
@@ -1207,8 +1241,13 @@ export default class Interpreter extends EventEmitter {
                   selectors.push(selector);
               }
           });
+          
+          // Reset loop iteration counter on successful action
+          loopIterations = 0;
         } catch (e) {
           this.log(<Error>e, Level.ERROR);
+          // Don't crash on individual action failures - continue with next iteration
+          continue;
         }
       } else {
         //await this.disableAdBlocker(p);

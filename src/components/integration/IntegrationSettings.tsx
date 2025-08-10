@@ -815,14 +815,24 @@ export const IntegrationSettingsModal = ({
                     ) : error ? (
                       <Typography color="error">{error}</Typography>
                     ) : spreadsheets.length === 0 ? (
-                      <Button
-                        variant="outlined"
-                        color="primary"
-                        onClick={fetchSpreadsheetFiles}
-                        disabled={loading}
-                      >
-                        {t("integration_settings.google.buttons.fetch_sheets")}
-                      </Button>
+                      <Box sx={{ display: "flex", gap: "15px", alignItems: "center", marginBottom: "20px" }}>
+                        <Button
+                          variant="outlined"
+                          color="primary"
+                          onClick={fetchSpreadsheetFiles}
+                          disabled={loading}
+                        >
+                          {t("integration_settings.google.buttons.fetch_sheets")}
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          onClick={removeGoogleSheetsIntegration}
+                          disabled={loading}
+                        >
+                          {loading ? <CircularProgress size={24} /> : t("integration_settings.google.buttons.remove_integration")}
+                        </Button>
+                      </Box>
                     ) : (
                       <>
                         <TextField
@@ -915,14 +925,24 @@ export const IntegrationSettingsModal = ({
                     ) : error ? (
                       <Typography color="error">{error}</Typography>
                     ) : airtableBases.length === 0 ? (
-                      <Button
-                        variant="outlined"
-                        color="primary"
-                        onClick={fetchAirtableBases}
-                        disabled={loading}
-                      >
-                        {t("integration_settings.airtable.buttons.fetch_bases")}
-                      </Button>
+                      <Box sx={{ display: "flex", gap: "15px", alignItems: "center", marginBottom: "20px" }}>
+                        <Button
+                          variant="outlined"
+                          color="primary"
+                          onClick={fetchAirtableBases}
+                          disabled={loading}
+                        >
+                          {t("integration_settings.airtable.buttons.fetch_bases")}
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          onClick={removeAirtableIntegration}
+                          disabled={loading}
+                        >
+                          {loading ? <CircularProgress size={24} /> : t("integration_settings.airtable.buttons.remove_integration")}
+                        </Button>
+                      </Box>
                     ) : (
                       <>
                         <TextField

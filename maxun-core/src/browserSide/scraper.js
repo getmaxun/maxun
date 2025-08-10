@@ -537,6 +537,11 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
 
     const evaluateXPath = (document, xpath, isShadow = false) => {
       try {
+        if (!document || !xpath) {
+          console.warn('Invalid document or xpath provided to evaluateXPath');
+          return null;
+        }
+        
         const result = document.evaluate(
           xpath,
           document,
@@ -632,6 +637,7 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
         return null;
       } catch (err) {
         console.error("Critical XPath failure:", xpath, err);
+        // Return null instead of throwing to prevent crashes
         return null;
       }
     };
@@ -694,16 +700,25 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
       for (let i = 0; i < parts.length; i++) {
         if (!currentElement) return null;
 
-        // Handle iframe and frame traversal
+        // Handle iframe and frame traversal with enhanced safety
         if (
           currentElement.tagName === "IFRAME" ||
           currentElement.tagName === "FRAME"
         ) {
           try {
+            // Check if frame is accessible
+            if (!currentElement.contentDocument && !currentElement.contentWindow) {
+              console.warn('Frame is not accessible (cross-origin or unloaded)');
+              return null;
+            }
+            
             const frameDoc =
               currentElement.contentDocument ||
-              currentElement.contentWindow.document;
-            if (!frameDoc) return null;
+              currentElement.contentWindow?.document;
+            if (!frameDoc) {
+              console.warn('Frame document is not available');
+              return null;
+            }
 
             if (isXPathSelector(parts[i])) {
               currentElement = evaluateXPath(frameDoc, parts[i]);
