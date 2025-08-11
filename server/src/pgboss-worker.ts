@@ -215,7 +215,8 @@ async function triggerIntegrationUpdates(runId: string, robotMetaId: string): Pr
  * Modified processRunExecution function - only add browser reset
  */
 async function processRunExecution(job: Job<ExecuteRunData>) {
-  const BROWSER_INIT_TIMEOUT = 30000;
+  const BROWSER_INIT_TIMEOUT = 60000;
+  const BROWSER_PAGE_TIMEOUT = 45000;
 
   const data = job.data;
   logger.log('info', `Processing run execution job for runId: ${data.runId}, browserId: ${data.browserId}`);
@@ -244,15 +245,28 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
 
     let browser = browserPool.getRemoteBrowser(browserId);
     const browserWaitStart = Date.now();
+    let lastLogTime = 0;
     
     while (!browser && (Date.now() - browserWaitStart) < BROWSER_INIT_TIMEOUT) {
-      logger.log('debug', `Browser ${browserId} not ready yet, waiting...`);
-      await new Promise(resolve => setTimeout(resolve, 1000)); 
+      const currentTime = Date.now();
+      
+      const browserStatus = browserPool.getBrowserStatus(browserId);
+      if (browserStatus === null) {
+        throw new Error(`Browser slot ${browserId} does not exist in pool`);
+      }
+      
+      if (currentTime - lastLogTime > 10000) {
+        logger.log('info', `Browser ${browserId} not ready yet (status: ${browserStatus}), waiting... (${Math.round((currentTime - browserWaitStart) / 1000)}s elapsed)`);
+        lastLogTime = currentTime;
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 2000));
       browser = browserPool.getRemoteBrowser(browserId);
     }
 
     if (!browser) {
-      throw new Error(`Browser ${browserId} not found in pool after timeout`);
+      const finalStatus = browserPool.getBrowserStatus(browserId);
+      throw new Error(`Browser ${browserId} not found in pool after ${BROWSER_INIT_TIMEOUT/1000}s timeout (final status: ${finalStatus})`);
     }
 
     logger.log('info', `Browser ${browserId} found and ready for execution`);
@@ -273,14 +287,22 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
       let currentPage = browser.getCurrentPage();
       
       const pageWaitStart = Date.now();
-      while (!currentPage && (Date.now() - pageWaitStart) < 30000) {
-        logger.log('debug', `Page not ready for browser ${browserId}, waiting...`);
+      let lastPageLogTime = 0;
+      
+      while (!currentPage && (Date.now() - pageWaitStart) < BROWSER_PAGE_TIMEOUT) {
+        const currentTime = Date.now();
+        
+        if (currentTime - lastPageLogTime > 5000) {
+          logger.log('info', `Page not ready for browser ${browserId}, waiting... (${Math.round((currentTime - pageWaitStart) / 1000)}s elapsed)`);
+          lastPageLogTime = currentTime;
+        }
+        
         await new Promise(resolve => setTimeout(resolve, 1000));
         currentPage = browser.getCurrentPage();
       }
 
       if (!currentPage) {
-        throw new Error(`No current page available for browser ${browserId} after timeout`);
+        throw new Error(`No current page available for browser ${browserId} after ${BROWSER_PAGE_TIMEOUT/1000}s timeout`);
       }
 
       logger.log('info', `Starting workflow execution for run ${data.runId}`);
