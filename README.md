@@ -158,6 +158,9 @@ This project is in early stages of development. Your feedback is very important 
 This project is licensed under <a href="./LICENSE">AGPLv3</a>.
 </p>
 
+# Support Us
+Star the repository, contribute if you love what we’re building, or make a [one-time donation](https://bit.ly/maxun-oss). Every little bit helps us keep the lights on and the robots running.
+
 # Contributors
 Thank you to the combined efforts of everyone who contributes!
 
