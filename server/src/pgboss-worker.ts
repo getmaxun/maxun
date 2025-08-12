@@ -797,6 +797,10 @@ async function registerRunExecutionWorker() {
     };
 
     await checkForNewUserQueues();
+
+    setInterval(async () => {
+      await checkForNewUserQueues();
+    }, 10000);
     
     logger.log('info', 'Run execution worker registered successfully');
   } catch (error: unknown) {
@@ -843,6 +847,10 @@ async function registerAbortRunWorker() {
     };
 
     await checkForNewAbortQueues();
+
+    setInterval(async () => {
+      await checkForNewAbortQueues();
+    }, 10000);
     
     logger.log('info', 'Abort run worker registration system initialized');
   } catch (error: unknown) {
