@@ -2494,70 +2494,38 @@ class ClientSelectorGenerator {
   };
 
   private getAllDescendantsIncludingShadow(
-    parentElement: HTMLElement
+    parentElement: HTMLElement,
+    maxDepth: number = 20
   ): HTMLElement[] {
     const allDescendants: HTMLElement[] = [];
     const visited = new Set<HTMLElement>();
-    const shadowRootsSeen = new Set<ShadowRoot>();
 
-    const traverseShadowRoot = (shadowRoot: ShadowRoot, depth: number = 0) => {
-      if (depth > 10) return;
+    const traverse = (element: HTMLElement, currentDepth: number) => {
+      if (currentDepth >= maxDepth || visited.has(element)) {
+        return;
+      }
+      visited.add(element);
 
-      try {
-        const shadowElements = Array.from(
-          shadowRoot.querySelectorAll("*")
-        ) as HTMLElement[];
+      if (element !== parentElement) {
+          allDescendants.push(element);
+      }
 
-        shadowElements.forEach((shadowElement) => {
-          if (!visited.has(shadowElement)) {
-            visited.add(shadowElement);
-            allDescendants.push(shadowElement);
+      // Traverse light DOM children
+      const children = Array.from(element.children) as HTMLElement[];
+      for (const child of children) {
+        traverse(child, currentDepth + 1);
+      }
 
-            if (
-              shadowElement.shadowRoot &&
-              !shadowRootsSeen.has(shadowElement.shadowRoot)
-            ) {
-              shadowRootsSeen.add(shadowElement.shadowRoot);
-              traverseShadowRoot(shadowElement.shadowRoot, depth + 1);
-            }
-          }
-        });
-
-        Array.from(shadowRoot.children).forEach((child) => {
-          const htmlChild = child as HTMLElement;
-          if (
-            htmlChild.shadowRoot &&
-            !shadowRootsSeen.has(htmlChild.shadowRoot)
-          ) {
-            shadowRootsSeen.add(htmlChild.shadowRoot);
-            traverseShadowRoot(htmlChild.shadowRoot, depth + 1);
-          }
-        });
-      } catch (error) {
-        console.warn(`Error traversing shadow root:`, error);
+      // Traverse shadow DOM if it exists
+      if (element.shadowRoot) {
+        const shadowChildren = Array.from(element.shadowRoot.children) as HTMLElement[];
+        for (const shadowChild of shadowChildren) {
+          traverse(shadowChild, currentDepth + 1);
+        }
       }
     };
 
-    const regularDescendants = Array.from(
-      parentElement.querySelectorAll("*")
-    ) as HTMLElement[];
-    regularDescendants.forEach((descendant) => {
-      if (!visited.has(descendant)) {
-        visited.add(descendant);
-        allDescendants.push(descendant);
-      }
-    });
-
-    const elementsWithShadow = [parentElement, ...regularDescendants].filter(
-      (el) => el.shadowRoot
-    );
-    elementsWithShadow.forEach((element) => {
-      if (!shadowRootsSeen.has(element.shadowRoot!)) {
-        shadowRootsSeen.add(element.shadowRoot!);
-        traverseShadowRoot(element.shadowRoot!, 0);
-      }
-    });
-
+    traverse(parentElement, 0);
     return allDescendants;
   }
 
@@ -2576,6 +2544,8 @@ class ClientSelectorGenerator {
     allDescendants.forEach((descendant, i) => {
       if (processedElements.has(descendant)) return;
       processedElements.add(descendant);
+
+      if (!this.isMeaningfulElement(descendant)) return;
 
       const absolutePath = this.buildOptimizedAbsoluteXPath(
         descendant,
@@ -2766,16 +2736,20 @@ class ClientSelectorGenerator {
     rootElement: HTMLElement,
     otherListElements: HTMLElement[] = []
   ): string | null {
-    if (!this.elementContains(rootElement, targetElement) || targetElement === rootElement) {
+    if (
+      !this.elementContains(rootElement, targetElement) ||
+      targetElement === rootElement
+    ) {
       return null;
     }
 
     const pathParts: string[] = [];
     let current: HTMLElement | null = targetElement;
+    let pathDepth = 0;
+    const MAX_PATH_DEPTH = 20;
 
     // Build path from target up to root
-    while (current && current !== rootElement) {
-      // Calculate conflicts for each element in the path
+    while (current && current !== rootElement && pathDepth < MAX_PATH_DEPTH) {
       const classes = this.getCommonClassesAcrossLists(
         current,
         otherListElements
@@ -2806,11 +2780,15 @@ class ClientSelectorGenerator {
         pathParts.unshift(pathPart);
       }
 
-      // Move to parent (either regular parent or shadow host)
-      current = current.parentElement || 
+      current =
+        current.parentElement ||
         ((current.getRootNode() as ShadowRoot).host as HTMLElement | null);
+      
+      pathDepth++;
+    }
 
-      if (!current) break;
+    if (current !== rootElement) {
+      return null;
     }
 
     return pathParts.length > 0 ? "/" + pathParts.join("/") : null;

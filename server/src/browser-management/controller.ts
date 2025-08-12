@@ -242,7 +242,7 @@ const initializeBrowserAsync = async (id: string, userId: string) => {
           logger.log('warn', `No client connected to browser ${id} within timeout, proceeding with dummy socket`);
           resolve(null);
         }
-      }, 10000); 
+      }, 15000);
     });
 
     namespace.on('error', (error: any) => {
@@ -272,21 +272,25 @@ const initializeBrowserAsync = async (id: string, userId: string) => {
         browserSession = new RemoteBrowser(dummySocket, userId, id);
       }
 
+      logger.log('debug', `Starting browser initialization for ${id}`);
       await browserSession.initialize(userId);
+      logger.log('debug', `Browser initialization completed for ${id}`);
       
       const upgraded = browserPool.upgradeBrowserSlot(id, browserSession);
       if (!upgraded) {
         throw new Error('Failed to upgrade reserved browser slot');
       }
       
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       if (socket) {
         socket.emit('ready-for-run');
       } else {
         setTimeout(async () => {
           try {
-            logger.log('info', `Starting execution for browser ${id} with dummy socket`);
+            logger.log('info', `Browser ${id} with dummy socket is ready for execution`);
           } catch (error: any) {
-            logger.log('error', `Error executing run for browser ${id}: ${error.message}`);
+            logger.log('error', `Error with dummy socket browser ${id}: ${error.message}`);
           }
         }, 100); 
       }
@@ -299,10 +303,12 @@ const initializeBrowserAsync = async (id: string, userId: string) => {
       if (socket) {
         socket.emit('error', { message: error.message });
       }
+      throw error;
     }
     
   } catch (error: any) {
     logger.log('error', `Error setting up browser ${id}: ${error.message}`);
     browserPool.failBrowserSlot(id);
+    throw error;
   }
 };
