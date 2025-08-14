@@ -160,9 +160,26 @@ app.use((req, res, next) => {
   next();
 });
 
+io.of('/queued-run').on('connection', (socket) => {
+  const userId = socket.handshake.query.userId as string;
+  
+  if (userId) {
+    socket.join(`user-${userId}`);
+    logger.log('info', `Client joined queued-run namespace for user: ${userId}, socket: ${socket.id}`);
+    
+    socket.on('disconnect', () => {
+      logger.log('info', `Client disconnected from queued-run namespace: ${socket.id}`);
+    });
+  } else {
+    logger.log('warn', `Client connected to queued-run namespace without userId: ${socket.id}`);
+    socket.disconnect();
+  }
+});
+
 setInterval(() => {
   processQueuedRuns();
 }, 5000);
+
 
 server.listen(SERVER_PORT, '0.0.0.0', async () => {
   try {
