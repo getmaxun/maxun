@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import logger from "../logger";
-import { createRemoteBrowserForRun, getActiveBrowserIdByState } from "../browser-management/controller";
+import { createRemoteBrowserForRun, destroyRemoteBrowser, getActiveBrowserIdByState } from "../browser-management/controller";
 import { chromium } from 'playwright-extra';
 import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { browserPool } from "../server";
-import { uuid } from "uuidv4";
+import { v4 as uuid } from "uuid";
 import moment from 'moment-timezone';
 import cron from 'node-cron';
 import { getDecryptedProxyConfig } from './proxy';
@@ -23,7 +23,7 @@ chromium.use(stealthPlugin());
 export const router = Router();
 
 export const processWorkflowActions = async (workflow: any[], checkLimit: boolean = false): Promise<any[]> => {
- const processedWorkflow = JSON.parse(JSON.stringify(workflow));
+  const processedWorkflow = JSON.parse(JSON.stringify(workflow));
 
   processedWorkflow.forEach((pair: any) => {
     pair.what.forEach((action: any) => {
@@ -108,52 +108,52 @@ router.get('/recordings/:id', requireSignIn, async (req, res) => {
 router.get(('/recordings/:id/runs'), requireSignIn, async (req, res) => {
   try {
     const runs = await Run.findAll({
-        where: {
-            robotMetaId: req.params.id
-        },
-        raw: true
+      where: {
+        robotMetaId: req.params.id
+      },
+      raw: true
     });
     const formattedRuns = runs.map(formatRunResponse);
     const response = {
-        statusCode: 200,
-        messageCode: "success",
-        runs: {
+      statusCode: 200,
+      messageCode: "success",
+      runs: {
         totalCount: formattedRuns.length,
         items: formattedRuns,
-        },
+      },
     };
 
     res.status(200).json(response);
-} catch (error) {
+  } catch (error) {
     console.error("Error fetching runs:", error);
     res.status(500).json({
-        statusCode: 500,
-        messageCode: "error",
-        message: "Failed to retrieve runs",
+      statusCode: 500,
+      messageCode: "error",
+      message: "Failed to retrieve runs",
     });
-}
+  }
 })
 
 function formatRunResponse(run: any) {
   const formattedRun = {
-      id: run.id,
-      status: run.status,
-      name: run.name,
-      robotId: run.robotMetaId, // Renaming robotMetaId to robotId
-      startedAt: run.startedAt,
-      finishedAt: run.finishedAt,
-      runId: run.runId,
-      runByUserId: run.runByUserId,
-      runByScheduleId: run.runByScheduleId,
-      runByAPI: run.runByAPI,
-      data: {},
-      screenshot: null,
+    id: run.id,
+    status: run.status,
+    name: run.name,
+    robotId: run.robotMetaId, // Renaming robotMetaId to robotId
+    startedAt: run.startedAt,
+    finishedAt: run.finishedAt,
+    runId: run.runId,
+    runByUserId: run.runByUserId,
+    runByScheduleId: run.runByScheduleId,
+    runByAPI: run.runByAPI,
+    data: {},
+    screenshot: null,
   };
 
   if (run.serializableOutput && run.serializableOutput['item-0']) {
-      formattedRun.data = run.serializableOutput['item-0'];
+    formattedRun.data = run.serializableOutput['item-0'];
   } else if (run.binaryOutput && run.binaryOutput['item-0']) {
-      formattedRun.screenshot = run.binaryOutput['item-0']; 
+    formattedRun.screenshot = run.binaryOutput['item-0'];
   }
 
   return formattedRun;
@@ -170,81 +170,81 @@ interface Credentials {
 
 function handleWorkflowActions(workflow: any[], credentials: Credentials) {
   return workflow.map(step => {
-      if (!step.what) return step;
+    if (!step.what) return step;
 
-      const newWhat: any[] = [];
-      const processedSelectors = new Set<string>();
-      
-      for (let i = 0; i < step.what.length; i++) {
-          const action = step.what[i];
-          
-          if (!action?.action || !action?.args?.[0]) {
-              newWhat.push(action);
-              continue;
-          }
+    const newWhat: any[] = [];
+    const processedSelectors = new Set<string>();
 
-          const selector = action.args[0];
-          const credential = credentials[selector];
+    for (let i = 0; i < step.what.length; i++) {
+      const action = step.what[i];
 
-          if (!credential) {
-              newWhat.push(action);
-              continue;
-          }
-
-          if (action.action === 'click') {
-              newWhat.push(action);
-              
-              if (!processedSelectors.has(selector) && 
-                  i + 1 < step.what.length && 
-                  (step.what[i + 1].action === 'type' || step.what[i + 1].action === 'press')) {
-                  
-                  newWhat.push({
-                      action: 'type',
-                      args: [selector, encrypt(credential.value), credential.type]
-                  });
-                  
-                  newWhat.push({
-                      action: 'waitForLoadState',
-                      args: ['networkidle']
-                  });
-                  
-                  processedSelectors.add(selector);
-                  
-                  while (i + 1 < step.what.length && 
-                         (step.what[i + 1].action === 'type' || 
-                          step.what[i + 1].action === 'press' || 
-                          step.what[i + 1].action === 'waitForLoadState')) {
-                      i++;
-                  }
-              }
-          } else if ((action.action === 'type' || action.action === 'press') && 
-                     !processedSelectors.has(selector)) {
-              newWhat.push({
-                  action: 'type',
-                  args: [selector, encrypt(credential.value), credential.type]
-              });
-              
-              newWhat.push({
-                  action: 'waitForLoadState',
-                  args: ['networkidle']
-              });
-              
-              processedSelectors.add(selector);
-              
-              // Skip subsequent type/press/waitForLoadState actions for this selector
-              while (i + 1 < step.what.length && 
-                     (step.what[i + 1].action === 'type' || 
-                      step.what[i + 1].action === 'press' || 
-                      step.what[i + 1].action === 'waitForLoadState')) {
-                  i++;
-              }
-          }
+      if (!action?.action || !action?.args?.[0]) {
+        newWhat.push(action);
+        continue;
       }
 
-      return {
-          ...step,
-          what: newWhat
-      };
+      const selector = action.args[0];
+      const credential = credentials[selector];
+
+      if (!credential) {
+        newWhat.push(action);
+        continue;
+      }
+
+      if (action.action === 'click') {
+        newWhat.push(action);
+
+        if (!processedSelectors.has(selector) &&
+          i + 1 < step.what.length &&
+          (step.what[i + 1].action === 'type' || step.what[i + 1].action === 'press')) {
+
+          newWhat.push({
+            action: 'type',
+            args: [selector, encrypt(credential.value), credential.type]
+          });
+
+          newWhat.push({
+            action: 'waitForLoadState',
+            args: ['networkidle']
+          });
+
+          processedSelectors.add(selector);
+
+          while (i + 1 < step.what.length &&
+            (step.what[i + 1].action === 'type' ||
+              step.what[i + 1].action === 'press' ||
+              step.what[i + 1].action === 'waitForLoadState')) {
+            i++;
+          }
+        }
+      } else if ((action.action === 'type' || action.action === 'press') &&
+        !processedSelectors.has(selector)) {
+        newWhat.push({
+          action: 'type',
+          args: [selector, encrypt(credential.value), credential.type]
+        });
+
+        newWhat.push({
+          action: 'waitForLoadState',
+          args: ['networkidle']
+        });
+
+        processedSelectors.add(selector);
+
+        // Skip subsequent type/press/waitForLoadState actions for this selector
+        while (i + 1 < step.what.length &&
+          (step.what[i + 1].action === 'type' ||
+            step.what[i + 1].action === 'press' ||
+            step.what[i + 1].action === 'waitForLoadState')) {
+          i++;
+        }
+      }
+    }
+
+    return {
+      ...step,
+      what: newWhat
+    };
   });
 }
 
@@ -275,7 +275,7 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
 
     if (targetUrl) {
       const updatedWorkflow = [...robot.recording.workflow];
-      
+
       for (let i = updatedWorkflow.length - 1; i >= 0; i--) {
         const step = updatedWorkflow[i];
         for (let j = 0; j < step.what.length; j++) {
@@ -286,7 +286,7 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
             if (step.where?.url && step.where.url !== "about:blank") {
               step.where.url = targetUrl;
             }
-            
+
             robot.set('recording', { ...robot.recording, workflow: updatedWorkflow });
             robot.changed('recording', true);
             i = -1;
@@ -307,16 +307,16 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
     if (limits && Array.isArray(limits) && limits.length > 0) {
       for (const limitInfo of limits) {
         const { pairIndex, actionIndex, argIndex, limit } = limitInfo;
-        
+
         const pair = workflow[pairIndex];
         if (!pair || !pair.what) continue;
-        
+
         const action = pair.what[actionIndex];
         if (!action || !action.args) continue;
-        
+
         const arg = action.args[argIndex];
         if (!arg || typeof arg !== 'object') continue;
-        
+
         (arg as { limit: number }).limit = limit;
       }
     }
@@ -384,7 +384,7 @@ router.post('/recordings/:id/duplicate', requireSignIn, async (req: Authenticate
 
       step.what.forEach((action) => {
         if (action.action === "goto" && action.args?.length) {
-          action.args[0] = targetUrl; 
+          action.args[0] = targetUrl;
         }
       });
 
@@ -394,22 +394,22 @@ router.post('/recordings/:id/duplicate', requireSignIn, async (req: Authenticate
     const currentTimestamp = new Date().toLocaleString();
 
     const newRobot = await Robot.create({
-      id: uuid(), 
-      userId: originalRobot.userId, 
+      id: uuid(),
+      userId: originalRobot.userId,
       recording_meta: {
         ...originalRobot.recording_meta,
         id: uuid(),
         name: `${originalRobot.recording_meta.name} (${lastWord})`,
-        createdAt: currentTimestamp, 
-        updatedAt: currentTimestamp, 
-      }, 
-      recording: { ...originalRobot.recording, workflow }, 
-      google_sheet_email: null, 
+        createdAt: currentTimestamp,
+        updatedAt: currentTimestamp,
+      },
+      recording: { ...originalRobot.recording, workflow },
+      google_sheet_email: null,
       google_sheet_name: null,
       google_sheet_id: null,
       google_access_token: null,
       google_refresh_token: null,
-      schedule: null, 
+      schedule: null,
     });
 
     logger.log('info', `Robot with ID ${id} duplicated successfully as ${newRobot.id}.`);
@@ -517,98 +517,124 @@ router.put('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res) =>
       return res.status(401).send({ error: 'Unauthorized' });
     }
 
-    const proxyConfig = await getDecryptedProxyConfig(req.user.id);
-    let proxyOptions: any = {};
-
-    if (proxyConfig.proxy_url) {
-      proxyOptions = {
-        server: proxyConfig.proxy_url,
-        ...(proxyConfig.proxy_username && proxyConfig.proxy_password && {
-          username: proxyConfig.proxy_username,
-          password: proxyConfig.proxy_password,
-        }),
-      };
-    }
-
-    console.log(`Proxy config for run: ${JSON.stringify(proxyOptions)}`);
-
     // Generate runId first
     const runId = uuid();
     
-    // Check if user has reached browser limit
-    const userBrowserIds = browserPool.getAllBrowserIdsForUser(req.user.id);
-    const canCreateBrowser = userBrowserIds.length < 2;
-    
-    if (canCreateBrowser) {
-      // User has available browser slots, create it directly
-      const id = createRemoteBrowserForRun(req.user.id);
+    const canCreateBrowser = await browserPool.hasAvailableBrowserSlots(req.user.id, "run");
 
-      const run = await Run.create({
-        status: 'running',
+    if (canCreateBrowser) {
+      let browserId: string;
+      
+      try {
+        browserId = await createRemoteBrowserForRun(req.user.id);
+        
+        if (!browserId || browserId.trim() === '') {
+          throw new Error('Failed to generate valid browser ID');
+        }
+        
+        logger.log('info', `Created browser ${browserId} for run ${runId}`);
+        
+      } catch (browserError: any) {
+        logger.log('error', `Failed to create browser: ${browserError.message}`);
+        return res.status(500).send({ error: 'Failed to create browser instance' });
+      }
+
+      try {
+        await Run.create({
+          status: 'running',
+          name: recording.recording_meta.name,
+          robotId: recording.id,
+          robotMetaId: recording.recording_meta.id,
+          startedAt: new Date().toLocaleString(),
+          finishedAt: '',
+          browserId: browserId, 
+          interpreterSettings: req.body,
+          log: '',
+          runId,
+          runByUserId: req.user.id,
+          serializableOutput: {},
+          binaryOutput: {},
+        });
+
+        logger.log('info', `Created run ${runId} with browser ${browserId}`);
+
+      } catch (dbError: any) {
+        logger.log('error', `Database error creating run: ${dbError.message}`);
+        
+        try {
+          await destroyRemoteBrowser(browserId, req.user.id);
+        } catch (cleanupError: any) {
+          logger.log('warn', `Failed to cleanup browser after run creation failure: ${cleanupError.message}`);
+        }
+        
+        return res.status(500).send({ error: 'Failed to create run record' });
+      }
+
+      try {
+        const userQueueName = `execute-run-user-${req.user.id}`;
+        await pgBoss.createQueue(userQueueName);
+        
+        const jobId = await pgBoss.send(userQueueName, {
+          userId: req.user.id,
+          runId: runId,
+          browserId: browserId, 
+        });
+        
+        logger.log('info', `Queued run execution job with ID: ${jobId} for run: ${runId}`);
+      } catch (queueError: any) {
+        logger.log('error', `Failed to queue run execution: ${queueError.message}`);
+        
+        try {
+          await Run.update({
+            status: 'failed',
+            finishedAt: new Date().toLocaleString(),
+            log: 'Failed to queue execution job'
+          }, { where: { runId: runId } });
+          
+          await destroyRemoteBrowser(browserId, req.user.id);
+        } catch (cleanupError: any) {
+          logger.log('warn', `Failed to cleanup after queue error: ${cleanupError.message}`);
+        }
+
+        return res.status(503).send({ error: 'Unable to queue run, please try again later' });
+      }
+
+      return res.send({
+        browserId: browserId, 
+        runId: runId,
+        robotMetaId: recording.recording_meta.id,
+        queued: false 
+      }); 
+    } else {
+      const browserId = uuid(); 
+
+      await Run.create({
+        status: 'queued',
         name: recording.recording_meta.name,
         robotId: recording.id,
         robotMetaId: recording.recording_meta.id,
         startedAt: new Date().toLocaleString(),
         finishedAt: '',
-        browserId: id,
+        browserId,
         interpreterSettings: req.body,
-        log: '',
+        log: 'Run queued - waiting for available browser slot',
         runId,
         runByUserId: req.user.id,
         serializableOutput: {},
         binaryOutput: {},
       });
-
-      const plainRun = run.toJSON();
-
+      
       return res.send({
-        browserId: id,
-        runId: plainRun.runId,
+        browserId: browserId,
+        runId: runId,
         robotMetaId: recording.recording_meta.id,
-        queued: false
+        queued: true 
       });
-    } else {
-      const browserId = getActiveBrowserIdByState(req.user.id, "run")
-
-      if (browserId) {
-        // User has reached the browser limit, queue the run
-        try {        
-          // Create the run record with 'queued' status
-          await Run.create({
-            status: 'queued',
-            name: recording.recording_meta.name,
-            robotId: recording.id,
-            robotMetaId: recording.recording_meta.id,
-            startedAt: new Date().toLocaleString(),
-            finishedAt: '',
-            browserId: browserId,  // Random will be updated later
-            interpreterSettings: req.body,
-            log: 'Run queued - waiting for available browser slot',
-            runId,
-            runByUserId: req.user.id,
-            serializableOutput: {},
-            binaryOutput: {},
-          });
-          
-          return res.send({
-            browserId: browserId,
-            runId: runId,
-            robotMetaId: recording.recording_meta.id,
-            queued: true,
-          });
-        } catch (queueError: any) {
-          logger.log('error', `Failed to queue run job: ${queueError.message}`);
-          return res.status(503).send({ error: 'Unable to queue run, please try again later' });
-        }
-      } else {
-        logger.log('info', "Browser id does not exist");
-        return res.send('');
-      }
-    }
+    } 
   } catch (e) {
     const { message } = e as Error;
-    logger.log('info', `Error while creating a run with robot id: ${req.params.id} - ${message}`);
-    return res.send('');
+    logger.log('error', `Error while creating a run with robot id: ${req.params.id} - ${message}`);    
+    return res.status(500).send({ error: 'Internal server error' });
   }
 });
 
@@ -664,17 +690,17 @@ router.post('/runs/run/:id', requireSignIn, async (req: AuthenticatedRequest, re
 
       // Queue the execution job
       await pgBoss.createQueue(userQueueName);
-      
+
       const jobId = await pgBoss.send(userQueueName, {
         userId: req.user.id,
         runId: req.params.id,
         browserId: plainRun.browserId
       });
-      
+
       logger.log('info', `Queued run execution job with ID: ${jobId} for run: ${req.params.id}`);
     } catch (queueError: any) {
       logger.log('error', `Failed to queue run execution`);
-      
+
     }
   } catch (e) {
     const { message } = e as Error;
@@ -891,31 +917,128 @@ router.post('/runs/abort/:id', requireSignIn, async (req: AuthenticatedRequest, 
   try {
     if (!req.user) { return res.status(401).send({ error: 'Unauthorized' }); }
     
-    const run = await Run.findOne({ where: { 
-      runId: req.params.id,
-      runByUserId: req.user.id,
-    } });
+    const run = await Run.findOne({ where: { runId: req.params.id } });
     
     if (!run) {
-      return res.status(404).send(false);
+      return res.status(404).send({ error: 'Run not found' });
     }
-    
-    const userQueueName = `abort-run-user-${req.user.id}`;
-    await pgBoss.createQueue(userQueueName);
-    
-    await pgBoss.send(userQueueName, {
-      userId: req.user.id,
-      runId: req.params.id
-    });
-    
+
+    if (!['running', 'queued'].includes(run.status)) {
+      return res.status(400).send({ 
+        error: `Cannot abort run with status: ${run.status}` 
+      });
+    }
+
+    const isQueued = run.status === 'queued';
+
     await run.update({
       status: 'aborting'
     });
+
+    if (isQueued) {
+      await run.update({
+        status: 'aborted',
+        finishedAt: new Date().toLocaleString(),
+        log: 'Run aborted while queued'
+      });
+      
+      return res.send({ 
+        success: true, 
+        message: 'Queued run aborted',
+        isQueued: true 
+      });
+    }
+
+    const userQueueName = `abort-run-user-${req.user.id}`;
+    await pgBoss.createQueue(userQueueName);
+
+    const jobId = await pgBoss.send(userQueueName, {
+      userId: req.user.id,
+      runId: req.params.id
+    });
+
+    logger.log('info', `Abort signal sent for run ${req.params.id}, job ID: ${jobId}`);
+
+    return res.send({ 
+      success: true, 
+      message: 'Abort signal sent',
+      jobId,
+      isQueued: false
+    });    
     
-    return res.send(true);
   } catch (e) {
     const { message } = e as Error;
-    logger.log('info', `Error while aborting run with id: ${req.params.id} - ${message}`);
-    return res.send(false);
+    logger.log('error', `Error aborting run ${req.params.id}: ${message}`);
+    return res.status(500).send({ error: 'Failed to abort run' });
   }
 });
+
+async function processQueuedRuns() {
+  try {
+    const queuedRun = await Run.findOne({
+      where: { status: 'queued' },
+      order: [['startedAt', 'ASC']]
+    });
+
+    if (!queuedRun) return;
+
+    const userId = queuedRun.runByUserId;
+    
+    const canCreateBrowser = await browserPool.hasAvailableBrowserSlots(userId, "run");
+    
+    if (canCreateBrowser) {
+      logger.log('info', `Processing queued run ${queuedRun.runId} for user ${userId}`);
+      
+      const recording = await Robot.findOne({
+        where: {
+          'recording_meta.id': queuedRun.robotMetaId
+        },
+        raw: true
+      });
+
+      if (!recording) {
+        await queuedRun.update({
+          status: 'failed',
+          finishedAt: new Date().toLocaleString(),
+          log: 'Recording not found'
+        });
+        return;
+      }
+
+      try {
+        const newBrowserId = await createRemoteBrowserForRun(userId);
+
+        logger.log('info', `Created and initialized browser ${newBrowserId} for queued run ${queuedRun.runId}`);
+
+        await queuedRun.update({
+          status: 'running',
+          browserId: newBrowserId,
+          log: 'Browser created and ready for execution'
+        });
+
+        const userQueueName = `execute-run-user-${userId}`;
+        await pgBoss.createQueue(userQueueName);
+        
+        const jobId = await pgBoss.send(userQueueName, {
+          userId: userId,
+          runId: queuedRun.runId,
+          browserId: newBrowserId,
+        });
+
+        logger.log('info', `Queued execution for run ${queuedRun.runId} with ready browser ${newBrowserId}, job ID: ${jobId}`);
+        
+      } catch (browserError: any) {
+        logger.log('error', `Failed to create browser for queued run: ${browserError.message}`);
+        await queuedRun.update({
+          status: 'failed',
+          finishedAt: new Date().toLocaleString(),
+          log: `Failed to create browser: ${browserError.message}`
+        });
+      }
+    }
+  } catch (error: any) {
+    logger.log('error', `Error processing queued runs: ${error.message}`);
+  }
+}
+
+export { processQueuedRuns };

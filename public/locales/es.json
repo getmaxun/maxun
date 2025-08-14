@@ -59,10 +59,17 @@
     "delete": "Eliminar",
     "duplicate": "Duplicar",
     "search": "Buscar robots...",
+    "warning_modal": {
+      "title": "Navegador Activo Detectado",
+      "message": "Ya hay una sesión de grabación del navegador en ejecución. ¿Le gustaría descartarla y crear una nueva grabación?",
+      "discard_and_create": "Descartar y Crear Nueva",
+      "cancel": "Cancelar"
+    },
     "notifications": {
       "delete_warning": "El robot tiene ejecuciones asociadas. Primero elimine las ejecuciones para eliminar el robot",
       "delete_success": "Robot eliminado exitosamente",
-      "auth_success": "Robot autenticado exitosamente"
+      "auth_success": "Robot autenticado exitosamente",
+      "browser_limit_warning": "Los navegadores remotos están ocupados actualmente. Por favor, espere unos minutos e inténtelo de nuevo"
     }
   },
   "mainmenu": {
@@ -141,11 +148,11 @@
     "no_key_message": "Aún no has generado una clave API.",
     "generate_button": "Generar Clave API",
     "notifications": {
-      "fetch_error": "Error al obtener la clave API - ${error}",
+      "fetch_error": "Error al obtener la clave API - {{error}}",
       "generate_success": "Clave API generada con éxito",
-      "generate_error": "Error al generar la clave API - ${error}",
+      "generate_error": "Error al generar la clave API - {{error}}",
       "delete_success": "Clave API eliminada con éxito",
-      "delete_error": "Error al eliminar la clave API - ${error}",
+      "delete_error": "Error al eliminar la clave API - {{error}}",
       "copy_success": "Clave API copiada con éxito"
     }
   },
@@ -171,6 +178,11 @@
       "pagination": "Seleccione cómo puede el robot capturar el resto de la lista",
       "limit": "Elija el número de elementos a extraer",
       "complete": "Captura completada"
+    },
+    "actions": {
+      "text": "Capturar Texto",
+      "list": "Capturar Lista",
+      "screenshot": "Capturar Pantalla"
     }
   },
   "right_panel": {
@@ -183,6 +195,7 @@
       "confirm_capture": "Confirmar Captura",
       "confirm_pagination": "Confirmar",
       "confirm_limit": "Confirmar",
+      "confirm_reset": "Confirmar",
       "finish_capture": "Finalizar Captura",
       "back": "Atrás",
       "reset": "Reiniciar",
@@ -289,7 +302,7 @@
       "no": "No"
     },
     "messages": {
-      "extracting": "Extrayendo datos...espere de 10 segundos a 1 minuto",
+      "extracting": "Extrayendo datos...espere",
       "restart_required": "Por favor, reinicie la interpretación después de actualizar la grabación",
       "run_finished": "Ejecución finalizada",
       "run_failed": "Error al iniciar la ejecución"
@@ -303,9 +316,30 @@
       "reset_success": "Vista previa restablecida correctamente"
     }
   },
+  "interpretation_log": {
+    "titles": {
+      "output_preview": "Vista Previa de Datos de Salida",
+      "screenshot": "Captura de pantalla"
+    },
+    "messages": {
+      "additional_rows": "Se extraerán filas adicionales de datos una vez que termine la grabación.",
+      "successful_training": "¡Has entrenado exitosamente al robot para realizar acciones! Haz clic en el botón de abajo para obtener una vista previa de los datos que tu robot extraerá.",
+      "no_selection": "Parece que aún no has seleccionado nada para extraer. Una vez que lo hagas, el robot mostrará una vista previa de tus selecciones aquí."
+    },
+    "data_sections": {
+      "binary_received": "---------- Datos binarios de salida recibidos ----------",
+      "serializable_received": "---------- Datos serializables de salida recibidos ----------",
+      "mimetype": "tipo MIME: ",
+      "image_below": "La imagen se muestra a continuación:",
+      "separator": "--------------------------------------------------"
+    },
+    "notifications": {
+      "reset_success": "Vista previa restablecida correctamente"
+    }
+  },
   "recording_page": {
     "loader": {
-      "browser_startup": "Iniciando el navegador...Navegando a {{url}}"
+      "browser_startup": "Iniciando el navegador...Mantener apretado"
     }
   },
   "integration_settings": {
@@ -474,7 +508,8 @@
       "schedule_success": "Robot {{name}} programado exitosamente",
       "schedule_failed": "Error al programar el robot {{name}}",
       "abort_success": "Interpretación del robot {{name}} abortada exitosamente",
-      "abort_failed": "Error al abortar la interpretación del robot {{name}}"
+      "abort_failed": "Error al abortar la interpretación del robot {{name}}",
+      "abort_initiated": "Cancelando la interpretación del robot {{name}}"
     },
     "menu": {
       "recordings": "Robots",
@@ -599,6 +634,7 @@
     "es": "Español",
     "ja": "Japonés",
     "zh": "Chino",
-    "de": "Alemán"
+    "de": "Alemán",
+    "tr": "Turco"
   }
 }

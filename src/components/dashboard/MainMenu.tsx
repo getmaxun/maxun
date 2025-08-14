@@ -1,13 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
 import { useNavigate } from 'react-router-dom';
-import { Paper, Button, useTheme } from "@mui/material";
-import { AutoAwesome, FormatListBulleted, VpnKey, Usb, CloudQueue, Code, } from "@mui/icons-material";
-import { apiUrl } from "../../apiConfig";
+import { Paper, Button, useTheme, Modal, Typography, Stack, TextField, InputAdornment, IconButton } from "@mui/material"; // Added TextField, InputAdornment, IconButton
+import { AutoAwesome, FormatListBulleted, VpnKey, Usb, CloudQueue, Description, Favorite, ContentCopy } from "@mui/icons-material"; // Added ContentCopy
 import { useTranslation } from 'react-i18next';
-import i18n from '../../i18n';
+import { useGlobalInfoStore } from "../../context/globalInfo";
 
 interface MainMenuProps {
   value: string;
@@ -18,105 +17,144 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
   const theme = useTheme();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { notify } = useGlobalInfoStore();
+
+  const [cloudModalOpen, setCloudModalOpen] = useState(false);
+  const [sponsorModalOpen, setSponsorModalOpen] = useState(false);
+
+  const ossDiscountCode = "MAXUNOSS8";
 
   const handleChange = (event: React.SyntheticEvent, newValue: string) => {
     navigate(`/${newValue}`);
     handleChangeContent(newValue);
   };
 
-  // Define colors based on theme mode
+  const copyDiscountCode = () => {
+    navigator.clipboard.writeText(ossDiscountCode).then(() => {
+      notify("success", "Discount code copied to clipboard!");
+    }).catch(err => {
+      console.error('Failed to copy text: ', err);
+      notify("error", "Failed to copy discount code.");
+    });
+  };
+
   const defaultcolor = theme.palette.mode === 'light' ? 'black' : 'white';
 
   const buttonStyles = {
     justifyContent: 'flex-start',
     textAlign: 'left',
-    fontSize: 'medium',
-    padding: '6px 16px 6px 22px',
+    fontSize: '17px',
+    padding: '20px 16px 20px 22px',
     minHeight: '48px',
     minWidth: '100%',
     display: 'flex',
     alignItems: 'center',
     textTransform: 'none',
     color: theme.palette.mode === 'light' ? '#6C6C6C' : 'inherit',
+    '&:hover': {
+      backgroundColor: theme.palette.mode === 'light' ? '#f5f5f5' : 'inherit',
+    },
   };
 
-
   return (
-    <Paper
-      sx={{
-        height: '100%',
-        width: '250px',
-        backgroundColor: theme.palette.background.paper,
-        paddingTop: '0.5rem',
-        color: defaultcolor,
-      }}
-      variant="outlined"
-      square
-    >
-      <Box sx={{ width: '100%', paddingBottom: '1rem' }}>
-        <Tabs
-          value={value}
-          onChange={handleChange}
-          textColor="primary"
-          indicatorColor="primary"
-          orientation="vertical"
-          sx={{ alignItems: 'flex-start' }}
-        >
-          <Tab
-            sx={{
-              justifyContent: 'flex-start',
-              textAlign: 'left',
-              fontSize: 'medium',
+    <>
+      <Paper
+        sx={{
+          height: '100%',
+          width: '250px',
+          backgroundColor: theme.palette.background.paper,
+          paddingTop: '0.5rem',
+          color: defaultcolor,
+        }}
+        variant="outlined"
+        square
+      >
+        <Box sx={{ width: '100%', paddingBottom: '1rem' }}>
+          <Tabs
+            value={value}
+            onChange={handleChange}
+            textColor="primary"
+            indicatorColor="primary"
+            orientation="vertical"
+            sx={{ alignItems: 'flex-start' }}
+          >
+            <Tab value="robots" label={t('mainmenu.recordings')} icon={<AutoAwesome />} iconPosition="start" sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
+            <Tab value="runs" label={t('mainmenu.runs')} icon={<FormatListBulleted />} iconPosition="start" sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
+            <Tab value="proxy" label={t('mainmenu.proxy')} icon={<Usb />} iconPosition="start" sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
+            <Tab value="apikey" label={t('mainmenu.apikey')} icon={<VpnKey />} iconPosition="start" sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
+          </Tabs>
+          <hr />
+          <Box sx={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+            <Button href='https://docs.maxun.dev' target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<Description />}>
+              Documentation
+            </Button>
+            <Button onClick={() => setCloudModalOpen(true)} sx={buttonStyles} startIcon={<CloudQueue />}>
+              Join Maxun Cloud
+            </Button>
+            <Button onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite />}>
+              Sponsor Us
+            </Button>
+          </Box>
+        </Box>
+      </Paper>
+
+      <Modal open={cloudModalOpen} onClose={() => setCloudModalOpen(false)}>
+        <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', bgcolor: 'background.paper', borderRadius: 2, p: 4, width: 600 }}>
+          <Typography variant="h6" marginBottom={4}>
+            Join Maxun Cloud
+          </Typography>
+          <Typography variant="body1" gutterBottom>
+            Unlock reliable web data extraction. Maxun Cloud ensures you bypass blocks and scale with ease.
+          </Typography>
+          <Typography variant="body1" gutterBottom>
+            As a thank-you to open source users, enjoy 8% off your subscription!
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2, mb: 0.5, fontSize: 13 }}>
+            Use the discount code
+          </Typography>
+          <TextField
+            size="small"
+            value={ossDiscountCode}
+            InputProps={{
+              readOnly: true,
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton onClick={copyDiscountCode} edge="end" aria-label="copy discount code" size="small">
+                    <ContentCopy fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              ),
             }}
-            value="robots"
-            label={t('mainmenu.recordings')}
-            icon={<AutoAwesome />}
-            iconPosition="start"
+            sx={{ mb: 2, fontSize: 13 }}
           />
-          <Tab
-            sx={{
-              justifyContent: 'flex-start',
-              textAlign: 'left',
-              fontSize: 'medium',
-            }}
-            value="runs"
-            label={t('mainmenu.runs')}
-            icon={<FormatListBulleted />}
-            iconPosition="start"
-          />
-          <Tab
-            sx={{
-              justifyContent: 'flex-start',
-              textAlign: 'left',
-              fontSize: 'medium',
-            }}
-            value="proxy"
-            label={t('mainmenu.proxy')}
-            icon={<Usb />}
-            iconPosition="start"
-          />
-          <Tab
-            sx={{
-              justifyContent: 'flex-start',
-              textAlign: 'left',
-              fontSize: 'medium',
-            }}
-            value="apikey"
-            label={t('mainmenu.apikey')}
-            icon={<VpnKey />}
-            iconPosition="start"
-          />
-        </Tabs>
-        <hr />
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: '1rem', textAlign: 'left' }}>
-          <Button href={`${apiUrl}/api-docs/`} target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<Code />}>
-            {t('mainmenu.apidocs')}
-          </Button>
-          <Button href="https://app.maxun.dev/login" target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<CloudQueue />}>
-            {t('mainmenu.feedback')}
+
+          <Button href="https://app.maxun.dev/login" target="_blank" fullWidth variant="outlined" sx={{ mt: 2 }}>
+            Go to Maxun Cloud
           </Button>
         </Box>
-      </Box>
-    </Paper>
+      </Modal>
+
+      <Modal open={sponsorModalOpen} onClose={() => setSponsorModalOpen(false)}>
+        <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', bgcolor: 'background.paper', borderRadius: 2, p: 4, width: 600 }}>
+          <Typography variant="h6" marginBottom={4}>
+            Support Maxun Open Source
+          </Typography>
+          <Typography variant="body1" gutterBottom>
+            Maxun is built by a small, full-time team. Your donations directly contribute to making it better.
+            <br />
+            <br />
+            Thank you for your support! 💙
+          </Typography>
+          <Stack direction="row" spacing={2} mt={2}>
+            <Button href="https://checkout.dodopayments.com/buy/pdt_1Bdstszcg9VY8WYGwNBPM?quantity=1" target="_blank" rel="noopener noreferrer"  variant="outlined" fullWidth>
+              Sponsor $5 One-Time
+            </Button>
+            <Button href="https://checkout.dodopayments.com/buy/pdt_HDalaYf8hEGVG7hXcfNBj?quantity=1" target="_blank" rel="noopener noreferrer"  variant="outlined" fullWidth>
+              Sponsor $5 Monthly
+            </Button>
+          </Stack>
+        </Box>
+      </Modal>
+    </>
   );
 };

@@ -47,6 +47,7 @@ interface InterpreterOptions {
     activeId: (id: number) => void,
     debugMessage: (msg: string) => void,
     setActionType: (type: string) => void,
+    incrementScrapeListIndex: () => void,
   }>
 }
 
@@ -107,7 +108,9 @@ export default class Interpreter extends EventEmitter {
     PlaywrightBlocker.fromLists(fetch, ['https://easylist.to/easylist/easylist.txt']).then(blocker => {
       this.blocker = blocker;
     }).catch(err => {
-      this.log(`Failed to initialize ad-blocker:`, Level.ERROR);
+      this.log(`Failed to initialize ad-blocker: ${err.message}`, Level.ERROR);
+      // Continue without ad-blocker rather than crashing
+      this.blocker = null;
     })
   }
 
@@ -475,6 +478,11 @@ export default class Interpreter extends EventEmitter {
         }
 
         await this.ensureScriptsLoaded(page);
+        
+        if (this.options.debugChannel?.incrementScrapeListIndex) {
+          this.options.debugChannel.incrementScrapeListIndex();
+        }
+
         if (!config.pagination) {
           const scrapeResults: Record<string, any>[] = await page.evaluate((cfg) => window.scrapeList(cfg), config);
           await this.options.serializableCallback(scrapeResults);
@@ -516,11 +524,16 @@ export default class Interpreter extends EventEmitter {
           this.options.debugChannel.setActionType('script');
         }
 
-        const AsyncFunction: FunctionConstructor = Object.getPrototypeOf(
-          async () => { },
-        ).constructor;
-        const x = new AsyncFunction('page', 'log', code);
-        await x(page, this.log);
+        try {
+          const AsyncFunction: FunctionConstructor = Object.getPrototypeOf(
+            async () => { },
+          ).constructor;
+          const x = new AsyncFunction('page', 'log', code);
+          await x(page, this.log);
+        } catch (error) {
+          this.log(`Script execution failed: ${error.message}`, Level.ERROR);
+          throw new Error(`Script execution error: ${error.message}`);
+        }
       },
 
       flag: async () => new Promise((res) => {
@@ -584,11 +597,18 @@ export default class Interpreter extends EventEmitter {
             try{
               await executeAction(invokee, methodName, [step.args[0], { force: true }]);
             } catch (error) {
-              continue
+              this.log(`Click action failed: ${error.message}`, Level.WARN);
+              continue;
             }
           }
         } else {
-          await executeAction(invokee, methodName, step.args);
+          try {
+            await executeAction(invokee, methodName, step.args);
+          } catch (error) {
+            this.log(`Action ${methodName} failed: ${error.message}`, Level.ERROR);
+            // Continue with next action instead of crashing
+            continue;
+          }
         }
       }
 
@@ -624,6 +644,8 @@ export default class Interpreter extends EventEmitter {
         });
         allResults = allResults.concat(newResults);
         debugLog("Results collected:", allResults.length);
+
+        await this.options.serializableCallback(allResults);
     };
 
     const checkLimit = () => {
@@ -797,10 +819,53 @@ export default class Interpreter extends EventEmitter {
             let retryCount = 0;
             let paginationSuccess = false;
             
-            // Capture basic content signature before click
+            // Capture basic content signature before click - with XPath support
             const captureContentSignature = async () => {
-              return await page.evaluate((selector) => {
-                const items = document.querySelectorAll(selector);
+              return await page.evaluate((listSelector) => {
+                const isXPath = (selector: string) => {
+                  return selector.startsWith('//') || selector.startsWith('./') || selector.includes('::');
+                };
+                
+                let items: NodeListOf<Element> | Element[] = [];
+                
+                if (isXPath(listSelector)) {
+                  try {
+                    // Use XPath to find elements
+                    const xpathResult = document.evaluate(
+                      listSelector,
+                      document,
+                      null,
+                      XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+                      null
+                    );
+                    
+                    items = [];
+                    for (let i = 0; i < xpathResult.snapshotLength; i++) {
+                      const node = xpathResult.snapshotItem(i);
+                      if (node && node.nodeType === Node.ELEMENT_NODE) {
+                        items.push(node as Element);
+                      }
+                    }
+                  } catch (xpathError) {
+                    console.warn('XPath evaluation failed, trying CSS selector as fallback:', xpathError);
+                    // Fallback to CSS selector
+                    try {
+                      items = document.querySelectorAll(listSelector);
+                    } catch (cssError) {
+                      console.warn('CSS selector fallback also failed:', cssError);
+                      items = [];
+                    }
+                  }
+                } else {
+                  try {
+                    // Use CSS selector
+                    items = document.querySelectorAll(listSelector);
+                  } catch (cssError) {
+                    console.warn('CSS selector failed:', cssError);
+                    items = [];
+                  }
+                }
+                
                 return {
                   url: window.location.href,
                   itemCount: items.length,
@@ -899,9 +964,9 @@ export default class Interpreter extends EventEmitter {
             if (checkLimit()) return allResults;
             
             let loadMoreCounter = 0;
-            let previousResultCount = allResults.length;
-            let noNewItemsCounter = 0;
-            const MAX_NO_NEW_ITEMS = 2;
+            // let previousResultCount = allResults.length;
+            // let noNewItemsCounter = 0;
+            // const MAX_NO_NEW_ITEMS = 2;
             
             while (true) {
               // Find working button with retry mechanism
@@ -968,21 +1033,21 @@ export default class Interpreter extends EventEmitter {
               
               await scrapeCurrentPage();
               
-              const currentResultCount = allResults.length;
-              const newItemsAdded = currentResultCount > previousResultCount;
+              // const currentResultCount = allResults.length;
+              // const newItemsAdded = currentResultCount > previousResultCount;
                           
-              if (!newItemsAdded) {
-                noNewItemsCounter++;
-                debugLog(`No new items added after click (${noNewItemsCounter}/${MAX_NO_NEW_ITEMS})`);
+              // if (!newItemsAdded) {
+              //   noNewItemsCounter++;
+              //   debugLog(`No new items added after click (${noNewItemsCounter}/${MAX_NO_NEW_ITEMS})`);
                 
-                if (noNewItemsCounter >= MAX_NO_NEW_ITEMS) {
-                  debugLog(`Stopping after ${MAX_NO_NEW_ITEMS} clicks with no new items`);
-                  return allResults;
-                }
-              } else {
-                noNewItemsCounter = 0;
-                previousResultCount = currentResultCount;
-              }
+              //   if (noNewItemsCounter >= MAX_NO_NEW_ITEMS) {
+              //     debugLog(`Stopping after ${MAX_NO_NEW_ITEMS} clicks with no new items`);
+              //     return allResults;
+              //   }
+              // } else {
+              //   noNewItemsCounter = 0;
+              //   previousResultCount = currentResultCount;
+              // }
               
               if (checkLimit()) return allResults;     
               
@@ -1081,7 +1146,16 @@ export default class Interpreter extends EventEmitter {
     });
 
     /* eslint no-constant-condition: ["warn", { "checkLoops": false }] */
+    let loopIterations = 0;
+    const MAX_LOOP_ITERATIONS = 1000; // Circuit breaker
+    
     while (true) {
+      // Circuit breaker to prevent infinite loops
+      if (++loopIterations > MAX_LOOP_ITERATIONS) {
+        this.log('Maximum loop iterations reached, terminating to prevent infinite loop', Level.ERROR);
+        return;
+      }
+      
       // Checks whether the page was closed from outside,
       //  or the workflow execution has been stopped via `interpreter.stop()`
       if (p.isClosed() || !this.stopper) {
@@ -1096,14 +1170,25 @@ export default class Interpreter extends EventEmitter {
       }
 
       let pageState = {};
-      let getStateTest = "Hello";
       try {
+        // Check if page is still valid before accessing state
+        if (p.isClosed()) {
+          this.log('Page was closed during execution', Level.WARN);
+          return;
+        }
+        
         pageState = await this.getState(p, workflowCopy, selectors);
         selectors = [];
         console.log("Empty selectors:", selectors)
       } catch (e: any) {
-        this.log('The browser has been closed.');
-        return;
+        this.log(`Failed to get page state: ${e.message}`, Level.ERROR);
+        // If state access fails, attempt graceful recovery
+        if (p.isClosed()) {
+          this.log('Browser has been closed, terminating workflow', Level.WARN);
+          return;
+        }
+        // For other errors, continue with empty state to avoid complete failure
+        pageState = { url: p.url(), selectors: [], cookies: {} };
       }
 
       if (this.options.debug) {
@@ -1156,8 +1241,13 @@ export default class Interpreter extends EventEmitter {
                   selectors.push(selector);
               }
           });
+          
+          // Reset loop iteration counter on successful action
+          loopIterations = 0;
         } catch (e) {
           this.log(<Error>e, Level.ERROR);
+          // Don't crash on individual action failures - continue with next iteration
+          continue;
         }
       } else {
         //await this.disableAdBlocker(p);

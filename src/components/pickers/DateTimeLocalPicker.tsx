@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useSocketStore } from '../../context/socket';
-import { Coordinates } from '../recorder/canvas';
+import { Coordinates } from '../recorder/Canvas';
 
 interface DateTimeLocalPickerProps {
   coordinates: Coordinates;
@@ -16,12 +16,58 @@ const DateTimeLocalPicker: React.FC<DateTimeLocalPickerProps> = ({ coordinates, 
     setSelectedDateTime(e.target.value);
   };
 
+  const updateDOMElement = (selector: string, value: string) => {
+    try {
+      let iframeElement = document.querySelector('#dom-browser-iframe') as HTMLIFrameElement;
+      
+      if (!iframeElement) {
+        iframeElement = document.querySelector('#browser-window iframe') as HTMLIFrameElement;
+      }
+
+      if (!iframeElement) {
+        const browserWindow = document.querySelector('#browser-window');
+        if (browserWindow) {
+          iframeElement = browserWindow.querySelector('iframe') as HTMLIFrameElement;
+        }
+      }
+
+      if (!iframeElement) {
+        console.error('Could not find iframe element for DOM update');
+        return;
+      }
+
+      const iframeDoc = iframeElement.contentDocument;
+      if (!iframeDoc) {
+        console.error('Could not access iframe document');
+        return;
+      }
+
+      const element = iframeDoc.querySelector(selector) as HTMLInputElement;
+      if (element) {
+        element.value = value;
+        
+        const changeEvent = new Event('change', { bubbles: true });
+        element.dispatchEvent(changeEvent);
+        
+        const inputEvent = new Event('input', { bubbles: true });
+        element.dispatchEvent(inputEvent);        
+      } else {
+        console.warn(`Could not find element with selector: ${selector}`);
+      }
+    } catch (error) {
+      console.error('Error updating DOM element:', error);
+    }
+  };
+
   const handleConfirm = () => {
     if (socket && selectedDateTime) {
       socket.emit('input:datetime-local', {
         selector,
         value: selectedDateTime
       });
+      
+      updateDOMElement(selector, selectedDateTime);
+      
       onClose();
     }
   };
@@ -58,8 +104,8 @@ const DateTimeLocalPicker: React.FC<DateTimeLocalPickerProps> = ({ coordinates, 
             onClick={handleConfirm}
             disabled={!selectedDateTime}
             className={`px-3 py-1 text-sm rounded ${selectedDateTime
-                ? 'bg-blue-500 text-white hover:bg-blue-600'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              ? 'bg-blue-500 text-white hover:bg-blue-600'
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
           >
             Confirm

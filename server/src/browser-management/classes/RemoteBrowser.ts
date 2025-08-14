@@ -17,12 +17,85 @@ import { WorkflowInterpreter } from "../../workflow-management/classes/Interpret
 import { getDecryptedProxyConfig } from '../../routes/proxy';
 import { getInjectableScript } from 'idcac-playwright';
 
+declare global {
+  interface Window {
+    rrwebSnapshot?: any;
+  }
+}
+
+interface RRWebSnapshot {
+  type: number;
+  childNodes?: RRWebSnapshot[];
+  tagName?: string;
+  attributes?: Record<string, string>;
+  textContent?: string;
+  id: number;
+  [key: string]: any;
+}
+
+interface ProcessedSnapshot {
+  snapshot: RRWebSnapshot;
+  resources: {
+    stylesheets: Array<{
+      href: string;
+      content: string;
+      media?: string;
+    }>;
+    images: Array<{
+      src: string;
+      dataUrl: string;
+      alt?: string;
+    }>;
+    fonts: Array<{
+      url: string;
+      dataUrl: string;
+      format?: string;
+    }>;
+    scripts: Array<{
+      src: string;
+      content: string;
+      type?: string;
+    }>;
+    media: Array<{
+      src: string;
+      dataUrl: string;
+      type: string;
+    }>;
+  };
+  baseUrl: string;
+  viewport: { width: number; height: number };
+  timestamp: number;
+  processingStats: {
+    discoveredResources: {
+      images: number;
+      stylesheets: number;
+      scripts: number;
+      fonts: number;
+      media: number;
+    };
+    cachedResources: {
+      stylesheets: number;
+      images: number;
+      fonts: number;
+      scripts: number;
+      media: number;
+    };
+  };
+}
+
 chromium.use(stealthPlugin());
 
 const MEMORY_CONFIG = {
     gcInterval: 20000, // Check memory more frequently (20s instead of 60s)
     maxHeapSize: 1536 * 1024 * 1024, // 1.5GB
     heapUsageThreshold: 0.7 // 70% (reduced threshold to react earlier)
+};
+
+const DEFAULT_VIEWPORT = {
+  width: 1280,
+  height: 720, 
+  deviceScaleFactor: 1,
+  mobile: false
 };
 
 const SCREENCAST_CONFIG: {
@@ -32,13 +105,17 @@ const SCREENCAST_CONFIG: {
     targetFPS: number;
     compressionQuality: number;
     maxQueueSize: number;
+    skipFrameThreshold: number, 
+    enableAdaptiveQuality: boolean, 
 } = {
-    format: 'png', 
-    maxWidth: 1280,
-    maxHeight: 720,
-    targetFPS: 15, 
-    compressionQuality: 0.95, 
-    maxQueueSize: 1 
+    format: 'jpeg', 
+    maxWidth: DEFAULT_VIEWPORT.width,
+    maxHeight: DEFAULT_VIEWPORT.height,
+    targetFPS: 30, 
+    compressionQuality: 0.8, 
+    maxQueueSize: 2,
+    skipFrameThreshold: 100, 
+    enableAdaptiveQuality: true,  
 };
 
 /**
@@ -112,6 +189,19 @@ export class RemoteBrowser {
     private screencastInterval: NodeJS.Timeout | null = null
     private isScreencastActive: boolean = false;
 
+    private isDOMStreamingActive: boolean = false;
+    private domUpdateInterval: NodeJS.Timeout | null = null;
+    private renderingMode: "screenshot" | "dom" = "screenshot";
+
+    private lastScrollPosition = { x: 0, y: 0 };
+    private scrollThreshold = 200; // pixels
+    private snapshotDebounceTimeout: NodeJS.Timeout | null = null;
+    private isScrollTriggeredSnapshot = false;
+
+    private networkRequestTimeout: NodeJS.Timeout | null = null;
+    private pendingNetworkRequests: string[] = [];
+    private readonly NETWORK_QUIET_PERIOD = 8000;
+
     /**
      * Initializes a new instances of the {@link Generator} and {@link WorkflowInterpreter} classes and
      * assigns the socket instance everywhere.
@@ -123,6 +213,65 @@ export class RemoteBrowser {
         this.userId = userId;
         this.interpreter = new WorkflowInterpreter(socket);
         this.generator = new WorkflowGenerator(socket, poolId);
+    }
+
+    private cleanupMemory(): void {
+      if (this.screenshotQueue.length > 10) {
+          this.screenshotQueue = this.screenshotQueue.slice(-3); // Keep only last 3
+      }
+    }
+
+    private setupMemoryCleanup(): void {
+      setInterval(() => {
+          this.cleanupMemory();
+      }, 30000); // Every 30 seconds
+    }
+
+    private async processRRWebSnapshot(
+      snapshot: RRWebSnapshot
+    ): Promise<ProcessedSnapshot> {
+      const baseUrl = this.currentPage?.url() || "";
+
+      const resources = {
+        stylesheets: [] as Array<{
+          href: string;
+          content: string;
+          media?: string;
+        }>,
+        images: [] as Array<{ src: string; dataUrl: string; alt?: string }>,
+        fonts: [] as Array<{ url: string; dataUrl: string; format?: string }>,
+        scripts: [] as Array<{ src: string; content: string; type?: string }>,
+        media: [] as Array<{ src: string; dataUrl: string; type: string }>,
+      };
+
+      const viewport = (await this.currentPage?.viewportSize()) || {
+        width: 1280,
+        height: 720,
+      };
+
+      return {
+        snapshot,
+        resources,
+        baseUrl,
+        viewport,
+        timestamp: Date.now(),
+        processingStats: {
+          discoveredResources: {
+            images: resources.images.length,
+            stylesheets: resources.stylesheets.length,
+            scripts: resources.scripts.length,
+            fonts: resources.fonts.length,
+            media: resources.media.length,
+          },
+          cachedResources: {
+            stylesheets: resources.stylesheets.length,
+            images: resources.images.length,
+            fonts: resources.fonts.length,
+            scripts: resources.scripts.length,
+            media: resources.media.length,
+          },
+        },
+      };
     }
 
     private initializeMemoryManagement(): void {
@@ -214,6 +363,108 @@ export class RemoteBrowser {
         const normalizedNew = this.normalizeUrl(newUrl);
         const normalizedLast = this.normalizeUrl(this.lastEmittedUrl);
         return normalizedNew !== normalizedLast;
+    }
+
+    /**
+     * Setup scroll event listener to track user scrolling
+     */
+    private setupScrollEventListener(): void {
+      this.socket.on(
+        "dom:scroll",
+        async (data: { deltaX: number; deltaY: number }) => {
+          if (!this.isDOMStreamingActive || !this.currentPage) return;
+
+          try {
+            logger.debug(
+              `Received scroll event: deltaX=${data.deltaX}, deltaY=${data.deltaY}`
+            );
+
+            await this.currentPage.mouse.wheel(data.deltaX, data.deltaY);
+
+            const scrollInfo = await this.currentPage.evaluate(() => ({
+              x: window.scrollX,
+              y: window.scrollY,
+              maxX: Math.max(
+                0,
+                document.documentElement.scrollWidth - window.innerWidth
+              ),
+              maxY: Math.max(
+                0,
+                document.documentElement.scrollHeight - window.innerHeight
+              ),
+              documentHeight: document.documentElement.scrollHeight,
+              viewportHeight: window.innerHeight,
+            }));
+
+            const scrollDelta =
+              Math.abs(scrollInfo.y - this.lastScrollPosition.y) +
+              Math.abs(scrollInfo.x - this.lastScrollPosition.x);
+
+            logger.debug(
+              `Scroll delta: ${scrollDelta}, threshold: ${this.scrollThreshold}`
+            );
+
+            if (scrollDelta > this.scrollThreshold) {
+              this.lastScrollPosition = { x: scrollInfo.x, y: scrollInfo.y };
+              this.isScrollTriggeredSnapshot = true;
+
+              if (this.snapshotDebounceTimeout) {
+                clearTimeout(this.snapshotDebounceTimeout);
+              }
+
+              this.snapshotDebounceTimeout = setTimeout(async () => {
+                logger.info(
+                  `Triggering snapshot due to scroll. Position: ${scrollInfo.y}/${scrollInfo.maxY}`
+                );
+
+                await this.makeAndEmitDOMSnapshot();
+              }, 300);
+            }
+          } catch (error) {
+            logger.error("Error handling scroll event:", error);
+          }
+        }
+      );
+    }
+
+    private setupPageChangeListeners(): void {
+      if (!this.currentPage) return;
+
+      this.currentPage.on("domcontentloaded", async () => {
+        logger.info("DOM content loaded - triggering snapshot");
+        await this.makeAndEmitDOMSnapshot();
+      });
+
+      this.currentPage.on("response", async (response) => {
+        const url = response.url();
+        if (
+          response.request().resourceType() === "document" ||
+          url.includes("api/") ||
+          url.includes("ajax")
+        ) {
+          this.pendingNetworkRequests.push(url);
+
+          if (this.networkRequestTimeout) {
+            clearTimeout(this.networkRequestTimeout);
+            this.networkRequestTimeout = null;
+          }
+
+          logger.debug(
+            `Network request received: ${url}. Total pending: ${this.pendingNetworkRequests.length}`
+          );
+
+          this.networkRequestTimeout = setTimeout(async () => {
+            logger.info(
+              `Network quiet period reached. Processing ${this.pendingNetworkRequests.length} requests`
+            );
+
+            this.pendingNetworkRequests = [];
+            this.networkRequestTimeout = null;
+
+            await this.makeAndEmitDOMSnapshot();
+          }, this.NETWORK_QUIET_PERIOD);
+        }
+      });
     }
 
     private async setupPageEventListeners(page: Page) {
@@ -364,8 +615,11 @@ export class RemoteBrowser {
                     patchedGetter.apply(navigator);
                     patchedGetter.toString();`
                 );
+
+                await this.context.addInitScript({ path: './server/src/browser-management/classes/rrweb-bundle.js' });
                 
                 this.currentPage = await this.context.newPage();
+
                 await this.setupPageEventListeners(this.currentPage);
     
                 const viewportSize = await this.currentPage.viewportSize();
@@ -412,6 +666,7 @@ export class RemoteBrowser {
             }
         }
 
+        this.setupMemoryCleanup();
         // this.initializeMemoryManagement();
     };
 
@@ -448,6 +703,11 @@ export class RemoteBrowser {
         }>,
         limit: number = 5
       ): Promise<Array<Record<string, string>>> {
+        if (page.isClosed()) {
+          logger.warn("Page is closed, cannot extract list data");
+          return [];
+        }
+
         return await page.evaluate(
           async ({ listSelector, fields, limit }: { 
             listSelector: string;
@@ -964,124 +1224,243 @@ export class RemoteBrowser {
     }
 
     /**
+     * Captures a screenshot directly without running the workflow interpreter
+     * @param settings Screenshot settings containing fullPage, type, etc.
+     * @returns Promise<void>
+     */
+    public captureDirectScreenshot = async (settings: {
+      fullPage: boolean;
+      type: 'png' | 'jpeg';
+      timeout?: number;
+      animations?: 'disabled' | 'allow';
+      caret?: 'hide' | 'initial';
+      scale?: 'css' | 'device';
+    }): Promise<void> => {
+      if (!this.currentPage) {
+        logger.error("No current page available for screenshot");
+        this.socket.emit('screenshotError', {
+          userId: this.userId,
+          error: 'No active page available'
+        });
+        return;
+      }
+
+      try {
+        this.socket.emit('screenshotCaptureStarted', {
+          userId: this.userId,
+          fullPage: settings.fullPage
+        });
+
+        const screenshotBuffer = await this.currentPage.screenshot({
+          fullPage: settings.fullPage,
+          type: settings.type || 'png',
+          timeout: settings.timeout || 30000,
+          animations: settings.animations || 'allow',
+          caret: settings.caret || 'hide',
+          scale: settings.scale || 'device'
+        });
+
+        const base64Data = screenshotBuffer.toString('base64');
+        const mimeType = `image/${settings.type || 'png'}`;
+        const dataUrl = `data:${mimeType};base64,${base64Data}`;
+
+        this.socket.emit('directScreenshotCaptured', {
+          userId: this.userId,
+          screenshot: dataUrl,
+          mimeType: mimeType,
+          fullPage: settings.fullPage,
+          timestamp: Date.now()
+        });
+      } catch (error) {
+        logger.error('Failed to capture direct screenshot:', error);
+        this.socket.emit('screenshotError', {
+          userId: this.userId,
+          error: error instanceof Error ? error.message : 'Unknown error occurred'
+        });
+      }
+    };
+
+    /**
      * Registers all event listeners needed for the recording editor session.
      * Should be called only once after the full initialization of the remote browser.
      * @returns void
      */
     public registerEditorEvents = (): void => {
-        // For each event, include userId to make sure events are handled for the correct browser
-        logger.log('debug', `Registering editor events for user: ${this.userId}`);
-        
-        // Listen for specific events for this user
-        this.socket.on(`rerender:${this.userId}`, async () => {
-            logger.debug(`Rerender event received for user ${this.userId}`);
-            await this.makeAndEmitScreenshot();
-        });
-        
-        // For backward compatibility, also listen to the general event
-        this.socket.on('rerender', async () => {
-            logger.debug(`General rerender event received, checking if for user ${this.userId}`);
-            await this.makeAndEmitScreenshot();
-        });
-        
-        this.socket.on(`settings:${this.userId}`, (settings) => {
-            this.interpreterSettings = settings;
-            logger.debug(`Settings updated for user ${this.userId}`);
-        });
-        
-        this.socket.on(`changeTab:${this.userId}`, async (tabIndex) => {
-            logger.debug(`Tab change to ${tabIndex} requested for user ${this.userId}`);
-            await this.changeTab(tabIndex);
-        });
-        
-        this.socket.on(`addTab:${this.userId}`, async () => {
-            logger.debug(`New tab requested for user ${this.userId}`);
-            await this.currentPage?.context().newPage();
-            const lastTabIndex = this.currentPage ? this.currentPage.context().pages().length - 1 : 0;
-            await this.changeTab(lastTabIndex);
-        });
-        
-        this.socket.on(`closeTab:${this.userId}`, async (tabInfo) => {
-            logger.debug(`Close tab ${tabInfo.index} requested for user ${this.userId}`);
-            const page = this.currentPage?.context().pages()[tabInfo.index];
-            if (page) {
-                if (tabInfo.isCurrent) {
-                    if (this.currentPage?.context().pages()[tabInfo.index + 1]) {
-                        // next tab
-                        await this.changeTab(tabInfo.index + 1);
-                    } else {
-                        //previous tab
-                        await this.changeTab(tabInfo.index - 1);
-                    }
-                }
-                await page.close();
-                logger.log(
-                    'debug',
-                    `Tab ${tabInfo.index} was closed for user ${this.userId}, new tab count: ${this.currentPage?.context().pages().length}`
-                );
+      // For each event, include userId to make sure events are handled for the correct browser
+      logger.log("debug", `Registering editor events for user: ${this.userId}`);
+
+      this.socket.on(
+        `captureDirectScreenshot:${this.userId}`,
+        async (settings) => {
+          logger.debug(
+            `Direct screenshot capture requested for user ${this.userId}`
+          );
+          await this.captureDirectScreenshot(settings);
+        }
+      );
+
+      // For backward compatibility
+      this.socket.on("captureDirectScreenshot", async (settings) => {
+        await this.captureDirectScreenshot(settings);
+      });
+
+      // Listen for specific events for this user
+      this.socket.on(`rerender:${this.userId}`, async () => {
+        logger.debug(`Rerender event received for user ${this.userId}`);
+        if (this.renderingMode === "dom") {
+          await this.makeAndEmitDOMSnapshot();
+        } else {
+          await this.makeAndEmitScreenshot();
+        }
+      });
+
+      this.socket.on("rerender", async () => {
+        logger.debug(
+          `General rerender event received, checking if for user ${this.userId}`
+        );
+        if (this.renderingMode === "dom") {
+          await this.makeAndEmitDOMSnapshot();
+        } else {
+          await this.makeAndEmitScreenshot();
+        }
+      });
+
+      this.socket.on(`settings:${this.userId}`, (settings) => {
+        this.interpreterSettings = settings;
+        logger.debug(`Settings updated for user ${this.userId}`);
+      });
+
+      this.socket.on(`changeTab:${this.userId}`, async (tabIndex) => {
+        logger.debug(
+          `Tab change to ${tabIndex} requested for user ${this.userId}`
+        );
+        await this.changeTab(tabIndex);
+      });
+
+      this.socket.on(`addTab:${this.userId}`, async () => {
+        logger.debug(`New tab requested for user ${this.userId}`);
+        await this.currentPage?.context().newPage();
+        const lastTabIndex = this.currentPage
+          ? this.currentPage.context().pages().length - 1
+          : 0;
+        await this.changeTab(lastTabIndex);
+      });
+
+      this.socket.on(`closeTab:${this.userId}`, async (tabInfo) => {
+        logger.debug(
+          `Close tab ${tabInfo.index} requested for user ${this.userId}`
+        );
+        const page = this.currentPage?.context().pages()[tabInfo.index];
+        if (page) {
+          if (tabInfo.isCurrent) {
+            if (this.currentPage?.context().pages()[tabInfo.index + 1]) {
+              // next tab
+              await this.changeTab(tabInfo.index + 1);
             } else {
-                logger.log('error', `Tab index ${tabInfo.index} out of range for user ${this.userId}`);
+              //previous tab
+              await this.changeTab(tabInfo.index - 1);
             }
-        });
-        
-        this.socket.on(`setViewportSize:${this.userId}`, async (data: { width: number, height: number }) => {
-            const { width, height } = data;
-            logger.log('debug', `Viewport size change to width=${width}, height=${height} requested for user ${this.userId}`);
+          }
+          await page.close();
+          logger.log(
+            "debug",
+            `Tab ${tabInfo.index} was closed for user ${
+              this.userId
+            }, new tab count: ${this.currentPage?.context().pages().length}`
+          );
+        } else {
+          logger.log(
+            "error",
+            `Tab index ${tabInfo.index} out of range for user ${this.userId}`
+          );
+        }
+      });
 
-            // Update the browser context's viewport dynamically
-            if (this.context && this.browser) {
-                this.context = await this.browser.newContext({ viewport: { width, height } });
-                logger.log('debug', `Viewport size updated to width=${width}, height=${height} for user ${this.userId}`);
-            }
-        });
-        
-        // For backward compatibility, also register the standard events
-        this.socket.on('settings', (settings) => this.interpreterSettings = settings);
-        this.socket.on('changeTab', async (tabIndex) => await this.changeTab(tabIndex));
-        this.socket.on('addTab', async () => {
-            await this.currentPage?.context().newPage();
-            const lastTabIndex = this.currentPage ? this.currentPage.context().pages().length - 1 : 0;
-            await this.changeTab(lastTabIndex);
-        });
-        this.socket.on('closeTab', async (tabInfo) => {
-            const page = this.currentPage?.context().pages()[tabInfo.index];
-            if (page) {
-                if (tabInfo.isCurrent) {
-                    if (this.currentPage?.context().pages()[tabInfo.index + 1]) {
-                        await this.changeTab(tabInfo.index + 1);
-                    } else {
-                        await this.changeTab(tabInfo.index - 1);
-                    }
-                }
-                await page.close();
-            }
-        });
-        this.socket.on('setViewportSize', async (data: { width: number, height: number }) => {
-            const { width, height } = data;
-            if (this.context && this.browser) {
-                this.context = await this.browser.newContext({ viewport: { width, height } });
-            }
-        });
+      this.socket.on(
+        `setViewportSize:${this.userId}`,
+        async (data: { width: number; height: number }) => {
+          const { width, height } = data;
+          logger.log(
+            "debug",
+            `Viewport size change to width=${width}, height=${height} requested for user ${this.userId}`
+          );
 
-        this.socket.on('extractListData', async (data: { 
-            listSelector: string, 
-            fields: Record<string, any>,
-            currentListId: number, 
-            pagination: any 
+          // Update the browser context's viewport dynamically
+          if (this.context && this.browser) {
+            this.context = await this.browser.newContext({
+              viewport: { width, height },
+            });
+            logger.log(
+              "debug",
+              `Viewport size updated to width=${width}, height=${height} for user ${this.userId}`
+            );
+          }
+        }
+      );
+
+      // For backward compatibility, also register the standard events
+      this.socket.on(
+        "settings",
+        (settings) => (this.interpreterSettings = settings)
+      );
+      this.socket.on(
+        "changeTab",
+        async (tabIndex) => await this.changeTab(tabIndex)
+      );
+      this.socket.on("addTab", async () => {
+        await this.currentPage?.context().newPage();
+        const lastTabIndex = this.currentPage
+          ? this.currentPage.context().pages().length - 1
+          : 0;
+        await this.changeTab(lastTabIndex);
+      });
+      this.socket.on("closeTab", async (tabInfo) => {
+        const page = this.currentPage?.context().pages()[tabInfo.index];
+        if (page) {
+          if (tabInfo.isCurrent) {
+            if (this.currentPage?.context().pages()[tabInfo.index + 1]) {
+              await this.changeTab(tabInfo.index + 1);
+            } else {
+              await this.changeTab(tabInfo.index - 1);
+            }
+          }
+          await page.close();
+        }
+      });
+      this.socket.on(
+        "setViewportSize",
+        async (data: { width: number; height: number }) => {
+          const { width, height } = data;
+          if (this.context && this.browser) {
+            this.context = await this.browser.newContext({
+              viewport: { width, height },
+            });
+          }
+        }
+      );
+
+      this.socket.on(
+        "extractListData",
+        async (data: {
+          listSelector: string;
+          fields: Record<string, any>;
+          currentListId: number;
+          pagination: any;
         }) => {
-            if (this.currentPage) {
-                const extractedData = await this.extractListData(
-                    this.currentPage, 
-                    data.listSelector, 
-                    data.fields
-                );
-                
-                this.socket.emit('listDataExtracted', {
-                    currentListId: data.currentListId,
-                    data: extractedData
-                });
-            }
-        });
+          if (this.currentPage) {
+            const extractedData = await this.extractListData(
+              this.currentPage,
+              data.listSelector,
+              data.fields
+            );
+
+            this.socket.emit("listDataExtracted", {
+              currentListId: data.currentListId,
+              data: extractedData,
+            });
+          }
+        }
+      );
     };
     /**
      * Subscribes the remote browser for a screencast session
@@ -1123,34 +1502,207 @@ export class RemoteBrowser {
     };
 
     /**
+     * Subscribe to DOM streaming - simplified version following screenshot pattern
+     */
+    public async subscribeToDOM(): Promise<void> {
+      if (!this.client) {
+        logger.warn("DOM streaming requires scraping browser with CDP client");
+        return;
+      }
+
+      try {
+        // Enable required CDP domains
+        await this.client.send("DOM.enable");
+        await this.client.send("CSS.enable");
+
+        this.isDOMStreamingActive = true;
+        logger.info("DOM streaming started successfully");
+
+        // Initial DOM snapshot
+        await this.makeAndEmitDOMSnapshot();
+
+        this.setupScrollEventListener();
+        this.setupPageChangeListeners();
+      } catch (error) {
+        logger.error("Failed to start DOM streaming:", error);
+        this.isDOMStreamingActive = false;
+      }
+    }
+
+    /**
+     * CDP-based DOM snapshot creation using captured network resources
+     */
+    public async makeAndEmitDOMSnapshot(): Promise<void> {
+      if (!this.currentPage || !this.isDOMStreamingActive) {
+        return;
+      }
+
+      try {
+        // Check if page is still valid and not closed
+        if (this.currentPage.isClosed()) {
+          logger.debug("Skipping DOM snapshot - page is closed");
+          return;
+        }
+
+        // Double-check page state after network wait
+        if (this.currentPage.isClosed()) {
+          logger.debug("Skipping DOM snapshot - page closed during network wait");
+          return;
+        }
+
+        // Get current scroll position
+        const currentScrollInfo = await this.currentPage.evaluate(() => ({
+          x: window.scrollX,
+          y: window.scrollY,
+          maxX: Math.max(
+            0,
+            document.documentElement.scrollWidth - window.innerWidth
+          ),
+          maxY: Math.max(
+            0,
+            document.documentElement.scrollHeight - window.innerHeight
+          ),
+          documentHeight: document.documentElement.scrollHeight,
+        }));
+
+        logger.info(
+          `Creating rrweb snapshot at scroll position: ${currentScrollInfo.y}/${currentScrollInfo.maxY}`
+        );
+
+        // Update our tracked scroll position
+        this.lastScrollPosition = {
+          x: currentScrollInfo.x,
+          y: currentScrollInfo.y,
+        };
+
+        // Final check before snapshot
+        if (this.currentPage.isClosed()) {
+          logger.debug("Skipping DOM snapshot - page closed before snapshot");
+          return;
+        }
+
+        // Capture snapshot using rrweb
+        const rawSnapshot = await this.currentPage.evaluate(() => {
+          if (typeof window.rrwebSnapshot === "undefined") {
+            throw new Error("rrweb-snapshot library not available");
+          }
+
+          return window.rrwebSnapshot.snapshot(document, {
+            inlineImages: true,
+            collectFonts: true,
+          });
+        });
+
+        // Process the snapshot to proxy resources
+        const processedSnapshot = await this.processRRWebSnapshot(rawSnapshot);
+
+        // Add scroll position information
+        const enhancedSnapshot = {
+          ...processedSnapshot,
+          scrollPosition: currentScrollInfo,
+          captureTime: Date.now(),
+        };
+
+        // Emit the processed snapshot
+        this.emitRRWebSnapshot(enhancedSnapshot);
+      } catch (error) {
+        // Handle navigation context destruction gracefully
+        if (
+          error instanceof Error &&
+          (error.message.includes("Execution context was destroyed") ||
+            error.message.includes("most likely because of a navigation") ||
+            error.message.includes("Target closed"))
+        ) {
+          logger.debug("DOM snapshot skipped due to page navigation or closure");
+          return; // Don't emit error for navigation - this is expected
+        }
+
+        logger.error("Failed to create rrweb snapshot:", error);
+        this.socket.emit("dom-mode-error", {
+          userId: this.userId,
+          message: "Failed to create rrweb snapshot",
+          error: error instanceof Error ? error.message : String(error),
+          timestamp: Date.now(),
+        });
+      }
+    }
+
+    /**
+     * Emit DOM snapshot to client - following screenshot pattern
+     */
+    private emitRRWebSnapshot(processedSnapshot: ProcessedSnapshot): void {
+      this.socket.emit("domcast", {
+        snapshotData: processedSnapshot,
+        userId: this.userId,
+        timestamp: Date.now(),
+      });
+    }
+
+    /**
+     * Stop DOM streaming - following screencast pattern
+     */
+    private async stopDOM(): Promise<void> {
+      this.isDOMStreamingActive = false;
+
+      if (this.domUpdateInterval) {
+        clearInterval(this.domUpdateInterval);
+        this.domUpdateInterval = null;
+      }
+
+      if (this.networkRequestTimeout) {
+        clearTimeout(this.networkRequestTimeout);
+        this.networkRequestTimeout = null;
+      }
+
+      this.pendingNetworkRequests = [];
+
+      if (this.client) {
+        try {
+          await this.client.send("DOM.disable");
+          await this.client.send("CSS.disable");
+        } catch (error) {
+          logger.warn("Error stopping DOM stream:", error);
+        }
+      }
+
+      logger.info("DOM streaming stopped successfully");
+    }
+
+    /**rrweb-bundle
      * Terminates the screencast session and closes the remote browser.
      * If an interpretation was running it will be stopped.
      * @returns {Promise<void>}
      */
     public async switchOff(): Promise<void> {
-        try {
-            this.isScreencastActive = false;
+      try {
+        this.isScreencastActive = false;
+        this.isDOMStreamingActive = false;
 
-            await this.interpreter.stopInterpretation();
+        await this.interpreter.stopInterpretation();
 
-            if (this.screencastInterval) {
-                clearInterval(this.screencastInterval);
-            }
-
-            if (this.client) {
-                await this.stopScreencast();
-            }
-
-            if (this.browser) {
-                await this.browser.close();
-            }
-
-            this.screenshotQueue = [];
-            //this.performanceMonitor.reset();
-
-        } catch (error) {
-            logger.error('Error during browser shutdown:', error);
+        if (this.screencastInterval) {
+            clearInterval(this.screencastInterval);
         }
+
+        if (this.domUpdateInterval) {
+          clearInterval(this.domUpdateInterval);
+        }
+
+        if (this.client) {
+            await this.stopScreencast();
+            await this.stopDOM();
+        }
+
+        if (this.browser) {
+            await this.browser.close();
+        }
+
+        this.screenshotQueue = [];
+        //this.performanceMonitor.reset();
+
+      } catch (error) {
+        logger.error('Error during browser shutdown:', error);
+      }
     }
 
     private async optimizeScreenshot(screenshot: Buffer): Promise<Buffer> {
@@ -1272,6 +1824,7 @@ export class RemoteBrowser {
         const page = this.currentPage?.context().pages()[tabIndex];
         if (page) {
             await this.stopScreencast();
+            await this.stopDOM();
             this.currentPage = page;
 
             await this.setupPageEventListeners(this.currentPage);
@@ -1283,8 +1836,13 @@ export class RemoteBrowser {
                 url: this.currentPage.url(),
                 userId: this.userId
             });
-            await this.makeAndEmitScreenshot();
-            await this.subscribeToScreencast();
+            if (this.isDOMStreamingActive) {
+              await this.makeAndEmitDOMSnapshot();
+              await this.subscribeToDOM();
+            } else {
+              await this.makeAndEmitScreenshot();
+              await this.subscribeToScreencast();
+            }
         } else {
             logger.log('error', `${tabIndex} index out of range of pages`)
         }
@@ -1309,7 +1867,11 @@ export class RemoteBrowser {
             await this.setupPageEventListeners(this.currentPage);
 
             this.client = await this.currentPage.context().newCDPSession(this.currentPage);
-            await this.subscribeToScreencast();
+            if (this.renderingMode === "dom") {
+              await this.subscribeToDOM();
+            } else {
+              await this.subscribeToScreencast();
+            }
         } else {
             logger.log('error', 'Could not get a new page, returned undefined');
         }
@@ -1399,7 +1961,7 @@ export class RemoteBrowser {
      */
     private emitScreenshot = async (payload: Buffer, viewportSize?: { width: number, height: number }): Promise<void> => {
         if (this.screenshotQueue.length > SCREENCAST_CONFIG.maxQueueSize) {
-            this.screenshotQueue = this.screenshotQueue.slice(-SCREENCAST_CONFIG.maxQueueSize);
+          this.screenshotQueue = this.screenshotQueue.slice(-1);
         }
         
         if (this.isProcessingScreenshot) {
@@ -1414,7 +1976,7 @@ export class RemoteBrowser {
         try {
             const optimizationPromise = this.optimizeScreenshot(payload);
             const timeoutPromise = new Promise<Buffer>((resolve) => {
-                setTimeout(() => resolve(payload), 150);
+                setTimeout(() => resolve(payload), 100);
             });
             
             const optimizedScreenshot = await Promise.race([optimizationPromise, timeoutPromise]);
@@ -1423,10 +1985,12 @@ export class RemoteBrowser {
             
             payload = null as any;
             
-            this.socket.emit('screencast', {
+            setImmediate(async () => {
+              this.socket.emit('screencast', {
                 image: dataWithMimeType,
                 userId: this.userId,
                 viewport: viewportSize || await this.currentPage?.viewportSize() || null
+              });
             });
         } catch (error) {
             logger.error('Screenshot emission failed:', error);
@@ -1434,24 +1998,27 @@ export class RemoteBrowser {
                 const base64Data = payload.toString('base64');
                 const dataWithMimeType = `data:image/png;base64,${base64Data}`;
                 
-                this.socket.emit('screencast', {
-                    image: dataWithMimeType,
-                    userId: this.userId,
-                    viewport: viewportSize || await this.currentPage?.viewportSize() || null
+                setImmediate(async () => {
+                  this.socket.emit('screencast', {
+                      image: dataWithMimeType,
+                      userId: this.userId,
+                      viewport: viewportSize || await this.currentPage?.viewportSize() || null
+                  });
                 });
             } catch (e) {
                 logger.error('Fallback screenshot emission also failed:', e);
             }
         } finally {
             this.isProcessingScreenshot = false;
-            
+        
             if (this.screenshotQueue.length > 0) {
-                const nextScreenshot = this.screenshotQueue.shift();  
-                if (nextScreenshot) {
-                    setTimeout(() => {
-                        this.emitScreenshot(nextScreenshot);
-                    }, 1000 / SCREENCAST_CONFIG.targetFPS);
-                }
+              const nextScreenshot = this.screenshotQueue.shift();
+              if (nextScreenshot) {
+                const delay = this.screenshotQueue.length > 0 ? 16 : 33;
+                setTimeout(() => {
+                  this.emitScreenshot(nextScreenshot);
+                }, delay);
+              }
             }
         }
     };

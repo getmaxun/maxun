@@ -21,6 +21,8 @@ import ActionDescriptionBox from '../action/ActionDescriptionBox';
 import { useThemeMode } from '../../context/theme-provider';
 import { useTranslation } from 'react-i18next';
 import { useBrowserDimensionsStore } from '../../context/browserDimensions';
+import { clientListExtractor } from '../../helpers/clientListExtractor';
+import { clientSelectorGenerator } from '../../helpers/clientSelectorGenerator';
 
 const fetchWorkflow = (id: string, callback: (response: WorkflowFile) => void) => {
   getActiveWorkflow(id).then(
@@ -31,7 +33,7 @@ const fetchWorkflow = (id: string, callback: (response: WorkflowFile) => void) =
         throw new Error("No workflow found");
       }
     }
-  ).catch((error) => { console.log(error.message) })
+  ).catch((error) => { console.log(`Failed to fetch workflow:`,error.message) })
 };
 
 interface RightSidePanelProps {
@@ -52,7 +54,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const [isCaptureListConfirmed, setIsCaptureListConfirmed] = useState(false);
   const { panelHeight } = useBrowserDimensionsStore();
 
-  const { lastAction, notify, currentWorkflowActionsState, setCurrentWorkflowActionsState, resetInterpretationLog } = useGlobalInfoStore();
+  const { lastAction, notify, currentWorkflowActionsState, setCurrentWorkflowActionsState, resetInterpretationLog, currentListActionId, setCurrentListActionId, currentTextActionId, setCurrentTextActionId, currentScreenshotActionId, setCurrentScreenshotActionId, updateDOMMode, currentSnapshot, isDOMMode } = useGlobalInfoStore();  
   const { 
     getText, startGetText, stopGetText, 
     getList, startGetList, stopGetList, 
@@ -69,7 +71,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     startAction, finishAction 
   } = useActionContext();
   
-  const { browserSteps, updateBrowserTextStepLabel, deleteBrowserStep, addScreenshotStep, updateListTextFieldLabel, removeListTextField, updateListStepLimit } = useBrowserSteps();
+  const { browserSteps, updateBrowserTextStepLabel, deleteBrowserStep, addScreenshotStep, updateListTextFieldLabel, removeListTextField, updateListStepLimit, deleteStepsByActionId, updateListStepData, updateScreenshotStepData } = useBrowserSteps();
   const { id, socket } = useSocketStore();
   const { t } = useTranslation();
 
@@ -78,6 +80,40 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const workflowHandler = useCallback((data: WorkflowFile) => {
     setWorkflow(data);
   }, [setWorkflow]);
+
+  useEffect(() => {
+    if (socket) {
+      const domModeHandler = (data: any) => {
+        if (!data.userId || data.userId === id) {
+          updateDOMMode(true);
+        }
+      };
+
+      const screenshotModeHandler = (data: any) => {
+        if (!data.userId || data.userId === id) {
+          updateDOMMode(false);
+        }
+      };
+
+      const domcastHandler = (data: any) => {
+        if (!data.userId || data.userId === id) {
+          if (data.snapshotData && data.snapshotData.snapshot) {
+            updateDOMMode(true, data.snapshotData);
+          }
+        }
+      };
+
+      socket.on("dom-mode-enabled", domModeHandler);
+      socket.on("screenshot-mode-enabled", screenshotModeHandler);
+      socket.on("domcast", domcastHandler);
+
+      return () => {
+        socket.off("dom-mode-enabled", domModeHandler);
+        socket.off("screenshot-mode-enabled", screenshotModeHandler);
+        socket.off("domcast", domcastHandler);
+      };
+    }
+  }, [socket, id, updateDOMMode]);
 
   useEffect(() => {
     if (socket) {
@@ -129,6 +165,140 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     setShowCaptureText(true);
   }, [workflow, setCurrentWorkflowActionsState]);
 
+  useEffect(() => {
+    if (socket) {
+      socket.on('listDataExtracted', (response) => {
+        if (!isDOMMode) {
+          const { currentListId, data } = response;
+          updateListStepData(currentListId, data);
+        }
+      });
+    }
+    
+    return () => {
+      socket?.off('listDataExtracted');
+    };
+  }, [socket, updateListStepData, isDOMMode]);
+
+  useEffect(() => {
+    if (socket) {
+      const handleDirectScreenshot = (data: any) => {
+        const screenshotSteps = browserSteps.filter(step => 
+          step.type === 'screenshot' && step.actionId === currentScreenshotActionId
+        );
+        
+        if (screenshotSteps.length > 0) {
+          const latestStep = screenshotSteps[screenshotSteps.length - 1];          
+          updateScreenshotStepData(latestStep.id, data.screenshot);
+        }
+        
+        setCurrentScreenshotActionId('');
+      };
+
+      socket.on('directScreenshotCaptured', handleDirectScreenshot);
+
+      return () => {
+        socket.off('directScreenshotCaptured', handleDirectScreenshot);
+      };
+    }
+  }, [socket, id, notify, t, currentScreenshotActionId, updateScreenshotStepData, setCurrentScreenshotActionId]);
+
+  const extractDataClientSide = useCallback(
+    (
+      listSelector: string,
+      fields: Record<string, any>,
+      currentListId: number
+    ) => {
+      if (isDOMMode && currentSnapshot) {
+        try {
+          let iframeElement = document.querySelector(
+            "#dom-browser-iframe"
+          ) as HTMLIFrameElement;
+
+          if (!iframeElement) {
+            iframeElement = document.querySelector(
+              "#browser-window iframe"
+            ) as HTMLIFrameElement;
+          }
+
+          if (!iframeElement) {
+            const browserWindow = document.querySelector("#browser-window");
+            if (browserWindow) {
+              iframeElement = browserWindow.querySelector(
+                "iframe"
+              ) as HTMLIFrameElement;
+            }
+          }
+
+          if (!iframeElement) {
+            console.error(
+              "Could not find the DOM iframe element for extraction"
+            );
+            return;
+          }
+
+          const iframeDoc = iframeElement.contentDocument;
+          if (!iframeDoc) {
+            console.error("Failed to get iframe document");
+            return;
+          }
+
+          Object.entries(fields).forEach(([key, field]) => {
+            if (field.selectorObj?.selector) {
+              const isFieldXPath =
+                field.selectorObj.selector.startsWith("//") ||
+                field.selectorObj.selector.startsWith("/");
+              console.log(
+                `Field "${key}" selector:`,
+                field.selectorObj.selector,
+                `(XPath: ${isFieldXPath})`
+              );
+            }
+          });
+
+          const extractedData = clientListExtractor.extractListData(
+            iframeDoc,
+            listSelector,
+            fields,
+            5
+          );
+
+          updateListStepData(currentListId, extractedData);
+          
+          if (extractedData.length === 0) {
+            console.warn(
+              "⚠️ No data extracted - this might indicate selector issues"
+            );
+            notify(
+              "warning",
+              "No data was extracted. Please verify your selections."
+            );
+          }
+        } catch (error) {
+          console.error("Error in client-side data extraction:", error);
+          notify("error", "Failed to extract data client-side");
+        }
+      } else {
+        if (!socket) {
+          console.error("Socket not available for backend extraction");
+          return;
+        }
+
+        try {
+          socket.emit("extractListData", {
+            listSelector,
+            fields,
+            currentListId,
+            pagination: { type: "", selector: "" },
+          });
+        } catch (error) {
+          console.error("Error in backend data extraction:", error);
+        }
+      }
+    },
+    [isDOMMode, currentSnapshot, updateListStepData, socket, notify]
+  );
+
   const handleMouseEnter = (id: number) => {
     setHoverStates(prev => ({ ...prev, [id]: true }));
   };
@@ -139,15 +309,21 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
 
   const handleStartGetText = () => {
     setIsCaptureTextConfirmed(false);
+    const newActionId = `text-${crypto.randomUUID()}`;
+    setCurrentTextActionId(newActionId);
     startGetText();
   }
 
   const handleStartGetList = () => {
     setIsCaptureListConfirmed(false);
+    const newActionId = `list-${crypto.randomUUID()}`;
+    setCurrentListActionId(newActionId);
     startGetList();
   }
 
   const handleStartGetScreenshot = () => {
+    const newActionId = `screenshot-${crypto.randomUUID()}`;
+    setCurrentScreenshotActionId(newActionId);
     startGetScreenshot();
   };
 
@@ -277,22 +453,25 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
       socket?.emit('action', { action: 'scrapeSchema', settings });
     }
     setIsCaptureTextConfirmed(true);
+    setCurrentTextActionId('');
     resetInterpretationLog();
     finishAction('text'); 
     onFinishCapture();
+    clientSelectorGenerator.cleanup();
   }, [stopGetText, getTextSettingsObject, socket, browserSteps, confirmedTextSteps, resetInterpretationLog, finishAction, notify, onFinishCapture, t]);
 
   const getListSettingsObject = useCallback(() => {
     let settings: {
       listSelector?: string;
-      fields?: Record<string, { selector: string; tag?: string;[key: string]: any }>;
-      pagination?: { type: string; selector?: string };
+      fields?: Record<string, { selector: string; tag?: string; [key: string]: any; isShadow?: boolean }>;
+      pagination?: { type: string; selector?: string; isShadow?: boolean };
       limit?: number;
+      isShadow?: boolean
     } = {};
 
     browserSteps.forEach(step => {
       if (step.type === 'list' && step.listSelector && Object.keys(step.fields).length > 0) {
-        const fields: Record<string, { selector: string; tag?: string;[key: string]: any }> = {};
+        const fields: Record<string, { selector: string; tag?: string;[key: string]: any; isShadow?: boolean }> = {};
 
         Object.entries(step.fields).forEach(([id, field]) => {
           if (field.selectorObj?.selector) {
@@ -300,6 +479,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
               selector: field.selectorObj.selector,
               tag: field.selectorObj.tag,
               attribute: field.selectorObj.attribute,
+              isShadow: field.selectorObj.isShadow
             };
           }
         });
@@ -307,8 +487,9 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         settings = {
           listSelector: step.listSelector,
           fields: fields,
-          pagination: { type: paginationType, selector: step.pagination?.selector },
+          pagination: { type: paginationType, selector: step.pagination?.selector, isShadow: step.isShadow },
           limit: parseInt(limitType === 'custom' ? customLimit : limitType),
+          isShadow: step.isShadow
         };
       }
     });
@@ -331,16 +512,25 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
 
   const stopCaptureAndEmitGetListSettings = useCallback(() => {
     const settings = getListSettingsObject();
-    if (settings) {
+
+    console.log("rrwebSnapshotHandler", settings);
+    
+    const latestListStep = getLatestListStep(browserSteps);
+    if (latestListStep && settings) {
+      extractDataClientSide(latestListStep.listSelector!, latestListStep.fields, latestListStep.id);
+      
       socket?.emit('action', { action: 'scrapeList', settings });
     } else {
       notify('error', t('right_panel.errors.unable_create_settings'));
     }
+    
     handleStopGetList();
+    setCurrentListActionId('');
     resetInterpretationLog();
     finishAction('list');
     onFinishCapture();
-  }, [getListSettingsObject, socket, notify, handleStopGetList, resetInterpretationLog, finishAction, onFinishCapture, t]);
+    clientSelectorGenerator.cleanup();
+  }, [getListSettingsObject, socket, notify, handleStopGetList, resetInterpretationLog, finishAction, onFinishCapture, t, browserSteps, extractDataClientSide]);
 
   const hasUnconfirmedListTextFields = browserSteps.some(step =>
     step.type === 'list' &&
@@ -434,50 +624,92 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
 
   const discardGetText = useCallback(() => {
     stopGetText();
-    browserSteps.forEach(step => {
-      if (step.type === 'text') {
-        deleteBrowserStep(step.id);
-      }
-    });
-    setTextLabels({});
-    setErrors({});
-    setConfirmedTextSteps({});
+    
+    if (currentTextActionId) {
+      const stepsToDelete = browserSteps
+        .filter(step => step.type === 'text' && step.actionId === currentTextActionId)
+        .map(step => step.id);
+      
+      deleteStepsByActionId(currentTextActionId);
+      
+      setTextLabels(prevLabels => {
+        const newLabels = { ...prevLabels };
+        stepsToDelete.forEach(id => {
+          delete newLabels[id];
+        });
+        return newLabels;
+      });
+      
+      setErrors(prevErrors => {
+        const newErrors = { ...prevErrors };
+        stepsToDelete.forEach(id => {
+          delete newErrors[id];
+        });
+        return newErrors;
+      });
+      
+      setConfirmedTextSteps(prev => {
+        const newConfirmed = { ...prev };
+        stepsToDelete.forEach(id => {
+          delete newConfirmed[id];
+        });
+        return newConfirmed;
+      });
+    }
+    
+    setCurrentTextActionId('');
     setIsCaptureTextConfirmed(false);
+    clientSelectorGenerator.cleanup();
     notify('error', t('right_panel.errors.capture_text_discarded'));
-  }, [browserSteps, stopGetText, deleteBrowserStep, notify, t]);
+  }, [currentTextActionId, browserSteps, stopGetText, deleteStepsByActionId, notify, t]);
 
   const discardGetList = useCallback(() => {
     stopGetList();
-    browserSteps.forEach(step => {
-      if (step.type === 'list') {
-        deleteBrowserStep(step.id);
-      }
-    });
+    
+    if (currentListActionId) {
+      const listStepsToDelete = browserSteps
+        .filter(step => step.type === 'list' && step.actionId === currentListActionId)
+        .map(step => step.id);
+      
+      deleteStepsByActionId(currentListActionId);
+      
+      setConfirmedListTextFields(prev => {
+        const newConfirmed = { ...prev };
+        listStepsToDelete.forEach(id => {
+          delete newConfirmed[id];
+        });
+        return newConfirmed;
+      });
+    }
+    
     resetListState();
     stopPaginationMode();
     stopLimitMode();
     setShowPaginationOptions(false);
     setShowLimitOptions(false);
     setCaptureStage('initial');
-    setConfirmedListTextFields({});
+    setCurrentListActionId('');
     setIsCaptureListConfirmed(false);
+    clientSelectorGenerator.cleanup();
     notify('error', t('right_panel.errors.capture_list_discarded'));
-  }, [browserSteps, stopGetList, deleteBrowserStep, resetListState, setShowPaginationOptions, setShowLimitOptions, setCaptureStage, notify, t]);
+  }, [currentListActionId, browserSteps, stopGetList, deleteStepsByActionId, resetListState, setShowPaginationOptions, setShowLimitOptions, setCaptureStage, notify, t]);
 
   const captureScreenshot = (fullPage: boolean) => {
-    const screenshotSettings: ScreenshotSettings = {
+    const screenshotSettings = {
       fullPage,
-      type: 'png',
+      type: 'png' as const,
       timeout: 30000,
-      animations: 'allow',
-      caret: 'hide',
-      scale: 'device',
+      animations: 'allow' as const,
+      caret: 'hide' as const,
+      scale: 'device' as const,
     };
+    socket?.emit('captureDirectScreenshot', screenshotSettings);   
     socket?.emit('action', { action: 'screenshot', settings: screenshotSettings });
-    addScreenshotStep(fullPage);
+    addScreenshotStep(fullPage, currentScreenshotActionId);
     stopGetScreenshot();
     resetInterpretationLog();
     finishAction('screenshot');
+    clientSelectorGenerator.cleanup();
     onFinishCapture();
   };
 

@@ -108,6 +108,11 @@ export class WorkflowInterpreter {
   public binaryData: { mimetype: string, data: string }[] = [];
 
   /**
+   * Track current scrapeList index
+   */
+  private currentScrapeListIndex: number = 0;
+
+  /**
    * An array of id's of the pairs from the workflow that are about to be paused.
    * As "breakpoints".
    * @private
@@ -288,6 +293,7 @@ export class WorkflowInterpreter {
       scrapeList: [],
     };
     this.binaryData = [];
+    this.currentScrapeListIndex = 0;
   }
 
   /**
@@ -322,6 +328,9 @@ export class WorkflowInterpreter {
         },
         setActionType: (type: string) => {
           this.currentActionType = type;
+        },
+        incrementScrapeListIndex: () => {
+          this.currentScrapeListIndex++;
         }
       },
       serializableCallback: (data: any) => {
@@ -334,7 +343,7 @@ export class WorkflowInterpreter {
             this.serializableDataByType.scrapeSchema.push([data]);
           }
         } else if (this.currentActionType === 'scrapeList') {
-          this.serializableDataByType.scrapeList.push(data);
+          this.serializableDataByType.scrapeList[this.currentScrapeListIndex] = data;
         } 
         
         this.socket.emit('serializableCallback', data);
@@ -372,25 +381,19 @@ export class WorkflowInterpreter {
       log: this.debugMessages,
       result: status,
       scrapeSchemaOutput: Object.keys(mergedScrapeSchema).length > 0 
-      ? { "schema-merged": [mergedScrapeSchema] }
+      ? { "schema_merged": [mergedScrapeSchema] }
       : this.serializableDataByType.scrapeSchema.reduce((reducedObject, item, index) => {
-          return {
-            [`schema-${index}`]: item,
-            ...reducedObject,
-          }
-        }, {}),
+        reducedObject[`schema_${index}`] = item;
+        return reducedObject;
+      }, {} as Record<string, any>),
       scrapeListOutput: this.serializableDataByType.scrapeList.reduce((reducedObject, item, index) => {
-        return {
-          [`list-${index}`]: item,
-          ...reducedObject,
-        }
-      }, {}),
+        reducedObject[`list_${index}`] = item;
+        return reducedObject;
+      }, {} as Record<string, any>),
       binaryOutput: this.binaryData.reduce((reducedObject, item, index) => {
-        return {
-          [`item-${index}`]: item,
-          ...reducedObject,
-        }
-      }, {})
+        reducedObject[`item_${index}`] = item;
+        return reducedObject;
+      }, {} as Record<string, any>)
     }
 
     logger.log('debug', `Interpretation finished`);

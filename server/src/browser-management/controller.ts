@@ -3,7 +3,7 @@
  * Holds the singleton instances of browser pool and socket.io server.
  */
 import { Socket } from "socket.io";
-import { uuid } from 'uuidv4';
+import { v4 as uuid } from "uuid";
 
 import { createSocketConnection, createSocketConnectionForRun } from "../socket-connection/connection";
 import { io, browserPool } from "../server";
@@ -20,7 +20,7 @@ import logger from "../logger";
  * @returns string
  * @category BrowserManagement-Controller
  */
-export const initializeRemoteBrowserForRecording = (userId: string): string => {
+export const initializeRemoteBrowserForRecording = (userId: string, mode: string = "dom"): string => {
   const id = getActiveBrowserIdByState(userId, "recording") || uuid();
   createSocketConnection(
     io.of(id),
@@ -37,7 +37,15 @@ export const initializeRemoteBrowserForRecording = (userId: string): string => {
         browserSession.interpreter.subscribeToPausing();
         await browserSession.initialize(userId);
         await browserSession.registerEditorEvents();
-        await browserSession.subscribeToScreencast();
+
+        if (mode === "dom") {
+          await browserSession.subscribeToDOM();
+          logger.info('DOM streaming started for scraping browser in recording mode');
+        } else {
+          await browserSession.subscribeToScreencast();
+          logger.info('Screenshot streaming started for local browser in recording mode');
+        }
+        
         browserPool.addRemoteBrowser(id, browserSession, userId, false, "recording");
       }
       socket.emit('loaded');
@@ -54,20 +62,23 @@ export const initializeRemoteBrowserForRecording = (userId: string): string => {
  * @category BrowserManagement-Controller
  */
 export const createRemoteBrowserForRun = (userId: string): string => {
-  const id = uuid();
+  if (!userId) {
+    logger.log('error', 'createRemoteBrowserForRun: Missing required parameter userId');
+    throw new Error('userId is required');
+  }
   
-  createSocketConnectionForRun(
-    io.of(id), 
-    async (socket: Socket) => {
-      try {
-        const browserSession = new RemoteBrowser(socket, userId, id);
-        await browserSession.initialize(userId);
-        browserPool.addRemoteBrowser(id, browserSession, userId, false, "run");
-        socket.emit('ready-for-run');
-      } catch (error: any) {
-        logger.error(`Error initializing browser: ${error.message}`);
-      }
-    });
+  const id = uuid();
+
+  const slotReserved = browserPool.reserveBrowserSlot(id, userId, "run");
+  if (!slotReserved) {
+    logger.log('warn', `Cannot create browser for user ${userId}: no available slots`);
+    throw new Error('User has reached maximum browser limit');
+  }
+
+  logger.log('info', `createRemoteBrowserForRun: Reserved slot ${id} for user ${userId}`);
+
+  initializeBrowserAsync(id, userId);
+  
   return id;
 };
 
@@ -136,6 +147,19 @@ export const getActiveBrowserIdByState = (userId: string, state: "recording" | "
 };
 
 /**
+ * Checks if there are available browser slots for a user.
+ * Wrapper around {@link browserPool.hasAvailableBrowserSlots()} function.
+ * If state is provided, also checks that none of their active browsers are in that state.
+ * @param userId the user ID to check browser slots for
+ * @param state optional state to check - if provided, ensures no browser is in this state
+ * @returns {boolean} true if user has available slots (and no browsers in specified state if state is provided)
+ * @category BrowserManagement-Controller
+ */
+export const canCreateBrowserInState = (userId: string, state?: "recording" | "run"): boolean => {
+  return browserPool.hasAvailableBrowserSlots(userId, state);
+};
+
+/**
  * Returns the url string from a remote browser if exists in the browser pool.
  * @param id instance id of the remote browser
  * @returns {string | undefined}
@@ -196,5 +220,89 @@ export const stopRunningInterpretation = async (userId: string) => {
     await browser?.stopCurrentInterpretation();
   } else {
     logger.log('error', 'Cannot stop interpretation: No active browser or generator.');
+  }
+};
+
+const initializeBrowserAsync = async (id: string, userId: string) => {
+  try {
+    const namespace = io.of(id);
+    let clientConnected = false;
+    let connectionTimeout: NodeJS.Timeout;
+    
+    const waitForConnection = new Promise<Socket | null>((resolve) => {
+      namespace.on('connection', (socket: Socket) => {
+        clientConnected = true;
+        clearTimeout(connectionTimeout);
+        logger.log('info', `Frontend connected to browser ${id} via socket ${socket.id}`);
+        resolve(socket);
+      });
+      
+      connectionTimeout = setTimeout(() => {
+        if (!clientConnected) {
+          logger.log('warn', `No client connected to browser ${id} within timeout, proceeding with dummy socket`);
+          resolve(null);
+        }
+      }, 10000); 
+    });
+
+    namespace.on('error', (error: any) => {
+      logger.log('error', `Socket namespace error for browser ${id}: ${error.message}`);
+      clearTimeout(connectionTimeout);
+      browserPool.failBrowserSlot(id);
+    });
+
+    const socket = await waitForConnection;
+    
+    try {
+      let browserSession: RemoteBrowser;
+      
+      if (socket) {
+        logger.log('info', `Using real socket for browser ${id}`);
+        browserSession = new RemoteBrowser(socket, userId, id);
+      } else {
+        logger.log('info', `Using dummy socket for browser ${id}`);
+        const dummySocket = {
+          emit: (event: string, data?: any) => {
+            logger.log('debug', `Browser ${id} dummy socket emitted ${event}:`, data);
+          },
+          on: () => {},
+          id: `dummy-${id}`,
+        } as any;
+        
+        browserSession = new RemoteBrowser(dummySocket, userId, id);
+      }
+
+      await browserSession.initialize(userId);
+      
+      const upgraded = browserPool.upgradeBrowserSlot(id, browserSession);
+      if (!upgraded) {
+        throw new Error('Failed to upgrade reserved browser slot');
+      }
+      
+      if (socket) {
+        socket.emit('ready-for-run');
+      } else {
+        setTimeout(async () => {
+          try {
+            logger.log('info', `Starting execution for browser ${id} with dummy socket`);
+          } catch (error: any) {
+            logger.log('error', `Error executing run for browser ${id}: ${error.message}`);
+          }
+        }, 100); 
+      }
+      
+      logger.log('info', `Browser ${id} successfully initialized for run with ${socket ? 'real' : 'dummy'} socket`);
+      
+    } catch (error: any) {
+      logger.log('error', `Error initializing browser ${id}: ${error.message}`);
+      browserPool.failBrowserSlot(id);
+      if (socket) {
+        socket.emit('error', { message: error.message });
+      }
+    }
+    
+  } catch (error: any) {
+    logger.log('error', `Error setting up browser ${id}: ${error.message}`);
+    browserPool.failBrowserSlot(id);
   }
 };

@@ -3,9 +3,10 @@ npm-debug.log
 dist
 .git
 .gitignore
-.env
 .md
 .vscode
 coverage
 docker-compose.yml
 Dockerfile
+Dockerfile.frontend
+Dockerfile.backend

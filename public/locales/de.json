@@ -58,10 +58,18 @@
         "edit": "Bearbeiten",
         "delete": "Löschen",
         "duplicate": "Duplizieren",
+        "search": "Roboter suchen...",
+        "warning_modal": {
+            "title": "Aktiver Browser erkannt",
+            "message": "Es läuft bereits eine Browser-Aufzeichnungssitzung. Möchten Sie sie verwerfen und eine neue Aufzeichnung erstellen?",
+            "discard_and_create": "Verwerfen & Neu erstellen",
+            "cancel": "Abbrechen"
+        },
         "notifications": {
             "delete_warning": "Der Roboter hat zugehörige Ausführungen. Löschen Sie zuerst die Ausführungen, um den Roboter zu löschen",
             "delete_success": "Roboter erfolgreich gelöscht",
-            "auth_success": "Roboter erfolgreich authentifiziert"
+            "auth_success": "Roboter erfolgreich authentifiziert",
+            "browser_limit_warning": "Remote-Browser sind derzeit ausgelastet. Bitte warten Sie einige Minuten und versuchen Sie es erneut"
         }
     },
     "mainmenu": {
@@ -140,11 +148,11 @@
         "no_key_message": "Sie haben noch keinen API-Schlüssel generiert.",
         "generate_button": "API-Schlüssel generieren",
         "notifications": {
-            "fetch_error": "API-Schlüssel konnte nicht abgerufen werden - ${error}",
+            "fetch_error": "API-Schlüssel konnte nicht abgerufen werden - {{error}}",
             "generate_success": "API-Schlüssel erfolgreich generiert",
-            "generate_error": "API-Schlüssel konnte nicht generiert werden - ${error}",
+            "generate_error": "API-Schlüssel konnte nicht generiert werden - {{error}}",
             "delete_success": "API-Schlüssel erfolgreich gelöscht",
-            "delete_error": "API-Schlüssel konnte nicht gelöscht werden - ${error}",
+            "delete_error": "API-Schlüssel konnte nicht gelöscht werden - {{error}}",
             "copy_success": "API-Schlüssel erfolgreich kopiert"
         }
     },
@@ -170,6 +178,11 @@
             "pagination": "Wählen Sie aus, wie der Roboter den Rest der Liste erfassen kann",
             "limit": "Wählen Sie die Anzahl der zu extrahierenden Elemente",
             "complete": "Erfassung ist abgeschlossen"
+        },
+        "actions": {
+            "text": "Text erfassen",
+            "list": "Liste erfassen",
+            "screenshot": "Screenshot erfassen"
         }
     },
     "right_panel": {
@@ -182,6 +195,7 @@
             "confirm_capture": "Erfassung bestätigen",
             "confirm_pagination": "Bestätigen",
             "confirm_limit": "Bestätigen",
+            "confirm_reset": "Bestätigen",
             "finish_capture": "Erfassung abschließen",
             "back": "Zurück",
             "reset": "Starten Sie die Aufnahme neu",
@@ -291,7 +305,7 @@
             "no": "Nein"
         },
         "messages": {
-            "extracting": "Daten werden extrahiert...bitte warten Sie 10 Sekunden bis 1 Minute",
+            "extracting": "Daten werden extrahiert...bitte warten",
             "restart_required": "Bitte starten Sie die Interpretation nach der Aktualisierung der Aufnahme neu",
             "run_finished": "Durchlauf beendet",
             "run_failed": "Start fehlgeschlagen"
@@ -300,11 +314,14 @@
             "use_previous": "Möchten Sie Ihre vorherige Auswahl als Bedingung für diese Aktion verwenden?",
             "previous_action": "Ihre vorherige Aktion war: ",
             "element_text": "auf einem Element mit Text "
+        },
+        "notifications": {
+            "reset_success": "Ausgabevorschau erfolgreich zurückgesetzt"
         }
     },
     "recording_page": {
         "loader": {
-            "browser_startup": "Browser wird gestartet...Navigation zu {{url}}"
+            "browser_startup": "Browser wird gestartet...Festhalten"
         }
     },
     "integration_settings": {
@@ -473,7 +490,8 @@
             "schedule_success": "Roboter {{name}} erfolgreich geplant",
             "schedule_failed": "Planen des Roboters {{name}} fehlgeschlagen",
             "abort_success": "Interpretation des Roboters {{name}} erfolgreich abgebrochen",
-            "abort_failed": "Abbrechen der Interpretation des Roboters {{name}} fehlgeschlagen"
+            "abort_failed": "Abbrechen der Interpretation des Roboters {{name}} fehlgeschlagen",
+            "abort_initiated": "Interpretation des Roboters {{name}} wird abgebrochen"
         },
         "menu": {
             "recordings": "Roboter",
@@ -598,6 +616,7 @@
         "es": "Spanisch",
         "ja": "Japanisch",
         "zh": "Chinesisch",
-        "de": "Deutsch"
+        "de": "Deutsch",
+        "tr": "Türkisch"
     }
 }

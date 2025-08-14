@@ -4,7 +4,7 @@ import http from 'http';
 import cors from 'cors';
 import dotenv from 'dotenv';
 dotenv.config();
-import { record, workflow, storage, auth, integration, proxy } from './routes';
+import { record, workflow, storage, auth, integration, proxy, webhook } from './routes';
 import { BrowserPool } from "./browser-management/classes/BrowserPool";
 import logger from './logger';
 import { connectDB, syncDB } from './storage/db'
@@ -20,6 +20,7 @@ import connectPgSimple from 'connect-pg-simple';
 import pg from 'pg';
 import session from 'express-session';
 import Run from './models/Run';
+import { processQueuedRuns } from './routes/storage';
 
 const app = express();
 app.use(cors({
@@ -83,11 +84,9 @@ export const io = new Server(server);
  */
 export const browserPool = new BrowserPool();
 
-// app.use(bodyParser.json({ limit: '10mb' }))
-// app.use(bodyParser.urlencoded({ extended: true, limit: '10mb', parameterLimit: 9000 }));
-// parse cookies - "cookie" is true in csrfProtection
 app.use(cookieParser())
 
+app.use('/webhook', webhook);
 app.use('/record', record);
 app.use('/workflow', workflow);
 app.use('/storage', storage);
@@ -98,9 +97,9 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 readdirSync(path.join(__dirname, 'api')).forEach((r) => {
   const route = require(path.join(__dirname, 'api', r));
-  const router = route.default || route;  // Use .default if available, fallback to route
+  const router = route.default || route;
   if (typeof router === 'function') {
-    app.use('/api', router);  // Use the default export or named router
+    app.use('/api', router);
   } else {
     console.error(`Error: ${r} does not export a valid router`);
   }
@@ -150,7 +149,6 @@ app.get('/', function (req, res) {
   return res.send('Maxun server started 🚀');
 });
 
-// Add CORS headers
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', process.env.PUBLIC_URL || 'http://localhost:5173');
   res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
@@ -178,14 +176,19 @@ io.of('/queued-run').on('connection', (socket) => {
   }
 });
 
+setInterval(() => {
+  processQueuedRuns();
+}, 5000);
+
+
 server.listen(SERVER_PORT, '0.0.0.0', async () => {
   try {
     await connectDB();
     await syncDB();
-    logger.log('info', `Server listening on port ${SERVER_PORT}`);
+    logger.log('info', `Server listening on port ${SERVER_PORT}`);    
   } catch (error: any) {
     logger.log('error', `Failed to connect to the database: ${error.message}`);
-    process.exit(1); // Exit the process if DB connection fails
+    process.exit(1);
   }
 });
 

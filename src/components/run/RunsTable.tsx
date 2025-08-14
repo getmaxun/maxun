@@ -53,6 +53,7 @@ export interface Data {
   finishedAt: string;
   runByUserId?: string;
   runByScheduleId?: string;
+  browserId: string;
   runByAPI?: boolean;
   log: string;
   runId: string;
@@ -65,7 +66,7 @@ export interface Data {
 
 interface RunsTableProps {
   currentInterpretationLog: string;
-  abortRunHandler: () => void;
+  abortRunHandler: (runId: string, robotName: string, browserId: string) => void;
   runId: string;
   runningRecordingName: string;
 }

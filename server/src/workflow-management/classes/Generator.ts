@@ -15,7 +15,7 @@ import {
 import { CustomActions } from "../../../../src/shared/types";
 import Robot from "../../models/Robot";
 import { getBestSelectorForAction } from "../utils";
-import { uuid } from "uuidv4";
+import { v4 as uuid } from "uuid";
 import { capture } from "../../utils/analytics"
 import { decrypt, encrypt } from "../../utils/auth";
 
@@ -82,6 +82,7 @@ export class WorkflowGenerator {
     this.poolId = poolId;
     this.registerEventHandlers(socket);
     this.initializeSocketListeners();
+    this.initializeDOMListeners();
   }
 
   /**
@@ -91,6 +92,8 @@ export class WorkflowGenerator {
   private workflowRecord: WorkflowFile = {
     workflow: [],
   };
+
+  private isDOMMode: boolean = false;
 
   /**
    * Metadata of the currently recorded workflow.
@@ -134,6 +137,18 @@ export class WorkflowGenerator {
     })
   }
 
+  private initializeDOMListeners() {
+    this.socket.on('dom-mode-enabled', () => {
+      this.isDOMMode = true;
+      logger.log('debug', 'Generator: DOM mode enabled');
+    });
+    
+    this.socket.on('screenshot-mode-enabled', () => {
+      this.isDOMMode = false;
+      logger.log('debug', 'Generator: Screenshot mode enabled');
+    });
+  }
+
   /**
    * Registers the event handlers for all generator-related events on the socket.
    * @param socket The socket used to communicate with the client.
@@ -159,9 +174,11 @@ export class WorkflowGenerator {
           switch (actionType) {
             case 'customAction':
               // pair.where.selectors = [this.generatedData.lastUsedSelector];
-              pair.where.selectors = pair.where.selectors.filter(
-                (selector: string) => selector !== this.generatedData.lastUsedSelector
-              );
+              if (pair.where.selectors) {
+                pair.where.selectors = pair.where.selectors.filter(
+                  (selector: string) => selector !== this.generatedData.lastUsedSelector
+                );
+              }
               break;
             default: break;
           }
@@ -345,6 +362,96 @@ export class WorkflowGenerator {
         }],
     };
 
+    await this.addPairToWorkflowAndNotifyClient(pair, page);
+  };
+
+  // Handles click events on the DOM, generating a pair for the click action
+  public onDOMClickAction = async (page: Page, data: { 
+    selector: string, 
+    url: string, 
+    userId: string,
+    elementInfo?: any,
+    coordinates?: { x: number, y: number }
+  }) => {
+    const { selector, url, elementInfo, coordinates } = data;
+
+    const pair: WhereWhatPair = {
+      where: { 
+        url: this.getBestUrl(url),
+        selectors: [selector]
+      },
+      what: [{
+        action: 'click',
+        args: [selector],
+      }],
+    };
+
+    // Handle special input elements with cursor positioning
+    if (elementInfo && coordinates && 
+        (elementInfo.tagName === 'INPUT' || elementInfo.tagName === 'TEXTAREA')) {
+      pair.what[0] = {
+        action: 'click',
+        args: [selector, { position: coordinates }, { cursorIndex: 0 }],
+      };
+    }
+
+    this.generatedData.lastUsedSelector = selector;
+    this.generatedData.lastAction = 'click';
+    
+    await this.addPairToWorkflowAndNotifyClient(pair, page);
+  };
+
+  // Handles keyboard actions on the DOM, generating a pair for the key press action
+  public onDOMKeyboardAction = async (page: Page, data: {
+    selector: string,
+    key: string,
+    url: string,
+    userId: string,
+    inputType?: string
+  }) => {
+    const { selector, key, url, inputType } = data;
+
+    const pair: WhereWhatPair = {
+      where: { 
+        url: this.getBestUrl(url),
+        selectors: [selector]
+      },
+      what: [{
+        action: 'press',
+        args: [selector, encrypt(key), inputType || 'text'],
+      }],
+    };
+
+    this.generatedData.lastUsedSelector = selector;
+    this.generatedData.lastAction = 'press';
+    
+    await this.addPairToWorkflowAndNotifyClient(pair, page);
+  };
+
+  // Handles navigation events on the DOM, generating a pair for the navigation action
+  public onDOMNavigation = async (page: Page, data: {
+    url: string,
+    currentUrl: string,
+    userId: string
+  }) => {
+    const { url, currentUrl } = data;
+
+    const pair: WhereWhatPair = {
+      where: { url: this.getBestUrl(currentUrl) },
+      what: [{
+        action: 'goto',
+        args: [url],
+      }],
+    };
+
+    this.generatedData.lastUsedSelector = '';
+    await this.addPairToWorkflowAndNotifyClient(pair, page);
+  };
+
+  // Handles workflow pair events on the DOM
+  public onDOMWorkflowPair = async (page: Page, data: { pair: WhereWhatPair, userId: string }) => {
+    const { pair } = data;
+    
     await this.addPairToWorkflowAndNotifyClient(pair, page);
   };
 
@@ -708,6 +815,7 @@ export class WorkflowGenerator {
     this.socket = socket;
     this.registerEventHandlers(socket);
     this.initializeSocketListeners();
+    this.initializeDOMListeners();
   };
 
   /**
@@ -890,6 +998,7 @@ export class WorkflowGenerator {
         rect,
         selector: displaySelector,
         elementInfo,
+        isDOMMode: this.isDOMMode,
         // Include shadow DOM specific information
         shadowInfo: elementInfo?.isShadowRoot ? {
           mode: elementInfo.shadowRootMode,

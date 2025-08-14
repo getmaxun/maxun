@@ -26,7 +26,7 @@ Maxun lets you train a robot in 2 minutes and scrape the web on auto-pilot. Web 
 <a href="https://trendshift.io/repositories/12113" target="_blank"><img src="https://trendshift.io/api/badge/repositories/12113" alt="getmaxun%2Fmaxun | Trendshift" style="width: 250px; height: 55px; margin-top: 10px;" width="250" height="55"/></a>
 </p>
 
-![maxun_demo](https://github.com/user-attachments/assets/a61ba670-e56a-4ae1-9681-0b4bd6ba9cdc)
+![maxun_gif](https://github.com/user-attachments/assets/3e0b0cf8-9e52-44d2-a140-b26b7b481477)
 
 <img src="https://static.scarf.sh/a.png?x-pxid=c12a77cc-855e-4602-8a0f-614b2d0da56a" />
 
@@ -103,8 +103,8 @@ You can access the frontend at http://localhost:5173/ and backend at http://loca
 | `MINIO_PORT`          | Yes       | Port number for MinIO service.                                                               | Connection to MinIO storage will fail.                       |
 | `MINIO_CONSOLE_PORT`          | No       | Port number for MinIO WebUI service. Needed for Docker setup.                         | Cannot access MinIO Web UI. |
 | `MINIO_ACCESS_KEY`    | Yes       | Access key for authenticating with MinIO.                                                    | MinIO authentication will fail.                              |
-| `GOOGLE_CLIENT_ID`    | No       | Client ID for Google OAuth, used for Google Sheet integration authentication.                 | Google login will not work.                                  |
-| `GOOGLE_CLIENT_SECRET`| No       | Client Secret for Google OAuth.                                                              | Google login will not work.                                  |
+| `GOOGLE_CLIENT_ID`    | No       | Client ID for Google OAuth. Used for Google Sheet integration authentication.                 | Google login will not work.                                  |
+| `GOOGLE_CLIENT_SECRET`| No       | Client Secret for Google OAuth. Used for Google Sheet integration authentication.            | Google login will not work.   |
 | `GOOGLE_REDIRECT_URI` | No       | Redirect URI for handling Google OAuth responses.                                            | Google login will not work.                                  |
 | `AIRTABLE_CLIENT_ID` | No       | Client ID for Airtable, used for Airtable integration authentication.                         | Airtable login will not work.  |
 | `AIRTABLE_REDIRECT_URI` | No    | Redirect URI for handling Airtable OAuth responses.                                           | Airtable login will not work.  |
@@ -133,9 +133,10 @@ BYOP (Bring Your Own Proxy) lets you connect external proxies to bypass anti-bot
 - ✨ Turn Websites to APIs
 - ✨ Turn Websites to Spreadsheets
 - ✨ Adapt To Website Layout Changes
-- ✨ Extract Behind Login, 
-- ✨ Bypass  Two-Factor Authentication For Extract Behind Login (coming soon)
+- ✨ Extract Behind Login
 - ✨ Integrations
+- ✨ MCP Server
+- ✨ Bypass 2FA & MFA For Extract Behind Login (coming soon)
 - +++ A lot of amazing things!
 
 # Screenshots
@@ -150,12 +151,15 @@ BYOP (Bring Your Own Proxy) lets you connect external proxies to bypass anti-bot
 ![Maxun PH Launch (1)-9-1](https://github.com/user-attachments/assets/160f46fa-0357-4c1b-ba50-b4fe64453bb7)
 
 # Note
-This project is in early stages of development. Your feedback is very important for us - we're actively working to improve the product. </a>
+This project is in early stages of development. Your feedback is very important for us - we're actively working on improvements. </a>
 
 # License
 <p>
 This project is licensed under <a href="./LICENSE">AGPLv3</a>.
 </p>
+
+# Support Us
+Star the repository, contribute if you love what we’re building, or make a [one-time donation](https://bit.ly/maxun-oss). Every little bit helps us keep the lights on and the robots running.
 
 # Contributors
 Thank you to the combined efforts of everyone who contributes!

@@ -68,7 +68,8 @@
       "notifications": {
         "delete_warning": "The robot has associated runs. First delete runs to delete the robot",
         "delete_success": "Robot deleted successfully",
-        "auth_success": "Robot successfully authenticated"
+        "auth_success": "Robot successfully authenticated",
+        "browser_limit_warning": "Remote browsers are currently busy. Please wait for a few minutes and try again"
       }
     },
     "mainmenu":{
@@ -147,11 +148,11 @@
       "no_key_message": "You haven't generated an API key yet.",
       "generate_button": "Generate API Key",
       "notifications": {
-        "fetch_error": "Failed to fetch API Key - ${error}",
+        "fetch_error": "Failed to fetch API Key - {{error}}",
         "generate_success": "Generated API Key successfully",
-        "generate_error": "Failed to generate API Key - ${error}",
+        "generate_error": "Failed to generate API Key - {{error}}",
         "delete_success": "API Key deleted successfully",
-        "delete_error": "Failed to delete API Key - ${error}",
+        "delete_error": "Failed to delete API Key - {{error}}",
         "copy_success": "Copied API Key successfully"
       }
     },
@@ -304,7 +305,7 @@
         "no": "No"
       },
       "messages": {
-        "extracting": "Extracting data...please wait for 10secs to 1min",
+        "extracting": "Extracting data...please wait",
         "restart_required": "Please restart the interpretation after updating the recording",
         "run_finished": "Run finished",
         "run_failed": "Run failed to start"
@@ -313,11 +314,14 @@
         "use_previous": "Do you want to use your previous selection as a condition for performing this action?",
         "previous_action": "Your previous action was: ",
         "element_text": "on an element with text "
+      },
+      "notifications": {
+        "reset_success": "Output Preview reset successfully"
       }
     },
     "recording_page": {
       "loader": {
-        "browser_startup": "Spinning up a browser...Navigating to {{url}}"
+        "browser_startup": "Spinning up a browser...Hold tight"
       }
     },
     "integration_settings": {
@@ -486,7 +490,8 @@
         "schedule_success": "Robot {{name}} scheduled successfully",
         "schedule_failed": "Failed to schedule robot {{name}}",
         "abort_success": "Interpretation of robot {{name}} aborted successfully",
-        "abort_failed": "Failed to abort the interpretation of robot {{name}}"
+        "abort_failed": "Failed to abort the interpretation of robot {{name}}",
+        "abort_initiated": "Aborting the interpretation of robot {{name}}"
       },
       "menu": {
         "recordings": "Robots",
@@ -611,6 +616,7 @@
       "es": "Spanish",
       "ja": "Japanese",
       "zh": "Chinese",
-      "de": "German"
+      "de": "German",
+      "tr": "Turkish"
     }
 } 
