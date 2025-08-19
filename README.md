@@ -110,7 +110,8 @@ You can access the frontend at http://localhost:5173/ and backend at http://loca
 | `AIRTABLE_REDIRECT_URI` | No    | Redirect URI for handling Airtable OAuth responses.                                           | Airtable login will not work.  |
 | `MAXUN_TELEMETRY`     | No        | Disables telemetry to stop sending anonymous usage data. Keeping it enabled helps us understand how the product is used and assess the impact of any new changes. Please keep it enabled. | Telemetry data will not be collected. |
 
-
+# How Do I Self-Host?
+Checkout community self hosting guide: https://docs.maxun.dev/self-host
 
 # How Does It Work?
 Maxun lets you create custom robots which emulate user actions and extract data. A robot can perform any of the actions: <b>Capture List, Capture Text or Capture Screenshot. Once a robot is created, it will keep extracting data for you without manual intervention</b>
