@@ -14,6 +14,7 @@ interface RobotMeta {
     pairs: number;
     updatedAt: string;
     params: any[];
+    
 }
 
 interface RobotWorkflow {
@@ -43,6 +44,7 @@ export interface RobotSettings {
     google_access_token?: string | null;
     google_refresh_token?: string | null;
     schedule?: ScheduleConfig | null;
+    description?: string|null;
 }
 
 interface RobotSettingsProps {
@@ -151,6 +153,17 @@ export const RobotSettingsModal = ({ isOpen, handleStart, handleClose, initialSe
                                     }}
                                     style={{ marginBottom: '20px' }}
                                 />
+                                {robot.description && (
+                                    <TextField
+                                        label={t('robot_settings.description')}
+                                        key="Robot Description"
+                                        value={robot.description}
+                                        InputProps={{
+                                            readOnly: true,
+                                        }}
+                                        style={{ marginBottom: '20px' }}
+                                    />
+                                )}
                             </>
                         )
                     }

@@ -31,6 +31,7 @@ interface WebhookConfig {
 interface RobotAttributes {
   id: string;
   userId?: number;
+  description?: string | null; 
   recording_meta: RobotMeta;
   recording: RobotWorkflow;
   google_sheet_email?: string | null;
@@ -38,11 +39,11 @@ interface RobotAttributes {
   google_sheet_id?: string | null;
   google_access_token?: string | null;
   google_refresh_token?: string | null;
-  airtable_base_id?: string | null; 
-  airtable_base_name?: string | null; 
-  airtable_table_name?: string | null; 
-  airtable_access_token?: string | null; 
-  airtable_refresh_token?: string | null; 
+  airtable_base_id?: string | null;
+  airtable_base_name?: string | null;
+  airtable_table_name?: string | null;
+  airtable_access_token?: string | null;
+  airtable_refresh_token?: string | null;
   schedule?: ScheduleConfig | null;
   airtable_table_id?: string | null;
   webhooks?: WebhookConfig[] | null; 
@@ -66,6 +67,7 @@ interface RobotCreationAttributes extends Optional<RobotAttributes, 'id'> { }
 class Robot extends Model<RobotAttributes, RobotCreationAttributes> implements RobotAttributes {
   public id!: string;
   public userId!: number;
+  public description!: string | null;
   public recording_meta!: RobotMeta;
   public recording!: RobotWorkflow;
   public google_sheet_email!: string | null;
@@ -73,12 +75,12 @@ class Robot extends Model<RobotAttributes, RobotCreationAttributes> implements R
   public google_sheet_id!: string | null;
   public google_access_token!: string | null;
   public google_refresh_token!: string | null;
-  public airtable_base_id!: string | null; 
-  public airtable_base_name!: string | null; 
-  public airtable_table_name!: string | null; 
-  public airtable_access_token!: string | null; 
-  public airtable_refresh_token!: string | null; 
-  public airtable_table_id!: string | null; 
+  public airtable_base_id!: string | null;
+  public airtable_base_name!: string | null;
+  public airtable_table_name!: string | null;
+  public airtable_access_token!: string | null;
+  public airtable_refresh_token!: string | null;
+  public airtable_table_id!: string | null;
   public schedule!: ScheduleConfig | null;
   public webhooks!: WebhookConfig[] | null;
 }
@@ -93,6 +95,10 @@ Robot.init(
     userId: {
       type: DataTypes.INTEGER,
       allowNull: false,
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
     recording_meta: {
       type: DataTypes.JSONB,

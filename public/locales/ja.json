@@ -442,7 +442,8 @@
         "created_at": "作成日時",
         "errors": {
             "robot_not_found": "ロボットの詳細が見つかりませんでした。もう一度試してください。"
-        }
+        },
+        "description": "説明(任意)"
     },
     "robot_edit": {
         "title": "ロボットを編集",
