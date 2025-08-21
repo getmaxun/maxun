@@ -2388,6 +2388,10 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
       return selectors || { generalSelector: '' };
     } else {
       // When we have a list selector, we need special handling while maintaining shadow DOM and frame support
+      if (page.isClosed()) {
+        logger.debug('Page is closed, cannot get list selectors');
+        return { generalSelector: '' };
+      }
       const selectors = await page.evaluate(({ x, y }: { x: number, y: number }) => {
         const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
           let elements = document.elementsFromPoint(x, y) as HTMLElement[];
