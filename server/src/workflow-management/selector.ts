@@ -2030,6 +2030,10 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
 
   try {
     if (!listSelector) {
+      if (page.isClosed()) {
+        logger.debug('Page is closed, cannot get non-unique selectors');
+        return { generalSelector: '' };
+      }
       const selectors = await page.evaluate(({ x, y }: { x: number, y: number }) => {
         const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
           let elements = document.elementsFromPoint(x, y) as HTMLElement[];
