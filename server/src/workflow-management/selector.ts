@@ -846,6 +846,10 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
       );
       return rect;
     } else {
+      if (page.isClosed()) {
+        logger.debug('Page is closed, cannot get element rect (else branch)');
+        return null;
+      }
       const rect = await page.evaluate(
         async ({ x, y }) => {
           const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
