@@ -619,6 +619,10 @@ export const getElementInformation = async (
 export const getRect = async (page: Page, coordinates: Coordinates, listSelector: string, getList: boolean) => {
   try {
     if (!getList || listSelector !== '') {
+      if (page.isClosed()) {
+        logger.debug('Page is closed, cannot get element rect');
+        return null;
+      }
       const rect = await page.evaluate(
         async ({ x, y }) => {
           const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
