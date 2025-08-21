@@ -306,6 +306,10 @@ export const getElementInformation = async (
       );
       return elementInfo;
     } else {
+      if (page.isClosed()) {
+        logger.debug('Page is closed, cannot get element information (else branch)');
+        return null;
+      }
       const elementInfo = await page.evaluate(
         async ({ x, y }) => {
           const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
