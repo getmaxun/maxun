@@ -2753,6 +2753,10 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
 
 export const getChildSelectors = async (page: Page, parentSelector: string): Promise<string[]> => {
   try {
+    if (page.isClosed()) {
+      logger.debug('Page is closed, cannot get child selectors');
+      return [];
+    }
     const childSelectors = await page.evaluate((parentSelector: string) => {
       // Function to get a non-unique selector based on tag and class (if present)
       function getNonUniqueSelector(element: HTMLElement): string {
