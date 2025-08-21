@@ -21,6 +21,10 @@ export const getElementInformation = async (
 ) => {
   try {
     if (!getList || listSelector !== '') {
+      if (page.isClosed()) {
+        logger.debug('Page is closed, cannot get element information');
+        return null;
+      }
       const elementInfo = await page.evaluate(
         async ({ x, y }) => {
           const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
