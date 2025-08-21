@@ -1092,6 +1092,10 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
  */
 export const getSelectors = async (page: Page, coordinates: Coordinates) => {
   try {
+     if (page.isClosed()) {
+      logger.debug('Page is closed, cannot get selectors');
+      return null;
+    }
     const selectors: any = await page.evaluate(async ({ x, y }) => {
       // version @medv/finder
       // https://github.com/antonmedv/finder/blob/master/finder.ts
