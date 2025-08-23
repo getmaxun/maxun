@@ -4128,22 +4128,6 @@ class ClientSelectorGenerator {
         dialogElements.push(element);
         continue;
       }
-
-      const classList = element.classList.toString().toLowerCase();
-      const id = (element.id || "").toLowerCase();
-      
-      if (
-        classList.includes("modal") ||
-        classList.includes("dialog") ||
-        classList.includes("popup") ||
-        classList.includes("overlay") ||
-        id.includes("modal") ||
-        id.includes("dialog") ||
-        id.includes("popup")
-      ) {
-        dialogElements.push(element);
-        continue;
-      }
     }
 
     return dialogElements;
