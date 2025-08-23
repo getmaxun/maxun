@@ -109,6 +109,11 @@ class ClientSelectorGenerator {
   private getList: boolean = false;
   private paginationMode: boolean = false;
 
+  private pathCache = new WeakMap<HTMLElement, string | null>();
+  private descendantsCache = new WeakMap<HTMLElement, HTMLElement[]>();
+  private meaningfulCache = new WeakMap<HTMLElement, boolean>();
+  private selectorCache = new Map<string, string[]>();
+
   private elementGroups: Map<HTMLElement, ElementGroup> = new Map();
   private groupedElements: Set<HTMLElement> = new Set();
   private lastAnalyzedDocument: Document | null = null;
@@ -128,7 +133,7 @@ class ClientSelectorGenerator {
 
   private performanceConfig = {
     enableSpatialIndexing: true,
-    maxSelectorBatchSize: 50,
+    maxSelectorBatchSize: 50, // Process selectors in batches
     useElementCache: true,
     debounceMs: 16, // ~60fps
   };
@@ -174,6 +179,113 @@ class ClientSelectorGenerator {
       })
       .sort()
       .join(" ");
+  }
+
+  /**
+   * generate fallback XPath for child elements using data-mx-id
+   */
+  private generateMandatoryChildFallbackXPath(
+    childElement: HTMLElement,
+    parentElement: HTMLElement
+  ): string | null {
+    try {
+      const parentMxId = parentElement.getAttribute("data-mx-id");
+      const childMxId = childElement.getAttribute("data-mx-id");
+
+      if (!parentMxId) {
+        console.warn(
+          "Parent element missing data-mx-id attribute for fallback"
+        );
+        return null;
+      }
+
+      const parentTagName = parentElement.tagName.toLowerCase();
+      const childTagName = childElement.tagName.toLowerCase();
+
+      if (childMxId) {
+        return `//${parentTagName}[@data-mx-id='${parentMxId}']//${childTagName}[@data-mx-id='${childMxId}']`;
+      } else {
+        const pathElements = this.getMandatoryFallbackPath(
+          childElement,
+          parentElement
+        );
+        if (pathElements.length > 0) {
+          const parentPath = `//${parentTagName}[@data-mx-id='${parentMxId}']`;
+          const childPath = pathElements.join("/");
+          return `${parentPath}/${childPath}`;
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Error generating mandatory child fallback XPath:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Build mandatory fallback path using data-mx-id where available
+   */
+  private getMandatoryFallbackPath(
+    targetElement: HTMLElement,
+    rootElement: HTMLElement
+  ): string[] {
+    const pathParts: string[] = [];
+    let current = targetElement;
+
+    while (current && current !== rootElement && current.parentElement) {
+      const mxId = current.getAttribute("data-mx-id");
+      const tagName = current.tagName.toLowerCase();
+
+      if (mxId) {
+        // Always prefer data-mx-id when available
+        pathParts.unshift(`${tagName}[@data-mx-id='${mxId}']`);
+      } else {
+        // Use position as fallback when data-mx-id is not available
+        const position =
+          Array.from(current.parentElement.children)
+            .filter((child) => child.tagName === current.tagName)
+            .indexOf(current) + 1;
+        pathParts.unshift(`${tagName}[${position}]`);
+      }
+
+      current = current.parentElement;
+    }
+
+    return pathParts;
+  }
+
+  /**
+   * generate fallback for group container using data-mx-id
+   */
+  private generateMandatoryGroupFallback(
+    elements: HTMLElement[]
+  ): string | null {
+    try {
+      if (!elements || elements.length === 0) return null;
+
+      const tagName = elements[0].tagName.toLowerCase();
+
+      const mxIds = elements
+        .map((el) => el.getAttribute("data-mx-id"))
+        .filter(Boolean);
+
+      if (mxIds.length > 0) {
+        if (mxIds.length === 1) {
+          return `//${tagName}[@data-mx-id='${mxIds[0]}']`;
+        } else {
+          const mxIdConditions = mxIds
+            .map((id) => `@data-mx-id='${id}'`)
+            .join(" or ");
+          return `//${tagName}[${mxIdConditions}]`;
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Error generating mandatory group fallback:", error);
+      return null;
+    }
   }
 
   /**
@@ -397,7 +509,21 @@ class ClientSelectorGenerator {
     this.lastAnalyzedDocument = iframeDoc;
   
     // Get all visible elements INCLUDING shadow DOM
-    const allElements = this.getAllVisibleElementsWithShadow(iframeDoc);
+    let allElements = this.getAllVisibleElementsWithShadow(iframeDoc);
+    
+    if (this.getList === true && this.listSelector === "") {
+      const dialogElements = this.findAllDialogElements(iframeDoc);
+      
+      if (dialogElements.length > 0) {
+        // Check if dialogs contain significant content worth analyzing
+        const dialogContentElements = this.getElementsFromDialogs(dialogElements);
+        
+        // Only switch to dialog-focused analysis if dialogs have substantial content
+        if (dialogContentElements.length > 5) {
+          allElements = dialogContentElements;
+        }
+      }
+    }
     const processedInTables = new Set<HTMLElement>();
   
     // 1. Specifically find and group rows within each table, bypassing normal similarity checks.
@@ -487,7 +613,7 @@ class ClientSelectorGenerator {
     const meaningfulChildren: HTMLElement[] = [];
 
     const traverse = (el: HTMLElement, depth: number = 0) => {
-      if (depth > 5) return;
+      if (depth > 5) return; // Prevent infinite recursion
 
       Array.from(el.children).forEach((child) => {
         const htmlChild = child as HTMLElement;
@@ -518,15 +644,41 @@ class ClientSelectorGenerator {
   }
 
   /**
+   * Check if element has meaningful content for extraction (cached version)
+   */
+  private isMeaningfulElementCached(element: HTMLElement): boolean {
+    if (this.meaningfulCache.has(element)) {
+      return this.meaningfulCache.get(element)!;
+    }
+
+    const result = this.isMeaningfulElement(element);
+    this.meaningfulCache.set(element, result);
+    return result;
+  }
+
+  /**
    * Check if element has meaningful content for extraction
    */
   private isMeaningfulElement(element: HTMLElement): boolean {
     const tagName = element.tagName.toLowerCase();
+    
+    // Fast path for common meaningful elements
+    if (["a", "img", "input", "button", "select"].includes(tagName)) {
+      return true;
+    }
+
     const text = (element.textContent || "").trim();
     const hasHref = element.hasAttribute("href");
     const hasSrc = element.hasAttribute("src");
+    
+    // Quick checks first
+    if (text.length > 0 || hasHref || hasSrc) {
+      return true;
+    }
+
     const isCustomElement = tagName.includes("-");
 
+    // For custom elements, be more lenient about what's considered meaningful
     if (isCustomElement) {
       const hasChildren = element.children.length > 0;
       const hasSignificantAttributes = Array.from(element.attributes).some(
@@ -534,9 +686,6 @@ class ClientSelectorGenerator {
       );
 
       return (
-        text.length > 0 ||
-        hasHref ||
-        hasSrc ||
         hasChildren ||
         hasSignificantAttributes ||
         element.hasAttribute("role") ||
@@ -544,12 +693,7 @@ class ClientSelectorGenerator {
       );
     }
 
-    return (
-      text.length > 0 ||
-      hasHref ||
-      hasSrc ||
-      ["a", "img", "input", "button", "select"].includes(tagName)
-    );
+    return false;
   }
 
   /**
@@ -662,14 +806,17 @@ class ClientSelectorGenerator {
    * Check if two selector patterns are related/similar
    */
   private arePatternsRelated(pattern1: any, pattern2: any): boolean {
+    // Must have same tag
     if (pattern1.tag !== pattern2.tag || !pattern1.tag) {
       return false;
     }
 
+    // Check for common classes
     const commonClasses = pattern1.classes.filter((cls: any) =>
       pattern2.classes.includes(cls)
     );
 
+    // Similar if they have same tag and at least one common class, or same structure
     return (
       commonClasses.length > 0 || pattern1.structure === pattern2.structure
     );
@@ -897,6 +1044,9 @@ class ClientSelectorGenerator {
     const elementsAtPoint = iframeDoc.elementsFromPoint(x, y) as HTMLElement[];
     if (!elementsAtPoint.length) return null;
 
+    console.log("Elements at point:", elementsAtPoint);
+    console.log("Grouped elements:", this.groupedElements);
+
     // In list mode without selector, transform table cells to rows and prioritize grouped elements
     if (this.getList === true && this.listSelector === "") {
       const transformedElements: HTMLElement[] = [];
@@ -955,15 +1105,18 @@ class ClientSelectorGenerator {
     const result: HTMLElement[] = [];
 
     for (const element of groupedElements) {
+      // Check if this element has any grouped children in the same list
       const hasGroupedChild = groupedElements.some(
         (other) => other !== element && element.contains(other)
       );
 
+      // If this element contains other grouped elements, prefer this one (the parent)
       if (hasGroupedChild) {
         result.push(element);
       }
     }
 
+    // If no parent-child relationships found, return all elements
     return result.length > 0 ? result : groupedElements;
   }
 
@@ -1403,7 +1556,32 @@ class ClientSelectorGenerator {
     }
   };
 
-  private getSelectors = (iframeDoc: Document, coordinates: Coordinates) => {
+  /**
+   * Generate CSS fallback selector using data-mx-id attribute
+   */
+  private generateMandatoryCSSFallback(element: HTMLElement): string | null {
+    try {
+      const mxId = element.getAttribute("data-mx-id");
+      if (!mxId) {
+        console.warn("Element missing data-mx-id attribute for CSS fallback");
+        return null;
+      }
+
+      const tagName = element.tagName.toLowerCase();
+      return `${tagName}[data-mx-id='${mxId}']`;
+    } catch (error) {
+      console.error("Error generating mandatory CSS fallback:", error);
+      return null;
+    }
+  }
+
+  private getSelectors = (
+    iframeDoc: Document,
+    coordinates: Coordinates
+  ): {
+    primary: Selectors | null;
+    fallback: string | null;
+  } => {
     try {
       // version @medv/finder
       // https://github.com/antonmedv/finder/blob/master/finder.ts
@@ -1626,8 +1804,9 @@ class ClientSelectorGenerator {
       }
 
       function attr(input: Element): Node[] {
-        const attrs = Array.from(input.attributes).filter((attr) =>
-          config.attr(attr.name, attr.value)
+        const attrs = Array.from(input.attributes).filter(
+          (attr) =>
+            config.attr(attr.name, attr.value) && attr.name !== "data-mx-id"
         );
 
         return attrs.map((attr): Node => {
@@ -2442,22 +2621,36 @@ class ClientSelectorGenerator {
           parentElement?.tagName === "A" ? parentElement : hoveredElement;
 
         const generatedSelectors = genSelectors(element);
-        return generatedSelectors;
+
+        const fallbackSelector = this.generateMandatoryCSSFallback(element);
+        return {
+          primary: generatedSelectors,
+          fallback: fallbackSelector,
+        };
       }
     } catch (e) {
       const { message, stack } = e as Error;
       console.warn(`Error while retrieving element: ${message}`);
       console.warn(`Stack: ${stack}`);
     }
-    return null;
+    return { primary: null, fallback: null };
   };
 
+  // Enhanced getChildSelectors method with better XPath generation
   public getChildSelectors = (
     iframeDoc: Document,
     parentSelector: string
   ): string[] => {
     try {
-      // Use XPath evaluation to find parent elements
+      // Check cache first
+      const cacheKey = `${parentSelector}_${iframeDoc.location?.href || 'doc'}`;
+      if (this.selectorCache.has(cacheKey)) {
+        return this.selectorCache.get(cacheKey)!;
+      }
+
+      // Clear path cache for new generation task but keep other caches
+      this.pathCache = new WeakMap<HTMLElement, string | null>();
+
       let parentElements: HTMLElement[] = this.evaluateXPath(
         parentSelector,
         iframeDoc
@@ -2468,9 +2661,19 @@ class ClientSelectorGenerator {
         return [];
       }
 
-      const allChildSelectors = new Set<string>();
+      // Limit parent elements for performance but not too aggressively
+      if (parentElements.length > 10) {
+        parentElements = parentElements.slice(0, 10);
+      }
 
-      parentElements.forEach((parentElement) => {
+      const allChildSelectors = new Set<string>();
+      const processedParents = new Set<HTMLElement>();
+
+      // Process parents efficiently
+      for (const parentElement of parentElements) {
+        if (processedParents.has(parentElement)) continue;
+        processedParents.add(parentElement);
+
         const otherListElements = parentElements.filter(
           (el) => el !== parentElement
         );
@@ -2481,12 +2684,15 @@ class ClientSelectorGenerator {
           iframeDoc,
           otherListElements
         );
-        childSelectors.forEach((selector) => allChildSelectors.add(selector));
-      });
+        
+        for (const selector of childSelectors) {
+          allChildSelectors.add(selector);
+        }
+      }
 
-      // Convert Set back to array and sort for consistency
-      const childSelectors = Array.from(allChildSelectors).sort();
-      return childSelectors;
+      const result = Array.from(allChildSelectors).sort();
+      this.selectorCache.set(cacheKey, result);
+      return result;
     } catch (error) {
       console.error("Error in getChildSelectors:", error);
       return [];
@@ -2494,41 +2700,93 @@ class ClientSelectorGenerator {
   };
 
   private getAllDescendantsIncludingShadow(
-    parentElement: HTMLElement,
-    maxDepth: number = 20
+    parentElement: HTMLElement
   ): HTMLElement[] {
-    const allDescendants: HTMLElement[] = [];
+    // Check cache first
+    if (this.descendantsCache.has(parentElement)) {
+      return this.descendantsCache.get(parentElement)!;
+    }
+
+    const meaningfulDescendants: HTMLElement[] = [];
+    const queue: HTMLElement[] = [parentElement];
     const visited = new Set<HTMLElement>();
+    visited.add(parentElement);
 
-    const traverse = (element: HTMLElement, currentDepth: number) => {
-      if (currentDepth >= maxDepth || visited.has(element)) {
-        return;
+    const MAX_MEANINGFUL_ELEMENTS = 300; // Restored original limit
+    const MAX_NODES_TO_CHECK = 1200; // Balanced limit - not too aggressive
+    const MAX_DEPTH = 12; // Increased depth to capture deeper elements
+    let nodesChecked = 0;
+    
+    // Smart depth adjustment based on element density
+    let adjustedMaxDepth = MAX_DEPTH;
+    const elementDensityThreshold = 50; // Adjust depth if too many elements at shallow levels
+
+    // Use array for depth tracking (faster than Map)
+    const depths: number[] = [0];
+    let queueIndex = 0;
+
+    while (queueIndex < queue.length) {
+      const element = queue[queueIndex];
+      const currentDepth = depths[queueIndex];
+      queueIndex++;
+      nodesChecked++;
+
+      // Smart depth adjustment: if we're finding too many elements at shallow levels, reduce max depth
+      if (currentDepth <= 3 && meaningfulDescendants.length > elementDensityThreshold) {
+        adjustedMaxDepth = Math.max(6, adjustedMaxDepth - 2);
       }
-      visited.add(element);
 
-      if (element !== parentElement) {
-          allDescendants.push(element);
+      if (
+        nodesChecked > MAX_NODES_TO_CHECK ||
+        meaningfulDescendants.length >= MAX_MEANINGFUL_ELEMENTS ||
+        currentDepth > adjustedMaxDepth
+      ) {
+        break;
       }
 
-      // Traverse light DOM children
-      const children = Array.from(element.children) as HTMLElement[];
-      for (const child of children) {
-        traverse(child, currentDepth + 1);
+      // Use cached meaningful check
+      if (element !== parentElement && this.isMeaningfulElementCached(element)) {
+        meaningfulDescendants.push(element);
       }
 
-      // Traverse shadow DOM if it exists
-      if (element.shadowRoot) {
-        const shadowChildren = Array.from(element.shadowRoot.children) as HTMLElement[];
-        for (const shadowChild of shadowChildren) {
-          traverse(shadowChild, currentDepth + 1);
+      // Skip processing children if we're at adjusted max depth
+      if (currentDepth >= adjustedMaxDepth) {
+        continue;
+      }
+
+      // Process light DOM children efficiently
+      const children = element.children;
+      const childLimit = Math.min(children.length, 30); // Increased to capture more children
+      for (let i = 0; i < childLimit; i++) {
+        const child = children[i] as HTMLElement;
+        if (!visited.has(child)) {
+          visited.add(child);
+          queue.push(child);
+          depths.push(currentDepth + 1);
         }
       }
-    };
 
-    traverse(parentElement, 0);
-    return allDescendants;
+      // Process shadow DOM children (limited)
+      if (element.shadowRoot && currentDepth < adjustedMaxDepth - 1) {
+        const shadowChildren = element.shadowRoot.children;
+        const shadowLimit = Math.min(shadowChildren.length, 20); // Increased shadow DOM limit
+        for (let i = 0; i < shadowLimit; i++) {
+          const child = shadowChildren[i] as HTMLElement;
+          if (!visited.has(child)) {
+            visited.add(child);
+            queue.push(child);
+            depths.push(currentDepth + 1);
+          }
+        }
+      }
+    }
+
+    // Cache the result
+    this.descendantsCache.set(parentElement, meaningfulDescendants);
+    return meaningfulDescendants;
   }
 
+  // New optimized method for generating child XPaths
   private generateOptimizedChildXPaths(
     parentElement: HTMLElement,
     listSelector: string,
@@ -2538,31 +2796,44 @@ class ClientSelectorGenerator {
     const selectors: string[] = [];
     const processedElements = new Set<HTMLElement>();
 
-    // Get all meaningful descendants (not just direct children)
     const allDescendants = this.getAllDescendantsIncludingShadow(parentElement);
 
-    allDescendants.forEach((descendant, i) => {
-      if (processedElements.has(descendant)) return;
-      processedElements.add(descendant);
+    // Process descendants in batches for better performance
+    const batchSize = 25;
+    for (let i = 0; i < allDescendants.length; i += batchSize) {
+      const batch = allDescendants.slice(i, i + batchSize);
+      
+      for (const descendant of batch) {
+        if (processedElements.has(descendant)) continue;
+        processedElements.add(descendant);
 
-      if (!this.isMeaningfulElement(descendant)) return;
+        const absolutePath = this.buildOptimizedAbsoluteXPath(
+          descendant,
+          listSelector,
+          parentElement,
+          document,
+          otherListElements
+        );
 
-      const absolutePath = this.buildOptimizedAbsoluteXPath(
-        descendant,
-        listSelector,
-        parentElement,
-        document,
-        otherListElements
-      );
+        if (absolutePath.primary) {
+          selectors.push(absolutePath.primary);
+        }
 
-      if (absolutePath) {
-        selectors.push(absolutePath);
+        // Early termination if we have too many selectors (prevent memory issues)
+        if (selectors.length >= 250) {
+          break;
+        }
       }
-    });
+      
+      if (selectors.length >= 250) {
+        break;
+      }
+    }
 
     return [...new Set(selectors)];
   }
 
+  // Universal XPath generation that works for both light DOM and shadow DOM
   private generateOptimizedStructuralStep(
     element: HTMLElement,
     rootElement?: HTMLElement,
@@ -2571,6 +2842,7 @@ class ClientSelectorGenerator {
   ): string {
     const tagName = element.tagName.toLowerCase();
 
+    // Get parent - either regular parent or shadow host
     const parent =
       element.parentElement ||
       ((element.getRootNode() as ShadowRoot).host as HTMLElement | null);
@@ -2579,6 +2851,7 @@ class ClientSelectorGenerator {
       return tagName;
     }
 
+    // Use classes with position fallback if conflicting
     const classes = this.getCommonClassesAcrossLists(
       element,
       otherListElements
@@ -2588,6 +2861,7 @@ class ClientSelectorGenerator {
         .map((cls) => `contains(@class, '${cls}')`)
         .join(" and ");
 
+      // Check if any other element in the list container has the same classes
       const hasConflictingElement = rootElement
         ? this.queryElementsInScope(rootElement, element.tagName.toLowerCase())
             .filter((el) => el !== element)
@@ -2603,11 +2877,13 @@ class ClientSelectorGenerator {
       if (!hasConflictingElement) {
         return `${tagName}[${classSelector}]`;
       } else {
+        // Use position-based approach if classes conflict
         const position = this.getSiblingPosition(element, parent);
         return `${tagName}[${classSelector}][${position}]`;
       }
     }
 
+    // Try other meaningful attributes
     if (!addPositionToAll) {
       const meaningfulAttrs = ["role", "type", "name", "src", "aria-label"];
       for (const attrName of meaningfulAttrs) {
@@ -2640,6 +2916,7 @@ class ClientSelectorGenerator {
       }
     }
 
+    // Default: tag name with position when addPositionToAll is true or as fallback
     const position = this.getSiblingPosition(element, parent);
 
     if (addPositionToAll || classes.length === 0) {
@@ -2679,7 +2956,7 @@ class ClientSelectorGenerator {
     return element.getRootNode() instanceof ShadowRoot;
   }
 
-  // Deep query selector for shadow DOM (from second version)
+  // Deep query selector for shadow DOM
   private deepQuerySelectorAll(
     root: HTMLElement | ShadowRoot,
     selector: string
@@ -2704,38 +2981,53 @@ class ClientSelectorGenerator {
     return elements;
   }
 
+  // Post-process XPath to ensure we target the most specific element
   private buildOptimizedAbsoluteXPath(
     targetElement: HTMLElement,
     listSelector: string,
     listElement: HTMLElement,
     document: Document,
     otherListElements: HTMLElement[] = []
-  ): string | null {
+  ): { primary: string | null; fallback: string | null } {
     try {
-      let xpath = listSelector;
+      // ALWAYS generate primary XPath
+      let primary = null;
       const pathFromList = this.getOptimizedStructuralPath(
         targetElement,
         listElement,
         otherListElements
       );
+      if (pathFromList) {
+        primary = listSelector + pathFromList;
+      }
 
-      if (!pathFromList) return null;
+      const fallback = this.generateMandatoryChildFallbackXPath(
+        targetElement,
+        listElement
+      );
 
-      const fullXPath = xpath + pathFromList;
-
-      return fullXPath;
+      return { primary, fallback };
     } catch (error) {
-      console.error("Error building optimized absolute XPath:", error);
-      return null;
+      console.error("Error building XPath with fallback:", error);
+
+      const fallback = this.generateMandatoryChildFallbackXPath(
+        targetElement,
+        listElement
+      );
+      return { primary: null, fallback };
     }
   }
 
-  // Unified path optimization (works for both light and shadow DOM)
+  // Unified path optimization
   private getOptimizedStructuralPath(
     targetElement: HTMLElement,
     rootElement: HTMLElement,
     otherListElements: HTMLElement[] = []
   ): string | null {
+    if (this.pathCache.has(targetElement)) {
+      return this.pathCache.get(targetElement)!;
+    }
+    
     if (
       !this.elementContains(rootElement, targetElement) ||
       targetElement === rootElement
@@ -2748,7 +3040,6 @@ class ClientSelectorGenerator {
     let pathDepth = 0;
     const MAX_PATH_DEPTH = 20;
 
-    // Build path from target up to root
     while (current && current !== rootElement && pathDepth < MAX_PATH_DEPTH) {
       const classes = this.getCommonClassesAcrossLists(
         current,
@@ -2788,47 +3079,73 @@ class ClientSelectorGenerator {
     }
 
     if (current !== rootElement) {
+      this.pathCache.set(targetElement, null);
       return null;
     }
 
-    return pathParts.length > 0 ? "/" + pathParts.join("/") : null;
+    const result = pathParts.length > 0 ? "/" + pathParts.join("/") : null;
+
+    this.pathCache.set(targetElement, result);
+    
+    return result;
   }
 
   private getCommonClassesAcrossLists(
     targetElement: HTMLElement, 
     otherListElements: HTMLElement[]
   ): string[] {
+    // Quick return for no other elements
+    if (otherListElements.length === 0) {
+      return this.normalizeClasses(targetElement.classList).split(" ").filter(Boolean);
+    }
+
     const targetClasses = this.normalizeClasses(targetElement.classList).split(" ").filter(Boolean);
+    
+    // Fast path for elements with no classes
+    if (targetClasses.length === 0) {
+      return [];
+    }
 
-    const otherListsKey = otherListElements.map(el => `${el.tagName}-${el.className}`).sort().join('|');
-    const cacheKey = `${targetElement.tagName}-${targetClasses.sort().join(',')}-${otherListsKey}`;
+    // Create optimized cache key
+    const cacheKey = `${targetElement.tagName}_${targetClasses.join(',')}_${otherListElements.length}`;
 
+    // Check cache first
     if (this.classCache.has(cacheKey)) {
       return this.classCache.get(cacheKey)!;
     }
 
-    if (otherListElements.length === 0) {
-      this.classCache.set(cacheKey, targetClasses);
-      return targetClasses;
-    }
+    // Optimized similarity check - limit elements to check but allow more depth
+    const maxElementsToCheck = 100;
+    let checkedElements = 0;
+    const similarElements: HTMLElement[] = [];
 
-    const similarElements = otherListElements.flatMap(listEl => 
-      this.getAllDescendantsIncludingShadow(listEl).filter(child => 
-        child.tagName === targetElement.tagName
-      )
-    );
+    for (const listEl of otherListElements) {
+      if (checkedElements >= maxElementsToCheck) break;
+      
+      const descendants = this.getAllDescendantsIncludingShadow(listEl);
+      for (const child of descendants) {
+        if (checkedElements >= maxElementsToCheck) break;
+        if (child.tagName === targetElement.tagName) {
+          similarElements.push(child);
+          checkedElements++;
+        }
+      }
+    }
 
     if (similarElements.length === 0) {
       this.classCache.set(cacheKey, targetClasses);
       return targetClasses;
     }
 
+    // Fast exact match check
+    const targetClassSet = new Set(targetClasses);
     const exactMatches = similarElements.filter(el => {
       const elClasses = this.normalizeClasses(el.classList).split(" ").filter(Boolean);
-      return targetClasses.length === elClasses.length && 
-            targetClasses.every(cls => elClasses.includes(cls));
+      if (elClasses.length !== targetClasses.length) return false;
+      return elClasses.every(cls => targetClassSet.has(cls));
     });
 
+    // If we found exact matches, return all target classes
     if (exactMatches.length > 0) {
       this.classCache.set(cacheKey, targetClasses);
       return targetClasses;
@@ -2837,6 +3154,7 @@ class ClientSelectorGenerator {
     const commonClasses: string[] = [];
 
     for (const targetClass of targetClasses) {
+      // Check if this class exists in at least one element from each other list
       const existsInAllOtherLists = otherListElements.every(listEl => {
         const elementsInThisList = this.getAllDescendantsIncludingShadow(listEl).filter(child => 
           child.tagName === targetElement.tagName
@@ -2858,7 +3176,10 @@ class ClientSelectorGenerator {
   }
 
   // Helper method to check containment (works for both light and shadow DOM)
-  private elementContains(container: HTMLElement, element: HTMLElement): boolean {
+  private elementContains(
+    container: HTMLElement,
+    element: HTMLElement
+  ): boolean {
     // Standard containment check
     if (container.contains(element)) {
       return true;
@@ -2872,7 +3193,8 @@ class ClientSelectorGenerator {
       }
 
       // Move to parent or shadow host
-      current = current.parentElement || 
+      current =
+        current.parentElement ||
         ((current.getRootNode() as ShadowRoot).host as HTMLElement | null);
     }
 
@@ -2895,7 +3217,7 @@ class ClientSelectorGenerator {
     }
   }
 
-  // findMatchingAbsoluteXPath with better matching algorithm
+  // Enhanced findMatchingAbsoluteXPath with better matching algorithm
   private precomputeSelectorMappings(
     childSelectors: string[],
     document: Document
@@ -2904,7 +3226,7 @@ class ClientSelectorGenerator {
       this.lastCachedDocument === document &&
       this.selectorElementCache.size > 0
     ) {
-      return;
+      return; // Already cached
     }
 
     console.time("Precomputing selector mappings");
@@ -2948,7 +3270,7 @@ class ClientSelectorGenerator {
     console.timeEnd("Precomputing selector mappings");
   }
 
-  // Simple spatial indexing for proximity-based filtering
+  // NEW: Simple spatial indexing for proximity-based filtering
   private getElementGridKey(element: HTMLElement): string {
     const rect = element.getBoundingClientRect();
     const gridSize = 100; // 100px grid cells
@@ -2957,7 +3279,7 @@ class ClientSelectorGenerator {
     return `${x},${y}`;
   }
 
-  // Get nearby selectors using spatial indexing
+  // NEW: Get nearby selectors using spatial indexing
   private getNearbySelectorCandidates(element: HTMLElement): string[] {
     if (!this.performanceConfig.enableSpatialIndexing) {
       return Array.from(this.selectorElementCache.keys());
@@ -2982,7 +3304,7 @@ class ClientSelectorGenerator {
     return Array.from(candidates);
   }
 
-  // Ultra-fast direct lookup using cached mappings
+  // OPTIMIZED: Ultra-fast direct lookup using cached mappings
   private findDirectMatches(
     targetElement: HTMLElement,
     childSelectors: string[],
@@ -3048,7 +3370,7 @@ class ClientSelectorGenerator {
     });
   }
 
-  // Fast element proximity check instead of full similarity calculation
+  // OPTIMIZED: Fast element proximity check instead of full similarity calculation
   private findProximityMatch(
     targetElement: HTMLElement,
     childSelectors: string[],
@@ -3106,7 +3428,7 @@ class ClientSelectorGenerator {
     return bestMatch;
   }
 
-  // Lightweight similarity calculation for real-time use
+  // NEW: Lightweight similarity calculation for real-time use
   private calculateQuickSimilarity(
     element1: HTMLElement,
     element2: HTMLElement
@@ -3121,7 +3443,7 @@ class ClientSelectorGenerator {
     if (element1.tagName === element2.tagName) {
       score += 4;
     } else {
-      return 0;
+      return 0; // Different tags = no match for performance
     }
 
     // Quick class check (just count common classes)
@@ -3150,18 +3472,39 @@ class ClientSelectorGenerator {
     return maxScore > 0 ? score / maxScore : 0;
   }
 
-  // Main matching function with early exits and caching
+  /**
+   * Helper method to find the list element that contains the target element
+   */
+  private findListElementForTarget(
+    targetElement: HTMLElement,
+    listSelector: string,
+    document: Document
+  ): HTMLElement | null {
+    try {
+      const parentElements = this.evaluateXPath(listSelector, document);
+      return (
+        parentElements.find((parent) => parent.contains(targetElement)) || null
+      );
+    } catch (error) {
+      console.error("Error finding list element for target:", error);
+      return null;
+    }
+  }
+
+  // SUPER OPTIMIZED: Main matching function with early exits and caching
   private findMatchingAbsoluteXPath(
     targetElement: HTMLElement,
     childSelectors: string[],
     listSelector: string,
     iframeDocument: Document
-  ): string | null {
+  ): { primary: string | null; fallback: string | null } {
     try {
       // Ensure mappings are precomputed
       this.precomputeSelectorMappings(childSelectors, iframeDocument);
 
-      // Strategy 1: Ultra-fast direct lookup (usually finds match immediately)
+      let primaryMatch: string | null = null;
+
+      // Strategy 1: Ultra-fast direct lookup (for functionality)
       const directMatches = this.findDirectMatches(
         targetElement,
         childSelectors,
@@ -3169,36 +3512,61 @@ class ClientSelectorGenerator {
       );
 
       if (directMatches.length > 0) {
-        return directMatches[0]; // Return best direct match
+        primaryMatch = directMatches[0];
       }
 
-      const proximityMatch = this.findProximityMatch(
-        targetElement,
-        childSelectors,
-        iframeDocument
-      );
-      if (proximityMatch) {
-        return proximityMatch;
+      // Strategy 2: Fast proximity-based matching (if no direct match)
+      if (!primaryMatch) {
+        const proximityMatch = this.findProximityMatch(
+          targetElement,
+          childSelectors,
+          iframeDocument
+        );
+        if (proximityMatch) {
+          primaryMatch = proximityMatch;
+        }
       }
 
       // Strategy 3: Build and validate new XPath only if no cached matches found
-      const builtXPath = this.buildTargetXPath(
+      if (!primaryMatch) {
+        const builtXPath = this.buildTargetXPath(
+          targetElement,
+          listSelector,
+          iframeDocument
+        );
+        if (builtXPath) {
+          primaryMatch = builtXPath;
+        }
+      }
+
+      // generate fallback XPath for storage
+      const listElement = this.findListElementForTarget(
         targetElement,
         listSelector,
         iframeDocument
       );
-      if (builtXPath) {
-        return builtXPath;
-      }
+      const fallbackMatch = listElement
+        ? this.generateMandatoryChildFallbackXPath(targetElement, listElement)
+        : null;
 
-      return null;
+      return { primary: primaryMatch, fallback: fallbackMatch };
     } catch (error) {
       console.error("Error in optimized matching:", error);
-      return null;
+
+      const listElement = this.findListElementForTarget(
+        targetElement,
+        listSelector,
+        iframeDocument
+      );
+      const fallbackMatch = listElement
+        ? this.generateMandatoryChildFallbackXPath(targetElement, listElement)
+        : null;
+
+      return { primary: null, fallback: fallbackMatch };
     }
   }
 
-  // Public method to precompute mappings when child selectors are first generated
+  // NEW: Public method to precompute mappings when child selectors are first generated
   public precomputeChildSelectorMappings(
     childSelectors: string[],
     document: Document
@@ -3476,6 +3844,7 @@ class ClientSelectorGenerator {
   ): {
     rect: DOMRect;
     selector: string;
+    fallbackSelector: string | null;
     elementInfo: ElementInfo | null;
     childSelectors?: string[];
     isShadow?: boolean;
@@ -3527,7 +3896,8 @@ class ClientSelectorGenerator {
         return null;
       }
 
-      let displaySelector: string | null;
+      let displaySelector: string | null = null;
+      let fallbackSelector: string | null = null;
       let childSelectors: string[] = [];
       let similarElements:
         | { elements: HTMLElement[]; rects: DOMRect[] }
@@ -3548,7 +3918,11 @@ class ClientSelectorGenerator {
       }
 
       if (isGroupElement && this.getList === true && this.listSelector === "") {
-        displaySelector = this.generateGroupContainerSelector(elementGroup!);
+        const groupSelectors = this.generateGroupContainerSelector(
+          elementGroup!
+        );
+        displaySelector = groupSelectors.primary;
+        fallbackSelector = groupSelectors.fallback;
 
         targetElement = elementGroup!.representative;
         isShadow = this.isElementInShadowDOM(targetElement);
@@ -3556,6 +3930,7 @@ class ClientSelectorGenerator {
         return {
           rect,
           selector: displaySelector,
+          fallbackSelector: fallbackSelector,
           elementInfo,
           isShadow,
           groupInfo: {
@@ -3571,12 +3946,15 @@ class ClientSelectorGenerator {
         childSelectors.length > 0 &&
         this.paginationMode === false
       ) {
-        displaySelector = this.findMatchingAbsoluteXPath(
+        const selectorResult = this.findMatchingAbsoluteXPath(
           elementAtPoint,
           childSelectors,
           this.listSelector,
           iframeDocument
         );
+
+        displaySelector = selectorResult.primary;
+        fallbackSelector = selectorResult.fallback;
 
         if (displaySelector) {
           const matchingElements = this.getAllMatchingElements(
@@ -3621,11 +3999,14 @@ class ClientSelectorGenerator {
           }
         }
       } else {
-        displaySelector = this.generateSelector(
+        const selectorResult = this.generateSelector(
           iframeDocument,
           coordinates,
           ActionType.Click
         );
+
+        displaySelector = selectorResult.primary;
+        fallbackSelector = selectorResult.fallback;
       }
 
       if (!displaySelector) {
@@ -3638,6 +4019,7 @@ class ClientSelectorGenerator {
       return {
         rect,
         selector: displaySelector,
+        fallbackSelector: fallbackSelector,
         elementInfo,
         childSelectors: childSelectors.length > 0 ? childSelectors : undefined,
         isShadow,
@@ -3660,54 +4042,72 @@ class ClientSelectorGenerator {
   /**
    * Generate XPath that matches ALL group elements and ONLY group elements
    */
-  private generateGroupContainerSelector(group: ElementGroup): string {
+  private generateGroupContainerSelector(group: ElementGroup): {
+    primary: string;
+    fallback: string | null;
+  } {
     const { elements } = group;
 
-    if (!elements || elements.length === 0) return "";
-
-    // 1. Tag name (ensure all tags match first)
-    const tagName = elements[0].tagName.toLowerCase();
-    if (!elements.every((el) => el.tagName.toLowerCase() === tagName)) {
-      throw new Error("Inconsistent tag names in group.");
+    if (!elements || elements.length === 0) {
+      return { primary: "", fallback: null };
     }
 
-    let xpath = `//${tagName}`;
-    const predicates: string[] = [];
+    // ALWAYS generate primary XPath
+    let primary = "";
+    try {
+      const tagName = elements[0].tagName.toLowerCase();
+      if (!elements.every((el) => el.tagName.toLowerCase() === tagName)) {
+        throw new Error("Inconsistent tag names in group.");
+      }
 
-    // 2. Get common classes
-    const commonClasses = this.getCommonStrings(
-      elements.map((el) =>
-        (el.getAttribute("class") || "").split(/\s+/).filter(Boolean)
-      )
-    );
-    if (commonClasses.length > 0) {
-      predicates.push(
-        ...commonClasses.map((cls) => `contains(@class, '${cls}')`)
+      let xpath = `//${tagName}`;
+      const predicates: string[] = [];
+
+      // Get common classes
+      const commonClasses = this.getCommonStrings(
+        elements.map((el) =>
+          (el.getAttribute("class") || "").split(/\s+/).filter(Boolean)
+        )
       );
+      if (commonClasses.length > 0) {
+        predicates.push(
+          ...commonClasses.map((cls) => `contains(@class, '${cls}')`)
+        );
+      }
+
+      // Get common attributes (excluding id, style, data-mx-id, class)
+      const commonAttributes = this.getCommonAttributes(elements, [
+        "id",
+        "style",
+        "data-mx-id",
+        "class",
+      ]);
+      for (const [attr, value] of Object.entries(commonAttributes)) {
+        predicates.push(`@${attr}='${value}'`);
+      }
+
+      // Optional: Common child count
+      const childrenCountSet = new Set(
+        elements.map((el) => el.children.length)
+      );
+      if (childrenCountSet.size === 1) {
+        predicates.push(`count(*)=${[...childrenCountSet][0]}`);
+      }
+
+      if (predicates.length > 0) {
+        xpath += `[${predicates.join(" and ")}]`;
+      }
+
+      primary = xpath;
+    } catch (error) {
+      console.warn("Primary group XPath generation failed:", error);
+      const tagName = elements[0].tagName.toLowerCase();
+      primary = `//${tagName}`;
     }
 
-    // 3. Get common attributes (excluding id, style, dynamic ones)
-    const commonAttributes = this.getCommonAttributes(elements, [
-      "id",
-      "style",
-      "class"
-    ]);
-    for (const [attr, value] of Object.entries(commonAttributes)) {
-      predicates.push(`@${attr}='${value}'`);
-    }
+    const fallback = this.generateMandatoryGroupFallback(elements);
 
-    // 4. Optional: Common child count
-    const childrenCountSet = new Set(elements.map((el) => el.children.length));
-    if (childrenCountSet.size === 1) {
-      predicates.push(`count(*)=${[...childrenCountSet][0]}`);
-    }
-
-    // 5. Build XPath
-    if (predicates.length > 0) {
-      xpath += `[${predicates.join(" and ")}]`;
-    }
-
-    return xpath;
+    return { primary, fallback };
   }
 
   // Returns intersection of strings
@@ -3749,6 +4149,7 @@ class ClientSelectorGenerator {
       ) {
         continue;
       }
+
       attrMap[attr.name] = attr.value;
     }
 
@@ -3775,6 +4176,28 @@ class ClientSelectorGenerator {
   ): HTMLElement | null {
     let elements = iframeDoc.elementsFromPoint(x, y) as HTMLElement[];
     if (!elements.length) return null;
+
+    // Check for dialog elements and prioritize them if they're actually at the coordinates
+    const dialogElement = this.findDialogElement(elements);
+    if (dialogElement) {
+      // Verify the dialog element is actually at the coordinates (not just a background overlay)
+      const dialogRect = dialogElement.getBoundingClientRect();
+      const isClickInsideDialog = x >= dialogRect.left && x <= dialogRect.right && 
+                                  y >= dialogRect.top && y <= dialogRect.bottom;
+      
+      if (isClickInsideDialog) {
+        // Filter to keep only the dialog and its children
+        const dialogElements = elements.filter(
+          (el) => el === dialogElement || dialogElement.contains(el)
+        );
+        
+        // Get deepest element within the dialog
+        const deepestInDialog = this.findDeepestInDialog(dialogElements, dialogElement);
+        if (deepestInDialog) {
+          return deepestInDialog;
+        }
+      }
+    }
 
     const filteredElements = this.filterLogicalElements(elements, x, y);
     const targetElements =
@@ -3913,6 +4336,183 @@ class ClientSelectorGenerator {
     return depth;
   }
 
+  /**
+   * Find dialog element in the elements array
+   */
+  private findDialogElement(elements: HTMLElement[]): HTMLElement | null {
+    let dialogElement = elements.find((el) => el.getAttribute("role") === "dialog");
+    
+    if (!dialogElement) {
+      dialogElement = elements.find((el) => el.tagName.toLowerCase() === "dialog");
+    }
+    
+    if (!dialogElement) {
+      dialogElement = elements.find((el) => {
+        const classList = el.classList.toString().toLowerCase();
+        const id = (el.id || "").toLowerCase();
+        
+        return (
+          classList.includes("modal") ||
+          classList.includes("dialog") ||
+          classList.includes("popup") ||
+          classList.includes("overlay") ||
+          id.includes("modal") ||
+          id.includes("dialog") ||
+          id.includes("popup")
+        );
+      });
+    }
+  
+    return dialogElement || null;
+  }
+
+  /**
+   * Find the deepest element within a dialog
+   */
+  private findDeepestInDialog(
+    dialogElements: HTMLElement[],
+    dialogElement: HTMLElement
+  ): HTMLElement | null {
+    if (!dialogElements.length) return null;
+    if (dialogElements.length === 1) return dialogElements[0];
+
+    let deepestElement = dialogElements[0];
+    let maxDepth = 0;
+
+    for (const element of dialogElements) {
+      let depth = 0;
+      let current = element;
+
+      // Calculate depth within the dialog context
+      while (
+        current &&
+        current.parentElement &&
+        current !== dialogElement.parentElement
+      ) {
+        depth++;
+        current = current.parentElement;
+      }
+
+      if (depth > maxDepth) {
+        maxDepth = depth;
+        deepestElement = element;
+      }
+    }
+
+    return deepestElement;
+  }
+
+  /**
+   * Find all dialog elements in the document
+   */
+  private findAllDialogElements(doc: Document): HTMLElement[] {
+    const dialogElements: HTMLElement[] = [];
+    const allElements = Array.from(doc.querySelectorAll("*")) as HTMLElement[];
+
+    for (const element of allElements) {
+      if (element.getAttribute("role") === "dialog") {
+        dialogElements.push(element);
+        continue;
+      }
+
+      if (element.tagName.toLowerCase() === "dialog") {
+        dialogElements.push(element);
+        continue;
+      }
+
+      const classList = element.classList.toString().toLowerCase();
+      const id = (element.id || "").toLowerCase();
+      
+      if (
+        classList.includes("modal") ||
+        classList.includes("dialog") ||
+        classList.includes("popup") ||
+        classList.includes("overlay") ||
+        id.includes("modal") ||
+        id.includes("dialog") ||
+        id.includes("popup")
+      ) {
+        dialogElements.push(element);
+        continue;
+      }
+    }
+
+    return dialogElements;
+  }
+
+  /**
+   * Get all visible elements from within dialog elements
+   */
+  private getElementsFromDialogs(dialogElements: HTMLElement[]): HTMLElement[] {
+    const elements: HTMLElement[] = [];
+    const visited = new Set<HTMLElement>();
+
+    for (const dialog of dialogElements) {
+      const dialogChildren = Array.from(dialog.querySelectorAll("*")).filter(
+        (el) => {
+          const rect = el.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        }
+      ) as HTMLElement[];
+
+      // Add dialog itself if it's visible
+      const dialogRect = dialog.getBoundingClientRect();
+      if (dialogRect.width > 0 && dialogRect.height > 0 && !visited.has(dialog)) {
+        visited.add(dialog);
+        elements.push(dialog);
+      }
+
+      // Add all visible children
+      dialogChildren.forEach((element) => {
+        if (!visited.has(element)) {
+          visited.add(element);
+          elements.push(element);
+
+          // Traverse shadow DOM if it exists within dialog
+          if (element.shadowRoot) {
+            const shadowElements = this.getElementsFromShadowRoot(element.shadowRoot);
+            shadowElements.forEach(shadowEl => {
+              if (!visited.has(shadowEl)) {
+                visited.add(shadowEl);
+                elements.push(shadowEl);
+              }
+            });
+          }
+        }
+      });
+    }
+
+    return elements;
+  }
+
+  /**
+   * Get elements from shadow root (helper for dialog analysis)
+   */
+  private getElementsFromShadowRoot(shadowRoot: ShadowRoot): HTMLElement[] {
+    const elements: HTMLElement[] = [];
+    try {
+      const shadowChildren = Array.from(shadowRoot.querySelectorAll("*")).filter(
+        (el) => {
+          const rect = el.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        }
+      ) as HTMLElement[];
+
+      shadowChildren.forEach((element) => {
+        elements.push(element);
+        
+        // Recursively traverse nested shadow DOMs
+        if (element.shadowRoot) {
+          const nestedShadowElements = this.getElementsFromShadowRoot(element.shadowRoot);
+          elements.push(...nestedShadowElements);
+        }
+      });
+    } catch (error) {
+      console.warn("Could not access shadow root:", error);
+    }
+
+    return elements;
+  }
 
   /**
    * Clean up when component unmounts or mode changes
@@ -3926,6 +4526,10 @@ class ClientSelectorGenerator {
     this.spatialIndex.clear();
     this.lastCachedDocument = null;
     this.classCache.clear();
+    this.selectorCache.clear();
+    this.pathCache = new WeakMap<HTMLElement, string | null>();
+    this.descendantsCache = new WeakMap<HTMLElement, HTMLElement[]>();
+    this.meaningfulCache = new WeakMap<HTMLElement, boolean>();
   }
 
   // Update generateSelector to use instance variables
@@ -3933,7 +4537,7 @@ class ClientSelectorGenerator {
     iframeDocument: Document,
     coordinates: Coordinates,
     action: ActionType
-  ): string | null {
+  ): { primary: string | null; fallback: string | null } {
     const elementInfo = this.getElementInformation(
       iframeDocument,
       coordinates,
@@ -3941,13 +4545,14 @@ class ClientSelectorGenerator {
       false
     );
 
-    const selectorBasedOnCustomAction = this.getSelectors(
-      iframeDocument,
-      coordinates
-    );
+    const selectorResult = this.getSelectors(iframeDocument, coordinates);
+    const selectorBasedOnCustomAction = selectorResult.primary;
+    const fallbackSelector = selectorResult.fallback;
+
+    let primarySelector: string | null = null;
 
     if (this.paginationMode && selectorBasedOnCustomAction) {
-      // Chain selectors in specific priority order
+      // Chain CSS selectors in specific priority order
       const selectors = selectorBasedOnCustomAction;
       const selectorChain = [
         selectors &&
@@ -3984,21 +4589,25 @@ class ClientSelectorGenerator {
         )
         .join(",");
 
-      return selectorChain;
+      primarySelector = selectorChain || null;
+    } else {
+      // Get the best CSS selector for the action
+      primarySelector = this.getBestSelectorForAction({
+        type: action,
+        tagName: (elementInfo?.tagName as TagName) || TagName.A,
+        inputType: undefined,
+        value: undefined,
+        selectors: selectorBasedOnCustomAction || {},
+        timestamp: 0,
+        isPassword: false,
+        hasOnlyText: elementInfo?.hasOnlyText || false,
+      } as Action);
     }
 
-    const bestSelector = this.getBestSelectorForAction({
-      type: action,
-      tagName: (elementInfo?.tagName as TagName) || TagName.A,
-      inputType: undefined,
-      value: undefined,
-      selectors: selectorBasedOnCustomAction || {},
-      timestamp: 0,
-      isPassword: false,
-      hasOnlyText: elementInfo?.hasOnlyText || false,
-    } as Action);
-
-    return bestSelector;
+    return {
+      primary: primarySelector,
+      fallback: fallbackSelector,
+    };
   }
 }
 
