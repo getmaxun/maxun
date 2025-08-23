@@ -109,6 +109,11 @@ class ClientSelectorGenerator {
   private getList: boolean = false;
   private paginationMode: boolean = false;
 
+  private pathCache = new WeakMap<HTMLElement, string | null>();
+  private descendantsCache = new WeakMap<HTMLElement, HTMLElement[]>();
+  private meaningfulCache = new WeakMap<HTMLElement, boolean>();
+  private selectorCache = new Map<string, string[]>();
+
   private elementGroups: Map<HTMLElement, ElementGroup> = new Map();
   private groupedElements: Set<HTMLElement> = new Set();
   private lastAnalyzedDocument: Document | null = null;
@@ -397,7 +402,22 @@ class ClientSelectorGenerator {
     this.lastAnalyzedDocument = iframeDoc;
   
     // Get all visible elements INCLUDING shadow DOM
-    const allElements = this.getAllVisibleElementsWithShadow(iframeDoc);
+    let allElements = this.getAllVisibleElementsWithShadow(iframeDoc);
+
+    if (this.getList === true && this.listSelector === "") {
+      const dialogElements = this.findAllDialogElements(iframeDoc);
+      
+      if (dialogElements.length > 0) {
+        // Check if dialogs contain significant content worth analyzing
+        const dialogContentElements = this.getElementsFromDialogs(dialogElements);
+        
+        // Only switch to dialog-focused analysis if dialogs have substantial content
+        if (dialogContentElements.length > 5) {
+          allElements = dialogContentElements;
+        }
+      }
+    }
+
     const processedInTables = new Set<HTMLElement>();
   
     // 1. Specifically find and group rows within each table, bypassing normal similarity checks.
@@ -518,15 +538,41 @@ class ClientSelectorGenerator {
   }
 
   /**
+   * Check if element has meaningful content for extraction (cached version)
+   */
+  private isMeaningfulElementCached(element: HTMLElement): boolean {
+    if (this.meaningfulCache.has(element)) {
+      return this.meaningfulCache.get(element)!;
+    }
+
+    const result = this.isMeaningfulElement(element);
+    this.meaningfulCache.set(element, result);
+    return result;
+  }
+
+  /**
    * Check if element has meaningful content for extraction
    */
   private isMeaningfulElement(element: HTMLElement): boolean {
     const tagName = element.tagName.toLowerCase();
+    
+    // Fast path for common meaningful elements
+    if (["a", "img", "input", "button", "select"].includes(tagName)) {
+      return true;
+    }
+
     const text = (element.textContent || "").trim();
     const hasHref = element.hasAttribute("href");
     const hasSrc = element.hasAttribute("src");
+    
+    // Quick checks first
+    if (text.length > 0 || hasHref || hasSrc) {
+      return true;
+    }
+
     const isCustomElement = tagName.includes("-");
 
+    // For custom elements, be more lenient about what's considered meaningful
     if (isCustomElement) {
       const hasChildren = element.children.length > 0;
       const hasSignificantAttributes = Array.from(element.attributes).some(
@@ -534,9 +580,6 @@ class ClientSelectorGenerator {
       );
 
       return (
-        text.length > 0 ||
-        hasHref ||
-        hasSrc ||
         hasChildren ||
         hasSignificantAttributes ||
         element.hasAttribute("role") ||
@@ -544,12 +587,7 @@ class ClientSelectorGenerator {
       );
     }
 
-    return (
-      text.length > 0 ||
-      hasHref ||
-      hasSrc ||
-      ["a", "img", "input", "button", "select"].includes(tagName)
-    );
+    return false;
   }
 
   /**
@@ -2457,6 +2495,13 @@ class ClientSelectorGenerator {
     parentSelector: string
   ): string[] => {
     try {
+      const cacheKey = `${parentSelector}_${iframeDoc.location?.href || 'doc'}`;
+      if (this.selectorCache.has(cacheKey)) {
+        return this.selectorCache.get(cacheKey)!;
+      }
+
+      this.pathCache = new WeakMap<HTMLElement, string | null>();
+
       // Use XPath evaluation to find parent elements
       let parentElements: HTMLElement[] = this.evaluateXPath(
         parentSelector,
@@ -2468,9 +2513,17 @@ class ClientSelectorGenerator {
         return [];
       }
 
-      const allChildSelectors = new Set<string>();
+      if (parentElements.length > 10) {
+        parentElements = parentElements.slice(0, 10);
+      }
 
-      parentElements.forEach((parentElement) => {
+      const allChildSelectors = new Set<string>();
+      const processedParents = new Set<HTMLElement>();
+
+      for (const parentElement of parentElements) {
+        if (processedParents.has(parentElement)) continue;
+        processedParents.add(parentElement);
+
         const otherListElements = parentElements.filter(
           (el) => el !== parentElement
         );
@@ -2481,12 +2534,15 @@ class ClientSelectorGenerator {
           iframeDoc,
           otherListElements
         );
-        childSelectors.forEach((selector) => allChildSelectors.add(selector));
-      });
+        
+        for (const selector of childSelectors) {
+          allChildSelectors.add(selector);
+        }
+      }
 
-      // Convert Set back to array and sort for consistency
-      const childSelectors = Array.from(allChildSelectors).sort();
-      return childSelectors;
+      const result = Array.from(allChildSelectors).sort();
+      this.selectorCache.set(cacheKey, result);
+      return result;
     } catch (error) {
       console.error("Error in getChildSelectors:", error);
       return [];
@@ -2494,39 +2550,81 @@ class ClientSelectorGenerator {
   };
 
   private getAllDescendantsIncludingShadow(
-    parentElement: HTMLElement,
-    maxDepth: number = 20
+    parentElement: HTMLElement
   ): HTMLElement[] {
-    const allDescendants: HTMLElement[] = [];
+    if (this.descendantsCache.has(parentElement)) {
+      return this.descendantsCache.get(parentElement)!;
+    }
+
+    const meaningfulDescendants: HTMLElement[] = [];
+    const queue: HTMLElement[] = [parentElement];
     const visited = new Set<HTMLElement>();
+    visited.add(parentElement);
 
-    const traverse = (element: HTMLElement, currentDepth: number) => {
-      if (currentDepth >= maxDepth || visited.has(element)) {
-        return;
+    const MAX_MEANINGFUL_ELEMENTS = 300;
+    const MAX_NODES_TO_CHECK = 1200;
+    const MAX_DEPTH = 12;
+    let nodesChecked = 0;
+
+    let adjustedMaxDepth = MAX_DEPTH;
+    const elementDensityThreshold = 50;
+
+    const depths: number[] = [0];
+    let queueIndex = 0;
+
+    while (queueIndex < queue.length) {
+      const element = queue[queueIndex];
+      const currentDepth = depths[queueIndex];
+      queueIndex++;
+      nodesChecked++;
+
+      if (currentDepth <= 3 && meaningfulDescendants.length > elementDensityThreshold) {
+        adjustedMaxDepth = Math.max(6, adjustedMaxDepth - 2);
       }
-      visited.add(element);
 
-      if (element !== parentElement) {
-          allDescendants.push(element);
+      if (
+        nodesChecked > MAX_NODES_TO_CHECK ||
+        meaningfulDescendants.length >= MAX_MEANINGFUL_ELEMENTS ||
+        currentDepth > adjustedMaxDepth
+      ) {
+        break;
       }
 
-      // Traverse light DOM children
-      const children = Array.from(element.children) as HTMLElement[];
-      for (const child of children) {
-        traverse(child, currentDepth + 1);
+      if (element !== parentElement && this.isMeaningfulElementCached(element)) {
+        meaningfulDescendants.push(element);
       }
 
-      // Traverse shadow DOM if it exists
-      if (element.shadowRoot) {
-        const shadowChildren = Array.from(element.shadowRoot.children) as HTMLElement[];
-        for (const shadowChild of shadowChildren) {
-          traverse(shadowChild, currentDepth + 1);
+      if (currentDepth >= adjustedMaxDepth) {
+        continue;
+      }
+
+      const children = element.children;
+      const childLimit = Math.min(children.length, 30);
+      for (let i = 0; i < childLimit; i++) {
+        const child = children[i] as HTMLElement;
+        if (!visited.has(child)) {
+          visited.add(child);
+          queue.push(child);
+          depths.push(currentDepth + 1);
         }
       }
-    };
 
-    traverse(parentElement, 0);
-    return allDescendants;
+      if (element.shadowRoot && currentDepth < adjustedMaxDepth - 1) {
+        const shadowChildren = element.shadowRoot.children;
+        const shadowLimit = Math.min(shadowChildren.length, 20);
+        for (let i = 0; i < shadowLimit; i++) {
+          const child = shadowChildren[i] as HTMLElement;
+          if (!visited.has(child)) {
+            visited.add(child);
+            queue.push(child);
+            depths.push(currentDepth + 1);
+          }
+        }
+      }
+    }
+
+    this.descendantsCache.set(parentElement, meaningfulDescendants);
+    return meaningfulDescendants;
   }
 
   private generateOptimizedChildXPaths(
@@ -2541,24 +2639,35 @@ class ClientSelectorGenerator {
     // Get all meaningful descendants (not just direct children)
     const allDescendants = this.getAllDescendantsIncludingShadow(parentElement);
 
-    allDescendants.forEach((descendant, i) => {
-      if (processedElements.has(descendant)) return;
-      processedElements.add(descendant);
+    const batchSize = 25;
+    for (let i = 0; i < allDescendants.length; i += batchSize) {
+      const batch = allDescendants.slice(i, i + batchSize);
+      
+      for (const descendant of batch) {
+        if (processedElements.has(descendant)) continue;
+        processedElements.add(descendant);
 
-      if (!this.isMeaningfulElement(descendant)) return;
+        const absolutePath = this.buildOptimizedAbsoluteXPath(
+          descendant,
+          listSelector,
+          parentElement,
+          document,
+          otherListElements
+        );
 
-      const absolutePath = this.buildOptimizedAbsoluteXPath(
-        descendant,
-        listSelector,
-        parentElement,
-        document,
-        otherListElements
-      );
+        if (absolutePath) {
+          selectors.push(absolutePath);
+        }
 
-      if (absolutePath) {
-        selectors.push(absolutePath);
+        if (selectors.length >= 250) {
+          break;
+        }
       }
-    });
+      
+      if (selectors.length >= 250) {
+        break;
+      }
+    }
 
     return [...new Set(selectors)];
   }
@@ -2736,6 +2845,10 @@ class ClientSelectorGenerator {
     rootElement: HTMLElement,
     otherListElements: HTMLElement[] = []
   ): string | null {
+    if (this.pathCache.has(targetElement)) {
+      return this.pathCache.get(targetElement)!;
+    }
+
     if (
       !this.elementContains(rootElement, targetElement) ||
       targetElement === rootElement
@@ -2788,45 +2901,64 @@ class ClientSelectorGenerator {
     }
 
     if (current !== rootElement) {
+      this.pathCache.set(targetElement, null);
       return null;
     }
 
-    return pathParts.length > 0 ? "/" + pathParts.join("/") : null;
+    const result = pathParts.length > 0 ? "/" + pathParts.join("/") : null;
+
+    this.pathCache.set(targetElement, result);
+    
+    return result;
   }
 
   private getCommonClassesAcrossLists(
     targetElement: HTMLElement, 
     otherListElements: HTMLElement[]
   ): string[] {
-    const targetClasses = this.normalizeClasses(targetElement.classList).split(" ").filter(Boolean);
+    if (otherListElements.length === 0) {
+      return this.normalizeClasses(targetElement.classList).split(" ").filter(Boolean);
+    }
 
-    const otherListsKey = otherListElements.map(el => `${el.tagName}-${el.className}`).sort().join('|');
-    const cacheKey = `${targetElement.tagName}-${targetClasses.sort().join(',')}-${otherListsKey}`;
+    const targetClasses = this.normalizeClasses(targetElement.classList).split(" ").filter(Boolean);
+    
+    if (targetClasses.length === 0) {
+      return [];
+    }
+
+    const cacheKey = `${targetElement.tagName}_${targetClasses.join(',')}_${otherListElements.length}`;
 
     if (this.classCache.has(cacheKey)) {
       return this.classCache.get(cacheKey)!;
     }
 
-    if (otherListElements.length === 0) {
-      this.classCache.set(cacheKey, targetClasses);
-      return targetClasses;
-    }
+    const maxElementsToCheck = 100;
+    let checkedElements = 0;
+    const similarElements: HTMLElement[] = [];
 
-    const similarElements = otherListElements.flatMap(listEl => 
-      this.getAllDescendantsIncludingShadow(listEl).filter(child => 
-        child.tagName === targetElement.tagName
-      )
-    );
+    for (const listEl of otherListElements) {
+      if (checkedElements >= maxElementsToCheck) break;
+      
+      const descendants = this.getAllDescendantsIncludingShadow(listEl);
+      for (const child of descendants) {
+        if (checkedElements >= maxElementsToCheck) break;
+        if (child.tagName === targetElement.tagName) {
+          similarElements.push(child);
+          checkedElements++;
+        }
+      }
+    }
 
     if (similarElements.length === 0) {
       this.classCache.set(cacheKey, targetClasses);
       return targetClasses;
     }
 
+    const targetClassSet = new Set(targetClasses);
     const exactMatches = similarElements.filter(el => {
       const elClasses = this.normalizeClasses(el.classList).split(" ").filter(Boolean);
-      return targetClasses.length === elClasses.length && 
-            targetClasses.every(cls => elClasses.includes(cls));
+      if (elClasses.length !== targetClasses.length) return false;
+      return elClasses.every(cls => targetClassSet.has(cls));
     });
 
     if (exactMatches.length > 0) {
@@ -3913,6 +4045,184 @@ class ClientSelectorGenerator {
     return depth;
   }
 
+  /**
+   * Find dialog element in the elements array
+   */
+  private findDialogElement(elements: HTMLElement[]): HTMLElement | null {
+    let dialogElement = elements.find((el) => el.getAttribute("role") === "dialog");
+    
+    if (!dialogElement) {
+      dialogElement = elements.find((el) => el.tagName.toLowerCase() === "dialog");
+    }
+    
+    if (!dialogElement) {
+      dialogElement = elements.find((el) => {
+        const classList = el.classList.toString().toLowerCase();
+        const id = (el.id || "").toLowerCase();
+        
+        return (
+          classList.includes("modal") ||
+          classList.includes("dialog") ||
+          classList.includes("popup") ||
+          classList.includes("overlay") ||
+          id.includes("modal") ||
+          id.includes("dialog") ||
+          id.includes("popup")
+        );
+      });
+    }
+  
+    return dialogElement || null;
+  }
+
+  /**
+   * Find the deepest element within a dialog
+   */
+  private findDeepestInDialog(
+    dialogElements: HTMLElement[],
+    dialogElement: HTMLElement
+  ): HTMLElement | null {
+    if (!dialogElements.length) return null;
+    if (dialogElements.length === 1) return dialogElements[0];
+
+    let deepestElement = dialogElements[0];
+    let maxDepth = 0;
+
+    for (const element of dialogElements) {
+      let depth = 0;
+      let current = element;
+
+      // Calculate depth within the dialog context
+      while (
+        current &&
+        current.parentElement &&
+        current !== dialogElement.parentElement
+      ) {
+        depth++;
+        current = current.parentElement;
+      }
+
+      if (depth > maxDepth) {
+        maxDepth = depth;
+        deepestElement = element;
+      }
+    }
+
+    return deepestElement;
+  }
+
+  /**
+   * Find all dialog elements in the document
+   */
+  private findAllDialogElements(doc: Document): HTMLElement[] {
+    const dialogElements: HTMLElement[] = [];
+    const allElements = Array.from(doc.querySelectorAll("*")) as HTMLElement[];
+
+    for (const element of allElements) {
+      if (element.getAttribute("role") === "dialog") {
+        dialogElements.push(element);
+        continue;
+      }
+
+      if (element.tagName.toLowerCase() === "dialog") {
+        dialogElements.push(element);
+        continue;
+      }
+
+      const classList = element.classList.toString().toLowerCase();
+      const id = (element.id || "").toLowerCase();
+      
+      if (
+        classList.includes("modal") ||
+        classList.includes("dialog") ||
+        classList.includes("popup") ||
+        classList.includes("overlay") ||
+        id.includes("modal") ||
+        id.includes("dialog") ||
+        id.includes("popup")
+      ) {
+        dialogElements.push(element);
+        continue;
+      }
+    }
+
+    return dialogElements;
+  }
+
+  /**
+   * Get all visible elements from within dialog elements
+   */
+  private getElementsFromDialogs(dialogElements: HTMLElement[]): HTMLElement[] {
+    const elements: HTMLElement[] = [];
+    const visited = new Set<HTMLElement>();
+
+    for (const dialog of dialogElements) {
+      const dialogChildren = Array.from(dialog.querySelectorAll("*")).filter(
+        (el) => {
+          const rect = el.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        }
+      ) as HTMLElement[];
+
+      // Add dialog itself if it's visible
+      const dialogRect = dialog.getBoundingClientRect();
+      if (dialogRect.width > 0 && dialogRect.height > 0 && !visited.has(dialog)) {
+        visited.add(dialog);
+        elements.push(dialog);
+      }
+
+      // Add all visible children
+      dialogChildren.forEach((element) => {
+        if (!visited.has(element)) {
+          visited.add(element);
+          elements.push(element);
+
+          // Traverse shadow DOM if it exists within dialog
+          if (element.shadowRoot) {
+            const shadowElements = this.getElementsFromShadowRoot(element.shadowRoot);
+            shadowElements.forEach(shadowEl => {
+              if (!visited.has(shadowEl)) {
+                visited.add(shadowEl);
+                elements.push(shadowEl);
+              }
+            });
+          }
+        }
+      });
+    }
+
+    return elements;
+  }
+
+  /**
+   * Get elements from shadow root (helper for dialog analysis)
+   */
+  private getElementsFromShadowRoot(shadowRoot: ShadowRoot): HTMLElement[] {
+    const elements: HTMLElement[] = [];
+    try {
+      const shadowChildren = Array.from(shadowRoot.querySelectorAll("*")).filter(
+        (el) => {
+          const rect = el.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        }
+      ) as HTMLElement[];
+
+      shadowChildren.forEach((element) => {
+        elements.push(element);
+        
+        // Recursively traverse nested shadow DOMs
+        if (element.shadowRoot) {
+          const nestedShadowElements = this.getElementsFromShadowRoot(element.shadowRoot);
+          elements.push(...nestedShadowElements);
+        }
+      });
+    } catch (error) {
+      console.warn("Could not access shadow root:", error);
+    }
+
+    return elements;
+  }
+
 
   /**
    * Clean up when component unmounts or mode changes
@@ -3926,6 +4236,10 @@ class ClientSelectorGenerator {
     this.spatialIndex.clear();
     this.lastCachedDocument = null;
     this.classCache.clear();
+    this.selectorCache.clear();
+    this.pathCache = new WeakMap<HTMLElement, string | null>();
+    this.descendantsCache = new WeakMap<HTMLElement, HTMLElement[]>();
+    this.meaningfulCache = new WeakMap<HTMLElement, boolean>();
   }
 
   // Update generateSelector to use instance variables
