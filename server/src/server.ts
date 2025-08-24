@@ -10,7 +10,6 @@ import logger from './logger';
 import { connectDB, syncDB } from './storage/db'
 import cookieParser from 'cookie-parser';
 import { SERVER_PORT } from "./constants/config";
-import { Server } from "socket.io";
 import { readdirSync } from "fs"
 import { fork } from 'child_process';
 import { capture } from "./utils/analytics";
@@ -77,12 +76,12 @@ const server = http.createServer(app);
  * Globally exported singleton instance of socket.io for socket communication with the client.
  * @type {Server}
  */
-export const io = new Server(server);
+// export const io = new Server(server);
 
 /**
  * {@link BrowserPool} globally exported singleton instance for managing browsers.
  */
-export const browserPool = new BrowserPool();
+// export const browserPool = new BrowserPool();
 
 app.use(cookieParser())
 
@@ -114,8 +113,20 @@ let recordingWorkerProcess: any;
 
 if (!isProduction) {
   workerProcess = fork(workerPath, [], {
-    execArgv: ['--inspect=5859'],
+    execArgv: [
+      '--require', 'ts-node/register',
+      '--inspect=5859'
+    ],
+    env: {
+      ...process.env,
+      TS_NODE_COMPILER_OPTIONS: JSON.stringify({
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "esModuleInterop": true
+      })
+    }
   });
+
   workerProcess.on('message', (message: any) => {
     console.log(`Message from worker: ${message}`);
   });
@@ -127,8 +138,20 @@ if (!isProduction) {
   });
 
   recordingWorkerProcess = fork(recordingWorkerPath, [], {
-    execArgv: ['--inspect=5860'],
+    execArgv: [
+      '--require', 'ts-node/register',
+      '--inspect=5860'
+    ],
+    env: {
+      ...process.env,
+      TS_NODE_COMPILER_OPTIONS: JSON.stringify({
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "esModuleInterop": true
+      })
+    }
   });
+
   recordingWorkerProcess.on('message', (message: any) => {
     console.log(`Message from recording worker: ${message}`);
   });
