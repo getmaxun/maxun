@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'path';
 import http from 'http';
+import { Server } from "socket.io";
 import cors from 'cors';
 import dotenv from 'dotenv';
 dotenv.config();
@@ -74,14 +75,13 @@ const server = http.createServer(app);
 
 /**
  * Globally exported singleton instance of socket.io for socket communication with the client.
- * @type {Server}
  */
-// export const io = new Server(server);
+export let io: Server;
 
 /**
  * {@link BrowserPool} globally exported singleton instance for managing browsers.
  */
-// export const browserPool = new BrowserPool();
+export const browserPool = new BrowserPool();
 
 app.use(cookieParser())
 
@@ -111,11 +111,11 @@ const recordingWorkerPath = path.resolve(__dirname, isProduction ? './pgboss-wor
 let workerProcess: any;
 let recordingWorkerProcess: any;
 
-if (!isProduction) {
+if (!isProduction && require.main === module) {
   workerProcess = fork(workerPath, [], {
     execArgv: [
       '--require', 'ts-node/register',
-      '--inspect=5859'
+      '--inspect=0'
     ],
     env: {
       ...process.env,
@@ -140,7 +140,7 @@ if (!isProduction) {
   recordingWorkerProcess = fork(recordingWorkerPath, [], {
     execArgv: [
       '--require', 'ts-node/register',
-      '--inspect=5860'
+      '--inspect=0'
     ],
     env: {
       ...process.env,
@@ -183,49 +183,58 @@ app.use((req, res, next) => {
   next();
 });
 
-setInterval(() => {
-  processQueuedRuns();
-}, 5000);
+if (require.main === module) {
+  setInterval(() => {
+    processQueuedRuns();
+  }, 5000);
+}
 
-server.listen(SERVER_PORT, '0.0.0.0', async () => {
-  try {
-    await connectDB();
-    await syncDB();
-    logger.log('info', `Server listening on port ${SERVER_PORT}`);    
-  } catch (error: any) {
-    logger.log('error', `Failed to connect to the database: ${error.message}`);
-    process.exit(1);
-  }
-});
+if (require.main === module) {
+  server.listen(SERVER_PORT, '0.0.0.0', async () => {
+    try {
+      await connectDB();
+      await syncDB();
+      
+      io = new Server(server);
+      
+      logger.log('info', `Server listening on port ${SERVER_PORT}`);    
+    } catch (error: any) {
+      logger.log('error', `Failed to connect to the database: ${error.message}`);
+      process.exit(1);
+    }
+  });
+}
 
-process.on('SIGINT', async () => {
-  console.log('Main app shutting down...');
-  try {
-    await Run.update(
-      {
-        status: 'failed',
-        finishedAt: new Date().toLocaleString(),
-        log: 'Process interrupted during execution - worker shutdown'
-      },
-      {
-        where: { status: 'running' }
-      }
-    );
-  } catch (error: any) {
-    console.error('Error updating runs:', error);
-  }
+if (require.main === module) {
+  process.on('SIGINT', async () => {
+    console.log('Main app shutting down...');
+    try {
+      await Run.update(
+        {
+          status: 'failed',
+          finishedAt: new Date().toLocaleString(),
+          log: 'Process interrupted during execution - worker shutdown'
+        },
+        {
+          where: { status: 'running' }
+        }
+      );
+    } catch (error: any) {
+      console.error('Error updating runs:', error);
+    }
 
-  try {
-    console.log('Closing PostgreSQL connection pool...');
-    await pool.end();
-    console.log('PostgreSQL connection pool closed');
-  } catch (error) {
-    console.error('Error closing PostgreSQL connection pool:', error);
-  }
+    try {
+      console.log('Closing PostgreSQL connection pool...');
+      await pool.end();
+      console.log('PostgreSQL connection pool closed');
+    } catch (error) {
+      console.error('Error closing PostgreSQL connection pool:', error);
+    }
 
-  if (!isProduction) {
-    if (workerProcess) workerProcess.kill();
-    if (recordingWorkerProcess) recordingWorkerProcess.kill();
-  }
-  process.exit();
-});
+    if (!isProduction) {
+      if (workerProcess) workerProcess.kill();
+      if (recordingWorkerProcess) recordingWorkerProcess.kill();
+    }
+    process.exit();
+  });
+}
