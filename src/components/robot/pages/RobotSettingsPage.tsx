@@ -128,6 +128,7 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
       onCancel={handleCancel}
       cancelButtonText={t("robot_settings.buttons.close")}
       showSaveButton={false}
+      showCancelButton={false}
     >
       <>
         <Box style={{ display: "flex", flexDirection: "column" }}>
