@@ -112,55 +112,70 @@ let workerProcess: any;
 let recordingWorkerProcess: any;
 
 if (!isProduction && require.main === module) {
-  workerProcess = fork(workerPath, [], {
-    execArgv: [
-      '--require', 'ts-node/register',
-      '--inspect=0'
-    ],
-    env: {
-      ...process.env,
-      TS_NODE_COMPILER_OPTIONS: JSON.stringify({
-        "module": "commonjs",
-        "moduleResolution": "node",
-        "esModuleInterop": true
-      })
-    }
-  });
+  if (process.platform === 'win32') {
+    console.log('Using forked processes for Windows');
+    
+    workerProcess = fork(workerPath, [], {
+      execArgv: [
+        '--require', 'ts-node/register',
+        '--inspect=0'
+      ],
+      env: {
+        ...process.env,
+        TS_NODE_COMPILER_OPTIONS: JSON.stringify({
+          "module": "commonjs",
+          "moduleResolution": "node",
+          "esModuleInterop": true
+        })
+      }
+    });
 
-  workerProcess.on('message', (message: any) => {
-    console.log(`Message from worker: ${message}`);
-  });
-  workerProcess.on('error', (error: any) => {
-    console.error(`Error in worker: ${error}`);
-  });
-  workerProcess.on('exit', (code: any) => {
-    console.log(`Worker exited with code: ${code}`);
-  });
+    workerProcess.on('message', (message: any) => {
+      console.log(`Message from worker: ${message}`);
+    });
+    workerProcess.on('error', (error: any) => {
+      console.error(`Error in worker: ${error}`);
+    });
+    workerProcess.on('exit', (code: any) => {
+      console.log(`Worker exited with code: ${code}`);
+    });
 
-  recordingWorkerProcess = fork(recordingWorkerPath, [], {
-    execArgv: [
-      '--require', 'ts-node/register',
-      '--inspect=0'
-    ],
-    env: {
-      ...process.env,
-      TS_NODE_COMPILER_OPTIONS: JSON.stringify({
-        "module": "commonjs",
-        "moduleResolution": "node",
-        "esModuleInterop": true
-      })
-    }
-  });
+    recordingWorkerProcess = fork(recordingWorkerPath, [], {
+      execArgv: [
+        '--require', 'ts-node/register',
+        '--inspect=0'
+      ],
+      env: {
+        ...process.env,
+        TS_NODE_COMPILER_OPTIONS: JSON.stringify({
+          "module": "commonjs",
+          "moduleResolution": "node",
+          "esModuleInterop": true
+        })
+      }
+    });
 
-  recordingWorkerProcess.on('message', (message: any) => {
-    console.log(`Message from recording worker: ${message}`);
-  });
-  recordingWorkerProcess.on('error', (error: any) => {
-    console.error(`Error in recording worker: ${error}`);
-  });
-  recordingWorkerProcess.on('exit', (code: any) => {
-    console.log(`Recording worker exited with code: ${code}`);
-  });
+    recordingWorkerProcess.on('message', (message: any) => {
+      console.log(`Message from recording worker: ${message}`);
+    });
+    recordingWorkerProcess.on('error', (error: any) => {
+      console.error(`Error in recording worker: ${error}`);
+    });
+    recordingWorkerProcess.on('exit', (code: any) => {
+      console.log(`Recording worker exited with code: ${code}`);
+    });
+  } else {
+    console.log('Running workers in same process for Unix-like systems');
+    (async () => {
+      try {
+        await import('./schedule-worker');
+        await import('./pgboss-worker');
+        console.log('Workers started in main process for memory sharing');
+      } catch (error) {
+        console.error('Failed to start workers in main process:', error);
+      }
+    })();
+  }
 }
 
 app.get('/', function (req, res) {
@@ -231,7 +246,7 @@ if (require.main === module) {
       console.error('Error closing PostgreSQL connection pool:', error);
     }
 
-    if (!isProduction) {
+    if (!isProduction && process.platform === 'win32') {
       if (workerProcess) workerProcess.kill();
       if (recordingWorkerProcess) recordingWorkerProcess.kill();
     }
