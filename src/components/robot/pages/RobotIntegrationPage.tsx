@@ -771,7 +771,16 @@ export const RobotIntegrationPage = ({
   }
 
   return (
-    <RobotConfigPage title={getIntegrationTitle()} onCancel={handleCancel} cancelButtonText={t("robot_edit.cancel")} showSaveButton={false} onBackToSelection={handleBack} backToSelectionText={"← " + t("right_panel.buttons.back")}>
+     <RobotConfigPage
+      title={getIntegrationTitle()}
+      // onCancel={handleCancel}
+      cancelButtonText={t("buttons.cancel")}
+      showSaveButton={false}
+      // onBackToSelection={handleBack}
+      onArrowBack={handleBack}
+      showCancelButton={false}
+      backToSelectionText={t("buttons.back_arrow")}
+    >
       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", position: "relative", minHeight: "400px" }}>
         <div style={{ width: "100%" }}>
           {(selectedIntegrationType === "googleSheets" || integrationType === "googleSheets") && (
