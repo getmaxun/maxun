@@ -19,10 +19,17 @@ import { useNavigate, useLocation } from "react-router-dom";
 interface RobotMeta {
   name: string;
   id: string;
+  prebuiltId?: string;
   createdAt: string;
   pairs: number;
   updatedAt: string;
   params: any[];
+  type?: string;
+  description?: string;
+  usedByUsers?: number[];
+  subscriptionLevel?: number;
+  access?: string;
+  sample?: any[];
   url?: string;
 }
 
@@ -73,7 +80,7 @@ export const RobotDuplicatePage = ({ handleStart }: RobotSettingsProps) => {
   const [targetUrl, setTargetUrl] = useState<string | undefined>("");
   const [robot, setRobot] = useState<RobotSettings | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { recordingId, notify, setRerenderRobots } =
+  const { recordingId, notify, setRerenderRobots} =
     useGlobalInfoStore();
 
   useEffect(() => {
@@ -132,7 +139,10 @@ export const RobotDuplicatePage = ({ handleStart }: RobotSettingsProps) => {
           t("robot_duplication.notifications.duplicate_success")
         );
         handleStart(robot);
-        navigate("/robots");
+        const basePath = location.pathname.includes("/prebuilt-robots")
+          ? "/prebuilt-robots"
+          : "/robots";
+        navigate(basePath);
       } else {
         notify("error", t("robot_duplication.notifications.duplicate_error"));
       }
@@ -145,7 +155,10 @@ export const RobotDuplicatePage = ({ handleStart }: RobotSettingsProps) => {
   };
 
   const handleCancel = () => {
-    navigate("/robots");
+    const basePath = location.pathname.includes("/prebuilt-robots")
+      ? "/prebuilt-robots"
+      : "/robots";
+    navigate(basePath);
   };
 
   return (
@@ -156,6 +169,7 @@ export const RobotDuplicatePage = ({ handleStart }: RobotSettingsProps) => {
       saveButtonText={t("robot_duplication.buttons.duplicate")}
       cancelButtonText={t("robot_duplication.buttons.cancel")}
       isLoading={isLoading}
+      showCancelButton={false}
     >
       <>
         <Box style={{ display: "flex", flexDirection: "column" }}>

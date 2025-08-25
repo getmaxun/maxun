@@ -72,16 +72,16 @@ export const RobotIntegrationPage = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   const pathSegments = location.pathname.split('/');
   const robotsIndex = pathSegments.findIndex(segment => segment === 'robots' || segment === 'prebuilt-robots');
   const integrateIndex = pathSegments.findIndex(segment => segment === 'integrate');
-  
-  const robotIdFromUrl = robotsIndex !== -1 && robotsIndex + 1 < pathSegments.length 
-    ? pathSegments[robotsIndex + 1] 
+
+  const robotIdFromUrl = robotsIndex !== -1 && robotsIndex + 1 < pathSegments.length
+    ? pathSegments[robotsIndex + 1]
     : null;
-    
-  const integrationType = integrateIndex !== -1 && integrateIndex + 1 < pathSegments.length 
+
+  const integrationType = integrateIndex !== -1 && integrateIndex + 1 < pathSegments.length
     ? pathSegments[integrateIndex + 1] as "googleSheets" | "airtable" | "webhook"
     : preSelectedIntegrationType || null;
 
@@ -114,7 +114,7 @@ export const RobotIntegrationPage = ({
   const [urlError, setUrlError] = useState<string | null>(null);
 
   const { recordingId: recordingIdFromStore, notify, setRerenderRobots, setRecordingId } = useGlobalInfoStore();
-  
+
   const recordingId = robotIdFromUrl || recordingIdFromStore;
 
   useEffect(() => {
@@ -137,7 +137,7 @@ export const RobotIntegrationPage = ({
     const redirectUrl = `${window.location.origin}${basePath}/${recordingId}/integrate/googleSheets`;
     window.location.href = `${apiUrl}/auth/google?robotId=${recordingId}&redirectUrl=${encodeURIComponent(redirectUrl)}`;
   };
-  
+
   const authenticateWithAirtable = () => {
     if (!recordingId) {
       console.error("Cannot authenticate: recordingId is null");
@@ -251,7 +251,7 @@ export const RobotIntegrationPage = ({
   const deleteWebhookSetting = async (webhookId: string) => {
     if (!recordingId) return;
     try {
-      setLoading(true);  
+      setLoading(true);
       const response = await removeWebhook(webhookId, recordingId);
       if (response.ok) {
         setSettings((prev) => ({ ...prev, webhooks: (prev.webhooks || []).filter((webhook) => webhook.id !== webhookId) }));
@@ -612,7 +612,7 @@ export const RobotIntegrationPage = ({
       case "webhook":
         return "Webhook Integration";
       default:
-        return "Integration Settings";
+        return "Integration";
     }
   };
 
@@ -677,40 +677,85 @@ export const RobotIntegrationPage = ({
     else return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
   };
 
+  const handleBack = () => {
+    if (!recordingId) {
+      console.error("Cannot navigate: recordingId is null");
+      return;
+    }
+
+    setSelectedIntegrationType(null);
+    setSettings({ ...settings, integrationType: "airtable" });
+    const basePath = robotPath === "prebuilt-robots" ? "/prebuilt-robots" : "/robots";
+    navigate(`${basePath}/${recordingId}/integrate`);
+  };
+
   // --- MAIN RENDER ---
   if (!selectedIntegrationType && !integrationType) {
     return (
-      <RobotConfigPage title="Integration Settings" onCancel={handleCancel} cancelButtonText={t("robot_edit.cancel")} showSaveButton={false} backToSelectionText={"← " + t("right_panel.buttons.back")} onBackToSelection={() => navigate(`/${robotPath}/${recordingId}/integrate`)}>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", position: "relative", minHeight: "400px" }}>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "20px", width: "100%" }}>
-            <div style={{ display: "flex", gap: "20px" }}>
+      <RobotConfigPage
+        title={getIntegrationTitle()}
+        // onCancel={handleCancel}
+        cancelButtonText={t("buttons.cancel")}
+        showSaveButton={false}
+        // onBackToSelection={handleBack}
+        onArrowBack={handleBack}
+        showCancelButton={false}
+        backToSelectionText={t("buttons.back_arrow")}
+      >
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-start",
+            position: "relative",
+            minHeight: "400px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-start",
+              width: "100%",
+            }}
+          >
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(4, minmax(160px, 1fr))",
+                gap: "20px",
+                justifyContent: "start",
+                maxWidth: "900px",
+                width: "100%",
+              }}
+            >
               <Button variant="outlined" onClick={() => {
-                  if (!recordingId) return;
-                  setSelectedIntegrationType("googleSheets");
-                  setSettings({ ...settings, integrationType: "googleSheets" });
-                  const basePath = robotPath === "prebuilt-robots" ? "/prebuilt-robots" : "/robots";
-                  navigate(`${basePath}/${recordingId}/integrate/googleSheets`);
-                }} style={{ display: "flex", flexDirection: "column", alignItems: "center", background: 'white', color: '#ff00c3' }}>
+                if (!recordingId) return;
+                setSelectedIntegrationType("googleSheets");
+                setSettings({ ...settings, integrationType: "googleSheets" });
+                const basePath = robotPath === "prebuilt-robots" ? "/prebuilt-robots" : "/robots";
+                navigate(`${basePath}/${recordingId}/integrate/googleSheets`);
+              }} style={{ display: "flex", flexDirection: "column", alignItems: "center", background: 'white', color: '#ff00c3' }}>
                 <img src="https://ik.imagekit.io/ys1blv5kv/gsheet.svg" alt="Google Sheets" style={{ margin: "6px" }} />
                 Google Sheets
               </Button>
               <Button variant="outlined" onClick={() => {
-                  if (!recordingId) return;
-                  setSelectedIntegrationType("airtable");
-                  setSettings({ ...settings, integrationType: "airtable" });
-                  const basePath = robotPath === "prebuilt-robots" ? "/prebuilt-robots" : "/robots";
-                  navigate(`${basePath}/${recordingId}/integrate/airtable`);
-                }} style={{ display: "flex", flexDirection: "column", alignItems: "center", background: 'white', color: '#ff00c3' }}>
+                if (!recordingId) return;
+                setSelectedIntegrationType("airtable");
+                setSettings({ ...settings, integrationType: "airtable" });
+                const basePath = robotPath === "prebuilt-robots" ? "/prebuilt-robots" : "/robots";
+                navigate(`${basePath}/${recordingId}/integrate/airtable`);
+              }} style={{ display: "flex", flexDirection: "column", alignItems: "center", background: 'white', color: '#ff00c3' }}>
                 <img src="https://ik.imagekit.io/ys1blv5kv/airtable.svg" alt="Airtable" style={{ margin: "6px" }} />
                 Airtable
               </Button>
               <Button variant="outlined" onClick={() => {
-                  if (!recordingId) return;
-                  setSelectedIntegrationType("webhook");
-                  setSettings({ ...settings, integrationType: "webhook" });
-                  const basePath = robotPath === "prebuilt-robots" ? "/prebuilt-robots" : "/robots";
-                  navigate(`${basePath}/${recordingId}/integrate/webhook`);
-                }} style={{ display: "flex", flexDirection: "column", alignItems: "center", background: 'white', color: '#ff00c3' }}>
+                if (!recordingId) return;
+                setSelectedIntegrationType("webhook");
+                setSettings({ ...settings, integrationType: "webhook" });
+                const basePath = robotPath === "prebuilt-robots" ? "/prebuilt-robots" : "/robots";
+                navigate(`${basePath}/${recordingId}/integrate/webhook`);
+              }} style={{ display: "flex", flexDirection: "column", alignItems: "center", background: 'white', color: '#ff00c3' }}>
                 <img src="/svg/webhook.svg" alt="Webhook" style={{ margin: "6px" }} />
                 Webhooks
               </Button>
@@ -725,15 +770,17 @@ export const RobotIntegrationPage = ({
     );
   }
 
-  const handleBack = () => {
-    if (!recordingId) return;
-    setSelectedIntegrationType(null);
-    const basePath = robotPath === "prebuilt-robots" ? "/prebuilt-robots" : "/robots";
-    navigate(`${basePath}/${recordingId}/integrate`);
-  };
-
   return (
-    <RobotConfigPage title={getIntegrationTitle()} onCancel={handleCancel} cancelButtonText={t("robot_edit.cancel")} showSaveButton={false} onBackToSelection={handleBack} backToSelectionText={"← " + t("right_panel.buttons.back")}>
+    <RobotConfigPage
+      title={getIntegrationTitle()}
+      // onCancel={handleCancel}
+      cancelButtonText={t("buttons.cancel")}
+      showSaveButton={false}
+      // onBackToSelection={handleBack}
+      onArrowBack={handleBack}
+      showCancelButton={false}
+      backToSelectionText={t("buttons.back_arrow")}
+    >
       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", position: "relative", minHeight: "400px" }}>
         <div style={{ width: "100%" }}>
           {(selectedIntegrationType === "googleSheets" || integrationType === "googleSheets") && (
@@ -763,9 +810,9 @@ export const RobotIntegrationPage = ({
                       {settings.webhooks.map((webhook) => (
                         <TableRow key={webhook.id}>
                           <TableCell>{webhook.url}</TableCell>
-                          <TableCell><Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>{webhook.events.map((event) => (<Chip key={event} label={formatEventName(event)} size="small" variant="outlined"/>))}</Box></TableCell>
+                          <TableCell><Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>{webhook.events.map((event) => (<Chip key={event} label={formatEventName(event)} size="small" variant="outlined" />))}</Box></TableCell>
                           <TableCell>{formatLastCalled(webhook.lastCalledAt)}</TableCell>
-                          <TableCell><Switch checked={webhook.active} onChange={() => toggleWebhookStatusSetting(webhook.id)} size="small"/></TableCell>
+                          <TableCell><Switch checked={webhook.active} onChange={() => toggleWebhookStatusSetting(webhook.id)} size="small" /></TableCell>
                           <TableCell><Box sx={{ display: "flex", gap: "8px" }}>
                             <IconButton size="small" onClick={() => testWebhookSetting(webhook.id)} disabled={loading || !webhook.active} title="Test"><ScienceIcon fontSize="small" /></IconButton>
                             <IconButton size="small" onClick={() => editWebhookSetting(webhook)} disabled={loading} title="Edit"><EditIcon fontSize="small" /></IconButton>
@@ -780,7 +827,7 @@ export const RobotIntegrationPage = ({
               {!showWebhookForm && (
                 <Box sx={{ marginBottom: "20px", width: "100%" }}>
                   <Box sx={{ display: "flex", gap: "15px", alignItems: "center", marginBottom: "15px" }}>
-                    <TextField label="Webhook URL" placeholder="https://your-api.com/webhook/endpoint" sx={{ flex: 1 }} value={newWebhook.url} onChange={(e) => { setNewWebhook({ ...newWebhook, url: e.target.value }); if (urlError) setUrlError(null); }} error={!!urlError} helperText={urlError} required aria-describedby="webhook-url-help"/>
+                    <TextField label="Webhook URL" placeholder="https://your-api.com/webhook/endpoint" sx={{ flex: 1 }} value={newWebhook.url} onChange={(e) => { setNewWebhook({ ...newWebhook, url: e.target.value }); if (urlError) setUrlError(null); }} error={!!urlError} helperText={urlError} required aria-describedby="webhook-url-help" />
                     <TextField select label="When" value={newWebhook.events[0] || "run_completed"} onChange={(e) => setNewWebhook({ ...newWebhook, events: [e.target.value] })} sx={{ minWidth: "200px" }} required>
                       <MenuItem value="run_completed">Run finished</MenuItem>
                       <MenuItem value="run_failed">Run failed</MenuItem>
@@ -796,13 +843,13 @@ export const RobotIntegrationPage = ({
                 <Card sx={{ width: "100%", marginBottom: "20px" }}>
                   <CardContent>
                     <Typography variant="h6" sx={{ marginBottom: "20px" }}>{editingWebhook ? "Edit Webhook" : "Add New Webhook"}</Typography>
-                    <TextField fullWidth label="Webhook URL" value={newWebhook.url} onChange={(e) => { setNewWebhook({ ...newWebhook, url: e.target.value }); if (urlError) setUrlError(null); }} sx={{ marginBottom: "15px" }} placeholder="https://your-api.com/webhook/endpoint" required error={!!urlError} helperText={urlError}/>
+                    <TextField fullWidth label="Webhook URL" value={newWebhook.url} onChange={(e) => { setNewWebhook({ ...newWebhook, url: e.target.value }); if (urlError) setUrlError(null); }} sx={{ marginBottom: "15px" }} placeholder="https://your-api.com/webhook/endpoint" required error={!!urlError} helperText={urlError} />
                     <TextField fullWidth select label="Call when" value={newWebhook.events} onChange={(e) => setNewWebhook({ ...newWebhook, events: typeof e.target.value === "string" ? [e.target.value] : e.target.value })}
-                      SelectProps={{ multiple: true, renderValue: (selected) => (<Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>{(selected as string[]).map((value) => (<Chip key={value} label={formatEventName(value)} size="small"/>))}</Box>),}} sx={{ marginBottom: "20px" }} required>
+                      SelectProps={{ multiple: true, renderValue: (selected) => (<Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>{(selected as string[]).map((value) => (<Chip key={value} label={formatEventName(value)} size="small" />))}</Box>), }} sx={{ marginBottom: "20px" }} required>
                       <MenuItem value="run_completed">Run finished</MenuItem>
                       <MenuItem value="run_failed">Run failed</MenuItem>
                     </TextField>
-                    <FormControlLabel control={<Switch checked={newWebhook.active} onChange={(e) => setNewWebhook({ ...newWebhook, active: e.target.checked })}/>} label="Active" sx={{ marginBottom: "10px" }}/>
+                    <FormControlLabel control={<Switch checked={newWebhook.active} onChange={(e) => setNewWebhook({ ...newWebhook, active: e.target.checked })} />} label="Active" sx={{ marginBottom: "10px" }} />
                   </CardContent>
                   <CardActions>
                     <Button variant="contained" color="primary" onClick={editingWebhook ? updateWebhookSetting : addWebhookSetting} disabled={!newWebhook.url || !newWebhook.events || newWebhook.events.length === 0 || loading || !!urlError}>

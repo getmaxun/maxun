@@ -18,10 +18,17 @@ import { useNavigate, useLocation } from "react-router-dom";
 interface RobotMeta {
   name: string;
   id: string;
+  prebuiltId?: string;
   createdAt: string;
   pairs: number;
   updatedAt: string;
   params: any[];
+  type?: string;
+  description?: string;
+  usedByUsers?: number[];
+  subscriptionLevel?: number;
+  access?: string;
+  sample?: any[];
   url?: string;
 }
 
@@ -33,13 +40,13 @@ interface ScheduleConfig {
   runEvery: number;
   runEveryUnit: "MINUTES" | "HOURS" | "DAYS" | "WEEKS" | "MONTHS";
   startFrom:
-    | "SUNDAY"
-    | "MONDAY"
-    | "TUESDAY"
-    | "WEDNESDAY"
-    | "THURSDAY"
-    | "FRIDAY"
-    | "SATURDAY";
+  | "SUNDAY"
+  | "MONDAY"
+  | "TUESDAY"
+  | "WEDNESDAY"
+  | "THURSDAY"
+  | "FRIDAY"
+  | "SATURDAY";
   atTimeStart?: string;
   atTimeEnd?: string;
   timezone: string;
@@ -173,6 +180,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
           action.args &&
           action.args.length > 0
         ) {
+          // Check if first argument has a limit property
           const arg = action.args[0];
           if (arg && typeof arg === "object" && "limit" in arg) {
             limits.push({
@@ -214,6 +222,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
 
         const selector = action.args[0];
 
+        // Handle full word type actions first
         if (
           action.action === "type" &&
           action.args?.length >= 2 &&
@@ -230,6 +239,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
           continue;
         }
 
+        // Handle character-by-character sequences (both type and press)
         if (
           (action.action === "type" || action.action === "press") &&
           action.args?.length >= 2 &&
@@ -582,7 +592,8 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         setRerenderRobots(true);
         notify("success", t("robot_edit.notifications.update_success"));
         handleStart(robot);
-        navigate("/robots");
+        const basePath = "/robots";
+        navigate(basePath);
       } else {
         notify("error", t("robot_edit.notifications.update_failed"));
       }
@@ -595,7 +606,8 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
   };
 
   const handleCancel = () => {
-    navigate("/robots");
+    const basePath = "/robots";
+    navigate(basePath);
   };
 
   const lastPair =
@@ -610,6 +622,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
       onCancel={handleCancel}
       saveButtonText={t("robot_edit.save")}
       cancelButtonText={t("robot_edit.cancel")}
+      showCancelButton={false}
       isLoading={isLoading}
     >
       <>
