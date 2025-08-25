@@ -4,7 +4,7 @@ import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
 import { useNavigate } from 'react-router-dom';
 import { Paper, Button, useTheme, Modal, Typography, Stack, TextField, InputAdornment, IconButton } from "@mui/material"; // Added TextField, InputAdornment, IconButton
-import { AutoAwesome, FormatListBulleted, VpnKey, Usb, CloudQueue, Description, Favorite, ContentCopy } from "@mui/icons-material"; // Added ContentCopy
+import { AutoAwesome, FormatListBulleted, VpnKey, Usb, CloudQueue, Description, Favorite, ContentCopy, SlowMotionVideo } from "@mui/icons-material"; // Added ContentCopy
 import { useTranslation } from 'react-i18next';
 import { useGlobalInfoStore } from "../../context/globalInfo";
 
