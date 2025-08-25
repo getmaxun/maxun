@@ -91,6 +91,9 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             <Button href='https://docs.maxun.dev' target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<Description />}>
               Documentation
             </Button>
+            <Button href="https://www.youtube.com/@MaxunOSS/videos" target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<SlowMotionVideo />}>
+            Tutorials
+          </Button>
             <Button onClick={() => setCloudModalOpen(true)} sx={buttonStyles} startIcon={<CloudQueue />}>
               Join Maxun Cloud
             </Button>
