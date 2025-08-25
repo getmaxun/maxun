@@ -1,14 +1,15 @@
 import React from 'react';
-import { 
-  Box, 
-  Typography, 
-  Button, 
+import {
+  Box,
+  Typography,
+  Button,
   IconButton,
   Divider,
   useTheme
 } from '@mui/material';
 import { ArrowBack } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 interface RobotConfigPageProps {
   title: string;
@@ -23,6 +24,7 @@ interface RobotConfigPageProps {
   icon?: React.ReactNode;
   onBackToSelection?: () => void;
   backToSelectionText?: string;
+  onArrowBack?: () => void; // Optional prop for custom back action
 }
 
 export const RobotConfigPage: React.FC<RobotConfigPageProps> = ({
@@ -30,50 +32,72 @@ export const RobotConfigPage: React.FC<RobotConfigPageProps> = ({
   children,
   onSave,
   onCancel,
-  saveButtonText = "Save",
-  cancelButtonText = "Cancel",
+  saveButtonText,
+  cancelButtonText,
   showSaveButton = true,
   showCancelButton = true,
   isLoading = false,
   icon,
   onBackToSelection,
-  backToSelectionText = "← Back"
+  backToSelectionText,
+  onArrowBack,
 }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const theme = useTheme();
+  const { t } = useTranslation();
 
   const handleBack = () => {
     if (onCancel) {
       onCancel();
+    } else {
+      // Try to determine the correct path based on current URL
+      const currentPath = location.pathname;
+      const basePath = currentPath.includes('/prebuilt-robots') ? '/prebuilt-robots' : '/robots';
+      navigate(basePath);
     }
   };
 
   return (
-    <Box sx={{ 
-      maxWidth: 1000, 
-      margin: 'auto', 
-      px: 4,
-      py: 3,
-      minHeight: '80vh',
+    <Box sx={{
+      maxWidth: 1000,
+      margin: '50px auto',
+      maxHeight: '100vh',
       display: 'flex',
       flexDirection: 'column',
       width: '1000px',
+      height: '100%',
+      overflowY: 'auto', // Allow scrolling if content exceeds height
     }}>
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        minHeight: '64px',
+      {/* Header Section - Fixed Position */}
+      <Box sx={{
+        display: 'flex',
+        alignItems: 'center',
+        maxHeight: '64px',
         mb: 2,
         flexShrink: 0
       }}>
         <IconButton
-          onClick={handleBack}
+          onClick={onArrowBack ? onArrowBack : handleBack}
           sx={{
-            mr: 2,
+            ml: -1,
+            mr: 1,
             color: theme.palette.text.primary,
+            backgroundColor: 'transparent !important',
             '&:hover': {
-              bgcolor: theme.palette.action.hover
-            }
+              backgroundColor: 'transparent !important',
+            },
+            '&:active': {
+              backgroundColor: 'transparent !important',
+            },
+            '&:focus': {
+              backgroundColor: 'transparent !important',
+            },
+            '&:focus-visible': {
+              backgroundColor: 'transparent !important',
+            },
           }}
+          disableRipple
         >
           <ArrowBack />
         </IconButton>
@@ -82,9 +106,9 @@ export const RobotConfigPage: React.FC<RobotConfigPageProps> = ({
             {icon}
           </Box>
         )}
-        <Typography 
-          variant="h4" 
-          sx={{ 
+        <Typography
+          variant="h4"
+          sx={{
             fontWeight: 600,
             color: theme.palette.text.primary,
             lineHeight: 1.2
@@ -95,29 +119,32 @@ export const RobotConfigPage: React.FC<RobotConfigPageProps> = ({
       </Box>
       <Divider sx={{ mb: 4, flexShrink: 0 }} />
 
-      <Box sx={{ 
+      {/* Content Section */}
+      <Box sx={{
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
-        minHeight: 0
+        minHeight: 0,
+        mt: 2,
+        mb: 3,
       }}>
         {children}
       </Box>
 
+      {/* Action Buttons */}
       {(showSaveButton || showCancelButton || onBackToSelection) && (
         <Box
           sx={{
             display: 'flex',
-            justifyContent: onBackToSelection ? 'space-between' : 'flex-end',
+            justifyContent: onBackToSelection ? 'space-between' : 'flex-start',
             gap: 2,
-            pt: 3,
-            mt: 2,
+            pt: 3, // Reduce padding top to minimize space above
             borderTop: `1px solid ${theme.palette.divider}`,
             flexShrink: 0,
             width: '100%',
-            px: 3
           }}
         >
+          {/* Left side - Back to Selection button */}
           {onBackToSelection && (
             <Button
               variant="outlined"
@@ -128,44 +155,45 @@ export const RobotConfigPage: React.FC<RobotConfigPageProps> = ({
                 borderColor: '#ff00c3 !important',
                 backgroundColor: 'white !important',
               }} >
-              {backToSelectionText}
+              {backToSelectionText || t("buttons.back_arrow")}
             </Button>
           )}
 
+          {/* Right side - Save/Cancel buttons */}
           <Box sx={{ display: 'flex', gap: 2 }}>
-          {showCancelButton && (
-            <Button
-              variant="outlined"
-              onClick={handleBack}
-              disabled={isLoading}
-              sx={{
-                color: '#ff00c3 !important',
-                borderColor: '#ff00c3 !important',
-                backgroundColor: 'white !important',
-              }} >
-              {cancelButtonText}
-            </Button>
-          )}
-          {showSaveButton && onSave && (
-            <Button
-              variant="contained"
-              onClick={onSave}
-              disabled={isLoading}
-              sx={{
-                bgcolor: '#ff00c3',
-                '&:hover': {
-                  bgcolor: '#cc0099',
+            {showCancelButton && (
+              <Button
+                variant="outlined"
+                onClick={handleBack}
+                disabled={isLoading}
+                sx={{
+                  color: '#ff00c3 !important',
+                  borderColor: '#ff00c3 !important',
+                  backgroundColor: 'white !important',
+                }} >
+                {cancelButtonText || t("buttons.cancel")}
+              </Button>
+            )}
+            {showSaveButton && onSave && (
+              <Button
+                variant="contained"
+                onClick={onSave}
+                disabled={isLoading}
+                sx={{
+                  bgcolor: '#ff00c3',
+                  '&:hover': {
+                    bgcolor: '#cc0099',
+                    boxShadow: 'none',
+                  },
+                  textTransform: 'none',
+                  fontWeight: 500,
+                  px: 3,
                   boxShadow: 'none',
-                },
-                textTransform: 'none',
-                fontWeight: 500,
-                px: 3,
-                boxShadow: 'none',
-              }}
-            >
-              {isLoading ? 'Saving...' : saveButtonText}
-            </Button>
-          )}
+                }}
+              >
+                {isLoading ? t("buttons.saving") : (saveButtonText || t("buttons.save"))}
+              </Button>
+            )}
           </Box>
         </Box>
       )}
