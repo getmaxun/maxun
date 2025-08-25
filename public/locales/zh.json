@@ -442,6 +442,9 @@
     "created_at": "机器人创建时间",
     "errors": {
       "robot_not_found": "无法找到机器人详细信息。请重试。"
+    },
+    "buttons": {
+      "close": "关闭"
     }
   },
   "robot_edit": {
