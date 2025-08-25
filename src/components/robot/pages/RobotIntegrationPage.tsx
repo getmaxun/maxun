@@ -771,7 +771,7 @@ export const RobotIntegrationPage = ({
   }
 
   return (
-     <RobotConfigPage
+    <RobotConfigPage
       title={getIntegrationTitle()}
       // onCancel={handleCancel}
       cancelButtonText={t("buttons.cancel")}
