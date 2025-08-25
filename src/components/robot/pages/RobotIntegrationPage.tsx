@@ -680,7 +680,16 @@ export const RobotIntegrationPage = ({
   // --- MAIN RENDER ---
   if (!selectedIntegrationType && !integrationType) {
     return (
-      <RobotConfigPage title="Integration" onCancel={handleCancel} cancelButtonText={t("robot_edit.cancel")} showSaveButton={false} backToSelectionText={"← " + t("right_panel.buttons.back")} onBackToSelection={() => navigate(`/${robotPath}/${recordingId}/integrate`)}>
+      <RobotConfigPage
+        title={getIntegrationTitle()}
+        // onCancel={handleCancel}
+        cancelButtonText={t("buttons.cancel")}
+        showSaveButton={false}
+        // onBackToSelection={handleBack}
+        onArrowBack={handleBack}
+        showCancelButton={false}
+        backToSelectionText={t("buttons.back_arrow")}
+      >
         <div
           style={{
             display: "flex",
