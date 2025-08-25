@@ -111,73 +111,6 @@ const recordingWorkerPath = path.resolve(__dirname, isProduction ? './pgboss-wor
 let workerProcess: any;
 let recordingWorkerProcess: any;
 
-if (!isProduction && require.main === module) {
-  if (process.platform === 'win32') {
-    console.log('Using forked processes for Windows');
-    
-    workerProcess = fork(workerPath, [], {
-      execArgv: [
-        '--require', 'ts-node/register',
-        '--inspect=0'
-      ],
-      env: {
-        ...process.env,
-        TS_NODE_COMPILER_OPTIONS: JSON.stringify({
-          "module": "commonjs",
-          "moduleResolution": "node",
-          "esModuleInterop": true
-        })
-      }
-    });
-
-    workerProcess.on('message', (message: any) => {
-      console.log(`Message from worker: ${message}`);
-    });
-    workerProcess.on('error', (error: any) => {
-      console.error(`Error in worker: ${error}`);
-    });
-    workerProcess.on('exit', (code: any) => {
-      console.log(`Worker exited with code: ${code}`);
-    });
-
-    recordingWorkerProcess = fork(recordingWorkerPath, [], {
-      execArgv: [
-        '--require', 'ts-node/register',
-        '--inspect=0'
-      ],
-      env: {
-        ...process.env,
-        TS_NODE_COMPILER_OPTIONS: JSON.stringify({
-          "module": "commonjs",
-          "moduleResolution": "node",
-          "esModuleInterop": true
-        })
-      }
-    });
-
-    recordingWorkerProcess.on('message', (message: any) => {
-      console.log(`Message from recording worker: ${message}`);
-    });
-    recordingWorkerProcess.on('error', (error: any) => {
-      console.error(`Error in recording worker: ${error}`);
-    });
-    recordingWorkerProcess.on('exit', (code: any) => {
-      console.log(`Recording worker exited with code: ${code}`);
-    });
-  } else {
-    console.log('Running workers in same process for Unix-like systems');
-    (async () => {
-      try {
-        await import('./schedule-worker');
-        await import('./pgboss-worker');
-        console.log('Workers started in main process for memory sharing');
-      } catch (error) {
-        console.error('Failed to start workers in main process:', error);
-      }
-    })();
-  }
-}
-
 app.get('/', function (req, res) {
   capture(
     'maxun-oss-server-run', {
@@ -211,6 +144,45 @@ if (require.main === module) {
       await syncDB();
       
       io = new Server(server);
+      
+      if (!isProduction) {
+        if (process.platform === 'win32') {
+          workerProcess = fork(workerPath, [], {
+            execArgv: ['--inspect=5859'],
+          });
+          workerProcess.on('message', (message: any) => {
+            console.log(`Message from worker: ${message}`);
+          });
+          workerProcess.on('error', (error: any) => {
+            console.error(`Error in worker: ${error}`);
+          });
+          workerProcess.on('exit', (code: any) => {
+            console.log(`Worker exited with code: ${code}`);
+          });
+
+          recordingWorkerProcess = fork(recordingWorkerPath, [], {
+            execArgv: ['--inspect=5860'],
+          });
+          recordingWorkerProcess.on('message', (message: any) => {
+            console.log(`Message from recording worker: ${message}`);
+          });
+          recordingWorkerProcess.on('error', (error: any) => {
+            console.error(`Error in recording worker: ${error}`);
+          });
+          recordingWorkerProcess.on('exit', (code: any) => {
+            console.log(`Recording worker exited with code: ${code}`);
+          });
+        } else {
+          // Run in same process for non-Windows
+          try {
+            await import('./schedule-worker');
+            await import('./pgboss-worker');
+            console.log('Workers started in main process for memory sharing');
+          } catch (error) {
+            console.error('Failed to start workers in main process:', error);
+          }
+        }
+      }
       
       logger.log('info', `Server listening on port ${SERVER_PORT}`);    
     } catch (error: any) {
