@@ -677,6 +677,13 @@ export const RobotIntegrationPage = ({
     else return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
   };
 
+    const handleBack = () => {
+    if (!recordingId) return;
+    setSelectedIntegrationType(null);
+    const basePath = robotPath === "prebuilt-robots" ? "/prebuilt-robots" : "/robots";
+    navigate(`${basePath}/${recordingId}/integrate`);
+  };
+
   // --- MAIN RENDER ---
   if (!selectedIntegrationType && !integrationType) {
     return (
@@ -757,13 +764,6 @@ export const RobotIntegrationPage = ({
       </RobotConfigPage>
     );
   }
-
-  const handleBack = () => {
-    if (!recordingId) return;
-    setSelectedIntegrationType(null);
-    const basePath = robotPath === "prebuilt-robots" ? "/prebuilt-robots" : "/robots";
-    navigate(`${basePath}/${recordingId}/integrate`);
-  };
 
   return (
     <RobotConfigPage title={getIntegrationTitle()} onCancel={handleCancel} cancelButtonText={t("robot_edit.cancel")} showSaveButton={false} onBackToSelection={handleBack} backToSelectionText={"← " + t("right_panel.buttons.back")}>
