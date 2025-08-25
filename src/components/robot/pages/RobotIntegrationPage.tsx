@@ -677,9 +677,14 @@ export const RobotIntegrationPage = ({
     else return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
   };
 
-    const handleBack = () => {
-    if (!recordingId) return;
+  const handleBack = () => {
+    if (!recordingId) {
+      console.error("Cannot navigate: recordingId is null");
+      return;
+    }
+
     setSelectedIntegrationType(null);
+    setSettings({ ...settings, integrationType: "airtable" });
     const basePath = robotPath === "prebuilt-robots" ? "/prebuilt-robots" : "/robots";
     navigate(`${basePath}/${recordingId}/integrate`);
   };
