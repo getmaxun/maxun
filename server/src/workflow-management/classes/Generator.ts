@@ -541,6 +541,10 @@ export class WorkflowGenerator {
     }
 
     if ((elementInfo?.tagName === 'INPUT' || elementInfo?.tagName === 'TEXTAREA') && selector) {
+      if (page.isClosed()) {
+        logger.log('debug', 'Page is closed, cannot get cursor position');
+        return;
+      }
       const positionAndCursor = await page.evaluate(
         ({ selector, coords }) => {
           const getCursorPosition = (element: any, clickX: any) => {

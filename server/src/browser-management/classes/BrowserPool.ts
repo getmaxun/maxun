@@ -221,6 +221,12 @@ export class BrowserPool {
             return undefined;
         }
         
+        // Return undefined for failed slots
+        if (poolInfo.status === "failed") {
+            logger.log('debug', `Browser ${id} has failed status`);
+            return undefined;
+        }
+        
         return poolInfo.browser || undefined;
     };
 
@@ -607,8 +613,13 @@ export class BrowserPool {
      * @returns true if successful, false if slot wasn't reserved
      */
     public upgradeBrowserSlot = (id: string, browser: RemoteBrowser): boolean => {
-        if (!this.pool[id] || this.pool[id].status !== "reserved") {
-            logger.log('warn', `Cannot upgrade browser ${id}: slot not reserved`);
+        if (!this.pool[id]) {
+            logger.log('warn', `Cannot upgrade browser ${id}: slot does not exist in pool`);
+            return false;
+        }
+        
+        if (this.pool[id].status !== "reserved") {
+            logger.log('warn', `Cannot upgrade browser ${id}: slot not in reserved state (current: ${this.pool[id].status})`);
             return false;
         }
 
@@ -628,5 +639,18 @@ export class BrowserPool {
             logger.log('info', `Marking browser slot ${id} as failed`);
             this.deleteRemoteBrowser(id);
         }
+    };
+
+    /**
+     * Gets the current status of a browser slot.
+     * 
+     * @param id browser ID to check
+     * @returns the status or null if browser doesn't exist
+     */
+    public getBrowserStatus = (id: string): "reserved" | "initializing" | "ready" | "failed" | null => {
+        if (!this.pool[id]) {
+            return null;
+        }
+        return this.pool[id].status || null;
     };
 }

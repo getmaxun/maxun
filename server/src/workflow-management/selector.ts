@@ -21,6 +21,10 @@ export const getElementInformation = async (
 ) => {
   try {
     if (!getList || listSelector !== '') {
+      if (page.isClosed()) {
+        logger.debug('Page is closed, cannot get element information');
+        return null;
+      }
       const elementInfo = await page.evaluate(
         async ({ x, y }) => {
           const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
@@ -302,6 +306,10 @@ export const getElementInformation = async (
       );
       return elementInfo;
     } else {
+      if (page.isClosed()) {
+        logger.debug('Page is closed, cannot get element information (else branch)');
+        return null;
+      }
       const elementInfo = await page.evaluate(
         async ({ x, y }) => {
           const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
@@ -611,6 +619,10 @@ export const getElementInformation = async (
 export const getRect = async (page: Page, coordinates: Coordinates, listSelector: string, getList: boolean) => {
   try {
     if (!getList || listSelector !== '') {
+      if (page.isClosed()) {
+        logger.debug('Page is closed, cannot get element rect');
+        return null;
+      }
       const rect = await page.evaluate(
         async ({ x, y }) => {
           const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
@@ -834,6 +846,10 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
       );
       return rect;
     } else {
+      if (page.isClosed()) {
+        logger.debug('Page is closed, cannot get element rect (else branch)');
+        return null;
+      }
       const rect = await page.evaluate(
         async ({ x, y }) => {
           const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
@@ -1076,6 +1092,10 @@ export const getRect = async (page: Page, coordinates: Coordinates, listSelector
  */
 export const getSelectors = async (page: Page, coordinates: Coordinates) => {
   try {
+     if (page.isClosed()) {
+      logger.debug('Page is closed, cannot get selectors');
+      return null;
+    }
     const selectors: any = await page.evaluate(async ({ x, y }) => {
       // version @medv/finder
       // https://github.com/antonmedv/finder/blob/master/finder.ts
@@ -2010,6 +2030,10 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
 
   try {
     if (!listSelector) {
+      if (page.isClosed()) {
+        logger.debug('Page is closed, cannot get non-unique selectors');
+        return { generalSelector: '' };
+      }
       const selectors = await page.evaluate(({ x, y }: { x: number, y: number }) => {
         const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
           let elements = document.elementsFromPoint(x, y) as HTMLElement[];
@@ -2364,6 +2388,10 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
       return selectors || { generalSelector: '' };
     } else {
       // When we have a list selector, we need special handling while maintaining shadow DOM and frame support
+      if (page.isClosed()) {
+        logger.debug('Page is closed, cannot get list selectors');
+        return { generalSelector: '' };
+      }
       const selectors = await page.evaluate(({ x, y }: { x: number, y: number }) => {
         const getDeepestElementFromPoint = (x: number, y: number): HTMLElement | null => {
           let elements = document.elementsFromPoint(x, y) as HTMLElement[];
@@ -2725,6 +2753,10 @@ export const getNonUniqueSelectors = async (page: Page, coordinates: Coordinates
 
 export const getChildSelectors = async (page: Page, parentSelector: string): Promise<string[]> => {
   try {
+    if (page.isClosed()) {
+      logger.debug('Page is closed, cannot get child selectors');
+      return [];
+    }
     const childSelectors = await page.evaluate((parentSelector: string) => {
       // Function to get a non-unique selector based on tag and class (if present)
       function getNonUniqueSelector(element: HTMLElement): string {

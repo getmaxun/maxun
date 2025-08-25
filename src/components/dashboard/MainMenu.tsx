@@ -3,8 +3,8 @@ import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
 import { useNavigate } from 'react-router-dom';
-import { Paper, Button, useTheme, Modal, Typography, Stack, TextField, InputAdornment, IconButton } from "@mui/material"; // Added TextField, InputAdornment, IconButton
-import { AutoAwesome, FormatListBulleted, VpnKey, Usb, CloudQueue, Description, Favorite, ContentCopy } from "@mui/icons-material"; // Added ContentCopy
+import { Paper, Button, useTheme, Modal, Typography, Stack, TextField, InputAdornment, IconButton } from "@mui/material";
+import { AutoAwesome, FormatListBulleted, VpnKey, Usb, CloudQueue, Description, Favorite, ContentCopy, SlowMotionVideo } from "@mui/icons-material";
 import { useTranslation } from 'react-i18next';
 import { useGlobalInfoStore } from "../../context/globalInfo";
 
@@ -44,7 +44,8 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
     justifyContent: 'flex-start',
     textAlign: 'left',
     fontSize: '17px',
-    padding: '20px 16px 20px 22px',
+    letterSpacing: '0.02857em',
+    padding: '20px 20px 20px 22px',
     minHeight: '48px',
     minWidth: '100%',
     display: 'flex',
@@ -52,9 +53,11 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
     textTransform: 'none',
     color: theme.palette.mode === 'light' ? '#6C6C6C' : 'inherit',
     '&:hover': {
+      color: theme.palette.mode === 'light' ? '#6C6C6C' : 'inherit',
       backgroundColor: theme.palette.mode === 'light' ? '#f5f5f5' : 'inherit',
     },
   };
+
 
   return (
     <>
@@ -87,6 +90,9 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
           <Box sx={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
             <Button href='https://docs.maxun.dev' target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<Description />}>
               Documentation
+            </Button>
+            <Button href="https://www.youtube.com/@MaxunOSS/videos" target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<SlowMotionVideo />}>
+              Tutorials
             </Button>
             <Button onClick={() => setCloudModalOpen(true)} sx={buttonStyles} startIcon={<CloudQueue />}>
               Join Maxun Cloud
@@ -146,10 +152,10 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             Thank you for your support! 💙
           </Typography>
           <Stack direction="row" spacing={2} mt={2}>
-            <Button href="https://checkout.dodopayments.com/buy/pdt_1Bdstszcg9VY8WYGwNBPM?quantity=1" target="_blank" rel="noopener noreferrer"  variant="outlined" fullWidth>
+            <Button href="https://checkout.dodopayments.com/buy/pdt_1Bdstszcg9VY8WYGwNBPM?quantity=1" target="_blank" rel="noopener noreferrer" variant="outlined" fullWidth>
               Sponsor $5 One-Time
             </Button>
-            <Button href="https://checkout.dodopayments.com/buy/pdt_HDalaYf8hEGVG7hXcfNBj?quantity=1" target="_blank" rel="noopener noreferrer"  variant="outlined" fullWidth>
+            <Button href="https://checkout.dodopayments.com/buy/pdt_HDalaYf8hEGVG7hXcfNBj?quantity=1" target="_blank" rel="noopener noreferrer" variant="outlined" fullWidth>
               Sponsor $5 Monthly
             </Button>
           </Stack>
