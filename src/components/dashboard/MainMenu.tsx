@@ -44,17 +44,20 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
     justifyContent: 'flex-start',
     textAlign: 'left',
     fontSize: '17px',
-    padding: '20px 16px 20px 22px',
+    letterSpacing: '0.02857em',
+    padding: '20px 20px 20px 22px',
     minHeight: '48px',
     minWidth: '100%',
     display: 'flex',
     alignItems: 'center',
     textTransform: 'none',
     color: theme.palette.mode === 'light' ? '#6C6C6C' : 'inherit',
-    '&:hover': {
+     '&:hover': {
+      color: theme.palette.mode === 'light' ? '#6C6C6C' : 'inherit',
       backgroundColor: theme.palette.mode === 'light' ? '#f5f5f5' : 'inherit',
     },
   };
+
 
   return (
     <>
