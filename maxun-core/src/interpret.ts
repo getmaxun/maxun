@@ -1169,31 +1169,36 @@ export default class Interpreter extends EventEmitter {
         return;
       }
 
-      let pageState = {};
-      try {
-        // Check if page is still valid before accessing state
-        if (p.isClosed()) {
-          this.log('Page was closed during execution', Level.WARN);
-          return;
-        }
-        
-        pageState = await this.getState(p, workflowCopy, selectors);
-        selectors = [];
-        console.log("Empty selectors:", selectors)
-      } catch (e: any) {
-        this.log(`Failed to get page state: ${e.message}`, Level.ERROR);
-        // If state access fails, attempt graceful recovery
-        if (p.isClosed()) {
-          this.log('Browser has been closed, terminating workflow', Level.WARN);
-          return;
-        }
-        // For other errors, continue with empty state to avoid complete failure
-        pageState = { url: p.url(), selectors: [], cookies: {} };
+      if (workflowCopy.length === 0) {
+        this.log('All actions completed. Workflow finished.', Level.LOG);
+        return;
       }
 
-      if (this.options.debug) {
-        this.log(`Current state is: \n${JSON.stringify(pageState, null, 2)}`, Level.WARN);
-      }
+      // let pageState = {};
+      // try {
+      //   // Check if page is still valid before accessing state
+      //   if (p.isClosed()) {
+      //     this.log('Page was closed during execution', Level.WARN);
+      //     return;
+      //   }
+        
+      //   pageState = await this.getState(p, workflowCopy, selectors);
+      //   selectors = [];
+      //   console.log("Empty selectors:", selectors)
+      // } catch (e: any) {
+      //   this.log(`Failed to get page state: ${e.message}`, Level.ERROR);
+      //   // If state access fails, attempt graceful recovery
+      //   if (p.isClosed()) {
+      //     this.log('Browser has been closed, terminating workflow', Level.WARN);
+      //     return;
+      //   }
+      //   // For other errors, continue with empty state to avoid complete failure
+      //   pageState = { url: p.url(), selectors: [], cookies: {} };
+      // }
+
+      // if (this.options.debug) {
+      //   this.log(`Current state is: \n${JSON.stringify(pageState, null, 2)}`, Level.WARN);
+      // }
 
       // const actionId = workflow.findIndex((step) => {
       //   const isApplicable = this.applicable(step.where, pageState, usedActions);
@@ -1205,8 +1210,9 @@ export default class Interpreter extends EventEmitter {
       //   return isApplicable;
       // });
 
-      actionId = this.getMatchingActionId(workflowCopy, pageState, usedActions);
+      // actionId = this.getMatchingActionId(workflowCopy, pageState, usedActions);
 
+      const actionId = workflowCopy.length - 1;
       const action = workflowCopy[actionId];
 
       console.log("MATCHED ACTION:", action);
@@ -1235,12 +1241,12 @@ export default class Interpreter extends EventEmitter {
           console.log(`Action with ID ${action.id} removed from the workflow copy.`);
           
           // const newSelectors = this.getPreviousSelectors(workflow, actionId);
-          const newSelectors = this.getSelectors(workflowCopy);
-          newSelectors.forEach(selector => {
-              if (!selectors.includes(selector)) {
-                  selectors.push(selector);
-              }
-          });
+          // const newSelectors = this.getSelectors(workflowCopy);
+          // newSelectors.forEach(selector => {
+          //     if (!selectors.includes(selector)) {
+          //         selectors.push(selector);
+          //     }
+          // });
           
           // Reset loop iteration counter on successful action
           loopIterations = 0;
