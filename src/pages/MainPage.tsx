@@ -15,6 +15,7 @@ import { ScheduleSettings } from "../components/robot/ScheduleSettings";
 import { apiUrl } from "../apiConfig";
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/auth';
+import { useSocketStore } from '../context/socket';
 
 interface MainPageProps {
   handleEditRecording: (id: string, fileName: string) => void;
@@ -53,6 +54,8 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
 
   const { state } = useContext(AuthContext);
   const { user } = state;
+
+  const { connectToQueueSocket, disconnectQueueSocket } = useSocketStore();
 
   const abortRunHandler = (runId: string, robotName: string, browserId: string) => {
     notify('info', t('main_page.notifications.abort_initiated', { name: robotName }));
@@ -138,50 +141,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
       navigate(`/runs/${robotMetaId}/run/${runId}`);
             
       if (queued) {
-        console.log('Creating queue socket for queued run:', runId); 
-        
         setQueuedRuns(prev => new Set([...prev, runId]));
-        
-        const queueSocket = io(`${apiUrl}/queued-run`, {
-          transports: ["websocket"],
-          rejectUnauthorized: false,
-          query: { userId: user?.id }
-        });
-        
-        queueSocket.on('connect', () => {
-          console.log('Queue socket connected for user:', user?.id);
-        });
-        
-        queueSocket.on('connect_error', (error) => {
-          console.log('Queue socket connection error:', error);
-        });
-        
-        queueSocket.on('run-completed', (completionData) => {
-          if (completionData.runId === runId) {  
-            setRunningRecordingName('');
-            setCurrentInterpretationLog('');          
-            setRerenderRuns(true);
-            
-            setQueuedRuns(prev => {
-              const newSet = new Set(prev);
-              newSet.delete(runId);
-              return newSet;
-            });
-            
-            const robotName = completionData.robotName || runningRecordingName;
-            
-            if (completionData.status === 'success') {
-              notify('success', t('main_page.notifications.interpretation_success', { name: robotName }));
-            } else {
-              notify('error', t('main_page.notifications.interpretation_failed', { name: robotName }));
-            }
-            
-            queueSocket.disconnect();
-          }
-        });
-        
-        setSockets(sockets => [...sockets, queueSocket]);
-        
         notify('info', `Run queued: ${runningRecordingName}`);
       } else {
         const socket = io(`${apiUrl}/${browserId}`, {
@@ -244,6 +204,36 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
     }
     return message === 'success';
   }
+
+  useEffect(() => {
+    if (user?.id) {
+      const handleRunCompleted = (completionData: any) => {
+        setRerenderRuns(true);
+        
+        if (queuedRuns.has(completionData.runId)) {
+          setQueuedRuns(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(completionData.runId);
+            return newSet;
+          });
+        }
+        
+        const robotName = completionData.robotName || 'Unknown Robot';
+        
+        if (completionData.status === 'success') {
+          notify('success', t('main_page.notifications.interpretation_success', { name: robotName }));
+        } else {
+          notify('error', t('main_page.notifications.interpretation_failed', { name: robotName }));
+        }
+      };
+      
+      connectToQueueSocket(user.id, handleRunCompleted);
+      
+      return () => {
+        disconnectQueueSocket();
+      };
+    }
+  }, [user?.id, connectToQueueSocket, disconnectQueueSocket, t, setRerenderRuns, queuedRuns, setQueuedRuns]);
 
   const DisplayContent = () => {
     switch (content) {

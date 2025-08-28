@@ -442,6 +442,9 @@
     "created_at": "Oluşturulma",
     "errors": {
       "robot_not_found": "Robot bulunamadı. Tekrar deneyin."
+    },
+    "buttons": {
+      "close": "Kapat"
     }
   },
   "robot_edit": {

@@ -234,11 +234,11 @@ const handleMousemove = async (activeBrowser: RemoteBrowser, page: Page, { x, y 
 
         const generator = activeBrowser.generator;
         await page.mouse.move(x, y);
-        throttle(async () => {
-            if (!page.isClosed()) {
-                await generator.generateDataForHighlighter(page, { x, y });
-            }
-        }, 100)();
+        // throttle(async () => {
+        //     if (!page.isClosed()) {
+        //         await generator.generateDataForHighlighter(page, { x, y });
+        //     }
+        // }, 100)();
         logger.log("debug", `Moved over position x:${x}, y:${y}`);
     } catch (e) {
         const { message } = e as Error;

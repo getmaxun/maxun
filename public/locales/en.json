@@ -442,6 +442,9 @@
       "created_at": "Robot Created At",
       "errors": {
         "robot_not_found": "Could not find robot details. Please try again."
+      },
+      "buttons": {
+        "close": "Close"
       }
     },
     "robot_edit": {
