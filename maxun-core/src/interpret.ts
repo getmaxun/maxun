@@ -734,10 +734,22 @@ export default class Interpreter extends EventEmitter {
               return allResults;
             }
 
-            await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+            await page.evaluate(() => {
+              const scrollHeight = Math.max(
+                document.body.scrollHeight,
+                document.documentElement.scrollHeight
+              );
+
+              window.scrollTo(0, scrollHeight);
+            });
             await page.waitForTimeout(2000);
 
-            const currentHeight = await page.evaluate(() => document.body.scrollHeight);
+            const currentHeight = await page.evaluate(() => {
+              return Math.max(
+                document.body.scrollHeight,
+                document.documentElement.scrollHeight
+              );
+            });
             const currentResultCount = allResults.length;
             
             if (currentResultCount === previousResultCount) {
@@ -1024,10 +1036,22 @@ export default class Interpreter extends EventEmitter {
           
               // Wait for content to load and check scroll height
               await page.waitForTimeout(2000);
-              await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+              await page.evaluate(() => {
+                const scrollHeight = Math.max(
+                  document.body.scrollHeight,
+                  document.documentElement.scrollHeight
+                );
+
+                window.scrollTo(0, scrollHeight);
+              });
               await page.waitForTimeout(2000);
-          
-              const currentHeight = await page.evaluate(() => document.body.scrollHeight);
+
+              const currentHeight = await page.evaluate(() => {
+                return Math.max(
+                  document.body.scrollHeight,
+                  document.documentElement.scrollHeight
+                );
+              });
               const heightChanged = currentHeight !== previousHeight;
               previousHeight = currentHeight;
               
