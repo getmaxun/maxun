@@ -23,6 +23,7 @@ import {
   ListItemText,
   FormControlLabel,
   Checkbox,
+  CircularProgress,
 } from "@mui/material";
 import {
   Schedule,
@@ -154,6 +155,7 @@ export const RecordingsTable = ({
   const [searchTerm, setSearchTerm] = React.useState('');
   const [isWarningModalOpen, setWarningModalOpen] = React.useState(false);
   const [activeBrowserId, setActiveBrowserId] = React.useState('');
+  const [isLoading, setIsLoading] = React.useState(true);
 
   const columns = useMemo(() => [
     { id: 'interpret', label: t('recordingtable.run'), minWidth: 80 },
@@ -270,6 +272,8 @@ export const RecordingsTable = ({
     } catch (error) {
       console.error('Error fetching recordings:', error);
       notify('error', t('recordingtable.notifications.fetch_error'));
+    } finally {
+      setIsLoading(false);
     }
   }, [setRecordings, notify, t]);
 
@@ -405,9 +409,7 @@ export const RecordingsTable = ({
   }
 
   useEffect(() => {
-    if (rows.length === 0) {
-      fetchRecordings();
-    }
+    fetchRecordings();
   }, [fetchRecordings]);
 
   useEffect(() => {
@@ -514,7 +516,9 @@ export const RecordingsTable = ({
         </Box>
       </Box>
 
-      {filteredRows.length === 0 ? (
+      {isLoading ? (
+        <CircularProgress size={32} />
+      ) : filteredRows.length === 0 ? (
         <Box
           display="flex"
           flexDirection="column"
