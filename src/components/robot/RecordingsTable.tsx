@@ -513,42 +513,69 @@ export const RecordingsTable = ({
           </IconButton>
         </Box>
       </Box>
-      <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden', marginTop: '15px' }}>
-        <Table stickyHeader aria-label="sticky table">
-          <TableHead>
-            <TableRow>
-              {columns.map((column) => (
-                <MemoizedTableCell
-                  key={column.id}
-                  style={{ minWidth: column.minWidth }}
-                >
-                  {column.label}
-                </MemoizedTableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {visibleRows.map((row) => (
-              <TableRowMemoized
-                key={row.id}
-                row={row}
-                columns={columns}
-                handlers={handlers}
-              />
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
 
-      <TablePagination
-        rowsPerPageOptions={[10, 25, 50, 100]}
-        component="div"
-        count={filteredRows.length}
-        rowsPerPage={rowsPerPage}
-        page={page}
-        onPageChange={handleChangePage}
-        onRowsPerPageChange={handleChangeRowsPerPage}
-      />
+      {filteredRows.length === 0 ? (
+        <Box
+          display="flex"
+          flexDirection="column"
+          alignItems="center"
+          justifyContent="center"
+          sx={{ 
+            minHeight: 300, 
+            textAlign: 'center',
+            color: 'text.secondary' 
+          }}
+        >
+          <Typography variant="h6" gutterBottom>
+            {debouncedSearchTerm ? t('recordingtable.placeholder.search') : t('recordingtable.placeholder.title')}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {debouncedSearchTerm 
+              ? t('recordingtable.search_criteria')
+              : t('recordingtable.placeholder.body')
+            }
+          </Typography>
+        </Box>
+      ) : (
+        <>
+          <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden', marginTop: '15px' }}>
+            <Table stickyHeader aria-label="sticky table">
+              <TableHead>
+                <TableRow>
+                  {columns.map((column) => (
+                    <MemoizedTableCell
+                      key={column.id}
+                      style={{ minWidth: column.minWidth }}
+                    >
+                      {column.label}
+                    </MemoizedTableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {visibleRows.map((row) => (
+                  <TableRowMemoized
+                    key={row.id}
+                    row={row}
+                    columns={columns}
+                    handlers={handlers}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          <TablePagination
+            rowsPerPageOptions={[10, 25, 50, 100]}
+            component="div"
+            count={filteredRows.length}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+          />
+        </>
+      )}
       <GenericModal isOpen={isWarningModalOpen} onClose={() => setWarningModalOpen(false)} modalStyle={modalStyle}>
         <div style={{ padding: '10px' }}>
           <Typography variant="h6" gutterBottom>{t('recordingtable.warning_modal.title')}</Typography>
