@@ -517,7 +517,17 @@ export const RecordingsTable = ({
       </Box>
 
       {isLoading ? (
-        <CircularProgress size={32} />
+        <Box
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+          sx={{ 
+            minHeight: '60vh',
+            width: '100%'
+          }}
+        >
+          <CircularProgress size={60} />
+        </Box>
       ) : filteredRows.length === 0 ? (
         <Box
           display="flex"
