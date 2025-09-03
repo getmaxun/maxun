@@ -49,7 +49,7 @@ docker-compose up -d
 You can access the frontend at http://localhost:5173/ and backend at http://localhost:8080/
 
 ### Without Docker
-1. Ensure you have Node.js, PostgreSQL, MinIO and Redis installed on your system.
+1. Ensure you have Node.js, PostgreSQL, MinIO and Redis installed on your system. Check out the [installation guide](./docs/DB%20installation%20guide.md) here!
 2. Run the commands below
 ```
 git clone https://github.com/getmaxun/maxun
@@ -74,6 +74,7 @@ npx playwright install --with-deps chromium
 cd ..
 
 # start frontend and backend together
+cd ..
 npm run start
 ```
 You can access the frontend at http://localhost:5173/ and backend at http://localhost:8080/
