@@ -48,6 +48,12 @@
     "options": "选项",
     "heading": "我的机器人",
     "new": "创建机器人",
+    "search_criteria": "请尝试调整您的搜索条件",
+    "placeholder": {
+      "title": "一切就绪，可以开始了",
+      "body": "您创建的机器人将显示在这里。点击“创建机器人”即可开始！",
+      "search": "没有与您搜索匹配的机器人"
+    },
     "modal": {
       "title": "输入URL",
       "login_title": "此网站需要登录吗？",
@@ -90,6 +96,11 @@
     "settings": "设置",
     "search": "搜索运行记录...",
     "sort_tooltip": "点击排序",
+    "placeholder": {
+      "title": "未找到运行记录",
+      "body": "您所有的机器人运行记录都将显示在此处。一旦机器人被激活，其运行记录将在这里记下。",
+      "search": "没有与您搜索匹配的运行记录"
+    },
     "notifications": {
       "no_runs": "未找到运行记录。请重试。",
       "delete_success": "运行记录删除成功"
