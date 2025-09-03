@@ -19,7 +19,7 @@ Maxun lets you train a robot in 2 minutes and scrape the web on auto-pilot. Web 
     <a href="https://docs.maxun.dev/?ref=ghread"><b>Documentation</b></a> |
     <a href="https://www.maxun.dev/?ref=ghread"><b>Website</b></a> |
     <a href="https://discord.gg/5GbPjBUkws"><b>Discord</b></a> |
-    <a href="https://x.com/maxun_io?ref=ghread"><b>Twitter</b></a> |
+    <a href="https://x.com/MaxunHQ?ref=ghread"><b>Twitter</b></a> |
     <a href="https://www.youtube.com/@MaxunOSS?ref=ghread"><b>Watch Tutorials</b></a>
     <br />
     <br />
