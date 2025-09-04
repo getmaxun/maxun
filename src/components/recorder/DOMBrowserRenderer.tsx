@@ -572,10 +572,22 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
             }
           }
 
-          if (
-            elementInfo?.tagName !== "INPUT" &&
-            elementInfo?.tagName !== "SELECT"
-          ) {
+          if (elementInfo?.tagName === "INPUT" || elementInfo?.tagName === "TEXTAREA") {
+            const element = target as HTMLElement;
+            const elementRect = element.getBoundingClientRect();
+            const relativeX = iframeX - elementRect.left;
+            const relativeY = iframeY - elementRect.top;
+            
+            socket.emit("dom:click", {
+              selector,
+              url: snapshot.baseUrl,
+              userId: user?.id || "unknown",
+              elementInfo,
+              coordinates: { x: relativeX, y: relativeY },
+              isSPA: false,
+            });
+          } else if (elementInfo?.tagName !== "SELECT") {
+            // Handle other elements normally
             socket.emit("dom:click", {
               selector,
               url: snapshot.baseUrl,
