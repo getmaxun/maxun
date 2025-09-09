@@ -9,7 +9,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
-import { Accordion, AccordionSummary, AccordionDetails, Typography, Box, TextField, Tooltip } from '@mui/material';
+import { Accordion, AccordionSummary, AccordionDetails, Typography, Box, TextField, Tooltip, CircularProgress } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SearchIcon from '@mui/icons-material/Search';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -134,14 +134,82 @@ export const RunsTable: React.FC<RunsTableProps> = ({
 
   const [rows, setRows] = useState<Data[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isFetching, setIsFetching] = useState(true);
 
   const [paginationStates, setPaginationStates] = useState<PaginationState>({});
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [expandedAccordions, setExpandedAccordions] = useState<Set<string>>(new Set());
 
   const { notify, rerenderRuns, setRerenderRuns } = useGlobalInfoStore();
 
   const handleAccordionChange = useCallback((robotMetaId: string, isExpanded: boolean) => {
+    setExpandedAccordions(prev => {
+      const newSet = new Set(prev);
+      if (isExpanded) {
+        newSet.add(robotMetaId);
+      } else {
+        newSet.delete(robotMetaId);
+      }
+      return newSet;
+    });
+    
     navigate(isExpanded ? `/runs/${robotMetaId}` : '/runs');
   }, [navigate]);
+
+  const handleRowExpand = useCallback((runId: string, robotMetaId: string, shouldExpand: boolean) => {
+    setExpandedRows(prev => {
+      const newSet = new Set(prev);
+      if (shouldExpand) {
+        newSet.add(runId);
+      } else {
+        newSet.delete(runId);
+      }
+      return newSet;
+    });
+    
+    // Update URL navigation
+    navigate(
+      shouldExpand 
+        ? `/runs/${robotMetaId}/run/${runId}`
+        : `/runs/${robotMetaId}`
+    );
+  }, [navigate]);
+
+  // Sync expandedRows and expandedAccordions with URL params
+  useEffect(() => {
+    if (urlRunId) {
+      setExpandedRows(prev => {
+        const newSet = new Set(prev);
+        newSet.add(urlRunId);
+        return newSet;
+      });
+    }
+    
+    if (urlRobotMetaId) {
+      setExpandedAccordions(prev => {
+        const newSet = new Set(prev);
+        newSet.add(urlRobotMetaId);
+        return newSet;
+      });
+    }
+  }, [urlRunId, urlRobotMetaId]);
+
+  // Auto-expand currently running robot (but allow manual collapse)
+  useEffect(() => {
+    if (runId && runningRecordingName) {
+      const currentRunningRow = rows.find(row => 
+        row.runId === runId && row.name === runningRecordingName
+      );
+      
+      if (currentRunningRow) {
+        setExpandedRows(prev => {
+          const newSet = new Set(prev);
+          newSet.add(currentRunningRow.runId);
+          return newSet;
+        });
+      }
+    }
+  }, [runId, runningRecordingName, rows]);
 
   const handleAccordionPageChange = useCallback((event: unknown, newPage: number) => {
     setAccordionPage(newPage);
@@ -224,6 +292,8 @@ export const RunsTable: React.FC<RunsTableProps> = ({
       }
     } catch (error) {
       notify('error', t('runstable.notifications.fetch_error'));
+    } finally {
+      setIsFetching(false);
     }
   }, [notify, t]);
 
@@ -231,6 +301,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
     let mounted = true;
 
     if (rows.length === 0 || rerenderRuns) {
+      setIsFetching(true);
       fetchRuns().then(() => {
         if (mounted) {
           setRerenderRuns(false);
@@ -326,14 +397,15 @@ export const RunsTable: React.FC<RunsTableProps> = ({
           key={`row-${row.id}`}
           row={row}
           handleDelete={handleDelete}
-          isOpen={urlRunId === row.runId || (runId === row.runId && runningRecordingName === row.name)}
+          isOpen={expandedRows.has(row.runId)}
+          onToggleExpanded={(shouldExpand) => handleRowExpand(row.runId, row.robotMetaId, shouldExpand)}
           currentLog={currentInterpretationLog}
           abortRunHandler={abortRunHandler}
           runningRecordingName={runningRecordingName}
           urlRunId={urlRunId}
         />
       ));
-  }, [paginationStates, runId, runningRecordingName, currentInterpretationLog, abortRunHandler, handleDelete, accordionSortConfigs]);
+  }, [getPaginationState, accordionSortConfigs, expandedRows, handleRowExpand, handleDelete, currentInterpretationLog, abortRunHandler, runningRecordingName, urlRunId]);
 
   const renderSortIcon = useCallback((column: Column, robotMetaId: string) => {
     const sortConfig = accordionSortConfigs[robotMetaId];
@@ -378,7 +450,43 @@ export const RunsTable: React.FC<RunsTableProps> = ({
         />
       </Box>
 
-      <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden' }}>
+      {isFetching ? (
+        <Box
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+          sx={{ 
+            minHeight: '60vh',
+            width: '100%'
+          }}
+        >
+          <CircularProgress size={60} />
+        </Box>
+      ) : Object.keys(groupedRows).length === 0 ? (
+        <Box
+          display="flex"
+          flexDirection="column"
+          alignItems="center"
+          justifyContent="center"
+          sx={{ 
+            minHeight: 300, 
+            textAlign: 'center',
+            color: 'text.secondary' 
+          }}
+        >
+          <Typography variant="h6" gutterBottom>
+            {searchTerm ? t('runstable.placeholder.search') : t('runstable.placeholder.title')}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {searchTerm 
+              ? t('recordingtable.search_criteria')
+              : t('runstable.placeholder.body')
+            }
+          </Typography>
+        </Box>
+      ) : (
+        <>
+          <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden' }}>
         {Object.entries(groupedRows)
           .slice(
             accordionPage * accordionsPerPage,
@@ -386,12 +494,13 @@ export const RunsTable: React.FC<RunsTableProps> = ({
           )
           .map(([robotMetaId, data]) => (
             <Accordion 
-              key={robotMetaId} 
+              key={robotMetaId}
+              expanded={expandedAccordions.has(robotMetaId)}
               onChange={(event, isExpanded) => handleAccordionChange(robotMetaId, isExpanded)}
               TransitionProps={{ unmountOnExit: true }} // Optimize accordion rendering
             >
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="h6">{data[0].name}</Typography>
+                <Typography variant="h6">{data[data.length - 1].name}</Typography>
               </AccordionSummary>
               <AccordionDetails>
                 <Table stickyHeader aria-label="sticky table">
@@ -465,15 +574,17 @@ export const RunsTable: React.FC<RunsTableProps> = ({
           ))}
       </TableContainer>
 
-      <TablePagination
-        component="div"
-        count={Object.keys(groupedRows).length}
-        page={accordionPage}
-        rowsPerPage={accordionsPerPage}
-        onPageChange={handleAccordionPageChange}
-        onRowsPerPageChange={handleAccordionsPerPageChange}
-        rowsPerPageOptions={[10, 25, 50, 100]}
-      />
+          <TablePagination
+            component="div"
+            count={Object.keys(groupedRows).length}
+            page={accordionPage}
+            rowsPerPage={accordionsPerPage}
+            onPageChange={handleAccordionPageChange}
+            onRowsPerPageChange={handleAccordionsPerPageChange}
+            rowsPerPageOptions={[10, 25, 50, 100]}
+          />
+        </>
+      )}
     </React.Fragment>
   );
 };
