@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { Button, Paper, Box, TextField, IconButton } from "@mui/material";
+import { Button, Paper, Box, TextField, IconButton, Tooltip } from "@mui/material";
 import EditIcon from '@mui/icons-material/Edit';
 import TextFieldsIcon from '@mui/icons-material/TextFields';
 import DocumentScannerIcon from '@mui/icons-material/DocumentScanner';
@@ -21,6 +21,7 @@ import ActionDescriptionBox from '../action/ActionDescriptionBox';
 import { useThemeMode } from '../../context/theme-provider';
 import { useTranslation } from 'react-i18next';
 import { useBrowserDimensionsStore } from '../../context/browserDimensions';
+import { emptyWorkflow } from '../../shared/constants';
 import { clientListExtractor } from '../../helpers/clientListExtractor';
 import { clientSelectorGenerator } from '../../helpers/clientSelectorGenerator';
 
@@ -54,7 +55,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const [isCaptureListConfirmed, setIsCaptureListConfirmed] = useState(false);
   const { panelHeight } = useBrowserDimensionsStore();
 
-  const { lastAction, notify, currentWorkflowActionsState, setCurrentWorkflowActionsState, resetInterpretationLog, currentListActionId, setCurrentListActionId, currentTextActionId, setCurrentTextActionId, currentScreenshotActionId, setCurrentScreenshotActionId, updateDOMMode, currentSnapshot, isDOMMode } = useGlobalInfoStore();  
+  const { lastAction, notify, currentWorkflowActionsState, setCurrentWorkflowActionsState, resetInterpretationLog, currentListActionId, setCurrentListActionId, currentTextActionId, setCurrentTextActionId, currentScreenshotActionId, setCurrentScreenshotActionId, isDOMMode, setIsDOMMode, currentSnapshot, setCurrentSnapshot, updateDOMMode, initialUrl, setRecordingUrl } = useGlobalInfoStore();  
   const { 
     getText, startGetText, stopGetText, 
     getList, startGetList, stopGetList, 
@@ -89,12 +90,6 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         }
       };
 
-      const screenshotModeHandler = (data: any) => {
-        if (!data.userId || data.userId === id) {
-          updateDOMMode(false);
-        }
-      };
-
       const domcastHandler = (data: any) => {
         if (!data.userId || data.userId === id) {
           if (data.snapshotData && data.snapshotData.snapshot) {
@@ -104,12 +99,10 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
       };
 
       socket.on("dom-mode-enabled", domModeHandler);
-      socket.on("screenshot-mode-enabled", screenshotModeHandler);
       socket.on("domcast", domcastHandler);
 
       return () => {
         socket.off("dom-mode-enabled", domModeHandler);
-        socket.off("screenshot-mode-enabled", screenshotModeHandler);
         socket.off("domcast", domcastHandler);
       };
     }
@@ -243,36 +236,18 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
             return;
           }
 
-          Object.entries(fields).forEach(([key, field]) => {
-            if (field.selectorObj?.selector) {
-              const isFieldXPath =
-                field.selectorObj.selector.startsWith("//") ||
-                field.selectorObj.selector.startsWith("/");
-              console.log(
-                `Field "${key}" selector:`,
-                field.selectorObj.selector,
-                `(XPath: ${isFieldXPath})`
-              );
-            }
-          });
-
           const extractedData = clientListExtractor.extractListData(
             iframeDoc,
             listSelector,
             fields,
-            5
+            5 
           );
 
           updateListStepData(currentListId, extractedData);
           
           if (extractedData.length === 0) {
-            console.warn(
-              "⚠️ No data extracted - this might indicate selector issues"
-            );
-            notify(
-              "warning",
-              "No data was extracted. Please verify your selections."
-            );
+            console.warn("⚠️ No data extracted - this might indicate selector issues");
+            notify("warning", "No data was extracted. Please verify your selections.");
           }
         } catch (error) {
           console.error("Error in client-side data extraction:", error);
@@ -346,12 +321,32 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
 
   const handleTextStepConfirm = (id: number) => {
     const label = textLabels[id]?.trim();
-    if (label) {
-      updateBrowserTextStepLabel(id, label);
-      setConfirmedTextSteps(prev => ({ ...prev, [id]: true }));
-    } else {
+    if (!label) {
       setErrors(prevErrors => ({ ...prevErrors, [id]: t('right_panel.errors.label_required') }));
+      return;
     }
+
+    const existingLabels = browserSteps
+      .filter(step => 
+        step.type === 'text' && 
+        step.id !== id &&
+        confirmedTextSteps[step.id] &&
+        'label' in step &&
+        step.label
+      )
+      .map(step => (step as any).label);
+
+    if (existingLabels.includes(label)) {
+      setErrors(prevErrors => ({ 
+        ...prevErrors, 
+        [id]: t('right_panel.errors.duplicate_label') || `Label "${label}" already exists. Please use a unique label.`
+      }));
+      return;
+    }
+
+    updateBrowserTextStepLabel(id, label);
+    setConfirmedTextSteps(prev => ({ ...prev, [id]: true }));
+    setErrors(prevErrors => ({ ...prevErrors, [id]: '' }));
   };
 
   const handleTextStepDiscard = (id: number) => {
@@ -425,14 +420,22 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   };
 
   const getTextSettingsObject = useCallback(() => {
-    const settings: Record<string, { selector: string; tag?: string;[key: string]: any }> = {};
+    const settings: Record<string, { 
+      selector: string; 
+      tag?: string;
+      [key: string]: any 
+    }> = {};
+
     browserSteps.forEach(step => {
       if (browserStepIdList.includes(step.id)) {
         return;
       }
 
       if (step.type === 'text' && step.label && step.selectorObj?.selector) {
-        settings[step.label] = step.selectorObj;
+        settings[step.label] = {
+          ...step.selectorObj,
+          selector: step.selectorObj.selector
+        };
       }
       setBrowserStepIdList(prevList => [...prevList, step.id]);
     });
@@ -441,15 +444,24 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   }, [browserSteps, browserStepIdList]);
 
   const stopCaptureAndEmitGetTextSettings = useCallback(() => {
-    const hasUnconfirmedTextSteps = browserSteps.some(step => step.type === 'text' && !confirmedTextSteps[step.id]);
-    if (hasUnconfirmedTextSteps) {
+    const hasTextStepsForCurrentAction = browserSteps.some(step => step.type === 'text' && step.actionId === currentTextActionId);
+    if (!hasTextStepsForCurrentAction) {
+      notify('error', t('right_panel.errors.no_text_captured'));
+      return;
+    }
+    
+    const hasUnconfirmedTextStepsForCurrentAction = browserSteps.some(step => 
+      step.type === 'text' && 
+      step.actionId === currentTextActionId && 
+      !confirmedTextSteps[step.id]
+    );
+    if (hasUnconfirmedTextStepsForCurrentAction) {
       notify('error', t('right_panel.errors.confirm_text_fields'));
       return;
     }
     stopGetText();
     const settings = getTextSettingsObject();
-    const hasTextSteps = browserSteps.some(step => step.type === 'text');
-    if (hasTextSteps) {
+    if (hasTextStepsForCurrentAction) {
       socket?.emit('action', { action: 'scrapeSchema', settings });
     }
     setIsCaptureTextConfirmed(true);
@@ -463,15 +475,29 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const getListSettingsObject = useCallback(() => {
     let settings: {
       listSelector?: string;
-      fields?: Record<string, { selector: string; tag?: string; [key: string]: any; isShadow?: boolean }>;
-      pagination?: { type: string; selector?: string; isShadow?: boolean };
+      fields?: Record<string, { 
+        selector: string; 
+        tag?: string;
+        [key: string]: any;
+        isShadow?: boolean;
+      }>;
+      pagination?: { 
+        type: string; 
+        selector?: string;
+        isShadow?: boolean;
+      };
       limit?: number;
-      isShadow?: boolean
+      isShadow?: boolean;
     } = {};
 
     browserSteps.forEach(step => {
       if (step.type === 'list' && step.listSelector && Object.keys(step.fields).length > 0) {
-        const fields: Record<string, { selector: string; tag?: string;[key: string]: any; isShadow?: boolean }> = {};
+        const fields: Record<string, { 
+          selector: string; 
+          tag?: string;
+          [key: string]: any;
+          isShadow?: boolean;
+        }> = {};
 
         Object.entries(step.fields).forEach(([id, field]) => {
           if (field.selectorObj?.selector) {
@@ -487,7 +513,11 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         settings = {
           listSelector: step.listSelector,
           fields: fields,
-          pagination: { type: paginationType, selector: step.pagination?.selector, isShadow: step.isShadow },
+          pagination: { 
+            type: paginationType, 
+            selector: step.pagination?.selector,
+            isShadow: step.isShadow
+          },
           limit: parseInt(limitType === 'custom' ? customLimit : limitType),
           isShadow: step.isShadow
         };
@@ -503,7 +533,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     setShowLimitOptions(false);
     updateLimitType('');
     updateCustomLimit('');
-  }, [setShowPaginationOptions, updatePaginationType, setShowLimitOptions, updateLimitType, updateCustomLimit]);
+  }, [updatePaginationType, updateLimitType, updateCustomLimit]);
 
   const handleStopGetList = useCallback(() => {
     stopGetList();
@@ -512,8 +542,6 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
 
   const stopCaptureAndEmitGetListSettings = useCallback(() => {
     const settings = getListSettingsObject();
-
-    console.log("rrwebSnapshotHandler", settings);
     
     const latestListStep = getLatestListStep(browserSteps);
     if (latestListStep && settings) {
@@ -534,6 +562,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
 
   const hasUnconfirmedListTextFields = browserSteps.some(step =>
     step.type === 'list' &&
+    step.actionId === currentListActionId &&
     Object.entries(step.fields).some(([fieldKey]) =>
       !confirmedListTextFields[step.id]?.[fieldKey]
     )
@@ -549,6 +578,31 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const handleConfirmListCapture = useCallback(() => {
     switch (captureStage) {
       case 'initial':
+        const hasValidListSelectorForCurrentAction = browserSteps.some(step =>
+          step.type === 'list' &&
+          step.actionId === currentListActionId &&
+          step.listSelector &&
+          Object.keys(step.fields).length > 0
+        );
+        
+        if (!hasValidListSelectorForCurrentAction) {
+          notify('error', t('right_panel.errors.capture_list_first'));
+          return;
+        }
+        
+        const hasUnconfirmedListTextFieldsForCurrentAction = browserSteps.some(step =>
+          step.type === 'list' &&
+          step.actionId === currentListActionId &&
+          Object.entries(step.fields).some(([fieldKey]) =>
+            !confirmedListTextFields[step.id]?.[fieldKey]
+          )
+        );
+        
+        if (hasUnconfirmedListTextFieldsForCurrentAction) {
+          notify('error', t('right_panel.errors.confirm_all_list_fields'));
+          return;
+        }
+        
         startPaginationMode();
         setShowPaginationOptions(true);
         setCaptureStage('pagination');
@@ -599,7 +653,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         setCaptureStage('initial');
         break;
     }
-  }, [captureStage, paginationType, limitType, customLimit, startPaginationMode, setShowPaginationOptions, setCaptureStage, getListSettingsObject, notify, stopPaginationMode, startLimitMode, setShowLimitOptions, stopLimitMode, setIsCaptureListConfirmed, stopCaptureAndEmitGetListSettings, t]);
+  }, [captureStage, paginationType, limitType, customLimit, startPaginationMode, setShowPaginationOptions, setCaptureStage, getListSettingsObject, notify, stopPaginationMode, startLimitMode, setShowLimitOptions, stopLimitMode, setIsCaptureListConfirmed, stopCaptureAndEmitGetListSettings, t, browserSteps, currentListActionId, confirmedListTextFields]);
 
   const handleBackCaptureList = useCallback(() => {
     switch (captureStage) {
@@ -616,7 +670,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         setCaptureStage('initial');
         break;
     }
-  }, [captureStage, stopLimitMode, setShowLimitOptions, startPaginationMode, setShowPaginationOptions, setCaptureStage, stopPaginationMode]);
+  }, [captureStage, stopLimitMode, startPaginationMode, stopPaginationMode]);
 
   const handlePaginationSettingSelect = (option: PaginationType) => {
     updatePaginationType(option);
@@ -716,14 +770,23 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const isConfirmCaptureDisabled = useMemo(() => {
     if (captureStage !== 'initial') return false;
 
-    const hasValidListSelector = browserSteps.some(step =>
+    const hasValidListSelectorForCurrentAction = browserSteps.some(step =>
       step.type === 'list' &&
+      step.actionId === currentListActionId &&
       step.listSelector &&
       Object.keys(step.fields).length > 0
     );
 
-    return !hasValidListSelector || hasUnconfirmedListTextFields;
-  }, [captureStage, browserSteps, hasUnconfirmedListTextFields]);
+    const hasUnconfirmedListTextFieldsForCurrentAction = browserSteps.some(step =>
+      step.type === 'list' &&
+      step.actionId === currentListActionId &&
+      Object.entries(step.fields).some(([fieldKey]) =>
+        !confirmedListTextFields[step.id]?.[fieldKey]
+      )
+    );
+
+    return !hasValidListSelectorForCurrentAction || hasUnconfirmedListTextFieldsForCurrentAction;
+  }, [captureStage, browserSteps, currentListActionId, confirmedListTextFields]);
 
   const theme = useThemeMode();
   const isDarkMode = theme.darkMode;
@@ -779,21 +842,33 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                   {t('right_panel.buttons.back')}
                 </Button>
               )}
-              <Button
-                variant="outlined"
-                onClick={handleConfirmListCapture}
-                disabled={captureStage === 'initial' ? isConfirmCaptureDisabled : hasUnconfirmedListTextFields}
-                sx={{
-                  color: '#ff00c3 !important',
-                  borderColor: '#ff00c3 !important',
-                  backgroundColor: 'whitesmoke !important',
-                }}
+              <Tooltip
+                title={
+                  captureStage !== 'initial' && hasUnconfirmedListTextFields
+                    ? t('right_panel.tooltips.confirm_all_list_fields')
+                    : ''
+                }
+                placement="top"
+                arrow
               >
+                <span>
+                  <Button
+                    variant="outlined"
+                    onClick={handleConfirmListCapture}
+                    disabled={captureStage !== 'initial' && hasUnconfirmedListTextFields}
+                    sx={{
+                      color: '#ff00c3 !important',
+                      borderColor: '#ff00c3 !important',
+                      backgroundColor: 'whitesmoke !important',
+                    }}
+                  >
                 {captureStage === 'initial' ? t('right_panel.buttons.confirm_capture') :
                   captureStage === 'pagination' ? t('right_panel.buttons.confirm_pagination') :
                     captureStage === 'limit' ? t('right_panel.buttons.confirm_limit') :
                       t('right_panel.buttons.finish_capture')}
-              </Button>
+                  </Button>
+                </span>
+              </Tooltip>
               <Button
                 variant="outlined"
                 color="error"
