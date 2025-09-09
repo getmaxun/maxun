@@ -14,11 +14,9 @@ import Run from './models/Run';
 import Robot from './models/Robot';
 import { browserPool } from './server';
 import { Page } from 'playwright';
-import { BinaryOutputService } from './storage/mino';
 import { capture } from './utils/analytics';
 import { googleSheetUpdateTasks, processGoogleSheetUpdates } from './workflow-management/integrations/gsheet';
 import { airtableUpdateTasks, processAirtableUpdates } from './workflow-management/integrations/airtable';
-import { RemoteBrowser } from './browser-management/classes/RemoteBrowser';
 import { io as serverIo } from "./server";
 import { sendWebhook } from './routes/webhook';
 
@@ -85,107 +83,6 @@ function AddGeneratedFlags(workflow: WorkflowFile) {
   return copy;
 };
 
-/**
- * Helper function to extract and process scraped data from browser interpreter
- */
-async function extractAndProcessScrapedData(
-  browser: RemoteBrowser, 
-  run: any
-): Promise<{
-  categorizedOutput: any;
-  uploadedBinaryOutput: any;
-  totalDataPointsExtracted: number;
-  totalSchemaItemsExtracted: number;
-  totalListItemsExtracted: number;
-  extractedScreenshotsCount: number;
-}> {
-  let categorizedOutput: {
-    scrapeSchema: Record<string, any>;
-    scrapeList: Record<string, any>;
-  } = {
-    scrapeSchema: {},
-    scrapeList: {}
-  };
-
-  if ((browser?.interpreter?.serializableDataByType?.scrapeSchema ?? []).length > 0) {
-    browser?.interpreter?.serializableDataByType?.scrapeSchema?.forEach((schemaItem: any, index: any) => {
-      categorizedOutput.scrapeSchema[`schema-${index}`] = schemaItem;
-    });
-  }
-  
-  if ((browser?.interpreter?.serializableDataByType?.scrapeList ?? []).length > 0) {
-    browser?.interpreter?.serializableDataByType?.scrapeList?.forEach((listItem: any, index: any) => {
-      categorizedOutput.scrapeList[`list-${index}`] = listItem;
-    });
-  }
-  
-  const binaryOutput = browser?.interpreter?.binaryData?.reduce(
-    (reducedObject: Record<string, any>, item: any, index: number): Record<string, any> => {
-      return {
-        [`item-${index}`]: item,
-        ...reducedObject,
-      };
-    }, 
-    {}
-  ) || {};
-
-  let totalDataPointsExtracted = 0;
-  let totalSchemaItemsExtracted = 0;
-  let totalListItemsExtracted = 0;
-  let extractedScreenshotsCount = 0;
-
-  if (categorizedOutput.scrapeSchema) {
-    Object.values(categorizedOutput.scrapeSchema).forEach((schemaResult: any) => {
-      if (Array.isArray(schemaResult)) {
-        schemaResult.forEach(obj => {
-          if (obj && typeof obj === 'object') {
-            totalDataPointsExtracted += Object.keys(obj).length;
-          }
-        });
-        totalSchemaItemsExtracted += schemaResult.length;
-      } else if (schemaResult && typeof schemaResult === 'object') {
-        totalDataPointsExtracted += Object.keys(schemaResult).length;
-        totalSchemaItemsExtracted += 1;
-      }
-    });
-  }
-
-  if (categorizedOutput.scrapeList) {
-    Object.values(categorizedOutput.scrapeList).forEach((listResult: any) => {
-      if (Array.isArray(listResult)) {
-        listResult.forEach(obj => {
-          if (obj && typeof obj === 'object') {
-            totalDataPointsExtracted += Object.keys(obj).length;
-          }
-        });
-        totalListItemsExtracted += listResult.length;
-      }
-    });
-  }
-
-  if (binaryOutput) {
-    extractedScreenshotsCount = Object.keys(binaryOutput).length;
-    totalDataPointsExtracted += extractedScreenshotsCount;
-  }
-
-  const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
-  const uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(
-    run,
-    binaryOutput
-  );
-
-  return {
-    categorizedOutput: {
-      scrapeSchema: categorizedOutput.scrapeSchema || {},
-      scrapeList: categorizedOutput.scrapeList || {}
-    },
-    uploadedBinaryOutput,
-    totalDataPointsExtracted,
-    totalSchemaItemsExtracted,
-    totalListItemsExtracted,
-    extractedScreenshotsCount
-  };
-}
 
 // Helper function to handle integration updates
 async function triggerIntegrationUpdates(runId: string, robotMetaId: string): Promise<void> {
@@ -232,6 +129,11 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
     if (run.status === 'aborted' || run.status === 'aborting') {
       logger.log('info', `Run ${data.runId} has status ${run.status}, skipping execution`);
       return { success: true }; 
+    }
+
+    if (run.status === 'queued') {
+      logger.log('info', `Run ${data.runId} has status 'queued', skipping stale execution job - processQueuedRuns will handle it`);
+      return { success: true };
     }
 
     const plainRun = run.toJSON();
@@ -309,6 +211,9 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
       
       // Execute the workflow
       const workflow = AddGeneratedFlags(recording.recording);
+      
+      browser.interpreter.setRunId(data.runId);
+      
       const interpretationInfo = await browser.interpreter.InterpretRecording(
         workflow, 
         currentPage, 
@@ -326,79 +231,49 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
 
       logger.log('info', `Workflow execution completed for run ${data.runId}`);
       
-      const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
-      const uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, interpretationInfo.binaryOutput);
-      
-      const categorizedOutput = {
-        scrapeSchema: interpretationInfo.scrapeSchemaOutput || {},
-        scrapeList: interpretationInfo.scrapeListOutput || {}
-      };
-      
       if (await isRunAborted()) {
         logger.log('info', `Run ${data.runId} was aborted while processing results, not updating status`);
         return { success: true };
       }
 
       await run.update({
-        ...run,
         status: 'success',
         finishedAt: new Date().toLocaleString(),
-        browserId: plainRun.browserId,
-        log: interpretationInfo.log.join('\n'),
-        serializableOutput: {
-          scrapeSchema: Object.values(categorizedOutput.scrapeSchema),
-          scrapeList: Object.values(categorizedOutput.scrapeList),
-        },
-        binaryOutput: uploadedBinaryOutput,
+        log: interpretationInfo.log.join('\n')
       });
 
-      // Track extraction metrics
-      let totalDataPointsExtracted = 0;
       let totalSchemaItemsExtracted = 0;
       let totalListItemsExtracted = 0;
       let extractedScreenshotsCount = 0;
       
-      if (categorizedOutput.scrapeSchema) {
-        Object.values(categorizedOutput.scrapeSchema).forEach((schemaResult: any) => {
-          if (Array.isArray(schemaResult)) {
-            schemaResult.forEach(obj => {
-              if (obj && typeof obj === 'object') {
-                totalDataPointsExtracted += Object.keys(obj).length;
+      const updatedRun = await Run.findOne({ where: { runId: data.runId } });
+      if (updatedRun) {
+        if (updatedRun.serializableOutput) {
+          if (updatedRun.serializableOutput.scrapeSchema) {
+            Object.values(updatedRun.serializableOutput.scrapeSchema).forEach((schemaResult: any) => {
+              if (Array.isArray(schemaResult)) {
+                totalSchemaItemsExtracted += schemaResult.length;
+              } else if (schemaResult && typeof schemaResult === 'object') {
+                totalSchemaItemsExtracted += 1;
               }
             });
-            totalSchemaItemsExtracted += schemaResult.length;
-          } else if (schemaResult && typeof schemaResult === 'object') {
-            totalDataPointsExtracted += Object.keys(schemaResult).length;
-            totalSchemaItemsExtracted += 1;
           }
-        });
-      }
-
-      if (categorizedOutput.scrapeList) {
-        Object.values(categorizedOutput.scrapeList).forEach((listResult: any) => {
-          if (Array.isArray(listResult)) {
-            listResult.forEach(obj => {
-              if (obj && typeof obj === 'object') {
-                totalDataPointsExtracted += Object.keys(obj).length;
+          
+          if (updatedRun.serializableOutput.scrapeList) {
+            Object.values(updatedRun.serializableOutput.scrapeList).forEach((listResult: any) => {
+              if (Array.isArray(listResult)) {
+                totalListItemsExtracted += listResult.length;
               }
             });
-            totalListItemsExtracted += listResult.length;
           }
-        });
-      }
-
-      if (uploadedBinaryOutput) {
-        extractedScreenshotsCount = Object.keys(uploadedBinaryOutput).length;
-        totalDataPointsExtracted += extractedScreenshotsCount; 
+        }
+        
+        if (updatedRun.binaryOutput) {
+          extractedScreenshotsCount = Object.keys(updatedRun.binaryOutput).length;
+        }
       }
       
       const totalRowsExtracted = totalSchemaItemsExtracted + totalListItemsExtracted;
-      
-      console.log(`Extracted Schema Items Count: ${totalSchemaItemsExtracted}`);
-      console.log(`Extracted List Items Count: ${totalListItemsExtracted}`);
-      console.log(`Extracted Screenshots Count: ${extractedScreenshotsCount}`);
-      console.log(`Total Rows Extracted: ${totalRowsExtracted}`);
-      console.log(`Total Data Points Extracted: ${totalDataPointsExtracted}`);
 
       // Capture metrics
       capture(
@@ -415,7 +290,6 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
         }
       );
 
-      // Trigger webhooks for run completion
       const webhookPayload = {
         robot_id: plainRun.robotMetaId,
         run_id: data.runId,
@@ -424,13 +298,12 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
         started_at: plainRun.startedAt,
         finished_at: new Date().toLocaleString(),
         extracted_data: {
-          captured_texts: Object.values(categorizedOutput.scrapeSchema).flat() || [],
-          captured_lists: categorizedOutput.scrapeList,
+          captured_texts: updatedRun?.serializableOutput?.scrapeSchema ? Object.values(updatedRun.serializableOutput.scrapeSchema).flat() : [],
+          captured_lists: updatedRun?.serializableOutput?.scrapeList || {},
           total_rows: totalRowsExtracted,
           captured_texts_count: totalSchemaItemsExtracted,
           captured_lists_count: totalListItemsExtracted,
           screenshots_count: extractedScreenshotsCount,
-          total_data_points_extracted: totalDataPointsExtracted,
         },
         metadata: {
           browser_id: plainRun.browserId,
@@ -475,30 +348,18 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
       };
 
       try {
-        if (browser && browser.interpreter) {
-          const hasSchemaData = (browser.interpreter.serializableDataByType?.scrapeSchema ?? []).length > 0;
-          const hasListData = (browser.interpreter.serializableDataByType?.scrapeList ?? []).length > 0;
-          const hasBinaryData = (browser.interpreter.binaryData ?? []).length > 0;
+        const hasData = (run.serializableOutput && 
+          ((run.serializableOutput.scrapeSchema && run.serializableOutput.scrapeSchema.length > 0) ||
+           (run.serializableOutput.scrapeList && run.serializableOutput.scrapeList.length > 0))) ||
+          (run.binaryOutput && Object.keys(run.binaryOutput).length > 0);
 
-          if (hasSchemaData || hasListData || hasBinaryData) {
-            logger.log('info', `Extracting partial data from failed run ${data.runId}`);
-
-            partialData = await extractAndProcessScrapedData(browser, run);
-            
-            partialUpdateData.serializableOutput = {
-              scrapeSchema: Object.values(partialData.categorizedOutput.scrapeSchema),
-              scrapeList: Object.values(partialData.categorizedOutput.scrapeList),
-            };
-            partialUpdateData.binaryOutput = partialData.uploadedBinaryOutput;
-
-            partialDataExtracted = true; 
-            logger.log('info', `Partial data extracted for failed run ${data.runId}: ${partialData.totalDataPointsExtracted} data points`);
-
-            await triggerIntegrationUpdates(plainRun.runId, plainRun.robotMetaId);
-          }
+        if (hasData) {
+          logger.log('info', `Partial data found in failed run ${data.runId}, triggering integration updates`);
+          await triggerIntegrationUpdates(plainRun.runId, plainRun.robotMetaId);
+          partialDataExtracted = true;
         }
-      } catch (partialDataError: any) {
-        logger.log('warn', `Failed to extract partial data for run ${data.runId}: ${partialDataError.message}`);
+      } catch (dataCheckError: any) {
+        logger.log('warn', `Failed to check for partial data in run ${data.runId}: ${dataCheckError.message}`);
       }
 
       await run.update(partialUpdateData);
@@ -652,7 +513,9 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
 
 async function abortRun(runId: string, userId: string): Promise<boolean> {
   try {
-    const run = await Run.findOne({ where: { runId: runId } });
+    const run = await Run.findOne({ 
+      where: { runId: runId }
+    });
 
     if (!run) {
       logger.log('warn', `Run ${runId} not found or does not belong to user ${userId}`);
@@ -702,24 +565,18 @@ async function abortRun(runId: string, userId: string): Promise<boolean> {
       return true;
     }
 
-    let currentLog = 'Run aborted by user';
-    const extractedData = await extractAndProcessScrapedData(browser, run);
-
-    console.log(`Total Data Points Extracted in aborted run: ${extractedData.totalDataPointsExtracted}`);
-
     await run.update({
       status: 'aborted',
       finishedAt: new Date().toLocaleString(),
-      browserId: plainRun.browserId,
-      log: currentLog,
-      serializableOutput: {
-        scrapeSchema: Object.values(extractedData.categorizedOutput.scrapeSchema),
-        scrapeList: Object.values(extractedData.categorizedOutput.scrapeList),
-      },
-      binaryOutput: extractedData.uploadedBinaryOutput,
+      log: 'Run aborted by user'
     });
 
-    if (extractedData.totalDataPointsExtracted > 0) {
+    const hasData = (run.serializableOutput && 
+      ((run.serializableOutput.scrapeSchema && run.serializableOutput.scrapeSchema.length > 0) ||
+       (run.serializableOutput.scrapeList && run.serializableOutput.scrapeList.length > 0))) ||
+      (run.binaryOutput && Object.keys(run.binaryOutput).length > 0);
+
+    if (hasData) {
       await triggerIntegrationUpdates(runId, plainRun.robotMetaId);
     }
 
