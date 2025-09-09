@@ -241,7 +241,14 @@
       "unable_create_settings": "Liste ayarları oluşturulamadı. Bir alan tanımladığınızdan emin olun.",
       "capture_text_discarded": "Metin Yakalama İptal Edildi",
       "capture_list_discarded": "Liste Yakalama İptal Edildi",
-      "label_required": "Etiket boş olamaz"
+      "label_required": "Etiket boş olamaz",
+      "no_text_captured": "Henüz metin yakalanmadı. Lütfen önce metin öğeleri seçin.",
+      "duplicate_label": "Bu etiket zaten mevcut. Lütfen benzersiz bir etiket kullanın.",
+      "capture_list_first": "Lütfen onaylamadan önce bir liste yakalayın ve alanlar seçin.",
+      "confirm_all_list_fields": "Lütfen devam etmeden önce tüm liste alanlarını onaylayın."
+    },
+    "tooltips": {
+      "confirm_all_list_fields": "Lütfen bir sonraki adıma geçmeden önce tüm liste alanlarını onaylayın"
     }
   },
   "save_recording": {
@@ -258,7 +265,8 @@
     },
     "errors": {
       "user_not_logged": "Kullanıcı girişi yok. Kaydedilemedi.",
-      "exists_warning": "Bu isimde robot zaten var; üzerine yazmayı onaylayın."
+      "exists_warning": "Bu isimde robot zaten var; üzerine yazmayı onaylayın.",
+      "no_actions_performed": "Robot kaydedilemez. Lütfen kaydetmeden önce en az bir yakalama eylemi gerçekleştirin."
     },
     "tooltips": {
       "saving": "Akış optimize ediliyor ve kaydediliyor"
