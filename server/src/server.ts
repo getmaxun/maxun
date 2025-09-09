@@ -215,20 +215,6 @@ if (require.main === module) {
 if (require.main === module) {
   process.on('SIGINT', async () => {
     console.log('Main app shutting down...');
-    try {
-      await Run.update(
-        {
-          status: 'failed',
-          finishedAt: new Date().toLocaleString(),
-          log: 'Process interrupted during execution - worker shutdown'
-        },
-        {
-          where: { status: 'running' }
-        }
-      );
-    } catch (error: any) {
-      console.error('Error updating runs:', error);
-    }
 
     try {
       console.log('Closing PostgreSQL connection pool...');
