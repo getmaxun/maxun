@@ -808,9 +808,6 @@ async function startWorkers() {
   }
 }
 
-// Start all workers
-startWorkers();
-
 pgBoss.on('error', (error) => {
   logger.log('error', `PgBoss error: ${error.message}`);
 });
@@ -829,4 +826,4 @@ process.on('SIGINT', async () => {
 });
 
 // For use in other files
-export { pgBoss };
+export { pgBoss, startWorkers };

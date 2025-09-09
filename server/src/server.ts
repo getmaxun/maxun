@@ -20,7 +20,8 @@ import connectPgSimple from 'connect-pg-simple';
 import pg from 'pg';
 import session from 'express-session';
 import Run from './models/Run';
-import { processQueuedRuns } from './routes/storage';
+import { processQueuedRuns, recoverOrphanedRuns } from './routes/storage';
+import { startWorkers } from './pgboss-worker';
 
 const app = express();
 app.use(cors({
@@ -142,6 +143,9 @@ if (require.main === module) {
     try {
       await connectDB();
       await syncDB();
+      
+      await recoverOrphanedRuns();
+      await startWorkers();
       
       io = new Server(server);
       
