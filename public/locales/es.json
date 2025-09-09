@@ -84,12 +84,18 @@
     "runs": "Todas las ejecuciones",
     "runStatus": "Estado",
     "runName": "Nombre",
+    "name": "Nombre",
     "startedAt": "Iniciado el",
     "finishedAt": "Finalizado el",
     "delete": "Eliminar",
     "settings": "Ajustes",
     "search": "Buscar ejecuciones...",
     "sort_tooltip": "Haga clic para ordenar",
+    "placeholder": {
+      "title": "No se encontraron ejecuciones",
+      "body": "Aquí aparecerán todas las ejecuciones de sus robots. Una vez que un robot esté activo, sus ejecuciones se registrarán aquí.",
+      "search": "Ninguna ejecución coincide con su búsqueda"
+    },
     "notifications": {
       "no_runs": "No se encontraron ejecuciones. Por favor, inténtelo de nuevo.",
       "delete_success": "Ejecución eliminada con éxito"

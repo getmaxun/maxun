@@ -84,12 +84,18 @@
         "runs": "Alle Ausführungen",
         "runStatus": "Status",
         "runName": "Name",
+        "name": "Name",
         "startedAt": "Gestartet am",
         "finishedAt": "Beendet am",
         "delete": "Löschen",
         "settings": "Einstellungen",
         "search": "Ausführungen suchen...",
         "sort_tooltip": "Zum Sortieren klicken",
+        "placeholder": {
+            "title": "Keine Ausführungen gefunden",
+            "body": "Hier werden alle Ausführungen Ihrer Roboter angezeigt. Sobald ein Roboter aktiv ist, werden seine Ausführungen hier protokolliert.",
+            "search": "Keine Ausführungen entsprechen Ihrer Suche"
+        },
         "notifications": {
             "no_runs": "Keine Ausführungen gefunden. Bitte versuchen Sie es erneut.",
             "delete_success": "Ausführung erfolgreich gelöscht"

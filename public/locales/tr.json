@@ -84,12 +84,18 @@
     "runs": "Tüm Çalıştırmalar",
     "runStatus": "Durum",
     "runName": "Ad",
+    "name": "Ad",
     "startedAt": "Başlama",
     "finishedAt": "Bitiş",
     "delete": "Sil",
     "settings": "Ayarlar",
     "search": "Çalıştırma Ara...",
     "sort_tooltip": "Sıralamak için tıkla",
+    "placeholder": {
+      "title": "Çalıştırma Bulunamadı",
+      "body": "Tüm robot çalıştırmalarınız burada görünecek. Bir robot aktif olduğunda, çalıştırmaları burada kaydedilecek.",
+      "search": "Aramanızla eşleşen çalıştırma yok"
+    },
     "notifications": {
       "no_runs": "Çalıştırma bulunamadı. Lütfen tekrar deneyin.",
       "delete_success": "Çalıştırma başarıyla silindi"

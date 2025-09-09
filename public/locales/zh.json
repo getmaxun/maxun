@@ -84,12 +84,18 @@
     "runs": "所有运行记录",
     "runStatus": "状态",
     "runName": "名称",
+    "name": "名称",
     "startedAt": "开始时间",
     "finishedAt": "结束时间",
     "delete": "删除",
     "settings": "设置",
     "search": "搜索运行记录...",
     "sort_tooltip": "点击排序",
+    "placeholder": {
+      "title": "未找到运行记录",
+      "body": "这里将显示您所有机器人的运行记录。一旦机器人激活，其运行记录将记录在这里。",
+      "search": "没有运行记录与您的搜索匹配"
+    },
     "notifications": {
       "no_runs": "未找到运行记录。请重试。",
       "delete_success": "运行记录删除成功"
