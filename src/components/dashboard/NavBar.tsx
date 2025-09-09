@@ -413,7 +413,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                       <YouTube sx={{ marginRight: '5px' }} /> YouTube
                     </MenuItem>
                     <MenuItem onClick={() => {
-                      window.open('https://x.com/maxun_io?ref=app', '_blank');
+                      window.open('https://x.com/MaxunHQ?ref=app', '_blank');
                     }}>
                       <X sx={{ marginRight: '5px' }} /> Twitter (X)
                     </MenuItem>
