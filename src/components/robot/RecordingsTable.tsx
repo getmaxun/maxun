@@ -24,6 +24,7 @@ import {
   CircularProgress,
   FormControlLabel,
   Checkbox,
+  CircularProgress,
 } from "@mui/material";
 import {
   Schedule,
@@ -409,9 +410,7 @@ export const RecordingsTable = ({
   }
 
   useEffect(() => {
-    if (rows.length === 0) {
-      fetchRecordings();
-    }
+    fetchRecordings();
   }, [fetchRecordings]);
 
   useEffect(() => {
@@ -555,30 +554,30 @@ export const RecordingsTable = ({
       ) : (
         <>
           <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden', marginTop: '15px' }}>
-        <Table stickyHeader aria-label="sticky table">
-          <TableHead>
-            <TableRow>
-              {columns.map((column) => (
-                <MemoizedTableCell
-                  key={column.id}
-                  style={{ minWidth: column.minWidth }}
-                >
-                  {column.label}
-                </MemoizedTableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {visibleRows.map((row) => (
-              <TableRowMemoized
-                key={row.id}
-                row={row}
-                columns={columns}
-                handlers={handlers}
-              />
-            ))}
-          </TableBody>
-        </Table>
+            <Table stickyHeader aria-label="sticky table">
+              <TableHead>
+                <TableRow>
+                  {columns.map((column) => (
+                    <MemoizedTableCell
+                      key={column.id}
+                      style={{ minWidth: column.minWidth }}
+                    >
+                      {column.label}
+                    </MemoizedTableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {visibleRows.map((row) => (
+                  <TableRowMemoized
+                    key={row.id}
+                    row={row}
+                    columns={columns}
+                    handlers={handlers}
+                  />
+                ))}
+              </TableBody>
+            </Table>
           </TableContainer>
 
           <TablePagination

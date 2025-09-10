@@ -533,6 +533,7 @@ export class RemoteBrowser {
                         "--disable-extensions",
                         "--no-sandbox",
                         "--disable-dev-shm-usage",
+                        "--disable-gpu",
                         "--force-color-profile=srgb",
                         "--force-device-scale-factor=2",
                         "--ignore-certificate-errors",

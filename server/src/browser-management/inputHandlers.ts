@@ -636,12 +636,39 @@ const handleClickAction = async (
     const { selector, url, elementInfo, coordinates, isSPA = false } = data;
     const currentUrl = page.url();
 
-    await page.click(selector);
+    if (elementInfo && coordinates && (elementInfo.tagName === 'INPUT' || elementInfo.tagName === 'TEXTAREA')) {
+      try {
+        const elementHandle = await page.$(selector);
+        if (elementHandle) {
+          const boundingBox = await elementHandle.boundingBox();
+          if (boundingBox) {
+            await page.mouse.click(
+              boundingBox.x + coordinates.x, 
+              boundingBox.y + coordinates.y
+            );
+          } else {
+            await page.click(selector);
+          }
+        } else {
+          await page.click(selector);
+        }
+      } catch (error: any) {
+        logger.log("warn", `Failed to click at coordinates: ${error.message}`);
+        await page.click(selector);
+      }
+    } else {
+      await page.click(selector);
+    }
 
     const generator = activeBrowser.generator;
     await generator.onDOMClickAction(page, data);
 
     logger.log("debug", `Click action processed: ${selector}`);
+
+    if (elementInfo && (elementInfo.tagName === 'INPUT' || elementInfo.tagName === 'TEXTAREA')) {
+      logger.log("debug", `Input field click - skipping DOM snapshot for smooth typing`);
+      return;
+    }
 
     if (isSPA) {
       logger.log("debug", `SPA interaction detected for selector: ${selector}`);

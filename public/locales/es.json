@@ -48,6 +48,12 @@
     "options": "Opciones",
     "heading": "Mis Robots",
     "new": "Crear Robot",
+    "search_criteria": "Intente ajustar sus criterios de búsqueda",
+    "placeholder": {
+      "title": "Todo listo para empezar",
+      "body": "Los robots que cree aparecerán aquí. ¡Haga clic en \"Crear robot\" para comenzar!",
+      "search": "Ningún robot coincide con su búsqueda"
+    },
     "modal": {
       "title": "Ingresa la URL",
       "login_title": "¿Este sitio web requiere iniciar sesión?",
@@ -247,7 +253,15 @@
       "unable_create_settings": "No se pueden crear las configuraciones de la lista. Asegúrese de haber definido un campo para la lista.",
       "capture_text_discarded": "Captura de texto descartada",
       "capture_list_discarded": "Captura de lista descartada",
-      "label_required": "La etiqueta no puede estar vacía"
+      "label_required": "La etiqueta no puede estar vacía",
+      "duplicate_label": "Esta etiqueta ya existe. Por favor use una etiqueta única.",
+      "no_text_captured": "Por favor resalte y seleccione elementos de texto antes de confirmar.",
+      "capture_list_first": "Por favor posicione el cursor sobre una lista y seleccione campos de texto dentro de ella primero",
+      "confirm_all_list_fields": "Por favor confirme todos los campos de lista capturados antes de continuar"
+    },
+    "tooltips": {
+      "capture_list_first": "Posicione el cursor sobre una lista y seleccione campos de texto dentro de ella primero",
+      "confirm_all_list_fields": "Por favor confirme todos los campos de lista capturados antes de continuar"
     }
   },
   "save_recording": {
@@ -264,7 +278,8 @@
     },
     "errors": {
       "user_not_logged": "Usuario no conectado. No se puede guardar la grabación.",
-      "exists_warning": "Ya existe un robot con este nombre, por favor confirme la sobrescritura del robot."
+      "exists_warning": "Ya existe un robot con este nombre, por favor confirme la sobrescritura del robot.",
+      "no_actions_performed": "No se puede guardar el robot. Por favor realice al menos una acción de captura antes de guardar."
     },
     "tooltips": {
       "saving": "Optimizando y guardando el flujo de trabajo"
@@ -280,24 +295,6 @@
       "terminated": "La grabación actual fue terminada",
       "environment_reset": "El entorno del navegador ha sido reiniciado",
       "reset_successful": "Se reiniciaron correctamente todas las capturas y se volvió al estado inicial"
-    }
-  },
-  "interpretation_log": {
-    "titles": {
-      "output_preview": "Vista Previa de Datos de Salida",
-      "screenshot": "Captura de pantalla"
-    },
-    "messages": {
-      "additional_rows": "Se extraerán filas adicionales de datos una vez que termine la grabación.",
-      "successful_training": "¡Has entrenado exitosamente al robot para realizar acciones! Haz clic en el botón de abajo para obtener una vista previa de los datos que tu robot extraerá.",
-      "no_selection": "Parece que aún no has seleccionado nada para extraer. Una vez que lo hagas, el robot mostrará una vista previa de tus selecciones aquí."
-    },
-    "data_sections": {
-      "binary_received": "---------- Datos binarios de salida recibidos ----------",
-      "serializable_received": "---------- Datos serializables de salida recibidos ----------",
-      "mimetype": "tipo MIME: ",
-      "image_below": "La imagen se muestra a continuación:",
-      "separator": "--------------------------------------------------"
     }
   },
   "interpretation_buttons": {

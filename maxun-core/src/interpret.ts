@@ -64,6 +64,8 @@ export default class Interpreter extends EventEmitter {
   private concurrency: Concurrency;
 
   private stopper: Function | null = null;
+  
+  private isAborted: boolean = false;
 
   private log: typeof log;
 
@@ -112,6 +114,13 @@ export default class Interpreter extends EventEmitter {
       // Continue without ad-blocker rather than crashing
       this.blocker = null;
     })
+  }
+
+  /**
+   * Sets the abort flag to immediately stop all operations
+   */
+  public abort(): void {
+    this.isAborted = true;
   }
 
   private async applyAdBlocker(page: Page): Promise<void> {
@@ -372,6 +381,11 @@ export default class Interpreter extends EventEmitter {
  * @param steps Array of actions.
  */
   private async carryOutSteps(page: Page, steps: What[]): Promise<void> {
+    if (this.isAborted) {
+      this.log('Workflow aborted, stopping execution', Level.WARN);
+      return;
+    }
+
     /**
      * Defines overloaded (or added) methods/actions usable in the workflow.
      * If a method overloads any existing method of the Page class, it accepts the same set
@@ -433,6 +447,11 @@ export default class Interpreter extends EventEmitter {
       },
 
       scrapeSchema: async (schema: Record<string, { selector: string; tag: string, attribute: string; shadow: string}>) => {
+        if (this.isAborted) {
+          this.log('Workflow aborted, stopping scrapeSchema', Level.WARN);
+          return;
+        }
+
         if (this.options.debugChannel?.setActionType) {
           this.options.debugChannel.setActionType('scrapeSchema');
         }
@@ -468,6 +487,11 @@ export default class Interpreter extends EventEmitter {
       },
 
       scrapeList: async (config: { listSelector: string, fields: any, limit?: number, pagination: any }) => {
+        if (this.isAborted) {
+          this.log('Workflow aborted, stopping scrapeList', Level.WARN);
+          return;
+        }
+
         if (this.options.debugChannel?.setActionType) {
           this.options.debugChannel.setActionType('scrapeList');
         }
@@ -622,6 +646,11 @@ export default class Interpreter extends EventEmitter {
     limit?: number, 
     pagination: any 
 }) {
+    if (this.isAborted) {
+      this.log('Workflow aborted, stopping pagination', Level.WARN);
+      return [];
+    }
+
     let allResults: Record<string, any>[] = [];
     let previousHeight = 0;
     let scrapedItems: Set<string> = new Set<string>();
@@ -635,6 +664,12 @@ export default class Interpreter extends EventEmitter {
     };
 
     const scrapeCurrentPage = async () => {
+        // Check abort flag before scraping current page
+        if (this.isAborted) {
+          debugLog("Workflow aborted, stopping scrapeCurrentPage");
+          return;
+        }
+
         const results = await page.evaluate((cfg) => window.scrapeList(cfg), config);
         const newResults = results.filter(item => {
             const uniqueKey = JSON.stringify(item);
@@ -723,7 +758,12 @@ export default class Interpreter extends EventEmitter {
     let unchangedResultCounter = 0;
 
     try {
-      while (true) {    
+      while (true) {
+        if (this.isAborted) {
+          this.log('Workflow aborted during pagination loop', Level.WARN);
+          return allResults;
+        }
+        
         switch (config.pagination.type) {
           case 'scrollDown': {
             let previousResultCount = allResults.length;
@@ -734,10 +774,22 @@ export default class Interpreter extends EventEmitter {
               return allResults;
             }
 
-            await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+            await page.evaluate(() => {
+              const scrollHeight = Math.max(
+                document.body.scrollHeight,
+                document.documentElement.scrollHeight
+              );
+
+              window.scrollTo(0, scrollHeight);
+            });
             await page.waitForTimeout(2000);
 
-            const currentHeight = await page.evaluate(() => document.body.scrollHeight);
+            const currentHeight = await page.evaluate(() => {
+              return Math.max(
+                document.body.scrollHeight,
+                document.documentElement.scrollHeight
+              );
+            });
             const currentResultCount = allResults.length;
             
             if (currentResultCount === previousResultCount) {
@@ -969,6 +1021,11 @@ export default class Interpreter extends EventEmitter {
             // const MAX_NO_NEW_ITEMS = 2;
             
             while (true) {
+              if (this.isAborted) {
+                this.log('Workflow aborted during pagination loop', Level.WARN);
+                return allResults;
+              }
+
               // Find working button with retry mechanism
               const { button: loadMoreButton, workingSelector, updatedSelectors } = await findWorkingButton(availableSelectors);
 
@@ -1024,10 +1081,22 @@ export default class Interpreter extends EventEmitter {
           
               // Wait for content to load and check scroll height
               await page.waitForTimeout(2000);
-              await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+              await page.evaluate(() => {
+                const scrollHeight = Math.max(
+                  document.body.scrollHeight,
+                  document.documentElement.scrollHeight
+                );
+
+                window.scrollTo(0, scrollHeight);
+              });
               await page.waitForTimeout(2000);
-          
-              const currentHeight = await page.evaluate(() => document.body.scrollHeight);
+
+              const currentHeight = await page.evaluate(() => {
+                return Math.max(
+                  document.body.scrollHeight,
+                  document.documentElement.scrollHeight
+                );
+              });
               const heightChanged = currentHeight !== previousHeight;
               previousHeight = currentHeight;
               
@@ -1120,6 +1189,11 @@ export default class Interpreter extends EventEmitter {
   }
 
   private async runLoop(p: Page, workflow: Workflow) {
+    if (this.isAborted) {
+      this.log('Workflow aborted in runLoop', Level.WARN);
+      return;
+    }
+
     let workflowCopy: Workflow = JSON.parse(JSON.stringify(workflow));
 
     workflowCopy = this.removeSpecialSelectors(workflowCopy);
@@ -1150,6 +1224,11 @@ export default class Interpreter extends EventEmitter {
     const MAX_LOOP_ITERATIONS = 1000; // Circuit breaker
     
     while (true) {
+      if (this.isAborted) {
+        this.log('Workflow aborted during step execution', Level.WARN);
+        return;
+      }
+
       // Circuit breaker to prevent infinite loops
       if (++loopIterations > MAX_LOOP_ITERATIONS) {
         this.log('Maximum loop iterations reached, terminating to prevent infinite loop', Level.ERROR);
@@ -1232,6 +1311,11 @@ export default class Interpreter extends EventEmitter {
         }
         lastAction = action;
         
+        if (this.isAborted) {
+          this.log('Workflow aborted before action execution', Level.WARN);
+          return;
+        }
+
         try {
           console.log("Carrying out:", action.what);
           await this.carryOutSteps(p, action.what);

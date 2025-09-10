@@ -487,92 +487,92 @@ export const RunsTable: React.FC<RunsTableProps> = ({
       ) : (
         <>
           <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden' }}>
-        {Object.entries(groupedRows)
-          .slice(
-            accordionPage * accordionsPerPage,
-            accordionPage * accordionsPerPage + accordionsPerPage
-          )
-          .map(([robotMetaId, data]) => (
-            <Accordion 
-              key={robotMetaId}
-              expanded={expandedAccordions.has(robotMetaId)}
-              onChange={(event, isExpanded) => handleAccordionChange(robotMetaId, isExpanded)}
-              TransitionProps={{ unmountOnExit: true }} // Optimize accordion rendering
-            >
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="h6">{data[data.length - 1].name}</Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Table stickyHeader aria-label="sticky table">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell />
-                      {translatedColumns.map((column) => (
-                        <TableCell
-                          key={column.id}
-                          align={column.align}
-                          style={{ 
-                            minWidth: column.minWidth,
-                            cursor: column.id === 'startedAt' || column.id === 'finishedAt' ? 'pointer' : 'default'
-                          }}
-                          onClick={() => {
-                            if (column.id === 'startedAt' || column.id === 'finishedAt') {
-                              handleSort(column.id, robotMetaId);
-                            }
-                          }}
-                        >
-                          <Tooltip 
-                            title={
-                              (column.id === 'startedAt' || column.id === 'finishedAt')
-                                ? t('runstable.sort_tooltip')
-                                : ''
-                            }
-                          >
-                            <Box sx={{ 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              gap: 1,
-                              '&:hover': {
-                                '& .sort-icon': {
-                                  opacity: 1
+            {Object.entries(groupedRows)
+              .slice(
+                accordionPage * accordionsPerPage,
+                accordionPage * accordionsPerPage + accordionsPerPage
+              )
+              .map(([robotMetaId, data]) => (
+                <Accordion 
+                  key={robotMetaId}
+                  expanded={expandedAccordions.has(robotMetaId)}
+                  onChange={(event, isExpanded) => handleAccordionChange(robotMetaId, isExpanded)}
+                  TransitionProps={{ unmountOnExit: true }} // Optimize accordion rendering
+                >
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography variant="h6">{data[data.length - 1].name}</Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Table stickyHeader aria-label="sticky table">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell />
+                          {translatedColumns.map((column) => (
+                            <TableCell
+                              key={column.id}
+                              align={column.align}
+                              style={{ 
+                                minWidth: column.minWidth,
+                                cursor: column.id === 'startedAt' || column.id === 'finishedAt' ? 'pointer' : 'default'
+                              }}
+                              onClick={() => {
+                                if (column.id === 'startedAt' || column.id === 'finishedAt') {
+                                  handleSort(column.id, robotMetaId);
                                 }
-                              }
-                            }}>
-                              {column.label}
-                              <Box className="sort-icon" sx={{ 
-                                display: 'flex',
-                                alignItems: 'center',
-                                opacity: accordionSortConfigs[robotMetaId]?.field === column.id ? 1 : 0.3,
-                                transition: 'opacity 0.2s'
-                              }}>
-                                {renderSortIcon(column, robotMetaId)}
-                              </Box>
-                            </Box>
-                          </Tooltip>
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {renderTableRows(data, robotMetaId)}
-                  </TableBody>
-                </Table>
+                              }}
+                            >
+                              <Tooltip 
+                                title={
+                                  (column.id === 'startedAt' || column.id === 'finishedAt')
+                                    ? t('runstable.sort_tooltip')
+                                    : ''
+                                }
+                              >
+                                <Box sx={{ 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  gap: 1,
+                                  '&:hover': {
+                                    '& .sort-icon': {
+                                      opacity: 1
+                                    }
+                                  }
+                                }}>
+                                  {column.label}
+                                  <Box className="sort-icon" sx={{ 
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    opacity: accordionSortConfigs[robotMetaId]?.field === column.id ? 1 : 0.3,
+                                    transition: 'opacity 0.2s'
+                                  }}>
+                                    {renderSortIcon(column, robotMetaId)}
+                                  </Box>
+                                </Box>
+                              </Tooltip>
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {renderTableRows(data, robotMetaId)}
+                      </TableBody>
+                    </Table>
 
-                <TablePagination
-                  component="div"
-                  count={data.length}
-                  rowsPerPage={getPaginationState(robotMetaId).rowsPerPage}
-                  page={getPaginationState(robotMetaId).page}
-                  onPageChange={(_, newPage) => handleChangePage(robotMetaId, newPage)}
-                  onRowsPerPageChange={(event) => 
-                    handleChangeRowsPerPage(robotMetaId, +event.target.value)
-                  }
-                  rowsPerPageOptions={[10, 25, 50, 100]}
-                />
-              </AccordionDetails>
-            </Accordion>
-          ))}
-      </TableContainer>
+                    <TablePagination
+                      component="div"
+                      count={data.length}
+                      rowsPerPage={getPaginationState(robotMetaId).rowsPerPage}
+                      page={getPaginationState(robotMetaId).page}
+                      onPageChange={(_, newPage) => handleChangePage(robotMetaId, newPage)}
+                      onRowsPerPageChange={(event) => 
+                        handleChangeRowsPerPage(robotMetaId, +event.target.value)
+                      }
+                      rowsPerPageOptions={[10, 25, 50, 100]}
+                    />
+                  </AccordionDetails>
+                </Accordion>
+              ))}
+          </TableContainer>
 
           <TablePagination
             component="div"
