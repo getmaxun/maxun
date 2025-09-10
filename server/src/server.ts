@@ -144,6 +144,9 @@ if (require.main === module) {
       await connectDB();
       await syncDB();
       
+      logger.log('info', 'Cleaning up stale browser slots...');
+      browserPool.cleanupStaleBrowserSlots();
+      
       await recoverOrphanedRuns();
       await startWorkers();
       
