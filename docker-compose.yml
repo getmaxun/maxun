@@ -43,6 +43,9 @@ services:
       # to ensure Playwright works in Docker
       PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 0
+      # Force container/CI detection for headless mode
+      CI: "true"
+      CONTAINER: "true"
       # DEBUG: pw:api
       # PWDEBUG: 1  # Enables debugging
       CHROMIUM_FLAGS: '--disable-gpu --no-sandbox --headless=new'
