@@ -19,6 +19,7 @@ import { googleSheetUpdateTasks, processGoogleSheetUpdates } from './workflow-ma
 import { airtableUpdateTasks, processAirtableUpdates } from './workflow-management/integrations/airtable';
 import { io as serverIo } from "./server";
 import { sendWebhook } from './routes/webhook';
+import { BinaryOutputService } from './storage/mino';
 
 if (!process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_HOST || !process.env.DB_PORT || !process.env.DB_NAME) {
     throw new Error('Failed to start pgboss worker: one or more required environment variables are missing.');
@@ -242,11 +243,22 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
         log: interpretationInfo.log.join('\n')
       });
 
+      // Upload binary output to MinIO and update run with MinIO URLs
+      const updatedRun = await Run.findOne({ where: { runId: data.runId } });
+      if (updatedRun && updatedRun.binaryOutput && Object.keys(updatedRun.binaryOutput).length > 0) {
+        try {
+          const binaryService = new BinaryOutputService('maxun-run-screenshots');
+          await binaryService.uploadAndStoreBinaryOutput(updatedRun, updatedRun.binaryOutput);
+          logger.log('info', `Uploaded binary output to MinIO for run ${data.runId}`);
+        } catch (minioError: any) {
+          logger.log('error', `Failed to upload binary output to MinIO for run ${data.runId}: ${minioError.message}`);
+        }
+      }
+
       let totalSchemaItemsExtracted = 0;
       let totalListItemsExtracted = 0;
       let extractedScreenshotsCount = 0;
       
-      const updatedRun = await Run.findOne({ where: { runId: data.runId } });
       if (updatedRun) {
         if (updatedRun.serializableOutput) {
           if (updatedRun.serializableOutput.scrapeSchema) {

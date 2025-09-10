@@ -176,12 +176,23 @@ async function executeRun(id: string, userId: string) {
       log: interpretationInfo.log.join('\n'),
     });
 
+    // Upload binary output to MinIO and update run with MinIO URLs
+    const updatedRun = await Run.findOne({ where: { runId: id } });
+    if (updatedRun && updatedRun.binaryOutput && Object.keys(updatedRun.binaryOutput).length > 0) {
+      try {
+        const binaryService = new BinaryOutputService('maxun-run-screenshots');
+        await binaryService.uploadAndStoreBinaryOutput(updatedRun, updatedRun.binaryOutput);
+        logger.log('info', `Uploaded binary output to MinIO for scheduled run ${id}`);
+      } catch (minioError: any) {
+        logger.log('error', `Failed to upload binary output to MinIO for scheduled run ${id}: ${minioError.message}`);
+      }
+    }
+
     // Get metrics from persisted data for analytics and webhooks
     let totalSchemaItemsExtracted = 0;
     let totalListItemsExtracted = 0;
     let extractedScreenshotsCount = 0;
     
-    const updatedRun = await Run.findOne({ where: { runId: id } });
     if (updatedRun) {
       if (updatedRun.serializableOutput) {
         if (updatedRun.serializableOutput.scrapeSchema) {
