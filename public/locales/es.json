@@ -90,6 +90,7 @@
     "runs": "Todas las ejecuciones",
     "runStatus": "Estado",
     "runName": "Nombre",
+    "name": "Nombre",
     "startedAt": "Iniciado el",
     "finishedAt": "Finalizado el",
     "delete": "Eliminar",

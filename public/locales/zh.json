@@ -90,6 +90,7 @@
     "runs": "所有运行记录",
     "runStatus": "状态",
     "runName": "名称",
+    "name": "名称",
     "startedAt": "开始时间",
     "finishedAt": "结束时间",
     "delete": "删除",

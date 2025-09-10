@@ -21,6 +21,7 @@ import {
   Menu,
   ListItemIcon,
   ListItemText,
+  CircularProgress,
   FormControlLabel,
   Checkbox,
   CircularProgress,
@@ -155,7 +156,7 @@ export const RecordingsTable = ({
   const [searchTerm, setSearchTerm] = React.useState('');
   const [isWarningModalOpen, setWarningModalOpen] = React.useState(false);
   const [activeBrowserId, setActiveBrowserId] = React.useState('');
-  const [isLoading, setIsLoading] = React.useState(true);
+  const [isFetching, setIsFetching] = React.useState(true);
 
   const columns = useMemo(() => [
     { id: 'interpret', label: t('recordingtable.run'), minWidth: 80 },
@@ -273,7 +274,7 @@ export const RecordingsTable = ({
       console.error('Error fetching recordings:', error);
       notify('error', t('recordingtable.notifications.fetch_error'));
     } finally {
-      setIsLoading(false);
+      setIsFetching(false);
     }
   }, [setRecordings, notify, t]);
 
@@ -515,8 +516,8 @@ export const RecordingsTable = ({
           </IconButton>
         </Box>
       </Box>
-
-      {isLoading ? (
+      
+      {isFetching ? (
         <Box
           display="flex"
           justifyContent="center"

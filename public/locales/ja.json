@@ -90,6 +90,7 @@
         "runs": "すべての実行",
         "runStatus": "ステータス",
         "runName": "名前",
+        "name": "名前",
         "startedAt": "開始日時",
         "finishedAt": "終了日時",
         "delete": "削除",

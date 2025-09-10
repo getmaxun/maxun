@@ -11,7 +11,6 @@ import { GenericModal } from "../ui/GenericModal";
 import { modalStyle } from "../recorder/AddWhereCondModal";
 import { getUserById } from "../../api/auth";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
 
 interface RunTypeChipProps {
   runByUserId?: string;
@@ -22,9 +21,9 @@ interface RunTypeChipProps {
 const RunTypeChip: React.FC<RunTypeChipProps> = ({ runByUserId, runByScheduledId, runByAPI }) => {
   const { t } = useTranslation();
 
-  if (runByUserId) return <Chip label={t('runs_table.run_type_chips.manual_run')} color="primary" variant="outlined" />;
   if (runByScheduledId) return <Chip label={t('runs_table.run_type_chips.scheduled_run')} color="primary" variant="outlined" />;
   if (runByAPI) return <Chip label={t('runs_table.run_type_chips.api')} color="primary" variant="outlined" />;
+  if (runByUserId) return <Chip label={t('runs_table.run_type_chips.manual_run')} color="primary" variant="outlined" />;
   return <Chip label={t('runs_table.run_type_chips.unknown_run_type')} color="primary" variant="outlined" />;
 };
 
@@ -32,21 +31,20 @@ interface CollapsibleRowProps {
   row: Data;
   handleDelete: () => void;
   isOpen: boolean;
+  onToggleExpanded: (shouldExpand: boolean) => void;
   currentLog: string;
   abortRunHandler: (runId: string, robotName: string, browserId: string) => void;
   runningRecordingName: string;
   urlRunId: string | null;
 }
-export const CollapsibleRow = ({ row, handleDelete, isOpen, currentLog, abortRunHandler, runningRecordingName, urlRunId }: CollapsibleRowProps) => {
+export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, currentLog, abortRunHandler, runningRecordingName, urlRunId }: CollapsibleRowProps) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const [open, setOpen] = useState(isOpen);
   const [openSettingsModal, setOpenSettingsModal] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const runByLabel = row.runByUserId
-    ? `${userEmail}`
-    : row.runByScheduleId
-      ? `${row.runByScheduleId}`
+  const runByLabel = row.runByScheduleId
+    ?  `${row.runByScheduleId}` 
+    : row.runByUserId
+      ? `${userEmail}`
       : row.runByAPI
         ? 'API'
         : 'Unknown';
@@ -63,18 +61,9 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, currentLog, abortRun
     abortRunHandler(row.runId, row.name, row.browserId);
   }
 
-  useEffect(() => {
-    setOpen(urlRunId === row.runId || isOpen);
-  }, [urlRunId, row.runId, isOpen]);
-
   const handleRowExpand = () => {
-    const newOpen = !open;
-    setOpen(newOpen);
-    navigate(
-      newOpen 
-        ? `/runs/${row.robotMetaId}/run/${row.runId}`
-        : `/runs/${row.robotMetaId}`
-    );
+    const newOpen = !isOpen;
+    onToggleExpanded(newOpen);
     //scrollToLogBottom();
   };
   
@@ -103,7 +92,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, currentLog, abortRun
             size="small"
             onClick={handleRowExpand}
           >
-            {open ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
+            {isOpen ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
           </IconButton>
         </TableCell>
         {columns.map((column) => {
@@ -165,10 +154,10 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, currentLog, abortRun
                           />
                           <TextField
                             label={
-                              row.runByUserId
-                                ? t('runs_table.run_settings_modal.labels.run_by_user')
-                                : row.runByScheduleId
-                                  ? t('runs_table.run_settings_modal.labels.run_by_schedule')
+                              row.runByScheduleId
+                                ? t('runs_table.run_settings_modal.labels.run_by_schedule') 
+                                : row.runByUserId
+                                  ? t('runs_table.run_settings_modal.labels.run_by_user')
                                   : t('runs_table.run_settings_modal.labels.run_by_api')
                             }
                             value={runByLabel}
@@ -197,7 +186,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, currentLog, abortRun
       </TableRow>
       <TableRow>
         <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
-          <Collapse in={open} timeout="auto" unmountOnExit>
+          <Collapse in={isOpen} timeout="auto" unmountOnExit>
             <RunContent row={row} abortRunHandler={handleAbort} currentLog={currentLog}
               logEndRef={logEndRef} interpretationInProgress={runningRecordingName === row.name} />
           </Collapse>

@@ -90,6 +90,7 @@
         "runs": "Alle Ausführungen",
         "runStatus": "Status",
         "runName": "Name",
+        "name": "Name",
         "startedAt": "Gestartet am",
         "finishedAt": "Beendet am",
         "delete": "Löschen",

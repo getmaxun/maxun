@@ -90,6 +90,7 @@
     "runs": "Tüm Çalıştırmalar",
     "runStatus": "Durum",
     "runName": "Ad",
+    "name": "Ad",
     "startedAt": "Başlama",
     "finishedAt": "Bitiş",
     "delete": "Sil",
