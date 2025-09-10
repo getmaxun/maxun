@@ -48,6 +48,12 @@
         "options": "Optionen",
         "heading": "Meine Roboter",
         "new": "Roboter erstellen",
+        "search_criteria": "Versuchen Sie, Ihre Suchkriterien anzupassen",
+        "placeholder": {
+            "title": "Alles bereit für den Start",
+            "body": "Roboter, die Sie erstellen, werden hier angezeigt. Klicken Sie auf „Roboter erstellen“, um loszulegen!",
+            "search": "Keine Roboter entsprechen Ihrer Suche"
+        },
         "modal": {
             "title": "Geben Sie die URL ein",
             "login_title": "Ist für diese Website eine Anmeldung erforderlich?",
@@ -90,6 +96,11 @@
         "settings": "Einstellungen",
         "search": "Ausführungen suchen...",
         "sort_tooltip": "Zum Sortieren klicken",
+        "placeholder": {
+            "title": "Keine Durchläufe gefunden",
+            "body": "Hier werden alle Ihre Roboter-Durchläufe angezeigt. Sobald ein Roboter aktiv ist, werden seine Durchläufe hier protokolliert.",
+            "search": "Keine Durchläufe entsprechen Ihrer Suche"
+        },  
         "notifications": {
             "no_runs": "Keine Ausführungen gefunden. Bitte versuchen Sie es erneut.",
             "delete_success": "Ausführung erfolgreich gelöscht"

@@ -48,6 +48,12 @@
     "options": "Opciones",
     "heading": "Mis Robots",
     "new": "Crear Robot",
+    "search_criteria": "Intente ajustar sus criterios de búsqueda",
+    "placeholder": {
+      "title": "Todo listo para empezar",
+      "body": "Los robots que cree aparecerán aquí. ¡Haga clic en \"Crear robot\" para comenzar!",
+      "search": "Ningún robot coincide con su búsqueda"
+    },
     "modal": {
       "title": "Ingresa la URL",
       "login_title": "¿Este sitio web requiere iniciar sesión?",
@@ -90,6 +96,11 @@
     "settings": "Ajustes",
     "search": "Buscar ejecuciones...",
     "sort_tooltip": "Haga clic para ordenar",
+    "placeholder": {
+      "title": "No se encontraron ejecuciones",
+      "body": "Aquí aparecerán todas las ejecuciones de sus robots. Una vez que un robot esté activo, sus ejecuciones se registrarán aquí.",
+      "search": "Ninguna ejecución coincide con su búsqueda"
+    },
     "notifications": {
       "no_runs": "No se encontraron ejecuciones. Por favor, inténtelo de nuevo.",
       "delete_success": "Ejecución eliminada con éxito"
@@ -274,24 +285,6 @@
       "terminated": "La grabación actual fue terminada",
       "environment_reset": "El entorno del navegador ha sido reiniciado",
       "reset_successful": "Se reiniciaron correctamente todas las capturas y se volvió al estado inicial"
-    }
-  },
-  "interpretation_log": {
-    "titles": {
-      "output_preview": "Vista Previa de Datos de Salida",
-      "screenshot": "Captura de pantalla"
-    },
-    "messages": {
-      "additional_rows": "Se extraerán filas adicionales de datos una vez que termine la grabación.",
-      "successful_training": "¡Has entrenado exitosamente al robot para realizar acciones! Haz clic en el botón de abajo para obtener una vista previa de los datos que tu robot extraerá.",
-      "no_selection": "Parece que aún no has seleccionado nada para extraer. Una vez que lo hagas, el robot mostrará una vista previa de tus selecciones aquí."
-    },
-    "data_sections": {
-      "binary_received": "---------- Datos binarios de salida recibidos ----------",
-      "serializable_received": "---------- Datos serializables de salida recibidos ----------",
-      "mimetype": "tipo MIME: ",
-      "image_below": "La imagen se muestra a continuación:",
-      "separator": "--------------------------------------------------"
     }
   },
   "interpretation_buttons": {

@@ -48,6 +48,12 @@
     "options": "Seçenekler",
     "heading": "Robotlarım",
     "new": "Robot Oluştur",
+    "search_criteria": "Arama kriterlerinizi değiştirmeyi deneyin",
+    "placeholder": {
+      "title": "Başlamaya Hazırsınız",
+      "body": "Oluşturduğunuz robotlar burada görünecektir. Başlamak için \"Robot Oluştur\"a tıklayın!",
+      "search": "Aramanızla eşleşen robot yok"
+    },
     "modal": {
       "title": "URL’yi Girin",
       "login_title": "Bu web sitesine giriş gerekiyor mu?",
@@ -90,6 +96,11 @@
     "settings": "Ayarlar",
     "search": "Çalıştırma Ara...",
     "sort_tooltip": "Sıralamak için tıkla",
+    "placeholder": {
+      "title": "Çalıştırma Bulunamadı",
+      "body": "Tüm robot çalıştırmalarınız burada görünecektir. Bir robot aktif olduğunda, çalıştırmaları buraya kaydedilecektir.",
+      "search": "Aramanızla eşleşen çalıştırma yok"
+    },
     "notifications": {
       "no_runs": "Çalıştırma bulunamadı. Lütfen tekrar deneyin.",
       "delete_success": "Çalıştırma başarıyla silindi"
