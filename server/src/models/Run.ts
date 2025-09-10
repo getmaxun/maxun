@@ -25,6 +25,7 @@ interface RunAttributes {
   runByAPI?: boolean;
   serializableOutput: Record<string, any[]>;
   binaryOutput: Record<string, string>;
+  retryCount?: number;
 }
 
 interface RunCreationAttributes extends Optional<RunAttributes, 'id'> { }
@@ -46,6 +47,7 @@ class Run extends Model<RunAttributes, RunCreationAttributes> implements RunAttr
   public runByAPI!: boolean;
   public serializableOutput!: Record<string, any[]>;
   public binaryOutput!: Record<string, any>;
+  public retryCount!: number;
 }
 
 Run.init(
@@ -119,6 +121,11 @@ Run.init(
       type: DataTypes.JSONB,
       allowNull: true,
       defaultValue: {},
+    },
+    retryCount: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 0,
     },
   },
   {

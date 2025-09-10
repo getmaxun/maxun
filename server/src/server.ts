@@ -20,7 +20,8 @@ import connectPgSimple from 'connect-pg-simple';
 import pg from 'pg';
 import session from 'express-session';
 import Run from './models/Run';
-import { processQueuedRuns } from './routes/storage';
+import { processQueuedRuns, recoverOrphanedRuns } from './routes/storage';
+import { startWorkers } from './pgboss-worker';
 
 const app = express();
 app.use(cors({
@@ -143,6 +144,12 @@ if (require.main === module) {
       await connectDB();
       await syncDB();
       
+      logger.log('info', 'Cleaning up stale browser slots...');
+      browserPool.cleanupStaleBrowserSlots();
+      
+      await recoverOrphanedRuns();
+      await startWorkers();
+      
       io = new Server(server);
       
       io.of('/queued-run').on('connection', (socket) => {
@@ -211,20 +218,6 @@ if (require.main === module) {
 if (require.main === module) {
   process.on('SIGINT', async () => {
     console.log('Main app shutting down...');
-    try {
-      await Run.update(
-        {
-          status: 'failed',
-          finishedAt: new Date().toLocaleString(),
-          log: 'Process interrupted during execution - worker shutdown'
-        },
-        {
-          where: { status: 'running' }
-        }
-      );
-    } catch (error: any) {
-      console.error('Error updating runs:', error);
-    }
 
     try {
       console.log('Closing PostgreSQL connection pool...');

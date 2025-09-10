@@ -36,6 +36,14 @@ interface BrowserPoolInfo {
      * Can be "reserved", "initializing", "ready" or "failed".
      */
     status?: "reserved" | "initializing" | "ready" | "failed",
+    /**
+     * Timestamp when the browser slot was created/reserved
+     */
+    createdAt?: number,
+    /**
+     * Timestamp when the browser was last accessed
+     */
+    lastAccessed?: number,
 }
 
 /**
@@ -65,6 +73,12 @@ export class BrowserPool {
      * A user can have up to 2 browsers.
      */
     private userToBrowserMap: Map<string, string[]> = new Map();
+
+    /**
+     * Locks for atomic operations to prevent race conditions
+     * Key format: "userId-state", Value: timestamp when lock was acquired
+     */
+    private reservationLocks: Map<string, number> = new Map();
 
     /**
      * Adds a remote browser instance to the pool for a specific user.
@@ -570,7 +584,7 @@ export class BrowserPool {
     };
 
     /**
-     * Reserves a browser slot immediately without creating the actual browser.
+     * Reserves a browser slot atomically to prevent race conditions.
      * This ensures slot counting is accurate for rapid successive requests.
      * 
      * @param id browser ID to reserve
@@ -578,31 +592,65 @@ export class BrowserPool {
      * @param state browser state ("recording" or "run")
      * @returns true if slot was reserved, false if user has reached limit
      */
-    public reserveBrowserSlot = (id: string, userId: string, state: BrowserState = "run"): boolean => {
-        // Check if user has available slots first
-        if (!this.hasAvailableBrowserSlots(userId, state)) {
-            logger.log('debug', `Cannot reserve slot for user ${userId}: no available slots`);
+    public reserveBrowserSlotAtomic = (id: string, userId: string, state: BrowserState = "run"): boolean => {
+        const lockKey = `${userId}-${state}`;
+        
+        if (this.reservationLocks.has(lockKey)) {
+            logger.log('debug', `Reservation already in progress for user ${userId} state ${state}`);
             return false;
         }
+        
+        try {
+            this.reservationLocks.set(lockKey, Date.now());
+            
+            if (!this.hasAvailableBrowserSlots(userId, state)) {
+                logger.log('debug', `Cannot reserve slot for user ${userId}: no available slots`);
+                return false;
+            }
 
-        // Reserve the slot with null browser
-        this.pool[id] = {
-            browser: null,
-            active: false,
-            userId,
-            state,
-            status: "reserved"
-        };
+            if (this.pool[id]) {
+                logger.log('debug', `Browser slot ${id} already exists`);
+                return false;
+            }
 
-        // Update the user-to-browser mapping
-        let userBrowserIds = this.userToBrowserMap.get(userId) || [];
-        if (!userBrowserIds.includes(id)) {
-            userBrowserIds.push(id);
-            this.userToBrowserMap.set(userId, userBrowserIds);
+            const now = Date.now();
+            
+            this.pool[id] = {
+                browser: null,
+                active: false,
+                userId,
+                state,
+                status: "reserved",
+                createdAt: now,
+                lastAccessed: now
+            };
+
+            const userBrowserIds = this.userToBrowserMap.get(userId) || [];
+            if (!userBrowserIds.includes(id)) {
+                userBrowserIds.push(id);
+                this.userToBrowserMap.set(userId, userBrowserIds);
+            }
+
+            logger.log('info', `Atomically reserved browser slot ${id} for user ${userId} in state ${state}`);
+            return true;
+            
+        } catch (error: any) {
+            logger.log('error', `Error during atomic slot reservation: ${error.message}`);
+            if (this.pool[id] && this.pool[id].status === "reserved") {
+                this.deleteRemoteBrowser(id);
+            }
+            return false;
+        } finally {
+            this.reservationLocks.delete(lockKey);
         }
+    };
 
-        logger.log('info', `Reserved browser slot ${id} for user ${userId} in state ${state}`);
-        return true;
+    /**
+     * Legacy method - kept for backwards compatibility but now uses atomic version
+     * @deprecated Use reserveBrowserSlotAtomic instead
+     */
+    public reserveBrowserSlot = (id: string, userId: string, state: BrowserState = "run"): boolean => {
+        return this.reserveBrowserSlotAtomic(id, userId, state);
     };
 
     /**
@@ -630,14 +678,86 @@ export class BrowserPool {
     };
 
     /**
-     * Marks a reserved slot as failed and removes it.
+     * Marks a reserved slot as failed and removes it with proper cleanup.
      * 
      * @param id browser ID to mark as failed
      */
     public failBrowserSlot = (id: string): void => {
         if (this.pool[id]) {
             logger.log('info', `Marking browser slot ${id} as failed`);
+            
+            // Attempt to cleanup browser resources before deletion
+            const browserInfo = this.pool[id];
+            if (browserInfo.browser) {
+                try {
+                    // Try to close browser if it exists
+                    browserInfo.browser.switchOff?.().catch((error: any) => {
+                        logger.log('warn', `Error closing failed browser ${id}: ${error.message}`);
+                    });
+                } catch (error: any) {
+                    logger.log('warn', `Error during browser cleanup for ${id}: ${error.message}`);
+                }
+            }
+            
             this.deleteRemoteBrowser(id);
+        }
+    };
+
+    /**
+     * Cleanup stale browser slots that have been in reserved/initializing state too long
+     * This prevents resource leaks from failed initializations
+     */
+    public cleanupStaleBrowserSlots = (): void => {
+        const now = Date.now();
+        const staleThreshold = 5 * 60 * 1000; // 5 minutes
+        
+        const staleSlots: string[] = [];
+        
+        for (const [id, info] of Object.entries(this.pool)) {
+            const isStale = info.status === "reserved" || info.status === "initializing";
+            const createdAt = info.createdAt || 0;
+            const age = now - createdAt;
+            
+            if (isStale && info.browser === null && age > staleThreshold) {
+                staleSlots.push(id);
+            }
+        }
+        
+        staleSlots.forEach(id => {
+            const info = this.pool[id];
+            logger.log('warn', `Cleaning up stale browser slot ${id} with status ${info.status}, age: ${Math.round((now - (info.createdAt || 0)) / 1000)}s`);
+            this.failBrowserSlot(id);
+        });
+        
+        if (staleSlots.length > 0) {
+            logger.log('info', `Cleaned up ${staleSlots.length} stale browser slots`);
+        }
+        
+        this.cleanupStaleReservationLocks();
+    };
+
+    /**
+     * Cleans up reservation locks that are older than 1 minute
+     * This prevents locks from being held indefinitely due to crashes
+     */
+    private cleanupStaleReservationLocks = (): void => {
+        const now = Date.now();
+        const lockTimeout = 60 * 1000; // 1 minute
+        
+        const staleLocks: string[] = [];
+        
+        for (const [lockKey, timestamp] of this.reservationLocks.entries()) {
+            if (now - timestamp > lockTimeout) {
+                staleLocks.push(lockKey);
+            }
+        }
+        
+        staleLocks.forEach(lockKey => {
+            this.reservationLocks.delete(lockKey);
+        });
+        
+        if (staleLocks.length > 0) {
+            logger.log('warn', `Cleaned up ${staleLocks.length} stale reservation locks`);
         }
     };
 
@@ -652,5 +772,23 @@ export class BrowserPool {
             return null;
         }
         return this.pool[id].status || null;
+    };
+
+    /**
+     * Returns all browser instances in the pool.
+     * Used for cleanup operations like graceful shutdown.
+     * 
+     * @returns Map of browser IDs to browser instances
+     */
+    public getAllBrowsers = (): Map<string, RemoteBrowser> => {
+        const browsers = new Map<string, RemoteBrowser>();
+        
+        for (const [id, info] of Object.entries(this.pool)) {
+            if (info.browser) {
+                browsers.set(id, info.browser);
+            }
+        }
+        
+        return browsers;
     };
 }
