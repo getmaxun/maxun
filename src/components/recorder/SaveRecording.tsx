@@ -22,7 +22,7 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
   const [saveRecordingName, setSaveRecordingName] = useState<string>(fileName);
   const [waitingForSave, setWaitingForSave] = useState<boolean>(false);
 
-  const { browserId, setBrowserId, notify, recordings, isLogin, recordingName, retrainRobotId } = useGlobalInfoStore();
+  const { browserId, setBrowserId, notify, recordings, isLogin, recordingName, retrainRobotId, currentWorkflowActionsState } = useGlobalInfoStore();
   const { socket } = useSocketStore();
   const { state, dispatch } = useContext(AuthContext);
   const { user } = state;
@@ -53,6 +53,14 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
   };
 
   const handleFinishClick = () => {
+    const { hasScrapeListAction, hasScreenshotAction, hasScrapeSchemaAction } = currentWorkflowActionsState;
+    const hasAnyAction = hasScrapeListAction || hasScreenshotAction || hasScrapeSchemaAction;
+    
+    if (!hasAnyAction) {
+      notify('warning', t('save_recording.errors.no_actions_performed'));
+      return;
+    }
+
     if (recordingName && !recordings.includes(recordingName)) {
       saveRecording();
     } else {
@@ -74,10 +82,11 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
     }
     
     const notificationData = {
-      type: 'success',
+      type: data?.actionType === 'error' ? 'error' : 'success',
       message: successMessage,
       timestamp: Date.now()
     };
+    window.sessionStorage.setItem('pendingNotification', JSON.stringify(notificationData));
     
     if (window.opener) {
       window.opener.postMessage({
@@ -103,6 +112,14 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
   // releases resources and changes the view for main page by clearing the global browserId
   const saveRecording = async () => {
     if (user) {
+      const { hasScrapeListAction, hasScreenshotAction, hasScrapeSchemaAction } = currentWorkflowActionsState;
+      const hasAnyAction = hasScrapeListAction || hasScreenshotAction || hasScrapeSchemaAction;
+      
+      if (!hasAnyAction) {
+        notify('warning', t('save_recording.errors.no_actions_performed'));
+        return;
+      }
+
       const payload = { 
         fileName: saveRecordingName || recordingName, 
         userId: user.id, 

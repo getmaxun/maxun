@@ -252,7 +252,15 @@
       "unable_create_settings": "无法创建列表设置。请确保您已为列表定义了字段。",
       "capture_text_discarded": "文本捕获已放弃",
       "capture_list_discarded": "列表捕获已放弃",
-      "label_required": "标签不能为空"
+      "label_required": "标签不能为空",
+      "duplicate_label": "此标签已存在。请使用唯一的标签。",
+      "no_text_captured": "请在确认之前先高亮并选择文本元素。",
+      "capture_list_first": "请先将鼠标悬停在列表上并选择其中的文本字段",
+      "confirm_all_list_fields": "请在继续之前确认所有已捕获的列表字段"
+    },
+    "tooltips": {
+      "capture_list_first": "将鼠标悬停在列表上并选择其中的文本字段",
+      "confirm_all_list_fields": "请确认所有已捕获的列表字段"
     }
   },
   "save_recording": {
@@ -269,7 +277,8 @@
     },
     "errors": {
       "user_not_logged": "用户未登录。无法保存录制。",
-      "exists_warning": "已存在同名机器人，请确认是否覆盖机器人。"
+      "exists_warning": "已存在同名机器人，请确认是否覆盖机器人。",
+      "no_actions_performed": "无法保存机器人。请在保存之前至少执行一次捕获操作。"
     },
     "tooltips": {
       "saving": "正在优化并保存工作流程"

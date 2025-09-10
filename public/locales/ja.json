@@ -252,7 +252,15 @@
             "unable_create_settings": "リスト設定を作成できません。リストのフィールドを定義したことを確認してください。",
             "capture_text_discarded": "テキスト取得が破棄されました",
             "capture_list_discarded": "リスト取得が破棄されました",
-            "label_required": "ラベルは空にできません"
+            "label_required": "ラベルは空にできません",
+            "duplicate_label": "このラベルは既に存在します。固有のラベルを使用してください。",
+            "no_text_captured": "確認する前にテキスト要素をハイライトして選択してください。",
+            "capture_list_first": "まずリストの上にカーソルを置き、その中のテキストフィールドを選択してください",
+            "confirm_all_list_fields": "続行する前にすべてのキャプチャされたリストフィールドを確認してください"
+        },
+        "tooltips": {
+            "capture_list_first": "リストの上にカーソルを置き、その中のテキストフィールドを選択してください",
+            "confirm_all_list_fields": "すべてのキャプチャされたリストフィールドを確認してください"
         }
     },
     "save_recording": {
@@ -269,7 +277,8 @@
         },
         "errors": {
             "user_not_logged": "ユーザーがログインしていません。録画を保存できません。",
-            "exists_warning": "この名前のロボットは既に存在します。ロボットの上書きを確認してください。"
+            "exists_warning": "この名前のロボットは既に存在します。ロボットの上書きを確認してください。",
+            "no_actions_performed": "ロボットを保存できません。保存する前に少なくとも1つのキャプチャアクションを実行してください。"
         },
         "tooltips": {
             "saving": "ワークフローを最適化して保存中"
