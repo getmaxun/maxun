@@ -24,7 +24,6 @@ import {
   CircularProgress,
   FormControlLabel,
   Checkbox,
-  CircularProgress,
 } from "@mui/material";
 import {
   Schedule,
