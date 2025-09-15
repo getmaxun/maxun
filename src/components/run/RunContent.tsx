@@ -43,6 +43,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
   const [schemaData, setSchemaData] = useState<any[]>([]);
   const [schemaColumns, setSchemaColumns] = useState<string[]>([]);
+  const [isSchemaTabular, setIsSchemaTabular] = useState<boolean>(false);
 
   const [listData, setListData] = useState<any[][]>([]);
   const [listColumns, setListColumns] = useState<string[][]>([]);
@@ -62,6 +63,18 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   }, [interpretationInProgress]);
 
   useEffect(() => {
+    if (row.status === 'running' || row.status === 'queued' || row.status === 'scheduled') {
+      setSchemaData([]);
+      setSchemaColumns([]);
+      setListData([]);
+      setListColumns([]);
+      setLegacyData([]);
+      setLegacyColumns([]);
+      setIsLegacyData(false);
+      setIsSchemaTabular(false);
+      return;
+    }
+
     if (!row.serializableOutput) return;
 
     if (!row.serializableOutput.scrapeSchema &&
@@ -76,20 +89,29 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     setIsLegacyData(false);
 
     if (row.serializableOutput.scrapeSchema && Object.keys(row.serializableOutput.scrapeSchema).length > 0) {
-      processDataCategory(row.serializableOutput.scrapeSchema, setSchemaData, setSchemaColumns);
+      processSchemaData(row.serializableOutput.scrapeSchema);
     }
 
     if (row.serializableOutput.scrapeList) {
       processScrapeList(row.serializableOutput.scrapeList);
     }
-  }, [row.serializableOutput]);
+  }, [row.serializableOutput, row.status]);
 
   useEffect(() => {
+    if (row.status === 'running' || row.status === 'queued' || row.status === 'scheduled') {
+      setScreenshotKeys([]);
+      setCurrentScreenshotIndex(0);
+      return;
+    }
+
     if (row.binaryOutput && Object.keys(row.binaryOutput).length > 0) {
       setScreenshotKeys(Object.keys(row.binaryOutput));
       setCurrentScreenshotIndex(0);
+    } else {
+      setScreenshotKeys([]);
+      setCurrentScreenshotIndex(0);
     }
-  }, [row.binaryOutput]);
+  }, [row.binaryOutput, row.status]);
 
   const processLegacyData = (legacyOutput: Record<string, any>) => {
     let allData: any[] = [];
@@ -115,20 +137,57 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     }
   };
 
-  const processDataCategory = (
-    categoryData: Record<string, any>,
-    setData: React.Dispatch<React.SetStateAction<any[]>>,
-    setColumns: React.Dispatch<React.SetStateAction<string[]>>
-  ) => {
-    let allData: any[] = [];
+  const processSchemaData = (schemaOutput: any) => {
+    if (Array.isArray(schemaOutput)) {
+      const filteredData = schemaOutput.filter(row =>
+        row && Object.values(row).some(value => value !== undefined && value !== "")
+      );
 
-    Object.keys(categoryData).forEach(key => {
-      const data = categoryData[key];
+      if (filteredData.length > 0) {
+        const allColumns = new Set<string>();
+        filteredData.forEach(item => {
+          Object.keys(item).forEach(key => allColumns.add(key));
+        });
+
+        setSchemaData(filteredData);
+        setSchemaColumns(Array.from(allColumns));
+        setIsSchemaTabular(filteredData.length > 1);
+        return;
+      }
+    }
+
+    if (schemaOutput['schema-tabular']) {
+      const tabularData = schemaOutput['schema-tabular'];
+      if (Array.isArray(tabularData) && tabularData.length > 0) {
+        const filteredData = tabularData.filter(row =>
+          Object.values(row).some(value => value !== undefined && value !== "")
+        );
+
+        if (filteredData.length > 0) {
+          const allColumns = new Set<string>();
+          filteredData.forEach(item => {
+            Object.keys(item).forEach(key => allColumns.add(key));
+          });
+
+          setSchemaData(filteredData);
+          setSchemaColumns(Array.from(allColumns));
+          setIsSchemaTabular(true);
+          return;
+        }
+      }
+    }
+
+    let allData: any[] = [];
+    let hasMultipleEntries = false;
+
+    Object.keys(schemaOutput).forEach(key => {
+      const data = schemaOutput[key];
       if (Array.isArray(data)) {
         const filteredData = data.filter(row =>
           Object.values(row).some(value => value !== undefined && value !== "")
         );
         allData = [...allData, ...filteredData];
+        if (filteredData.length > 1) hasMultipleEntries = true;
       }
     });
 
@@ -138,8 +197,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
         Object.keys(item).forEach(key => allColumns.add(key));
       });
 
-      setData(allData);
-      setColumns(Array.from(allColumns));
+      setSchemaData(allData);
+      setSchemaColumns(Array.from(allColumns));
+      setIsSchemaTabular(hasMultipleEntries || allData.length > 1);
     }
   };
 
@@ -193,28 +253,29 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     setCurrentListIndex(0);
   };
 
-  // Function to convert table data to CSV format
-  const convertToCSV = (data: any[], columns: string[], isSchemaData: boolean = false): string => {
-    if (isSchemaData) {
-      // For schema data, export as Label-Value pairs
+  const convertToCSV = (data: any[], columns: string[], isSchemaData: boolean = false, isTabular: boolean = false): string => {
+    if (isSchemaData && !isTabular && data.length === 1) {
       const header = 'Label,Value';
       const rows = columns.map(column => 
         `"${column}","${data[0][column] || ""}"`
       );
       return [header, ...rows].join('\n');
     } else {
-      // For regular table data, export as normal table
-      const header = columns.join(',');
+      const header = columns.map(col => `"${col}"`).join(',');
       const rows = data.map(row =>
-        columns.map(col => JSON.stringify(row[col] || "", null, 2)).join(',')
+        columns.map(col => {
+          const value = row[col] || "";
+          const escapedValue = String(value).replace(/"/g, '""');
+          return `"${escapedValue}"`;
+        }).join(',')
       );
       return [header, ...rows].join('\n');
     }
   };
 
   // Function to download a specific dataset as CSV
-  const downloadCSV = (data: any[], columns: string[], filename: string, isSchemaData: boolean = false) => {
-    const csvContent = convertToCSV(data, columns, isSchemaData);
+  const downloadCSV = (data: any[], columns: string[], filename: string, isSchemaData: boolean = false, isTabular: boolean = false) => {
+    const csvContent = convertToCSV(data, columns, isSchemaData, isTabular);
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
 
@@ -224,6 +285,10 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 100);
   };
 
   const downloadJSON = (data: any[], filename: string) => {
@@ -261,11 +326,12 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
   const renderDataTable = (
     data: any[],
-    columns: any[],
+    columns: string[],
     title: string,
     csvFilename: string,
     jsonFilename: string,
-    isPaginatedList: boolean = false
+    isPaginatedList: boolean = false,
+    isSchemaData: boolean = false
   ) => {
     if (!isPaginatedList && data.length === 0) return null;
     if (isPaginatedList && (listData.length === 0 || currentListIndex >= listData.length)) return null;
@@ -275,7 +341,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
     if (!currentData || currentData.length === 0) return null;
 
-    const isSchemaData = title.toLowerCase().includes('text') || title.toLowerCase().includes('schema');
+    const shouldShowAsKeyValue = isSchemaData && !isSchemaTabular && currentData.length === 1;
 
     return (
       <Accordion defaultExpanded sx={{ mb: 2 }}>
@@ -314,7 +380,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
               <Button 
                 component="a"
-                onClick={() => downloadCSV(currentData, currentColumns, csvFilename, isSchemaData)}
+                onClick={() => downloadCSV(currentData, currentColumns, csvFilename, isSchemaData, isSchemaTabular)}
                 sx={{ 
                   color: '#FF00C3', 
                   textTransform: 'none',
@@ -366,7 +432,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
             <Table stickyHeader aria-label="sticky table">
               <TableHead>
                 <TableRow>
-                  {isSchemaData ? (
+                  {shouldShowAsKeyValue ? (
                     <>
                       <TableCell 
                         sx={{ 
@@ -404,7 +470,8 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 </TableRow>
               </TableHead>
               <TableBody>
-                {isSchemaData ? (
+                {shouldShowAsKeyValue ? (
+                  // Single schema entry - show as key-value pairs
                   currentColumns.map((column) => (
                     <TableRow key={column}>
                       <TableCell sx={{ fontWeight: 500 }}>
@@ -416,6 +483,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                     </TableRow>
                   ))
                 ) : (
+                  // Multiple entries or list data - show as table
                   currentData.map((row, index) => (
                     <TableRow key={index}>
                       {(isPaginatedList ? currentColumns : columns).map((column) => (
@@ -536,15 +604,17 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   {renderDataTable(
                     schemaData,
                     schemaColumns,
-                    t('run_content.captured_data.schema_title'),
+                    t('run_content.captured_data.schema_title', 'Captured Texts'),
                     'schema_data.csv',
-                    'schema_data.json'
+                    'schema_data.json',
+                    false,
+                    true
                   )}
 
                   {listData.length > 0 && renderDataTable(
-                    listData,
-                    listColumns,
-                    t('run_content.captured_data.list_title'),
+                    [],
+                    [],
+                    t('run_content.captured_data.list_title', 'Captured Lists'),
                     'list_data.csv',
                     'list_data.json',
                     true

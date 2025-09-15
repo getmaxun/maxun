@@ -48,6 +48,12 @@
         "options": "Optionen",
         "heading": "Meine Roboter",
         "new": "Roboter erstellen",
+        "search_criteria": "Versuchen Sie, Ihre Suchkriterien anzupassen",
+        "placeholder": {
+            "title": "Alles bereit für den Start",
+            "body": "Roboter, die Sie erstellen, werden hier angezeigt. Klicken Sie auf „Roboter erstellen“, um loszulegen!",
+            "search": "Keine Roboter entsprechen Ihrer Suche"
+        },
         "modal": {
             "title": "Geben Sie die URL ein",
             "login_title": "Ist für diese Website eine Anmeldung erforderlich?",
@@ -84,12 +90,18 @@
         "runs": "Alle Ausführungen",
         "runStatus": "Status",
         "runName": "Name",
+        "name": "Name",
         "startedAt": "Gestartet am",
         "finishedAt": "Beendet am",
         "delete": "Löschen",
         "settings": "Einstellungen",
         "search": "Ausführungen suchen...",
         "sort_tooltip": "Zum Sortieren klicken",
+        "placeholder": {
+            "title": "Keine Durchläufe gefunden",
+            "body": "Hier werden alle Ihre Roboter-Durchläufe angezeigt. Sobald ein Roboter aktiv ist, werden seine Durchläufe hier protokolliert.",
+            "search": "Keine Durchläufe entsprechen Ihrer Suche"
+        },  
         "notifications": {
             "no_runs": "Keine Ausführungen gefunden. Bitte versuchen Sie es erneut.",
             "delete_success": "Ausführung erfolgreich gelöscht"
@@ -241,7 +253,15 @@
             "unable_create_settings": "Listeneinstellungen können nicht erstellt werden. Stellen Sie sicher, dass Sie ein Feld für die Liste definiert haben.",
             "capture_text_discarded": "Texterfassung verworfen",
             "capture_list_discarded": "Listenerfassung verworfen",
-            "label_required": "Beschriftung darf nicht leer sein"
+            "label_required": "Beschriftung darf nicht leer sein",
+            "duplicate_label": "Diese Beschriftung existiert bereits. Bitte verwenden Sie eine eindeutige Beschriftung.",
+            "no_text_captured": "Bitte markieren und wählen Sie Textelemente aus, bevor Sie bestätigen.",
+            "capture_list_first": "Bitte bewegen Sie die Maus über eine Liste und wählen Sie Textfelder darin aus",
+            "confirm_all_list_fields": "Bitte bestätigen Sie alle erfassten Listenfelder, bevor Sie fortfahren"
+        },
+        "tooltips": {
+            "capture_list_first": "Bewegen Sie die Maus über eine Liste und wählen Sie Textfelder darin aus",
+            "confirm_all_list_fields": "Bitte bestätigen Sie alle erfassten Listenfelder, bevor Sie fortfahren"
         }
     },
     "save_recording": {
@@ -258,7 +278,8 @@
         },
         "errors": {
             "user_not_logged": "Benutzer nicht angemeldet. Aufnahme kann nicht gespeichert werden.",
-            "exists_warning": "Ein Roboter mit diesem Namen existiert bereits, bitte bestätigen Sie das Überschreiben des Roboters."
+            "exists_warning": "Ein Roboter mit diesem Namen existiert bereits, bitte bestätigen Sie das Überschreiben des Roboters.",
+            "no_actions_performed": "Roboter kann nicht gespeichert werden. Bitte führen Sie mindestens eine Erfassungsaktion durch, bevor Sie speichern."
         },
         "tooltips": {
             "saving": "Workflow wird optimiert und gespeichert"

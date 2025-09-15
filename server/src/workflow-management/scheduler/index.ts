@@ -106,6 +106,39 @@ async function executeRun(id: string, userId: string) {
 
     const plainRun = run.toJSON();
 
+    if (run.status === 'aborted' || run.status === 'aborting') {
+      logger.log('info', `Scheduled Run ${id} has status ${run.status}, skipping execution`);
+      return {
+        success: false,
+        error: `Run has status ${run.status}`
+      }
+    }
+
+    if (run.status === 'queued') {
+      logger.log('info', `Scheduled Run ${id} has status 'queued', skipping stale execution - will be handled by recovery`);
+      return {
+        success: false,
+        error: 'Run is queued and will be handled by recovery'
+      }
+    }
+
+    const retryCount = plainRun.retryCount || 0;
+    if (retryCount >= 3) {
+      logger.log('warn', `Scheduled Run ${id} has exceeded max retries (${retryCount}/3), marking as failed`);
+      const recording = await Robot.findOne({ where: { 'recording_meta.id': plainRun.robotMetaId, userId }, raw: true });
+
+      await run.update({
+        status: 'failed',
+        finishedAt: new Date().toLocaleString(),
+        log: plainRun.log ? `${plainRun.log}\nMax retries exceeded (3/3) - Run failed after multiple attempts.` : `Max retries exceeded (3/3) - Run failed after multiple attempts.`
+      });
+
+      return {
+        success: false,
+        error: 'Max retries exceeded'
+      }
+    }
+
     const recording = await Robot.findOne({ where: { 'recording_meta.id': plainRun.robotMetaId }, raw: true });
     if (!recording) {
       return {
@@ -127,58 +160,63 @@ async function executeRun(id: string, userId: string) {
     }
 
     const workflow = AddGeneratedFlags(recording.recording);
+    
+    // Set run ID for real-time data persistence
+    browser.interpreter.setRunId(id);
+    
     const interpretationInfo = await browser.interpreter.InterpretRecording(
       workflow, currentPage, (newPage: Page) => currentPage = newPage, plainRun.interpreterSettings
     );
 
-    const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
-    const uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, interpretationInfo.binaryOutput);
-
-    const categorizedOutput = {
-      scrapeSchema: interpretationInfo.scrapeSchemaOutput || {},
-      scrapeList: interpretationInfo.scrapeListOutput || {},
-    };
-
     await destroyRemoteBrowser(plainRun.browserId, userId);
 
     await run.update({
-      ...run,
       status: 'success',
       finishedAt: new Date().toLocaleString(),
-      browserId: plainRun.browserId,
       log: interpretationInfo.log.join('\n'),
-      serializableOutput: {
-        scrapeSchema: Object.values(categorizedOutput.scrapeSchema),
-        scrapeList: Object.values(categorizedOutput.scrapeList),
-      },
-      binaryOutput: uploadedBinaryOutput,
     });
 
-    // Track extraction metrics
+    // Upload binary output to MinIO and update run with MinIO URLs
+    const updatedRun = await Run.findOne({ where: { runId: id } });
+    if (updatedRun && updatedRun.binaryOutput && Object.keys(updatedRun.binaryOutput).length > 0) {
+      try {
+        const binaryService = new BinaryOutputService('maxun-run-screenshots');
+        await binaryService.uploadAndStoreBinaryOutput(updatedRun, updatedRun.binaryOutput);
+        logger.log('info', `Uploaded binary output to MinIO for scheduled run ${id}`);
+      } catch (minioError: any) {
+        logger.log('error', `Failed to upload binary output to MinIO for scheduled run ${id}: ${minioError.message}`);
+      }
+    }
+
+    // Get metrics from persisted data for analytics and webhooks
     let totalSchemaItemsExtracted = 0;
     let totalListItemsExtracted = 0;
     let extractedScreenshotsCount = 0;
     
-    if (categorizedOutput.scrapeSchema) {
-      Object.values(categorizedOutput.scrapeSchema).forEach((schemaResult: any) => {
-        if (Array.isArray(schemaResult)) {
-          totalSchemaItemsExtracted += schemaResult.length;
-        } else if (schemaResult && typeof schemaResult === 'object') {
-          totalSchemaItemsExtracted += 1;
+    if (updatedRun) {
+      if (updatedRun.serializableOutput) {
+        if (updatedRun.serializableOutput.scrapeSchema) {
+          Object.values(updatedRun.serializableOutput.scrapeSchema).forEach((schemaResult: any) => {
+            if (Array.isArray(schemaResult)) {
+              totalSchemaItemsExtracted += schemaResult.length;
+            } else if (schemaResult && typeof schemaResult === 'object') {
+              totalSchemaItemsExtracted += 1;
+            }
+          });
         }
-      });
-    }
-    
-    if (categorizedOutput.scrapeList) {
-      Object.values(categorizedOutput.scrapeList).forEach((listResult: any) => {
-        if (Array.isArray(listResult)) {
-          totalListItemsExtracted += listResult.length;
+        
+        if (updatedRun.serializableOutput.scrapeList) {
+          Object.values(updatedRun.serializableOutput.scrapeList).forEach((listResult: any) => {
+            if (Array.isArray(listResult)) {
+              totalListItemsExtracted += listResult.length;
+            }
+          });
         }
-      });
-    }
-    
-    if (uploadedBinaryOutput) {
-      extractedScreenshotsCount = Object.keys(uploadedBinaryOutput).length;
+      }
+      
+      if (updatedRun.binaryOutput) {
+        extractedScreenshotsCount = Object.keys(updatedRun.binaryOutput).length;
+      }
     }
     
     const totalRowsExtracted = totalSchemaItemsExtracted + totalListItemsExtracted;
@@ -204,8 +242,8 @@ async function executeRun(id: string, userId: string) {
       started_at: plainRun.startedAt,
       finished_at: new Date().toLocaleString(),
       extracted_data: {
-        captured_texts: Object.values(categorizedOutput.scrapeSchema).flat() || [],
-        captured_lists: categorizedOutput.scrapeList,
+        captured_texts: updatedRun?.serializableOutput?.scrapeSchema ? Object.values(updatedRun.serializableOutput.scrapeSchema).flat() : [],
+        captured_lists: updatedRun?.serializableOutput?.scrapeList || {},
         total_rows: totalRowsExtracted,
         captured_texts_count: totalSchemaItemsExtracted,
         captured_lists_count: totalListItemsExtracted,

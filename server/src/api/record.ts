@@ -597,65 +597,64 @@ async function executeRun(id: string, userId: string) {
         }
 
         const workflow = AddGeneratedFlags(recording.recording);
+        
+        browser.interpreter.setRunId(id);
+        
         const interpretationInfo = await browser.interpreter.InterpretRecording(
             workflow, currentPage, (newPage: Page) => currentPage = newPage, plainRun.interpreterSettings
         );
 
-        const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
-        const uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, interpretationInfo.binaryOutput);
-
-        const categorizedOutput = {
-            scrapeSchema: interpretationInfo.scrapeSchemaOutput || {},
-            scrapeList: interpretationInfo.scrapeListOutput || {},
-        };
-
         await destroyRemoteBrowser(plainRun.browserId, userId);
 
         const updatedRun = await run.update({
-            ...run,
             status: 'success',
             finishedAt: new Date().toLocaleString(),
-            browserId: plainRun.browserId,
             log: interpretationInfo.log.join('\n'),
-            serializableOutput: {
-                scrapeSchema: Object.values(categorizedOutput.scrapeSchema),
-                scrapeList: Object.values(categorizedOutput.scrapeList),
-            },
-            binaryOutput: uploadedBinaryOutput,
         });
 
-      let totalSchemaItemsExtracted = 0;
-      let totalListItemsExtracted = 0;
-      let extractedScreenshotsCount = 0;
-      
-      if (categorizedOutput.scrapeSchema) {
-        Object.values(categorizedOutput.scrapeSchema).forEach((schemaResult: any) => {
-          if (Array.isArray(schemaResult)) {
-            totalSchemaItemsExtracted += schemaResult.length;
-          } else if (schemaResult && typeof schemaResult === 'object') {
-            totalSchemaItemsExtracted += 1;
-          }
-        });
-      }
-      
-      if (categorizedOutput.scrapeList) {
-        Object.values(categorizedOutput.scrapeList).forEach((listResult: any) => {
-          if (Array.isArray(listResult)) {
-            totalListItemsExtracted += listResult.length;
-          }
-        });
-      }
-      
-      if (uploadedBinaryOutput) {
-        extractedScreenshotsCount = Object.keys(uploadedBinaryOutput).length;
-      }
-      
-      const totalRowsExtracted = totalSchemaItemsExtracted + totalListItemsExtracted;
-      
-      console.log(`Extracted Schema Items Count: ${totalSchemaItemsExtracted}`);
-      console.log(`Extracted List Items Count: ${totalListItemsExtracted}`);
-      console.log(`Extracted Screenshots Count: ${extractedScreenshotsCount}`);
-      console.log(`Total Rows Extracted: ${totalRowsExtracted}`);
+        // Upload binary output to MinIO and update run with MinIO URLs
+        const finalRun = await Run.findOne({ where: { runId: id } });
+        if (finalRun && finalRun.binaryOutput && Object.keys(finalRun.binaryOutput).length > 0) {
+            try {
+                const binaryService = new BinaryOutputService('maxun-run-screenshots');
+                await binaryService.uploadAndStoreBinaryOutput(finalRun, finalRun.binaryOutput);
+                logger.log('info', `Uploaded binary output to MinIO for API run ${id}`);
+            } catch (minioError: any) {
+                logger.log('error', `Failed to upload binary output to MinIO for API run ${id}: ${minioError.message}`);
+            }
+        }
+
+        let totalSchemaItemsExtracted = 0;
+        let totalListItemsExtracted = 0;
+        let extractedScreenshotsCount = 0;
+        
+        if (finalRun) {
+            if (finalRun.serializableOutput) {
+                if (finalRun.serializableOutput.scrapeSchema) {
+                    Object.values(finalRun.serializableOutput.scrapeSchema).forEach((schemaResult: any) => {
+                        if (Array.isArray(schemaResult)) {
+                            totalSchemaItemsExtracted += schemaResult.length;
+                        } else if (schemaResult && typeof schemaResult === 'object') {
+                            totalSchemaItemsExtracted += 1;
+                        }
+                    });
+                }
+                
+                if (finalRun.serializableOutput.scrapeList) {
+                    Object.values(finalRun.serializableOutput.scrapeList).forEach((listResult: any) => {
+                        if (Array.isArray(listResult)) {
+                            totalListItemsExtracted += listResult.length;
+                        }
+                    });
+                }
+            }
+            
+            if (finalRun.binaryOutput) {
+                extractedScreenshotsCount = Object.keys(finalRun.binaryOutput).length;
+            }
+        }
+        
+        const totalRowsExtracted = totalSchemaItemsExtracted + totalListItemsExtracted;
 
         capture('maxun-oss-run-created-api',{
                 runId: id,
@@ -668,7 +667,6 @@ async function executeRun(id: string, userId: string) {
             }
         )
 
-        // Trigger webhooks for run completion
         const webhookPayload = {
             robot_id: plainRun.robotMetaId,
             run_id: plainRun.runId,
@@ -677,8 +675,8 @@ async function executeRun(id: string, userId: string) {
             started_at: plainRun.startedAt,
             finished_at: new Date().toLocaleString(),
             extracted_data: {
-                captured_texts: Object.values(categorizedOutput.scrapeSchema).flat() || [],
-                captured_lists: categorizedOutput.scrapeList,
+                captured_texts: finalRun?.serializableOutput?.scrapeSchema ? Object.values(finalRun.serializableOutput.scrapeSchema).flat() : [],
+                captured_lists: finalRun?.serializableOutput?.scrapeList || {},
                 total_rows: totalRowsExtracted,
                 captured_texts_count: totalSchemaItemsExtracted,
                 captured_lists_count: totalListItemsExtracted,

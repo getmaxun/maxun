@@ -21,6 +21,7 @@ import {
   Menu,
   ListItemIcon,
   ListItemText,
+  CircularProgress,
   FormControlLabel,
   Checkbox,
 } from "@mui/material";
@@ -154,6 +155,7 @@ export const RecordingsTable = ({
   const [searchTerm, setSearchTerm] = React.useState('');
   const [isWarningModalOpen, setWarningModalOpen] = React.useState(false);
   const [activeBrowserId, setActiveBrowserId] = React.useState('');
+  const [isFetching, setIsFetching] = React.useState(true);
 
   const columns = useMemo(() => [
     { id: 'interpret', label: t('recordingtable.run'), minWidth: 80 },
@@ -270,6 +272,8 @@ export const RecordingsTable = ({
     } catch (error) {
       console.error('Error fetching recordings:', error);
       notify('error', t('recordingtable.notifications.fetch_error'));
+    } finally {
+      setIsFetching(false);
     }
   }, [setRecordings, notify, t]);
 
@@ -405,9 +409,7 @@ export const RecordingsTable = ({
   }
 
   useEffect(() => {
-    if (rows.length === 0) {
-      fetchRecordings();
-    }
+    fetchRecordings();
   }, [fetchRecordings]);
 
   useEffect(() => {
@@ -513,42 +515,81 @@ export const RecordingsTable = ({
           </IconButton>
         </Box>
       </Box>
-      <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden', marginTop: '15px' }}>
-        <Table stickyHeader aria-label="sticky table">
-          <TableHead>
-            <TableRow>
-              {columns.map((column) => (
-                <MemoizedTableCell
-                  key={column.id}
-                  style={{ minWidth: column.minWidth }}
-                >
-                  {column.label}
-                </MemoizedTableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {visibleRows.map((row) => (
-              <TableRowMemoized
-                key={row.id}
-                row={row}
-                columns={columns}
-                handlers={handlers}
-              />
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      
+      {isFetching ? (
+        <Box
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+          sx={{ 
+            minHeight: '60vh',
+            width: '100%'
+          }}
+        >
+          <CircularProgress size={60} />
+        </Box>
+      ) : filteredRows.length === 0 ? (
+        <Box
+          display="flex"
+          flexDirection="column"
+          alignItems="center"
+          justifyContent="center"
+          sx={{ 
+            minHeight: 300, 
+            textAlign: 'center',
+            color: 'text.secondary' 
+          }}
+        >
+          <Typography variant="h6" gutterBottom>
+            {debouncedSearchTerm ? t('recordingtable.placeholder.search') : t('recordingtable.placeholder.title')}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {debouncedSearchTerm 
+              ? t('recordingtable.search_criteria')
+              : t('recordingtable.placeholder.body')
+            }
+          </Typography>
+        </Box>
+      ) : (
+        <>
+          <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden', marginTop: '15px' }}>
+            <Table stickyHeader aria-label="sticky table">
+              <TableHead>
+                <TableRow>
+                  {columns.map((column) => (
+                    <MemoizedTableCell
+                      key={column.id}
+                      style={{ minWidth: column.minWidth }}
+                    >
+                      {column.label}
+                    </MemoizedTableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {visibleRows.map((row) => (
+                  <TableRowMemoized
+                    key={row.id}
+                    row={row}
+                    columns={columns}
+                    handlers={handlers}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
 
-      <TablePagination
-        rowsPerPageOptions={[10, 25, 50, 100]}
-        component="div"
-        count={filteredRows.length}
-        rowsPerPage={rowsPerPage}
-        page={page}
-        onPageChange={handleChangePage}
-        onRowsPerPageChange={handleChangeRowsPerPage}
-      />
+          <TablePagination
+            rowsPerPageOptions={[10, 25, 50, 100]}
+            component="div"
+            count={filteredRows.length}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+          />
+        </>
+      )}
       <GenericModal isOpen={isWarningModalOpen} onClose={() => setWarningModalOpen(false)} modalStyle={modalStyle}>
         <div style={{ padding: '10px' }}>
           <Typography variant="h6" gutterBottom>{t('recordingtable.warning_modal.title')}</Typography>

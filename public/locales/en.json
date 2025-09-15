@@ -48,6 +48,12 @@
       "options": "Options",
       "heading":"My Robots",
       "new":"Create Robot",
+      "search_criteria": "Try adjusting your search criteria",
+      "placeholder": {
+        "title": "You're All Set to Start",
+        "body": "Robots you create will appear here. Click \"Create Robot\" to get started!",
+        "search": "No robots match your search"
+      },
       "modal":{
         "title":"Enter the URL",
         "login_title": "Does this website require logging in?",
@@ -84,12 +90,18 @@
       "runs":"All Runs",
       "runStatus":"Status",
       "runName":"Name",
+      "name":"Name",
       "startedAt":"Started At",
       "finishedAt":"Finished At",
       "delete":"Delete",
       "settings":"Settings",
       "search":"Search Runs...",
       "sort_tooltip": "Click to sort",
+      "placeholder": {
+        "title": "No Runs Found",
+        "body": "This is where all your robot runs will appear. Once a robot is active, its runs will be logged here.",
+        "search":"No runs match your search"
+      },
       "notifications": {
         "no_runs": "No runs found. Please try again.",
         "delete_success": "Run deleted successfully"
@@ -241,7 +253,15 @@
         "unable_create_settings": "Unable to create list settings. Make sure you have defined a field for the list.",
         "capture_text_discarded": "Capture Text Discarded",
         "capture_list_discarded": "Capture List Discarded",
-        "label_required": "Label cannot be empty"
+        "label_required": "Label cannot be empty",
+        "duplicate_label": "This label already exists. Please use a unique label.",
+        "no_text_captured": "Please highlight and select text elements before confirming.",
+        "capture_list_first": "Please hover over a list and select text fields inside it first",
+        "confirm_all_list_fields": "Please confirm all captured list fields before proceeding"
+      },
+      "tooltips": {
+        "capture_list_first": "Hover over a list and select text fields inside it first",
+        "confirm_all_list_fields": "Please confirm all captured list fields before proceeding"
       }
     },
     "save_recording": {
@@ -258,7 +278,8 @@
       },
       "errors": {
         "user_not_logged": "User not logged in. Cannot save recording.",
-        "exists_warning": "Robot with this name already exists, please confirm the Robot's overwrite."
+        "exists_warning": "Robot with this name already exists, please confirm the Robot's overwrite.",
+        "no_actions_performed": "Cannot save robot. Please perform at least one capture action before saving."
       },
       "tooltips": {
         "saving": "Optimizing and saving the workflow"
