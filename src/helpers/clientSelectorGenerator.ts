@@ -957,18 +957,9 @@ class ClientSelectorGenerator {
       );
 
       if (groupedElementsAtPoint.length > 0) {
-        const hasAnchorTag = groupedElementsAtPoint.some(
-          (el) => el.tagName === "A"
+        let filteredElements = this.filterParentChildGroupedElements(
+          groupedElementsAtPoint
         );
-
-        let filteredElements = groupedElementsAtPoint;
-
-        if (hasAnchorTag) {
-          // Apply parent-child filtering when anchor tags are present
-          filteredElements = this.filterParentChildGroupedElements(
-            groupedElementsAtPoint
-          );
-        }
 
         // Sort by DOM depth (deeper elements first for more specificity)
         filteredElements.sort((a, b) => {
