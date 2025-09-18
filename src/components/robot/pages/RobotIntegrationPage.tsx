@@ -698,7 +698,7 @@ export const RobotIntegrationPage = ({
         cancelButtonText={t("buttons.cancel")}
         showSaveButton={false}
         // onBackToSelection={handleBack}
-        onArrowBack={handleBack}
+        // onArrowBack={handleBack}
         showCancelButton={false}
         backToSelectionText={t("buttons.back_arrow")}
       >
