@@ -6,7 +6,7 @@ import { Recordings } from "../components/robot/Recordings";
 import { Runs } from "../components/run/Runs";
 import ProxyForm from '../components/proxy/ProxyForm';
 import ApiKey from '../components/api/ApiKey';
-import { useGlobalInfoStore } from "../context/globalInfo";
+import { useGlobalInfoStore, useCacheInvalidation } from "../context/globalInfo";
 import { createAndRunRecording, createRunForStoredRecording, CreateRunResponseWithQueue, interpretStoredRecording, notifyAboutAbort, scheduleStoredRecording } from "../api/storage";
 import { io, Socket } from "socket.io-client";
 import { stopRecording } from "../api/recording";
@@ -50,6 +50,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
   let aborted = false;
 
   const { notify, setRerenderRuns, setRecordingId } = useGlobalInfoStore();
+  const { invalidateRuns } = useCacheInvalidation();
   const navigate  = useNavigate();
 
   const { state } = useContext(AuthContext);
@@ -66,12 +67,14 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
       if (!response.success) {
         notify('error', t('main_page.notifications.abort_failed', { name: robotName }));
         setRerenderRuns(true);
+        invalidateRuns();
         return;
       }
       
       if (response.isQueued) {
         setRerenderRuns(true);
-        
+        invalidateRuns();
+
         notify('success', t('main_page.notifications.abort_success', { name: robotName }));
         
         setQueuedRuns(prev => {
@@ -92,6 +95,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
         if (abortData.runId === runId) {
           notify('success', t('main_page.notifications.abort_success', { name: abortData.robotName || robotName }));
           setRerenderRuns(true);
+          invalidateRuns();
           abortSocket.disconnect();
         }
       });
@@ -100,6 +104,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
         console.log('Abort socket connection error:', error);
         notify('error', t('main_page.notifications.abort_failed', { name: robotName }));
         setRerenderRuns(true);
+        invalidateRuns();
         abortSocket.disconnect();
       });
     });
@@ -125,8 +130,9 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
       setRunningRecordingName('');
       setCurrentInterpretationLog('');
       setRerenderRuns(true);
+      invalidateRuns();
     })
-  }, [runningRecordingName, aborted, currentInterpretationLog, notify, setRerenderRuns]);
+  }, [runningRecordingName, aborted, currentInterpretationLog, notify, setRerenderRuns, invalidateRuns]);
 
   const debugMessageHandler = useCallback((msg: string) => {
     setCurrentInterpretationLog((prevState) =>
@@ -156,6 +162,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
           setRunningRecordingName('');
           setCurrentInterpretationLog('');
           setRerenderRuns(true);
+          invalidateRuns();
           
           const robotName = data.robotName;
           
@@ -193,7 +200,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
       socket.off('connect_error');
       socket.off('disconnect');
     }
-  }, [runningRecordingName, sockets, ids, debugMessageHandler, user?.id, t, notify, setRerenderRuns, setQueuedRuns, navigate, setContent, setIds]);
+  }, [runningRecordingName, sockets, ids, debugMessageHandler, user?.id, t, notify, setRerenderRuns, setQueuedRuns, navigate, setContent, setIds, invalidateRuns]);
 
   const handleScheduleRecording = async (settings: ScheduleSettings) => {
     const { message, runId }: ScheduleRunResponse = await scheduleStoredRecording(runningRecordingId, settings);
@@ -209,6 +216,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
     if (user?.id) {
       const handleRunCompleted = (completionData: any) => {
         setRerenderRuns(true);
+        invalidateRuns();
         
         if (queuedRuns.has(completionData.runId)) {
           setQueuedRuns(prev => {
@@ -233,7 +241,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
         disconnectQueueSocket();
       };
     }
-  }, [user?.id, connectToQueueSocket, disconnectQueueSocket, t, setRerenderRuns, queuedRuns, setQueuedRuns]);
+  }, [user?.id, connectToQueueSocket, disconnectQueueSocket, t, setRerenderRuns, queuedRuns, setQueuedRuns, invalidateRuns]);
 
   const DisplayContent = () => {
     switch (content) {
