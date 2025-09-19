@@ -249,7 +249,29 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
   const [rerenderRuns, setRerenderRuns] = useState<boolean>(globalInfoStore.rerenderRuns);
   const [rerenderRobots, setRerenderRobots] = useState<boolean>(globalInfoStore.rerenderRobots);
   const [recordingLength, setRecordingLength] = useState<number>(globalInfoStore.recordingLength);
-  const [recordingId, setRecordingId] = useState<string | null>(globalInfoStore.recordingId);
+  // const [recordingId, setRecordingId] = useState<string | null>(globalInfoStore.recordingId);
+   const [recordingId, setRecordingId] = useState<string | null>(() => {
+    try {
+      const stored = sessionStorage.getItem('recordingId');
+      return stored ? JSON.parse(stored) : globalInfoStore.recordingId;
+    } catch {
+      return globalInfoStore.recordingId;
+    }
+  });
+
+  // Create a wrapped setter that persists to sessionStorage
+  const setPersistedRecordingId = (newRecordingId: string | null) => {
+    setRecordingId(newRecordingId);
+    try {
+      if (newRecordingId) {
+        sessionStorage.setItem('recordingId', JSON.stringify(newRecordingId));
+      } else {
+        sessionStorage.removeItem('recordingId');
+      }
+    } catch (error) {
+      console.warn('Failed to persist recordingId to sessionStorage:', error);
+    }
+  };
   const [retrainRobotId, setRetrainRobotId] = useState<string | null>(globalInfoStore.retrainRobotId);
   const [recordingName, setRecordingName] = useState<string>(globalInfoStore.recordingName);
   const [isLogin, setIsLogin] = useState<boolean>(globalInfoStore.isLogin);
@@ -320,7 +342,7 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
         recordingLength,
         setRecordingLength,
         recordingId,
-        setRecordingId,
+        setRecordingId: setPersistedRecordingId,
         retrainRobotId,
         setRetrainRobotId,
         recordingName,
