@@ -13,8 +13,7 @@ import { Accordion, AccordionSummary, AccordionDetails, Typography, Box, TextFie
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SearchIcon from '@mui/icons-material/Search';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useGlobalInfoStore } from "../../context/globalInfo";
-import { getStoredRuns } from "../../api/storage";
+import { useGlobalInfoStore, useCachedRuns } from "../../context/globalInfo";
 import { RunSettings } from "./RunSettings";
 import { CollapsibleRow } from "./ColapsibleRow";
 import { ArrowDownward, ArrowUpward, UnfoldMore } from '@mui/icons-material';
@@ -132,15 +131,13 @@ export const RunsTable: React.FC<RunsTableProps> = ({
     [t]
   );
 
-  const [rows, setRows] = useState<Data[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isFetching, setIsFetching] = useState(true);
+  const { notify, rerenderRuns, setRerenderRuns } = useGlobalInfoStore();
+  const { data: rows = [], isLoading: isFetching, error, refetch } = useCachedRuns();
 
+  const [searchTerm, setSearchTerm] = useState('');
   const [paginationStates, setPaginationStates] = useState<PaginationState>({});
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [expandedAccordions, setExpandedAccordions] = useState<Set<string>>(new Set());
-
-  const { notify, rerenderRuns, setRerenderRuns } = useGlobalInfoStore();
 
   const handleAccordionChange = useCallback((robotMetaId: string, isExpanded: boolean) => {
     setExpandedAccordions(prev => {
@@ -278,47 +275,18 @@ export const RunsTable: React.FC<RunsTableProps> = ({
     debouncedSetSearch(event.target.value);
   }, [debouncedSearch]);
 
-  const fetchRuns = useCallback(async () => {
-    try {
-      const runs = await getStoredRuns();
-      if (runs) {
-        const parsedRows: Data[] = runs.map((run: any, index: number) => ({
-          id: index,
-          ...run,
-        }));
-        setRows(parsedRows);
-      } else {
-        notify('error', t('runstable.notifications.no_runs'));
-      }
-    } catch (error) {
-      notify('error', t('runstable.notifications.fetch_error'));
-    } finally {
-      setIsFetching(false);
-    }
-  }, [notify, t]);
 
   useEffect(() => {
-    let mounted = true;
-
-    if (rows.length === 0 || rerenderRuns) {
-      setIsFetching(true);
-      fetchRuns().then(() => {
-        if (mounted) {
-          setRerenderRuns(false);
-        }
-      });
+    if (rerenderRuns) {
+      refetch();
+      setRerenderRuns(false);
     }
-
-    return () => {
-      mounted = false;
-    };
-  }, [rerenderRuns, rows.length, setRerenderRuns, fetchRuns]);
+  }, [rerenderRuns, setRerenderRuns, refetch]);
 
   const handleDelete = useCallback(() => {
-    setRows([]);
     notify('success', t('runstable.notifications.delete_success'));
-    fetchRuns();
-  }, [notify, t, fetchRuns]);
+    refetch();
+  }, [notify, t, refetch]);
 
   // Filter rows based on search term
   const filteredRows = useMemo(() => {
@@ -350,15 +318,15 @@ export const RunsTable: React.FC<RunsTableProps> = ({
     }, {} as Record<string, Data[]>);
   
     Object.keys(groupedData).forEach(robotId => {
-      groupedData[robotId].sort((a, b) => 
+      groupedData[robotId].sort((a: any, b: any) => 
         parseDateString(b.startedAt).getTime() - parseDateString(a.startedAt).getTime()
       );
     });
   
     const robotEntries = Object.entries(groupedData).map(([robotId, runs]) => ({
       robotId,
-      runs,
-      latestRunDate: parseDateString(runs[0].startedAt).getTime()
+      runs: runs as Data[],
+      latestRunDate: parseDateString((runs as Data[])[0].startedAt).getTime()
     }));
   
     robotEntries.sort((a, b) => b.latestRunDate - a.latestRunDate);
