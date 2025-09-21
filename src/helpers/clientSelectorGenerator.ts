@@ -9,6 +9,8 @@ interface ElementInfo {
   innerText?: string;
   url?: string;
   imageUrl?: string;
+  svgContent?: string;
+  svgType?: 'inline' | 'use' | 'icon';
   attributes?: Record<string, string>;
   innerHTML?: string;
   outerHTML?: string;
@@ -557,16 +559,17 @@ class ClientSelectorGenerator {
     const tagName = element.tagName.toLowerCase();
     
     // Fast path for common meaningful elements
-    if (["a", "img", "input", "button", "select"].includes(tagName)) {
+    if (["a", "img", "input", "button", "select", "svg"].includes(tagName)) {
       return true;
     }
 
     const text = (element.textContent || "").trim();
     const hasHref = element.hasAttribute("href");
     const hasSrc = element.hasAttribute("src");
-    
+    const hasSvg = element.querySelector("svg") !== null;
+
     // Quick checks first
-    if (text.length > 0 || hasHref || hasSrc) {
+    if (text.length > 0 || hasHref || hasSrc || hasSvg) {
       return true;
     }
 
@@ -1013,17 +1016,47 @@ class ClientSelectorGenerator {
   ) => {
     try {
       if (!getList || listSelector !== "") {
-        const el = this.getDeepestElementFromPoint(
-          coordinates.x,
-          coordinates.y,
-          iframeDoc
+        // Check for SVG child elements first using elementsFromPoint
+        const allElements = iframeDoc.elementsFromPoint(coordinates.x, coordinates.y) as HTMLElement[];
+        const svgChildElement = allElements.find(el =>
+          el.tagName === "path" || el.tagName === "circle" ||
+          el.tagName === "rect" || el.tagName === "g" ||
+          el.tagName === "polygon" || el.tagName === "ellipse"
         );
 
-        if (el) {
-          // Prioritize Link (DO NOT REMOVE)
-          const { parentElement } = el;
-          const targetElement =
-            parentElement?.tagName === "A" ? parentElement : el;
+        let targetElement: HTMLElement | null = null;
+
+        if (svgChildElement) {
+          // Found SVG child element, get its SVG parent
+          const svgParent = svgChildElement.closest("svg");
+          if (svgParent) {
+            targetElement = svgParent as unknown as HTMLElement;
+          }
+        }
+
+        if (!targetElement) {
+          // Fallback to normal element detection
+          const el = this.getDeepestElementFromPoint(
+            coordinates.x,
+            coordinates.y,
+            iframeDoc
+          );
+
+          if (el) {
+            // Prioritize Link and SVG (DO NOT REMOVE)
+            const { parentElement } = el;
+            targetElement = el;
+            if (parentElement?.tagName === "A") {
+              targetElement = parentElement;
+            } else if (el.tagName === "SVG" || el.querySelector("svg")) {
+              targetElement = el;
+            } else if (parentElement?.tagName === "SVG" || parentElement?.querySelector("svg")) {
+              targetElement = parentElement;
+            }
+          }
+        }
+
+        if (targetElement) {
 
           const ownerDocument = targetElement.ownerDocument;
           const frameElement = ownerDocument?.defaultView
@@ -1041,6 +1074,8 @@ class ClientSelectorGenerator {
             innerText?: string;
             url?: string;
             imageUrl?: string;
+            svgContent?: string;
+            svgType?: 'inline' | 'use' | 'icon';
             attributes?: Record<string, string>;
             innerHTML?: string;
             outerHTML?: string;
@@ -1113,6 +1148,18 @@ class ClientSelectorGenerator {
               info.innerText = targetElement.textContent ?? "";
             } else if (targetElement.tagName === "IMG") {
               info.imageUrl = (targetElement as HTMLImageElement).src;
+            } else if (targetElement.tagName === "SVG") {
+              const svgElement = targetElement as unknown as SVGSVGElement;
+              const useElement = svgElement.querySelector("use");
+              if (useElement) {
+                const href = useElement.getAttribute("href") || useElement.getAttribute("xlink:href");
+                info.svgContent = href || "";
+                info.svgType = "use";
+              } else {
+                info.svgContent = svgElement.outerHTML;
+                info.svgType = "inline";
+              }
+              info.innerText = svgElement.getAttribute("aria-label") || svgElement.getAttribute("title") || "";
             } else if (targetElement?.tagName === "SELECT") {
               const selectElement = targetElement as HTMLSelectElement;
               info.innerText =
@@ -1128,11 +1175,26 @@ class ClientSelectorGenerator {
             ) {
               info.innerText = (targetElement as HTMLInputElement).value;
             } else {
-              info.hasOnlyText =
-                targetElement.children.length === 0 &&
-                targetElement.textContent !== null &&
-                targetElement.textContent.trim().length > 0;
-              info.innerText = targetElement.textContent ?? "";
+              const svgChild = targetElement.querySelector("svg");
+              if (svgChild) {
+                const useElement = svgChild.querySelector("use");
+                if (useElement) {
+                  const href = useElement.getAttribute("href") || useElement.getAttribute("xlink:href");
+                  info.svgContent = href || "";
+                  info.svgType = "use";
+                } else {
+                  info.svgContent = svgChild.outerHTML;
+                  info.svgType = "icon";
+                }
+                info.innerText = svgChild.getAttribute("aria-label") || svgChild.getAttribute("title") || targetElement.textContent?.trim() || "";
+                info.hasOnlyText = false;
+              } else {
+                info.hasOnlyText =
+                  targetElement.children.length === 0 &&
+                  targetElement.textContent !== null &&
+                  targetElement.textContent.trim().length > 0;
+                info.innerText = targetElement.textContent ?? "";
+              }
             }
 
             info.innerHTML = targetElement.innerHTML;
@@ -1173,6 +1235,8 @@ class ClientSelectorGenerator {
             innerText?: string;
             url?: string;
             imageUrl?: string;
+            svgContent?: string;
+            svgType?: 'inline' | 'use' | 'icon';
             attributes?: Record<string, string>;
             innerHTML?: string;
             outerHTML?: string;
@@ -1244,6 +1308,18 @@ class ClientSelectorGenerator {
               info.innerText = element.textContent ?? "";
             } else if (element.tagName === "IMG") {
               info.imageUrl = (element as HTMLImageElement).src;
+            } else if (element.tagName === "SVG") {
+              const svgElement = element as unknown as SVGSVGElement;
+              const useElement = svgElement.querySelector("use");
+              if (useElement) {
+                const href = useElement.getAttribute("href") || useElement.getAttribute("xlink:href");
+                info.svgContent = href || "";
+                info.svgType = "use";
+              } else {
+                info.svgContent = svgElement.outerHTML;
+                info.svgType = "inline";
+              }
+              info.innerText = svgElement.getAttribute("aria-label") || svgElement.getAttribute("title") || "";
             } else if (element?.tagName === "SELECT") {
               const selectElement = element as HTMLSelectElement;
               info.innerText =
@@ -1259,11 +1335,26 @@ class ClientSelectorGenerator {
             ) {
               info.innerText = (element as HTMLInputElement).value;
             } else {
-              info.hasOnlyText =
-                element.children.length === 0 &&
-                element.textContent !== null &&
-                element.textContent.trim().length > 0;
-              info.innerText = element.textContent ?? "";
+              const svgChild = element.querySelector("svg");
+              if (svgChild) {
+                const useElement = svgChild.querySelector("use");
+                if (useElement) {
+                  const href = useElement.getAttribute("href") || useElement.getAttribute("xlink:href");
+                  info.svgContent = href || "";
+                  info.svgType = "use";
+                } else {
+                  info.svgContent = svgChild.outerHTML;
+                  info.svgType = "icon";
+                }
+                info.innerText = svgChild.getAttribute("aria-label") || svgChild.getAttribute("title") || element.textContent?.trim() || "";
+                info.hasOnlyText = false;
+              } else {
+                info.hasOnlyText =
+                  element.children.length === 0 &&
+                  element.textContent !== null &&
+                  element.textContent.trim().length > 0;
+                info.innerText = element.textContent ?? "";
+              }
             }
 
             info.innerHTML = element.innerHTML;
@@ -1290,15 +1381,46 @@ class ClientSelectorGenerator {
   ) => {
     try {
       if (!getList || listSelector !== "") {
-        const el = this.getDeepestElementFromPoint(
-          coordinates.x,
-          coordinates.y,
-          iframeDoc
+        // Check for SVG child elements first using elementsFromPoint
+        const allElements = iframeDoc.elementsFromPoint(coordinates.x, coordinates.y) as HTMLElement[];
+        const svgChildElement = allElements.find(el =>
+          el.tagName === "path" || el.tagName === "circle" ||
+          el.tagName === "rect" || el.tagName === "g" ||
+          el.tagName === "polygon" || el.tagName === "ellipse"
         );
-        if (el) {
-          // Prioritize Link (DO NOT REMOVE)
-          const { parentElement } = el;
-          const element = parentElement?.tagName === "A" ? parentElement : el;
+
+        let element: HTMLElement | null = null;
+
+        if (svgChildElement) {
+          // Found SVG child element, get its SVG parent
+          const svgParent = svgChildElement.closest("svg");
+          if (svgParent) {
+            element = svgParent as unknown as HTMLElement;
+          }
+        }
+
+        if (!element) {
+          // Fallback to normal element detection
+          const el = this.getDeepestElementFromPoint(
+            coordinates.x,
+            coordinates.y,
+            iframeDoc
+          );
+          if (el) {
+            // Prioritize Link and SVG (DO NOT REMOVE)
+            const { parentElement } = el;
+            element = el;
+            if (parentElement?.tagName === "A") {
+              element = parentElement;
+            } else if (el.tagName === "SVG" || el.querySelector("svg")) {
+              element = el;
+            } else if (parentElement?.tagName === "SVG" || parentElement?.querySelector("svg")) {
+              element = parentElement;
+            }
+          }
+        }
+
+        if (element) {
 
           const rectangle = element?.getBoundingClientRect();
           if (rectangle) {
@@ -2041,6 +2163,13 @@ class ClientSelectorGenerator {
           return deepestElement;
         };
 
+        // Check if there's a direct SVG element under the cursor before other processing
+        const svgElements = elements.filter(el => el.tagName === "SVG");
+        if (svgElements.length > 0) {
+          // Return the deepest SVG element
+          return svgElements[0];
+        }
+
         let deepestElement = findDeepestElement(elements);
 
         if (!deepestElement) return null;
@@ -2473,11 +2602,41 @@ class ClientSelectorGenerator {
         hoveredElement != null &&
         !hoveredElement.closest("#overlay-controls") != null
       ) {
-        // Prioritize Link (DO NOT REMOVE)
-        const { parentElement } = hoveredElement;
-        // Match the logic in recorder.ts for link clicks
-        const element =
-          parentElement?.tagName === "A" ? parentElement : hoveredElement;
+        let element = hoveredElement;
+
+        // Handle SVG child elements (path, circle, etc.) by finding their SVG parent
+        if (hoveredElement.tagName === "path" || hoveredElement.tagName === "circle" ||
+            hoveredElement.tagName === "rect" || hoveredElement.tagName === "g" ||
+            hoveredElement.tagName === "polygon" || hoveredElement.tagName === "ellipse") {
+
+          // Find the closest SVG parent
+          const svgParent = hoveredElement.closest("svg");
+          if (svgParent) {
+            // Verify this SVG is actually under the cursor position
+            const svgRect = svgParent.getBoundingClientRect();
+            if (coordinates.x >= svgRect.left && coordinates.x <= svgRect.right &&
+                coordinates.y >= svgRect.top && coordinates.y <= svgRect.bottom) {
+              element = svgParent as unknown as HTMLElement;
+
+              // Make the SVG selector more specific by adding a unique identifier
+              const svgIndex = Array.from(svgParent.parentElement?.querySelectorAll('svg') || []).indexOf(svgParent);
+              if (svgIndex >= 0) {
+                // Add a temporary data attribute to make this SVG uniquely selectable
+                svgParent.setAttribute('data-svg-index', svgIndex.toString());
+              }
+            }
+          }
+        } else {
+          // Original prioritization logic for other elements
+          const { parentElement } = hoveredElement;
+          if (parentElement?.tagName === "A") {
+            element = parentElement;
+          } else if (hoveredElement.tagName === "SVG" || hoveredElement.querySelector("svg")) {
+            element = hoveredElement;
+          } else if (parentElement?.tagName === "SVG" || parentElement?.querySelector("svg")) {
+            element = parentElement;
+          }
+        }
 
         const generatedSelectors = genSelectors(element);
         return generatedSelectors;
@@ -3934,6 +4093,14 @@ class ClientSelectorGenerator {
   ): HTMLElement[] {
     if (elements.length <= 1) return elements;
 
+    // First, check if there are any SVG elements - prioritize them
+    const svgElements = elements.filter(el =>
+      el.tagName === "SVG" && this.elementHasRelevantContentAtPoint(el, x, y)
+    );
+    if (svgElements.length > 0) {
+      return svgElements;
+    }
+
     const elementsWithContent = elements.filter((element) => {
       return this.elementHasRelevantContentAtPoint(element, x, y);
     });
@@ -3954,6 +4121,11 @@ class ClientSelectorGenerator {
 
     if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
       return false;
+    }
+
+    // Strongly prioritize SVG elements - they should always be considered relevant
+    if (element.tagName === "SVG") {
+      return true;
     }
 
     const hasDirectText = Array.from(element.childNodes).some(
