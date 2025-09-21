@@ -142,8 +142,9 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
   const handleRunRecording = useCallback((settings: RunSettings) => {
     createAndRunRecording(runningRecordingId, settings).then((response: CreateRunResponseWithQueue) => {
       const { browserId, runId, robotMetaId, queued } = response;
-      
+
       setIds({ browserId, runId, robotMetaId });
+      invalidateRuns();
       navigate(`/runs/${robotMetaId}/run/${runId}`);
             
       if (queued) {
