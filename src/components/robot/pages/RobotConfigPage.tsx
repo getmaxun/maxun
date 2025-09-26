@@ -109,7 +109,6 @@ export const RobotConfigPage: React.FC<RobotConfigPageProps> = ({
         <Typography
           variant="h5"
           sx={{
-            fontWeight: 600,
             color: theme.palette.text.primary,
             lineHeight: 1.2
           }}
