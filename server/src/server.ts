@@ -37,10 +37,10 @@ const pool = new Pool({
   database: process.env.DB_NAME,
   password: process.env.DB_PASSWORD,
   port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : undefined,
-  max: 50,                    // Increased from 20 to handle batched operations
-  min: 5,                     // Minimum connections to maintain
+  max: 50,                    
+  min: 5,                    
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,  // Increased from 5000 to 10000
+  connectionTimeoutMillis: 10000,
   maxUses: 7500,
   allowExitOnIdle: true
 });

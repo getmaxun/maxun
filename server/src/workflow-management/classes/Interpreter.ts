@@ -309,7 +309,7 @@ export class WorkflowInterpreter {
     }
   };
 
-  private clearState = () => {
+  public clearState = () => {
     this.debugMessages = [];
     this.interpretationIsPaused = false;
     this.activeId = null;
