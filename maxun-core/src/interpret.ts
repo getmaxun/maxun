@@ -123,6 +123,13 @@ export default class Interpreter extends EventEmitter {
     this.isAborted = true;
   }
 
+  /**
+   * Returns the current abort status
+   */
+  public getIsAborted(): boolean {
+    return this.isAborted;
+  }
+
   private async applyAdBlocker(page: Page): Promise<void> {
     if (this.blocker) {
       try {
