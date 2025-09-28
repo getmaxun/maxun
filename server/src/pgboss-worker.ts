@@ -102,8 +102,8 @@ async function triggerIntegrationUpdates(runId: string, robotMetaId: string): Pr
       retries: 5,
     };
 
-    processAirtableUpdates();
-    processGoogleSheetUpdates();
+    processAirtableUpdates().catch(err => logger.log('error', `Airtable update error: ${err.message}`));
+    processGoogleSheetUpdates().catch(err => logger.log('error', `Google Sheets update error: ${err.message}`));
   } catch (err: any) {
     logger.log('error', `Failed to update integrations for run: ${runId}: ${err.message}`);
   }
