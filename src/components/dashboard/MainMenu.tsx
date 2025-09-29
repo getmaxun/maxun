@@ -20,7 +20,6 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
   const location = useLocation();
   const { notify } = useGlobalInfoStore();
 
-  const [cloudModalOpen, setCloudModalOpen] = useState(false);
   const [sponsorModalOpen, setSponsorModalOpen] = useState(false);
   const [docModalOpen, setDocModalOpen] = useState(false);
 
