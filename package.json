@@ -1,6 +1,6 @@
 {
   "name": "maxun",
-  "version": "0.0.23",
+  "version": "0.0.24",
   "author": "Maxun",
   "license": "AGPL-3.0-or-later",
   "dependencies": {
@@ -11,7 +11,7 @@
     "@mui/lab": "^5.0.0-alpha.80",
     "@mui/material": "^5.6.2",
     "@react-oauth/google": "^0.12.1",
-    "@tanstack/react-query": "^5.89.0",
+    "@tanstack/react-query": "^5.90.2",
     "@testing-library/react": "^13.1.1",
     "@testing-library/user-event": "^13.5.0",
     "@types/bcrypt": "^5.0.2",
@@ -51,7 +51,7 @@
     "lodash": "^4.17.21",
     "loglevel": "^1.8.0",
     "loglevel-plugin-remote": "^0.6.8",
-    "maxun-core": "^0.0.23",
+    "maxun-core": "^0.0.24",
     "minio": "^8.0.1",
     "moment-timezone": "^0.5.45",
     "node-cron": "^3.0.3",

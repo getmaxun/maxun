@@ -20,8 +20,8 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
   const location = useLocation();
   const { notify } = useGlobalInfoStore();
 
-  const [cloudModalOpen, setCloudModalOpen] = useState(false);
   const [sponsorModalOpen, setSponsorModalOpen] = useState(false);
+  const [docModalOpen, setDocModalOpen] = useState(false);
 
   const ossDiscountCode = "MAXUNOSS8";
 
@@ -96,13 +96,44 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
           </Tabs>
           <hr />
           <Box sx={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
-            <Button href='https://docs.maxun.dev' target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<Description />}>
+            <Button
+              onClick={() => setDocModalOpen(true)}
+              sx={buttonStyles}
+              startIcon={<Description />}
+            >
               Documentation
             </Button>
-            <Button href="https://www.youtube.com/@MaxunOSS/videos" target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<SlowMotionVideo />}>
-              Tutorials
-            </Button>
-            <Button onClick={() => setCloudModalOpen(true)} sx={buttonStyles} startIcon={<CloudQueue />}>
+            <Modal open={docModalOpen ?? false} onClose={() => setDocModalOpen(false)}>
+              <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', bgcolor: 'background.paper', borderRadius: 2, p: 4, width: 400 }}>
+                <Stack spacing={2}>
+                  <Button
+                    href="https://docs.maxun.dev"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="outlined"
+                    startIcon={<Description />}
+                    fullWidth
+                  >
+                    Documentation
+                  </Button>
+                  <Button
+                    href="https://www.youtube.com/@MaxunOSS/videos"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="outlined"
+                    startIcon={<SlowMotionVideo />}
+                    fullWidth
+                  >
+                    Video Tutorials
+                  </Button>
+                </Stack>
+              </Box>
+            </Modal>
+            <Button
+              href='https://app.maxun.dev/'
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={buttonStyles} startIcon={<CloudQueue />}>
               Join Maxun Cloud
             </Button>
             <Button onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite />}>
@@ -111,43 +142,6 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
           </Box>
         </Box>
       </Paper>
-
-      <Modal open={cloudModalOpen} onClose={() => setCloudModalOpen(false)}>
-        <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', bgcolor: 'background.paper', borderRadius: 2, p: 4, width: 600 }}>
-          <Typography variant="h6" marginBottom={4}>
-            Join Maxun Cloud
-          </Typography>
-          <Typography variant="body1" gutterBottom>
-            Unlock reliable web data extraction. Maxun Cloud ensures you bypass blocks and scale with ease.
-          </Typography>
-          <Typography variant="body1" gutterBottom>
-            As a thank-you to open source users, enjoy 8% off your subscription!
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 2, mb: 0.5, fontSize: 13 }}>
-            Use the discount code
-          </Typography>
-          <TextField
-            size="small"
-            value={ossDiscountCode}
-            InputProps={{
-              readOnly: true,
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton onClick={copyDiscountCode} edge="end" aria-label="copy discount code" size="small">
-                    <ContentCopy fontSize="small" />
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-            sx={{ mb: 2, fontSize: 13 }}
-          />
-
-          <Button href="https://app.maxun.dev/login" target="_blank" fullWidth variant="outlined" sx={{ mt: 2 }}>
-            Go to Maxun Cloud
-          </Button>
-        </Box>
-      </Modal>
-
       <Modal open={sponsorModalOpen} onClose={() => setSponsorModalOpen(false)}>
         <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', bgcolor: 'background.paper', borderRadius: 2, p: 4, width: 600 }}>
           <Typography variant="h6" marginBottom={4}>
