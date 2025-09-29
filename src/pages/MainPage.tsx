@@ -50,7 +50,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
   let aborted = false;
 
   const { notify, setRerenderRuns, setRecordingId } = useGlobalInfoStore();
-  const { invalidateRuns } = useCacheInvalidation();
+  const { invalidateRuns, addOptimisticRun } = useCacheInvalidation();
   const navigate  = useNavigate();
 
   const { state } = useContext(AuthContext);
@@ -132,7 +132,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
       setRerenderRuns(true);
       invalidateRuns();
     })
-  }, [runningRecordingName, aborted, currentInterpretationLog, notify, setRerenderRuns, invalidateRuns]);
+  }, [runningRecordingName, aborted, currentInterpretationLog, notify, setRerenderRuns]);
 
   const debugMessageHandler = useCallback((msg: string) => {
     setCurrentInterpretationLog((prevState) =>
@@ -140,11 +140,26 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
   }, [currentInterpretationLog])
 
   const handleRunRecording = useCallback((settings: RunSettings) => {
+    // Add optimistic run to cache immediately
+    const optimisticRun = {
+      id: runningRecordingId,
+      runId: `temp-${Date.now()}`, // Temporary ID until we get the real one
+      status: 'running',
+      name: runningRecordingName,
+      startedAt: new Date().toISOString(),
+      finishedAt: '',
+      robotMetaId: runningRecordingId,
+      log: 'Starting...',
+      isOptimistic: true
+    };
+
+    addOptimisticRun(optimisticRun);
+
     createAndRunRecording(runningRecordingId, settings).then((response: CreateRunResponseWithQueue) => {
+      invalidateRuns();
       const { browserId, runId, robotMetaId, queued } = response;
 
       setIds({ browserId, runId, robotMetaId });
-      invalidateRuns();
       navigate(`/runs/${robotMetaId}/run/${runId}`);
             
       if (queued) {
@@ -160,8 +175,6 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
         
         socket.on('debugMessage', debugMessageHandler);
         socket.on('run-completed', (data) => {
-          setRunningRecordingName('');
-          setCurrentInterpretationLog('');
           setRerenderRuns(true);
           invalidateRuns();
           
@@ -201,7 +214,13 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
       socket.off('connect_error');
       socket.off('disconnect');
     }
-  }, [runningRecordingName, sockets, ids, debugMessageHandler, user?.id, t, notify, setRerenderRuns, setQueuedRuns, navigate, setContent, setIds, invalidateRuns]);
+  }, [runningRecordingName, sockets, ids, debugMessageHandler, user?.id, t, notify, setRerenderRuns, setQueuedRuns, navigate, setContent, setIds, invalidateRuns, addOptimisticRun, runningRecordingId]);
+
+  useEffect(() => {
+    return () => {
+      queuedRuns.clear();
+    };
+  }, []);
 
   const handleScheduleRecording = async (settings: ScheduleSettings) => {
     const { message, runId }: ScheduleRunResponse = await scheduleStoredRecording(runningRecordingId, settings);
@@ -225,7 +244,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
 
       const handleRunCompleted = (completionData: any) => {
         setRerenderRuns(true);
-        invalidateRuns();
+        invalidateRuns(); // Invalidate cache to show completed run status
         
         if (queuedRuns.has(completionData.runId)) {
           setQueuedRuns(prev => {

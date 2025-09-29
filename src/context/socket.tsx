@@ -115,6 +115,7 @@ export const SocketProvider = ({ children }: { children: JSX.Element }) => {
     });
 
     socketStore.queueSocket = null;
+    runStartedCallbackRef.current = null;
     runCompletedCallbackRef.current = null;
     runRecoveredCallbackRef.current = null;
     runScheduledCallbackRef.current = null;

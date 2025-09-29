@@ -300,6 +300,10 @@ export class WorkflowInterpreter {
     this.socket.emit('log', `----- The interpretation finished with status: ${status} -----`, false);
   
     logger.log('debug', `Interpretation finished`);
+
+    // Flush any remaining data in persistence buffer before completing
+    await this.flushPersistenceBuffer();
+
     this.interpreter = null;
     this.socket.emit('activePairId', -1);
     this.interpretationIsPaused = false;
@@ -606,9 +610,9 @@ export class WorkflowInterpreter {
 
   /**
    * Flushes persistence buffer to database in a single transaction
-   * @private
+   * @public - Made public to allow external flush before socket emission
    */
-  private async flushPersistenceBuffer(): Promise<void> {
+  public async flushPersistenceBuffer(): Promise<void> {
     if (this.persistenceBuffer.length === 0 || this.persistenceInProgress || !this.currentRunId) {
       return;
     }

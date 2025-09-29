@@ -276,12 +276,14 @@ export const RunsTable: React.FC<RunsTableProps> = ({
   }, [debouncedSearch]);
 
 
+  // Handle rerender requests using cache invalidation
   useEffect(() => {
     if (rerenderRuns) {
+      // Invalidate cache to force refetch
       refetch();
       setRerenderRuns(false);
     }
-  }, [rerenderRuns, setRerenderRuns, refetch]);
+  }, [rerenderRuns, refetch, setRerenderRuns]);
 
   const handleDelete = useCallback(() => {
     notify('success', t('runstable.notifications.delete_success'));
@@ -373,7 +375,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
           urlRunId={urlRunId}
         />
       ));
-  }, [getPaginationState, accordionSortConfigs, expandedRows, handleRowExpand, handleDelete, currentInterpretationLog, abortRunHandler, runningRecordingName, urlRunId]);
+  }, [paginationStates, runId, runningRecordingName, currentInterpretationLog, abortRunHandler, handleDelete, accordionSortConfigs]);
 
   const renderSortIcon = useCallback((column: Column, robotMetaId: string) => {
     const sortConfig = accordionSortConfigs[robotMetaId];

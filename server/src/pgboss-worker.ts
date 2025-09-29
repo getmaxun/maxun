@@ -333,6 +333,12 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
       // Schedule updates for Google Sheets and Airtable
       await triggerIntegrationUpdates(plainRun.runId, plainRun.robotMetaId);
 
+      // Flush any remaining persistence buffer before emitting socket event
+      if (browser && browser.interpreter) {
+        await browser.interpreter.flushPersistenceBuffer();
+        logger.log('debug', `Flushed persistence buffer before emitting run-completed for run ${data.runId}`);
+      }
+
       const completionData = {
         runId: data.runId,
         robotMetaId: plainRun.robotMetaId,
