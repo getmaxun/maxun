@@ -37,6 +37,12 @@ const pool = new Pool({
   database: process.env.DB_NAME,
   password: process.env.DB_PASSWORD,
   port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : undefined,
+  max: 50,                    
+  min: 5,                    
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
+  maxUses: 7500,
+  allowExitOnIdle: true
 });
 
 const PgSession = connectPgSimple(session);
@@ -214,6 +220,22 @@ if (require.main === module) {
     }
   });
 }
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.log('error', `Unhandled promise rejection at: ${promise}, reason: ${reason}`);
+  console.error('Unhandled promise rejection:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  logger.log('error', `Uncaught exception: ${error.message}`, { stack: error.stack });
+  console.error('Uncaught exception:', error);
+
+  if (process.env.NODE_ENV === 'production') {
+    setTimeout(() => {
+      process.exit(1);
+    }, 5000);
+  }
+});
 
 if (require.main === module) {
   process.on('SIGINT', async () => {
