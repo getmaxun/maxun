@@ -41,8 +41,6 @@ const BrowserRecordingSave = () => {
 
   const goToMainMenu = async () => {
     if (browserId) {
-      await stopRecording(browserId);
-      
       const notificationData = {
         type: 'warning',
         message: t('browser_recording.notifications.terminated'),
@@ -65,6 +63,10 @@ const BrowserRecordingSave = () => {
       setBrowserId(null);
       
       window.close();
+
+      stopRecording(browserId).catch((error) => {
+        console.warn('Background cleanup failed:', error);
+      });
     }
   };
 
