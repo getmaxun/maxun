@@ -275,20 +275,8 @@ export const RecordingsTable = ({
 
 
   const handleNewRecording = useCallback(async () => {
-    const canCreateRecording = await canCreateBrowserInState("recording");
-    
-    if (!canCreateRecording) {
-        const activeBrowserId = await getActiveBrowserId();
-        if (activeBrowserId) {
-          setActiveBrowserId(activeBrowserId);
-          setWarningModalOpen(true);
-        } else {
-          notify('warning', t('recordingtable.notifications.browser_limit_warning'));
-        }
-    } else {
-      setModalOpen(true);
-    }
-  }, []);
+    navigate('/robots/create');
+  }, [navigate]);
 
   const notifyRecordingTabsToClose = (browserId: string) => {
     const closeMessage = {
