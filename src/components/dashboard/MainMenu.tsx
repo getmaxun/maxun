@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Paper, Button, useTheme, Modal, Typography, Stack, TextField, InputAdornment, IconButton } from "@mui/material";
 import { AutoAwesome, FormatListBulleted, VpnKey, Usb, CloudQueue, Description, Favorite, ContentCopy, SlowMotionVideo } from "@mui/icons-material";
 import { useTranslation } from 'react-i18next';
@@ -17,6 +17,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
   const theme = useTheme();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const { notify } = useGlobalInfoStore();
 
   const [cloudModalOpen, setCloudModalOpen] = useState(false);
@@ -27,6 +28,13 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
   const handleChange = (event: React.SyntheticEvent, newValue: string) => {
     navigate(`/${newValue}`);
     handleChangeContent(newValue);
+  };
+
+  const handleRobotsClick = () => {
+    if (location.pathname !== '/robots') {
+      navigate('/robots');
+      handleChangeContent('robots');
+    }
   };
 
   const copyDiscountCode = () => {
@@ -81,7 +89,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             orientation="vertical"
             sx={{ alignItems: 'flex-start' }}
           >
-            <Tab value="robots" label={t('mainmenu.recordings')} icon={<AutoAwesome />} iconPosition="start" sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
+            <Tab value="robots" label={t('mainmenu.recordings')} icon={<AutoAwesome />} iconPosition="start" sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} onClick={handleRobotsClick} />
             <Tab value="runs" label={t('mainmenu.runs')} icon={<FormatListBulleted />} iconPosition="start" sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
             <Tab value="proxy" label={t('mainmenu.proxy')} icon={<Usb />} iconPosition="start" sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
             <Tab value="apikey" label={t('mainmenu.apikey')} icon={<VpnKey />} iconPosition="start" sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
