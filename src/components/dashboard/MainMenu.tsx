@@ -120,28 +120,6 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
           <Typography variant="body1" gutterBottom>
             Unlock reliable web data extraction. Maxun Cloud ensures you bypass blocks and scale with ease.
           </Typography>
-          <Typography variant="body1" gutterBottom>
-            As a thank-you to open source users, enjoy 8% off your subscription!
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 2, mb: 0.5, fontSize: 13 }}>
-            Use the discount code
-          </Typography>
-          <TextField
-            size="small"
-            value={ossDiscountCode}
-            InputProps={{
-              readOnly: true,
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton onClick={copyDiscountCode} edge="end" aria-label="copy discount code" size="small">
-                    <ContentCopy fontSize="small" />
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-            sx={{ mb: 2, fontSize: 13 }}
-          />
-
           <Button href="https://app.maxun.dev/login" target="_blank" fullWidth variant="outlined" sx={{ mt: 2 }}>
             Go to Maxun Cloud
           </Button>
