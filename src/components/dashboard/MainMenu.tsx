@@ -139,21 +139,6 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
           </Box>
         </Box>
       </Paper>
-
-      <Modal open={cloudModalOpen} onClose={() => setCloudModalOpen(false)}>
-        <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', bgcolor: 'background.paper', borderRadius: 2, p: 4, width: 600 }}>
-          <Typography variant="h6" marginBottom={4}>
-            Join Maxun Cloud
-          </Typography>
-          <Typography variant="body1" gutterBottom>
-            Unlock reliable web data extraction. Maxun Cloud ensures you bypass blocks and scale with ease.
-          </Typography>
-          <Button href="https://app.maxun.dev/login" target="_blank" fullWidth variant="outlined" sx={{ mt: 2 }}>
-            Go to Maxun Cloud
-          </Button>
-        </Box>
-      </Modal>
-
       <Modal open={sponsorModalOpen} onClose={() => setSponsorModalOpen(false)}>
         <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', bgcolor: 'background.paper', borderRadius: 2, p: 4, width: 600 }}>
           <Typography variant="h6" marginBottom={4}>
