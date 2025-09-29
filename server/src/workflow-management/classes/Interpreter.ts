@@ -689,6 +689,10 @@ export class WorkflowInterpreter {
       }
     } finally {
       this.persistenceInProgress = false;
+
+      if (this.persistenceBuffer.length > 0 && !this.persistenceTimer) {
+        this.scheduleBatchFlush();
+      }
     }
   };
 }
