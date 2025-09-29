@@ -22,6 +22,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
 
   const [cloudModalOpen, setCloudModalOpen] = useState(false);
   const [sponsorModalOpen, setSponsorModalOpen] = useState(false);
+  const [docModalOpen, setDocModalOpen] = useState(false);
 
   const ossDiscountCode = "MAXUNOSS8";
 
@@ -96,9 +97,39 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
           </Tabs>
           <hr />
           <Box sx={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
-            <Button href='https://docs.maxun.dev' target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<Description />}>
+            <Button
+              onClick={() => setDocModalOpen(true)}
+              sx={buttonStyles}
+              startIcon={<Description />}
+            >
               Documentation
             </Button>
+            <Modal open={docModalOpen ?? false} onClose={() => setDocModalOpen(false)}>
+              <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', bgcolor: 'background.paper', borderRadius: 2, p: 4, width: 400 }}>
+              <Stack spacing={2}>
+                <Button
+                href="https://docs.maxun.dev"
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="outlined"
+                startIcon={<Description />}
+                fullWidth
+                >
+                Documentation
+                </Button>
+                <Button
+                href="https://www.youtube.com/@MaxunOSS/videos"
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="outlined"
+                startIcon={<SlowMotionVideo />}
+                fullWidth
+                >
+                Video Tutorials
+                </Button>
+              </Stack>
+              </Box>
+            </Modal>
             <Button href="https://www.youtube.com/@MaxunOSS/videos" target="_blank" rel="noopener noreferrer" sx={buttonStyles} startIcon={<SlowMotionVideo />}>
               Tutorials
             </Button>
