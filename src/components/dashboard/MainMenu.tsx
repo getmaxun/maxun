@@ -105,35 +105,35 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             </Button>
             <Modal open={docModalOpen ?? false} onClose={() => setDocModalOpen(false)}>
               <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', bgcolor: 'background.paper', borderRadius: 2, p: 4, width: 400 }}>
-              <Stack spacing={2}>
-                <Button
-                href="https://docs.maxun.dev"
-                target="_blank"
-                rel="noopener noreferrer"
-                variant="outlined"
-                startIcon={<Description />}
-                fullWidth
-                >
-                Documentation
-                </Button>
-                <Button
-                href="https://www.youtube.com/@MaxunOSS/videos"
-                target="_blank"
-                rel="noopener noreferrer"
-                variant="outlined"
-                startIcon={<SlowMotionVideo />}
-                fullWidth
-                >
-                Video Tutorials
-                </Button>
-              </Stack>
+                <Stack spacing={2}>
+                  <Button
+                    href="https://docs.maxun.dev"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="outlined"
+                    startIcon={<Description />}
+                    fullWidth
+                  >
+                    Documentation
+                  </Button>
+                  <Button
+                    href="https://www.youtube.com/@MaxunOSS/videos"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="outlined"
+                    startIcon={<SlowMotionVideo />}
+                    fullWidth
+                  >
+                    Video Tutorials
+                  </Button>
+                </Stack>
               </Box>
             </Modal>
-            <Button 
-            href='https://app.maxun.dev/'
-            target="_blank"
-            rel="noopener noreferrer"
-            sx={buttonStyles} startIcon={<CloudQueue />}>
+            <Button
+              href='https://app.maxun.dev/'
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={buttonStyles} startIcon={<CloudQueue />}>
               Join Maxun Cloud
             </Button>
             <Button onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite />}>
