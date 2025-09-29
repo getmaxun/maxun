@@ -413,7 +413,7 @@ class ClientSelectorGenerator {
         
         // Only switch to dialog-focused analysis if dialogs have substantial content
         if (dialogContentElements.length > 5) {
-          allElements = dialogContentElements;
+          allElements = [...dialogContentElements, ...allElements];
         }
       }
     }
@@ -963,6 +963,13 @@ class ClientSelectorGenerator {
 
         // Sort by DOM depth (deeper elements first for more specificity)
         filteredElements.sort((a, b) => {
+          const aDialog = this.isDialogElement(a) ? 1 : 0;
+          const bDialog = this.isDialogElement(b) ? 1 : 0;
+
+          if (aDialog !== bDialog) {
+            return bDialog - aDialog;
+          }
+
           const aDepth = this.getElementDepth(a);
           const bDepth = this.getElementDepth(b);
           return bDepth - aDepth;
@@ -3899,6 +3906,24 @@ class ClientSelectorGenerator {
     let elements = iframeDoc.elementsFromPoint(x, y) as HTMLElement[];
     if (!elements.length) return null;
 
+    const dialogElement = this.findDialogElement(elements);
+    if (dialogElement) {
+      const dialogRect = dialogElement.getBoundingClientRect();
+      const isClickInsideDialog = x >= dialogRect.left && x <= dialogRect.right && 
+                                  y >= dialogRect.top && y <= dialogRect.bottom;
+      
+      if (isClickInsideDialog) {
+        const dialogElements = elements.filter(
+          (el) => el === dialogElement || dialogElement.contains(el)
+        );
+        
+        const deepestInDialog = this.findDeepestInDialog(dialogElements, dialogElement);
+        if (deepestInDialog) {
+          return deepestInDialog;
+        }
+      }
+    }
+
     const filteredElements = this.filterLogicalElements(elements, x, y);
     const targetElements =
       filteredElements.length > 0 ? filteredElements : elements;
@@ -4103,6 +4128,13 @@ class ClientSelectorGenerator {
   }
 
   /**
+   * Check if an element is a dialog
+   */
+  private isDialogElement(el: HTMLElement): boolean {
+    return !!el.closest('dialog, [role="dialog"]');
+  }
+
+  /**
    * Find all dialog elements in the document
    */
   private findAllDialogElements(doc: Document): HTMLElement[] {
@@ -4110,14 +4142,8 @@ class ClientSelectorGenerator {
     const allElements = Array.from(doc.querySelectorAll("*")) as HTMLElement[];
 
     for (const element of allElements) {
-      if (element.getAttribute("role") === "dialog") {
+      if (this.isDialogElement(element)) {
         dialogElements.push(element);
-        continue;
-      }
-
-      if (element.tagName.toLowerCase() === "dialog") {
-        dialogElements.push(element);
-        continue;
       }
     }
 
