@@ -215,6 +215,14 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
 
   useEffect(() => {
     if (user?.id) {
+      const handleRunStarted = (startedData: any) => {
+        setRerenderRuns(true);
+        invalidateRuns();
+        
+        const robotName = startedData.robotName || 'Unknown Robot';
+        notify('info', t('main_page.notifications.run_started', { name: robotName }));
+      };
+
       const handleRunCompleted = (completionData: any) => {
         setRerenderRuns(true);
         invalidateRuns();
@@ -235,14 +243,36 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
           notify('error', t('main_page.notifications.interpretation_failed', { name: robotName }));
         }
       };
+
+      const handleRunRecovered = (recoveredData: any) => {
+        setRerenderRuns(true);
+        invalidateRuns();
+        
+        if (queuedRuns.has(recoveredData.runId)) {
+          setQueuedRuns(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(recoveredData.runId);
+            return newSet;
+          });
+        }
+        
+        const robotName = recoveredData.robotName || 'Unknown Robot';
+        notify('error', t('main_page.notifications.interpretation_failed', { name: robotName }));
+      };
+
+      const handleRunScheduled = (scheduledData: any) => {
+        setRerenderRuns(true);
+        invalidateRuns();
+      };
       
-      connectToQueueSocket(user.id, handleRunCompleted);
+      connectToQueueSocket(user.id, handleRunCompleted, handleRunStarted, handleRunRecovered, handleRunScheduled);
       
       return () => {
+        console.log('Disconnecting persistent queue socket for user:', user.id);
         disconnectQueueSocket();
       };
     }
-  }, [user?.id, connectToQueueSocket, disconnectQueueSocket, t, setRerenderRuns, queuedRuns, setQueuedRuns, invalidateRuns]);
+  }, [user?.id, connectToQueueSocket, disconnectQueueSocket, t, setRerenderRuns, queuedRuns, setQueuedRuns]);
 
   const DisplayContent = () => {
     switch (content) {

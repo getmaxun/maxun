@@ -3906,24 +3906,6 @@ class ClientSelectorGenerator {
     let elements = iframeDoc.elementsFromPoint(x, y) as HTMLElement[];
     if (!elements.length) return null;
 
-    const dialogElement = this.findDialogElement(elements);
-    if (dialogElement) {
-      const dialogRect = dialogElement.getBoundingClientRect();
-      const isClickInsideDialog = x >= dialogRect.left && x <= dialogRect.right && 
-                                  y >= dialogRect.top && y <= dialogRect.bottom;
-      
-      if (isClickInsideDialog) {
-        const dialogElements = elements.filter(
-          (el) => el === dialogElement || dialogElement.contains(el)
-        );
-        
-        const deepestInDialog = this.findDeepestInDialog(dialogElements, dialogElement);
-        if (deepestInDialog) {
-          return deepestInDialog;
-        }
-      }
-    }
-
     const filteredElements = this.filterLogicalElements(elements, x, y);
     const targetElements =
       filteredElements.length > 0 ? filteredElements : elements;
@@ -4059,72 +4041,6 @@ class ClientSelectorGenerator {
       if (depth > 50) break;
     }
     return depth;
-  }
-
-  /**
-   * Find dialog element in the elements array
-   */
-  private findDialogElement(elements: HTMLElement[]): HTMLElement | null {
-    let dialogElement = elements.find((el) => el.getAttribute("role") === "dialog");
-    
-    if (!dialogElement) {
-      dialogElement = elements.find((el) => el.tagName.toLowerCase() === "dialog");
-    }
-    
-    if (!dialogElement) {
-      dialogElement = elements.find((el) => {
-        const classList = el.classList.toString().toLowerCase();
-        const id = (el.id || "").toLowerCase();
-        
-        return (
-          classList.includes("modal") ||
-          classList.includes("dialog") ||
-          classList.includes("popup") ||
-          classList.includes("overlay") ||
-          id.includes("modal") ||
-          id.includes("dialog") ||
-          id.includes("popup")
-        );
-      });
-    }
-  
-    return dialogElement || null;
-  }
-
-  /**
-   * Find the deepest element within a dialog
-   */
-  private findDeepestInDialog(
-    dialogElements: HTMLElement[],
-    dialogElement: HTMLElement
-  ): HTMLElement | null {
-    if (!dialogElements.length) return null;
-    if (dialogElements.length === 1) return dialogElements[0];
-
-    let deepestElement = dialogElements[0];
-    let maxDepth = 0;
-
-    for (const element of dialogElements) {
-      let depth = 0;
-      let current = element;
-
-      // Calculate depth within the dialog context
-      while (
-        current &&
-        current.parentElement &&
-        current !== dialogElement.parentElement
-      ) {
-        depth++;
-        current = current.parentElement;
-      }
-
-      if (depth > maxDepth) {
-        maxDepth = depth;
-        deepestElement = element;
-      }
-    }
-
-    return deepestElement;
   }
 
   /**
