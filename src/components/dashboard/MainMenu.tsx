@@ -130,7 +130,11 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               </Stack>
               </Box>
             </Modal>
-            <Button onClick={() => setCloudModalOpen(true)} sx={buttonStyles} startIcon={<CloudQueue />}>
+            <Button 
+            href='https://app.maxun.dev/'
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={buttonStyles} startIcon={<CloudQueue />}>
               Join Maxun Cloud
             </Button>
             <Button onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite />}>
