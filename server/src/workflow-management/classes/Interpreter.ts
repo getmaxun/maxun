@@ -625,7 +625,6 @@ export class WorkflowInterpreter {
     try {
       const sequelize = require('../../storage/db').default;
       await sequelize.transaction(async (transaction: any) => {
-        const { Run } = require('../../models');
         const run = await Run.findOne({
           where: { runId: this.currentRunId! },
           transaction
