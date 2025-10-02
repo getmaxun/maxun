@@ -102,8 +102,8 @@ async function triggerIntegrationUpdates(runId: string, robotMetaId: string): Pr
       retries: 5,
     };
 
-    processAirtableUpdates();
-    processGoogleSheetUpdates();
+    processAirtableUpdates().catch(err => logger.log('error', `Airtable update error: ${err.message}`));
+    processGoogleSheetUpdates().catch(err => logger.log('error', `Google Sheets update error: ${err.message}`));
   } catch (err: any) {
     logger.log('error', `Failed to update integrations for run: ${runId}: ${err.message}`);
   }
@@ -332,6 +332,12 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
 
       // Schedule updates for Google Sheets and Airtable
       await triggerIntegrationUpdates(plainRun.runId, plainRun.robotMetaId);
+
+      // Flush any remaining persistence buffer before emitting socket event
+      if (browser && browser.interpreter) {
+        await browser.interpreter.flushPersistenceBuffer();
+        logger.log('debug', `Flushed persistence buffer before emitting run-completed for run ${data.runId}`);
+      }
 
       const completionData = {
         runId: data.runId,

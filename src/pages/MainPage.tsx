@@ -6,7 +6,7 @@ import { Recordings } from "../components/robot/Recordings";
 import { Runs } from "../components/run/Runs";
 import ProxyForm from '../components/proxy/ProxyForm';
 import ApiKey from '../components/api/ApiKey';
-import { useGlobalInfoStore } from "../context/globalInfo";
+import { useGlobalInfoStore, useCacheInvalidation } from "../context/globalInfo";
 import { createAndRunRecording, createRunForStoredRecording, CreateRunResponseWithQueue, interpretStoredRecording, notifyAboutAbort, scheduleStoredRecording } from "../api/storage";
 import { io, Socket } from "socket.io-client";
 import { stopRecording } from "../api/recording";
@@ -50,6 +50,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
   let aborted = false;
 
   const { notify, setRerenderRuns, setRecordingId } = useGlobalInfoStore();
+  const { invalidateRuns, addOptimisticRun } = useCacheInvalidation();
   const navigate  = useNavigate();
 
   const { state } = useContext(AuthContext);
@@ -66,12 +67,14 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
       if (!response.success) {
         notify('error', t('main_page.notifications.abort_failed', { name: robotName }));
         setRerenderRuns(true);
+        invalidateRuns();
         return;
       }
       
       if (response.isQueued) {
         setRerenderRuns(true);
-        
+        invalidateRuns();
+
         notify('success', t('main_page.notifications.abort_success', { name: robotName }));
         
         setQueuedRuns(prev => {
@@ -92,6 +95,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
         if (abortData.runId === runId) {
           notify('success', t('main_page.notifications.abort_success', { name: abortData.robotName || robotName }));
           setRerenderRuns(true);
+          invalidateRuns();
           abortSocket.disconnect();
         }
       });
@@ -100,6 +104,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
         console.log('Abort socket connection error:', error);
         notify('error', t('main_page.notifications.abort_failed', { name: robotName }));
         setRerenderRuns(true);
+        invalidateRuns();
         abortSocket.disconnect();
       });
     });
@@ -125,6 +130,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
       setRunningRecordingName('');
       setCurrentInterpretationLog('');
       setRerenderRuns(true);
+      invalidateRuns();
     })
   }, [runningRecordingName, aborted, currentInterpretationLog, notify, setRerenderRuns]);
 
@@ -134,9 +140,25 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
   }, [currentInterpretationLog])
 
   const handleRunRecording = useCallback((settings: RunSettings) => {
+    // Add optimistic run to cache immediately
+    const optimisticRun = {
+      id: runningRecordingId,
+      runId: `temp-${Date.now()}`, // Temporary ID until we get the real one
+      status: 'running',
+      name: runningRecordingName,
+      startedAt: new Date().toISOString(),
+      finishedAt: '',
+      robotMetaId: runningRecordingId,
+      log: 'Starting...',
+      isOptimistic: true
+    };
+
+    addOptimisticRun(optimisticRun);
+
     createAndRunRecording(runningRecordingId, settings).then((response: CreateRunResponseWithQueue) => {
+      invalidateRuns();
       const { browserId, runId, robotMetaId, queued } = response;
-      
+
       setIds({ browserId, runId, robotMetaId });
       navigate(`/runs/${robotMetaId}/run/${runId}`);
             
@@ -153,9 +175,8 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
         
         socket.on('debugMessage', debugMessageHandler);
         socket.on('run-completed', (data) => {
-          setRunningRecordingName('');
-          setCurrentInterpretationLog('');
           setRerenderRuns(true);
+          invalidateRuns();
           
           const robotName = data.robotName;
           
@@ -193,7 +214,13 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
       socket.off('connect_error');
       socket.off('disconnect');
     }
-  }, [runningRecordingName, sockets, ids, debugMessageHandler, user?.id, t, notify, setRerenderRuns, setQueuedRuns, navigate, setContent, setIds]);
+  }, [runningRecordingName, sockets, ids, debugMessageHandler, user?.id, t, notify, setRerenderRuns, setQueuedRuns, navigate, setContent, setIds, invalidateRuns, addOptimisticRun, runningRecordingId]);
+
+  useEffect(() => {
+    return () => {
+      queuedRuns.clear();
+    };
+  }, []);
 
   const handleScheduleRecording = async (settings: ScheduleSettings) => {
     const { message, runId }: ScheduleRunResponse = await scheduleStoredRecording(runningRecordingId, settings);
@@ -207,8 +234,17 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
 
   useEffect(() => {
     if (user?.id) {
+      const handleRunStarted = (startedData: any) => {
+        setRerenderRuns(true);
+        invalidateRuns();
+        
+        const robotName = startedData.robotName || 'Unknown Robot';
+        notify('info', t('main_page.notifications.run_started', { name: robotName }));
+      };
+
       const handleRunCompleted = (completionData: any) => {
         setRerenderRuns(true);
+        invalidateRuns(); // Invalidate cache to show completed run status
         
         if (queuedRuns.has(completionData.runId)) {
           setQueuedRuns(prev => {
@@ -226,10 +262,32 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
           notify('error', t('main_page.notifications.interpretation_failed', { name: robotName }));
         }
       };
+
+      const handleRunRecovered = (recoveredData: any) => {
+        setRerenderRuns(true);
+        invalidateRuns();
+        
+        if (queuedRuns.has(recoveredData.runId)) {
+          setQueuedRuns(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(recoveredData.runId);
+            return newSet;
+          });
+        }
+        
+        const robotName = recoveredData.robotName || 'Unknown Robot';
+        notify('error', t('main_page.notifications.interpretation_failed', { name: robotName }));
+      };
+
+      const handleRunScheduled = (scheduledData: any) => {
+        setRerenderRuns(true);
+        invalidateRuns();
+      };
       
-      connectToQueueSocket(user.id, handleRunCompleted);
+      connectToQueueSocket(user.id, handleRunCompleted, handleRunStarted, handleRunRecovered, handleRunScheduled);
       
       return () => {
+        console.log('Disconnecting persistent queue socket for user:', user.id);
         disconnectQueueSocket();
       };
     }

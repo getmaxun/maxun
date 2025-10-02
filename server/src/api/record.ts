@@ -710,8 +710,8 @@ async function executeRun(id: string, userId: string) {
                 retries: 5,
             };
     
-            processAirtableUpdates();
-            processGoogleSheetUpdates();
+            processAirtableUpdates().catch(err => logger.log('error', `Airtable update error: ${err.message}`));
+            processGoogleSheetUpdates().catch(err => logger.log('error', `Google Sheets update error: ${err.message}`));
         } catch (err: any) {
             logger.log('error', `Failed to update Google Sheet for run: ${plainRun.runId}: ${err.message}`);
         }

@@ -12,6 +12,7 @@ import Register from './Register';
 import UserRoute from '../routes/userRoute';
 import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { NotFoundPage } from '../components/dashboard/NotFound';
+import RobotCreate from '../components/robot/pages/RobotCreate';
 
 export const PageWrapper = () => {
   const [open, setOpen] = useState(false);
@@ -94,6 +95,7 @@ export const PageWrapper = () => {
             <Routes>
               <Route element={<UserRoute />}>
                 <Route path="/" element={<Navigate to="/robots" replace />} />
+                <Route path="/robots/create" element={<RobotCreate />} />
                 <Route path="/robots/*" element={<MainPage handleEditRecording={handleEditRecording} initialContent="robots" />} />
                 <Route path="/runs/*" element={<MainPage handleEditRecording={handleEditRecording} initialContent="runs" />} />
                 <Route path="/proxy" element={<MainPage handleEditRecording={handleEditRecording} initialContent="proxy" />} />

@@ -79,7 +79,7 @@ export const Recordings = ({
     } else if (authStatus === "success" && robotId) {
       console.log("Google Auth Status:", authStatus);
       notify(authStatus, t("recordingtable.notifications.auth_success"));
-      handleNavigate(`/robots/${robotId}/integrate/google`, robotId, "", []);
+      handleNavigate(`/robots/${robotId}/integrate/googleSheets`, robotId, "", []);
     }
   }, []);
 

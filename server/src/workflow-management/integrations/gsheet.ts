@@ -286,8 +286,12 @@ export async function writeDataToSheet(
 }
 
 export const processGoogleSheetUpdates = async () => {
-  while (true) {
+  const maxProcessingTime = 60000;
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < maxProcessingTime) {
     let hasPendingTasks = false;
+
     for (const runId in googleSheetUpdateTasks) {
       const task = googleSheetUpdateTasks[runId];
       console.log(`Processing task for runId: ${runId}, status: ${task.status}`);
@@ -297,7 +301,6 @@ export const processGoogleSheetUpdates = async () => {
         try {
           await updateGoogleSheet(task.robotId, task.runId);
           console.log(`Successfully updated Google Sheet for runId: ${runId}`);
-          googleSheetUpdateTasks[runId].status = 'completed';
           delete googleSheetUpdateTasks[runId];
         } catch (error: any) {
           console.error(`Failed to update Google Sheets for run ${task.runId}:`, error);
@@ -305,10 +308,12 @@ export const processGoogleSheetUpdates = async () => {
             googleSheetUpdateTasks[runId].retries += 1;
             console.log(`Retrying task for runId: ${runId}, attempt: ${task.retries}`);
           } else {
-            googleSheetUpdateTasks[runId].status = 'failed';
-            console.log(`Max retries reached for runId: ${runId}. Marking task as failed.`);
+            console.log(`Max retries reached for runId: ${runId}. Removing task.`);
+            delete googleSheetUpdateTasks[runId];
           }
         }
+      } else if (task.status === 'completed' || task.status === 'failed') {
+        delete googleSheetUpdateTasks[runId];
       }
     }
 
@@ -320,4 +325,6 @@ export const processGoogleSheetUpdates = async () => {
     console.log('Waiting for 5 seconds before checking again...');
     await new Promise(resolve => setTimeout(resolve, 5000));
   }
+
+  console.log('Google Sheets processing completed or timed out');
 };

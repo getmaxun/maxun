@@ -36,8 +36,8 @@ import {
   MoreHoriz,
   Refresh
 } from "@mui/icons-material";
-import { useGlobalInfoStore } from "../../context/globalInfo";
-import { checkRunsForRecording, deleteRecordingFromStorage, getStoredRecordings } from "../../api/storage";
+import { useGlobalInfoStore, useCachedRecordings } from "../../context/globalInfo";
+import { checkRunsForRecording, deleteRecordingFromStorage } from "../../api/storage";
 import { Add } from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
 import { canCreateBrowserInState, getActiveBrowserId, stopRecording } from "../../api/recording";
@@ -150,12 +150,11 @@ export const RecordingsTable = ({
   const { t } = useTranslation();
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
-  const [rows, setRows] = React.useState<Data[]>([]);
+  const { data: recordingsData = [], isLoading: isFetching, error, refetch } = useCachedRecordings();
   const [isModalOpen, setModalOpen] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState('');
   const [isWarningModalOpen, setWarningModalOpen] = React.useState(false);
   const [activeBrowserId, setActiveBrowserId] = React.useState('');
-  const [isFetching, setIsFetching] = React.useState(true);
 
   const columns = useMemo(() => [
     { id: 'interpret', label: t('recordingtable.run'), minWidth: 80 },
@@ -238,60 +237,46 @@ export const RecordingsTable = ({
       if (dateStr.includes('PM') || dateStr.includes('AM')) {
         return new Date(dateStr);
       }
-      
+
       return new Date(dateStr.replace(/(\d+)\/(\d+)\//, '$2/$1/'))
     } catch {
       return new Date(0);
     }
   };
 
-  const fetchRecordings = useCallback(async () => {
-    try {
-      const recordings = await getStoredRecordings();
-      if (recordings) {
-        const parsedRows = recordings
-        .map((recording: any, index: number) => {
-          if (recording?.recording_meta) {
-            const parsedDate = parseDateString(recording.recording_meta.updatedAt);
-            
-            return {
-              id: index,
-              ...recording.recording_meta,
-              content: recording.recording,
-              parsedDate
-            };
-          }
-          return null;
-        })
-        .filter(Boolean) 
-        .sort((a, b) => b.parsedDate.getTime() - a.parsedDate.getTime());
-  
-        setRecordings(parsedRows.map((recording) => recording.name));
-        setRows(parsedRows);
-      }
-    } catch (error) {
-      console.error('Error fetching recordings:', error);
-      notify('error', t('recordingtable.notifications.fetch_error'));
-    } finally {
-      setIsFetching(false);
+  const rows = useMemo(() => {
+    if (!recordingsData) return [];
+
+    const parsedRows = recordingsData
+      .map((recording: any, index: number) => {
+        if (recording?.recording_meta) {
+          const parsedDate = parseDateString(recording.recording_meta.updatedAt);
+
+          return {
+            id: index,
+            ...recording.recording_meta,
+            content: recording.recording,
+            parsedDate
+          };
+        }
+        return null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.parsedDate.getTime() - a.parsedDate.getTime());
+
+    return parsedRows;
+  }, [recordingsData]);
+
+  useEffect(() => {
+    if (rows.length > 0) {
+      setRecordings(rows.map((recording) => recording.name));
     }
-  }, [setRecordings, notify, t]);
+  }, [rows, setRecordings]);
+
 
   const handleNewRecording = useCallback(async () => {
-    const canCreateRecording = await canCreateBrowserInState("recording");
-    
-    if (!canCreateRecording) {
-        const activeBrowserId = await getActiveBrowserId();
-        if (activeBrowserId) {
-          setActiveBrowserId(activeBrowserId);
-          setWarningModalOpen(true);
-        } else {
-          notify('warning', t('recordingtable.notifications.browser_limit_warning'));
-        }
-    } else {
-      setModalOpen(true);
-    }
-  }, []);
+    navigate('/robots/create');
+  }, [navigate]);
 
   const notifyRecordingTabsToClose = (browserId: string) => {
     const closeMessage = {
@@ -331,7 +316,7 @@ export const RecordingsTable = ({
       
       if (lastPair?.what) {
         if (Array.isArray(lastPair.what)) {
-          const gotoAction = lastPair.what.find(action => 
+          const gotoAction = lastPair.what.find((action: any) => 
             action && typeof action === 'object' && 'action' in action && action.action === "goto"
           ) as any;
           
@@ -409,16 +394,11 @@ export const RecordingsTable = ({
   }
 
   useEffect(() => {
-    fetchRecordings();
-  }, [fetchRecordings]);
-
-  useEffect(() => {
     if (rerenderRobots) {
-      fetchRecordings().then(() => {
-        setRerenderRobots(false);
-      });
+      refetch();
+      setRerenderRobots(false);
     }
-  }, [rerenderRobots, fetchRecordings, setRerenderRobots]);
+  }, [rerenderRobots, setRerenderRobots, refetch]);
 
   function useDebounce<T>(value: T, delay: number): T {
     const [debouncedValue, setDebouncedValue] = React.useState<T>(value);
@@ -468,12 +448,11 @@ export const RecordingsTable = ({
 
       const success = await deleteRecordingFromStorage(id);
       if (success) {
-        setRows([]);
         notify('success', t('recordingtable.notifications.delete_success'));
-        fetchRecordings();
+        refetch();
       }
     }
-  }), [handleRunRecording, handleScheduleRecording, handleIntegrateRecording, handleSettingsRecording, handleEditRobot, handleDuplicateRobot, handleRetrainRobot, notify, t]);
+  }), [handleRunRecording, handleScheduleRecording, handleIntegrateRecording, handleSettingsRecording, handleEditRobot, handleDuplicateRobot, handleRetrainRobot, notify, t, refetch]);
 
   return (
     <React.Fragment>
