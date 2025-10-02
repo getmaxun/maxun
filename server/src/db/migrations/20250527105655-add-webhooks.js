@@ -2,26 +2,44 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.addColumn('robot', 'webhooks', {
-      type: Sequelize.JSONB,
-      allowNull: true,
-      defaultValue: null,
-      comment: 'Webhook configurations for the robot'
-    });
+    const tableInfo = await queryInterface.describeTable('robot');
 
-    // Optional: Add an index for better query performance if you plan to search within webhook data
-    await queryInterface.addIndex('robot', {
-      fields: ['webhooks'],
-      using: 'gin', // GIN index for JSONB columns
-      name: 'robot_webhooks_gin_idx'
-    });
+    // Only add the column if it doesn't exist
+    if (!tableInfo.webhooks) {
+      await queryInterface.addColumn('robot', 'webhooks', {
+        type: Sequelize.JSONB,
+        allowNull: true,
+        defaultValue: null,
+        comment: 'Webhook configurations for the robot'
+      });
+    }
+
+    // Check if index exists before adding
+    const indexes = await queryInterface.showIndex('robot');
+    const indexExists = indexes.some(index => index.name === 'robot_webhooks_gin_idx');
+
+    if (!indexExists && tableInfo.webhooks) {
+      await queryInterface.addIndex('robot', {
+        fields: ['webhooks'],
+        using: 'gin', // GIN index for JSONB columns
+        name: 'robot_webhooks_gin_idx'
+      });
+    }
   },
 
   async down(queryInterface, Sequelize) {
-    // Remove the index first
-    await queryInterface.removeIndex('robot', 'robot_webhooks_gin_idx');
-    
-    // Then remove the column
-    await queryInterface.removeColumn('robot', 'webhooks');
+    // Check if index exists before removing
+    const indexes = await queryInterface.showIndex('robot');
+    const indexExists = indexes.some(index => index.name === 'robot_webhooks_gin_idx');
+
+    if (indexExists) {
+      await queryInterface.removeIndex('robot', 'robot_webhooks_gin_idx');
+    }
+
+    // Check if column exists before removing
+    const tableInfo = await queryInterface.describeTable('robot');
+    if (tableInfo.webhooks) {
+      await queryInterface.removeColumn('robot', 'webhooks');
+    }
   }
 };

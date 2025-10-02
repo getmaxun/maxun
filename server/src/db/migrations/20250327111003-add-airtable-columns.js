@@ -67,14 +67,28 @@ module.exports = {
     // Remove Airtable related columns
     return queryInterface.sequelize.transaction(async (transaction) => {
       try {
-        // Remove columns in reverse order
-        await queryInterface.removeColumn('robot', 'airtable_refresh_token', { transaction });
-        await queryInterface.removeColumn('robot', 'airtable_access_token', { transaction });
-        await queryInterface.removeColumn('robot', 'airtable_table_id', { transaction });
-        await queryInterface.removeColumn('robot', 'airtable_table_name', { transaction });
-        await queryInterface.removeColumn('robot', 'airtable_base_name', { transaction });
-        await queryInterface.removeColumn('robot', 'airtable_base_id', { transaction });
-        
+        const tableInfo = await queryInterface.describeTable('robot', { transaction });
+
+        // Remove columns in reverse order, only if they exist
+        if (tableInfo.airtable_refresh_token) {
+          await queryInterface.removeColumn('robot', 'airtable_refresh_token', { transaction });
+        }
+        if (tableInfo.airtable_access_token) {
+          await queryInterface.removeColumn('robot', 'airtable_access_token', { transaction });
+        }
+        if (tableInfo.airtable_table_id) {
+          await queryInterface.removeColumn('robot', 'airtable_table_id', { transaction });
+        }
+        if (tableInfo.airtable_table_name) {
+          await queryInterface.removeColumn('robot', 'airtable_table_name', { transaction });
+        }
+        if (tableInfo.airtable_base_name) {
+          await queryInterface.removeColumn('robot', 'airtable_base_name', { transaction });
+        }
+        if (tableInfo.airtable_base_id) {
+          await queryInterface.removeColumn('robot', 'airtable_base_id', { transaction });
+        }
+
         return Promise.resolve();
       } catch (error) {
         return Promise.reject(error);
