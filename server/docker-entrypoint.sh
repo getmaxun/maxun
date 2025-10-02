@@ -26,8 +26,15 @@ wait_for_postgres() {
 # Wait for PostgreSQL to be ready
 wait_for_postgres
 
-# Run the application with migrations before startup
-NODE_OPTIONS="--max-old-space-size=4096" node -e "require('./server/src/db/migrate')().then(() => { console.log('Migration process completed.'); })"
+# Run database migrations using npm script
+echo "Running database migrations..."
+npm run migrate
 
-# Run the server normally 
+if [ $? -eq 0 ]; then
+  echo "✅ Migrations completed successfully!"
+else
+  echo "⚠️  Migration failed, but continuing to start server..."
+fi
+
+# Run the server normally
 exec "$@"
