@@ -47,7 +47,7 @@ class Run extends Model<RunAttributes, RunCreationAttributes> implements RunAttr
   public runByAPI!: boolean;
   public serializableOutput!: Record<string, any[]>;
   public binaryOutput!: Record<string, any>;
-  public retryCount!: number;
+  public retryCount?: number;
 }
 
 Run.init(
