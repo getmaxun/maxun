@@ -1,15 +1,17 @@
+// mediaParser.js
+
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { URL } from 'url';
 import logger from './logger'; // Adjust path if necessary
 
 /**
- * Fetches and extracts all images from a webpage, including responsive ones.
- * This includes regular <img> tags and srcset URLs used for different screen sizes.
+ * Fetches and extracts all images from a webpage, including responsive images.
+ * This includes regular <img> tags, srcset URLs, and <source> tags within <picture> elements.
  *
  * @param {string} url - The webpage URL to extract images from.
  *                        Must be a valid, non-empty string.
- * @returns {Array} - An array of objects, each containing:
+ * @returns {Array} - An array of objects:
  *                    { 
  *                      url: string,     // The absolute URL of the image
  *                      altText: string  // The alt text of the image (if any)
@@ -18,13 +20,12 @@ import logger from './logger'; // Adjust path if necessary
  * @throws {Error} - If the fetch fails or the response is not HTML.
  */
 async function extractImages(url) {
-    // 1. Validate input
     if (!url || typeof url !== 'string') {
         throw new TypeError('URL must be a non-empty string');
     }
 
     try {
-        // 2. Fetch HTML with axios configured for reliability
+        // Fetch webpage with axios
         const response = await axios.get(url, {
             timeout: 10000,
             maxContentLength: 10 * 1024 * 1024,
@@ -35,15 +36,13 @@ async function extractImages(url) {
             maxRedirects: 5
         });
 
-        // 3. Validate content-type
+        // Validate that content is HTML
         const contentType = response.headers['content-type'] || '';
         if (!contentType.includes('text/html')) {
             throw new Error(`Expected HTML but got ${contentType}`);
         }
 
         const html = response.data;
-
-        // 4. Load HTML into cheerio
         const $ = cheerio.load(html, {
             decodeEntities: true,
             normalizeWhitespace: false
@@ -52,16 +51,15 @@ async function extractImages(url) {
         const images = [];
         const seen = new Set();
 
-        // 5. Extract <img> tags
+        // Extract <img> tags
         $('img').each((index, element) => {
             const alt = $(element).attr('alt') || '';
-
-            // 5a. Handle src
             let src = $(element).attr('src');
+
             if (src) {
                 try {
                     const absoluteUrl = new URL(src, url).href;
-                    if (!seen.has(absoluteUrl)) {
+                    if (!seen.has(absoluteUrl) && !absoluteUrl.startsWith('data:')) {
                         seen.add(absoluteUrl);
                         images.push({ url: absoluteUrl, altText: alt });
                     }
@@ -70,17 +68,17 @@ async function extractImages(url) {
                 }
             }
 
-            // 5b. Handle srcset (responsive images)
+            // Handle srcset (responsive images)
             const srcset = $(element).attr('srcset');
             if (srcset) {
                 const srcsetUrls = srcset.split(',')
                     .map(s => s.trim().split(/\s+/)[0])
-                    .filter(Boolean); // Remove empty strings
+                    .filter(Boolean);
 
                 for (const srcsetUrl of srcsetUrls) {
                     try {
                         const absoluteUrl = new URL(srcsetUrl, url).href;
-                        if (!seen.has(absoluteUrl)) {
+                        if (!seen.has(absoluteUrl) && !absoluteUrl.startsWith('data:')) {
                             seen.add(absoluteUrl);
                             images.push({ url: absoluteUrl, altText: alt });
                         }
@@ -91,11 +89,35 @@ async function extractImages(url) {
             }
         });
 
+        // Extract <source> tags inside <picture> elements
+        $('picture source').each((i, element) => {
+            const srcset = $(element).attr('srcset');
+            if (srcset) {
+                const srcsetUrls = srcset.split(',')
+                    .map(s => s.trim().split(/\s+/)[0])
+                    .filter(Boolean);
+
+                for (const srcsetUrl of srcsetUrls) {
+                    try {
+                        const absoluteUrl = new URL(srcsetUrl, url).href;
+                        if (!seen.has(absoluteUrl) && !absoluteUrl.startsWith('data:')) {
+                            seen.add(absoluteUrl);
+                            images.push({ url: absoluteUrl, altText: '' });
+                        }
+                    } catch {
+                        logger.warn(`Invalid srcset URL in <source>: ${srcsetUrl}`);
+                    }
+                }
+            }
+        });
+
         return images;
 
     } catch (error) {
-        // Log errors and throw for the caller
-        logger.error('Failed to extract images', { url, error: error.message });
-        throw new Error(`Failed to extract images from ${url}: ${error.message}`);
+        // Preserve original stack trace
+        throw new Error(`Failed to extract images from ${url}`, { cause: error });
     }
 }
+
+// Export function for other modules
+export { extractImages };
