@@ -89,7 +89,7 @@
   },
   "scripts": {
     "start": "concurrently -k \"npm run server\" \"npm run client\"",
-    "server": "cross-env NODE_OPTIONS='--max-old-space-size=8000' nodemon server/src/server.ts",
+    "server": "cross-env NODE_OPTIONS='--max-old-space-size=8000' nodemon server/dist/server.js",
     "client": "vite",
     "build": "vite build",
     "build:server": "tsc -p server/tsconfig.json",
@@ -130,6 +130,7 @@
     "ajv": "^8.8.2",
     "concurrently": "^7.0.0",
     "cross-env": "^7.0.3",
+    "esbuild": "^0.25.10",
     "js-cookie": "^3.0.5",
     "nodemon": "^2.0.15",
     "sequelize-cli": "^6.6.2",
