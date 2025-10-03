@@ -123,10 +123,6 @@ Maxun lets you create custom robots which emulate user actions and extract data.
 2. Capture Text: Useful to extract individual text content from the website.
 3. Capture Screenshot: Get fullpage or visible section screenshots of the website.
 
-## 2. BYOP
-BYOP (Bring Your Own Proxy) lets you connect external proxies to bypass anti-bot protection. Currently, the proxies are per user. Soon you'll be able to configure proxy per robot.
-
-
 # Features
 - ✨ Extract Data With No-Code
 - ✨ Handle Pagination & Scrolling
@@ -136,9 +132,11 @@ BYOP (Bring Your Own Proxy) lets you connect external proxies to bypass anti-bot
 - ✨ Adapt To Website Layout Changes
 - ✨ Extract Behind Login
 - ✨ Integrations
-- ✨ MCP Server
-- ✨ Bypass 2FA & MFA For Extract Behind Login (coming soon)
-- +++ A lot of amazing things!
+- ✨ MCP 
+
+# Use Cases
+Maxun can be used for various use-cases, including lead generation, market research, content aggregation and more.
+View use-cases in detail here: https://www.maxun.dev/#usecases
 
 # Screenshots
 ![Maxun PH Launch (1)-1-1](https://github.com/user-attachments/assets/d7c75fa2-2bbc-47bb-a5f6-0ee6c162f391)

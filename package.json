@@ -89,7 +89,7 @@
   },
   "scripts": {
     "start": "concurrently -k \"npm run server\" \"npm run client\"",
-    "server": "cross-env NODE_OPTIONS='--max-old-space-size=8000' nodemon server/dist/server.js",
+    "server": "cross-env NODE_OPTIONS='--max-old-space-size=8000' nodemon server/src/server.ts",
     "client": "vite",
     "build": "vite build",
     "build:server": "tsc -p server/tsconfig.json",
