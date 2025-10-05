@@ -123,6 +123,13 @@ export default class Interpreter extends EventEmitter {
     this.isAborted = true;
   }
 
+  /**
+   * Returns the current abort status
+   */
+  public getIsAborted(): boolean {
+    return this.isAborted;
+  }
+
   private async applyAdBlocker(page: Page): Promise<void> {
     if (this.blocker) {
       try {
@@ -610,6 +617,13 @@ export default class Interpreter extends EventEmitter {
 
         if (methodName === 'waitForLoadState') {
           try {
+            let args = step.args;
+
+            if (Array.isArray(args) && args.length === 1) {
+              args = [args[0], { timeout: 30000 }];
+            } else if (!Array.isArray(args)) {
+              args = [args, { timeout: 30000 }];
+            }
             await executeAction(invokee, methodName, step.args);
           } catch (error) {
             await executeAction(invokee, methodName, 'domcontentloaded');
@@ -670,7 +684,19 @@ export default class Interpreter extends EventEmitter {
           return;
         }
 
-        const results = await page.evaluate((cfg) => window.scrapeList(cfg), config);
+        const evaluationPromise = page.evaluate((cfg) => window.scrapeList(cfg), config);
+        const timeoutPromise = new Promise<any[]>((_, reject) =>
+          setTimeout(() => reject(new Error('Page evaluation timeout')), 10000)
+        );
+
+        let results;
+        try {
+          results = await Promise.race([evaluationPromise, timeoutPromise]);
+        } catch (error) {
+          debugLog(`Page evaluation failed: ${error.message}`);
+          return;
+        }
+
         const newResults = results.filter(item => {
             const uniqueKey = JSON.stringify(item);
             if (scrapedItems.has(uniqueKey)) return false;
@@ -691,43 +717,94 @@ export default class Interpreter extends EventEmitter {
         return false;
     };
 
+    // Helper function to detect if a selector is XPath
+    const isXPathSelector = (selector: string): boolean => {
+      return selector.startsWith('//') ||
+        selector.startsWith('/') ||
+        selector.startsWith('./') ||
+        selector.includes('contains(@') ||
+        selector.includes('[count(') ||
+        selector.includes('@class=') ||
+        selector.includes('@id=') ||
+        selector.includes(' and ') ||
+        selector.includes(' or ');
+    };
+
+    // Helper function to wait for selector (CSS or XPath)
+    const waitForSelectorUniversal = async (selector: string, options: any = {}): Promise<ElementHandle | null> => {
+      try {
+        if (isXPathSelector(selector)) {
+          // Use XPath locator
+          const locator = page.locator(`xpath=${selector}`);
+          await locator.waitFor({
+            state: 'attached',
+            timeout: options.timeout || 10000
+          });
+          return await locator.elementHandle();
+        } else {
+          // Use CSS selector
+          return await page.waitForSelector(selector, {
+            state: 'attached',
+            timeout: options.timeout || 10000
+          });
+        }
+      } catch (error) {
+        return null;
+      }
+    };
+
     // Enhanced button finder with retry mechanism
-    const findWorkingButton = async (selectors: string[]): Promise<{ 
-      button: ElementHandle | null, 
+    const findWorkingButton = async (selectors: string[]): Promise<{
+      button: ElementHandle | null,
       workingSelector: string | null,
       updatedSelectors: string[]
     }> => {
-      let updatedSelectors = [...selectors]; 
-      
+      const startTime = Date.now();
+      const MAX_BUTTON_SEARCH_TIME = 15000;
+      let updatedSelectors = [...selectors];
+
       for (let i = 0; i < selectors.length; i++) {
+        if (Date.now() - startTime > MAX_BUTTON_SEARCH_TIME) {
+          debugLog(`Button search timeout reached (${MAX_BUTTON_SEARCH_TIME}ms), aborting`);
+          break;
+        }
         const selector = selectors[i];
         let retryCount = 0;
         let selectorSuccess = false;
         
         while (retryCount < MAX_RETRIES && !selectorSuccess) {
           try {
-            const button = await page.waitForSelector(selector, {
-              state: 'attached',
-              timeout: 10000 
-            });
-            
+            const button = await waitForSelectorUniversal(selector, { timeout: 2000 });
+
             if (button) {
               debugLog('Found working selector:', selector);
-              return { 
-                button, 
+              return {
+                button,
                 workingSelector: selector,
-                updatedSelectors 
+                updatedSelectors
               };
+            } else {
+              retryCount++;
+              debugLog(`Selector "${selector}" not found: attempt ${retryCount}/${MAX_RETRIES}`);
+
+              if (retryCount < MAX_RETRIES) {
+                await page.waitForTimeout(RETRY_DELAY);
+              } else {
+                debugLog(`Removing failed selector "${selector}" after ${MAX_RETRIES} attempts`);
+                updatedSelectors = updatedSelectors.filter(s => s !== selector);
+                selectorSuccess = true;
+              }
             }
           } catch (error) {
             retryCount++;
-            debugLog(`Selector "${selector}" failed: attempt ${retryCount}/${MAX_RETRIES}`);
-            
+            debugLog(`Selector "${selector}" error: attempt ${retryCount}/${MAX_RETRIES} - ${error.message}`);
+
             if (retryCount < MAX_RETRIES) {
               await page.waitForTimeout(RETRY_DELAY);
             } else {
               debugLog(`Removing failed selector "${selector}" after ${MAX_RETRIES} attempts`);
               updatedSelectors = updatedSelectors.filter(s => s !== selector);
+              selectorSuccess = true;
             }
           }
         }
@@ -1347,9 +1424,35 @@ export default class Interpreter extends EventEmitter {
   }
 
   private async ensureScriptsLoaded(page: Page) {
-    const isScriptLoaded = await page.evaluate(() => typeof window.scrape === 'function' && typeof window.scrapeSchema === 'function' && typeof window.scrapeList === 'function' && typeof window.scrapeListAuto === 'function' && typeof window.scrollDown === 'function' && typeof window.scrollUp === 'function');
-    if (!isScriptLoaded) {
-      await page.addInitScript({ path: path.join(__dirname, 'browserSide', 'scraper.js') });
+    try {
+      const evaluationPromise = page.evaluate(() =>
+        typeof window.scrape === 'function' &&
+        typeof window.scrapeSchema === 'function' &&
+        typeof window.scrapeList === 'function' &&
+        typeof window.scrapeListAuto === 'function' &&
+        typeof window.scrollDown === 'function' &&
+        typeof window.scrollUp === 'function'
+      );
+
+      const timeoutPromise = new Promise<boolean>((_, reject) =>
+        setTimeout(() => reject(new Error('Script check timeout')), 3000)
+      );
+
+      const isScriptLoaded = await Promise.race([
+        evaluationPromise,
+        timeoutPromise
+      ]);
+
+      if (!isScriptLoaded) {
+        await page.addInitScript({ path: path.join(__dirname, 'browserSide', 'scraper.js') });
+      }
+    } catch (error) {
+      this.log(`Script check failed, adding script anyway: ${error.message}`, Level.WARN);
+      try {
+        await page.addInitScript({ path: path.join(__dirname, 'browserSide', 'scraper.js') });
+      } catch (scriptError) {
+        this.log(`Failed to add script: ${scriptError.message}`, Level.ERROR);
+      }
     }
   }
 

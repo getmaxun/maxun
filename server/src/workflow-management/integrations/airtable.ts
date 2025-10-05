@@ -454,33 +454,36 @@ function isValidUrl(str: string): boolean {
 }
 
 export const processAirtableUpdates = async () => {
-  while (true) {
+  const maxProcessingTime = 60000;
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < maxProcessingTime) {
     let hasPendingTasks = false;
-    
+
     for (const runId in airtableUpdateTasks) {
       const task = airtableUpdateTasks[runId];
-      
+
       if (task.status === 'pending') {
         hasPendingTasks = true;
         console.log(`Processing Airtable update for run: ${runId}`);
-        
+
         try {
           await updateAirtable(task.robotId, task.runId);
           console.log(`Successfully updated Airtable for runId: ${runId}`);
-          airtableUpdateTasks[runId].status = 'completed';
-          delete airtableUpdateTasks[runId]; 
+          delete airtableUpdateTasks[runId];
         } catch (error: any) {
           console.error(`Failed to update Airtable for run ${task.runId}:`, error);
-          
+
           if (task.retries < MAX_RETRIES) {
             airtableUpdateTasks[runId].retries += 1;
             console.log(`Retrying task for runId: ${runId}, attempt: ${task.retries + 1}`);
           } else {
-            airtableUpdateTasks[runId].status = 'failed';
-            console.log(`Max retries reached for runId: ${runId}. Marking task as failed.`);
-            logger.log('error', `Permanent failure for run ${runId}: ${error.message}`);
+            console.log(`Max retries reached for runId: ${runId}. Removing task.`);
+            delete airtableUpdateTasks[runId];
           }
         }
+      } else if (task.status === 'completed' || task.status === 'failed') {
+        delete airtableUpdateTasks[runId];
       }
     }
 
@@ -488,8 +491,10 @@ export const processAirtableUpdates = async () => {
       console.log('No pending Airtable update tasks, exiting processor');
       break;
     }
-    
+
     console.log('Waiting for 5 seconds before checking again...');
     await new Promise(resolve => setTimeout(resolve, 5000));
   }
+
+  console.log('Airtable processing completed or timed out');
 };

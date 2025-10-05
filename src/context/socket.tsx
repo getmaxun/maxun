@@ -9,7 +9,7 @@ interface SocketState {
   queueSocket: Socket | null;
   id: string;
   setId: (id: string) => void;
-  connectToQueueSocket: (userId: string, onRunCompleted?: (data: any) => void) => void;
+  connectToQueueSocket: (userId: string, onRunCompleted?: (data: any) => void, onRunStarted?: (data: any) => void, onRunRecovered?: (data: any) => void, onRunScheduled?: (data: any) => void) => void;
   disconnectQueueSocket: () => void;
 };
 
@@ -29,6 +29,9 @@ export const SocketProvider = ({ children }: { children: JSX.Element }) => {
   const [queueSocket, setQueueSocket] = useState<Socket | null>(socketStore.queueSocket);
   const [id, setActiveId] = useState<string>(socketStore.id);
   const runCompletedCallbackRef = useRef<((data: any) => void) | null>(null);
+  const runStartedCallbackRef = useRef<((data: any) => void) | null>(null);
+  const runRecoveredCallbackRef = useRef<((data: any) => void) | null>(null);
+  const runScheduledCallbackRef = useRef<((data: any) => void) | null>(null);
 
   const setId = useCallback((id: string) => {
     // the socket client connection is recomputed whenever id changes -> the new browser has been initialized
@@ -45,8 +48,11 @@ export const SocketProvider = ({ children }: { children: JSX.Element }) => {
     setActiveId(id);
   }, [setSocket]);
 
-  const connectToQueueSocket = useCallback((userId: string, onRunCompleted?: (data: any) => void) => {
+  const connectToQueueSocket = useCallback((userId: string, onRunCompleted?: (data: any) => void, onRunStarted?: (data: any) => void, onRunRecovered?: (data: any) => void, onRunScheduled?: (data: any) => void) => {
     runCompletedCallbackRef.current = onRunCompleted || null;
+    runStartedCallbackRef.current = onRunStarted || null;
+    runRecoveredCallbackRef.current = onRunRecovered || null;
+    runScheduledCallbackRef.current = onRunScheduled || null;
 
     const newQueueSocket = io(`${SERVER_ENDPOINT}/queued-run`, {
       transports: ["websocket"],
@@ -69,6 +75,27 @@ export const SocketProvider = ({ children }: { children: JSX.Element }) => {
       }
     });
 
+    newQueueSocket.on('run-started', (startedData) => {
+      console.log('Run started event received:', startedData);
+      if (runStartedCallbackRef.current) {
+        runStartedCallbackRef.current(startedData);
+      }
+    });
+
+    newQueueSocket.on('run-recovered', (recoveredData) => {
+      console.log('Run recovered event received:', recoveredData);
+      if (runRecoveredCallbackRef.current) {
+        runRecoveredCallbackRef.current(recoveredData);
+      }
+    });
+
+    newQueueSocket.on('run-scheduled', (scheduledData) => {
+      console.log('Run scheduled event received:', scheduledData);
+      if (runScheduledCallbackRef.current) {
+        runScheduledCallbackRef.current(scheduledData);
+      }
+    });
+
     setQueueSocket(currentSocket => {
       if (currentSocket) {
         currentSocket.disconnect();
@@ -88,7 +115,10 @@ export const SocketProvider = ({ children }: { children: JSX.Element }) => {
     });
 
     socketStore.queueSocket = null;
+    runStartedCallbackRef.current = null;
     runCompletedCallbackRef.current = null;
+    runRecoveredCallbackRef.current = null;
+    runScheduledCallbackRef.current = null;
   }, []);
 
   // Cleanup on unmount

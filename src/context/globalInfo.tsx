@@ -1,6 +1,24 @@
 import React, { createContext, useContext, useState } from "react";
 import { AlertSnackbarProps } from "../components/ui/AlertSnackbar";
 import { WhereWhatPair } from "maxun-core";
+import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
+import { getStoredRuns, getStoredRecordings } from "../api/storage";
+
+const createDataCacheClient = () => new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30 * 1000,
+      gcTime: 5 * 60 * 1000,
+      retry: 2,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    }
+  }
+});
+
+const dataCacheKeys = {
+  runs: ['cached-runs'] as const,
+  recordings: ['cached-recordings'] as const,
+} as const;
 
 interface RobotMeta {
     name: string;
@@ -164,6 +182,65 @@ const globalInfoContext = createContext<GlobalInfo>(globalInfoStore as GlobalInf
 
 export const useGlobalInfoStore = () => useContext(globalInfoContext);
 
+export const useCachedRuns = () => {
+  return useQuery({
+    queryKey: dataCacheKeys.runs,
+    queryFn: async () => {
+      const runs = await getStoredRuns();
+      if (!runs) throw new Error('Failed to fetch runs data');
+      return runs.map((run: any, index: number) => ({ id: index, ...run }));
+    },
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
+    retry: 2,
+  });
+};
+
+export const useCacheInvalidation = () => {
+  const queryClient = useQueryClient();
+  
+  const invalidateRuns = () => {
+    queryClient.invalidateQueries({ queryKey: dataCacheKeys.runs });
+  };
+  
+  const invalidateRecordings = () => {
+    queryClient.invalidateQueries({ queryKey: dataCacheKeys.recordings });
+  };
+  
+  const addOptimisticRun = (newRun: any) => {
+    queryClient.setQueryData(dataCacheKeys.runs, (oldData: any) => {
+      if (!oldData) return [{ id: 0, ...newRun }];
+      return [{ id: oldData.length, ...newRun }, ...oldData];
+    });
+  };
+  
+  const invalidateAllCache = () => {
+    invalidateRuns();
+    invalidateRecordings();
+  };
+  
+  return {
+    invalidateRuns,
+    invalidateRecordings, 
+    addOptimisticRun,
+    invalidateAllCache
+  };
+};
+
+export const useCachedRecordings = () => {
+  return useQuery({
+    queryKey: dataCacheKeys.recordings,
+    queryFn: async () => {
+      const recordings = await getStoredRecordings();
+      if (!recordings) throw new Error('Failed to fetch recordings data');
+      return recordings;
+    },
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
+    retry: 2,
+  });
+};
+
 export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
   const [browserId, setBrowserId] = useState<string | null>(globalInfoStore.browserId);
   const [lastAction, setLastAction] = useState<string>(globalInfoStore.lastAction);
@@ -172,7 +249,29 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
   const [rerenderRuns, setRerenderRuns] = useState<boolean>(globalInfoStore.rerenderRuns);
   const [rerenderRobots, setRerenderRobots] = useState<boolean>(globalInfoStore.rerenderRobots);
   const [recordingLength, setRecordingLength] = useState<number>(globalInfoStore.recordingLength);
-  const [recordingId, setRecordingId] = useState<string | null>(globalInfoStore.recordingId);
+  // const [recordingId, setRecordingId] = useState<string | null>(globalInfoStore.recordingId);
+   const [recordingId, setRecordingId] = useState<string | null>(() => {
+    try {
+      const stored = sessionStorage.getItem('recordingId');
+      return stored ? JSON.parse(stored) : globalInfoStore.recordingId;
+    } catch {
+      return globalInfoStore.recordingId;
+    }
+  });
+
+  // Create a wrapped setter that persists to sessionStorage
+  const setPersistedRecordingId = (newRecordingId: string | null) => {
+    setRecordingId(newRecordingId);
+    try {
+      if (newRecordingId) {
+        sessionStorage.setItem('recordingId', JSON.stringify(newRecordingId));
+      } else {
+        sessionStorage.removeItem('recordingId');
+      }
+    } catch (error) {
+      console.warn('Failed to persist recordingId to sessionStorage:', error);
+    }
+  };
   const [retrainRobotId, setRetrainRobotId] = useState<string | null>(globalInfoStore.retrainRobotId);
   const [recordingName, setRecordingName] = useState<string>(globalInfoStore.recordingName);
   const [isLogin, setIsLogin] = useState<boolean>(globalInfoStore.isLogin);
@@ -221,9 +320,12 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
     }
   }
 
+  const [dataCacheClient] = useState(() => createDataCacheClient());
+
   return (
-    <globalInfoContext.Provider
-      value={{
+    <QueryClientProvider client={dataCacheClient}>
+      <globalInfoContext.Provider
+        value={{
         browserId,
         setBrowserId: setBrowserIdWithValidation,
         lastAction,
@@ -240,7 +342,7 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
         recordingLength,
         setRecordingLength,
         recordingId,
-        setRecordingId,
+        setRecordingId: setPersistedRecordingId,
         retrainRobotId,
         setRetrainRobotId,
         recordingName,
@@ -266,9 +368,10 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
         currentSnapshot,
         setCurrentSnapshot,
         updateDOMMode,
-      }}
-    >
-      {children}
-    </globalInfoContext.Provider>
+        }}
+      >
+        {children}
+      </globalInfoContext.Provider>
+    </QueryClientProvider>
   );
 };

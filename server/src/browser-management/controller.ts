@@ -77,7 +77,11 @@ export const createRemoteBrowserForRun = (userId: string): string => {
 
   logger.log('info', `createRemoteBrowserForRun: Reserved slot ${id} for user ${userId}`);
 
-  initializeBrowserAsync(id, userId);
+  initializeBrowserAsync(id, userId)
+    .catch((error: any) => {
+      logger.log('error', `Unhandled error in initializeBrowserAsync for browser ${id}: ${error.message}`);
+      browserPool.failBrowserSlot(id);
+    });
   
   return id;
 };
@@ -110,7 +114,16 @@ export const destroyRemoteBrowser = async (id: string, userId: string): Promise<
     } catch (switchOffError) {
       logger.log('warn', `Error switching off browser ${id}: ${switchOffError}`);
     }
-    
+
+    try {
+      const namespace = io.of(id);
+      namespace.removeAllListeners();
+      namespace.disconnectSockets(true);
+      logger.log('debug', `Cleaned up socket namespace for browser ${id}`);
+    } catch (namespaceCleanupError: any) {
+      logger.log('warn', `Error cleaning up socket namespace for browser ${id}: ${namespaceCleanupError.message}`);
+    }
+
     return browserPool.deleteRemoteBrowser(id);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -273,11 +286,27 @@ const initializeBrowserAsync = async (id: string, userId: string) => {
       }
 
       logger.log('debug', `Starting browser initialization for ${id}`);
-      await browserSession.initialize(userId);
-      logger.log('debug', `Browser initialization completed for ${id}`);
-      
+
+      try {
+        await browserSession.initialize(userId);
+        logger.log('debug', `Browser initialization completed for ${id}`);
+      } catch (initError: any) {
+        try {
+          await browserSession.switchOff();
+          logger.log('info', `Cleaned up failed browser initialization for ${id}`);
+        } catch (cleanupError: any) {
+          logger.log('error', `Failed to cleanup browser ${id}: ${cleanupError.message}`);
+        }
+        throw initError;
+      }
+
       const upgraded = browserPool.upgradeBrowserSlot(id, browserSession);
       if (!upgraded) {
+        try {
+          await browserSession.switchOff();
+        } catch (cleanupError: any) {
+          logger.log('error', `Failed to cleanup browser after slot upgrade failure: ${cleanupError.message}`);
+        }
         throw new Error('Failed to upgrade reserved browser slot');
       }
       

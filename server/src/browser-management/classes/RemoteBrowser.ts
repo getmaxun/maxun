@@ -380,6 +380,7 @@ export class RemoteBrowser {
             );
 
             await this.currentPage.mouse.wheel(data.deltaX, data.deltaY);
+            await this.currentPage.waitForLoadState("networkidle", { timeout: 5000 });
 
             const scrollInfo = await this.currentPage.evaluate(() => ({
               x: window.scrollX,
@@ -1590,7 +1591,7 @@ export class RemoteBrowser {
           }
 
           return window.rrwebSnapshot.snapshot(document, {
-            inlineImages: true,
+            inlineImages: false,
             collectFonts: true,
           });
         });

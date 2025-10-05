@@ -167,7 +167,6 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isRendered, setIsRendered] = useState(false);
-  const [renderError, setRenderError] = useState<string | null>(null);
   const [lastMousePosition, setLastMousePosition] = useState({ x: 0, y: 0 });
   const [currentHighlight, setCurrentHighlight] = useState<{
     element: Element;
@@ -342,7 +341,10 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
       const existingHandlers = (iframeDoc as any)._domRendererHandlers;
       if (existingHandlers) {
         Object.entries(existingHandlers).forEach(([event, handler]) => {
-          iframeDoc.removeEventListener(event, handler as EventListener, false); // Changed to false
+          const options: boolean | AddEventListenerOptions = ['wheel', 'touchstart', 'touchmove'].includes(event)
+            ? { passive: false }
+            : false;
+           iframeDoc.removeEventListener(event, handler as EventListener, options);
         });
       }
 
@@ -700,7 +702,11 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           return;
         }
 
-        e.preventDefault();
+        if (isInCaptureMode) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
 
         if (!isInCaptureMode) {
           const wheelEvent = e as WheelEvent;
@@ -752,7 +758,10 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
       handlers.beforeunload = preventDefaults;
 
       Object.entries(handlers).forEach(([event, handler]) => {
-        iframeDoc.addEventListener(event, handler, false);
+        const options: boolean | AddEventListenerOptions = ['wheel', 'touchstart', 'touchmove'].includes(event)
+          ? { passive: false }
+          : false;
+        iframeDoc.addEventListener(event, handler, options);
       });
 
       // Store handlers for cleanup
@@ -795,11 +804,39 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
       }
 
       try {
-        setRenderError(null);
         setIsRendered(false);
 
         const iframe = iframeRef.current!;
-        const iframeDoc = iframe.contentDocument!;
+        let iframeDoc: Document;
+
+        try {
+          iframeDoc = iframe.contentDocument!;
+          if (!iframeDoc) {
+            throw new Error("Cannot access iframe document");
+          }
+        } catch (crossOriginError) {
+          console.warn("Cross-origin iframe access blocked, recreating iframe");
+
+          const newIframe = document.createElement('iframe');
+          newIframe.style.cssText = iframe.style.cssText;
+          newIframe.sandbox = iframe.sandbox.value;
+          newIframe.title = iframe.title;
+          newIframe.tabIndex = iframe.tabIndex;
+          newIframe.id = iframe.id;
+
+          iframe.parentNode?.replaceChild(newIframe, iframe);
+          Object.defineProperty(iframeRef, 'current', {
+            value: newIframe,
+            writable: false,
+            enumerable: true,
+            configurable: true
+          });
+
+          iframeDoc = newIframe.contentDocument!;
+          if (!iframeDoc) {
+            throw new Error("Cannot access new iframe document");
+          }
+        }
 
         const styleTags = Array.from(
           document.querySelectorAll('link[rel="stylesheet"], style')
@@ -897,8 +934,6 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
         setupIframeInteractions(iframeDoc);
       } catch (error) {
         console.error("Error rendering rrweb snapshot:", error);
-        setRenderError(error instanceof Error ? error.message : String(error));
-        showErrorInIframe(error);
       }
     },
     [setupIframeInteractions, isInCaptureMode, isCachingChildSelectors]
@@ -919,89 +954,6 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
     }
   }, [getText, getList, listSelector, isRendered, setupIframeInteractions]);
 
-  /**
-   * Show error message in iframe
-   */
-  const showErrorInIframe = (error: any) => {
-    if (!iframeRef.current) return;
-
-    const iframe = iframeRef.current;
-    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-
-    if (iframeDoc) {
-      try {
-        iframeDoc.open();
-        iframeDoc.write(`
-            <html>
-                <head>
-                    <style>
-                        body { 
-                            padding: 20px; 
-                            font-family: Arial, sans-serif; 
-                            background: #f5f5f5;
-                        }
-                        .error-container {
-                            background: white;
-                            border: 1px solid #ff00c3;
-                            border-radius: 5px;
-                            padding: 20px;
-                            margin: 20px 0;
-                        }
-                        .retry-btn {
-                            background: #ff00c3;
-                            color: white;
-                            border: none;
-                            padding: 8px 16px;
-                            border-radius: 4px;
-                            cursor: pointer;
-                            margin-top: 10px;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="error-container">
-                        <h3 style="color: #ff00c3;">Error Loading DOM Content</h3>
-                        <p>Failed to render the page in DOM mode.</p>
-                        <p><strong>Common causes:</strong></p>
-                        <ul>
-                            <li>Page is still loading or navigating</li>
-                            <li>Resource proxy timeouts or failures</li>
-                            <li>Network connectivity issues</li>
-                            <li>Invalid HTML structure</li>
-                        </ul>
-                        <p><strong>Solutions:</strong></p>
-                        <ul>
-                            <li>Try switching back to Screenshot mode</li>
-                            <li>Wait for the page to fully load and try again</li>
-                            <li>Check your network connection</li>
-                            <li>Refresh the browser page</li>
-                        </ul>
-                        <button class="retry-btn" onclick="window.parent.postMessage('retry-dom-mode', '*')">
-                            Retry DOM Mode
-                        </button>
-                        <details style="margin-top: 15px;">
-                            <summary style="cursor: pointer; color: #666;">Technical details</summary>
-                            <pre style="background: #f0f0f0; padding: 10px; margin-top: 10px; overflow: auto; font-size: 12px;">${error.toString()}</pre>
-                        </details>
-                    </div>
-                </body>
-            </html>
-        `);
-        iframeDoc.close();
-
-        window.addEventListener("message", (event) => {
-          if (event.data === "retry-dom-mode") {
-            if (socket) {
-              socket.emit("enable-dom-streaming");
-            }
-          }
-        });
-      } catch (e) {
-        console.error("Failed to write error message to iframe:", e);
-      }
-    }
-  };
-
   useEffect(() => {
     return () => {
       if (iframeRef.current) {
@@ -1010,10 +962,13 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           const handlers = (iframeDoc as any)._domRendererHandlers;
           if (handlers) {
             Object.entries(handlers).forEach(([event, handler]) => {
+              const options: boolean | AddEventListenerOptions = ['wheel', 'touchstart', 'touchmove'].includes(event)
+                ? { passive: false }
+                : false;
               iframeDoc.removeEventListener(
                 event,
                 handler as EventListener,
-                true
+                options
               );
             });
           }
@@ -1051,7 +1006,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
       />
 
       {/* Loading indicator */}
-      {!isRendered && !renderError && (
+      {!isRendered && (
         <div
           style={{
             position: "absolute",
@@ -1086,26 +1041,6 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
                   100% { transform: rotate(360deg); }
               }
           `}</style>
-        </div>
-      )}
-
-      {/* Error indicator */}
-      {renderError && (
-        <div
-          style={{
-            position: "absolute",
-            top: 30,
-            right: 5,
-            background: "rgba(255, 0, 0, 0.9)",
-            color: "white",
-            padding: "2px 8px",
-            borderRadius: "3px",
-            fontSize: "10px",
-            zIndex: 1000,
-            maxWidth: "200px",
-          }}
-        >
-          RENDER ERROR
         </div>
       )}
 

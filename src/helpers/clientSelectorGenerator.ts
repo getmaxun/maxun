@@ -413,7 +413,7 @@ class ClientSelectorGenerator {
         
         // Only switch to dialog-focused analysis if dialogs have substantial content
         if (dialogContentElements.length > 5) {
-          allElements = dialogContentElements;
+          allElements = [...dialogContentElements, ...allElements];
         }
       }
     }
@@ -957,21 +957,19 @@ class ClientSelectorGenerator {
       );
 
       if (groupedElementsAtPoint.length > 0) {
-        const hasAnchorTag = groupedElementsAtPoint.some(
-          (el) => el.tagName === "A"
+        let filteredElements = this.filterParentChildGroupedElements(
+          groupedElementsAtPoint
         );
-
-        let filteredElements = groupedElementsAtPoint;
-
-        if (hasAnchorTag) {
-          // Apply parent-child filtering when anchor tags are present
-          filteredElements = this.filterParentChildGroupedElements(
-            groupedElementsAtPoint
-          );
-        }
 
         // Sort by DOM depth (deeper elements first for more specificity)
         filteredElements.sort((a, b) => {
+          const aDialog = this.isDialogElement(a) ? 1 : 0;
+          const bDialog = this.isDialogElement(b) ? 1 : 0;
+
+          if (aDialog !== bDialog) {
+            return bDialog - aDialog;
+          }
+
           const aDepth = this.getElementDepth(a);
           const bDepth = this.getElementDepth(b);
           return bDepth - aDepth;
@@ -4046,69 +4044,10 @@ class ClientSelectorGenerator {
   }
 
   /**
-   * Find dialog element in the elements array
+   * Check if an element is a dialog
    */
-  private findDialogElement(elements: HTMLElement[]): HTMLElement | null {
-    let dialogElement = elements.find((el) => el.getAttribute("role") === "dialog");
-    
-    if (!dialogElement) {
-      dialogElement = elements.find((el) => el.tagName.toLowerCase() === "dialog");
-    }
-    
-    if (!dialogElement) {
-      dialogElement = elements.find((el) => {
-        const classList = el.classList.toString().toLowerCase();
-        const id = (el.id || "").toLowerCase();
-        
-        return (
-          classList.includes("modal") ||
-          classList.includes("dialog") ||
-          classList.includes("popup") ||
-          classList.includes("overlay") ||
-          id.includes("modal") ||
-          id.includes("dialog") ||
-          id.includes("popup")
-        );
-      });
-    }
-  
-    return dialogElement || null;
-  }
-
-  /**
-   * Find the deepest element within a dialog
-   */
-  private findDeepestInDialog(
-    dialogElements: HTMLElement[],
-    dialogElement: HTMLElement
-  ): HTMLElement | null {
-    if (!dialogElements.length) return null;
-    if (dialogElements.length === 1) return dialogElements[0];
-
-    let deepestElement = dialogElements[0];
-    let maxDepth = 0;
-
-    for (const element of dialogElements) {
-      let depth = 0;
-      let current = element;
-
-      // Calculate depth within the dialog context
-      while (
-        current &&
-        current.parentElement &&
-        current !== dialogElement.parentElement
-      ) {
-        depth++;
-        current = current.parentElement;
-      }
-
-      if (depth > maxDepth) {
-        maxDepth = depth;
-        deepestElement = element;
-      }
-    }
-
-    return deepestElement;
+  private isDialogElement(el: HTMLElement): boolean {
+    return !!el.closest('dialog, [role="dialog"]');
   }
 
   /**
@@ -4119,14 +4058,8 @@ class ClientSelectorGenerator {
     const allElements = Array.from(doc.querySelectorAll("*")) as HTMLElement[];
 
     for (const element of allElements) {
-      if (element.getAttribute("role") === "dialog") {
+      if (this.isDialogElement(element)) {
         dialogElements.push(element);
-        continue;
-      }
-
-      if (element.tagName.toLowerCase() === "dialog") {
-        dialogElements.push(element);
-        continue;
       }
     }
 
