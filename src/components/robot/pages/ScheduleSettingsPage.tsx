@@ -188,7 +188,6 @@ export const ScheduleSettingsPage = ({
           display: "flex",
           flexDirection: "column",
           alignItems: "flex-start",
-          padding: "20px",
           "& > *": { marginBottom: "20px" },
         }}
       >
