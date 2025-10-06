@@ -189,6 +189,7 @@ export const ScheduleSettingsPage = ({
           flexDirection: "column",
           alignItems: "flex-start",
           "& > *": { marginBottom: "20px" },
+          marginTop: "-20px",
         }}
       >
         <>
