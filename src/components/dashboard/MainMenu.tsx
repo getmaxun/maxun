@@ -99,7 +99,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             <Button
               onClick={() => setDocModalOpen(true)}
               sx={buttonStyles}
-              startIcon={<Description  />}
+              startIcon={<Description sx={{ fontSize: 20 }} />}
             >
               Documentation
             </Button>
