@@ -136,7 +136,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               sx={buttonStyles} startIcon={<CloudQueue sx={{ fontSize: 20 }} />}>
               Join Maxun Cloud
             </Button>
-            <Button onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite />}>
+            <Button onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite sx={{ fontSize: 20 }} />}>
               Sponsor Us
             </Button>
           </Box>
