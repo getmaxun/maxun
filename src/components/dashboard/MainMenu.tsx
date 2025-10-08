@@ -99,7 +99,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             <Button
               onClick={() => setDocModalOpen(true)}
               sx={buttonStyles}
-              startIcon={<Description />}
+              startIcon={<Description  />}
             >
               Documentation
             </Button>
@@ -111,7 +111,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
                     target="_blank"
                     rel="noopener noreferrer"
                     variant="outlined"
-                    startIcon={<Description sx={{ fontSize: 20 }} />}
+                    startIcon={<Description />}
                     fullWidth
                   >
                     Documentation
