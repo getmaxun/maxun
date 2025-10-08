@@ -89,7 +89,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             orientation="vertical"
             sx={{ alignItems: 'flex-start' }}
           >
-            <Tab value="robots" label={t('mainmenu.recordings')} icon={<AutoAwesome />} iconPosition="start" sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} onClick={handleRobotsClick} />
+            <Tab value="robots" label={t('mainmenu.recordings')} icon={<AutoAwesome sx={{ fontSize: 20 }} />} iconPosition="start" sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} onClick={handleRobotsClick} />
             <Tab value="runs" label={t('mainmenu.runs')} icon={<PlayArrow />} iconPosition="start" sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
             <Tab value="proxy" label={t('mainmenu.proxy')} icon={<Usb />} iconPosition="start" sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
             <Tab value="apikey" label={t('mainmenu.apikey')} icon={<VpnKey />} iconPosition="start" sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
