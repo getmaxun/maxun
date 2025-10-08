@@ -111,7 +111,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
                     target="_blank"
                     rel="noopener noreferrer"
                     variant="outlined"
-                    startIcon={<Description />}
+                    startIcon={<Description sx={{ fontSize: 20 }} />}
                     fullWidth
                   >
                     Documentation
