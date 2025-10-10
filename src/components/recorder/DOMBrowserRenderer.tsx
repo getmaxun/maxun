@@ -205,6 +205,27 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
       try {
         const data = ev.data;
         if (!data || data.type !== 'maxun:media-extracted') return;
+
+        // Ensure the message comes from the recorded iframe only
+        const iframeWindow = iframeRef.current?.contentWindow || null;
+        if (ev.source !== iframeWindow) {
+          // Not from the recorded iframe - ignore
+          return;
+        }
+
+        // If snapshot.baseUrl is available, validate origin when possible
+        try {
+          if (snapshot?.baseUrl) {
+            const expectedOrigin = new URL(snapshot.baseUrl).origin;
+            if (ev.origin && ev.origin !== 'null' && ev.origin !== expectedOrigin) {
+              // origin mismatch - ignore
+              return;
+            }
+          }
+        } catch (e) {
+          // ignore origin validation failures and proceed only if source matched
+        }
+
         const payload = {
           url: data.url,
           tag: data.tag,
@@ -220,7 +241,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
-  }, [socket]);
+  }, [socket, iframeRef, snapshot]);
 
   useEffect(() => {
     if (listSelector) {
