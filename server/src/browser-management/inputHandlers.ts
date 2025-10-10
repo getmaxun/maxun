@@ -609,6 +609,34 @@ const handleGoForward = async (activeBrowser: RemoteBrowser, page: Page) => {
 };
 
 /**
+ * Handle media extracted event forwarded from client (via postMessage relay).
+ * data: { url, tag, selector, extractedText }
+ */
+const onMediaExtracted = async (data: { url: string; tag: string; selector: string; extractedText: string }, userId: string) => {
+  logger.log('debug', 'Handling media-extracted event emitted from client');
+  await handleWrapper(handleMediaExtracted, userId, data);
+}
+
+const handleMediaExtracted = async (activeBrowser: RemoteBrowser, page: Page, data: { url: string; tag: string; selector: string; extractedText: string }) => {
+  try {
+    if (page.isClosed()) {
+      logger.log("debug", `Ignoring media-extracted event: page is closed`);
+      return;
+    }
+    const generator = activeBrowser.generator;
+    if (generator && typeof generator.handleMediaExtracted === 'function') {
+      await generator.handleMediaExtracted(data, page);
+    } else {
+      logger.log('warn', 'Generator does not implement handleMediaExtracted');
+    }
+    logger.log('debug', `Media extracted added: ${data.url}`);
+  } catch (e) {
+    const { message } = e as Error;
+    logger.log('warn', `Error handling media-extracted event: ${message}`);
+  }
+}
+
+/**
  * Handles the click action event.
  * @param activeBrowser - the active remote browser {@link RemoteBrowser}
  * @param page - the active page of the remote browser
@@ -851,6 +879,7 @@ const registerInputHandlers = (socket: Socket, userId: string) => {
     socket.on("dom:click", (data) => onDOMClickAction(data, userId));
     socket.on("dom:keypress", (data) => onDOMKeyboardAction(data, userId));
     socket.on("dom:addpair", (data) => onDOMWorkflowPair(data, userId));
+  socket.on("dom:media-extracted", (data) => onMediaExtracted(data, userId));
 };
 
 export default registerInputHandlers;

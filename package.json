@@ -56,6 +56,7 @@
     "minio": "^8.0.1",
     "moment-timezone": "^0.5.45",
     "node-cron": "^3.0.3",
+    "pdfjs-dist": "^5.4.296",
     "pg": "^8.13.0",
     "pg-boss": "^10.1.6",
     "pkce-challenge": "^4.1.0",

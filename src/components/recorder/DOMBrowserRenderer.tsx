@@ -199,6 +199,29 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
     clientSelectorGenerator.setPaginationMode(paginationMode);
   }, [getList, listSelector, paginationMode]);
 
+  // Relay media-extracted postMessage from the iframe to server socket
+  useEffect(() => {
+    const handler = (ev: MessageEvent) => {
+      try {
+        const data = ev.data;
+        if (!data || data.type !== 'maxun:media-extracted') return;
+        const payload = {
+          url: data.url,
+          tag: data.tag,
+          selector: data.selector,
+          extractedText: data.extractedText,
+        };
+        if (socket && socket.emit) {
+          socket.emit('dom:media-extracted', payload);
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [socket]);
+
   useEffect(() => {
     if (listSelector) {
       clientSelectorGenerator.setListSelector(listSelector);
