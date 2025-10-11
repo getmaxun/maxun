@@ -7,7 +7,7 @@ import Robot from "../models/Robot";
 import Run from "../models/Run";
 const router = Router();
 import { getDecryptedProxyConfig } from "../routes/proxy";
-import { v4 as uuid } from "uuid";
+import { randomUUID } from "crypto";
 import { createRemoteBrowserForRun, destroyRemoteBrowser } from "../browser-management/controller";
 import logger from "../logger";
 import { browserPool } from "../server";
@@ -489,7 +489,7 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string) {
 
         const browserId = createRemoteBrowserForRun(userId);
 
-        const runId = uuid();
+        const runId = randomUUID();
 
         const run = await Run.create({
             status: 'running',

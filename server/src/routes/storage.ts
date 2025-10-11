@@ -4,7 +4,7 @@ import { createRemoteBrowserForRun, destroyRemoteBrowser, getActiveBrowserIdBySt
 import { chromium } from 'playwright-extra';
 import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { browserPool } from "../server";
-import { v4 as uuid } from "uuid";
+import { randomUUID } from "crypto";
 import moment from 'moment-timezone';
 import cron from 'node-cron';
 import { getDecryptedProxyConfig } from './proxy';
@@ -394,11 +394,11 @@ router.post('/recordings/:id/duplicate', requireSignIn, async (req: Authenticate
     const currentTimestamp = new Date().toLocaleString();
 
     const newRobot = await Robot.create({
-      id: uuid(),
+      id: randomUUID(),
       userId: originalRobot.userId,
       recording_meta: {
         ...originalRobot.recording_meta,
-        id: uuid(),
+        id: randomUUID(),
         name: `${originalRobot.recording_meta.name} (${lastWord})`,
         createdAt: currentTimestamp,
         updatedAt: currentTimestamp,
@@ -518,7 +518,7 @@ router.put('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res) =>
     }
 
     // Generate runId first
-    const runId = uuid();
+    const runId = randomUUID();
     
     const canCreateBrowser = await browserPool.hasAvailableBrowserSlots(req.user.id, "run");
 
@@ -607,7 +607,7 @@ router.put('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res) =>
         queued: false 
       }); 
     } else {
-      const browserId = uuid(); 
+      const browserId = randomUUID();
 
       await Run.create({
         status: 'queued',

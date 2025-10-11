@@ -22,7 +22,6 @@
     "@types/node": "22.7.9",
     "@types/react": "^18.0.5",
     "@types/react-dom": "^18.0.1",
-    "@types/uuid": "^8.3.4",
     "airtable": "^0.12.2",
     "axios": "^1.9.0",
     "bcrypt": "^5.1.1",
@@ -82,8 +81,6 @@
     "swagger-ui-express": "^5.0.1",
     "typedoc": "^0.23.8",
     "typescript": "^4.6.3",
-    "uuid": "^8.3.2",
-    "uuidv4": "^6.2.12",
     "web-vitals": "^2.1.4",
     "winston": "^3.5.1"
   },
