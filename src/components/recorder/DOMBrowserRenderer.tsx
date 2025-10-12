@@ -210,20 +210,42 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
         const iframeWindow = iframeRef.current?.contentWindow || null;
         if (ev.source !== iframeWindow) {
           // Not from the recorded iframe - ignore
+          // console.debug('Dropped media-extracted: source mismatch');
           return;
         }
 
-        // If snapshot.baseUrl is available, validate origin when possible
-        try {
-          if (snapshot?.baseUrl) {
+        // Require a non-null origin for messages
+        if (!ev.origin || ev.origin === 'null') {
+          // console.debug('Dropped media-extracted: null origin');
+          return;
+        }
+
+        // If snapshot.baseUrl is available, validate origin and also verify data.url origin
+        if (snapshot?.baseUrl) {
+          try {
             const expectedOrigin = new URL(snapshot.baseUrl).origin;
-            if (ev.origin && ev.origin !== 'null' && ev.origin !== expectedOrigin) {
+            if (ev.origin !== expectedOrigin) {
               // origin mismatch - ignore
+              // console.debug('Dropped media-extracted: origin mismatch', ev.origin, expectedOrigin);
               return;
             }
+
+            // Validate that the reported data.url has the same origin
+            try {
+              const reportedOrigin = new URL(data.url).origin;
+              if (reportedOrigin !== expectedOrigin) {
+                // reported url is not from the recorded page origin
+                // console.debug('Dropped media-extracted: data.url origin mismatch', reportedOrigin, expectedOrigin);
+                return;
+              }
+            } catch (e) {
+              // invalid data.url - drop
+              return;
+            }
+          } catch (e) {
+            // If snapshot.baseUrl parsing failed, drop the message
+            return;
           }
-        } catch (e) {
-          // ignore origin validation failures and proceed only if source matched
         }
 
         const payload = {
