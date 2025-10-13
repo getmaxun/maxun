@@ -88,7 +88,7 @@ const Login = () => {
         onSubmit={submitForm}
         sx={{
           textAlign: "center",
-          backgroundColor: darkMode ? "#1e1e1e" : "#ffffff",
+          backgroundColor: darkMode ? "#121111ff" : "#ffffff",
           color: darkMode ? "#ffffff" : "#333333",
           padding: 6,
           borderRadius: 5,
