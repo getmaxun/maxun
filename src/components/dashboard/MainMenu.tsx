@@ -151,7 +151,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             Maxun is built by a small, full-time team. Your donations directly contribute to making it better.
             <br />
             <br />
-            Thank you for your support! 💙
+            Thank you for your support! 🩷
           </Typography>
           <Stack direction="row" spacing={2} mt={2}>
             <Button href="https://github.com/sponsors/amhsirak" target="_blank" rel="noopener noreferrer" variant="outlined" fullWidth>
