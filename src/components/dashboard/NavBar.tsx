@@ -519,7 +519,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                   marginRight: "8px",
                 }}
               >
-                <Language sx={{ marginRight: '5px' }} /><Typography variant="body1">{t("Language")}</Typography>
+                <Language sx={{ marginRight: '5px' }} />
               </IconButton>
               <Menu
                 anchorEl={langAnchorEl}
