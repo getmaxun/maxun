@@ -30,7 +30,8 @@ import {
   Language,
   Description,
   LightMode,
-  DarkMode
+  DarkMode,
+  Translate
 } from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/auth';
@@ -519,7 +520,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                   marginRight: "-4px",
                 }}
               >
-                <Language  />
+                <Translate  />
               </IconButton>
               <Menu
                 anchorEl={langAnchorEl}
