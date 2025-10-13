@@ -519,7 +519,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                   marginRight: "8px",
                 }}
               >
-                <Language sx={{ marginRight: '5px' }} />
+                <Language  />
               </IconButton>
               <Menu
                 anchorEl={langAnchorEl}
