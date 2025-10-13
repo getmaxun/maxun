@@ -80,7 +80,7 @@ const Login = () => {
         maxHeight: "100vh",
         mt: 6,
         padding: 4,
-        backgroundColor: darkMode ? "#121212" : "#ffffff",
+        backgroundColor: "inherit",
       }}
     >
       <Box
