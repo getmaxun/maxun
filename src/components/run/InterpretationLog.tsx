@@ -193,7 +193,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
           onOpen={toggleDrawer(true)}
           PaperProps={{
             sx: {
-              background: `${darkMode ? '#1e2124' : 'white'}`,
+              background: `${darkMode ? '#1d1c1cff' : 'white'}`,
               color: `${darkMode ? 'white' : 'black'}`,
               padding: '10px',
               height: outputPreviewHeight,
