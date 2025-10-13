@@ -395,7 +395,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                       <Logout sx={{ marginRight: '5px' }} /> {t('navbar.menu_items.logout')}
                     </MenuItem>
                     <MenuItem onClick={handleLangMenuOpen}>
-                      <Language sx={{ marginRight: '5px' }} /> {t('navbar.menu_items.language')}
+                      <Translate sx={{ marginRight: '5px' }} /> {t('navbar.menu_items.language')}
                     </MenuItem>
                     <hr />
                     <MenuItem onClick={() => {
