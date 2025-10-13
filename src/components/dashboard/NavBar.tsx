@@ -516,7 +516,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                   alignItems: "center",
                   borderRadius: "5px",
                   padding: "8px",
-                  marginRight: "8px",
+                  marginRight: "-4px",
                 }}
               >
                 <Language  />
