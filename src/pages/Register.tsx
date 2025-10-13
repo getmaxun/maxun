@@ -72,7 +72,7 @@ const Register = () => {
         alignItems: "center",
         maxHeight: "100vh",
         padding: 4,
-        backgroundColor: darkMode ? "#121212" : "#ffffff",
+        backgroundColor: "inherit",
       }}
     >
       <Box
