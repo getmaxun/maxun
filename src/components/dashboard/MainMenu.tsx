@@ -94,6 +94,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               label={t('mainmenu.recordings')}
               icon={<AutoAwesome />}
               iconPosition="start"
+              disableRipple={true}
               sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }}
               onClick={handleRobotsClick} />
             <Tab value="runs"
