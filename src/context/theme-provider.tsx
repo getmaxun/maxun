@@ -112,7 +112,7 @@ const darkTheme = createTheme({
             color: '#ffffff',
             "&:hover": {
               borderColor: '#ffffff',
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              backgroundColor: 'inherit',
             },
           },
         },
