@@ -216,8 +216,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                   sx={{
                     display: 'flex',
                     borderBottom: '1px solid',
-                    borderColor: darkMode ? '#3a4453' : '#dee2e6',
-                    backgroundColor: darkMode ? '#2a3441' : '#f8f9fa'
                   }}
                 >
                   {availableTabs.map((tab, index) => (
