@@ -601,11 +601,11 @@ export const NavBar: React.FC<NavBarProps> = ({
 
 const NavBarWrapper = styled.div<{ mode: 'light' | 'dark' }>`
   grid-area: navbar;
-  background-color: ${({ mode }) => (mode === 'dark' ? '#080808ff' : '#ffffff')};
+  background-color: ${({ mode }) => (mode === 'dark' ? '#000000ff' : '#ffffff')};
   padding: 5px;
   display: flex;
   justify-content: space-between;
-  border-bottom: 1px solid ${({ mode }) => (mode === 'dark' ? '#121111ff' : '#e0e0e0')};
+  border-bottom: 1px solid ${({ mode }) => (mode === 'dark' ? '#000000ff' : '#e0e0e0')};
 `;
 
 const ProjectName = styled.b<{ mode: 'light' | 'dark' }>`
