@@ -1080,7 +1080,6 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                         </InputAdornment>
                       )
                     }}
-                    sx={{ background: isDarkMode ? "#1E2124" : 'white', color: isDarkMode ? "white" : 'black' }}
                   />
                   <TextField
                     label={t('right_panel.fields.data')}
