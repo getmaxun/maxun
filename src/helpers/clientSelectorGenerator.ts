@@ -560,18 +560,17 @@ class ClientSelectorGenerator {
       return element.hasAttribute("src");
     }
 
+    if (tagName === "a" && element.hasAttribute("href")) {
+      return true;
+    }
+
     if (element.children.length > 0) {
       return false;
     }
 
     const text = (element.textContent || "").trim();
-    const hasHref = element.hasAttribute("href");
 
     if (text.length > 0) {
-      return true;
-    }
-
-    if (tagName === "a" && hasHref) {
       return true;
     }
 
