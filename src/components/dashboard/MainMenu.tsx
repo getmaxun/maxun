@@ -157,9 +157,6 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             <Button href="https://checkout.dodopayments.com/buy/pdt_1Bdstszcg9VY8WYGwNBPM?quantity=1" target="_blank" rel="noopener noreferrer" variant="outlined" fullWidth>
               Sponsor $5 One-Time
             </Button>
-            <Button href="https://checkout.dodopayments.com/buy/pdt_HDalaYf8hEGVG7hXcfNBj?quantity=1" target="_blank" rel="noopener noreferrer" variant="outlined" fullWidth>
-              Sponsor $5 Monthly
-            </Button>
           </Stack>
         </Box>
       </Modal>
