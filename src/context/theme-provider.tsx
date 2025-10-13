@@ -181,7 +181,7 @@ const darkTheme = createTheme({
     MuiAlert: {
       styleOverrides: {
         standardInfo: {
-          // backgroundColor: "rgba(255, 0, 195, 0.15)",
+          backgroundColor: "rgba(255, 0, 195, 0.15)",
           color: "#ff66d9",
           "& .MuiAlert-icon": {
             color: "#ff66d9",
