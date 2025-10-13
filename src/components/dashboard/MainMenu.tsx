@@ -152,7 +152,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             <br />
             Thank you for your support! 🩷
           </Typography>
-          <Stack direction="row" spacing={2} mt={2}>
+          <Stack direction="row" spacing={2} mt={4}>
             <Button href="https://github.com/sponsors/amhsirak" target="_blank" rel="noopener noreferrer" variant="outlined" fullWidth>
               Sponsor Maxun on GitHub Sponsors
             </Button>
