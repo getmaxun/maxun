@@ -71,6 +71,7 @@ const Register = () => {
         justifyContent: "center",
         alignItems: "center",
         maxHeight: "100vh",
+        mt: 6,
         padding: 4,
         backgroundColor: "inherit",
       }}
@@ -96,8 +97,8 @@ const Register = () => {
         <img
           src="../src/assets/maxunlogo.png"
           alt="logo"
-          height={55}
-          width={60}
+          height={60}
+          width={70}
           style={{
             marginBottom: 20,
             borderRadius: "20%",
