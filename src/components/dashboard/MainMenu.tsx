@@ -107,6 +107,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               label={t('mainmenu.proxy')}
               icon={<Usb />}
               iconPosition="start"
+              disableRipple={true}
               sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
             <Tab value="apikey"
               label={t('mainmenu.apikey')}
