@@ -100,7 +100,8 @@ const Login = () => {
           width: "100%",
         }}
       >
-        <img src="../src/assets/maxunlogo.png" alt="logo" height={55} width={60} style={{ marginBottom: 20, borderRadius: "20%", alignItems: "center" }} />
+        <img src="../src/assets/maxunlogo.png" alt="logo" height={60}
+          width={70} style={{ marginBottom: 20, borderRadius: "20%", alignItems: "center" }} />
         <Typography variant="h4" gutterBottom>
           {t('login.title')}
         </Typography>
