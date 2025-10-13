@@ -22,9 +22,10 @@ import { useBrowserSteps } from '../../context/browserSteps';
 interface InterpretationLogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
+  tutorialMode?: boolean;
 }
 
-export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, setIsOpen }) => {
+export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, setIsOpen, tutorialMode = false }) => {
   const { t } = useTranslation();
   
   const [captureListData, setCaptureListData] = useState<any[]>([]);
@@ -67,6 +68,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
       setActiveTab(availableTabs.findIndex(tab => tab.id === 'captureScreenshot'));
     }
   }, [captureListData.length, captureTextData.length, screenshotData.length]);
+
 
   useEffect(() => {
     const textSteps = browserSteps.filter(step => step.type === 'text');
@@ -144,6 +146,16 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     }
   }, [hasScrapeListAction, hasScrapeSchemaAction, hasScreenshotAction, setIsOpen]);
 
+  useEffect(() => {
+    if (
+      tutorialMode &&
+      (hasScrapeListAction || hasScrapeSchemaAction || hasScreenshotAction)
+    ) {
+      setShowPreviewData(true);
+      setIsOpen(true); // auto-open drawer
+    }
+  }, [tutorialMode, hasScrapeListAction, hasScrapeSchemaAction, hasScreenshotAction, setIsOpen]);
+
   const { darkMode } = useThemeMode();
 
   const getCaptureTextColumns = captureTextData.length > 0 ? Object.keys(captureTextData[0]) : [];
@@ -216,6 +228,8 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                   sx={{
                     display: 'flex',
                     borderBottom: '1px solid',
+                    borderColor: darkMode ? '#080808ff' : '#dee2e6',
+                    backgroundColor: darkMode ? '#080808ff' : '#f8f9fa'
                   }}
                 >
                   {availableTabs.map((tab, index) => (
@@ -226,15 +240,15 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                         px: 4,
                         py: 2,
                         cursor: 'pointer',
-                        borderBottom: activeTab === index ? '2px solid' : 'none',
+                        // borderBottom: activeTab === index ? '2px solid' : 'none',
                         borderColor: activeTab === index ? (darkMode ? '#ff00c3' : '#ff00c3') : 'transparent',
-                        backgroundColor: activeTab === index ? (darkMode ? '#34404d' : '#e9ecef') : 'transparent',
+                        backgroundColor: activeTab === index ? (darkMode ? '#121111ff' : '#e9ecef') : 'transparent',
                         color: darkMode ? 'white' : 'black',
                         fontWeight: activeTab === index ? 500 : 400,
                         textAlign: 'center',
                         position: 'relative',
                         '&:hover': {
-                          backgroundColor: activeTab !== index ? (darkMode ? '#303b49' : '#e2e6ea') : undefined
+                          backgroundColor: activeTab !== index ? (darkMode ? '#121111ff' : '#e2e6ea') : undefined
                         }
                       }}
                     >
@@ -286,8 +300,8 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                                 key={index}
                                 sx={{ 
                                   borderBottom: '1px solid',
-                                  borderColor: darkMode ? '#3a4453' : '#dee2e6',
-                                  backgroundColor: darkMode ? '#2a3441' : '#f8f9fa'
+                                  borderColor: darkMode ? '#080808ff' : '#dee2e6',
+                                  backgroundColor: darkMode ? '#080808ff' : '#f8f9fa'
                                 }}
                               >
                                 {field.label}
@@ -297,16 +311,16 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                         </TableHead>
                         <TableBody>
                           {(captureListData[captureListPage]?.data || [])
-                            .slice(0, Math.min(captureListData[captureListPage]?.limit || 10, 5))
+                            .slice(0, tutorialMode ? (captureListData[captureListPage]?.data?.length || 0) : Math.min(captureListData[captureListPage]?.limit || 10, 5))
                             .map((row: any, rowIndex: any) => (
-                              <TableRow 
+                              <TableRow
                                 key={rowIndex}
-                                sx={{ 
-                                  borderBottom: rowIndex < Math.min(
-                                    (captureListData[captureListPage]?.data?.length || 0),
-                                    Math.min(captureListData[captureListPage]?.limit || 10, 5)
+                                sx={{
+                                  borderBottom: rowIndex < (tutorialMode
+                                    ? (captureListData[captureListPage]?.data?.length || 0)
+                                    : Math.min((captureListData[captureListPage]?.data?.length || 0), Math.min(captureListData[captureListPage]?.limit || 10, 5))
                                   ) - 1 ? '1px solid' : 'none',
-                                  borderColor: darkMode ? '#3a4453' : '#dee2e6'
+                                  borderColor: darkMode ? '#080808ff' : '#dee2e6'
                                 }}
                               >
                                 {Object.values(captureListData[captureListPage]?.fields || {}).map((field: any, colIndex) => (
@@ -317,7 +331,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                                       py: 2
                                     }}
                                   >
-                                    {row[field.label]}
+                                    {typeof row[field.label] === 'object' ? JSON.stringify(row[field.label]) : String(row[field.label] || '')}
                                   </TableCell>
                                 ))}
                               </TableRow>
@@ -377,7 +391,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                 )}
                 
                 {(activeTab === availableTabs.findIndex(tab => tab.id === 'captureText') || singleContentType === 'captureText') && captureTextData.length > 0 && (
-                  <Box sx={{ p: 2 }}>
+                  <Box sx={{ mt: 2 }}>
                     <TableContainer component={Paper} sx={{ boxShadow: 'none', borderRadius: 0 }}>
                       <Table>
                         <TableHead>
@@ -385,8 +399,8 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                             <TableCell 
                               sx={{ 
                                 borderBottom: '1px solid',
-                                borderColor: darkMode ? '#3a4453' : '#dee2e6',
-                                backgroundColor: darkMode ? '#2a3441' : '#f8f9fa',
+                                borderColor: darkMode ? '#080808ff' : '#dee2e6',
+                                backgroundColor: darkMode ? '#080808ff' : '#f8f9fa',
                               }}
                             >
                               Label
@@ -394,8 +408,8 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                             <TableCell 
                               sx={{ 
                                 borderBottom: '1px solid',
-                                borderColor: darkMode ? '#3a4453' : '#dee2e6',
-                                backgroundColor: darkMode ? '#2a3441' : '#f8f9fa',
+                                borderColor: darkMode ? '#080808ff' : '#dee2e6',
+                                backgroundColor: darkMode ? '#080808ff' : '#f8f9fa',
                               }}
                             >
                               Value
@@ -408,7 +422,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                               key={column}
                               sx={{ 
                                 borderBottom: index < getCaptureTextColumns.length - 1 ? '1px solid' : 'none',
-                                borderColor: darkMode ? '#3a4453' : '#dee2e6'
+                                borderColor: darkMode ? '#080808ff' : '#dee2e6'
                               }}
                             >
                               <TableCell 
@@ -426,7 +440,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                                   py: 2
                                 }}
                               >
-                                {captureTextData[0][column]}
+                                {typeof captureTextData[0][column] === 'object' ? JSON.stringify(captureTextData[0][column]) : String(captureTextData[0][column] || '')}
                               </TableCell>
                             </TableRow>
                           ))}
@@ -445,7 +459,9 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                     <Typography variant="h6" gutterBottom align="left">
                       {t('interpretation_log.messages.successful_training')}
                     </Typography>
-                    <SidePanelHeader onPreviewClick={() => setShowPreviewData(true)} />
+                    {!tutorialMode && (
+                      <SidePanelHeader onPreviewClick={() => setShowPreviewData(true)} />
+                    )}
                   </>
                 ) : (
                   <Typography variant="h6" gutterBottom align="left">
