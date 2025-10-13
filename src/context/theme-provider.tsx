@@ -94,7 +94,7 @@ const darkTheme = createTheme({
     },
     background: {
       default: '#000000ff',
-      paper: '#080808ff',
+      paper: '#000000ff',
     },
     text: {
       primary: '#ffffff',
@@ -127,14 +127,14 @@ const darkTheme = createTheme({
           borderColor: '#ff00c3',
           color: '#ff00c3',
           "&:hover": {
-            backgroundColor: 'rgba(255, 0, 195, 0.08)',
+            // backgroundColor: 'rgba(255, 0, 195, 0.08)',
             borderColor: '#ff66d9',
           },
           '&.MuiButton-outlinedError': {
             borderColor: '#f44336',
             color: '#f44336',
             "&:hover": {
-              backgroundColor: 'rgba(244, 67, 54, 0.08)',
+              // backgroundColor: 'rgba(244, 67, 54, 0.08)',
               borderColor: '#d32f2f',
             },
           },
@@ -155,14 +155,14 @@ const darkTheme = createTheme({
       styleOverrides: {
         root: {
           color: '#ffffff',
-          "&:hover": {
-            backgroundColor: 'rgba(255, 0, 195, 0.08)',
-          },
+          // "&:hover": {
+          //   backgroundColor: 'rgba(255, 0, 195, 0.08)',
+          // },
           '&.MuiIconButton-colorError': {
             color: '#f44336',
-            "&:hover": {
-              backgroundColor: 'rgba(244, 67, 54, 0.08)',
-            },
+            // "&:hover": {
+            //   backgroundColor: 'rgba(244, 67, 54, 0.08)',
+            // },
           },
         },
       },
@@ -181,7 +181,7 @@ const darkTheme = createTheme({
     MuiAlert: {
       styleOverrides: {
         standardInfo: {
-          backgroundColor: "rgba(255, 0, 195, 0.15)",
+          // backgroundColor: "rgba(255, 0, 195, 0.15)",
           color: "#ff66d9",
           "& .MuiAlert-icon": {
             color: "#ff66d9",
@@ -202,8 +202,8 @@ const darkTheme = createTheme({
     MuiPaper: {
       styleOverrides: {
         root: {
-          backgroundColor: '#080808ff',
-          border: '1px solid #121111ff',
+          backgroundColor: '#000000ff',
+          border: '1px solid #080808ff',
         },
       },
     },
@@ -231,10 +231,18 @@ const darkTheme = createTheme({
     MuiDivider: {
       styleOverrides: {
         root: {
-          borderColor: '#080808ff',
+          borderColor: '#494949ff',
         },
       },
     },
+    //   MuiTextField:{
+    //     styleOverrides: {
+    //       root: {
+    //         '& .MuiInputBase-root': {
+    //           backgroundColor: '#1d1c1cff',
+    //         },
+    //   }
+    // }}
   },
 });
 
