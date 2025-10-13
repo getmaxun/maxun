@@ -154,8 +154,8 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             Thank you for your support! 💙
           </Typography>
           <Stack direction="row" spacing={2} mt={2}>
-            <Button href="https://checkout.dodopayments.com/buy/pdt_1Bdstszcg9VY8WYGwNBPM?quantity=1" target="_blank" rel="noopener noreferrer" variant="outlined" fullWidth>
-              Sponsor $5 One-Time
+            <Button href="" target="_blank" rel="noopener noreferrer" variant="outlined" fullWidth>
+              Sponsor Maxun on GitHub Sponsors
             </Button>
           </Stack>
         </Box>
