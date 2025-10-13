@@ -605,7 +605,7 @@ const NavBarWrapper = styled.div<{ mode: 'light' | 'dark' }>`
   padding: 5px;
   display: flex;
   justify-content: space-between;
-  border-bottom: 1px solid ${({ mode }) => (mode === 'dark' ? '#333' : '#e0e0e0')};
+  border-bottom: 1px solid ${({ mode }) => (mode === 'dark' ? '#080808ff' : '#e0e0e0')};
 `;
 
 const ProjectName = styled.b<{ mode: 'light' | 'dark' }>`
