@@ -203,6 +203,7 @@ const darkTheme = createTheme({
       styleOverrides: {
         root: {
           backgroundColor: '#080808ff',
+          border: '1px solid #121111ff',
         },
       },
     },
