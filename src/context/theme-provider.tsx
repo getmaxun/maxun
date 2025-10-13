@@ -230,7 +230,7 @@ const darkTheme = createTheme({
     MuiDivider: {
       styleOverrides: {
         root: {
-          borderColor: 'rgba(255, 255, 255, 0.12)',
+          borderColor: '#080808ff',
         },
       },
     },
