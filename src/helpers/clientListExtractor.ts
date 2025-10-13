@@ -314,6 +314,38 @@ class ClientListExtractor {
         console.warn("Error creating URL from", dataAttr, e);
         return dataAttr;
       }
+    } else if (attribute === "svgContent") {
+      if (element.tagName === "SVG") {
+        const svgElement = element as unknown as SVGSVGElement;
+        const useElement = svgElement.querySelector("use");
+        if (useElement) {
+          return useElement.getAttribute("href") || useElement.getAttribute("xlink:href") || "";
+        }
+        return svgElement.outerHTML;
+      } else {
+        const svgChild = element.querySelector("svg");
+        if (svgChild) {
+          const useElement = svgChild.querySelector("use");
+          if (useElement) {
+            return useElement.getAttribute("href") || useElement.getAttribute("xlink:href") || "";
+          }
+          return svgChild.outerHTML;
+        }
+      }
+      return null;
+    } else if (attribute === "svgType") {
+      if (element.tagName === "SVG") {
+        const svgElement = element as unknown as SVGSVGElement;
+        const useElement = svgElement.querySelector("use");
+        return useElement ? "use" : "inline";
+      } else {
+        const svgChild = element.querySelector("svg");
+        if (svgChild) {
+          const useElement = svgChild.querySelector("use");
+          return useElement ? "use" : "icon";
+        }
+      }
+      return null;
     }
     return element.getAttribute(attribute);
   };
