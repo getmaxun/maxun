@@ -155,9 +155,9 @@ const darkTheme = createTheme({
       styleOverrides: {
         root: {
           color: '#ffffff',
-          "&:hover": {
-            backgroundColor: 'rgba(255, 0, 195, 0.08)',
-          },
+          // "&:hover": {
+          //   backgroundColor: 'rgba(255, 0, 195, 0.08)',
+          // },
           '&.MuiIconButton-colorError': {
             color: '#f44336',
             // "&:hover": {
