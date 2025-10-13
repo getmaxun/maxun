@@ -31,7 +31,7 @@ const Triangle = styled.div<CustomBoxContainerProps>`
   height: 0;
   border-left: 20px solid transparent;
   border-right: 20px solid transparent;
-  border-bottom: 20px solid ${({ isDarkMode }) => (isDarkMode ? '#313438' : 'white')};
+  border-bottom: 20px solid ${({ isDarkMode }) => (isDarkMode ? '#1d1c1cff' : 'white')};
 `;
 
 const Logo = styled.img`
