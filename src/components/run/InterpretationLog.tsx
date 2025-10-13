@@ -448,6 +448,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                     <Typography variant="h6" gutterBottom align="left">
                       {t('interpretation_log.messages.successful_training')}
                     </Typography>
+                      <SidePanelHeader onPreviewClick={() => setShowPreviewData(true)} />
                   </>
                 ) : (
                   <Typography variant="h6" gutterBottom align="left">
