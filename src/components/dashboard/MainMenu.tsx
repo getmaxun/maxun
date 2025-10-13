@@ -113,6 +113,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               label={t('mainmenu.apikey')}
               icon={<VpnKey />}
               iconPosition="start"
+              disableRipple={true}
               sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
           </Tabs>
           <hr />
