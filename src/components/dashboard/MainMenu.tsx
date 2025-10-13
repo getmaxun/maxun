@@ -101,6 +101,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               label={t('mainmenu.runs')}
               icon={<FormatListBulleted />}
               iconPosition="start"
+              disableRipple={true}
               sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
             <Tab value="proxy"
               label={t('mainmenu.proxy')}
