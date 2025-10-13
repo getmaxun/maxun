@@ -22,10 +22,9 @@ import { useBrowserSteps } from '../../context/browserSteps';
 interface InterpretationLogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  tutorialMode?: boolean;
 }
 
-export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, setIsOpen, tutorialMode = false }) => {
+export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, setIsOpen }) => {
   const { t } = useTranslation();
   
   const [captureListData, setCaptureListData] = useState<any[]>([]);
@@ -146,15 +145,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     }
   }, [hasScrapeListAction, hasScrapeSchemaAction, hasScreenshotAction, setIsOpen]);
 
-  useEffect(() => {
-    if (
-      tutorialMode &&
-      (hasScrapeListAction || hasScrapeSchemaAction || hasScreenshotAction)
-    ) {
-      setShowPreviewData(true);
-      setIsOpen(true); // auto-open drawer
-    }
-  }, [tutorialMode, hasScrapeListAction, hasScrapeSchemaAction, hasScreenshotAction, setIsOpen]);
 
   const { darkMode } = useThemeMode();
 
@@ -311,14 +301,13 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                         </TableHead>
                         <TableBody>
                           {(captureListData[captureListPage]?.data || [])
-                            .slice(0, tutorialMode ? (captureListData[captureListPage]?.data?.length || 0) : Math.min(captureListData[captureListPage]?.limit || 10, 5))
+                            .slice(0, Math.min(captureListData[captureListPage]?.limit || 10, 5))
                             .map((row: any, rowIndex: any) => (
                               <TableRow
                                 key={rowIndex}
                                 sx={{
-                                  borderBottom: rowIndex < (tutorialMode
-                                    ? (captureListData[captureListPage]?.data?.length || 0)
-                                    : Math.min((captureListData[captureListPage]?.data?.length || 0), Math.min(captureListData[captureListPage]?.limit || 10, 5))
+                                  borderBottom: rowIndex < (
+                                     Math.min((captureListData[captureListPage]?.data?.length || 0), Math.min(captureListData[captureListPage]?.limit || 10, 5))
                                   ) - 1 ? '1px solid' : 'none',
                                   borderColor: darkMode ? '#080808ff' : '#dee2e6'
                                 }}
@@ -459,9 +448,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                     <Typography variant="h6" gutterBottom align="left">
                       {t('interpretation_log.messages.successful_training')}
                     </Typography>
-                    {!tutorialMode && (
-                      <SidePanelHeader onPreviewClick={() => setShowPreviewData(true)} />
-                    )}
                   </>
                 ) : (
                   <Typography variant="h6" gutterBottom align="left">
