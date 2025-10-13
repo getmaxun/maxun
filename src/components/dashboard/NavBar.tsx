@@ -601,7 +601,7 @@ export const NavBar: React.FC<NavBarProps> = ({
 
 const NavBarWrapper = styled.div<{ mode: 'light' | 'dark' }>`
   grid-area: navbar;
-  background-color: ${({ mode }) => (mode === 'dark' ? '#1e2124' : '#ffffff')};
+  background-color: ${({ mode }) => (mode === 'dark' ? '#080808ff' : '#ffffff')};
   padding: 5px;
   display: flex;
   justify-content: space-between;
