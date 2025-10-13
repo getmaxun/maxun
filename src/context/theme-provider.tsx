@@ -202,21 +202,21 @@ const darkTheme = createTheme({
     MuiPaper: {
       styleOverrides: {
         root: {
-          backgroundColor: '#1e1e1e',
+          backgroundColor: '#080808ff',
         },
       },
     },
     MuiAppBar: {
       styleOverrides: {
         root: {
-          backgroundColor: '#121212',
+          backgroundColor: '#080808ff',
         },
       },
     },
     MuiDrawer: {
       styleOverrides: {
         paper: {
-          backgroundColor: '#121212',
+          backgroundColor: '#080808ff',
         },
       },
     },
