@@ -160,9 +160,9 @@ const darkTheme = createTheme({
           },
           '&.MuiIconButton-colorError': {
             color: '#f44336',
-            "&:hover": {
-              backgroundColor: 'rgba(244, 67, 54, 0.08)',
-            },
+            // "&:hover": {
+            //   backgroundColor: 'rgba(244, 67, 54, 0.08)',
+            // },
           },
         },
       },
