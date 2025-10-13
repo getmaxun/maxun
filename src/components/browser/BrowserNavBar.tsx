@@ -20,12 +20,12 @@ const StyledNavBar = styled.div<{ browserWidth: number; isDarkMode: boolean }>`
 `;
 
 const IconButton = styled(NavBarButton) <{ mode: string }>`
-  background-color: ${({ mode }) => (mode === 'dark' ? '1d1c1cff' : '#f6f6f6')};
+  background-color: ${({ mode }) => (mode === 'dark' ? '#1d1c1cff' : '#f6f6f6')};
   transition: background-color 0.3s ease, transform 0.1s ease;
   color: ${({ mode }) => (mode === 'dark' ? '#FFFFFF' : '#333')};
   cursor: pointer;
   &:hover {
-    background-color: ${({ mode }) => (mode === 'dark' ? '#586069' : '#D0D0D0')};
+    background-color: ${({ mode }) => (mode === 'dark' ? '#1d1c1cff' : '#D0D0D0')};
   }
 `;
 
