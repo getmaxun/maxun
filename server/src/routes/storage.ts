@@ -4,7 +4,7 @@ import { createRemoteBrowserForRun, destroyRemoteBrowser, getActiveBrowserIdBySt
 import { chromium } from 'playwright-extra';
 import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { browserPool } from "../server";
-import { randomUUID } from "crypto";
+import { randomUUID } from 'crypto';
 import moment from 'moment-timezone';
 import cron from 'node-cron';
 import { getDecryptedProxyConfig } from './proxy';
