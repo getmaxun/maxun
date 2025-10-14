@@ -27,7 +27,6 @@ import {
   GitHub,
   Update,
   Close,
-  Language,
   Description,
   LightMode,
   DarkMode,
