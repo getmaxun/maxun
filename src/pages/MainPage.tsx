@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useEffect } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MainMenu } from "../components/dashboard/MainMenu";
 import { Stack } from "@mui/material";
@@ -293,37 +293,45 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
     }
   }, [user?.id, connectToQueueSocket, disconnectQueueSocket, t, setRerenderRuns, queuedRuns, setQueuedRuns]);
 
-  const DisplayContent = () => {
-    switch (content) {
-      case 'robots':
-        return <Recordings
-          handleEditRecording={handleEditRecording}
-          handleRunRecording={handleRunRecording}
-          setRecordingInfo={setRecordingInfo}
-          handleScheduleRecording={handleScheduleRecording}
-        />;
-      case 'runs':
-        return <Runs
-          currentInterpretationLog={currentInterpretationLog}
-          abortRunHandler={abortRunHandler}
-          runId={ids.runId}
-          runningRecordingName={runningRecordingName}
-        />;
-      case 'proxy':
-        return <ProxyForm />;
-      case 'apikey':
-        return <ApiKey />;
-      default:
-        return null;
-    }
-  }
+  // Keep subviews mounted to avoid refetch/remount lag on tab switches
+  const robotsView = useMemo(() => (
+    <Recordings
+      handleEditRecording={handleEditRecording}
+      handleRunRecording={handleRunRecording}
+      setRecordingInfo={setRecordingInfo}
+      handleScheduleRecording={handleScheduleRecording}
+    />
+  ), [handleEditRecording, handleRunRecording, setRecordingInfo, handleScheduleRecording]);
+
+  const runsView = useMemo(() => (
+    <Runs
+      currentInterpretationLog={currentInterpretationLog}
+      abortRunHandler={abortRunHandler}
+      runId={ids.runId}
+      runningRecordingName={runningRecordingName}
+    />
+  ), [currentInterpretationLog, abortRunHandler, ids.runId, runningRecordingName]);
+
+  const proxyView = useMemo(() => (<ProxyForm />), []);
+  const apiKeyView = useMemo(() => (<ApiKey />), []);
 
   return (
     <Stack direction='row' spacing={0} sx={{ minHeight: '900px' }}>
       <Stack sx={{ width: 250, flexShrink: 0 }}>
       <MainMenu value={content} handleChangeContent={setContent} />
       </Stack>
-      {DisplayContent()}
+      <div style={{ display: content === 'robots' ? 'block' : 'none', width: '100%' }}>
+        {robotsView}
+      </div>
+      <div style={{ display: content === 'runs' ? 'block' : 'none', width: '100%' }}>
+        {runsView}
+      </div>
+      <div style={{ display: content === 'proxy' ? 'block' : 'none', width: '100%' }}>
+        {proxyView}
+      </div>
+      <div style={{ display: content === 'apikey' ? 'block' : 'none', width: '100%' }}>
+        {apiKeyView}
+      </div>
     </Stack>
   );
 };
