@@ -1,19 +1,13 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Button, Paper, Box, TextField, IconButton, Tooltip } from "@mui/material";
-import EditIcon from '@mui/icons-material/Edit';
-import TextFieldsIcon from '@mui/icons-material/TextFields';
-import DocumentScannerIcon from '@mui/icons-material/DocumentScanner';
 import { WorkflowFile } from "maxun-core";
 import Typography from "@mui/material/Typography";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { PaginationType, useActionContext, LimitType } from '../../context/browserActions';
 import { BrowserStep, useBrowserSteps } from '../../context/browserSteps';
 import { useSocketStore } from '../../context/socket';
-import { ScreenshotSettings } from '../../shared/types';
-import InputAdornment from '@mui/material/InputAdornment';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormControl from '@mui/material/FormControl';
-import FormLabel from '@mui/material/FormLabel';
 import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
 import { getActiveWorkflow } from "../../api/workflow";
@@ -49,13 +43,9 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const [showCaptureList, setShowCaptureList] = useState(true);
   const [showCaptureScreenshot, setShowCaptureScreenshot] = useState(true);
   const [showCaptureText, setShowCaptureText] = useState(true);
-  const [hoverStates, setHoverStates] = useState<{ [id: string]: boolean }>({});
-  const [browserStepIdList, setBrowserStepIdList] = useState<number[]>([]);
-  const [isCaptureTextConfirmed, setIsCaptureTextConfirmed] = useState(false);
-  const [isCaptureListConfirmed, setIsCaptureListConfirmed] = useState(false);
   const { panelHeight } = useBrowserDimensionsStore();
 
-  const { lastAction, notify, currentWorkflowActionsState, setCurrentWorkflowActionsState, resetInterpretationLog, currentListActionId, setCurrentListActionId, currentTextActionId, setCurrentTextActionId, currentScreenshotActionId, setCurrentScreenshotActionId, isDOMMode, setIsDOMMode, currentSnapshot, setCurrentSnapshot, updateDOMMode, initialUrl, setRecordingUrl } = useGlobalInfoStore();  
+  const { lastAction, notify, currentWorkflowActionsState, setCurrentWorkflowActionsState, resetInterpretationLog, currentListActionId, setCurrentListActionId, currentTextActionId, setCurrentTextActionId, currentScreenshotActionId, setCurrentScreenshotActionId, isDOMMode, setIsDOMMode, currentSnapshot, setCurrentSnapshot, updateDOMMode, initialUrl, setRecordingUrl, currentTextGroupName } = useGlobalInfoStore();  
   const { 
     getText, startGetText, stopGetText, 
     getList, startGetList, stopGetList, 
@@ -72,7 +62,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     startAction, finishAction 
   } = useActionContext();
   
-  const { browserSteps, updateBrowserTextStepLabel, deleteBrowserStep, addScreenshotStep, updateListTextFieldLabel, removeListTextField, updateListStepLimit, deleteStepsByActionId, updateListStepData, updateScreenshotStepData } = useBrowserSteps();
+  const { browserSteps, updateBrowserTextStepLabel, deleteBrowserStep, addScreenshotStep, updateListTextFieldLabel, removeListTextField, updateListStepLimit, deleteStepsByActionId, updateListStepData, updateScreenshotStepData, emitActionForStep } = useBrowserSteps();
   const { id, socket } = useSocketStore();
   const { t } = useTranslation();
 
@@ -183,6 +173,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         if (screenshotSteps.length > 0) {
           const latestStep = screenshotSteps[screenshotSteps.length - 1];          
           updateScreenshotStepData(latestStep.id, data.screenshot);
+          emitActionForStep(latestStep);
         }
         
         setCurrentScreenshotActionId('');
@@ -194,7 +185,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         socket.off('directScreenshotCaptured', handleDirectScreenshot);
       };
     }
-  }, [socket, id, notify, t, currentScreenshotActionId, updateScreenshotStepData, setCurrentScreenshotActionId]);
+  }, [socket, id, notify, t, currentScreenshotActionId, updateScreenshotStepData, setCurrentScreenshotActionId, emitActionForStep, browserSteps]);
 
   const extractDataClientSide = useCallback(
     (
@@ -271,26 +262,41 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         }
       }
     },
-    [isDOMMode, currentSnapshot, updateListStepData, socket, notify]
+    [isDOMMode, currentSnapshot, updateListStepData, socket, notify, currentWorkflowActionsState]
   );
 
-  const handleMouseEnter = (id: number) => {
-    setHoverStates(prev => ({ ...prev, [id]: true }));
-  };
+  useEffect(() => {
+    if (!getList) return;
 
-  const handleMouseLeave = (id: number) => {
-    setHoverStates(prev => ({ ...prev, [id]: false }));
-  };
+    const currentListStep = browserSteps.find(
+      step => step.type === 'list' && step.actionId === currentListActionId
+    ) as (BrowserStep & { type: 'list'; listSelector?: string; fields?: Record<string, any> }) | undefined;
+
+    if (!currentListStep || !currentListStep.listSelector || !currentListStep.fields) return;
+
+    const fieldCount = Object.keys(currentListStep.fields).length;
+
+    if (fieldCount > 0) {
+      extractDataClientSide(
+        currentListStep.listSelector,
+        currentListStep.fields,
+        currentListStep.id
+      );
+
+      setCurrentWorkflowActionsState({
+        ...currentWorkflowActionsState,
+        hasScrapeListAction: true
+      });
+    }
+  }, [browserSteps, currentListActionId, getList, extractDataClientSide, setCurrentWorkflowActionsState, currentWorkflowActionsState]);
 
   const handleStartGetText = () => {
-    setIsCaptureTextConfirmed(false);
     const newActionId = `text-${crypto.randomUUID()}`;
     setCurrentTextActionId(newActionId);
     startGetText();
   }
 
   const handleStartGetList = () => {
-    setIsCaptureListConfirmed(false);
     const newActionId = `list-${crypto.randomUUID()}`;
     setCurrentListActionId(newActionId);
     startGetList();
@@ -302,230 +308,24 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     startGetScreenshot();
   };
 
-  const handleTextLabelChange = (id: number, label: string, listId?: number, fieldKey?: string) => {
-    if (listId !== undefined && fieldKey !== undefined) {
-      // Prevent editing if the field is confirmed
-      if (confirmedListTextFields[listId]?.[fieldKey]) {
-        return;
-      }
-      updateListTextFieldLabel(listId, fieldKey, label);
-    } else {
-      setTextLabels(prevLabels => ({ ...prevLabels, [id]: label }));
-    }
-    if (!label.trim()) {
-      setErrors(prevErrors => ({ ...prevErrors, [id]: t('right_panel.errors.label_required') }));
-    } else {
-      setErrors(prevErrors => ({ ...prevErrors, [id]: '' }));
-    }
-  };
-
-  const handleTextStepConfirm = (id: number) => {
-    const label = textLabels[id]?.trim();
-    if (!label) {
-      setErrors(prevErrors => ({ ...prevErrors, [id]: t('right_panel.errors.label_required') }));
-      return;
-    }
-
-    const existingLabels = browserSteps
-      .filter(step => 
-        step.type === 'text' && 
-        step.id !== id &&
-        confirmedTextSteps[step.id] &&
-        'label' in step &&
-        step.label
-      )
-      .map(step => (step as any).label);
-
-    if (existingLabels.includes(label)) {
-      setErrors(prevErrors => ({ 
-        ...prevErrors, 
-        [id]: t('right_panel.errors.duplicate_label') || `Label "${label}" already exists. Please use a unique label.`
-      }));
-      return;
-    }
-
-    updateBrowserTextStepLabel(id, label);
-    setConfirmedTextSteps(prev => ({ ...prev, [id]: true }));
-    setErrors(prevErrors => ({ ...prevErrors, [id]: '' }));
-  };
-
-  const handleTextStepDiscard = (id: number) => {
-    deleteBrowserStep(id);
-    setTextLabels(prevLabels => {
-      const { [id]: _, ...rest } = prevLabels;
-      return rest;
-    });
-    setErrors(prevErrors => {
-      const { [id]: _, ...rest } = prevErrors;
-      return rest;
-    });
-  };
-
-  const handleTextStepDelete = (id: number) => {
-    deleteBrowserStep(id);
-    setTextLabels(prevLabels => {
-      const { [id]: _, ...rest } = prevLabels;
-      return rest;
-    });
-    setConfirmedTextSteps(prev => {
-      const { [id]: _, ...rest } = prev;
-      return rest;
-    });
-    setErrors(prevErrors => {
-      const { [id]: _, ...rest } = prevErrors;
-      return rest;
-    });
-  };
-
-  const handleListTextFieldConfirm = (listId: number, fieldKey: string) => {
-    setConfirmedListTextFields(prev => ({
-      ...prev,
-      [listId]: {
-        ...(prev[listId] || {}),
-        [fieldKey]: true
-      }
-    }));
-  };
-
-  const handleListTextFieldDiscard = (listId: number, fieldKey: string) => {
-    removeListTextField(listId, fieldKey);
-    setConfirmedListTextFields(prev => {
-      const updatedListFields = { ...(prev[listId] || {}) };
-      delete updatedListFields[fieldKey];
-      return {
-        ...prev,
-        [listId]: updatedListFields
-      };
-    });
-    setErrors(prev => {
-      const { [fieldKey]: _, ...rest } = prev;
-      return rest;
-    });
-  };
-
-  const handleListTextFieldDelete = (listId: number, fieldKey: string) => {
-    removeListTextField(listId, fieldKey);
-    setConfirmedListTextFields(prev => {
-      const updatedListFields = { ...(prev[listId] || {}) };
-      delete updatedListFields[fieldKey];
-      return {
-        ...prev,
-        [listId]: updatedListFields
-      };
-    });
-    setErrors(prev => {
-      const { [fieldKey]: _, ...rest } = prev;
-      return rest;
-    });
-  };
-
-  const getTextSettingsObject = useCallback(() => {
-    const settings: Record<string, { 
-      selector: string; 
-      tag?: string;
-      [key: string]: any 
-    }> = {};
-
-    browserSteps.forEach(step => {
-      if (browserStepIdList.includes(step.id)) {
-        return;
-      }
-
-      if (step.type === 'text' && step.label && step.selectorObj?.selector) {
-        settings[step.label] = {
-          ...step.selectorObj,
-          selector: step.selectorObj.selector
-        };
-      }
-      setBrowserStepIdList(prevList => [...prevList, step.id]);
-    });
-
-    return settings;
-  }, [browserSteps, browserStepIdList]);
-
   const stopCaptureAndEmitGetTextSettings = useCallback(() => {
-    const hasTextStepsForCurrentAction = browserSteps.some(step => step.type === 'text' && step.actionId === currentTextActionId);
-    if (!hasTextStepsForCurrentAction) {
+    const currentTextActionStep = browserSteps.find(step => step.type === 'text' && step.actionId === currentTextActionId);
+    if (!currentTextActionStep) {
       notify('error', t('right_panel.errors.no_text_captured'));
       return;
     }
     
-    const hasUnconfirmedTextStepsForCurrentAction = browserSteps.some(step => 
-      step.type === 'text' && 
-      step.actionId === currentTextActionId && 
-      !confirmedTextSteps[step.id]
-    );
-    if (hasUnconfirmedTextStepsForCurrentAction) {
-      notify('error', t('right_panel.errors.confirm_text_fields'));
-      return;
-    }
     stopGetText();
-    const settings = getTextSettingsObject();
-    if (hasTextStepsForCurrentAction) {
-      socket?.emit('action', { action: 'scrapeSchema', settings });
+    if (currentTextActionStep) {
+      emitActionForStep(currentTextActionStep);
     }
-    setIsCaptureTextConfirmed(true);
     setCurrentTextActionId('');
     resetInterpretationLog();
     finishAction('text'); 
     onFinishCapture();
     clientSelectorGenerator.cleanup();
-  }, [stopGetText, getTextSettingsObject, socket, browserSteps, confirmedTextSteps, resetInterpretationLog, finishAction, notify, onFinishCapture, t]);
+  }, [stopGetText, socket, browserSteps, resetInterpretationLog, finishAction, notify, onFinishCapture, t, currentTextActionId, currentTextGroupName, emitActionForStep]);
 
-  const getListSettingsObject = useCallback(() => {
-    let settings: {
-      listSelector?: string;
-      fields?: Record<string, { 
-        selector: string; 
-        tag?: string;
-        [key: string]: any;
-        isShadow?: boolean;
-      }>;
-      pagination?: { 
-        type: string; 
-        selector?: string;
-        isShadow?: boolean;
-      };
-      limit?: number;
-      isShadow?: boolean;
-    } = {};
-
-    browserSteps.forEach(step => {
-      if (step.type === 'list' && step.listSelector && Object.keys(step.fields).length > 0) {
-        const fields: Record<string, { 
-          selector: string; 
-          tag?: string;
-          [key: string]: any;
-          isShadow?: boolean;
-        }> = {};
-
-        Object.entries(step.fields).forEach(([id, field]) => {
-          if (field.selectorObj?.selector) {
-            fields[field.label] = {
-              selector: field.selectorObj.selector,
-              tag: field.selectorObj.tag,
-              attribute: field.selectorObj.attribute,
-              isShadow: field.selectorObj.isShadow
-            };
-          }
-        });
-
-        settings = {
-          listSelector: step.listSelector,
-          fields: fields,
-          pagination: { 
-            type: paginationType, 
-            selector: step.pagination?.selector,
-            isShadow: step.isShadow
-          },
-          limit: parseInt(limitType === 'custom' ? customLimit : limitType),
-          isShadow: step.isShadow
-        };
-      }
-    });
-
-    return settings;
-  }, [browserSteps, paginationType, limitType, customLimit]);
 
   const resetListState = useCallback(() => {
     setShowPaginationOptions(false);
@@ -541,32 +341,33 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   }, [stopGetList, resetListState]);
 
   const stopCaptureAndEmitGetListSettings = useCallback(() => {
-    const settings = getListSettingsObject();
-    
     const latestListStep = getLatestListStep(browserSteps);
-    if (latestListStep && settings) {
+    if (latestListStep) {
       extractDataClientSide(latestListStep.listSelector!, latestListStep.fields, latestListStep.id);
+
+      setCurrentWorkflowActionsState({
+        ...currentWorkflowActionsState,
+        hasScrapeListAction: true
+      });
       
-      socket?.emit('action', { action: 'scrapeList', settings });
+      emitActionForStep(latestListStep);
+
+      handleStopGetList();
+      setCurrentListActionId('');
+      resetInterpretationLog();
+      finishAction('list');
+      onFinishCapture();
+      clientSelectorGenerator.cleanup();
     } else {
       notify('error', t('right_panel.errors.unable_create_settings'));
+      handleStopGetList();
+      setCurrentListActionId('');
+      resetInterpretationLog();
+      finishAction('list');
+      onFinishCapture();
+      clientSelectorGenerator.cleanup();
     }
-    
-    handleStopGetList();
-    setCurrentListActionId('');
-    resetInterpretationLog();
-    finishAction('list');
-    onFinishCapture();
-    clientSelectorGenerator.cleanup();
-  }, [getListSettingsObject, socket, notify, handleStopGetList, resetInterpretationLog, finishAction, onFinishCapture, t, browserSteps, extractDataClientSide]);
-
-  const hasUnconfirmedListTextFields = browserSteps.some(step =>
-    step.type === 'list' &&
-    step.actionId === currentListActionId &&
-    Object.entries(step.fields).some(([fieldKey]) =>
-      !confirmedListTextFields[step.id]?.[fieldKey]
-    )
-  );
+  }, [socket, notify, handleStopGetList, resetInterpretationLog, finishAction, onFinishCapture, t, browserSteps, extractDataClientSide, setCurrentWorkflowActionsState, currentWorkflowActionsState, emitActionForStep]);
 
   const getLatestListStep = (steps: BrowserStep[]) => {
     const listSteps = steps.filter(step => step.type === 'list');
@@ -590,19 +391,6 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
           return;
         }
         
-        const hasUnconfirmedListTextFieldsForCurrentAction = browserSteps.some(step =>
-          step.type === 'list' &&
-          step.actionId === currentListActionId &&
-          Object.entries(step.fields).some(([fieldKey]) =>
-            !confirmedListTextFields[step.id]?.[fieldKey]
-          )
-        );
-        
-        if (hasUnconfirmedListTextFieldsForCurrentAction) {
-          notify('error', t('right_panel.errors.confirm_all_list_fields'));
-          return;
-        }
-        
         startPaginationMode();
         setShowPaginationOptions(true);
         setCaptureStage('pagination');
@@ -613,11 +401,17 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
           notify('error', t('right_panel.errors.select_pagination'));
           return;
         }
-        const settings = getListSettingsObject();
-        const paginationSelector = settings.pagination?.selector;
-        if (['clickNext', 'clickLoadMore'].includes(paginationType) && !paginationSelector) {
-          notify('error', t('right_panel.errors.select_pagination_element'));
-          return;
+        
+        const currentListStepForPagination = browserSteps.find(
+          step => step.type === 'list' && step.actionId === currentListActionId
+        ) as (BrowserStep & { type: 'list' }) | undefined;
+
+        if (currentListStepForPagination) {
+          const paginationSelector = currentListStepForPagination.pagination?.selector;
+          if (['clickNext', 'clickLoadMore'].includes(paginationType) && !paginationSelector) {
+            notify('error', t('right_panel.errors.select_pagination_element'));
+            return;
+          }
         }
         stopPaginationMode();
         setShowPaginationOptions(false);
@@ -644,7 +438,6 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
 
         stopLimitMode();
         setShowLimitOptions(false);
-        setIsCaptureListConfirmed(true);
         stopCaptureAndEmitGetListSettings();
         setCaptureStage('complete');
         break;
@@ -653,7 +446,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         setCaptureStage('initial');
         break;
     }
-  }, [captureStage, paginationType, limitType, customLimit, startPaginationMode, setShowPaginationOptions, setCaptureStage, getListSettingsObject, notify, stopPaginationMode, startLimitMode, setShowLimitOptions, stopLimitMode, setIsCaptureListConfirmed, stopCaptureAndEmitGetListSettings, t, browserSteps, currentListActionId, confirmedListTextFields]);
+  }, [captureStage, paginationType, limitType, customLimit, startPaginationMode, setShowPaginationOptions, setCaptureStage, notify, stopPaginationMode, startLimitMode, setShowLimitOptions, stopLimitMode, stopCaptureAndEmitGetListSettings, t, browserSteps, currentListActionId, updateListStepLimit]);
 
   const handleBackCaptureList = useCallback(() => {
     switch (captureStage) {
@@ -679,61 +472,28 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const discardGetText = useCallback(() => {
     stopGetText();
     
-    if (currentTextActionId) {
-      const stepsToDelete = browserSteps
-        .filter(step => step.type === 'text' && step.actionId === currentTextActionId)
-        .map(step => step.id);
-      
+    if (currentTextActionId) {     
       deleteStepsByActionId(currentTextActionId);
       
-      setTextLabels(prevLabels => {
-        const newLabels = { ...prevLabels };
-        stepsToDelete.forEach(id => {
-          delete newLabels[id];
-        });
-        return newLabels;
-      });
-      
-      setErrors(prevErrors => {
-        const newErrors = { ...prevErrors };
-        stepsToDelete.forEach(id => {
-          delete newErrors[id];
-        });
-        return newErrors;
-      });
-      
-      setConfirmedTextSteps(prev => {
-        const newConfirmed = { ...prev };
-        stepsToDelete.forEach(id => {
-          delete newConfirmed[id];
-        });
-        return newConfirmed;
-      });
+      if (socket) {
+        socket.emit('removeAction', { actionId: currentTextActionId });
+      }
     }
     
     setCurrentTextActionId('');
-    setIsCaptureTextConfirmed(false);
     clientSelectorGenerator.cleanup();
     notify('error', t('right_panel.errors.capture_text_discarded'));
-  }, [currentTextActionId, browserSteps, stopGetText, deleteStepsByActionId, notify, t]);
+  }, [currentTextActionId, browserSteps, stopGetText, deleteStepsByActionId, notify, t, socket]);
 
   const discardGetList = useCallback(() => {
     stopGetList();
     
     if (currentListActionId) {
-      const listStepsToDelete = browserSteps
-        .filter(step => step.type === 'list' && step.actionId === currentListActionId)
-        .map(step => step.id);
-      
       deleteStepsByActionId(currentListActionId);
       
-      setConfirmedListTextFields(prev => {
-        const newConfirmed = { ...prev };
-        listStepsToDelete.forEach(id => {
-          delete newConfirmed[id];
-        });
-        return newConfirmed;
-      });
+      if (socket) {
+        socket.emit('removeAction', { actionId: currentListActionId });
+      }
     }
     
     resetListState();
@@ -743,12 +503,14 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     setShowLimitOptions(false);
     setCaptureStage('initial');
     setCurrentListActionId('');
-    setIsCaptureListConfirmed(false);
     clientSelectorGenerator.cleanup();
     notify('error', t('right_panel.errors.capture_list_discarded'));
-  }, [currentListActionId, browserSteps, stopGetList, deleteStepsByActionId, resetListState, setShowPaginationOptions, setShowLimitOptions, setCaptureStage, notify, t]);
+  }, [currentListActionId, browserSteps, stopGetList, deleteStepsByActionId, resetListState, setShowPaginationOptions, setShowLimitOptions, setCaptureStage, notify, t, stopPaginationMode, stopLimitMode, socket]);
 
   const captureScreenshot = (fullPage: boolean) => {
+    const screenshotCount = browserSteps.filter(s => s.type === 'screenshot').length + 1;
+    const screenshotName = `Screenshot ${screenshotCount}`;
+    
     const screenshotSettings = {
       fullPage,
       type: 'png' as const,
@@ -756,37 +518,17 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
       animations: 'allow' as const,
       caret: 'hide' as const,
       scale: 'device' as const,
+      name: screenshotName,
+      actionId: currentScreenshotActionId
     };
     socket?.emit('captureDirectScreenshot', screenshotSettings);   
-    socket?.emit('action', { action: 'screenshot', settings: screenshotSettings });
     addScreenshotStep(fullPage, currentScreenshotActionId);
     stopGetScreenshot();
     resetInterpretationLog();
     finishAction('screenshot');
-    clientSelectorGenerator.cleanup();
     onFinishCapture();
+    clientSelectorGenerator.cleanup();
   };
-
-  const isConfirmCaptureDisabled = useMemo(() => {
-    if (captureStage !== 'initial') return false;
-
-    const hasValidListSelectorForCurrentAction = browserSteps.some(step =>
-      step.type === 'list' &&
-      step.actionId === currentListActionId &&
-      step.listSelector &&
-      Object.keys(step.fields).length > 0
-    );
-
-    const hasUnconfirmedListTextFieldsForCurrentAction = browserSteps.some(step =>
-      step.type === 'list' &&
-      step.actionId === currentListActionId &&
-      Object.entries(step.fields).some(([fieldKey]) =>
-        !confirmedListTextFields[step.id]?.[fieldKey]
-      )
-    );
-
-    return !hasValidListSelectorForCurrentAction || hasUnconfirmedListTextFieldsForCurrentAction;
-  }, [captureStage, browserSteps, currentListActionId, confirmedListTextFields]);
 
   const theme = useThemeMode();
   const isDarkMode = theme.darkMode;
@@ -842,33 +584,20 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                   {t('right_panel.buttons.back')}
                 </Button>
               )}
-              <Tooltip
-                title={
-                  captureStage !== 'initial' && hasUnconfirmedListTextFields
-                    ? t('right_panel.tooltips.confirm_all_list_fields')
-                    : ''
-                }
-                placement="top"
-                arrow
+              <Button
+                variant="outlined"
+                onClick={handleConfirmListCapture}
+                sx={{
+                  color: '#ff00c3 !important',
+                  borderColor: '#ff00c3 !important',
+                  backgroundColor: 'whitesmoke !important',
+                }}
               >
-                <span>
-                  <Button
-                    variant="outlined"
-                    onClick={handleConfirmListCapture}
-                    disabled={captureStage !== 'initial' && hasUnconfirmedListTextFields}
-                    sx={{
-                      color: '#ff00c3 !important',
-                      borderColor: '#ff00c3 !important',
-                      backgroundColor: 'whitesmoke !important',
-                    }}
-                  >
                 {captureStage === 'initial' ? t('right_panel.buttons.confirm_capture') :
                   captureStage === 'pagination' ? t('right_panel.buttons.confirm_pagination') :
                     captureStage === 'limit' ? t('right_panel.buttons.confirm_limit') :
                       t('right_panel.buttons.finish_capture')}
-                  </Button>
-                </span>
-              </Tooltip>
+              </Button>
               <Button
                 variant="outlined"
                 color="error"
@@ -1055,137 +784,6 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
             </Button>
           </Box>
         )}
-      </Box>
-      
-      <Box>
-        {browserSteps.map(step => (
-          <Box key={step.id} onMouseEnter={() => handleMouseEnter(step.id)} onMouseLeave={() => handleMouseLeave(step.id)} sx={{ padding: '10px', margin: '11px', borderRadius: '5px', position: 'relative', background: isDarkMode ? "#1E2124" : 'white', color: isDarkMode ? "white" : 'black' }}>
-            {
-              step.type === 'text' && (
-                <>
-                  <TextField
-                    label={t('right_panel.fields.label')}
-                    value={textLabels[step.id] || step.label || ''}
-                    onChange={(e) => handleTextLabelChange(step.id, e.target.value)}
-                    fullWidth
-                    size="small"
-                    margin="normal"
-                    error={!!errors[step.id]}
-                    helperText={errors[step.id]}
-                    InputProps={{
-                      readOnly: confirmedTextSteps[step.id],
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <EditIcon />
-                        </InputAdornment>
-                      )
-                    }}
-                    sx={{ background: isDarkMode ? "#1E2124" : 'white', color: isDarkMode ? "white" : 'black' }}
-                  />
-                  <TextField
-                    label={t('right_panel.fields.data')}
-                    value={step.data}
-                    fullWidth
-                    margin="normal"
-                    InputProps={{
-                      readOnly: confirmedTextSteps[step.id],
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <TextFieldsIcon />
-                        </InputAdornment>
-                      )
-                    }}
-                  />
-                  {!confirmedTextSteps[step.id] ? (
-                    <Box display="flex" justifyContent="space-between" gap={2}>
-                      <Button variant="contained" onClick={() => handleTextStepConfirm(step.id)} disabled={!textLabels[step.id]?.trim()}>{t('right_panel.buttons.confirm')}</Button>
-                      <Button variant="contained" color="error" onClick={() => handleTextStepDiscard(step.id)}>{t('right_panel.buttons.discard')}</Button>
-                    </Box>
-                  ) : !isCaptureTextConfirmed && (
-                    <Box display="flex" justifyContent="flex-end" gap={2}>
-                      <Button
-                        variant="contained"
-                        color="error"
-                        onClick={() => handleTextStepDelete(step.id)}
-                      >
-                        {t('right_panel.buttons.delete')}
-                      </Button>
-                    </Box>
-                  )}
-                </>
-              )}
-            {step.type === 'screenshot' && (
-              <Box display="flex" alignItems="center">
-                <DocumentScannerIcon sx={{ mr: 1 }} />
-                <Typography>
-                  {step.fullPage ?
-                    t('right_panel.screenshot.display_fullpage') :
-                    t('right_panel.screenshot.display_visible')}
-                </Typography>
-              </Box>
-            )}
-            {step.type === 'list' && (
-              Object.entries(step.fields).length === 0 ? (
-                <Typography>{t('right_panel.messages.list_empty')}</Typography>
-              ) : (
-                <>
-                  <Typography>{t('right_panel.messages.list_selected')}</Typography>
-                  {Object.entries(step.fields).map(([key, field]) => (
-                    <Box key={key}>
-                      <TextField
-                        label={t('right_panel.fields.field_label')}
-                        value={field.label || ''}
-                        onChange={(e) => handleTextLabelChange(field.id, e.target.value, step.id, key)}
-                        fullWidth
-                        margin="normal"
-                        InputProps={{
-                          readOnly: confirmedListTextFields[field.id]?.[key],
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <EditIcon />
-                            </InputAdornment>
-                          )
-                        }}
-                      />
-                      <TextField
-                        label={t('right_panel.fields.field_data')}
-                        value={field.data || ''}
-                        fullWidth
-                        margin="normal"
-                        InputProps={{
-                          readOnly: true,
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <TextFieldsIcon />
-                            </InputAdornment>
-                          )
-                        }}
-                      />
-                      {!confirmedListTextFields[step.id]?.[key] && (
-                        <Box display="flex" justifyContent="space-between" gap={2}>
-                          <Button
-                            variant="contained"
-                            onClick={() => handleListTextFieldConfirm(step.id, key)}
-                            disabled={!field.label?.trim()}
-                          >
-                            {t('right_panel.buttons.confirm')}
-                          </Button>
-                          <Button
-                            variant="contained"
-                            color="error"
-                            onClick={() => handleListTextFieldDiscard(step.id, key)}
-                          >
-                            {t('right_panel.buttons.discard')}
-                          </Button>
-                        </Box>
-                      )}
-                    </Box>
-                  ))}
-                </>
-              )
-            )}
-          </Box>
-        ))}
       </Box>
     </Paper>
   );
