@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { useSocketStore } from "./socket";
 import { useGlobalInfoStore } from "./globalInfo";
+import { useActionContext } from './browserActions';
 
 export interface TextStep {
     id: number;
@@ -96,6 +97,7 @@ export const BrowserStepsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const { currentTextGroupName } = useGlobalInfoStore();
     const [browserSteps, setBrowserSteps] = useState<BrowserStep[]>([]);
     const [discardedFields, setDiscardedFields] = useState<Set<string>>(new Set());
+    const { paginationType, limitType, customLimit } = useActionContext();
 
     const browserStepsRef = useRef<BrowserStep[]>(browserSteps);
     useEffect(() => {
@@ -127,15 +129,21 @@ export const BrowserStepsProvider: React.FC<{ children: React.ReactNode }> = ({ 
             }
         });
 
+        const livePaginationType = paginationType || listStep.pagination?.type || "";
+        const liveLimit =
+            limitType === "custom"
+                ? parseInt(customLimit || "0", 10)
+                : parseInt(limitType || "0", 10);
+
         return {
             listSelector: listStep.listSelector,
             fields: fields,
             pagination: {
-                type: listStep.pagination?.type || "",
+                type: livePaginationType,
                 selector: listStep.pagination?.selector,
                 isShadow: listStep.isShadow
             },
-            limit: listStep.limit,
+            limit: liveLimit > 0 ? liveLimit : listStep.limit,
             isShadow: listStep.isShadow
         };
     };

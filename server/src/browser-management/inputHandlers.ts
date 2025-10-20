@@ -65,6 +65,7 @@ const handleWrapper = async (
 interface CustomActionEventData {
     action: CustomActions;
     settings: any;
+    actionId?: string;
 }
 
 /**
@@ -84,23 +85,24 @@ const onGenerateAction = async (customActionEventData: CustomActionEventData, us
  * @param page The active page
  * @param action The custom action
  * @param settings The custom action settings
+ * @param actionId Optional action ID for tracking and updating specific actions
  * @category BrowserManagement
  */
 const handleGenerateAction =
-    async (activeBrowser: RemoteBrowser, page: Page, { action, settings }: CustomActionEventData) => {
-        try {
-            if (page.isClosed()) {
-                logger.log("debug", `Ignoring generate action event: page is closed`);
-                return;
-            }
+  async (activeBrowser: RemoteBrowser, page: Page, { action, settings, actionId }: CustomActionEventData) => {
+    try {
+      if (page.isClosed()) {
+        logger.log("debug", `Ignoring generate action event: page is closed`);
+        return;
+      }
 
-            const generator = activeBrowser.generator;
-            await generator.customAction(action, settings, page);
-        } catch (e) {
-            const { message } = e as Error;
-            logger.log("warn", `Error handling generate action event: ${message}`);
-        }
+      const generator = activeBrowser.generator;
+      await generator.customAction(action, actionId || '', settings, page);
+    } catch (e) {
+      const { message } = e as Error;
+      logger.log("warn", `Error handling generate action event: ${message}`);
     }
+  }
 
 /**
  * A wrapper function for handling mousedown event.
@@ -820,6 +822,49 @@ const onDOMWorkflowPair = async (
 };
 
 /**
+ * Handles the remove action event.
+ * This is called when a user discards a capture action (list or text) that was already emitted to the backend.
+ * @param activeBrowser - the active remote browser instance
+ * @param page - the active page of the remote browser
+ * @param data - the data containing the actionId to remove
+ * @category BrowserManagement
+ */
+const handleRemoveAction = async (
+  activeBrowser: RemoteBrowser,
+  page: Page,
+  data: { actionId: string }
+) => {
+  try {
+    const { actionId } = data;
+    const generator = activeBrowser.generator;
+    const removed = generator.removeAction(actionId);
+
+    if (removed) {
+      logger.log("info", `Action ${actionId} successfully removed from workflow`);
+    } else {
+      logger.log("debug", `Action ${actionId} not found in workflow`);
+    }
+  } catch (e) {
+    const { message } = e as Error;
+    logger.log("warn", `Error handling remove action event: ${message}`);
+  }
+};
+
+/**
+ * A wrapper function for handling the remove action event.
+ * @param data - the data containing the actionId to remove
+ * @param userId - the user ID
+ * @category HelperFunctions
+ */
+const onRemoveAction = async (
+    data: { actionId: string },
+    userId: string
+) => {
+    logger.log("debug", "Handling remove action event emitted from client");
+    await handleWrapper(handleRemoveAction, userId, data);
+};
+
+/**
  * Helper function for registering the handlers onto established websocket connection.
  * Registers various input handlers.
  *
@@ -831,7 +876,7 @@ const onDOMWorkflowPair = async (
  * @returns void
  * @category BrowserManagement
  */
-const registerInputHandlers = (socket: Socket, userId: string) => {    
+const registerInputHandlers = (socket: Socket, userId: string) => {
     // Register handlers with the socket
     socket.on("input:mousedown", (data) => onMousedown(data, userId));
     socket.on("input:wheel", (data) => onWheel(data, userId));
@@ -847,6 +892,7 @@ const registerInputHandlers = (socket: Socket, userId: string) => {
     socket.on("input:time", (data) => onTimeSelection(data, userId));
     socket.on("input:datetime-local", (data) => onDateTimeLocalSelection(data, userId));
     socket.on("action", (data) => onGenerateAction(data, userId));
+    socket.on("removeAction", (data) => onRemoveAction(data, userId));
 
     socket.on("dom:click", (data) => onDOMClickAction(data, userId));
     socket.on("dom:keypress", (data) => onDOMKeyboardAction(data, userId));

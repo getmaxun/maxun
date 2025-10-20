@@ -4,7 +4,7 @@ import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { io, Socket } from "socket.io-client";
 import { createRemoteBrowserForRun, destroyRemoteBrowser } from '../../browser-management/controller';
 import logger from '../../logger';
-import { browserPool } from "../../server";
+import { browserPool, io as serverIo } from "../../server";
 import { googleSheetUpdateTasks, processGoogleSheetUpdates } from "../integrations/gsheet";
 import Robot from "../../models/Robot";
 import Run from "../../models/Run";
@@ -46,7 +46,7 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string) {
       };
     }
 
-    const browserId = createRemoteBrowserForRun( userId);
+    const browserId = createRemoteBrowserForRun(userId);
     const runId = uuid();
 
     const run = await Run.create({
@@ -63,9 +63,29 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string) {
       runByScheduleId: uuid(),
       serializableOutput: {},
       binaryOutput: {},
+      retryCount: 0
     });
 
     const plainRun = run.toJSON();
+
+    try {
+      const runScheduledData = {
+        runId: plainRun.runId,
+        robotMetaId: plainRun.robotMetaId,
+        robotName: plainRun.name,
+        status: 'scheduled',
+        startedAt: plainRun.startedAt,
+        runByUserId: plainRun.runByUserId,
+        runByScheduleId: plainRun.runByScheduleId,
+        runByAPI: plainRun.runByAPI || false,
+        browserId: plainRun.browserId
+      };
+      
+      serverIo.of('/queued-run').to(`user-${userId}`).emit('run-scheduled', runScheduledData);
+      logger.log('info', `Scheduled run notification sent for run: ${plainRun.runId} to user-${userId}`);
+    } catch (socketError: any) {
+      logger.log('warn', `Failed to send run-scheduled notification for run ${plainRun.runId}: ${socketError.message}`);
+    }
 
     return {
       browserId,
@@ -83,6 +103,29 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string) {
   }
 }
 
+async function triggerIntegrationUpdates(runId: string, robotMetaId: string): Promise<void> {
+  try {
+    googleSheetUpdateTasks[runId] = {
+      robotId: robotMetaId,
+      runId: runId,
+      status: 'pending',
+      retries: 5,
+    };
+
+    airtableUpdateTasks[runId] = {
+      robotId: robotMetaId,
+      runId: runId,
+      status: 'pending',
+      retries: 5,
+    };
+
+    processAirtableUpdates().catch(err => logger.log('error', `Airtable update error: ${err.message}`));
+    processGoogleSheetUpdates().catch(err => logger.log('error', `Google Sheets update error: ${err.message}`));
+  } catch (err: any) {
+    logger.log('error', `Failed to update integrations for run: ${runId}: ${err.message}`);
+  }
+}
+
 function AddGeneratedFlags(workflow: WorkflowFile) {
   const copy = JSON.parse(JSON.stringify(workflow));
   for (let i = 0; i < workflow.workflow.length; i++) {
@@ -95,6 +138,8 @@ function AddGeneratedFlags(workflow: WorkflowFile) {
 };
 
 async function executeRun(id: string, userId: string) {
+  let browser: any = null;
+
   try {
     const run = await Run.findOne({ where: { runId: id } });
     if (!run) {
@@ -133,6 +178,21 @@ async function executeRun(id: string, userId: string) {
         log: plainRun.log ? `${plainRun.log}\nMax retries exceeded (3/3) - Run failed after multiple attempts.` : `Max retries exceeded (3/3) - Run failed after multiple attempts.`
       });
 
+      try {
+        const failureSocketData = {
+          runId: plainRun.runId,
+          robotMetaId: plainRun.robotMetaId,
+          robotName: recording ? recording.recording_meta.name : 'Unknown Robot',
+          status: 'failed',
+          finishedAt: new Date().toLocaleString()
+        };
+
+        serverIo.of(run.browserId).emit('run-completed', failureSocketData);
+        serverIo.of('/queued-run').to(`user-${userId}`).emit('run-completed', failureSocketData);
+      } catch (socketError: any) {
+        logger.log('warn', `Failed to emit failure event in main catch: ${socketError.message}`);
+      }
+
       return {
         success: false,
         error: 'Max retries exceeded'
@@ -149,7 +209,22 @@ async function executeRun(id: string, userId: string) {
 
     plainRun.status = 'running';
 
-    const browser = browserPool.getRemoteBrowser(plainRun.browserId);
+    try {
+      const runStartedData = {
+        runId: plainRun.runId,
+        robotMetaId: plainRun.robotMetaId,
+        robotName: recording ? recording.recording_meta.name : 'Unknown Robot',
+        status: 'running',
+        startedAt: plainRun.startedAt
+      };
+      
+      serverIo.of('/queued-run').to(`user-${userId}`).emit('run-started', runStartedData);
+      logger.log('info', `Run started notification sent for run: ${plainRun.runId} to user-${userId}`);
+    } catch (socketError: any) {
+      logger.log('warn', `Failed to send run-started notification for run ${plainRun.runId}: ${socketError.message}`);
+    }
+
+    browser = browserPool.getRemoteBrowser(plainRun.browserId);
     if (!browser) {
       throw new Error('Could not access browser');
     }
@@ -168,55 +243,51 @@ async function executeRun(id: string, userId: string) {
       workflow, currentPage, (newPage: Page) => currentPage = newPage, plainRun.interpreterSettings
     );
 
+    const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
+    const uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, interpretationInfo.binaryOutput);
+
+    const finalRun = await Run.findByPk(run.id);
+    const categorizedOutput = {
+      scrapeSchema: finalRun?.serializableOutput?.scrapeSchema || {},
+      scrapeList: finalRun?.serializableOutput?.scrapeList || {},
+    };
+
     await destroyRemoteBrowser(plainRun.browserId, userId);
 
     await run.update({
       status: 'success',
       finishedAt: new Date().toLocaleString(),
       log: interpretationInfo.log.join('\n'),
+      binaryOutput: uploadedBinaryOutput
     });
-
-    // Upload binary output to MinIO and update run with MinIO URLs
-    const updatedRun = await Run.findOne({ where: { runId: id } });
-    if (updatedRun && updatedRun.binaryOutput && Object.keys(updatedRun.binaryOutput).length > 0) {
-      try {
-        const binaryService = new BinaryOutputService('maxun-run-screenshots');
-        await binaryService.uploadAndStoreBinaryOutput(updatedRun, updatedRun.binaryOutput);
-        logger.log('info', `Uploaded binary output to MinIO for scheduled run ${id}`);
-      } catch (minioError: any) {
-        logger.log('error', `Failed to upload binary output to MinIO for scheduled run ${id}: ${minioError.message}`);
-      }
-    }
 
     // Get metrics from persisted data for analytics and webhooks
     let totalSchemaItemsExtracted = 0;
     let totalListItemsExtracted = 0;
     let extractedScreenshotsCount = 0;
     
-    if (updatedRun) {
-      if (updatedRun.serializableOutput) {
-        if (updatedRun.serializableOutput.scrapeSchema) {
-          Object.values(updatedRun.serializableOutput.scrapeSchema).forEach((schemaResult: any) => {
-            if (Array.isArray(schemaResult)) {
-              totalSchemaItemsExtracted += schemaResult.length;
-            } else if (schemaResult && typeof schemaResult === 'object') {
-              totalSchemaItemsExtracted += 1;
-            }
-          });
-        }
-        
-        if (updatedRun.serializableOutput.scrapeList) {
-          Object.values(updatedRun.serializableOutput.scrapeList).forEach((listResult: any) => {
-            if (Array.isArray(listResult)) {
-              totalListItemsExtracted += listResult.length;
-            }
-          });
-        }
+    if (categorizedOutput) {
+      if (categorizedOutput.scrapeSchema) {
+        Object.values(categorizedOutput.scrapeSchema).forEach((schemaResult: any) => {
+          if (Array.isArray(schemaResult)) {
+            totalSchemaItemsExtracted += schemaResult.length;
+          } else if (schemaResult && typeof schemaResult === 'object') {
+            totalSchemaItemsExtracted += 1;
+          }
+        });
       }
       
-      if (updatedRun.binaryOutput) {
-        extractedScreenshotsCount = Object.keys(updatedRun.binaryOutput).length;
+      if (categorizedOutput.scrapeList) {
+        Object.values(categorizedOutput.scrapeList).forEach((listResult: any) => {
+          if (Array.isArray(listResult)) {
+            totalListItemsExtracted += listResult.length;
+          }
+        });
       }
+    }
+
+    if (run.binaryOutput) {
+      extractedScreenshotsCount = Object.keys(run.binaryOutput).length;
     }
     
     const totalRowsExtracted = totalSchemaItemsExtracted + totalListItemsExtracted;
@@ -234,6 +305,21 @@ async function executeRun(id: string, userId: string) {
       }
     );
 
+    try {
+      const completionData = {
+        runId: plainRun.runId,
+        robotMetaId: plainRun.robotMetaId,
+        robotName: recording.recording_meta.name,
+        status: 'success',
+        finishedAt: new Date().toLocaleString()
+      };
+
+      serverIo.of(plainRun.browserId).emit('run-completed', completionData);
+      serverIo.of('/queued-run').to(`user-${userId}`).emit('run-completed', completionData);
+    } catch (emitError: any) {
+      logger.log('warn', `Failed to emit success event: ${emitError.message}`);
+    }
+
     const webhookPayload = {
       robot_id: plainRun.robotMetaId,
       run_id: plainRun.runId,
@@ -242,16 +328,20 @@ async function executeRun(id: string, userId: string) {
       started_at: plainRun.startedAt,
       finished_at: new Date().toLocaleString(),
       extracted_data: {
-        captured_texts: updatedRun?.serializableOutput?.scrapeSchema ? Object.values(updatedRun.serializableOutput.scrapeSchema).flat() : [],
-        captured_lists: updatedRun?.serializableOutput?.scrapeList || {},
-        total_rows: totalRowsExtracted,
+        captured_texts: Object.keys(categorizedOutput.scrapeSchema || {}).length > 0
+          ? Object.entries(categorizedOutput.scrapeSchema).reduce((acc, [name, value]) => {
+              acc[name] = Array.isArray(value) ? value : [value];
+              return acc;
+            }, {} as Record<string, any[]>)
+          : {},
+        captured_lists: categorizedOutput.scrapeList,
         captured_texts_count: totalSchemaItemsExtracted,
         captured_lists_count: totalListItemsExtracted,
         screenshots_count: extractedScreenshotsCount
       },
       metadata: {
         browser_id: plainRun.browserId,
-        user_id: userId
+        user_id: userId,
       }
     };
 
@@ -262,26 +352,7 @@ async function executeRun(id: string, userId: string) {
       logger.log('error', `Failed to send webhooks for run ${plainRun.runId}: ${webhookError.message}`);
     }
 
-    try {
-      googleSheetUpdateTasks[plainRun.runId] = {
-        robotId: plainRun.robotMetaId,
-        runId: plainRun.runId,
-        status: 'pending',
-        retries: 5,
-      };
-
-      airtableUpdateTasks[plainRun.runId] = {
-        robotId: plainRun.robotMetaId,
-        runId: plainRun.runId,
-        status: 'pending',
-        retries: 5,
-      };
-
-      processAirtableUpdates().catch(err => logger.log('error', `Airtable update error: ${err.message}`));
-      processGoogleSheetUpdates().catch(err => logger.log('error', `Google Sheets update error: ${err.message}`));
-    } catch (err: any) {
-      logger.log('error', `Failed to update Google Sheet for run: ${plainRun.runId}: ${err.message}`);
-    }
+    await triggerIntegrationUpdates(plainRun.runId, plainRun.robotMetaId);
     return true;
   } catch (error: any) {
     logger.log('info', `Error while running a robot with id: ${id} - ${error.message}`);
@@ -319,6 +390,21 @@ async function executeRun(id: string, userId: string) {
         logger.log('info', `Failure webhooks sent successfully for run ${run.runId}`);
       } catch (webhookError: any) {
         logger.log('error', `Failed to send failure webhooks for run ${run.runId}: ${webhookError.message}`);
+      }
+
+      try {
+        const failureSocketData = {
+          runId: run.runId,
+          robotMetaId: run.robotMetaId,
+          robotName: recording ? recording.recording_meta.name : 'Unknown Robot',
+          status: 'failed',
+          finishedAt: new Date().toLocaleString()
+        };
+
+        serverIo.of(run.browserId).emit('run-completed', failureSocketData);
+        serverIo.of('/queued-run').to(`user-${userId}`).emit('run-completed', failureSocketData);
+      } catch (socketError: any) {
+        logger.log('warn', `Failed to emit failure event in main catch: ${socketError.message}`);
       }
     }
     capture(
