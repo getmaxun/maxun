@@ -89,10 +89,32 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             orientation="vertical"
             sx={{ alignItems: 'flex-start' }}
           >
-            <Tab value="robots" label={t('mainmenu.recordings')} icon={<AutoAwesome sx={{ fontSize: 20 }} />} iconPosition="start" sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} onClick={handleRobotsClick} />
-            <Tab value="runs" label={t('mainmenu.runs')} icon={<PlayArrow sx={{ fontSize: 20 }} />} iconPosition="start" sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
-            <Tab value="proxy" label={t('mainmenu.proxy')} icon={<Usb sx={{ fontSize: 20 }} />} iconPosition="start" sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
-            <Tab value="apikey" label={t('mainmenu.apikey')} icon={<VpnKey sx={{ fontSize: 20 }} />} iconPosition="start" sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
+            <Tab
+              value="robots"
+              label={t('mainmenu.recordings')}
+              icon={<AutoAwesome />}
+              iconPosition="start"
+              disableRipple={true}
+              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }}
+              onClick={handleRobotsClick} />
+            <Tab value="runs"
+              label={t('mainmenu.runs')}
+              icon={<FormatListBulleted />}
+              iconPosition="start"
+              disableRipple={true}
+              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
+            <Tab value="proxy"
+              label={t('mainmenu.proxy')}
+              icon={<Usb />}
+              iconPosition="start"
+              disableRipple={true}
+              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
+            <Tab value="apikey"
+              label={t('mainmenu.apikey')}
+              icon={<VpnKey />}
+              iconPosition="start"
+              disableRipple={true}
+              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
           </Tabs>
           <hr />
           <Box sx={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
