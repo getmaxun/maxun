@@ -27,10 +27,10 @@ import {
   GitHub,
   Update,
   Close,
-  Language,
   Description,
   LightMode,
-  DarkMode
+  DarkMode,
+  Translate
 } from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/auth';
@@ -233,7 +233,7 @@ export const NavBar: React.FC<NavBarProps> = ({
           cursor: 'pointer'
         }}
           onClick={() => navigate('/')}>
-          <img src={MaxunLogo} width={45} height={40} style={{ borderRadius: '5px', margin: '5px 0px 5px 15px' }} />
+          <img src={MaxunLogo} width={48} height={40} style={{ borderRadius: '5px', margin: '5px 0px 5px 15px' }} />
           <div style={{ padding: '11px' }}><ProjectName mode={darkMode ? 'dark' : 'light'}>{t('navbar.project_name')}</ProjectName></div>
           <Chip
             label={`${currentVersion}`}
@@ -391,7 +391,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                       <Logout sx={{ marginRight: '5px' }} /> {t('navbar.menu_items.logout')}
                     </MenuItem>
                     <MenuItem onClick={handleLangMenuOpen}>
-                      <Language sx={{ marginRight: '5px' }} /> {t('navbar.menu_items.language')}
+                      <Translate sx={{ marginRight: '5px' }} /> {t('navbar.menu_items.language')}
                     </MenuItem>
                     <hr />
                     <MenuItem onClick={() => {
@@ -513,10 +513,10 @@ export const NavBar: React.FC<NavBarProps> = ({
                   alignItems: "center",
                   borderRadius: "5px",
                   padding: "8px",
-                  marginRight: "8px",
+                  marginRight: "4px",
                 }}
               >
-                <Language sx={{ marginRight: '5px' }} /><Typography variant="body1">{t("Language")}</Typography>
+                <Translate />
               </IconButton>
               <Menu
                 anchorEl={langAnchorEl}
