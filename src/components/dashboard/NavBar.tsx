@@ -158,14 +158,11 @@ export const NavBar: React.FC<NavBarProps> = ({
   };
 
   const renderThemeToggle = () => (
-    <Tooltip title="Toggle Mode">
+    <Tooltip title="Change Mode">
       <IconButton
         onClick={toggleTheme}
         sx={{
           color: darkMode ? '#ffffff' : '#0000008A',
-          '&:hover': {
-           background: 'inherit'
-          }
         }}
       >
         {darkMode ? <LightMode /> : <DarkMode />}

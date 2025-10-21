@@ -102,7 +102,7 @@ const ActionDescriptionBox = ({ isDarkMode }: { isDarkMode: boolean }) => {
                     sx={{
                       color: isDarkMode ? 'white' : 'default',
                       '&.Mui-checked': {
-                        color: '#ff33cc',
+                        color: '#ff00c3',
                       },
                     }}
                   />

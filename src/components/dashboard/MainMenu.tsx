@@ -89,17 +89,39 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             orientation="vertical"
             sx={{ alignItems: 'flex-start' }}
           >
-            <Tab value="robots" label={t('mainmenu.recordings')} icon={<AutoAwesome />} iconPosition="start" sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} onClick={handleRobotsClick} />
-            <Tab value="runs" label={t('mainmenu.runs')} icon={<FormatListBulleted />} iconPosition="start" sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
-            <Tab value="proxy" label={t('mainmenu.proxy')} icon={<Usb />} iconPosition="start" sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
-            <Tab value="apikey" label={t('mainmenu.apikey')} icon={<VpnKey />} iconPosition="start" sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
+            <Tab
+              value="robots"
+              label={t('mainmenu.recordings')}
+              icon={<AutoAwesome />}
+              iconPosition="start"
+              disableRipple={true}
+              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }}
+              onClick={handleRobotsClick} />
+            <Tab value="runs"
+              label={t('mainmenu.runs')}
+              icon={<FormatListBulleted />}
+              iconPosition="start"
+              disableRipple={true}
+              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
+            <Tab value="proxy"
+              label={t('mainmenu.proxy')}
+              icon={<Usb />}
+              iconPosition="start"
+              disableRipple={true}
+              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
+            <Tab value="apikey"
+              label={t('mainmenu.apikey')}
+              icon={<VpnKey />}
+              iconPosition="start"
+              disableRipple={true}
+              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
           </Tabs>
           <Divider sx={{ borderColor: theme.palette.mode === 'dark' ? "#080808ff" : "" }} />
           <Box sx={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
             <Button
               onClick={() => setDocModalOpen(true)}
               sx={buttonStyles}
-              startIcon={<Description />}
+              startIcon={<Description sx={{ fontSize: 20 }} />}
             >
               Documentation
             </Button>
@@ -133,10 +155,10 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               href='https://app.maxun.dev/'
               target="_blank"
               rel="noopener noreferrer"
-              sx={buttonStyles} startIcon={<CloudQueue />}>
+              sx={buttonStyles} startIcon={<CloudQueue sx={{ fontSize: 20 }} />}>
               Join Maxun Cloud
             </Button>
-            <Button onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite />}>
+            <Button onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite sx={{ fontSize: 20 }} />}>
               Sponsor Us
             </Button>
           </Box>
@@ -150,15 +172,11 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
           <Typography variant="body1" gutterBottom>
             Maxun is built by a small, full-time team. Your donations directly contribute to making it better.
             <br />
-            <br />
-            Thank you for your support! 💙
+            Thank you for your support! 🩷
           </Typography>
-          <Stack direction="row" spacing={2} mt={2}>
-            <Button href="https://checkout.dodopayments.com/buy/pdt_1Bdstszcg9VY8WYGwNBPM?quantity=1" target="_blank" rel="noopener noreferrer" variant="outlined" fullWidth>
-              Sponsor $5 One-Time
-            </Button>
-            <Button href="https://checkout.dodopayments.com/buy/pdt_HDalaYf8hEGVG7hXcfNBj?quantity=1" target="_blank" rel="noopener noreferrer" variant="outlined" fullWidth>
-              Sponsor $5 Monthly
+          <Stack direction="row" spacing={2} mt={4}>
+            <Button href="https://github.com/sponsors/amhsirak" target="_blank" rel="noopener noreferrer" variant="outlined" fullWidth>
+              Sponsor Maxun on GitHub Sponsors
             </Button>
           </Stack>
         </Box>
