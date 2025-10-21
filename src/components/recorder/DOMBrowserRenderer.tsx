@@ -908,6 +908,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           rebuild(snapshotData.snapshot, {
             doc: iframeDoc,
             mirror: mirror,
+            hackCss: false,
             cache: { stylesWithHoverClass: new Map() },
             afterAppend: (node) => {
               if (node.nodeType === Node.TEXT_NODE && node.textContent) {

@@ -3,8 +3,8 @@ import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Paper, Button, useTheme, Modal, Typography, Stack, TextField, InputAdornment, IconButton } from "@mui/material";
-import { AutoAwesome, FormatListBulleted, VpnKey, Usb, CloudQueue, Description, Favorite, ContentCopy, SlowMotionVideo } from "@mui/icons-material";
+import { Paper, Button, useTheme, Modal, Typography, Stack } from "@mui/material";
+import { AutoAwesome, VpnKey, Usb, CloudQueue, Description, Favorite, SlowMotionVideo, PlayArrow } from "@mui/icons-material";
 import { useTranslation } from 'react-i18next';
 import { useGlobalInfoStore } from "../../context/globalInfo";
 
@@ -121,7 +121,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             <Button
               onClick={() => setDocModalOpen(true)}
               sx={buttonStyles}
-              startIcon={<Description />}
+              startIcon={<Description sx={{ fontSize: 20 }} />}
             >
               Documentation
             </Button>
@@ -155,10 +155,10 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               href='https://app.maxun.dev/'
               target="_blank"
               rel="noopener noreferrer"
-              sx={buttonStyles} startIcon={<CloudQueue />}>
+              sx={buttonStyles} startIcon={<CloudQueue sx={{ fontSize: 20 }} />}>
               Join Maxun Cloud
             </Button>
-            <Button onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite />}>
+            <Button onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite sx={{ fontSize: 20 }} />}>
               Sponsor Us
             </Button>
           </Box>
@@ -172,15 +172,11 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
           <Typography variant="body1" gutterBottom>
             Maxun is built by a small, full-time team. Your donations directly contribute to making it better.
             <br />
-            <br />
-            Thank you for your support! 💙
+            Thank you for your support! 🩷
           </Typography>
-          <Stack direction="row" spacing={2} mt={2}>
-            <Button href="https://checkout.dodopayments.com/buy/pdt_1Bdstszcg9VY8WYGwNBPM?quantity=1" target="_blank" rel="noopener noreferrer" variant="outlined" fullWidth>
-              Sponsor $5 One-Time
-            </Button>
-            <Button href="https://checkout.dodopayments.com/buy/pdt_HDalaYf8hEGVG7hXcfNBj?quantity=1" target="_blank" rel="noopener noreferrer" variant="outlined" fullWidth>
-              Sponsor $5 Monthly
+          <Stack direction="row" spacing={2} mt={4}>
+            <Button href="https://github.com/sponsors/amhsirak" target="_blank" rel="noopener noreferrer" variant="outlined" fullWidth>
+              Sponsor Maxun on GitHub Sponsors
             </Button>
           </Stack>
         </Box>
