@@ -93,8 +93,8 @@ const darkTheme = createTheme({
       contrastText: '#ffffff',
     },
     background: {
-      default: '#121212',
-      paper: '#1e1e1e',
+      default: '#000000ff',
+      paper: '#000000ff',
     },
     text: {
       primary: '#ffffff',
@@ -112,7 +112,7 @@ const darkTheme = createTheme({
             color: '#ffffff',
             "&:hover": {
               borderColor: '#ffffff',
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              backgroundColor: 'inherit',
             },
           },
         },
@@ -127,14 +127,14 @@ const darkTheme = createTheme({
           borderColor: '#ff00c3',
           color: '#ff00c3',
           "&:hover": {
-            backgroundColor: 'rgba(255, 0, 195, 0.08)',
+            // backgroundColor: 'rgba(255, 0, 195, 0.08)',
             borderColor: '#ff66d9',
           },
           '&.MuiButton-outlinedError': {
             borderColor: '#f44336',
             color: '#f44336',
             "&:hover": {
-              backgroundColor: 'rgba(244, 67, 54, 0.08)',
+              // backgroundColor: 'rgba(244, 67, 54, 0.08)',
               borderColor: '#d32f2f',
             },
           },
@@ -202,38 +202,47 @@ const darkTheme = createTheme({
     MuiPaper: {
       styleOverrides: {
         root: {
-          backgroundColor: '#1e1e1e',
+          backgroundColor: '#000000ff',
+          border: '1px solid #080808ff',
         },
       },
     },
     MuiAppBar: {
       styleOverrides: {
         root: {
-          backgroundColor: '#121212',
+          backgroundColor: '#080808ff',
         },
       },
     },
     MuiDrawer: {
       styleOverrides: {
         paper: {
-          backgroundColor: '#121212',
+          backgroundColor: '#080808ff',
         },
       },
     },
     MuiTableCell: {
       styleOverrides: {
         root: {
-          borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
+          borderBottom: '1px solid #080808ff',
         },
       },
     },
     MuiDivider: {
       styleOverrides: {
         root: {
-          borderColor: 'rgba(255, 255, 255, 0.12)',
+          borderColor: '#494949ff',
         },
       },
     },
+    //   MuiTextField:{
+    //     styleOverrides: {
+    //       root: {
+    //         '& .MuiInputBase-root': {
+    //           backgroundColor: '#1d1c1cff',
+    //         },
+    //   }
+    // }}
   },
 });
 

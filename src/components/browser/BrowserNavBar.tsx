@@ -14,18 +14,18 @@ import { useThemeMode } from '../../context/theme-provider';
 const StyledNavBar = styled.div<{ browserWidth: number; isDarkMode: boolean }>`
     display: flex;
     padding: 12px 0px;
-    background-color: ${({ isDarkMode }) => (isDarkMode ? '#2C2F33' : '#f6f6f6')};
+    background-color: ${({ isDarkMode }) => (isDarkMode ? '#1d1c1cff' : '#f6f6f6')};
     width: ${({ browserWidth }) => browserWidth}px;
     border-radius: 0px 5px 0px 0px;
 `;
 
 const IconButton = styled(NavBarButton) <{ mode: string }>`
-  background-color: ${({ mode }) => (mode === 'dark' ? '#2C2F33' : '#f6f6f6')};
+  background-color: ${({ mode }) => (mode === 'dark' ? '#1d1c1cff' : '#f6f6f6')};
   transition: background-color 0.3s ease, transform 0.1s ease;
   color: ${({ mode }) => (mode === 'dark' ? '#FFFFFF' : '#333')};
   cursor: pointer;
   &:hover {
-    background-color: ${({ mode }) => (mode === 'dark' ? '#586069' : '#D0D0D0')};
+    background-color: ${({ mode }) => (mode === 'dark' ? '#1d1c1cff' : '#D0D0D0')};
   }
 `;
 

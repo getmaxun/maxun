@@ -3,8 +3,8 @@ import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Paper, Button, useTheme, Modal, Typography, Stack } from "@mui/material";
-import { AutoAwesome, VpnKey, Usb, CloudQueue, Description, Favorite, SlowMotionVideo, PlayArrow } from "@mui/icons-material";
+import { Paper, Button, useTheme, Modal, Typography, Stack, Divider } from "@mui/material";
+import { AutoAwesome, FormatListBulleted, VpnKey, Usb, CloudQueue, Description, Favorite, SlowMotionVideo } from "@mui/icons-material";
 import { useTranslation } from 'react-i18next';
 import { useGlobalInfoStore } from "../../context/globalInfo";
 
@@ -116,7 +116,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               disableRipple={true}
               sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
           </Tabs>
-          <hr />
+          <Divider sx={{ borderColor: theme.palette.mode === 'dark' ? "#080808ff" : "" }} />
           <Box sx={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
             <Button
               onClick={() => setDocModalOpen(true)}

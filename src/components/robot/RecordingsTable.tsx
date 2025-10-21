@@ -533,7 +533,7 @@ export const RecordingsTable = ({
         <>
           <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden', marginTop: '15px' }}>
             <Table stickyHeader aria-label="sticky table">
-              <TableHead>
+              {/* <TableHead> */}
                 <TableRow>
                   {columns.map((column) => (
                     <MemoizedTableCell
@@ -544,7 +544,7 @@ export const RecordingsTable = ({
                     </MemoizedTableCell>
                   ))}
                 </TableRow>
-              </TableHead>
+              {/* </TableHead> */}
               <TableBody>
                 {visibleRows.map((row) => (
                   <TableRowMemoized
