@@ -87,7 +87,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             textColor="primary"
             indicatorColor="primary"
             orientation="vertical"
-            sx={{ alignItems: 'flex-start' }}
+            sx={{ alignItems: 'flex-start', '& .MuiTabs-indicator': { display: 'none' }}
           >
             <Tab
               value="robots"
