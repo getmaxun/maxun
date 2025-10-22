@@ -615,22 +615,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     <Box sx={{ width: '100%' }}>
       <TabContext value={tab}>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs
-            value={tab}
-            onChange={(e, newTab) => setTab(newTab)}
-            aria-label="run-content-tabs"
-            sx={{
-              '& .MuiTabs-indicator': {
-                backgroundColor: '#FF00C3',
-              },
-              '& .MuiTab-root': {
-                '&.Mui-selected': {
-                  color: '#FF00C3',
-                },
-              }
-            }}
-          >
-          </Tabs>
         </Box>
         <TabPanel value='output' sx={{ width: '100%', maxWidth: '900px' }}>
           {row.status === 'running' || row.status === 'queued' ? (
