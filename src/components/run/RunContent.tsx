@@ -614,63 +614,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   return (
     <Box sx={{ width: '100%' }}>
       <TabContext value={tab}>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs
-            value={tab}
-            onChange={(e, newTab) => setTab(newTab)}
-            aria-label="run-content-tabs"
-            sx={{
-              '& .MuiTabs-indicator': {
-                backgroundColor: '#FF00C3',
-              },
-              '& .MuiTab-root': {
-                '&.Mui-selected': {
-                  color: '#FF00C3',
-                },
-              }
-            }}
-          >
-            <Tab
-              label={t('run_content.tabs.output_data')}
-              value='output'
-              sx={{
-                color: (theme) => theme.palette.mode === 'dark' ? '#fff' : '#000',
-                '&:hover': {
-                  color: '#FF00C3'
-                },
-                '&.Mui-selected': {
-                  color: '#FF00C3',
-                }
-              }}
-            />
-          </Tabs>
-        </Box>
-        <TabPanel value='log'>
-          <Box sx={{
-            margin: 1,
-            background: '#19171c',
-            overflowY: 'scroll',
-            overflowX: 'scroll',
-            width: '700px',
-            height: 'fit-content',
-            maxHeight: '450px',
-          }}>
-            <div>
-              <Highlight className="javascript">
-                {row.status === 'running' ? currentLog : row.log}
-              </Highlight>
-              <div style={{ float: "left", clear: "both" }}
-                ref={logEndRef} />
-            </div>
-          </Box>
-          {row.status === 'running' || row.status === 'queued' ? <Button
-            color="error"
-            onClick={abortRunHandler}
-          >
-            {t('run_content.buttons.stop')}
-          </Button> : null}
-        </TabPanel>
-        <TabPanel value='output' sx={{ width: '100%', maxWidth: '900px' }}>
+        <TabPanel value='output' sx={{ width: '100%', maxWidth: '1000px' }}>
           {row.status === 'running' || row.status === 'queued' ? (
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <CircularProgress size={22} sx={{ marginRight: '10px' }} />
