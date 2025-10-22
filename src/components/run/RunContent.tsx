@@ -632,31 +632,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
           >
           </Tabs>
         </Box>
-        <TabPanel value='log'>
-          <Box sx={{
-            margin: 1,
-            background: '#19171c',
-            overflowY: 'scroll',
-            overflowX: 'scroll',
-            width: '700px',
-            height: 'fit-content',
-            maxHeight: '450px',
-          }}>
-            <div>
-              <Highlight className="javascript">
-                {row.status === 'running' ? currentLog : row.log}
-              </Highlight>
-              <div style={{ float: "left", clear: "both" }}
-                ref={logEndRef} />
-            </div>
-          </Box>
-          {row.status === 'running' || row.status === 'queued' ? <Button
-            color="error"
-            onClick={abortRunHandler}
-          >
-            {t('run_content.buttons.stop')}
-          </Button> : null}
-        </TabPanel>
         <TabPanel value='output' sx={{ width: '100%', maxWidth: '900px' }}>
           {row.status === 'running' || row.status === 'queued' ? (
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
