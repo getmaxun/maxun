@@ -3,7 +3,7 @@
  * Holds the singleton instances of browser pool and socket.io server.
  */
 import { Socket } from "socket.io";
-import { v4 as uuid } from "uuid";
+import { randomUUID } from "crypto";
 
 import { createSocketConnection, createSocketConnectionForRun } from "../socket-connection/connection";
 import { io, browserPool } from "../server";
@@ -21,7 +21,7 @@ import logger from "../logger";
  * @category BrowserManagement-Controller
  */
 export const initializeRemoteBrowserForRecording = (userId: string, mode: string = "dom"): string => {
-  const id = getActiveBrowserIdByState(userId, "recording") || uuid();
+  const id = getActiveBrowserIdByState(userId, "recording") || randomUUID();
   createSocketConnection(
     io.of(id),
     userId,
@@ -67,7 +67,7 @@ export const createRemoteBrowserForRun = (userId: string): string => {
     throw new Error('userId is required');
   }
   
-  const id = uuid();
+  const id = randomUUID();
 
   const slotReserved = browserPool.reserveBrowserSlot(id, userId, "run");
   if (!slotReserved) {

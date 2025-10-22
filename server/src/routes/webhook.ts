@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import Robot from '../models/Robot';
 import { requireSignIn } from '../middlewares/auth';
 import axios from 'axios';
-import { v4 as uuid } from "uuid";
+import { randomUUID } from "crypto";
 
 export const router = Router();
 
@@ -86,7 +86,7 @@ router.post('/add', requireSignIn, async (req: Request, res: Response) => {
 
         const newWebhook: WebhookConfig = {
             ...webhook,
-            id: webhook.id || uuid(),
+            id: webhook.id || randomUUID(),
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             lastCalledAt: null, 

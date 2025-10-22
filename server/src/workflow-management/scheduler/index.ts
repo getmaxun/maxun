@@ -1,4 +1,4 @@
-import { v4 as uuid } from "uuid";
+import { randomUUID } from "crypto";
 import { chromium } from 'playwright-extra';
 import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { io, Socket } from "socket.io-client";
@@ -47,7 +47,7 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string) {
     }
 
     const browserId = createRemoteBrowserForRun( userId);
-    const runId = uuid();
+    const runId = randomUUID();
 
     const run = await Run.create({
       status: 'scheduled',
@@ -60,7 +60,7 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string) {
       interpreterSettings: { maxConcurrency: 1, maxRepeats: 1, debug: true },
       log: '',
       runId,
-      runByScheduleId: uuid(),
+      runByScheduleId: randomUUID(),
       serializableOutput: {},
       binaryOutput: {},
     });

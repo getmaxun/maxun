@@ -33,7 +33,6 @@ import axios from "axios";
 import { useGlobalInfoStore } from "../../../context/globalInfo";
 import { getStoredRecording } from "../../../api/storage";
 import { apiUrl } from "../../../apiConfig.js";
-import { v4 as uuid } from "uuid";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
@@ -202,7 +201,7 @@ export const RobotIntegrationPage = ({
     if (!recordingId) return;
     try {
       setLoading(true);
-      const webhookWithId = { ...newWebhook, id: uuid() };
+      const webhookWithId = { ...newWebhook, id: crypto.randomUUID() };
       const response = await addWebhook(webhookWithId, recordingId);
       if (response.ok) {
         setSettings((prev) => ({ ...prev, webhooks: [...(prev.webhooks || []), webhookWithId] }));

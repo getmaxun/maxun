@@ -29,7 +29,6 @@ import axios from "axios";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { getStoredRecording } from "../../api/storage";
 import { apiUrl } from "../../apiConfig.js";
-import { v4 as uuid } from "uuid";
 
 import Cookies from "js-cookie";
 
@@ -197,7 +196,7 @@ export const IntegrationSettingsModal = ({
       setLoading(true);
       const webhookWithId = {
         ...newWebhook,
-        id: uuid(),
+        id: crypto.randomUUID(),
       };
 
       const response = await addWebhook(webhookWithId, recordingId);
