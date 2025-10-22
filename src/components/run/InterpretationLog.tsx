@@ -21,14 +21,17 @@ import { useThemeMode } from '../../context/theme-provider';
 import { useTranslation } from 'react-i18next';
 import { useBrowserSteps } from '../../context/browserSteps';
 import { useActionContext } from '../../context/browserActions';
+import { useTutorial } from '../../context/tutorial';
 
 interface InterpretationLogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
+  tutorialMode?: boolean;
 }
 
-export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, setIsOpen }) => {
+export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, setIsOpen, tutorialMode = false }) => {
   const { t } = useTranslation();
+  const tutorial = tutorialMode ? useTutorial() : null;
 
   const [captureListData, setCaptureListData] = useState<any[]>([]);
   const [captureTextData, setCaptureTextData] = useState<any[]>([]);
@@ -98,12 +101,18 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
       updateListTextFieldLabel(editingField.listId, editingField.fieldKey, editingValue.trim());
 
+      // Emit updated action to backend after state update completes
       if (actionId) {
         setTimeout(() => emitForStepId(actionId), 0);
       }
 
       setEditingField(null);
       setEditingValue('');
+
+      // Advance tutorial if in tutorial mode
+      if (tutorialMode && tutorial) {
+        tutorial.handleFieldLabelsEdited();
+      }
     }
   };
 
@@ -118,6 +127,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
     removeListTextField(listId, fieldKey);
 
+    // Emit updated action to backend after state update completes
     if (actionId) {
       setTimeout(() => emitForStepId(actionId), 0);
     }
@@ -135,13 +145,20 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
       updateListStepName(editingListName, finalName);
 
+      // Use ref-synced version of browserSteps via emitForStepId
       const listStep = browserSteps.find(step => step.id === editingListName);
       if (listStep?.actionId) {
+        // small async delay ensures React state commit
         setTimeout(() => emitForStepId(listStep.actionId!), 0);
       }
 
       setEditingListName(null);
       setEditingListNameValue('');
+
+      // Advance tutorial if in tutorial mode
+      if (tutorialMode && tutorial) {
+        tutorial.handleListNameEdited();
+      }
     }
   };
 
@@ -154,9 +171,11 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     const trimmedName = editingTextGroupNameValue.trim();
     const finalName = trimmedName || 'Text Data';
 
+    console.log("SAVING TEXT GROUP NAME:", finalName);
     setCurrentTextGroupName(finalName);
     setEditingTextGroupName(false);
 
+    // Emit after React updates global state
     setTimeout(() => {
       const activeTextStep = captureTextData.find(step => step.actionId);
       if (activeTextStep?.actionId) emitForStepId(activeTextStep.actionId);
@@ -176,6 +195,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
       updateBrowserTextStepLabel(editingTextLabel, editingTextLabelValue.trim());
 
+      // Emit updated action to backend after state update completes
       if (actionId) {
         setTimeout(() => emitForStepId(actionId), 0);
       }
@@ -196,7 +216,9 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
     deleteBrowserStep(textId);
 
+    // Emit updated action to backend after deletion
     if (actionId) {
+      // Small delay to ensure state update completes
       setTimeout(() => emitForStepId(actionId), 0);
     }
   };
@@ -212,7 +234,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
       const screenshotSteps = browserSteps.filter(step => step.type === 'screenshot');
       const screenshotIndex = screenshotSteps.findIndex(s => s.id === editingScreenshotName);
       const finalName = trimmedName || `Screenshot ${screenshotIndex + 1}`;
-
+      
       updateScreenshotStepName(editingScreenshotName, finalName);
 
       const screenshotStep = browserSteps.find(step => step.id === editingScreenshotName);
@@ -220,8 +242,11 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
         const originalName = screenshotStep.name?.trim() || "";
         const trimmedName = editingScreenshotNameValue.trim();
 
+        // 🚫 Only emit if name actually changed
         if (trimmedName && trimmedName !== originalName) {
           setTimeout(() => emitForStepId(screenshotStep.actionId!), 500);
+        } else {
+          console.log("🧠 Skipping emit — screenshot name unchanged.");
         }
       }
 
@@ -251,6 +276,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
       setActiveTab(availableTabs.findIndex(tab => tab.id === 'captureText'));
     } else if (hasNewScreenshotData && availableTabs.findIndex(tab => tab.id === 'captureScreenshot') !== -1) {
       setActiveTab(availableTabs.findIndex(tab => tab.id === 'captureScreenshot'));
+      // Set the active screenshot tab to the latest screenshot
       setActiveScreenshotTab(screenshotData.length - 1);
     }
   }, [captureListData.length, captureTextData.length, screenshotData.length]);
@@ -313,24 +339,24 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
   const getAvailableTabs = useCallback(() => {
     const tabs = [];
-
+    
     if (captureListData.length > 0) {
       tabs.push({ id: 'captureList', label: 'Lists' });
     }
-
+    
     if (captureTextData.length > 0) {
       tabs.push({ id: 'captureText', label: 'Texts' });
     }
-
+    
     if (screenshotData.length > 0) {
       tabs.push({ id: 'captureScreenshot', label: 'Screenshots' });
     }
-
+    
     return tabs;
   }, [captureListData.length, captureTextData.length, screenshotData.length, showPreviewData]);
 
   const availableTabs = getAvailableTabs();
-
+  
   useEffect(() => {
     if (activeTab >= availableTabs.length && availableTabs.length > 0) {
       setActiveTab(0);
@@ -503,7 +529,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
           {showPreviewData && availableTabs.length > 0 && (
             <>
               {shouldShowTabs && (
-                <Box
+                <Box 
                   sx={{
                     display: 'flex',
                     borderBottom: '1px solid',
@@ -519,6 +545,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                         px: 4,
                         py: 2,
                         cursor: 'pointer',
+                        // borderBottom: activeTab === index ? '2px solid' : 'none',
                         borderColor: activeTab === index ? (darkMode ? '#ff00c3' : '#ff00c3') : 'transparent',
                         backgroundColor: activeTab === index ? (darkMode ? '#121111ff' : '#e9ecef') : 'transparent',
                         color: darkMode ? 'white' : 'black',
@@ -537,12 +564,13 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                   ))}
                 </Box>
               )}
-
+              
               <Box sx={{ flexGrow: 1, overflow: 'hidden', p: 0, display: 'flex', flexDirection: 'column' }}>
                 {(activeTab === availableTabs.findIndex(tab => tab.id === 'captureList') ||
                   singleContentType === 'captureList') &&
                   captureListData.length > 0 && (
                     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                      {/* List Tabs */}
                       <Box
                         sx={{
                           display: 'flex',
@@ -559,12 +587,13 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
                           return (
                             <Tooltip
-                              key={listItem.id}
                               title="Double click to edit captured list name"
                               arrow
                               placement="top"
                             >
                               <Box
+                                id={index === captureListData.length - 1 ? "list-name-tab" : undefined}
+                                key={listItem.id}
                                 onClick={() => {
                                   if (!isEditing) {
                                     setActiveListTab(index);
@@ -647,6 +676,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                         })}
                       </Box>
 
+                      {/* Table Below Tabs */}
                       <TableContainer
                         component={Paper}
                         sx={{
@@ -667,9 +697,12 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                             {Object.entries(captureListData[activeListTab]?.fields || {}).map(([fieldKey, field]: [string, any]) => {
                               const isEditing = editingField?.listId === captureListData[activeListTab]?.id && editingField?.fieldKey === fieldKey;
 
+                              const isFirstField = Object.keys(captureListData[activeListTab]?.fields || {}).indexOf(fieldKey) === 0;
+
                               return (
                                 <TableCell
                                   key={fieldKey}
+                                  id={isFirstField ? "first-field-label" : undefined}
                                   sx={{
                                     borderBottom: '1px solid',
                                     borderColor: darkMode ? '#080808ff' : '#dee2e6',
@@ -761,19 +794,22 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                         </TableHead>
                         <TableBody>
                           {(captureListData[activeListTab]?.data || [])
-                            .slice(0, Math.min(captureListData[activeListTab]?.limit || 10, 5))
+                            .slice(0, tutorialMode ? (captureListData[activeListTab]?.data?.length || 0) : Math.min(captureListData[activeListTab]?.limit || 10, 5))
                             .map((row: any, rowIndex: any) => (
                               <TableRow
                                 key={rowIndex}
                                 sx={{
-                                  borderBottom: rowIndex < Math.min(captureListData[activeListTab]?.data?.length || 0, Math.min(captureListData[activeListTab]?.limit || 10, 5)) - 1 ? '1px solid' : 'none',
+                                  borderBottom: rowIndex < (tutorialMode
+                                    ? (captureListData[activeListTab]?.data?.length || 0)
+                                    : Math.min((captureListData[activeListTab]?.data?.length || 0), Math.min(captureListData[activeListTab]?.limit || 10, 5))
+                                  ) - 1 ? '1px solid' : 'none',
                                   borderColor: darkMode ? '#080808ff' : '#dee2e6'
                                 }}
                               >
                                 {Object.values(captureListData[activeListTab]?.fields || {}).map((field: any, colIndex) => (
-                                  <TableCell
+                                  <TableCell 
                                     key={colIndex}
-                                    sx={{
+                                    sx={{ 
                                       borderBottom: 'none',
                                       py: 2
                                     }}
@@ -793,6 +829,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
                 {(activeTab === availableTabs.findIndex(tab => tab.id === 'captureScreenshot') || singleContentType === 'captureScreenshot') && screenshotData.length > 0 && (
                   <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                    {/* Screenshot Tabs */}
                     <Box
                       sx={{
                         display: 'flex',
@@ -899,6 +936,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                       })()}
                     </Box>
 
+                    {/* Screenshot Image */}
                     <Box sx={{
                       p: 3,
                       overflow: 'auto',

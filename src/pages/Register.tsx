@@ -73,7 +73,7 @@ const Register = () => {
         maxHeight: "100vh",
         mt: 6,
         padding: 4,
-        backgroundColor: darkMode ? "#121212" : "#ffffff",
+        backgroundColor: "inherit",
       }}
     >
       <Box
@@ -81,7 +81,7 @@ const Register = () => {
         onSubmit={submitForm}
         sx={{
           textAlign: "center",
-          backgroundColor: darkMode ? "#1e1e1e" : "#ffffff",
+          backgroundColor: darkMode ? "#121111ff" : "#ffffff",
           color: darkMode ? "#ffffff" : "#333333",
           padding: 6,
           borderRadius: 5,
@@ -97,8 +97,8 @@ const Register = () => {
         <img
           src="../src/assets/maxunlogo.png"
           alt="logo"
-          height={55}
-          width={60}
+          height={60}
+          width={70}
           style={{
             marginBottom: 20,
             borderRadius: "20%",
