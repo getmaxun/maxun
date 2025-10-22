@@ -82,13 +82,13 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
       >
         <Box sx={{ width: '100%', paddingBottom: '1rem' }}>
           <Tabs
-            value={value}
-            onChange={handleChange}
-            textColor="primary"
-            indicatorColor="primary"
-            orientation="vertical"
-            sx={{ alignItems: 'flex-start', '& .MuiTabs-indicator': { display: 'none' }}
-          >
+              value={value}
+              onChange={handleChange}
+              textColor="primary"
+              indicatorColor="primary"
+              orientation="vertical"
+              sx={{ alignItems: 'flex-start', '& .MuiTabs-indicator': { display: 'none' }}}
+            >
             <Tab
               value="robots"
               label={t('mainmenu.recordings')}
