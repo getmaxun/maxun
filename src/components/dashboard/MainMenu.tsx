@@ -4,7 +4,7 @@ import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Paper, Button, useTheme, Modal, Typography, Stack, Divider } from "@mui/material";
-import { AutoAwesome, FormatListBulleted, VpnKey, Usb, CloudQueue, Description, Favorite, SlowMotionVideo } from "@mui/icons-material";
+import { AutoAwesome, FormatListBulleted, VpnKey, Usb, CloudQueue, Description, Favorite, SlowMotionVideo, PlayArrow } from "@mui/icons-material";
 import { useTranslation } from 'react-i18next';
 import { useGlobalInfoStore } from "../../context/globalInfo";
 
@@ -99,7 +99,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               onClick={handleRobotsClick} />
             <Tab value="runs"
               label={t('mainmenu.runs')}
-              icon={<FormatListBulleted />}
+              icon={<PlayArrow />}
               iconPosition="start"
               disableRipple={true}
               sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
