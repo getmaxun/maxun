@@ -27,7 +27,6 @@ class CapturedElementHighlighter {
           ${cssSelector} {
             outline: 2px dotted #ff00c3 !important;
             outline-offset: 2px !important;
-            background-color: rgba(255, 0, 195, 0.08) !important;
             box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5) !important;
           }
         `);

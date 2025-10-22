@@ -513,6 +513,16 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
             {t('interpretation_log.titles.output_preview')}
           </Typography>
 
+          {!(hasScrapeListAction || hasScrapeSchemaAction || hasScreenshotAction) && (
+            <Grid container justifyContent="center" alignItems="center" style={{ height: '100%' }}>
+              <Grid item>
+                <Typography variant="h6" gutterBottom align="left">
+                  {t('interpretation_log.messages.no_selection')}
+                </Typography>
+              </Grid>
+            </Grid>
+          )}
+
           {showPreviewData && availableTabs.length > 0 && (
             <>
               {shouldShowTabs && (
