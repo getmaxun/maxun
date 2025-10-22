@@ -702,12 +702,6 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           return;
         }
 
-        if (isInCaptureMode) {
-          e.preventDefault();
-          e.stopPropagation();
-          return;
-        }
-
         if (!isInCaptureMode) {
           const wheelEvent = e as WheelEvent;
           const deltaX = Math.round(wheelEvent.deltaX / 10) * 10;
