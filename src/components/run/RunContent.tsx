@@ -643,19 +643,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 }
               }}
             />
-            <Tab
-              label={t('run_content.tabs.log')}
-              value='log'
-              sx={{
-                color: (theme) => theme.palette.mode === 'dark' ? '#fff' : '#000',
-                '&:hover': {
-                  color: '#FF00C3'
-                },
-                '&.Mui-selected': {
-                  color: '#FF00C3',
-                }
-              }}
-            />
           </Tabs>
         </Box>
         <TabPanel value='log'>
