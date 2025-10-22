@@ -614,8 +614,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   return (
     <Box sx={{ width: '100%' }}>
       <TabContext value={tab}>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-        </Box>
         <TabPanel value='output' sx={{ width: '100%', maxWidth: '900px' }}>
           {row.status === 'running' || row.status === 'queued' ? (
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
