@@ -21,17 +21,14 @@ import { useThemeMode } from '../../context/theme-provider';
 import { useTranslation } from 'react-i18next';
 import { useBrowserSteps } from '../../context/browserSteps';
 import { useActionContext } from '../../context/browserActions';
-import { useTutorial } from '../../context/tutorial';
 
 interface InterpretationLogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  tutorialMode?: boolean;
 }
 
-export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, setIsOpen, tutorialMode = false }) => {
+export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, setIsOpen }) => {
   const { t } = useTranslation();
-  const tutorial = tutorialMode ? useTutorial() : null;
 
   const [captureListData, setCaptureListData] = useState<any[]>([]);
   const [captureTextData, setCaptureTextData] = useState<any[]>([]);
@@ -108,11 +105,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
       setEditingField(null);
       setEditingValue('');
-
-      // Advance tutorial if in tutorial mode
-      if (tutorialMode && tutorial) {
-        tutorial.handleFieldLabelsEdited();
-      }
     }
   };
 
@@ -154,11 +146,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
       setEditingListName(null);
       setEditingListNameValue('');
-
-      // Advance tutorial if in tutorial mode
-      if (tutorialMode && tutorial) {
-        tutorial.handleListNameEdited();
-      }
     }
   };
 
@@ -794,14 +781,12 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                         </TableHead>
                         <TableBody>
                           {(captureListData[activeListTab]?.data || [])
-                            .slice(0, tutorialMode ? (captureListData[activeListTab]?.data?.length || 0) : Math.min(captureListData[activeListTab]?.limit || 10, 5))
+                            .slice(0, Math.min(captureListData[activeListTab]?.limit || 10, 5))
                             .map((row: any, rowIndex: any) => (
                               <TableRow
                                 key={rowIndex}
                                 sx={{
-                                  borderBottom: rowIndex < (tutorialMode
-                                    ? (captureListData[activeListTab]?.data?.length || 0)
-                                    : Math.min((captureListData[activeListTab]?.data?.length || 0), Math.min(captureListData[activeListTab]?.limit || 10, 5))
+                                  borderBottom: rowIndex < (Math.min((captureListData[activeListTab]?.data?.length || 0), Math.min(captureListData[activeListTab]?.limit || 10, 5))
                                   ) - 1 ? '1px solid' : 'none',
                                   borderColor: darkMode ? '#080808ff' : '#dee2e6'
                                 }}
