@@ -454,7 +454,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   }
                 }}
               >
-                {t('run_content.captured_data.download_json', 'Download as JSON')}
+                {t('run_content.captured_data.download_json', 'Download JSON')}
               </Button>
 
               <Button
@@ -801,7 +801,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                 },
                               }}
                             >
-                              {t('run_content.captured_data.download_json', 'Download as JSON')}
+                              {t('run_content.captured_data.download_json', 'Download JSON')}
                             </Button>
 
                             <Button
