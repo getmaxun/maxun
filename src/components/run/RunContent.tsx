@@ -671,7 +671,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                         ? '#121111ff'
                                         : '#e9ecef'
                                       : 'transparent',
-                                  fontWeight: currentSchemaIndex === idx ? 600 : 400,
                                   borderBottom: currentSchemaIndex === idx ? '3px solid #FF00C3' : 'none',
                                   color: (theme) => theme.palette.mode === 'dark' ? '#fff' : '#000',
                                 }}
