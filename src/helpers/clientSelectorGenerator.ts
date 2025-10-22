@@ -2713,52 +2713,6 @@ class ClientSelectorGenerator {
       }
     }
 
-    const testId = element.getAttribute("data-testid");
-    if (testId && !addPositionToAll) {
-      const isCommon = this.isAttributeCommonAcrossLists(
-        element,
-        "data-testid",
-        testId,
-        otherListElements
-      );
-      if (isCommon) {
-        return `${tagName}[@data-testid='${testId}']`;
-      }
-    }
-
-    if (element.id && !element.id.match(/^\d/) && !addPositionToAll) {
-      const isCommon = this.isAttributeCommonAcrossLists(
-        element,
-        "id",
-        element.id,
-        otherListElements
-      );
-      if (isCommon) {
-        return `${tagName}[@id='${element.id}']`;
-      }
-    }
-
-    if (!addPositionToAll) {
-      for (const attr of Array.from(element.attributes)) {
-        if (
-          attr.name.startsWith("data-") &&
-          attr.name !== "data-testid" &&
-          attr.name !== "data-mx-id" &&
-          attr.value
-        ) {
-          const isCommon = this.isAttributeCommonAcrossLists(
-            element,
-            attr.name,
-            attr.value,
-            otherListElements
-          );
-          if (isCommon) {
-            return `${tagName}[@${attr.name}='${attr.value}']`;
-          }
-        }
-      }
-    }
-
     const position = this.getSiblingPosition(element, parent);
 
     if (addPositionToAll || classes.length === 0) {
