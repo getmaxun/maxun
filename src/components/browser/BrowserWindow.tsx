@@ -1423,7 +1423,8 @@ export const BrowserWindow = () => {
             }
 
             const iframeRect = iframeElement.getBoundingClientRect();
-            const IFRAME_BODY_PADDING = 16;
+            const IFRAME_X_PADDING = 16;
+            const IFRAME_Y_PADDING = 136;
 
             let mappedSimilarElements;
             if (data.similarElements) {
@@ -1432,8 +1433,8 @@ export const BrowserWindow = () => {
                 rects: data.similarElements.rects.map(
                     (rect) =>
                     new DOMRect(
-                        rect.x + iframeRect.left - IFRAME_BODY_PADDING,
-                        rect.y + iframeRect.top - IFRAME_BODY_PADDING,
+                        rect.x + iframeRect.left - IFRAME_X_PADDING,
+                        rect.y + iframeRect.top - IFRAME_Y_PADDING,
                         rect.width,
                         rect.height
                     )
@@ -1448,8 +1449,8 @@ export const BrowserWindow = () => {
             }
 
             const absoluteRect = new DOMRect(
-                data.rect.x + iframeRect.left - IFRAME_BODY_PADDING,
-                data.rect.y + iframeRect.top - IFRAME_BODY_PADDING,
+                data.rect.x + iframeRect.left - IFRAME_X_PADDING,
+                data.rect.y + iframeRect.top - IFRAME_Y_PADDING,
                 data.rect.width,
                 data.rect.height
             );
@@ -1469,8 +1470,8 @@ export const BrowserWindow = () => {
                             return {
                                 element,
                                 rect: new DOMRect(
-                                elementRect.x + iframeRect.left - IFRAME_BODY_PADDING,
-                                elementRect.y + iframeRect.top - IFRAME_BODY_PADDING,
+                                elementRect.x + iframeRect.left - IFRAME_X_PADDING,
+                                elementRect.y + iframeRect.top - IFRAME_Y_PADDING,
                                 elementRect.width,
                                 elementRect.height
                                 ),
