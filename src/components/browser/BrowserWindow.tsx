@@ -1423,7 +1423,8 @@ export const BrowserWindow = () => {
             }
 
             const iframeRect = iframeElement.getBoundingClientRect();
-            const IFRAME_BODY_PADDING = 16;
+            const IFRAME_X_PADDING = 16;
+            const IFRAME_Y_PADDING = 136;
 
             let mappedSimilarElements;
             if (data.similarElements) {
@@ -1432,8 +1433,8 @@ export const BrowserWindow = () => {
                 rects: data.similarElements.rects.map(
                     (rect) =>
                     new DOMRect(
-                        rect.x + iframeRect.left - IFRAME_BODY_PADDING,
-                        rect.y + iframeRect.top - IFRAME_BODY_PADDING,
+                        rect.x + iframeRect.left - IFRAME_X_PADDING,
+                        rect.y + iframeRect.top - IFRAME_Y_PADDING,
                         rect.width,
                         rect.height
                     )
@@ -1448,8 +1449,8 @@ export const BrowserWindow = () => {
             }
 
             const absoluteRect = new DOMRect(
-                data.rect.x + iframeRect.left - IFRAME_BODY_PADDING,
-                data.rect.y + iframeRect.top - IFRAME_BODY_PADDING,
+                data.rect.x + iframeRect.left - IFRAME_X_PADDING,
+                data.rect.y + iframeRect.top - IFRAME_Y_PADDING,
                 data.rect.width,
                 data.rect.height
             );
@@ -1469,8 +1470,8 @@ export const BrowserWindow = () => {
                             return {
                                 element,
                                 rect: new DOMRect(
-                                elementRect.x + iframeRect.left - IFRAME_BODY_PADDING,
-                                elementRect.y + iframeRect.top - IFRAME_BODY_PADDING,
+                                elementRect.x + iframeRect.left - IFRAME_X_PADDING,
+                                elementRect.y + iframeRect.top - IFRAME_Y_PADDING,
                                 elementRect.width,
                                 elementRect.height
                                 ),
@@ -2187,7 +2188,15 @@ export const BrowserWindow = () => {
         )}
 
         {/* Main content area */}
-        <div style={{ height: dimensions.height, overflow: "hidden" }}>
+        <div
+        style={{
+          position: "relative",
+          width: "100%",
+          height: dimensions.height,
+          overflow: "hidden",
+          borderRadius: "0px 0px 5px 5px",
+        }}
+      >
           {/* Add CSS for the spinner animation */}
           <style>{`
           @keyframes spin {
@@ -2196,7 +2205,7 @@ export const BrowserWindow = () => {
           }
         `}</style>
 
-          {(getText === true || getList === true) &&
+          {(getText || getList) &&
             !showAttributeModal &&
             highlighterData?.rect != null && (
               <>
@@ -2211,7 +2220,16 @@ export const BrowserWindow = () => {
                 )}
 
                 {isDOMMode && highlighterData && (
-                  <>
+                  <div
+                  id="dom-highlight-overlay"
+                  style={{
+                    position: "absolute",
+                    inset: 0, // top:0; right:0; bottom:0; left:0
+                    overflow: "hidden", // clip everything within iframe area
+                    pointerEvents: "none",
+                    zIndex: 1000,
+                  }}
+                >
                     {/* Individual element highlight (for non-group or hovered element) */}
                     {((getText && !listSelector) || 
                       (getList && paginationMode && paginationType !== "" && 
@@ -2219,49 +2237,33 @@ export const BrowserWindow = () => {
                       <div
                         style={{
                           position: "absolute",
-                          left: Math.max(0, highlighterData.rect.x),
-                          top: Math.max(0, highlighterData.rect.y),
-                          width: Math.min(
-                            highlighterData.rect.width,
-                            dimensions.width
-                          ),
-                          height: Math.min(
-                            highlighterData.rect.height,
-                            dimensions.height
-                          ),
+                          left: highlighterData.rect.x,
+                          top: highlighterData.rect.y,
+                          width: highlighterData.rect.width,
+                          height: highlighterData.rect.height,
                           background: "rgba(255, 0, 195, 0.15)",
                           border: "2px solid #ff00c3",
                           borderRadius: "3px",
                           pointerEvents: "none",
-                          zIndex: 1000,
                           boxShadow: "0 0 0 1px rgba(255, 255, 255, 0.8)",
                           transition: "all 0.1s ease-out",
                         }}
                       />
                     )}
 
-                    {/* Group elements highlighting with real-time coordinates */}
+                    {/* Grouped list element highlights */}
                     {getList &&
                       !listSelector &&
                       currentGroupInfo?.isGroupElement &&
-                      highlighterData.groupElements &&
-                      highlighterData.groupElements.map(
-                        (groupElement, index) => (
+                      highlighterData.groupElements?.map((groupElement, index) => (
                           <React.Fragment key={index}>
-                            {/* Highlight box */}
                             <div
                               style={{
                                 position: "absolute",
-                                left: Math.max(0, groupElement.rect.x),
-                                top: Math.max(0, groupElement.rect.y),
-                                width: Math.min(
-                                  groupElement.rect.width,
-                                  dimensions.width
-                                ),
-                                height: Math.min(
-                                  groupElement.rect.height,
-                                  dimensions.height
-                                ),
+                                left: groupElement.rect.x,
+                                top: groupElement.rect.y,
+                                width: groupElement.rect.width,
+                                height: groupElement.rect.height,
                                 background: "rgba(255, 0, 195, 0.15)",
                                 border: "2px dashed #ff00c3",
                                 borderRadius: "3px",
@@ -2275,8 +2277,8 @@ export const BrowserWindow = () => {
                             <div
                               style={{
                                 position: "absolute",
-                                left: Math.max(0, groupElement.rect.x),
-                                top: Math.max(0, groupElement.rect.y - 20),
+                                left: groupElement.rect.x,
+                                top: groupElement.rect.y - 20,
                                 background: "#ff00c3",
                                 color: "white",
                                 padding: "2px 6px",
@@ -2298,21 +2300,15 @@ export const BrowserWindow = () => {
                       listSelector &&
                       !paginationMode &&
                       !limitMode &&
-                      highlighterData?.similarElements &&
-                      highlighterData.similarElements.rects.map(
-                        (rect, index) => (
+                      highlighterData.similarElements?.rects?.map((rect, index) => (
                           <React.Fragment key={`item-${index}`}>
-                            {/* Highlight box for similar element */}
                             <div
                               style={{
                                 position: "absolute",
-                                left: Math.max(0, rect.x),
-                                top: Math.max(0, rect.y),
-                                width: Math.min(rect.width, dimensions.width),
-                                height: Math.min(
-                                  rect.height,
-                                  dimensions.height
-                                ),
+                                left: rect.x,
+                                top: rect.y,
+                                width: rect.width,
+                                height: rect.height,
                                 background: "rgba(255, 0, 195, 0.15)",
                                 border: "2px dashed #ff00c3",
                                 borderRadius: "3px",
@@ -2327,8 +2323,8 @@ export const BrowserWindow = () => {
                             <div
                               style={{
                                 position: "absolute",
-                                left: Math.max(0, rect.x),
-                                top: Math.max(0, rect.y - 20),
+                                left: rect.x,
+                                top: rect.y - 20,
                                 background: "#ff00c3",
                                 color: "white",
                                 padding: "2px 6px",
@@ -2343,17 +2339,24 @@ export const BrowserWindow = () => {
                               Item {index + 1}
                             </div>
                           </React.Fragment>
-                        )
-                      )}
-                  </>
-                )}
-              </>
-            )}
-
+                    ))}
+                </div>
+              )}
+            </>
+          )}
+          {/* --- Main DOM Renderer Section --- */}
+        <div
+          id="iframe-wrapper"
+          style={{
+            position: "relative",
+            width: "100%",
+            height: "100%",
+            overflow: "hidden", // key: confine everything below
+            borderRadius: "0px 0px 5px 5px",
+          }}
+        >
           {isDOMMode ? (
-            <div
-              style={{ position: "relative", width: "100%", height: "100%" }}
-            >
+            <>
               {currentSnapshot ? (
                 <DOMBrowserRenderer
                   width={dimensions.width}
@@ -2366,10 +2369,8 @@ export const BrowserWindow = () => {
                   paginationMode={paginationMode}
                   paginationType={paginationType}
                   limitMode={limitMode}
-                  onHighlight={(data) => {
-                    domHighlighterHandler(data);
-                  }}
                   isCachingChildSelectors={isCachingChildSelectors}
+                  onHighlight={domHighlighterHandler}
                   onElementSelect={handleDOMElementSelection}
                   onShowDatePicker={handleShowDatePicker}
                   onShowDropdown={handleShowDropdown}
@@ -2377,181 +2378,120 @@ export const BrowserWindow = () => {
                   onShowDateTimePicker={handleShowDateTimePicker}
                 />
               ) : (
-                <div
-                  style={{
-                    width: dimensions.width,
-                    height: dimensions.height,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    background: "#f5f5f5",
-                    borderRadius: "5px",
-                    flexDirection: "column",
-                    gap: "20px",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: "60px",
-                      height: "60px",
-                      borderTop: "4px solid transparent",
-                      borderRadius: "50%",
-                      animation: "spin 1s linear infinite",
-                    }}
-                  />
-                  <div
-                    style={{
-                      fontSize: "18px",
-                      color: "#ff00c3",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    Loading website...
-                  </div>
-                  <style>{`
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-        `}</style>
-                </div>
+                <DOMLoadingIndicator />
               )}
 
-              {/* Loading overlay positioned specifically over DOM content */}
+              {/* --- Loading overlay --- */}
               {isCachingChildSelectors && (
-              <>
-                {/* Background overlay */}
-                <div
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: "100%",
-                    height: "100%",
-                    background: "rgba(255, 255, 255, 0.8)",
-                    zIndex: 9999,
-                    pointerEvents: "none",
-                    borderRadius: "0px 0px 5px 5px",
-                  }}
-                />
-
-                {/* Use processing coordinates captured before listSelector was set */}
-                {processingGroupCoordinates.map((groupElement, index) => (
-                  <React.Fragment key={`group-highlight-${index}`}>
-                    {/* Original highlight box */}
-                    <div
-                      style={{
-                        position: "absolute",
-                        left: groupElement.rect.x,
-                        top: groupElement.rect.y,
-                        width: groupElement.rect.width,
-                        height: groupElement.rect.height,
-                        background: "rgba(255, 0, 195, 0.15)",
-                        border: "2px dashed #ff00c3",
-                        borderRadius: "3px",
-                        pointerEvents: "none",
-                        zIndex: 10000,
-                        boxShadow: "0 0 0 1px rgba(255, 255, 255, 0.8)",
-                        transition: "all 0.1s ease-out",
-                      }}
-                    />
-
-                    {/* Label */}
-                    <div
-                      style={{
-                        position: "absolute",
-                        left: groupElement.rect.x,
-                        top: groupElement.rect.y - 20,
-                        background: "#ff00c3",
-                        color: "white",
-                        padding: "2px 6px",
-                        fontSize: "10px",
-                        fontWeight: "bold",
-                        borderRadius: "2px",
-                        pointerEvents: "none",
-                        zIndex: 10001,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      List item {index + 1}
-                    </div>
-
-                    {/* Scanning animation */}
-                    <div
-                      style={{
-                        position: "absolute",
-                        left: groupElement.rect.x,
-                        top: groupElement.rect.y,
-                        width: groupElement.rect.width,
-                        height: groupElement.rect.height,
-                        overflow: "hidden",
-                        zIndex: 10002,
-                        pointerEvents: "none",
-                        borderRadius: "3px",
-                      }}
-                    >
-                      <div
-                        style={{
-                          position: "absolute",
-                          left: 0,
-                          width: "100%",
-                          height: "8px",
-                          background:
-                            "linear-gradient(90deg, transparent 0%, rgba(255, 0, 195, 0.6) 50%, transparent 100%)",
-                          animation: `scanDown-${index} 2s ease-in-out infinite`,
-                          willChange: "transform",
-                        }}
-                      />
-                    </div>
-
-                    <style>{`
-                    @keyframes scanDown-${index} {
-                        0% {
-                        transform: translateY(-8px);
-                        }
-                        100% {
-                        transform: translateY(${groupElement.rect.height}px);
-                        }
-                    }
-                    `}</style>
-                  </React.Fragment>
-                ))}
-
-                {/* Fallback loader */}
-                {processingGroupCoordinates.length === 0 && (
+                <>
                   <div
                     style={{
                       position: "absolute",
-                      top: 0,
-                      left: 0,
-                      width: "100%",
-                      height: "100%",
+                      inset: 0,
                       background: "rgba(255, 255, 255, 0.8)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
                       zIndex: 9999,
                       pointerEvents: "none",
                       borderRadius: "0px 0px 5px 5px",
                     }}
-                  >
+                  />
+                  {processingGroupCoordinates.map((groupElement, index) => (
+                    <React.Fragment key={`group-highlight-${index}`}>
+                      <div
+                        style={{
+                          position: "absolute",
+                          left: groupElement.rect.x,
+                          top: groupElement.rect.y,
+                          width: groupElement.rect.width,
+                          height: groupElement.rect.height,
+                          background: "rgba(255, 0, 195, 0.15)",
+                          border: "2px dashed #ff00c3",
+                          borderRadius: "3px",
+                          pointerEvents: "none",
+                          zIndex: 10000,
+                          boxShadow: "0 0 0 1px rgba(255, 255, 255, 0.8)",
+                        }}
+                      />
+                      <div
+                        style={{
+                          position: "absolute",
+                          left: groupElement.rect.x,
+                          top: groupElement.rect.y - 20,
+                          background: "#ff00c3",
+                          color: "white",
+                          padding: "2px 6px",
+                          fontSize: "10px",
+                          fontWeight: "bold",
+                          borderRadius: "2px",
+                          pointerEvents: "none",
+                          zIndex: 10001,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        List item {index + 1}
+                      </div>
+                      <div
+                        style={{
+                          position: "absolute",
+                          left: groupElement.rect.x,
+                          top: groupElement.rect.y,
+                          width: groupElement.rect.width,
+                          height: groupElement.rect.height,
+                          overflow: "hidden",
+                          zIndex: 10002,
+                          pointerEvents: "none",
+                          borderRadius: "3px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            position: "absolute",
+                            left: 0,
+                            width: "100%",
+                            height: "8px",
+                            background:
+                              "linear-gradient(90deg, transparent 0%, rgba(255, 0, 195, 0.6) 50%, transparent 100%)",
+                            animation: `scanDown-${index} 2s ease-in-out infinite`,
+                          }}
+                        />
+                      </div>
+                      <style>{`
+                  @keyframes scanDown-${index} {
+                    0% { transform: translateY(-8px); }
+                    100% { transform: translateY(${groupElement.rect.height}px); }
+                  }
+                `}</style>
+                    </React.Fragment>
+                  ))}
+
+                  {processingGroupCoordinates.length === 0 && (
                     <div
                       style={{
-                        width: "40px",
-                        height: "40px",
-                        border: "4px solid #f3f3f3",
-                        borderTop: "4px solid #ff00c3",
-                        borderRadius: "50%",
-                        animation: "spin 1s linear infinite",
+                        position: "absolute",
+                        inset: 0,
+                        background: "rgba(255, 255, 255, 0.8)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        zIndex: 9999,
+                        pointerEvents: "none",
                       }}
-                    />
-                  </div>
-                )}
-              </>
-            )}
-            </div>
+                    >
+                      <div
+                        style={{
+                          width: "40px",
+                          height: "40px",
+                          border: "4px solid #f3f3f3",
+                          borderTop: "4px solid #ff00c3",
+                          borderRadius: "50%",
+                          animation: "spin 1s linear infinite",
+                        }}
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+            </>
           ) : (
-            /* Screenshot mode canvas */
             <Canvas
               onCreateRef={setCanvasReference}
               width={dimensions.width}
@@ -2560,8 +2500,97 @@ export const BrowserWindow = () => {
           )}
         </div>
       </div>
-    );
+    </div>
+  );
 };
+
+const DOMLoadingIndicator: React.FC = () => {
+  const [progress, setProgress] = useState(0);
+  const [pendingRequests, setPendingRequests] = useState(0);
+  const [hasStartedLoading, setHasStartedLoading] = useState(false);
+  const { socket } = useSocketStore();
+  const { state } = useContext(AuthContext);
+  const { user } = state;
+  const { browserWidth, browserHeight } = useBrowserDimensionsStore();
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleLoadingProgress = (data: {
+      progress: number;
+      pendingRequests: number;
+      userId: string;
+    }) => {
+      if (!data.userId || data.userId === user?.id) {
+        // Once loading has started, never reset progress to 0
+        if (!hasStartedLoading && data.progress > 0) {
+          setHasStartedLoading(true);
+        }
+        
+        // Only update progress if we haven't started or if new progress is higher
+        if (!hasStartedLoading || data.progress >= progress) {
+          setProgress(data.progress);
+          setPendingRequests(data.pendingRequests);
+        }
+      }
+    };
+
+    socket.on("domLoadingProgress", handleLoadingProgress);
+
+    return () => {
+      socket.off("domLoadingProgress", handleLoadingProgress);
+    };
+  }, [socket, user?.id, hasStartedLoading, progress]);
+
+  return (
+    <div
+      style={{
+        width: browserWidth,
+        height: browserHeight,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "#f5f5f5",
+        borderRadius: "5px",
+        flexDirection: "column",
+        gap: "15px",
+      }}
+    >
+      {/* Loading text with percentage */}
+      <div
+        style={{
+          fontSize: "18px",
+          fontWeight: "500",
+          color: "#333",
+        }}
+      >
+        Loading {progress}%
+      </div>
+
+      {/* Progress bar */}
+      <div
+        style={{
+          width: "240px",
+          height: "6px",
+          background: "#e0e0e0",
+          borderRadius: "3px",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            width: `${progress}%`,
+            height: "100%",
+            background: "linear-gradient(90deg, #ff00c3, #ff66d9)",
+            borderRadius: "3px",
+            transition: "width 0.3s ease-out",
+          }}
+        />
+      </div>
+    </div>
+  );
+};
+
 
 const drawImage = (image: string, canvas: HTMLCanvasElement): void => {
     const ctx = canvas.getContext('2d');
