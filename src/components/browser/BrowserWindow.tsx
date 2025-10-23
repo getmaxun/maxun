@@ -1395,6 +1395,9 @@ export const BrowserWindow = () => {
             };
             isDOMMode?: boolean;
         }) => {
+            if (paginationMode && paginationSelector) {
+            return;
+            }
             if (!getText && !getList) {
                 setHighlighterData(null);
                 return;
@@ -1519,6 +1522,7 @@ export const BrowserWindow = () => {
             socket,
             listSelector,
             paginationMode,
+            paginationSelector,
             paginationType,
             limitMode,
             cachedChildSelectors,
@@ -1526,6 +1530,9 @@ export const BrowserWindow = () => {
     );
 
     const highlighterHandler = useCallback((data: { rect: DOMRect, selector: string, elementInfo: ElementInfo | null, childSelectors?: string[], isDOMMode?: boolean; }) => {
+        if (paginationMode && paginationSelector) {
+        return;
+        }
         if (isDOMMode || data.isDOMMode) {
             domHighlighterHandler(data);
             return;
@@ -1680,6 +1687,7 @@ export const BrowserWindow = () => {
                 highlighterData.isShadow
             );
             socket?.emit("setPaginationMode", { pagination: false });
+            setHighlighterData(null);
           }
           return;
         }
@@ -1918,6 +1926,7 @@ export const BrowserWindow = () => {
                 highlighterData.isShadow
               );
               socket?.emit("setPaginationMode", { pagination: false });
+              setHighlighterData(null);
             }
             return;
           }
