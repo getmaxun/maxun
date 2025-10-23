@@ -5,13 +5,14 @@ import Canvas from "../recorder/Canvas";
 import { Highlighter } from "../recorder/Highlighter";
 import { GenericModal } from '../ui/GenericModal';
 import { useActionContext } from '../../context/browserActions';
-import { useBrowserSteps, TextStep } from '../../context/browserSteps';
+import { useBrowserSteps, TextStep, ListStep } from '../../context/browserSteps';
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../../context/auth';
 import { coordinateMapper } from '../../helpers/coordinateMapper';
 import { useBrowserDimensionsStore } from '../../context/browserDimensions';
 import { clientSelectorGenerator, ElementFingerprint } from "../../helpers/clientSelectorGenerator";
+import { capturedElementHighlighter } from "../../helpers/capturedElementHighlighter";
 import DatePicker from "../pickers/DatePicker";
 import Dropdown from "../pickers/Dropdown";
 import TimePicker from "../pickers/TimePicker";
@@ -182,10 +183,13 @@ export const BrowserWindow = () => {
         count?: number;
     } | null>(null);
 
+    const [initialAutoFieldIds, setInitialAutoFieldIds] = useState<Set<number>>(new Set());
+    const [manuallyAddedFieldIds, setManuallyAddedFieldIds] = useState<Set<number>>(new Set());
+
     const { socket } = useSocketStore();
     const { notify, currentTextActionId, currentListActionId, updateDOMMode, isDOMMode, currentSnapshot } = useGlobalInfoStore();
     const { getText, getList, paginationMode, paginationType, limitMode, captureStage } = useActionContext();
-    const { addTextStep, addListStep } = useBrowserSteps();
+    const { addTextStep, addListStep, browserSteps } = useBrowserSteps();
 
     const [currentGroupInfo, setCurrentGroupInfo] = useState<{
         isGroupElement: boolean;
@@ -1159,6 +1163,7 @@ export const BrowserWindow = () => {
 
                 if (Object.keys(autoFields).length > 0) {
                   setFields(autoFields);
+                  setInitialAutoFieldIds(new Set(Object.keys(autoFields).map(id => parseInt(id))));
 
                   addListStep(
                     listSelector,
@@ -1195,6 +1200,11 @@ export const BrowserWindow = () => {
       cachedListSelector,
       pendingNotification,
       notify,
+      createFieldsFromChildSelectors,
+      currentListId,
+      currentListActionId,
+      paginationSelector,
+      addListStep
     ]);
 
     useEffect(() => {
@@ -1202,6 +1212,77 @@ export const BrowserWindow = () => {
             setCachedListSelector(null);
         }
     }, [listSelector]);
+
+    useEffect(() => {
+      if (!getList || !listSelector || initialAutoFieldIds.size === 0 || !currentListActionId) return;
+
+      const currentListStep = browserSteps.find(
+        step => step.type === 'list' && step.actionId === currentListActionId
+      );
+
+      if (!currentListStep || currentListStep.type !== 'list' || !currentListStep.fields) return;
+
+      const currentFieldIds = new Set(Object.keys(currentListStep.fields).map(id => parseInt(id)));
+      const newManualIds = new Set<number>();
+
+      currentFieldIds.forEach(fieldId => {
+        if (!initialAutoFieldIds.has(fieldId)) {
+          newManualIds.add(fieldId);
+        }
+      });
+
+      if (newManualIds.size !== manuallyAddedFieldIds.size ||
+        ![...newManualIds].every(id => manuallyAddedFieldIds.has(id))) {
+        setManuallyAddedFieldIds(newManualIds);
+      }
+    }, [browserSteps, getList, listSelector, initialAutoFieldIds, currentListActionId, manuallyAddedFieldIds]);
+
+    useEffect(() => {
+      if (!isDOMMode) {
+        capturedElementHighlighter.clearHighlights();
+        return;
+      }
+
+      const capturedSelectors: Array<{ selector: string }> = [];
+
+      if (getText && currentTextActionId) {
+        const textSteps = browserSteps.filter(
+          (step): step is TextStep => step.type === 'text' && step.actionId === currentTextActionId
+        );
+
+        textSteps.forEach(step => {
+          if (step.selectorObj?.selector) {
+            capturedSelectors.push({
+              selector: step.selectorObj.selector,
+            });
+          }
+        });
+      }
+
+      if (getList && listSelector && currentListActionId && manuallyAddedFieldIds.size > 0) {
+        const listSteps = browserSteps.filter(
+          step => step.type === 'list' && step.actionId === currentListActionId
+        ) as ListStep[];
+
+        listSteps.forEach(listStep => {
+          if (listStep.fields) {
+            Object.entries(listStep.fields).forEach(([fieldId, field]: [string, any]) => {
+              if (manuallyAddedFieldIds.has(parseInt(fieldId)) && field.selectorObj?.selector) {
+                capturedSelectors.push({
+                  selector: field.selectorObj.selector,
+                });
+              }
+            });
+          }
+        });
+      }
+
+      if (capturedSelectors.length > 0) {
+        capturedElementHighlighter.applyHighlights(capturedSelectors);
+      } else {
+        capturedElementHighlighter.clearHighlights();
+      }
+    }, [browserSteps, getText, getList, listSelector, currentTextActionId, currentListActionId, isDOMMode, manuallyAddedFieldIds]);
 
     useEffect(() => {
         coordinateMapper.updateDimensions(dimensions.width, dimensions.height, viewportInfo.width, viewportInfo.height);
@@ -1216,7 +1297,6 @@ export const BrowserWindow = () => {
     useEffect(() => {
         const storedListSelector = sessionStorage.getItem('recordingListSelector');
         
-        // Only restore state if it exists in sessionStorage
         if (storedListSelector && !listSelector) {
           setListSelector(storedListSelector);
         }
@@ -1225,7 +1305,6 @@ export const BrowserWindow = () => {
     const onMouseMove = (e: MouseEvent) => {
         if (canvasRef && canvasRef.current && highlighterData) {
             const canvasRect = canvasRef.current.getBoundingClientRect();
-            // mousemove outside the browser window
             if (
                 e.pageX < canvasRect.left
                 || e.pageX > canvasRect.right
@@ -1242,6 +1321,8 @@ export const BrowserWindow = () => {
         setFields({});
         setCurrentListId(null);
         setCachedChildSelectors([]);
+        setInitialAutoFieldIds(new Set());
+        setManuallyAddedFieldIds(new Set());
     }, []);
 
     useEffect(() => {
@@ -1262,7 +1343,7 @@ export const BrowserWindow = () => {
                 }
             }
         }
-    }, [screenShot, user?.id]);
+    }, [user?.id]);
 
     useEffect(() => {
         if (socket) {
@@ -1456,7 +1537,6 @@ export const BrowserWindow = () => {
         }
         highlighterUpdateRef.current = now;
         
-        // Map the incoming DOMRect from browser coordinates to canvas coordinates
         const mappedRect = new DOMRect(
             data.rect.x,
             data.rect.y,
@@ -1477,17 +1557,14 @@ export const BrowserWindow = () => {
                 if (limitMode) {
                     setHighlighterData(null);
                 } else if (paginationMode) {
-                    // Only set highlighterData if type is not empty, 'none', 'scrollDown', or 'scrollUp'
                     if (paginationType !== '' && !['none', 'scrollDown', 'scrollUp'].includes(paginationType)) {
                         setHighlighterData(mappedData);
                     } else {
                         setHighlighterData(null);
                     }
                 } else if (mappedData.childSelectors && mappedData.childSelectors.includes(mappedData.selector)) {
-                    // Highlight only valid child elements within the listSelector
                     setHighlighterData(mappedData);
                 } else if (mappedData.elementInfo?.isIframeContent && mappedData.childSelectors) {
-                    // Handle iframe elements
                     const isIframeChild = mappedData.childSelectors.some(childSelector =>
                         mappedData.selector.includes(':>>') && 
                         childSelector.split(':>>').some(part =>
@@ -1496,7 +1573,6 @@ export const BrowserWindow = () => {
                     );
                     setHighlighterData(isIframeChild ? mappedData : null);
                 } else if (mappedData.selector.includes(':>>') && hasValidChildSelectors) {
-                    // Handle mixed DOM cases with iframes
                     const selectorParts = mappedData.selector.split(':>>').map(part => part.trim());
                     const isValidMixedSelector = selectorParts.some(part =>
                         mappedData.childSelectors!.some(childSelector =>
@@ -1505,7 +1581,6 @@ export const BrowserWindow = () => {
                     );
                     setHighlighterData(isValidMixedSelector ? mappedData : null);
                 } else if (mappedData.elementInfo?.isShadowRoot && mappedData.childSelectors) {
-                    // Handle Shadow DOM elements
                     const isShadowChild = mappedData.childSelectors.some(childSelector =>
                         mappedData.selector.includes('>>') &&
                         childSelector.split('>>').some(part =>
@@ -1514,7 +1589,6 @@ export const BrowserWindow = () => {
                     );
                     setHighlighterData(isShadowChild ? mappedData : null);
                 } else if (mappedData.selector.includes('>>') && hasValidChildSelectors) {
-                    // Handle mixed DOM cases
                     const selectorParts = mappedData.selector.split('>>').map(part => part.trim());
                     const isValidMixedSelector = selectorParts.some(part =>
                         mappedData.childSelectors!.some(childSelector =>
@@ -1523,15 +1597,12 @@ export const BrowserWindow = () => {
                     );
                     setHighlighterData(isValidMixedSelector ? mappedData : null);
                 } else {
-                    // If not a valid child in normal mode, clear the highlighter
                     setHighlighterData(null);
                 }
             } else {
-                // Set highlighterData for the initial listSelector selection
                 setHighlighterData(mappedData);
             }
         } else {
-            // For non-list steps
             setHighlighterData(mappedData);
         }
     }, [getList, socket, listSelector, paginationMode, paginationType, limitMode]);

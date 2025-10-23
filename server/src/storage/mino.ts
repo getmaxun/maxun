@@ -9,6 +9,35 @@ const minioClient = new Client({
   secretKey: process.env.MINIO_SECRET_KEY || 'minio-secret-key',
 });
 
+async function fixMinioBucketConfiguration(bucketName: string) {
+  try {
+    const exists = await minioClient.bucketExists(bucketName);
+    if (!exists) {
+      await minioClient.makeBucket(bucketName);
+      console.log(`Bucket ${bucketName} created.`);
+    } else {
+      console.log(`Bucket ${bucketName} already exists.`);
+    }
+
+    const policyJSON = {
+      Version: "2012-10-17",
+      Statement: [
+        {
+          Effect: "Allow",
+          Principal: "*",
+          Action: ["s3:GetObject"],
+          Resource: [`arn:aws:s3:::${bucketName}/*`],
+        },
+      ],
+    };
+    await minioClient.setBucketPolicy(bucketName, JSON.stringify(policyJSON));
+    console.log(`Public-read policy applied to bucket ${bucketName}.`);
+  } catch (error) {
+    console.error(`Error configuring bucket ${bucketName}:`, error);
+    throw error;
+  }
+}
+
 minioClient.bucketExists('maxun-test')
   .then((exists) => {
     if (exists) {
@@ -81,41 +110,71 @@ class BinaryOutputService {
 
       console.log(`Processing binary output key: ${key}`);
 
-      // Check if binaryData has a valid Buffer structure and parse it
-      if (binaryData && typeof binaryData.data === 'string') {
-        try {
-          const parsedData = JSON.parse(binaryData.data);
-          if (parsedData && parsedData.type === 'Buffer' && Array.isArray(parsedData.data)) {
-            binaryData = Buffer.from(parsedData.data);
-          } else {
-            console.error(`Invalid Buffer format for key: ${key}`);
+      // Convert binary data to Buffer (handles base64, data URI, and old Buffer format)
+      let bufferData: Buffer | null = null;
+
+      if (binaryData && typeof binaryData === 'object' && binaryData.data) {
+        const dataString = binaryData.data;
+
+        if (typeof dataString === 'string') {
+          try {
+            if (dataString.startsWith('data:')) {
+              const base64Match = dataString.match(/^data:([^;]+);base64,(.+)$/);
+              if (base64Match) {
+                bufferData = Buffer.from(base64Match[2], 'base64');
+                console.log(`Converted data URI to Buffer for key: ${key}`);
+              }
+            } else {
+              try {
+                const parsed = JSON.parse(dataString);
+                if (parsed?.type === 'Buffer' && Array.isArray(parsed.data)) {
+                  bufferData = Buffer.from(parsed.data);
+                  console.log(`Converted JSON Buffer format for key: ${key}`);
+                } else {
+                  bufferData = Buffer.from(dataString, 'base64');
+                  console.log(`Converted raw base64 to Buffer for key: ${key}`);
+                }
+              } catch {
+                bufferData = Buffer.from(dataString, 'base64');
+                console.log(`Converted raw base64 to Buffer for key: ${key}`);
+              }
+            }
+          } catch (error) {
+            console.error(`Failed to parse binary data for key ${key}:`, error);
             continue;
           }
-        } catch (error) {
-          console.error(`Failed to parse JSON for key: ${key}`, error);
-          continue;
         }
       }
 
-      // Handle cases where binaryData might not be a Buffer
-      if (!Buffer.isBuffer(binaryData)) {
-        console.error(`Binary data for key ${key} is not a valid Buffer.`);
+      if (!bufferData || !Buffer.isBuffer(bufferData)) {
+        console.error(`Invalid or empty buffer for key ${key}`);
         continue;
       }
 
       try {
-        const minioKey = `${plainRun.runId}/${key}`;
+        await fixMinioBucketConfiguration(this.bucketName);
 
-        await this.uploadBinaryOutputToMinioBucket(run, minioKey, binaryData);
+        const minioKey = `${plainRun.runId}/${encodeURIComponent(key.trim().replace(/\s+/g, '_'))}`;
 
-        // Construct the public URL for the uploaded object
-        // todo: use minio endpoint 
-        const publicUrl = `http://localhost:${process.env.MINIO_PORT}/${this.bucketName}/${minioKey}`;
+        console.log(`Uploading to bucket ${this.bucketName} with key ${minioKey}`);
 
-        // Save the public URL in the result object
+        await minioClient.putObject(
+          this.bucketName,
+          minioKey,
+          bufferData,
+          bufferData.length,
+          { 'Content-Type': binaryData.mimeType || 'image/png' }
+        );
+
+        const publicHost = process.env.MINIO_PUBLIC_HOST || 'http://localhost';
+        const publicPort = process.env.MINIO_PORT || '9000';
+        const publicUrl = `${publicHost}:${publicPort}/${this.bucketName}/${minioKey}`;
+
         uploadedBinaryOutput[key] = publicUrl;
+
+        console.log(`✅ Uploaded and stored: ${publicUrl}`);
       } catch (error) {
-        console.error(`Error uploading key ${key} to MinIO:`, error);
+        console.error(`❌ Error uploading key ${key} to MinIO:`, error);
       }
     }
 

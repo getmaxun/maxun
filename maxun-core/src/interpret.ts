@@ -73,6 +73,15 @@ export default class Interpreter extends EventEmitter {
 
   private cumulativeResults: Record<string, any>[] = [];
 
+  private namedResults: Record<string, Record<string, any>> = {};
+
+  private screenshotCounter: number = 0;
+
+  private serializableDataByType: Record<string, Record<string, any>> = {
+    scrapeList: {},
+    scrapeSchema: {}
+  };
+
   constructor(workflow: WorkflowFile, options?: Partial<InterpreterOptions>) {
     super();
     this.workflow = workflow.workflow;
@@ -402,15 +411,37 @@ export default class Interpreter extends EventEmitter {
      * Beware of false linter errors - here, we know better!
      */
     const wawActions: Record<CustomFunctions, (...args: any[]) => void> = {
-      screenshot: async (params: PageScreenshotOptions) => {
+      screenshot: async (
+        params: PageScreenshotOptions,
+        nameOverride?: string
+      ) => {
         if (this.options.debugChannel?.setActionType) {
-          this.options.debugChannel.setActionType('screenshot');
+          this.options.debugChannel.setActionType("screenshot");
         }
 
         const screenshotBuffer = await page.screenshot({
-          ...params, path: undefined,
+          ...params,
+          path: undefined,
         });
-        await this.options.binaryCallback(screenshotBuffer, 'image/png');
+
+        const explicitName = (typeof nameOverride === 'string' && nameOverride.trim().length > 0) ? nameOverride.trim() : null;
+        let screenshotName: string;
+
+        if (explicitName) {
+          screenshotName = explicitName;
+        } else {
+          this.screenshotCounter += 1;
+          screenshotName = `Screenshot ${this.screenshotCounter}`;
+        }
+
+        await this.options.binaryCallback(
+          {
+            name: screenshotName,
+            data: screenshotBuffer,
+            mimeType: "image/png",
+          },
+          "image/png"
+        );
       },
       enqueueLinks: async (selector: string) => {
         if (this.options.debugChannel?.setActionType) {
@@ -476,21 +507,55 @@ export default class Interpreter extends EventEmitter {
           this.cumulativeResults = [];
         }
       
-        if (this.cumulativeResults.length === 0) {
-          this.cumulativeResults.push({});
-        }
-      
-        const mergedResult = this.cumulativeResults[0];
         const resultToProcess = Array.isArray(scrapeResult) ? scrapeResult[0] : scrapeResult;
         
-        Object.entries(resultToProcess).forEach(([key, value]) => {
-          if (value !== undefined) {
-            mergedResult[key] = value;
+        if (this.cumulativeResults.length === 0) {
+          const newRow = {};
+          Object.entries(resultToProcess).forEach(([key, value]) => {
+            if (value !== undefined) {
+              newRow[key] = value;
+            }
+          });
+          this.cumulativeResults.push(newRow);
+        } else {
+          const lastRow = this.cumulativeResults[this.cumulativeResults.length - 1];
+          const newResultKeys = Object.keys(resultToProcess).filter(key => resultToProcess[key] !== undefined);
+          const hasRepeatedKeys = newResultKeys.some(key => lastRow.hasOwnProperty(key));
+          
+          if (hasRepeatedKeys) {
+            const newRow = {};
+            Object.entries(resultToProcess).forEach(([key, value]) => {
+              if (value !== undefined) {
+                newRow[key] = value;
+              }
+            });
+            this.cumulativeResults.push(newRow);
+          } else {
+            Object.entries(resultToProcess).forEach(([key, value]) => {
+              if (value !== undefined) {
+                lastRow[key] = value;
+              }
+            });
           }
-        });
+        }
       
-        console.log("Updated merged result:", mergedResult);
-        await this.options.serializableCallback([mergedResult]);
+        const actionType = "scrapeSchema";
+        const actionName = (schema as any).__name || "Texts";
+
+        if (!this.namedResults[actionType]) this.namedResults[actionType] = {};
+        this.namedResults[actionType][actionName] = this.cumulativeResults;
+
+        if (!this.serializableDataByType[actionType]) this.serializableDataByType[actionType] = {};
+        if (!this.serializableDataByType[actionType][actionName]) {
+          this.serializableDataByType[actionType][actionName] = [];
+        }
+
+        this.serializableDataByType[actionType][actionName] = [...this.cumulativeResults];
+
+        await this.options.serializableCallback({
+          scrapeList: this.serializableDataByType.scrapeList,
+          scrapeSchema: this.serializableDataByType.scrapeSchema
+        });
       },
 
       scrapeList: async (config: { listSelector: string, fields: any, limit?: number, pagination: any }) => {
@@ -508,18 +573,62 @@ export default class Interpreter extends EventEmitter {
           return;
         }
 
-        await this.ensureScriptsLoaded(page);
+        try {
+          await this.ensureScriptsLoaded(page);
         
-        if (this.options.debugChannel?.incrementScrapeListIndex) {
-          this.options.debugChannel.incrementScrapeListIndex();
-        }
+          if (this.options.debugChannel?.incrementScrapeListIndex) {
+            this.options.debugChannel.incrementScrapeListIndex();
+          }
 
-        if (!config.pagination) {
-          const scrapeResults: Record<string, any>[] = await page.evaluate((cfg) => window.scrapeList(cfg), config);
-          await this.options.serializableCallback(scrapeResults);
-        } else {
-          const scrapeResults: Record<string, any>[] = await this.handlePagination(page, config);
-          await this.options.serializableCallback(scrapeResults);
+          let scrapeResults = [];
+
+          if (!config.pagination) {
+            scrapeResults = await page.evaluate((cfg) => {
+              try {
+                return window.scrapeList(cfg);
+              } catch (error) {
+                console.warn('ScrapeList evaluation failed:', error.message);
+                return [];
+              }
+            }, config);
+          } else {
+            scrapeResults = await this.handlePagination(page, config);
+          }
+
+          if (!Array.isArray(scrapeResults)) {
+            scrapeResults = [];
+          }
+
+          const actionType = "scrapeList";
+          const actionName = (config as any).__name || "List";
+
+          if (!this.serializableDataByType[actionType]) this.serializableDataByType[actionType] = {};
+          if (!this.serializableDataByType[actionType][actionName]) {
+            this.serializableDataByType[actionType][actionName] = [];
+          }
+
+          this.serializableDataByType[actionType][actionName].push(...scrapeResults);
+
+          await this.options.serializableCallback({
+            scrapeList: this.serializableDataByType.scrapeList,
+            scrapeSchema: this.serializableDataByType.scrapeSchema
+          });
+        } catch (error) {
+          console.error('ScrapeList action failed completely:', error.message);
+          
+          const actionType = "scrapeList";
+          const actionName = (config as any).__name || "List";
+
+          if (!this.namedResults[actionType]) this.namedResults[actionType] = {};
+          this.namedResults[actionType][actionName] = [];
+
+          if (!this.serializableDataByType[actionType]) this.serializableDataByType[actionType] = {};
+          this.serializableDataByType[actionType][actionName] = [];
+
+          await this.options.serializableCallback({
+            scrapeList: this.serializableDataByType.scrapeList,
+            scrapeSchema: this.serializableDataByType.scrapeSchema
+          });
         }
       },
 
@@ -595,12 +704,56 @@ export default class Interpreter extends EventEmitter {
     
 
     for (const step of steps) {
+      if (this.isAborted) {
+        this.log('Workflow aborted during step execution', Level.WARN);
+        return;
+      }
+
       this.log(`Launching ${String(step.action)}`, Level.LOG);
+
+      let stepName: string | null = null;
+      try {
+        const debug = this.options.debugChannel;
+        if (debug?.setActionType) {
+          debug.setActionType(String(step.action));
+        }
+
+        if ((step as any)?.name) {
+          stepName = (step as any).name;
+        } else if (
+          Array.isArray((step as any)?.args) &&
+          (step as any).args.length > 0 &&
+          typeof (step as any).args[0] === "object" &&
+          "__name" in (step as any).args[0]
+        ) {
+          stepName = (step as any).args[0].__name;
+        } else if (
+          typeof (step as any)?.args === "object" &&
+          step?.args !== null &&
+          "__name" in (step as any).args
+        ) {
+          stepName = (step as any).args.__name;
+        }
+
+        if (!stepName) {
+          stepName = String(step.action);
+        }
+
+        if (debug && typeof (debug as any).setActionName === "function") {
+          (debug as any).setActionName(stepName);
+        }
+      } catch (err) {
+        this.log(`Failed to set action name/type: ${(err as Error).message}`, Level.WARN);
+      }
 
       if (step.action in wawActions) {
         // "Arrayifying" here should not be needed (TS + syntax checker - only arrays; but why not)
         const params = !step.args || Array.isArray(step.args) ? step.args : [step.args];
-        await wawActions[step.action as CustomFunctions](...(params ?? []));
+        if (step.action === 'screenshot') {
+            await (wawActions.screenshot as any)(...(params ?? []), stepName ?? undefined);
+          } else {
+            await wawActions[step.action as CustomFunctions](...(params ?? []));
+          }
       } else {
         if (this.options.debugChannel?.setActionType) {
           this.options.debugChannel.setActionType(String(step.action));
