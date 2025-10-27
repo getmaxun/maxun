@@ -556,7 +556,6 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         inputs.push(
           <TextField
             key={`action-name-${pairIndex}-${actionIndex}`}
-            label={`${t('Action')} ${pairIndex}:${actionIndex} - ${String(action.action)}`}
             type="text"
             value={currentName}
             onChange={(e) => handleActionNameChange(pairIndex, actionIndex, e.target.value)}
