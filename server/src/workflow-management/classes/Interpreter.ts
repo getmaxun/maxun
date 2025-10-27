@@ -614,6 +614,8 @@ export class WorkflowInterpreter {
 
     const status = await interpreter.run(page, params);
 
+    await this.flushPersistenceBuffer();
+
     // Structure the output to maintain separate data for each action type
     const result = {
       log: this.debugMessages,
