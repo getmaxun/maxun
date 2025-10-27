@@ -506,7 +506,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
 
     return (
       <>
-        <Typography variant="body1" style={{ marginBottom: "20px" }}>
+        <Typography variant="body1" style={{ marginBottom: "20px", marginTop: "20px" }}>
           {t("List Limits")}
         </Typography>
 
