@@ -536,87 +536,87 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
   };
 
   const renderActionNameFields = () => {
-  if (!robot || !robot.recording || !robot.recording.workflow) return null;
+    if (!robot || !robot.recording || !robot.recording.workflow) return null;
 
-  const editableActions = new Set(['screenshot', 'scrapeList', 'scrapeSchema']);
-  const textInputs: JSX.Element[] = [];
-  const screenshotInputs: JSX.Element[] = [];
-  const listInputs: JSX.Element[] = [];
+    const editableActions = new Set(['screenshot', 'scrapeList', 'scrapeSchema']);
+    const textInputs: JSX.Element[] = [];
+    const screenshotInputs: JSX.Element[] = [];
+    const listInputs: JSX.Element[] = [];
 
-  robot.recording.workflow.forEach((pair, pairIndex) => {
-    if (!pair.what) return;
+    robot.recording.workflow.forEach((pair, pairIndex) => {
+      if (!pair.what) return;
 
-    pair.what.forEach((action, actionIndex) => {
-      if (!editableActions.has(String(action.action))) return;
+      pair.what.forEach((action, actionIndex) => {
+        if (!editableActions.has(String(action.action))) return;
 
-      const currentName =
-        action.name ||
-        (action.args && action.args[0] && typeof action.args[0] === 'object' && action.args[0].__name) ||
-        '';
+        const currentName =
+          action.name ||
+          (action.args && action.args[0] && typeof action.args[0] === 'object' && action.args[0].__name) ||
+          '';
 
-      const textField = (
-        <TextField
-          key={`action-name-${pairIndex}-${actionIndex}`}
-          type="text"
-          value={currentName}
-          onChange={(e) => handleActionNameChange(pairIndex, actionIndex, e.target.value)}
-          style={{ marginBottom: '12px' }}
-          fullWidth
-        />
-      );
+        const textField = (
+          <TextField
+            key={`action-name-${pairIndex}-${actionIndex}`}
+            type="text"
+            value={currentName}
+            onChange={(e) => handleActionNameChange(pairIndex, actionIndex, e.target.value)}
+            style={{ marginBottom: '12px' }}
+            fullWidth
+          />
+        );
 
-      switch (action.action) {
-        case 'scrapeSchema':
-          textInputs.push(textField);
-          break;
-        case 'screenshot':
-          screenshotInputs.push(textField);
-          break;
-        case 'scrapeList':
-          listInputs.push(textField);
-          break;
-      }
+        switch (action.action) {
+          case 'scrapeSchema':
+            textInputs.push(textField);
+            break;
+          case 'screenshot':
+            screenshotInputs.push(textField);
+            break;
+          case 'scrapeList':
+            listInputs.push(textField);
+            break;
+        }
+      });
     });
-  });
 
-  const hasAnyInputs = textInputs.length > 0 || screenshotInputs.length > 0 || listInputs.length > 0;
-  if (!hasAnyInputs) return null;
+    const hasAnyInputs = textInputs.length > 0 || screenshotInputs.length > 0 || listInputs.length > 0;
+    if (!hasAnyInputs) return null;
 
-  return (
-    <>
-      <Typography variant="body1" style={{ marginBottom: '10px', marginTop: '20px' }}>
-        {t('Actions')}
-      </Typography>
-      
-      {textInputs.length > 0 && (
-        <>
-          <Typography variant="subtitle1" style={{ marginBottom: '8px' }}>
-            Texts
-          </Typography>
-          {textInputs}
-        </>
-      )}
+    return (
+      <>
+        <Typography variant="body1" style={{ marginBottom: '10px', marginTop: '20px' }}>
+          {t('Actions')}
+        </Typography>
 
-      {screenshotInputs.length > 0 && (
-        <>
-          <Typography variant="subtitle1" style={{ marginBottom: '8px', marginTop: textInputs.length > 0 ? '16px' : '0' }}>
-            Screenshots
-          </Typography>
-          {screenshotInputs}
-        </>
-      )}
+        {textInputs.length > 0 && (
+          <>
+            <Typography variant="subtitle1" style={{ marginBottom: '8px' }}>
+              Texts
+            </Typography>
+            {textInputs}
+          </>
+        )}
 
-      {listInputs.length > 0 && (
-        <>
-          <Typography variant="subtitle1" style={{ marginBottom: '8px', marginTop: (textInputs.length > 0 || screenshotInputs.length > 0) ? '16px' : '0' }}>
-            Lists
-          </Typography>
-          {listInputs}
-        </>
-      )}
-    </>
-  );
-};
+        {screenshotInputs.length > 0 && (
+          <>
+            <Typography variant="subtitle1" style={{ marginBottom: '8px', marginTop: textInputs.length > 0 ? '16px' : '0' }}>
+              Screenshots
+            </Typography>
+            {screenshotInputs}
+          </>
+        )}
+
+        {listInputs.length > 0 && (
+          <>
+            <Typography variant="subtitle1" style={{ marginBottom: '8px', marginTop: (textInputs.length > 0 || screenshotInputs.length > 0) ? '16px' : '0' }}>
+              Lists
+            </Typography>
+            {listInputs}
+          </>
+        )}
+      </>
+    );
+  };
 
   const renderCredentialFields = (
     selectors: string[],
