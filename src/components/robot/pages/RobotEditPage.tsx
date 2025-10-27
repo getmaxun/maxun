@@ -440,7 +440,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
           try {
             action.args[0] = { ...action.args[0], __name: newName };
           } catch (e) {
-            // ignore
+            console.error('Failed to update legacy __name field:', e);
           }
         }
 
