@@ -726,34 +726,108 @@ export class WorkflowGenerator {
 
   /**
    * Generates a pair for the custom action event.
+   *
    * @param action The type of the custom action.
-   * @param settings The settings of the custom action.
+   * @param actionId The unique identifier for this action (for updates)
+   * @param settings The settings of the custom action (may include name and actionId).
    * @param page The page to use for obtaining the needed data.
    */
-  public customAction = async (action: CustomActions, settings: any, page: Page) => {
-    const pair: WhereWhatPair = {
-      where: { url: this.getBestUrl(page.url()) },
-      what: [{
-        action,
-        args: settings ? Array.isArray(settings) ? settings : [settings] : [],
-      }],
-    }
+  public customAction = async (action: CustomActions, actionId: string, settings: any, page: Page) => {
+    try {
+      let actionSettings = settings;
+      let actionName: string | undefined;
 
-    await this.addPairToWorkflowAndNotifyClient(pair, page);
+      if (settings && !Array.isArray(settings)) {
+        actionName = settings.name;
+        actionSettings = JSON.parse(JSON.stringify(settings));
+        delete actionSettings.name;
+      }
 
-    if (this.generatedData.lastUsedSelector) {
-      const elementInfo = await this.getLastUsedSelectorInfo(page, this.generatedData.lastUsedSelector);
+      const pair: WhereWhatPair = {
+        where: { url: this.getBestUrl(page.url()) },
+        what: [{
+          action,
+          args: actionSettings
+            ? Array.isArray(actionSettings)
+              ? actionSettings
+              : [actionSettings]
+            : [],
+          ...(actionName ? { name: actionName } : {}),
+          ...(actionId ? { actionId } : {}),
+        }],
+      };
 
-      this.socket.emit('decision', {
-        pair, actionType: 'customAction',
-        lastData: {
-          selector: this.generatedData.lastUsedSelector,
-          action: this.generatedData.lastAction,
-          tagName: elementInfo.tagName,
-          innerText: elementInfo.innerText,
+      if (actionId) {
+        const existingIndex = this.workflowRecord.workflow.findIndex(
+          (workflowPair) =>
+            Array.isArray(workflowPair.what) &&
+            workflowPair.what.some((whatItem: any) => whatItem.actionId === actionId)
+        );
+
+        if (existingIndex !== -1) {
+          const existingPair = this.workflowRecord.workflow[existingIndex];
+          const existingAction = existingPair.what.find((whatItem: any) => whatItem.actionId === actionId);
+
+          const updatedAction = {
+            ...existingAction,
+            action,
+            args: Array.isArray(actionSettings)
+              ? actionSettings
+              : [actionSettings],
+            name: actionName || existingAction?.name || '',
+            actionId,
+          };
+
+          this.workflowRecord.workflow[existingIndex] = {
+            where: JSON.parse(JSON.stringify(existingPair.where)),
+            what: existingPair.what.map((whatItem: any) =>
+              whatItem.actionId === actionId ? updatedAction : whatItem
+            ),
+          };
+
+          if (action === 'scrapeSchema' && actionName) {
+            this.workflowRecord.workflow.forEach((pair, index) => {
+              pair.what.forEach((whatItem: any, whatIndex: number) => {
+                if (whatItem.action === 'scrapeSchema' && whatItem.actionId !== actionId) {
+                  this.workflowRecord.workflow[index].what[whatIndex] = {
+                    ...whatItem,
+                    name: actionName
+                  };
+                }
+              });
+            });
+          }
+
+        } else {
+          await this.addPairToWorkflowAndNotifyClient(pair, page);
+          logger.log("debug", `Added new workflow action: ${action} with actionId: ${actionId}`);
         }
-      });
-    } 
+      } else {
+        await this.addPairToWorkflowAndNotifyClient(pair, page);
+        logger.log("debug", `Added new workflow action: ${action} without actionId`);
+      }
+
+      if (this.generatedData.lastUsedSelector) {
+        const elementInfo = await this.getLastUsedSelectorInfo(
+          page,
+          this.generatedData.lastUsedSelector
+        );
+
+        this.socket.emit('decision', {
+          pair,
+          actionType: 'customAction',
+          lastData: {
+            selector: this.generatedData.lastUsedSelector,
+            action: this.generatedData.lastAction,
+            tagName: elementInfo.tagName,
+            innerText: elementInfo.innerText,
+          },
+        });
+      }
+    } catch (e) {
+      const { message } = e as Error;
+      logger.log("warn", `Error handling customAction: ${message}`);
+    }
   };
 
   /**
@@ -808,6 +882,48 @@ export class WorkflowGenerator {
     } else {
       logger.log('error', `Update pair ${index}: Index out of range.`);
     }
+  };
+
+  /**
+   * Removes an action with the given actionId from the workflow.
+   * Only removes the specific action from the what array, not the entire pair.
+   * If the what array becomes empty after removal, then the entire pair is removed.
+   * @param actionId The actionId of the action to remove
+   * @returns boolean indicating whether an action was removed
+   */
+  public removeAction = (actionId: string): boolean => {
+    let actionWasRemoved = false;
+
+    this.workflowRecord.workflow = this.workflowRecord.workflow
+      .map((pair) => {
+        const filteredWhat = pair.what.filter(
+          (whatItem: any) => whatItem.actionId !== actionId
+        );
+
+        if (filteredWhat.length < pair.what.length) {
+          actionWasRemoved = true;
+
+          if (filteredWhat.length > 0) {
+            return {
+              ...pair,
+              what: filteredWhat
+            };
+          }
+          
+          return null;
+        }
+
+        return pair;
+      })
+      .filter((pair) => pair !== null) as WhereWhatPair[]; // Remove null entries
+
+    if (actionWasRemoved) {
+      logger.log("info", `Action with actionId ${actionId} removed from workflow`);
+    } else {
+      logger.log("debug", `No action found with actionId ${actionId}`);
+    }
+
+    return actionWasRemoved;
   };
 
   /**

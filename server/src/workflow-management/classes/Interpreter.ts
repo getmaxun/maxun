@@ -91,12 +91,15 @@ export class WorkflowInterpreter {
    * Storage for different types of serializable data
    */
   public serializableDataByType: {
-    scrapeSchema: any[],
-    scrapeList: any[],
+    scrapeSchema: Record<string, any>;
+    scrapeList: Record<string, any>;
+    [key: string]: any;
   } = {
-    scrapeSchema: [],
-    scrapeList: [],
+    scrapeSchema: {},
+    scrapeList: {},
   };
+
+  private currentActionName: string | null = null;
 
   /**
    * Track the current action type being processed
@@ -106,7 +109,7 @@ export class WorkflowInterpreter {
   /**
    * An array of all the binary data extracted from the run.
    */
-  public binaryData: { mimetype: string, data: string }[] = [];
+  public binaryData: { name: string; mimeType: string; data: string }[] = [];
 
   /**
    * Track current scrapeList index
@@ -259,14 +262,19 @@ export class WorkflowInterpreter {
         } 
       },
       binaryCallback: async (data: string, mimetype: string) => {
-        const binaryItem = { mimetype, data: JSON.stringify(data) };
+        // For editor mode, we don't have the name yet, so use a timestamp-based name
+        const binaryItem = {
+          name: `Screenshot ${Date.now()}`,
+          mimeType: mimetype,
+          data: JSON.stringify(data)
+        };
         this.binaryData.push(binaryItem);
-        
+
         // Persist binary data to database
         await this.persistBinaryDataToDatabase(binaryItem);
-        
-        this.socket.emit('binaryCallback', { 
-          data, 
+
+        this.socket.emit('binaryCallback', {
+          data,
           mimetype,
           type: 'captureScreenshot'
         });
@@ -364,9 +372,10 @@ export class WorkflowInterpreter {
     this.breakpoints = [];
     this.interpretationResume = null;
     this.currentActionType = null;
+    this.currentActionName = null;
     this.serializableDataByType = {
-      scrapeSchema: [],
-      scrapeList: [],
+      scrapeSchema: {},
+      scrapeList: {},
     };
     this.binaryData = [];
     this.currentScrapeListIndex = 0;
@@ -409,7 +418,7 @@ export class WorkflowInterpreter {
    * Persists binary data to database in real-time
    * @private
    */
-  private persistBinaryDataToDatabase = async (binaryItem: { mimetype: string, data: string }): Promise<void> => {
+  private persistBinaryDataToDatabase = async (binaryItem: { name: string; mimeType: string; data: string }): Promise<void> => {
     if (!this.currentRunId) {
       logger.log('debug', 'No run ID available for binary data persistence');
       return;
@@ -422,22 +431,29 @@ export class WorkflowInterpreter {
         return;
       }
 
-      const currentBinaryOutput = run.binaryOutput ? 
-        JSON.parse(JSON.stringify(run.binaryOutput)) : 
-        {};
-      
-      const uniqueKey = `item-${Date.now()}-${Object.keys(currentBinaryOutput).length}`;
-      
+      const currentBinaryOutput =
+        run.binaryOutput && typeof run.binaryOutput === 'object'
+          ? JSON.parse(JSON.stringify(run.binaryOutput))
+          : {};
+
+      const baseName = binaryItem.name?.trim() || `Screenshot ${Object.keys(currentBinaryOutput).length + 1}`;
+
+      let uniqueName = baseName;
+      let counter = 1;
+      while (currentBinaryOutput[uniqueName]) {
+        uniqueName = `${baseName} (${counter++})`;
+      }
+
       const updatedBinaryOutput = {
         ...currentBinaryOutput,
-        [uniqueKey]: binaryItem
+        [uniqueName]: binaryItem,
       };
 
       await run.update({
         binaryOutput: updatedBinaryOutput
       });
-      
-      logger.log('debug', `Persisted binary data for run ${this.currentRunId}: ${binaryItem.mimetype}`);
+
+      logger.log('debug', `Persisted binary data for run ${this.currentRunId}: ${binaryItem.name} (${binaryItem.mimeType})`);
     } catch (error: any) {
       logger.log('error', `Failed to persist binary data in real-time for run ${this.currentRunId}: ${error.message}`);
     }
@@ -478,41 +494,101 @@ export class WorkflowInterpreter {
         },
         incrementScrapeListIndex: () => {
           this.currentScrapeListIndex++;
-        }
+        },
+        setActionName: (name: string) => {
+          this.currentActionName = name;
+        },
       },
       serializableCallback: async (data: any) => {
-        if (this.currentActionType === 'scrapeSchema') {
-          if (Array.isArray(data) && data.length > 0) {
-            mergedScrapeSchema = { ...mergedScrapeSchema, ...data[0] };
-            this.serializableDataByType.scrapeSchema.push(data);
-          } else {
-            mergedScrapeSchema = { ...mergedScrapeSchema, ...data };
-            this.serializableDataByType.scrapeSchema.push([data]);
+        try {
+          if (!data || typeof data !== "object") return;
+
+          if (!this.currentActionType && Array.isArray(data) && data.length > 0) {
+            const first = data[0];
+            if (first && Object.keys(first).some(k => k.toLowerCase().includes("label") || k.toLowerCase().includes("text"))) {
+              this.currentActionType = "scrapeSchema";
+            }
           }
-          
-          // Persist the cumulative scrapeSchema data
-          const cumulativeScrapeSchemaData = Object.keys(mergedScrapeSchema).length > 0 ? [mergedScrapeSchema] : [];
-          if (cumulativeScrapeSchemaData.length > 0) {
-            await this.persistDataToDatabase('scrapeSchema', cumulativeScrapeSchemaData);
+
+          let typeKey = this.currentActionType || "unknown";
+
+          if (this.currentActionType === "scrapeList") {
+            typeKey = "scrapeList";
+          } else if (this.currentActionType === "scrapeSchema") {
+            typeKey = "scrapeSchema";
           }
-        } else if (this.currentActionType === 'scrapeList') {
-          if (data && Array.isArray(data) && data.length > 0) {
-            // Use the current index for persistence
-            await this.persistDataToDatabase('scrapeList', data, this.currentScrapeListIndex);
+
+          if (this.currentActionType === "scrapeList" && data.scrapeList) {
+            data = data.scrapeList;
+          } else if (this.currentActionType === "scrapeSchema" && data.scrapeSchema) {
+            data = data.scrapeSchema;
           }
-          this.serializableDataByType.scrapeList[this.currentScrapeListIndex] = data;
-        } 
-        
-        this.socket.emit('serializableCallback', data);
+
+          let actionName = this.currentActionName || "";
+
+          if (!actionName) {
+            if (!Array.isArray(data) && Object.keys(data).length === 1) {
+              const soleKey = Object.keys(data)[0];
+              const soleValue = data[soleKey];
+              if (Array.isArray(soleValue) || typeof soleValue === "object") {
+                actionName = soleKey;
+                data = soleValue;
+              }
+            }
+          }
+
+          if (!actionName) {
+            actionName = "Unnamed Action";
+          }
+
+          const flattened = Array.isArray(data)
+            ? data
+            : (data?.List ?? (data && typeof data === 'object' ? Object.values(data).flat?.() ?? data : []));
+
+          if (!this.serializableDataByType[typeKey]) {
+            this.serializableDataByType[typeKey] = {};
+          }
+
+          this.serializableDataByType[typeKey][actionName] = flattened;
+
+          await this.persistDataToDatabase(typeKey, { [actionName]: flattened });
+
+          this.socket.emit("serializableCallback", {
+            type: typeKey,
+            name: actionName,
+            data: flattened,
+          });
+
+          this.currentActionType = null;
+          this.currentActionName = null;
+        } catch (err: any) {
+          logger.log('error', `serializableCallback handler failed: ${err.message}`);
+        }
       },
-      binaryCallback: async (data: string, mimetype: string) => {
-        const binaryItem = { mimetype, data: JSON.stringify(data) };
-        this.binaryData.push(binaryItem);
-        
-        // Persist binary data to database
-        await this.persistBinaryDataToDatabase(binaryItem);
-        
-        this.socket.emit('binaryCallback', { data, mimetype });
+      binaryCallback: async (payload: { name: string; data: Buffer; mimeType: string }) => {
+        try {
+          const { name, data, mimeType } = payload;
+
+          const base64Data = data.toString("base64");
+
+          const binaryItem = {
+            name,
+            mimeType,
+            data: base64Data
+          };
+
+          this.binaryData.push(binaryItem);
+
+          await this.persistBinaryDataToDatabase(binaryItem);
+
+          this.socket.emit("binaryCallback", {
+            name,
+            data: base64Data,
+            mimeType
+          });
+        } catch (err: any) {
+          logger.log("error", `binaryCallback handler failed: ${err.message}`);
+        }
       }
     }
 
@@ -538,24 +614,19 @@ export class WorkflowInterpreter {
 
     const status = await interpreter.run(page, params);
 
+    await this.flushPersistenceBuffer();
+
     // Structure the output to maintain separate data for each action type
     const result = {
       log: this.debugMessages,
       result: status,
-      scrapeSchemaOutput: Object.keys(mergedScrapeSchema).length > 0 
-      ? { "schema_merged": [mergedScrapeSchema] }
-      : this.serializableDataByType.scrapeSchema.reduce((reducedObject, item, index) => {
-        reducedObject[`schema_${index}`] = item;
-        return reducedObject;
-      }, {} as Record<string, any>),
-      scrapeListOutput: this.serializableDataByType.scrapeList.reduce((reducedObject, item, index) => {
-        reducedObject[`list_${index}`] = item;
-        return reducedObject;
-      }, {} as Record<string, any>),
-      binaryOutput: this.binaryData.reduce((reducedObject, item, index) => {
-        reducedObject[`item_${index}`] = item;
-        return reducedObject;
-      }, {} as Record<string, any>)
+      scrapeSchemaOutput: this.serializableDataByType.scrapeSchema,
+      scrapeListOutput: this.serializableDataByType.scrapeList,
+      binaryOutput: this.binaryData.reduce<Record<string, { data: string; mimeType: string }>>((acc, item) => {
+        const key = item.name || `Screenshot ${Object.keys(acc).length + 1}`;
+        acc[key] = { data: item.data, mimeType: item.mimeType };
+        return acc;
+      }, {})
     }
 
     logger.log('debug', `Interpretation finished`);
@@ -642,19 +713,37 @@ export class WorkflowInterpreter {
         const currentSerializableOutput = run.serializableOutput ?
           JSON.parse(JSON.stringify(run.serializableOutput)) :
           { scrapeSchema: [], scrapeList: [] };
+        
+        if (Array.isArray(currentSerializableOutput.scrapeList)) {
+          currentSerializableOutput.scrapeList = {};
+        }
+        if (Array.isArray(currentSerializableOutput.scrapeSchema)) {
+          currentSerializableOutput.scrapeSchema = {};
+        }
 
         let hasUpdates = false;
 
+        const mergeLists = (target: Record<string, any>, updates: Record<string, any>) => {
+          for (const [key, val] of Object.entries(updates)) {
+            const flattened = Array.isArray(val)
+              ? val
+              : (val?.List ?? (val && typeof val === 'object' ? Object.values(val).flat?.() ?? val : []));
+            target[key] = flattened;
+          }
+        };
+
         for (const item of batchToProcess) {
           if (item.actionType === 'scrapeSchema') {
-            const newSchemaData = Array.isArray(item.data) ? item.data : [item.data];
-            currentSerializableOutput.scrapeSchema = newSchemaData;
-            hasUpdates = true;
-          } else if (item.actionType === 'scrapeList' && typeof item.listIndex === 'number') {
-            if (!Array.isArray(currentSerializableOutput.scrapeList)) {
-              currentSerializableOutput.scrapeList = [];
+            if (!currentSerializableOutput.scrapeSchema || typeof currentSerializableOutput.scrapeSchema !== 'object') {
+              currentSerializableOutput.scrapeSchema = {};
             }
-            currentSerializableOutput.scrapeList[item.listIndex] = item.data;
+            mergeLists(currentSerializableOutput.scrapeSchema, item.data);
+            hasUpdates = true;
+          } else if (item.actionType === 'scrapeList') {
+            if (!currentSerializableOutput.scrapeList || typeof currentSerializableOutput.scrapeList !== 'object') {
+              currentSerializableOutput.scrapeList = {};
+            }
+            mergeLists(currentSerializableOutput.scrapeList, item.data);
             hasUpdates = true;
           }
         }

@@ -702,12 +702,6 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           return;
         }
 
-        if (isInCaptureMode) {
-          e.preventDefault();
-          e.stopPropagation();
-          return;
-        }
-
         if (!isInCaptureMode) {
           const wheelEvent = e as WheelEvent;
           const deltaX = Math.round(wheelEvent.deltaX / 10) * 10;
@@ -908,6 +902,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           rebuild(snapshotData.snapshot, {
             doc: iframeDoc,
             mirror: mirror,
+            hackCss: false,
             cache: { stylesWithHoverClass: new Map() },
             afterAppend: (node) => {
               if (node.nodeType === Node.TEXT_NODE && node.textContent) {

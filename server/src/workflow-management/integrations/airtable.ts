@@ -12,8 +12,8 @@ interface AirtableUpdateTask {
 }
 
 interface SerializableOutput {
-  scrapeSchema?: any[];
-  scrapeList?: any[];
+  scrapeSchema?: Record<string, any[]>; 
+  scrapeList?: Record<string, any[]>;  
 }
 
 const MAX_RETRIES = 3;
@@ -48,47 +48,94 @@ async function refreshAirtableToken(refreshToken: string) {
 function mergeRelatedData(serializableOutput: SerializableOutput, binaryOutput: Record<string, string>) {
   const allRecords: Record<string, any>[] = [];
   
-  const schemaData: Array<{key: string, value: any}> = [];
+  const schemaData: Array<{ Group: string; Field: string; Value: any }> = [];
   const listData: any[] = [];
   const screenshotData: Array<{key: string, url: string}> = [];
   
   // Collect schema data
   if (serializableOutput.scrapeSchema) {
-    for (const schemaArray of serializableOutput.scrapeSchema) {
-      if (!Array.isArray(schemaArray)) continue;
-      for (const schemaItem of schemaArray) {
-        Object.entries(schemaItem).forEach(([key, value]) => {
-          if (key && key.trim() !== '' && value !== null && value !== undefined && value !== '') {
-            schemaData.push({key, value});
-          }
-        });
+    if (Array.isArray(serializableOutput.scrapeSchema)) {
+      for (const schemaArray of serializableOutput.scrapeSchema) {
+        if (!Array.isArray(schemaArray)) continue;
+        for (const schemaItem of schemaArray) {
+          Object.entries(schemaItem || {}).forEach(([key, value]) => {
+            if (key && key.trim() !== "" && value !== null && value !== undefined && value !== "") {
+              schemaData.push({ Group: "Default", Field: key, Value: value });
+            }
+          });
+        }
+      }
+    } else if (typeof serializableOutput.scrapeSchema === "object") {
+      for (const [groupName, schemaArray] of Object.entries(serializableOutput.scrapeSchema)) {
+        if (!Array.isArray(schemaArray)) continue;
+        for (const schemaItem of schemaArray) {
+          Object.entries(schemaItem || {}).forEach(([fieldName, value]) => {
+            if (fieldName && fieldName.trim() !== "" && value !== null && value !== undefined && value !== "") {
+              schemaData.push({
+                Group: groupName,
+                Field: fieldName,
+                Value: value,
+              });
+            }
+          });
+        }
       }
     }
   }
   
   // Collect list data
   if (serializableOutput.scrapeList) {
-    for (const listArray of serializableOutput.scrapeList) {
-      if (!Array.isArray(listArray)) continue;
-      listArray.forEach(listItem => {
-        const hasContent = Object.values(listItem).some(value => 
-          value !== null && value !== undefined && value !== ''
-        );
-        if (hasContent) {
-          listData.push(listItem);
-        }
-      });
+    if (Array.isArray(serializableOutput.scrapeList)) {
+      for (const listArray of serializableOutput.scrapeList) {
+        if (!Array.isArray(listArray)) continue;
+        listArray.forEach((listItem) => {
+          const hasContent = Object.values(listItem || {}).some(
+            (value) => value !== null && value !== undefined && value !== ""
+          );
+          if (hasContent) listData.push(listItem);
+        });
+      }
+    } else if (typeof serializableOutput.scrapeList === "object") {
+      for (const [listName, listArray] of Object.entries(serializableOutput.scrapeList)) {
+        if (!Array.isArray(listArray)) continue;
+        listArray.forEach((listItem) => {
+          const hasContent = Object.values(listItem || {}).some(
+            (value) => value !== null && value !== undefined && value !== ""
+          );
+          if (hasContent) listData.push({ List: listName, ...listItem });
+        });
+      }
     }
   }
   
   // Collect screenshot data
-  if (binaryOutput && Object.keys(binaryOutput).length > 0) {
-    Object.entries(binaryOutput).forEach(([key, url]) => {
-      if (key && key.trim() !== '' && url && url.trim() !== '') {
-        screenshotData.push({key, url});
-      }
-    });
-  }
+  // if (binaryOutput && Object.keys(binaryOutput).length > 0) {
+  //   Object.entries(binaryOutput).forEach(([key, rawValue]: [string, any]) => {
+  //     if (!key || key.trim() === "") return;
+
+  //     let urlString = "";
+
+  //     // Case 1: old format (string URL)
+  //     if (typeof rawValue === "string") {
+  //       urlString = rawValue;
+  //     }
+  //     // Case 2: new format (object with { url?, data?, mimeType? })
+  //     else if (rawValue && typeof rawValue === "object") {
+  //       const valueObj = rawValue as { url?: string; data?: string; mimeType?: string };
+
+  //       if (typeof valueObj.url === "string") {
+  //         urlString = valueObj.url;
+  //       } else if (typeof valueObj.data === "string") {
+  //         const mime = valueObj.mimeType || "image/png";
+  //         urlString = `data:${mime};base64,${valueObj.data}`;
+  //       }
+  //     }
+
+  //     if (typeof urlString === "string" && urlString.trim() !== "") {
+  //       screenshotData.push({ key, url: urlString });
+  //     }
+  //   });
+  // }
   
   // Mix all data types together to create consecutive records
   const maxLength = Math.max(schemaData.length, listData.length, screenshotData.length);
@@ -97,8 +144,9 @@ function mergeRelatedData(serializableOutput: SerializableOutput, binaryOutput: 
     const record: Record<string, any> = {};
     
     if (i < schemaData.length) {
-      record.Label = schemaData[i].key;
-      record.Value = schemaData[i].value;
+      record.Group = schemaData[i].Group;
+      record.Label = schemaData[i].Field;
+      record.Value = schemaData[i].Value;
     }
     
     if (i < listData.length) {
@@ -120,20 +168,15 @@ function mergeRelatedData(serializableOutput: SerializableOutput, binaryOutput: 
   }
   
   for (let i = maxLength; i < schemaData.length; i++) {
-    allRecords.push({
-      Label: schemaData[i].key,
-      Value: schemaData[i].value
-    });
+    allRecords.push({ Label: schemaData[i].Field, Value: schemaData[i].Value });
   }
-  
   for (let i = maxLength; i < listData.length; i++) {
     allRecords.push(listData[i]);
   }
-  
   for (let i = maxLength; i < screenshotData.length; i++) {
     allRecords.push({
       Key: screenshotData[i].key,
-      Screenshot: screenshotData[i].url
+      Screenshot: screenshotData[i].url,
     });
   }
   

@@ -8,16 +8,13 @@ import {
   CircularProgress,
   Accordion,
   AccordionSummary,
-  AccordionDetails,
-  ButtonGroup
+  AccordionDetails
 } from "@mui/material";
 import Highlight from "react-highlight";
 import * as React from "react";
 import { Data } from "./RunsTable";
 import { TabPanel, TabContext } from "@mui/lab";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { useEffect, useState } from "react";
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -43,20 +40,24 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
   const [schemaData, setSchemaData] = useState<any[]>([]);
   const [schemaColumns, setSchemaColumns] = useState<string[]>([]);
+  const [schemaKeys, setSchemaKeys] = useState<string[]>([]);
+  const [schemaDataByKey, setSchemaDataByKey] = useState<Record<string, any[]>>({});
+  const [schemaColumnsByKey, setSchemaColumnsByKey] = useState<Record<string, string[]>>({});
   const [isSchemaTabular, setIsSchemaTabular] = useState<boolean>(false);
 
   const [listData, setListData] = useState<any[][]>([]);
   const [listColumns, setListColumns] = useState<string[][]>([]);
+  const [listKeys, setListKeys] = useState<string[]>([]);
   const [currentListIndex, setCurrentListIndex] = useState<number>(0);
 
   const [screenshotKeys, setScreenshotKeys] = useState<string[]>([]);
+  const [screenshotKeyMap, setScreenshotKeyMap] = useState<Record<string, string>>({});
   const [currentScreenshotIndex, setCurrentScreenshotIndex] = useState<number>(0);
+  const [currentSchemaIndex, setCurrentSchemaIndex] = useState<number>(0);
 
   const [legacyData, setLegacyData] = useState<any[]>([]);
   const [legacyColumns, setLegacyColumns] = useState<string[]>([]);
   const [isLegacyData, setIsLegacyData] = useState<boolean>(false);
-
-  const { darkMode } = useThemeMode();
 
   useEffect(() => {
     setTab(tab);
@@ -66,8 +67,12 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     if (row.status === 'running' || row.status === 'queued' || row.status === 'scheduled') {
       setSchemaData([]);
       setSchemaColumns([]);
+      setSchemaKeys([]);
+      setSchemaDataByKey({});
+      setSchemaColumnsByKey({});
       setListData([]);
       setListColumns([]);
+      setListKeys([]);
       setLegacyData([]);
       setLegacyColumns([]);
       setIsLegacyData(false);
@@ -77,10 +82,11 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
     if (!row.serializableOutput) return;
 
-    if (!row.serializableOutput.scrapeSchema &&
-      !row.serializableOutput.scrapeList &&
-      Object.keys(row.serializableOutput).length > 0) {
+    const hasLegacySchema = row.serializableOutput.scrapeSchema && Array.isArray(row.serializableOutput.scrapeSchema);
+    const hasLegacyList = row.serializableOutput.scrapeList && Array.isArray(row.serializableOutput.scrapeList);
+    const hasOldFormat = !row.serializableOutput.scrapeSchema && !row.serializableOutput.scrapeList && Object.keys(row.serializableOutput).length > 0;
 
+    if (hasLegacySchema || hasLegacyList || hasOldFormat) {
       setIsLegacyData(true);
       processLegacyData(row.serializableOutput);
       return;
@@ -100,44 +106,106 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   useEffect(() => {
     if (row.status === 'running' || row.status === 'queued' || row.status === 'scheduled') {
       setScreenshotKeys([]);
+      setScreenshotKeyMap({});
       setCurrentScreenshotIndex(0);
       return;
     }
 
     if (row.binaryOutput && Object.keys(row.binaryOutput).length > 0) {
-      setScreenshotKeys(Object.keys(row.binaryOutput));
+      const rawKeys = Object.keys(row.binaryOutput);
+
+      const isLegacyPattern = rawKeys.every(key => /^item-\d+-\d+$/.test(key));
+
+      if (isLegacyPattern) {
+        const renamedKeys = rawKeys.map((_, index) => `Screenshot ${index + 1}`);
+        const keyMap: Record<string, string> = {};
+
+        renamedKeys.forEach((displayName, index) => {
+          keyMap[displayName] = rawKeys[index];
+        });
+
+        setScreenshotKeys(renamedKeys);
+        setScreenshotKeyMap(keyMap);
+      } else {
+        const keyMap: Record<string, string> = {};
+        rawKeys.forEach(key => {
+          keyMap[key] = key;
+        });
+
+        setScreenshotKeys(rawKeys);
+        setScreenshotKeyMap(keyMap);
+      }
+
       setCurrentScreenshotIndex(0);
     } else {
       setScreenshotKeys([]);
+      setScreenshotKeyMap({});
       setCurrentScreenshotIndex(0);
     }
   }, [row.binaryOutput, row.status]);
 
   const processLegacyData = (legacyOutput: Record<string, any>) => {
-    let allData: any[] = [];
+    const convertedSchema: Record<string, any[]> = {};
+    const convertedList: Record<string, any[]> = {};
 
-    Object.keys(legacyOutput).forEach(key => {
+    const keys = Object.keys(legacyOutput);
+
+    keys.forEach((key) => {
       const data = legacyOutput[key];
+
       if (Array.isArray(data)) {
-        const filteredData = data.filter(row =>
-          Object.values(row).some(value => value !== undefined && value !== "")
-        );
-        allData = [...allData, ...filteredData];
+        const isNestedArray = data.length > 0 && Array.isArray(data[0]);
+
+        if (isNestedArray) {
+          data.forEach((subArray, index) => {
+            if (Array.isArray(subArray) && subArray.length > 0) {
+              const filteredData = subArray.filter(row =>
+                row && typeof row === 'object' && Object.values(row).some(value => value !== undefined && value !== "")
+              );
+
+              if (filteredData.length > 0) {
+                const autoName = `List ${Object.keys(convertedList).length + 1}`;
+                convertedList[autoName] = filteredData;
+              }
+            }
+          });
+        } else {
+          const filteredData = data.filter(row =>
+            row && typeof row === 'object' && Object.values(row).some(value => value !== undefined && value !== "")
+          );
+
+          if (filteredData.length > 0) {
+            const schemaCount = Object.keys(convertedSchema).length;
+            const autoName = `Text ${schemaCount + 1}`;
+            convertedSchema[autoName] = filteredData;
+          }
+        }
       }
     });
 
-    if (allData.length > 0) {
-      const allColumns = new Set<string>();
-      allData.forEach(item => {
-        Object.keys(item).forEach(key => allColumns.add(key));
-      });
+    if (Object.keys(convertedSchema).length === 1) {
+      const singleKey = Object.keys(convertedSchema)[0];
+      const singleData = convertedSchema[singleKey];
+      delete convertedSchema[singleKey];
+      convertedSchema["Texts"] = singleData;
+    }
 
-      setLegacyData(allData);
-      setLegacyColumns(Array.from(allColumns));
+    if (Object.keys(convertedSchema).length > 0) {
+      processSchemaData(convertedSchema);
+    }
+
+    if (Object.keys(convertedList).length > 0) {
+      processScrapeList(convertedList);
     }
   };
 
   const processSchemaData = (schemaOutput: any) => {
+    const keys = Object.keys(schemaOutput);
+    setSchemaKeys(keys);
+
+    const dataByKey: Record<string, any[]> = {};
+    const columnsByKey: Record<string, string[]> = {};
+
     if (Array.isArray(schemaOutput)) {
       const filteredData = schemaOutput.filter(row =>
         row && Object.values(row).some(value => value !== undefined && value !== "")
@@ -156,40 +224,31 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
       }
     }
 
-    if (schemaOutput['schema-tabular']) {
-      const tabularData = schemaOutput['schema-tabular'];
-      if (Array.isArray(tabularData) && tabularData.length > 0) {
-        const filteredData = tabularData.filter(row =>
-          Object.values(row).some(value => value !== undefined && value !== "")
-        );
-
-        if (filteredData.length > 0) {
-          const allColumns = new Set<string>();
-          filteredData.forEach(item => {
-            Object.keys(item).forEach(key => allColumns.add(key));
-          });
-
-          setSchemaData(filteredData);
-          setSchemaColumns(Array.from(allColumns));
-          setIsSchemaTabular(true);
-          return;
-        }
-      }
-    }
-
     let allData: any[] = [];
     let hasMultipleEntries = false;
 
-    Object.keys(schemaOutput).forEach(key => {
+    keys.forEach(key => {
       const data = schemaOutput[key];
       if (Array.isArray(data)) {
         const filteredData = data.filter(row =>
           Object.values(row).some(value => value !== undefined && value !== "")
         );
+
+        dataByKey[key] = filteredData;
+
+        const columnsForKey = new Set<string>();
+        filteredData.forEach(item => {
+          Object.keys(item).forEach(col => columnsForKey.add(col));
+        });
+        columnsByKey[key] = Array.from(columnsForKey);
+
         allData = [...allData, ...filteredData];
         if (filteredData.length > 1) hasMultipleEntries = true;
       }
     });
+
+    setSchemaDataByKey(dataByKey);
+    setSchemaColumnsByKey(columnsByKey);
 
     if (allData.length > 0) {
       const allColumns = new Set<string>();
@@ -206,42 +265,22 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   const processScrapeList = (scrapeListData: any) => {
     const tablesList: any[][] = [];
     const columnsList: string[][] = [];
+    const keys: string[] = [];
 
-    if (Array.isArray(scrapeListData)) {
-      scrapeListData.forEach(tableData => {
-        if (Array.isArray(tableData) && tableData.length > 0) {
-          const filteredData = tableData.filter(row =>
-            Object.values(row).some(value => value !== undefined && value !== "")
-          );
-
-          if (filteredData.length > 0) {
-            tablesList.push(filteredData);
-
-            const tableColumns = new Set<string>();
-            filteredData.forEach(item => {
-              Object.keys(item).forEach(key => tableColumns.add(key));
-            });
-
-            columnsList.push(Array.from(tableColumns));
-          }
-        }
-      });
-    } else if (typeof scrapeListData === 'object') {
+    if (typeof scrapeListData === 'object') {
       Object.keys(scrapeListData).forEach(key => {
         const tableData = scrapeListData[key];
         if (Array.isArray(tableData) && tableData.length > 0) {
           const filteredData = tableData.filter(row =>
             Object.values(row).some(value => value !== undefined && value !== "")
           );
-
           if (filteredData.length > 0) {
             tablesList.push(filteredData);
-
+            keys.push(key);
             const tableColumns = new Set<string>();
             filteredData.forEach(item => {
               Object.keys(item).forEach(key => tableColumns.add(key));
             });
-
             columnsList.push(Array.from(tableColumns));
           }
         }
@@ -250,6 +289,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
     setListData(tablesList);
     setListColumns(columnsList);
+    setListKeys(keys);
     setCurrentListIndex(0);
   };
 
@@ -308,21 +348,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     }, 100);
   };
 
-  const navigateListTable = (direction: 'next' | 'prev') => {
-    if (direction === 'next' && currentListIndex < listData.length - 1) {
-      setCurrentListIndex(currentListIndex + 1);
-    } else if (direction === 'prev' && currentListIndex > 0) {
-      setCurrentListIndex(currentListIndex - 1);
-    }
-  };
-
-  const navigateScreenshots = (direction: 'next' | 'prev') => {
-    if (direction === 'next' && currentScreenshotIndex < screenshotKeys.length - 1) {
-      setCurrentScreenshotIndex(currentScreenshotIndex + 1);
-    } else if (direction === 'prev' && currentScreenshotIndex > 0) {
-      setCurrentScreenshotIndex(currentScreenshotIndex - 1);
-    }
-  };
 
   const renderDataTable = (
     data: any[],
@@ -333,15 +358,127 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     isPaginatedList: boolean = false,
     isSchemaData: boolean = false
   ) => {
-    if (!isPaginatedList && data.length === 0) return null;
-    if (isPaginatedList && (listData.length === 0 || currentListIndex >= listData.length)) return null;
+    if (data.length === 0) return null;
 
-    const currentData = isPaginatedList ? listData[currentListIndex] : data;
-    const currentColumns = isPaginatedList ? listColumns[currentListIndex] : columns;
+    const shouldShowAsKeyValue = isSchemaData && !isSchemaTabular && data.length === 1;
 
-    if (!currentData || currentData.length === 0) return null;
+    if (title === '') {
+      return (
+        <>
+          <Box sx={{ mb: 2 }}>
+            <TableContainer component={Paper} sx={{ maxHeight: 320 }}>
+              <Table stickyHeader aria-label="sticky table">
+                <TableHead>
+                  <TableRow>
+                    {shouldShowAsKeyValue ? (
+                      <>
+                        <TableCell
+                          sx={{
+                            backgroundColor: (theme) => theme.palette.mode === 'dark' ? '#11111' : '#f8f9fa'
+                          }}
+                        >
+                          Label
+                        </TableCell>
+                        <TableCell
+                          sx={{
+                            backgroundColor: (theme) => theme.palette.mode === 'dark' ? '#11111' : '#f8f9fa'
+                          }}
+                        >
+                          Value
+                        </TableCell>
+                      </>
+                    ) : (
+                      columns.map((column) => (
+                        <TableCell
+                          key={column}
+                          sx={{
+                            backgroundColor: (theme) => theme.palette.mode === 'dark' ? '#11111' : '#f8f9fa'
+                          }}
+                        >
+                          {column}
+                        </TableCell>
+                      ))
+                    )}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {shouldShowAsKeyValue ? (
+                    columns.map((column) => (
+                      <TableRow key={column}>
+                        <TableCell sx={{ fontWeight: 500 }}>
+                          {column}
+                        </TableCell>
+                        <TableCell>
+                          {data[0][column] === undefined || data[0][column] === ""
+                            ? "-"
+                            : (typeof data[0][column] === 'object'
+                              ? JSON.stringify(data[0][column])
+                              : String(data[0][column]))}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    data.map((row, index) => (
+                      <TableRow key={index}>
+                        {columns.map((column) => (
+                          <TableCell key={column}>
+                            {row[column] === undefined || row[column] === ""
+                              ? "-"
+                              : (typeof row[column] === 'object'
+                                ? JSON.stringify(row[column])
+                                : String(row[column]))}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+            <Box>
+              <Button
+                component="a"
+                onClick={() => downloadJSON(data, jsonFilename)}
+                sx={{
+                  color: '#FF00C3',
+                  textTransform: 'none',
+                  mr: 2,
+                  p: 0,
+                  minWidth: 'auto',
+                  backgroundColor: 'transparent',
+                  '&:hover': {
+                    backgroundColor: 'transparent',
+                    textDecoration: 'underline'
+                  }
+                }}
+              >
+                {t('run_content.captured_data.download_json', 'Download JSON')}
+              </Button>
 
-    const shouldShowAsKeyValue = isSchemaData && !isSchemaTabular && currentData.length === 1;
+              <Button
+                component="a"
+                onClick={() => downloadCSV(data, columns, csvFilename, isSchemaData, isSchemaTabular)}
+                sx={{
+                  color: '#FF00C3',
+                  textTransform: 'none',
+                  p: 0,
+                  minWidth: 'auto',
+                  backgroundColor: 'transparent',
+                  '&:hover': {
+                    backgroundColor: 'transparent',
+                    textDecoration: 'underline'
+                  }
+                }}
+              >
+                {t('run_content.captured_data.download_csv', 'Download as CSV')}
+              </Button>
+            </Box>
+          </Box>
+        </>
+      );
+    }
 
     return (
       <Accordion defaultExpanded sx={{ mb: 2 }}>
@@ -359,11 +496,11 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
         <AccordionDetails>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
             <Box>
-              <Button 
+              <Button
                 component="a"
-                onClick={() => downloadJSON(currentData, jsonFilename)}
-                sx={{ 
-                  color: '#FF00C3', 
+                onClick={() => downloadJSON(data, jsonFilename)}
+                sx={{
+                  color: '#FF00C3',
                   textTransform: 'none',
                   mr: 2,
                   p: 0,
@@ -375,14 +512,14 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   }
                 }}
               >
-                {t('run_content.captured_data.download_json', 'Download as JSON')}
+                {t('run_content.captured_data.download_json', 'Download JSON')}
               </Button>
 
-              <Button 
+              <Button
                 component="a"
-                onClick={() => downloadCSV(currentData, currentColumns, csvFilename, isSchemaData, isSchemaTabular)}
-                sx={{ 
-                  color: '#FF00C3', 
+                onClick={() => downloadCSV(data, columns, csvFilename, isSchemaData, isSchemaTabular)}
+                sx={{
+                  color: '#FF00C3',
                   textTransform: 'none',
                   p: 0,
                   minWidth: 'auto',
@@ -396,37 +533,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 {t('run_content.captured_data.download_csv', 'Download as CSV')}
               </Button>
             </Box>
-
-            {isPaginatedList && listData.length > 1 && (
-              <ButtonGroup size="small">
-                <Button
-                  onClick={() => navigateListTable('prev')}
-                  disabled={currentListIndex === 0}
-                  sx={{
-                    borderColor: '#FF00C3',
-                    color: currentListIndex === 0 ? 'gray' : '#FF00C3',
-                    '&.Mui-disabled': {
-                      borderColor: 'rgba(0, 0, 0, 0.12)'
-                    }
-                  }}
-                >
-                  <ArrowBackIcon />
-                </Button>
-                <Button
-                  onClick={() => navigateListTable('next')}
-                  disabled={currentListIndex === listData.length - 1}
-                  sx={{
-                    borderColor: '#FF00C3',
-                    color: currentListIndex === listData.length - 1 ? 'gray' : '#FF00C3',
-                    '&.Mui-disabled': {
-                      borderColor: 'rgba(0, 0, 0, 0.12)'
-                    }
-                  }}
-                >
-                  <ArrowForwardIcon />
-                </Button>
-              </ButtonGroup>
-            )}
           </Box>
           <TableContainer component={Paper} sx={{ maxHeight: 320 }}>
             <Table stickyHeader aria-label="sticky table">
@@ -434,33 +540,27 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 <TableRow>
                   {shouldShowAsKeyValue ? (
                     <>
-                      <TableCell 
-                        sx={{ 
-                          borderBottom: '1px solid',
-                          borderColor: darkMode ? '#3a4453' : '#dee2e6',
-                          backgroundColor: darkMode ? '#2a3441' : '#f8f9fa'
+                      <TableCell
+                        sx={{
+                          backgroundColor: (theme) => theme.palette.mode === 'dark' ? '#11111' : '#f8f9fa'
                         }}
                       >
                         Label
                       </TableCell>
-                      <TableCell 
-                        sx={{ 
-                          borderBottom: '1px solid',
-                          borderColor: darkMode ? '#3a4453' : '#dee2e6',
-                          backgroundColor: darkMode ? '#2a3441' : '#f8f9fa'
+                      <TableCell
+                        sx={{
+                          backgroundColor: (theme) => theme.palette.mode === 'dark' ? '#11111' : '#f8f9fa'
                         }}
                       >
                         Value
                       </TableCell>
                     </>
                   ) : (
-                    (isPaginatedList ? currentColumns : columns).map((column) => (
-                      <TableCell 
+                    columns.map((column) => (
+                      <TableCell
                         key={column}
-                        sx={{ 
-                          borderBottom: '1px solid',
-                          borderColor: darkMode ? '#3a4453' : '#dee2e6',
-                          backgroundColor: darkMode ? '#2a3441' : '#f8f9fa'
+                        sx={{
+                          backgroundColor: (theme) => theme.palette.mode === 'dark' ? '#11111' : '#f8f9fa'
                         }}
                       >
                         {column}
@@ -471,24 +571,30 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               </TableHead>
               <TableBody>
                 {shouldShowAsKeyValue ? (
-                  // Single schema entry - show as key-value pairs
-                  currentColumns.map((column) => (
+                  columns.map((column) => (
                     <TableRow key={column}>
                       <TableCell sx={{ fontWeight: 500 }}>
                         {column}
                       </TableCell>
                       <TableCell>
-                        {currentData[0][column] === undefined || currentData[0][column] === "" ? "-" : currentData[0][column]}
+                        {data[0][column] === undefined || data[0][column] === ""
+                          ? "-"
+                          : (typeof data[0][column] === 'object'
+                            ? JSON.stringify(data[0][column])
+                            : String(data[0][column]))}
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
-                  // Multiple entries or list data - show as table
-                  currentData.map((row, index) => (
+                  data.map((row, index) => (
                     <TableRow key={index}>
-                      {(isPaginatedList ? currentColumns : columns).map((column) => (
+                      {columns.map((column) => (
                         <TableCell key={column}>
-                          {row[column] === undefined || row[column] === "" ? "-" : row[column]}
+                          {row[column] === undefined || row[column] === ""
+                            ? "-"
+                            : (typeof row[column] === 'object'
+                              ? JSON.stringify(row[column])
+                              : String(row[column]))}
                         </TableCell>
                       ))}
                     </TableRow>
@@ -508,76 +614,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   return (
     <Box sx={{ width: '100%' }}>
       <TabContext value={tab}>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs
-            value={tab}
-            onChange={(e, newTab) => setTab(newTab)}
-            aria-label="run-content-tabs"
-            sx={{
-              '& .MuiTabs-indicator': {
-                backgroundColor: '#FF00C3',
-              },
-              '& .MuiTab-root': {
-                '&.Mui-selected': {
-                  color: '#FF00C3',
-                },
-              }
-            }}
-          >
-            <Tab
-              label={t('run_content.tabs.output_data')}
-              value='output'
-              sx={{
-                color: (theme) => theme.palette.mode === 'dark' ? '#fff' : '#000',
-                '&:hover': {
-                  color: '#FF00C3'
-                },
-                '&.Mui-selected': {
-                  color: '#FF00C3',
-                }
-              }}
-            />
-            <Tab
-              label={t('run_content.tabs.log')}
-              value='log'
-              sx={{
-                color: (theme) => theme.palette.mode === 'dark' ? '#fff' : '#000',
-                '&:hover': {
-                  color: '#FF00C3'
-                },
-                '&.Mui-selected': {
-                  color: '#FF00C3',
-                }
-              }}
-            />
-          </Tabs>
-        </Box>
-        <TabPanel value='log'>
-          <Box sx={{
-            margin: 1,
-            background: '#19171c',
-            overflowY: 'scroll',
-            overflowX: 'scroll',
-            width: '700px',
-            height: 'fit-content',
-            maxHeight: '450px',
-          }}>
-            <div>
-              <Highlight className="javascript">
-                {row.status === 'running' ? currentLog : row.log}
-              </Highlight>
-              <div style={{ float: "left", clear: "both" }}
-                ref={logEndRef} />
-            </div>
-          </Box>
-          {row.status === 'running' || row.status === 'queued' ? <Button
-            color="error"
-            onClick={abortRunHandler}
-          >
-            {t('run_content.buttons.stop')}
-          </Button> : null}
-        </TabPanel>
-        <TabPanel value='output' sx={{ width: '100%', maxWidth: '900px' }}>
+        <TabPanel value='output' sx={{ width: '100%', maxWidth: '1000px' }}>
           {row.status === 'running' || row.status === 'queued' ? (
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <CircularProgress size={22} sx={{ marginRight: '10px' }} />
@@ -601,23 +638,201 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
               {!isLegacyData && (
                 <>
-                  {renderDataTable(
-                    schemaData,
-                    schemaColumns,
-                    t('run_content.captured_data.schema_title', 'Captured Texts'),
-                    'schema_data.csv',
-                    'schema_data.json',
-                    false,
-                    true
+                  {schemaData.length > 0 && (
+                    <Accordion defaultExpanded sx={{ mb: 2 }}>
+                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <Typography variant='h6'>
+                            {t('run_content.captured_data.schema_title', 'Captured Texts')}
+                          </Typography>
+                        </Box>
+                      </AccordionSummary>
+                      <AccordionDetails>
+                        {schemaKeys.length > 0 && (
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              borderBottom: '1px solid',
+                              borderColor: 'divider',
+                              mb: 2,
+                            }}
+                          >
+                            {schemaKeys.map((key, idx) => (
+                              <Box
+                                key={key}
+                                onClick={() => setCurrentSchemaIndex(idx)}
+                                sx={{
+                                  px: 3,
+                                  py: 1,
+                                  cursor: 'pointer',
+                                  backgroundColor:
+                                    currentSchemaIndex === idx
+                                      ? (theme) => theme.palette.mode === 'dark'
+                                        ? '#121111ff'
+                                        : '#e9ecef'
+                                      : 'transparent',
+                                  borderBottom: currentSchemaIndex === idx ? '3px solid #FF00C3' : 'none',
+                                  color: (theme) => theme.palette.mode === 'dark' ? '#fff' : '#000',
+                                }}
+                              >
+                                {key}
+                              </Box>
+                            ))}
+                          </Box>
+                        )}
+
+                        {renderDataTable(
+                          schemaDataByKey[schemaKeys[currentSchemaIndex]] || schemaData,
+                          schemaColumnsByKey[schemaKeys[currentSchemaIndex]] || schemaColumns,
+                          '',
+                          `${schemaKeys[currentSchemaIndex] || 'schema_data'}.csv`,
+                          `${schemaKeys[currentSchemaIndex] || 'schema_data'}.json`,
+                          false,
+                          true
+                        )}
+                      </AccordionDetails>
+                    </Accordion>
                   )}
 
-                  {listData.length > 0 && renderDataTable(
-                    [],
-                    [],
-                    t('run_content.captured_data.list_title', 'Captured Lists'),
-                    'list_data.csv',
-                    'list_data.json',
-                    true
+                  {listData.length > 0 && (
+                    <Accordion defaultExpanded sx={{ mb: 2 }}>
+                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <Typography variant='h6'>
+                            {t('run_content.captured_data.list_title', 'Captured Lists')}
+                          </Typography>
+                        </Box>
+                      </AccordionSummary>
+                      <AccordionDetails>
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            borderBottom: '1px solid',
+                            borderColor: 'divider',
+                            mb: 2,
+                          }}
+                        >
+                          {listKeys.map((key, idx) => (
+                            <Box
+                              key={key}
+                              onClick={() => setCurrentListIndex(idx)}
+                              sx={{
+                                px: 3,
+                                py: 1,
+                                cursor: 'pointer',
+                                backgroundColor:
+                                  currentListIndex === idx
+                                    ? (theme) => theme.palette.mode === 'dark'
+                                      ? '#121111ff'
+                                      : '#e9ecef'
+                                    : 'transparent',
+                                borderBottom: currentListIndex === idx ? '3px solid #FF00C3' : 'none',
+                                color: (theme) => theme.palette.mode === 'dark' ? '#fff' : '#000',
+                              }}
+                            >
+                              {key}
+                            </Box>
+                          ))}
+                        </Box>
+
+                        <TableContainer component={Paper} sx={{ maxHeight: 320 }}>
+                          <Table stickyHeader aria-label="captured-list-table">
+                            <TableHead>
+                              <TableRow>
+                                {(listColumns[currentListIndex] || []).map((column) => (
+                                  <TableCell
+                                    key={column}
+                                    sx={{
+                                      backgroundColor: (theme) => theme.palette.mode === 'dark' ? '#11111' : '#f8f9fa'
+                                    }}
+                                  >
+                                    {column}
+                                  </TableCell>
+                                ))}
+                              </TableRow>
+                            </TableHead>
+
+                            <TableBody>
+                              {(listData[currentListIndex] || []).map((rowItem, idx) => (
+                                <TableRow key={idx}>
+                                  {(listColumns[currentListIndex] || []).map((column) => (
+                                    <TableCell key={column}>
+                                      {rowItem[column] === undefined || rowItem[column] === ''
+                                        ? '-'
+                                        : typeof rowItem[column] === 'object'
+                                        ? JSON.stringify(rowItem[column])
+                                        : String(rowItem[column])}
+                                    </TableCell>
+                                  ))}
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            mb: 2,
+                            mt: 2
+                          }}
+                        >
+                          <Box>
+                            <Button
+                              component="a"
+                              onClick={() =>
+                                downloadJSON(
+                                  listData[currentListIndex],
+                                  `${listKeys[currentListIndex] || 'list_data'}.json`
+                                )
+                              }
+                              sx={{
+                                color: '#FF00C3',
+                                textTransform: 'none',
+                                mr: 2,
+                                p: 0,
+                                minWidth: 'auto',
+                                backgroundColor: 'transparent',
+                                '&:hover': {
+                                  backgroundColor: 'transparent',
+                                  textDecoration: 'underline',
+                                },
+                              }}
+                            >
+                              {t('run_content.captured_data.download_json', 'Download JSON')}
+                            </Button>
+
+                            <Button
+                              component="a"
+                              onClick={() =>
+                                downloadCSV(
+                                  listData[currentListIndex],
+                                  listColumns[currentListIndex] || [],
+                                  `${listKeys[currentListIndex] || 'list_data'}.csv`,
+                                  false,
+                                  false
+                                )
+                              }
+                              sx={{
+                                color: '#FF00C3',
+                                textTransform: 'none',
+                                p: 0,
+                                minWidth: 'auto',
+                                backgroundColor: 'transparent',
+                                '&:hover': {
+                                  backgroundColor: 'transparent',
+                                  textDecoration: 'underline',
+                                },
+                              }}
+                            >
+                              {t('run_content.captured_data.download_csv', 'Download as CSV')}
+                            </Button>
+                          </Box>
+                        </Box>
+                      </AccordionDetails>
+                    </Accordion>
                   )}
                 </>
               )}
@@ -625,102 +840,73 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
           )}
 
           {hasScreenshots && (
-            <>
-              <Accordion defaultExpanded sx={{ mb: 2 }}>
-                <AccordionSummary
-                  expandIcon={<ExpandMoreIcon />}
-                  aria-controls="screenshot-content"
-                  id="screenshot-header"
+            <Accordion defaultExpanded sx={{ mb: 2 }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Typography variant='h6'>
+                    {t('run_content.captured_screenshot.title', 'Captured Screenshots')}
+                  </Typography>
+                </Box>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    mb: 2,
+                  }}
                 >
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Typography variant='h6'>
-                      {t('run_content.captured_screenshot.title', 'Screenshots')}
-                    </Typography>
-                  </Box>
-                </AccordionSummary>
-                <AccordionDetails>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                    <Button
-                      onClick={() => {
-                        fetch(row.binaryOutput[screenshotKeys[currentScreenshotIndex]])
-                          .then(response => response.blob())
-                          .then(blob => {
-                            const url = window.URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.style.display = 'none';
-                            a.href = url;
-                            a.download = screenshotKeys[currentScreenshotIndex];
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
-                            window.URL.revokeObjectURL(url);
-                          })
-                          .catch(err => console.error('Download failed:', err));
-                      }}
-                      sx={{ 
-                        color: '#FF00C3', 
-                        textTransform: 'none',
-                        p: 0,
-                        minWidth: 'auto',
-                        backgroundColor: 'transparent',
-                        '&:hover': {
-                          backgroundColor: 'transparent',
-                          textDecoration: 'underline'
-                        }
+                  {screenshotKeys.length > 0 && (
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        borderBottom: '1px solid',
+                        borderColor: 'divider',
+                        mb: 2,
                       }}
                     >
-                      {t('run_content.captured_screenshot.download', 'Download')}
-                    </Button>
-                    
-                    {screenshotKeys.length > 1 && (
-                      <ButtonGroup size="small">
-                        <Button
-                          onClick={() => navigateScreenshots('prev')}
-                          disabled={currentScreenshotIndex === 0}
+                      {screenshotKeys.map((key, idx) => (
+                        <Box
+                          key={key}
+                          onClick={() => setCurrentScreenshotIndex(idx)}
                           sx={{
-                            borderColor: '#FF00C3',
-                            color: currentScreenshotIndex === 0 ? 'gray' : '#FF00C3',
-                            '&.Mui-disabled': {
-                              borderColor: 'rgba(0, 0, 0, 0.12)'
-                            }
+                            px: 3,
+                            py: 1,
+                            cursor: 'pointer',
+                            backgroundColor:
+                              currentScreenshotIndex === idx
+                                ? (theme) => theme.palette.mode === 'dark'
+                                  ? '#121111ff'
+                                  : '#e9ecef'
+                                : 'transparent',
+                            borderBottom: currentScreenshotIndex === idx ? '3px solid #FF00C3' : 'none',
+                            color: (theme) => theme.palette.mode === 'dark' ? '#fff' : '#000',
                           }}
                         >
-                          <ArrowBackIcon />
-                        </Button>
-                        <Button
-                          onClick={() => navigateScreenshots('next')}
-                          disabled={currentScreenshotIndex === screenshotKeys.length - 1}
-                          sx={{
-                            borderColor: '#FF00C3',
-                            color: currentScreenshotIndex === screenshotKeys.length - 1 ? 'gray' : '#FF00C3',
-                            '&.Mui-disabled': {
-                              borderColor: 'rgba(0, 0, 0, 0.12)'
-                            }
-                          }}
-                        >
-                          <ArrowForwardIcon />
-                        </Button>
-                      </ButtonGroup>
-                    )}
-                  </Box>
-                  
-                  <Box sx={{ mt: 1 }}>
-                    <Box>
-                      <img
-                        src={row.binaryOutput[screenshotKeys[currentScreenshotIndex]]}
-                        alt={`Screenshot ${screenshotKeys[currentScreenshotIndex]}`}
-                        style={{
-                          maxWidth: '100%',
-                          height: 'auto',
-                          border: '1px solid #e0e0e0',
-                          borderRadius: '4px'
-                        }}
-                      />
+                          {key}
+                        </Box>
+                      ))}
                     </Box>
-                  </Box>
-                </AccordionDetails>
-              </Accordion>
-            </>
+                  )}
+                </Box>
+
+                <Box sx={{ mt: 1 }}>
+                  {screenshotKeys.length > 0 && (
+                    <img
+                      src={row.binaryOutput[screenshotKeyMap[screenshotKeys[currentScreenshotIndex]]]}
+                      alt={`Screenshot ${screenshotKeys[currentScreenshotIndex]}`}
+                      style={{
+                        maxWidth: '100%',
+                        height: 'auto',
+                        border: '1px solid #e0e0e0',
+                        borderRadius: '4px'
+                      }}
+                    />
+                  )}
+                </Box>
+              </AccordionDetails>
+            </Accordion>
           )}
         </TabPanel>
       </TabContext>

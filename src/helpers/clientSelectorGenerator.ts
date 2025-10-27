@@ -555,36 +555,23 @@ class ClientSelectorGenerator {
    */
   private isMeaningfulElement(element: HTMLElement): boolean {
     const tagName = element.tagName.toLowerCase();
-    
-    // Fast path for common meaningful elements
-    if (["a", "img", "input", "button", "select"].includes(tagName)) {
+
+    if (tagName === "img") {
+      return element.hasAttribute("src");
+    }
+
+    if (tagName === "a" && element.hasAttribute("href")) {
       return true;
+    }
+
+    if (element.children.length > 0) {
+      return false;
     }
 
     const text = (element.textContent || "").trim();
-    const hasHref = element.hasAttribute("href");
-    const hasSrc = element.hasAttribute("src");
-    
-    // Quick checks first
-    if (text.length > 0 || hasHref || hasSrc) {
+
+    if (text.length > 0) {
       return true;
-    }
-
-    const isCustomElement = tagName.includes("-");
-
-    // For custom elements, be more lenient about what's considered meaningful
-    if (isCustomElement) {
-      const hasChildren = element.children.length > 0;
-      const hasSignificantAttributes = Array.from(element.attributes).some(
-        (attr) => !["class", "style", "id"].includes(attr.name.toLowerCase())
-      );
-
-      return (
-        hasChildren ||
-        hasSignificantAttributes ||
-        element.hasAttribute("role") ||
-        element.hasAttribute("aria-label")
-      );
     }
 
     return false;
@@ -2561,11 +2548,8 @@ class ClientSelectorGenerator {
 
     const MAX_MEANINGFUL_ELEMENTS = 300;
     const MAX_NODES_TO_CHECK = 1200;
-    const MAX_DEPTH = 12;
+    const MAX_DEPTH = 20;
     let nodesChecked = 0;
-
-    let adjustedMaxDepth = MAX_DEPTH;
-    const elementDensityThreshold = 50;
 
     const depths: number[] = [0];
     let queueIndex = 0;
@@ -2576,14 +2560,10 @@ class ClientSelectorGenerator {
       queueIndex++;
       nodesChecked++;
 
-      if (currentDepth <= 3 && meaningfulDescendants.length > elementDensityThreshold) {
-        adjustedMaxDepth = Math.max(6, adjustedMaxDepth - 2);
-      }
-
       if (
         nodesChecked > MAX_NODES_TO_CHECK ||
         meaningfulDescendants.length >= MAX_MEANINGFUL_ELEMENTS ||
-        currentDepth > adjustedMaxDepth
+        currentDepth > MAX_DEPTH
       ) {
         break;
       }
@@ -2592,7 +2572,7 @@ class ClientSelectorGenerator {
         meaningfulDescendants.push(element);
       }
 
-      if (currentDepth >= adjustedMaxDepth) {
+      if (currentDepth >= MAX_DEPTH) {
         continue;
       }
 
@@ -2607,7 +2587,7 @@ class ClientSelectorGenerator {
         }
       }
 
-      if (element.shadowRoot && currentDepth < adjustedMaxDepth - 1) {
+      if (element.shadowRoot && currentDepth < MAX_DEPTH - 1) {
         const shadowChildren = element.shadowRoot.children;
         const shadowLimit = Math.min(shadowChildren.length, 20);
         for (let i = 0; i < shadowLimit; i++) {
@@ -2716,33 +2696,19 @@ class ClientSelectorGenerator {
     }
 
     if (!addPositionToAll) {
-      const meaningfulAttrs = ["role", "type", "name", "src", "aria-label"];
+      const meaningfulAttrs = ["role", "type"];
       for (const attrName of meaningfulAttrs) {
         if (element.hasAttribute(attrName)) {
           const value = element.getAttribute(attrName)!.replace(/'/g, "\\'");
-          return `${tagName}[@${attrName}='${value}']`;
-        }
-      }
-    }
-
-    const testId = element.getAttribute("data-testid");
-    if (testId && !addPositionToAll) {
-      return `${tagName}[@data-testid='${testId}']`;
-    }
-
-    if (element.id && !element.id.match(/^\d/) && !addPositionToAll) {
-      return `${tagName}[@id='${element.id}']`;
-    }
-
-    if (!addPositionToAll) {
-      for (const attr of Array.from(element.attributes)) {
-        if (
-          attr.name.startsWith("data-") &&
-          attr.name !== "data-testid" &&
-          attr.name !== "data-mx-id" &&
-          attr.value
-        ) {
-          return `${tagName}[@${attr.name}='${attr.value}']`;
+          const isCommonAttribute = this.isAttributeCommonAcrossLists(
+            element,
+            attrName,
+            value,
+            otherListElements
+          );
+          if (isCommonAttribute) {
+            return `${tagName}[@${attrName}='${value}']`;
+          }
         }
       }
     }
@@ -2906,12 +2872,70 @@ class ClientSelectorGenerator {
     const result = pathParts.length > 0 ? "/" + pathParts.join("/") : null;
 
     this.pathCache.set(targetElement, result);
-    
+
     return result;
   }
 
+  private isAttributeCommonAcrossLists(
+    targetElement: HTMLElement,
+    attrName: string,
+    attrValue: string,
+    otherListElements: HTMLElement[]
+  ): boolean {
+    if (otherListElements.length === 0) {
+      return true;
+    }
+
+    const targetPath = this.getElementPath(targetElement);
+
+    for (const otherListElement of otherListElements) {
+      const correspondingElement = this.findCorrespondingElement(
+        otherListElement,
+        targetPath
+      );
+      if (correspondingElement) {
+        const otherValue = correspondingElement.getAttribute(attrName);
+        if (otherValue !== attrValue) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  private getElementPath(element: HTMLElement): number[] {
+    const path: number[] = [];
+    let current: HTMLElement | null = element;
+
+    while (current && current.parentElement) {
+      const siblings = Array.from(current.parentElement.children);
+      path.unshift(siblings.indexOf(current));
+      current = current.parentElement;
+    }
+
+    return path;
+  }
+
+  private findCorrespondingElement(
+    rootElement: HTMLElement,
+    path: number[]
+  ): HTMLElement | null {
+    let current: HTMLElement = rootElement;
+
+    for (const index of path) {
+      const children = Array.from(current.children);
+      if (index >= children.length) {
+        return null;
+      }
+      current = children[index] as HTMLElement;
+    }
+
+    return current;
+  }
+
   private getCommonClassesAcrossLists(
-    targetElement: HTMLElement, 
+    targetElement: HTMLElement,
     otherListElements: HTMLElement[]
   ): string[] {
     if (otherListElements.length === 0) {
@@ -3919,7 +3943,46 @@ class ClientSelectorGenerator {
     );
     if (!deepestElement) return null;
 
+    if (!this.isMeaningfulElementCached(deepestElement)) {
+      const atomicChild = this.findAtomicChildAtPoint(deepestElement, x, y);
+      if (atomicChild) {
+        return atomicChild;
+      }
+    }
+
     return deepestElement;
+  }
+
+  private findAtomicChildAtPoint(
+    parent: HTMLElement,
+    x: number,
+    y: number
+  ): HTMLElement | null {
+    const stack: HTMLElement[] = [parent];
+    const visited = new Set<HTMLElement>();
+
+    while (stack.length > 0) {
+      const element = stack.pop()!;
+      if (visited.has(element)) continue;
+      visited.add(element);
+
+      if (element !== parent && this.isMeaningfulElementCached(element)) {
+        const rect = element.getBoundingClientRect();
+        if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+          return element;
+        }
+      }
+
+      for (let i = element.children.length - 1; i >= 0; i--) {
+        const child = element.children[i] as HTMLElement;
+        const rect = child.getBoundingClientRect();
+        if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+          stack.push(child);
+        }
+      }
+    }
+
+    return null;
   }
 
   /**

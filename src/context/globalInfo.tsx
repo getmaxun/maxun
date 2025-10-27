@@ -139,6 +139,8 @@ interface GlobalInfo {
   setCurrentListActionId: (actionId: string) => void;
   currentScreenshotActionId: string;
   setCurrentScreenshotActionId: (actionId: string) => void;
+  currentTextGroupName: string;
+  setCurrentTextGroupName: (name: string) => void;
   isDOMMode: boolean;
   setIsDOMMode: (isDOMMode: boolean) => void;
   currentSnapshot: ProcessedSnapshot | null;
@@ -173,6 +175,7 @@ class GlobalInfoStore implements Partial<GlobalInfo> {
   currentTextActionId = '';
   currentListActionId = '';
   currentScreenshotActionId = '';
+  currentTextGroupName = 'Text Data';
   isDOMMode = false;
   currentSnapshot = null;
 };
@@ -282,6 +285,7 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
   const [currentTextActionId, setCurrentTextActionId] = useState<string>('');
   const [currentListActionId, setCurrentListActionId] = useState<string>('');
   const [currentScreenshotActionId, setCurrentScreenshotActionId] = useState<string>('');
+  const [currentTextGroupName, setCurrentTextGroupName] = useState<string>('Text Data');
   const [isDOMMode, setIsDOMMode] = useState<boolean>(globalInfoStore.isDOMMode);
   const [currentSnapshot, setCurrentSnapshot] = useState<ProcessedSnapshot | null>(globalInfoStore.currentSnapshot);
 
@@ -363,6 +367,8 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
         setCurrentListActionId,
         currentScreenshotActionId,
         setCurrentScreenshotActionId,
+        currentTextGroupName,
+        setCurrentTextGroupName,
         isDOMMode,
         setIsDOMMode,
         currentSnapshot,

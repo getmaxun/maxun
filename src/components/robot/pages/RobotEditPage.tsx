@@ -7,6 +7,7 @@ import {
   Button,
   IconButton,
   InputAdornment,
+  Divider,
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { useGlobalInfoStore } from "../../../context/globalInfo";
@@ -417,6 +418,43 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
     });
   };
 
+  const handleActionNameChange = (
+    pairIndex: number,
+    actionIndex: number,
+    newName: string
+  ) => {
+    setRobot((prev) => {
+      if (!prev) return prev;
+
+      const updatedWorkflow = [...prev.recording.workflow];
+      if (
+        updatedWorkflow.length > pairIndex &&
+        updatedWorkflow[pairIndex]?.what &&
+        updatedWorkflow[pairIndex].what.length > actionIndex
+      ) {
+        const action = { ...updatedWorkflow[pairIndex].what[actionIndex] };
+        // update the standard name field
+        action.name = newName;
+
+        // also update legacy __name location if present (args[0].__name)
+        if (action.args && action.args.length > 0 && typeof action.args[0] === 'object' && action.args[0] !== null && '__name' in action.args[0]) {
+          try {
+            action.args[0] = { ...action.args[0], __name: newName };
+          } catch (e) {
+            console.error('Failed to update legacy __name field:', e);
+          }
+        }
+
+        updatedWorkflow[pairIndex].what[actionIndex] = action;
+      }
+
+      return {
+        ...prev,
+        recording: { ...prev.recording, workflow: updatedWorkflow },
+      };
+    });
+  };
+
   const handleTargetUrlChange = (newUrl: string) => {
     setRobot((prev) => {
       if (!prev) return prev;
@@ -493,6 +531,50 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
             style={{ marginBottom: "20px" }}
           />
         ))}
+      </>
+    );
+  };
+
+  const renderActionNameFields = () => {
+    if (!robot || !robot.recording || !robot.recording.workflow) return null;
+
+    const editableActions = new Set(['screenshot', 'scrapeList', 'scrapeSchema']);
+    const inputs: JSX.Element[] = [];
+
+    robot.recording.workflow.forEach((pair, pairIndex) => {
+      if (!pair.what) return;
+
+      pair.what.forEach((action, actionIndex) => {
+        // Only show editable name inputs for meaningful action types
+        if (!editableActions.has(String(action.action))) return;
+
+        // derive current name from possible fields
+        const currentName =
+          action.name ||
+          (action.args && action.args[0] && typeof action.args[0] === 'object' && action.args[0].__name) ||
+          '';
+
+        inputs.push(
+          <TextField
+            key={`action-name-${pairIndex}-${actionIndex}`}
+            type="text"
+            value={currentName}
+            onChange={(e) => handleActionNameChange(pairIndex, actionIndex, e.target.value)}
+            style={{ marginBottom: '12px' }}
+            fullWidth
+          />
+        );
+      });
+    });
+
+    if (inputs.length === 0) return null;
+
+    return (
+      <>
+        <Typography variant="body1" style={{ marginBottom: '10px' }}>
+          {t('Actions')}
+        </Typography>
+        {inputs}
       </>
     );
   };
@@ -574,7 +656,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
 
       const targetUrl = getTargetUrl();
 
-      const payload = {
+      const payload: any = {
         name: robot.recording_meta.name,
         limits: scrapeListLimits.map((limit) => ({
           pairIndex: limit.pairIndex,
@@ -584,6 +666,8 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         })),
         credentials: credentialsForPayload,
         targetUrl: targetUrl,
+        // send the (possibly edited) workflow so backend can persist action name changes
+        workflow: robot.recording.workflow,
       };
 
       const success = await updateRecording(robot.recording_meta.id, payload);
@@ -645,8 +729,10 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
                 onChange={(e) => handleTargetUrlChange(e.target.value)}
                 style={{ marginBottom: "20px" }}
               />
-
+              <Divider />
               {renderScrapeListLimitFields()}
+              <Divider />
+              {renderActionNameFields()}
             </>
           )}
         </Box>

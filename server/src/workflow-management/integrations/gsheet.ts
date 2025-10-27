@@ -49,25 +49,34 @@ export async function updateGoogleSheet(robotId: string, runId: string) {
       const serializableOutput = plainRun.serializableOutput as SerializableOutput;
       
       if (serializableOutput) {
-        if (serializableOutput.scrapeSchema && serializableOutput.scrapeSchema.length > 0) {
-          await processOutputType(
-            robotId, 
-            spreadsheetId, 
-            'Text', 
-            serializableOutput.scrapeSchema, 
-            plainRobot
-          );
+        if (serializableOutput.scrapeSchema && typeof serializableOutput.scrapeSchema === "object") {
+          for (const [groupName, schemaArray] of Object.entries(serializableOutput.scrapeSchema)) {
+            if (!Array.isArray(schemaArray) || schemaArray.length === 0) continue;
+
+            await processOutputType(
+              robotId,
+              spreadsheetId,
+              `Schema - ${groupName}`,
+              schemaArray,
+              plainRobot
+            );
+          }
         }
-        
-        if (serializableOutput.scrapeList && serializableOutput.scrapeList.length > 0) {
-          await processOutputType(
-            robotId, 
-            spreadsheetId, 
-            'List', 
-            serializableOutput.scrapeList, 
-            plainRobot
-          );
+
+        if (serializableOutput.scrapeList && typeof serializableOutput.scrapeList === "object") {
+          for (const [listName, listArray] of Object.entries(serializableOutput.scrapeList)) {
+            if (!Array.isArray(listArray) || listArray.length === 0) continue;
+
+            await processOutputType(
+              robotId,
+              spreadsheetId,
+              `List - ${listName}`,
+              listArray,
+              plainRobot
+            );
+          }
         }
+
       }
       
       if (plainRun.binaryOutput && Object.keys(plainRun.binaryOutput).length > 0) {
@@ -102,30 +111,27 @@ async function processOutputType(
   outputData: any[], 
   robotConfig: any
 ) {
-  for (let i = 0; i < outputData.length; i++) {
-    const data = outputData[i];
-    
-    if (!data || data.length === 0) {
-      console.log(`No data to write for ${outputType}-${i}. Skipping.`);
-      continue;
-    }
-    
-    const sheetName = `${outputType}-${i}`;
-    
-    await ensureSheetExists(spreadsheetId, sheetName, robotConfig);
-    
-    let formattedData = data;
-    if (outputType === 'Text' && data.length > 0) {
-      const schemaItem = data[0];
-      formattedData = Object.entries(schemaItem).map(([key, value]) => ({
-        Label: key,
-        Value: value
-      }));
-    }
-    
-    await writeDataToSheet(robotId, spreadsheetId, formattedData, sheetName, robotConfig);
-    console.log(`Data written to ${sheetName} sheet for ${outputType} data`);
+  const data = outputData;
+  const sheetName = outputType;
+
+  if (!Array.isArray(data) || data.length === 0) {
+    console.log(`No data to write for ${sheetName}. Skipping.`);
+    return;
   }
+
+  await ensureSheetExists(spreadsheetId, sheetName, robotConfig);
+
+  const formattedData = data.map(item => {
+    const flatRow: Record<string, any> = {};
+    for (const [key, value] of Object.entries(item || {})) {
+      flatRow[key] =
+        typeof value === "object" && value !== null ? JSON.stringify(value) : value;
+    }
+    return flatRow;
+  });
+
+  await writeDataToSheet(robotId, spreadsheetId, formattedData, sheetName, robotConfig);
+  console.log(`Data written to ${sheetName} sheet for ${outputType} data`);
 }
 
 async function ensureSheetExists(spreadsheetId: string, sheetName: string, robotConfig: any) {

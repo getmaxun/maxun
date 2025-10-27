@@ -1,7 +1,7 @@
 import * as React from 'react';
 import SwipeableDrawer from '@mui/material/SwipeableDrawer';
 import Typography from '@mui/material/Typography';
-import { Button, Grid, Box } from '@mui/material';
+import { Button, Grid, Box, TextField, IconButton, Tooltip } from '@mui/material';
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useBrowserDimensionsStore } from "../../context/browserDimensions";
 import Table from '@mui/material/Table';
@@ -13,11 +13,14 @@ import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import StorageIcon from '@mui/icons-material/Storage';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import CloseIcon from '@mui/icons-material/Close';
+import CheckIcon from '@mui/icons-material/Check';
 import { SidePanelHeader } from '../recorder/SidePanelHeader';
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { useThemeMode } from '../../context/theme-provider';
 import { useTranslation } from 'react-i18next';
 import { useBrowserSteps } from '../../context/browserSteps';
+import { useActionContext } from '../../context/browserActions';
 
 interface InterpretationLogProps {
   isOpen: boolean;
@@ -26,24 +29,48 @@ interface InterpretationLogProps {
 
 export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, setIsOpen }) => {
   const { t } = useTranslation();
-  
+
   const [captureListData, setCaptureListData] = useState<any[]>([]);
   const [captureTextData, setCaptureTextData] = useState<any[]>([]);
   const [screenshotData, setScreenshotData] = useState<string[]>([]);
 
-  const [captureListPage, setCaptureListPage] = useState<number>(0);
-  const [screenshotPage, setScreenshotPage] = useState<number>(0);
-  
   const [activeTab, setActiveTab] = useState(0);
-  
-  const logEndRef = useRef<HTMLDivElement | null>(null);
+  const [activeListTab, setActiveListTab] = useState(0);
+  const [activeScreenshotTab, setActiveScreenshotTab] = useState(0);
 
-  const { browserSteps } = useBrowserSteps();
-  
+  const [editingField, setEditingField] = useState<{listId: number, fieldKey: string} | null>(null);
+  const [editingValue, setEditingValue] = useState<string>('');
+
+  const [editingListName, setEditingListName] = useState<number | null>(null);
+  const [editingListNameValue, setEditingListNameValue] = useState<string>('');
+
+  const [editingTextGroupName, setEditingTextGroupName] = useState<boolean>(false);
+  const [editingTextGroupNameValue, setEditingTextGroupNameValue] = useState<string>('Text Data');
+
+  const [editingTextLabel, setEditingTextLabel] = useState<number | null>(null);
+  const [editingTextLabelValue, setEditingTextLabelValue] = useState<string>('');
+
+  const [editingScreenshotName, setEditingScreenshotName] = useState<number | null>(null);
+  const [editingScreenshotNameValue, setEditingScreenshotNameValue] = useState<string>('');
+
+  const logEndRef = useRef<HTMLDivElement | null>(null);
+  const autoFocusedListIds = useRef<Set<number>>(new Set());
+  const previousDataLengths = useRef<Map<number, number>>(new Map());
+  const hasAutoFocusedTextTab = useRef<boolean>(false);
+  const previousGetText = useRef<boolean>(false);
+  const autoFocusedScreenshotIndices = useRef<Set<number>>(new Set());
+
+  const { browserSteps, updateListTextFieldLabel, removeListTextField, updateListStepName, updateScreenshotStepName, updateBrowserTextStepLabel, deleteBrowserStep, emitForStepId } = useBrowserSteps();
+  const { captureStage, getText } = useActionContext();
+
   const { browserWidth, outputPreviewHeight, outputPreviewWidth } = useBrowserDimensionsStore();
-  const { currentWorkflowActionsState, shouldResetInterpretationLog } = useGlobalInfoStore();
+  const { currentWorkflowActionsState, shouldResetInterpretationLog, currentTextGroupName, setCurrentTextGroupName } = useGlobalInfoStore();
 
   const [showPreviewData, setShowPreviewData] = useState<boolean>(false);
+  const userClosedDrawer = useRef<boolean>(false);
+  const lastListDataLength = useRef<number>(0);
+  const lastTextDataLength = useRef<number>(0);
+  const lastScreenshotDataLength = useRef<number>(0);
 
   const toggleDrawer = (newOpen: boolean) => (event: React.KeyboardEvent | React.MouseEvent) => {
     if (
@@ -53,50 +80,229 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     ) {
       return;
     }
+    if (!newOpen && isOpen) {
+      userClosedDrawer.current = true;
+    }
     setIsOpen(newOpen);
   };
 
+  const handleStartEdit = (listId: number, fieldKey: string, currentLabel: string) => {
+    setEditingField({ listId, fieldKey });
+    setEditingValue(currentLabel);
+  };
+
+  const handleSaveEdit = () => {
+    if (editingField && editingValue.trim()) {
+      const listStep = browserSteps.find(step => step.id === editingField.listId);
+      const actionId = listStep?.actionId;
+
+      updateListTextFieldLabel(editingField.listId, editingField.fieldKey, editingValue.trim());
+
+      // Emit updated action to backend after state update completes
+      if (actionId) {
+        setTimeout(() => emitForStepId(actionId), 0);
+      }
+
+      setEditingField(null);
+      setEditingValue('');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingField(null);
+    setEditingValue('');
+  };
+
+  const handleDeleteField = (listId: number, fieldKey: string) => {
+    const listStep = browserSteps.find(step => step.id === listId);
+    const actionId = listStep?.actionId;
+
+    removeListTextField(listId, fieldKey);
+
+    // Emit updated action to backend after state update completes
+    if (actionId) {
+      setTimeout(() => emitForStepId(actionId), 0);
+    }
+  };
+
+  const handleStartEditListName = (listId: number, currentName: string) => {
+    setEditingListName(listId);
+    setEditingListNameValue(currentName);
+  };
+
+  const handleSaveListName = () => {
+    if (editingListName !== null) {
+      const trimmedName = editingListNameValue.trim();
+      const finalName = trimmedName || `List Data ${captureListData.findIndex(l => l.id === editingListName) + 1}`;
+
+      updateListStepName(editingListName, finalName);
+
+      // Use ref-synced version of browserSteps via emitForStepId
+      const listStep = browserSteps.find(step => step.id === editingListName);
+      if (listStep?.actionId) {
+        // small async delay ensures React state commit
+        setTimeout(() => emitForStepId(listStep.actionId!), 0);
+      }
+
+      setEditingListName(null);
+      setEditingListNameValue('');
+    }
+  };
+
+  const handleStartEditTextGroupName = () => {
+    setEditingTextGroupName(true);
+    setEditingTextGroupNameValue(currentTextGroupName);
+  };
+
+  const handleSaveTextGroupName = () => {
+    const trimmedName = editingTextGroupNameValue.trim();
+    const finalName = trimmedName || 'Text Data';
+
+    console.log("SAVING TEXT GROUP NAME:", finalName);
+    setCurrentTextGroupName(finalName);
+    setEditingTextGroupName(false);
+
+    // Emit after React updates global state
+    setTimeout(() => {
+      const activeTextStep = captureTextData.find(step => step.actionId);
+      if (activeTextStep?.actionId) emitForStepId(activeTextStep.actionId);
+    }, 0);
+  };
+
+
+  const handleStartEditTextLabel = (textId: number, currentLabel: string) => {
+    setEditingTextLabel(textId);
+    setEditingTextLabelValue(currentLabel);
+  };
+
+  const handleSaveTextLabel = () => {
+    if (editingTextLabel !== null && editingTextLabelValue.trim()) {
+      const textStep = browserSteps.find(step => step.id === editingTextLabel);
+      const actionId = textStep?.actionId;
+
+      updateBrowserTextStepLabel(editingTextLabel, editingTextLabelValue.trim());
+
+      // Emit updated action to backend after state update completes
+      if (actionId) {
+        setTimeout(() => emitForStepId(actionId), 0);
+      }
+
+      setEditingTextLabel(null);
+      setEditingTextLabelValue('');
+    }
+  };
+
+  const handleCancelTextLabel = () => {
+    setEditingTextLabel(null);
+    setEditingTextLabelValue('');
+  };
+
+  const handleDeleteTextStep = (textId: number) => {
+    const textStep = browserSteps.find(step => step.id === textId);
+    const actionId = textStep?.actionId;
+
+    deleteBrowserStep(textId);
+
+    // Emit updated action to backend after deletion
+    if (actionId) {
+      // Small delay to ensure state update completes
+      setTimeout(() => emitForStepId(actionId), 0);
+    }
+  };
+
+  const handleStartEditScreenshotName = (screenshotStepId: number, currentName: string) => {
+    setEditingScreenshotName(screenshotStepId);
+    setEditingScreenshotNameValue(currentName);
+  };
+
+  const handleSaveScreenshotName = () => {
+    if (editingScreenshotName !== null) {
+      const trimmedName = editingScreenshotNameValue.trim();
+      const screenshotSteps = browserSteps.filter(step => step.type === 'screenshot');
+      const screenshotIndex = screenshotSteps.findIndex(s => s.id === editingScreenshotName);
+      const finalName = trimmedName || `Screenshot ${screenshotIndex + 1}`;
+      
+      updateScreenshotStepName(editingScreenshotName, finalName);
+
+      const screenshotStep = browserSteps.find(step => step.id === editingScreenshotName);
+      if (screenshotStep?.actionId) {
+        const originalName = screenshotStep.name?.trim() || "";
+        const trimmedName = editingScreenshotNameValue.trim();
+
+        // 🚫 Only emit if name actually changed
+        if (trimmedName && trimmedName !== originalName) {
+          setTimeout(() => emitForStepId(screenshotStep.actionId!), 500);
+        } else {
+          console.log("🧠 Skipping emit — screenshot name unchanged.");
+        }
+      }
+
+      setEditingScreenshotName(null);
+      setEditingScreenshotNameValue('');
+    }
+  };
+
+
+  const previousTabsCount = useRef({ lists: 0, texts: 0, screenshots: 0 });
+
   const updateActiveTab = useCallback(() => {
     const availableTabs = getAvailableTabs();
-    
-    if (captureListData.length > 0 && availableTabs.findIndex(tab => tab.id === 'captureList') !== -1) {
+    const hasNewListData = captureListData.length > previousTabsCount.current.lists;
+    const hasNewTextData = captureTextData.length > previousTabsCount.current.texts;
+    const hasNewScreenshotData = screenshotData.length > previousTabsCount.current.screenshots;
+
+    previousTabsCount.current = {
+      lists: captureListData.length,
+      texts: captureTextData.length,
+      screenshots: screenshotData.length
+    };
+
+    if (hasNewListData && availableTabs.findIndex(tab => tab.id === 'captureList') !== -1) {
       setActiveTab(availableTabs.findIndex(tab => tab.id === 'captureList'));
-    } else if (captureTextData.length > 0 && availableTabs.findIndex(tab => tab.id === 'captureText') !== -1) {
+    } else if (hasNewTextData && availableTabs.findIndex(tab => tab.id === 'captureText') !== -1) {
       setActiveTab(availableTabs.findIndex(tab => tab.id === 'captureText'));
-    } else if (screenshotData.length > 0 && availableTabs.findIndex(tab => tab.id === 'captureScreenshot') !== -1) {
+    } else if (hasNewScreenshotData && availableTabs.findIndex(tab => tab.id === 'captureScreenshot') !== -1) {
       setActiveTab(availableTabs.findIndex(tab => tab.id === 'captureScreenshot'));
+      // Set the active screenshot tab to the latest screenshot
+      setActiveScreenshotTab(screenshotData.length - 1);
     }
   }, [captureListData.length, captureTextData.length, screenshotData.length]);
 
+
   useEffect(() => {
     const textSteps = browserSteps.filter(step => step.type === 'text');
-    if (textSteps.length > 0) {
-      const textDataRow: Record<string, string> = {};
-      
-      textSteps.forEach(step => {
-        textDataRow[step.label] = step.data;
-      });
-      
-      setCaptureTextData([textDataRow]);
-    }
-    
-    const listSteps = browserSteps.filter(step => step.type === 'list');
-    if (listSteps.length > 0) {
-      setCaptureListData(listSteps);
+    setCaptureTextData(textSteps);
+
+    if (!getText && previousGetText.current && textSteps.length > 0) {
+      if (!hasAutoFocusedTextTab.current) {
+        hasAutoFocusedTextTab.current = true;
+        setTimeout(() => {
+          handleStartEditTextGroupName();
+        }, 300);
+      }
     }
 
-    const screenshotSteps = browserSteps.filter(step => 
+    previousGetText.current = getText;
+
+    const listSteps = browserSteps.filter(step => step.type === 'list');
+    setCaptureListData(listSteps);
+
+    const screenshotSteps = browserSteps.filter(step =>
       step.type === 'screenshot'
-    ) as Array<{ type: 'screenshot'; id: number; fullPage: boolean; actionId?: string; screenshotData?: string }>;
+    ) as Array<{ type: 'screenshot'; id: number; name?: string; fullPage: boolean; actionId?: string; screenshotData?: string }>;
 
     const screenshotsWithData = screenshotSteps.filter(step => step.screenshotData);
-    if (screenshotsWithData.length > 0) {
-      const screenshots = screenshotsWithData.map(step => step.screenshotData!);
-      setScreenshotData(screenshots);
+    const screenshots = screenshotsWithData.map(step => step.screenshotData!);
+    setScreenshotData(screenshots);
+
+    if (textSteps.length > 0 || listSteps.length > 0 || screenshots.length > 0) {
+      setShowPreviewData(true);
+    } else {
+      setShowPreviewData(false);
     }
-    
+
     updateActiveTab();
-  }, [browserSteps, updateActiveTab]);
+  }, [browserSteps, updateActiveTab, getText]);
 
   useEffect(() => {
     if (shouldResetInterpretationLog) {
@@ -104,9 +310,17 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
       setCaptureTextData([]);
       setScreenshotData([]);
       setActiveTab(0);
-      setCaptureListPage(0);
-      setScreenshotPage(0);
       setShowPreviewData(false);
+      autoFocusedListIds.current.clear();
+      previousDataLengths.current.clear();
+      autoFocusedScreenshotIndices.current.clear();
+      userClosedDrawer.current = false;
+      lastListDataLength.current = 0;
+      lastTextDataLength.current = 0;
+      lastScreenshotDataLength.current = 0;
+      previousTabsCount.current = { lists: 0, texts: 0, screenshots: 0 };
+      hasAutoFocusedTextTab.current = false;
+      previousGetText.current = false;
     }
   }, [shouldResetInterpretationLog]);
 
@@ -139,14 +353,104 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
   const { hasScrapeListAction, hasScreenshotAction, hasScrapeSchemaAction } = currentWorkflowActionsState;
 
   useEffect(() => {
-    if (hasScrapeListAction || hasScrapeSchemaAction || hasScreenshotAction) {
-      setIsOpen(true);
+    let shouldOpenDrawer = false;
+    let switchToTextTab = false;
+    let switchToScreenshotTab = false;
+
+    if (hasScrapeListAction && captureListData.length > 0 && captureListData[0]?.data?.length > 0) {
+      setShowPreviewData(true);
+      if (captureListData.length > lastListDataLength.current) {
+        userClosedDrawer.current = false;
+        shouldOpenDrawer = true;
+      }
+      lastListDataLength.current = captureListData.length;
     }
-  }, [hasScrapeListAction, hasScrapeSchemaAction, hasScreenshotAction, setIsOpen]);
+
+    if (hasScrapeSchemaAction && captureTextData.length > 0 && !getText) {
+      setShowPreviewData(true);
+      if (captureTextData.length > lastTextDataLength.current) {
+        userClosedDrawer.current = false;
+        shouldOpenDrawer = true;
+        switchToTextTab = true;
+      }
+      lastTextDataLength.current = captureTextData.length;
+    }
+
+    if (hasScreenshotAction && screenshotData.length > 0) {
+      setShowPreviewData(true);
+      if (screenshotData.length > lastScreenshotDataLength.current) {
+        userClosedDrawer.current = false;
+        shouldOpenDrawer = true;
+        switchToScreenshotTab = true;
+      }
+      lastScreenshotDataLength.current = screenshotData.length;
+    }
+
+    if (shouldOpenDrawer) {
+      setIsOpen(true);
+      if (switchToTextTab) {
+        setTimeout(() => {
+          const textTabIndex = getAvailableTabs().findIndex(tab => tab.id === 'captureText');
+          if (textTabIndex !== -1) {
+            setActiveTab(textTabIndex);
+          }
+        }, 100);
+      } else if (switchToScreenshotTab) {
+        setTimeout(() => {
+          const screenshotTabIndex = getAvailableTabs().findIndex(tab => tab.id === 'captureScreenshot');
+          if (screenshotTabIndex !== -1) {
+            setActiveTab(screenshotTabIndex);
+            const latestIndex = screenshotData.length - 1;
+            setActiveScreenshotTab(latestIndex);
+
+            if (!autoFocusedScreenshotIndices.current.has(latestIndex)) {
+              autoFocusedScreenshotIndices.current.add(latestIndex);
+              setTimeout(() => {
+                const screenshotSteps = browserSteps.filter(step => step.type === 'screenshot') as Array<{ id: number; name?: string; type: 'screenshot' }>;
+                const latestScreenshotStep = screenshotSteps[latestIndex];
+                if (latestScreenshotStep) {
+                  const screenshotName = latestScreenshotStep.name || `Screenshot ${latestIndex + 1}`;
+                  handleStartEditScreenshotName(latestScreenshotStep.id, screenshotName);
+                }
+              }, 300);
+            }
+          }
+        }, 100);
+      }
+    }
+  }, [hasScrapeListAction, hasScrapeSchemaAction, hasScreenshotAction, captureListData, captureTextData, screenshotData, setIsOpen, getText]);
+
+  useEffect(() => {
+    if (captureListData.length > 0 && isOpen && captureStage === 'initial') {
+      const latestListIndex = captureListData.length - 1;
+      const latestList = captureListData[latestListIndex];
+      if (latestList && latestList.data && latestList.data.length > 0 && !editingListName) {
+        const previousLength = previousDataLengths.current.get(latestList.id) || 0;
+        const currentLength = latestList.data.length;
+
+        if (previousLength === 0 && currentLength > 0) {
+          if (!autoFocusedListIds.current.has(latestList.id)) {
+            autoFocusedListIds.current.add(latestList.id);
+            setActiveListTab(latestListIndex);
+            setTimeout(() => {
+              handleStartEditListName(latestList.id, latestList.name || `List Data ${latestListIndex + 1}`);
+            }, 300);
+          }
+        }
+
+        previousDataLengths.current.set(latestList.id, currentLength);
+      }
+    }
+  }, [captureListData.length, isOpen, captureStage]);
+
+  useEffect(() => {
+    if (screenshotData.length > 0 && isOpen) {
+      const latestScreenshotIndex = screenshotData.length - 1;
+      setActiveScreenshotTab(latestScreenshotIndex);
+    }
+  }, [screenshotData.length, isOpen]);
 
   const { darkMode } = useThemeMode();
-
-  const getCaptureTextColumns = captureTextData.length > 0 ? Object.keys(captureTextData[0]) : [];
 
   const shouldShowTabs = availableTabs.length > 1;
 
@@ -193,10 +497,10 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
           onOpen={toggleDrawer(true)}
           PaperProps={{
             sx: {
-              background: `${darkMode ? '#1e2124' : 'white'}`,
+              background: `${darkMode ? '#1d1c1cff' : 'white'}`,
               color: `${darkMode ? 'white' : 'black'}`,
               padding: '10px',
-              height: outputPreviewHeight,
+              height: "calc(100% - 140px)",
               width: outputPreviewWidth,
               display: 'flex',
               flexDirection: 'column',
@@ -208,16 +512,26 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
             <StorageIcon style={{ marginRight: '8px' }} />
             {t('interpretation_log.titles.output_preview')}
           </Typography>
-          
-          {showPreviewData && availableTabs.length > 0 ? (
+
+          {!(hasScrapeListAction || hasScrapeSchemaAction || hasScreenshotAction) && (
+            <Grid container justifyContent="center" alignItems="center" style={{ height: '100%' }}>
+              <Grid item>
+                <Typography variant="h6" gutterBottom align="left">
+                  {t('interpretation_log.messages.no_selection')}
+                </Typography>
+              </Grid>
+            </Grid>
+          )}
+
+          {showPreviewData && availableTabs.length > 0 && (
             <>
               {shouldShowTabs && (
                 <Box 
                   sx={{
                     display: 'flex',
                     borderBottom: '1px solid',
-                    borderColor: darkMode ? '#3a4453' : '#dee2e6',
-                    backgroundColor: darkMode ? '#2a3441' : '#f8f9fa'
+                    borderColor: darkMode ? '#080808ff' : '#dee2e6',
+                    backgroundColor: darkMode ? '#080808ff' : '#f8f9fa'
                   }}
                 >
                   {availableTabs.map((tab, index) => (
@@ -228,15 +542,15 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                         px: 4,
                         py: 2,
                         cursor: 'pointer',
-                        borderBottom: activeTab === index ? '2px solid' : 'none',
+                        // borderBottom: activeTab === index ? '2px solid' : 'none',
                         borderColor: activeTab === index ? (darkMode ? '#ff00c3' : '#ff00c3') : 'transparent',
-                        backgroundColor: activeTab === index ? (darkMode ? '#34404d' : '#e9ecef') : 'transparent',
+                        backgroundColor: activeTab === index ? (darkMode ? '#121111ff' : '#e9ecef') : 'transparent',
                         color: darkMode ? 'white' : 'black',
                         fontWeight: activeTab === index ? 500 : 400,
                         textAlign: 'center',
                         position: 'relative',
                         '&:hover': {
-                          backgroundColor: activeTab !== index ? (darkMode ? '#303b49' : '#e2e6ea') : undefined
+                          backgroundColor: activeTab !== index ? (darkMode ? '#121111ff' : '#e2e6ea') : undefined
                         }
                       }}
                     >
@@ -248,70 +562,246 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                 </Box>
               )}
               
-              <Box sx={{ flexGrow: 1, overflow: 'auto', p: 0 }}>
-                {(activeTab === availableTabs.findIndex(tab => tab.id === 'captureList') || singleContentType === 'captureList') && captureListData.length > 0 && (
-                  <Box>
-                    <Box sx={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between', 
-                      alignItems: 'center', 
-                      mb: 2,
-                      mt: 2 
-                    }}>
-                      <Typography variant="body2">
-                        {`Table ${captureListPage + 1} of ${captureListData.length}`}
-                      </Typography>
-                      <Box>
-                        <Button 
-                          onClick={() => setCaptureListPage(prev => Math.max(0, prev - 1))}
-                          disabled={captureListPage === 0}
-                          size="small"
-                        >
-                          Previous
-                        </Button>
-                        <Button 
-                          onClick={() => setCaptureListPage(prev => Math.min(captureListData.length - 1, prev + 1))}
-                          disabled={captureListPage >= captureListData.length - 1}
-                          size="small"
-                          sx={{ ml: 1 }}
-                        >
-                          Next
-                        </Button>
-                      </Box>
-                    </Box>
-                    <TableContainer component={Paper} sx={{ boxShadow: 'none', borderRadius: 0 }}>
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            {Object.values(captureListData[captureListPage]?.fields || {}).map((field: any, index) => (
-                              <TableCell 
-                                key={index}
-                                sx={{ 
-                                  borderBottom: '1px solid',
-                                  borderColor: darkMode ? '#3a4453' : '#dee2e6',
-                                  backgroundColor: darkMode ? '#2a3441' : '#f8f9fa'
+              <Box sx={{ flexGrow: 1, overflow: 'hidden', p: 0, display: 'flex', flexDirection: 'column' }}>
+                {(activeTab === availableTabs.findIndex(tab => tab.id === 'captureList') ||
+                  singleContentType === 'captureList') &&
+                  captureListData.length > 0 && (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                      {/* List Tabs */}
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          pt: 2,
+                          position: 'sticky',
+                          top: 0,
+                          zIndex: 10,
+                          backgroundColor: darkMode ? '#1d1c1cff' : 'white',
+                        }}
+                      >
+                        {captureListData.map((listItem, index) => {
+                          const isEditing = editingListName === listItem.id;
+                          const isActive = activeListTab === index;
+
+                          return (
+                            <Tooltip
+                              title="Double click to edit captured list name"
+                              arrow
+                              placement="top"
+                            >
+                              <Box
+                                id={index === captureListData.length - 1 ? "list-name-tab" : undefined}
+                                key={listItem.id}
+                                onClick={() => {
+                                  if (!isEditing) {
+                                    setActiveListTab(index);
+                                  }
+                                }}
+                                onDoubleClick={() => {
+                                  handleStartEditListName(
+                                    listItem.id,
+                                    listItem.name || `List Data ${index + 1}`
+                                  );
+                                }}
+                                sx={{
+                                  px: 3,
+                                  py: 1.25,
+                                  cursor: isEditing ? 'text' : 'pointer',
+                                  borderRadius: '8px 8px 0 0',
+                                  backgroundColor: darkMode
+                                      ? '#131313ff'
+                                      : '#ffffff',
+                                  color: isActive
+                                    ? darkMode
+                                      ? '#ffffff'
+                                      : '#000000'
+                                    : darkMode
+                                      ? '#b0b0b0'
+                                      : '#555555',
+                                  fontWeight: isActive ? 600 : 400,
+                                  fontSize: '0.875rem',
+                                  border: '1px solid',
+                                  borderColor: darkMode ? '#2a2a2a' : '#d0d0d0',
+                                  borderBottom: isActive
+                                    ? darkMode
+                                      ? '2px solid #1c1c1c'
+                                      : '2px solid #ffffff'
+                                    : '2px solid transparent',
+                                  transition: 'all 0.2s ease',
+                                  '&:hover': {
+                                    backgroundColor: isActive
+                                      ? undefined
+                                      : darkMode
+                                        ? '#161616'
+                                        : '#e9ecef',
+                                  },
                                 }}
                               >
-                                {field.label}
-                              </TableCell>
-                            ))}
+                                {isEditing ? (
+                                  <TextField
+                                    value={editingListNameValue}
+                                    onChange={(e) => setEditingListNameValue(e.target.value)}
+                                    onBlur={handleSaveListName}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') handleSaveListName();
+                                      if (e.key === 'Escape') {
+                                        setEditingListName(null);
+                                        setEditingListNameValue('');
+                                      }
+                                    }}
+                                    autoFocus
+                                    size="small"
+                                    variant="standard"
+                                    sx={{
+                                      minWidth: '120px',
+                                      '& .MuiInputBase-input': {
+                                        color: darkMode ? '#fff' : '#000',
+                                        fontSize: 'inherit',
+                                        fontWeight: 'inherit',
+                                        padding: 0,
+                                      },
+                                      '& .MuiInput-underline:before': { display: 'none' },
+                                      '& .MuiInput-underline:after': { display: 'none' },
+                                      '& .MuiInput-underline:hover:before': { display: 'none' },
+                                    }}
+                                  />
+                                ) : (
+                                  listItem.name || `List Data ${index + 1}`
+                                )}
+                              </Box>
+                            </Tooltip>
+                          );
+                        })}
+                      </Box>
+
+                      {/* Table Below Tabs */}
+                      <TableContainer
+                        component={Paper}
+                        sx={{
+                          boxShadow: 'none',
+                          borderRadius: 0,
+                          flexGrow: 1,
+                          overflow: 'auto',
+                          '& .MuiTableHead-root': {
+                            position: 'sticky',
+                            top: 0,
+                            zIndex: 5,
+                          }
+                        }}
+                      >
+                      <Table stickyHeader>
+                        <TableHead>
+                          <TableRow>
+                            {Object.entries(captureListData[activeListTab]?.fields || {}).map(([fieldKey, field]: [string, any]) => {
+                              const isEditing = editingField?.listId === captureListData[activeListTab]?.id && editingField?.fieldKey === fieldKey;
+
+                              const isFirstField = Object.keys(captureListData[activeListTab]?.fields || {}).indexOf(fieldKey) === 0;
+
+                              return (
+                                <TableCell
+                                  key={fieldKey}
+                                  id={isFirstField ? "first-field-label" : undefined}
+                                  sx={{
+                                    borderBottom: '1px solid',
+                                    borderColor: darkMode ? '#080808ff' : '#dee2e6',
+                                    backgroundColor: `${darkMode ? '#080808ff' : '#f8f9fa'} !important`,
+                                    padding: '12px 16px',
+                                    position: 'sticky',
+                                    top: 0,
+                                    '&:hover .delete-icon': {
+                                      opacity: 1
+                                    },
+                                  }}
+                                >
+                                  {isEditing ? (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: '200px' }}>
+                                      <TextField
+                                        value={editingValue}
+                                        onChange={(e) => setEditingValue(e.target.value)}
+                                        onBlur={handleSaveEdit}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') handleSaveEdit();
+                                          if (e.key === 'Escape') handleCancelEdit();
+                                        }}
+                                        autoFocus
+                                        size="small"
+                                        sx={{
+                                          flex: 1,
+                                          minWidth: '150px',
+                                          '& .MuiInputBase-root': {
+                                            backgroundColor: darkMode ? '#2a2929' : '#fff'
+                                          }
+                                        }}
+                                      />
+                                      <IconButton
+                                        size="small"
+                                        onClick={handleSaveEdit}
+                                        sx={{
+                                          color: '#4caf50',
+                                          padding: '4px'
+                                        }}
+                                      >
+                                        <CheckIcon fontSize="small" />
+                                      </IconButton>
+                                    </Box>
+                                  ) : (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, pr: 3 }}>
+                                      <Tooltip title="Click to edit column name" arrow placement="top">
+                                        <Typography
+                                          sx={{
+                                            flex: 1,
+                                            cursor: 'pointer',
+                                            fontWeight: 500,
+                                            '&:hover': {
+                                              color: darkMode ? '#fff' : '#000',
+                                              textDecoration: 'underline'
+                                            }
+                                          }}
+                                          onClick={() => handleStartEdit(captureListData[activeListTab]?.id, fieldKey, field.label)}
+                                        >
+                                          {field.label}
+                                        </Typography>
+                                      </Tooltip>
+                                      <IconButton
+                                        className="delete-icon"
+                                        size="small"
+                                        onClick={() => handleDeleteField(captureListData[activeListTab]?.id, fieldKey)}
+                                        sx={{
+                                          position: 'absolute',
+                                          right: 4,
+                                          top: '50%',
+                                          transform: 'translateY(-50%)',
+                                          opacity: 0,
+                                          transition: 'opacity 0.2s',
+                                          color: darkMode ? '#999' : '#666',
+                                          padding: '4px',
+                                          '&:hover': {
+                                            color: '#f44336',
+                                            backgroundColor: darkMode ? 'rgba(244, 67, 54, 0.1)' : 'rgba(244, 67, 54, 0.05)'
+                                          }
+                                        }}
+                                      >
+                                        <CloseIcon sx={{ fontSize: '16px' }} />
+                                      </IconButton>
+                                    </Box>
+                                  )}
+                                </TableCell>
+                              );
+                            })}
                           </TableRow>
                         </TableHead>
                         <TableBody>
-                          {(captureListData[captureListPage]?.data || [])
-                            .slice(0, Math.min(captureListData[captureListPage]?.limit || 10, 5))
+                          {(captureListData[activeListTab]?.data || [])
+                            .slice(0, Math.min(captureListData[activeListTab]?.limit || 10, 5))
                             .map((row: any, rowIndex: any) => (
-                              <TableRow 
+                              <TableRow
                                 key={rowIndex}
-                                sx={{ 
-                                  borderBottom: rowIndex < Math.min(
-                                    (captureListData[captureListPage]?.data?.length || 0),
-                                    Math.min(captureListData[captureListPage]?.limit || 10, 5)
+                                sx={{
+                                  borderBottom: rowIndex < (Math.min((captureListData[activeListTab]?.data?.length || 0), Math.min(captureListData[activeListTab]?.limit || 10, 5))
                                   ) - 1 ? '1px solid' : 'none',
-                                  borderColor: darkMode ? '#3a4453' : '#dee2e6'
+                                  borderColor: darkMode ? '#080808ff' : '#dee2e6'
                                 }}
                               >
-                                {Object.values(captureListData[captureListPage]?.fields || {}).map((field: any, colIndex) => (
+                                {Object.values(captureListData[activeListTab]?.fields || {}).map((field: any, colIndex) => (
                                   <TableCell 
                                     key={colIndex}
                                     sx={{ 
@@ -319,7 +809,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                                       py: 2
                                     }}
                                   >
-                                    {row[field.label]}
+                                    {typeof row[field.label] === 'object' ? JSON.stringify(row[field.label]) : String(row[field.label] || '')}
                                   </TableCell>
                                 ))}
                               </TableRow>
@@ -328,76 +818,239 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                         </TableBody>
                       </Table>
                     </TableContainer>
+                    </Box>
+                  )}
+
+
+                {(activeTab === availableTabs.findIndex(tab => tab.id === 'captureScreenshot') || singleContentType === 'captureScreenshot') && screenshotData.length > 0 && (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                    {/* Screenshot Tabs */}
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        pt: 2,
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 10,
+                        backgroundColor: darkMode ? '#1d1c1cff' : 'white',
+                      }}
+                    >
+                      {(() => {
+                        const screenshotSteps = browserSteps.filter(step => step.type === 'screenshot' && step.screenshotData) as Array<{ id: number; name?: string; type: 'screenshot'; screenshotData?: string }>;
+                        return screenshotData.map((screenshot, index) => {
+                          const screenshotStep = screenshotSteps[index];
+                          if (!screenshotStep) return null;
+
+                          const isActive = activeScreenshotTab === index;
+                          const isEditing = editingScreenshotName === screenshotStep.id;
+                          const screenshotName = screenshotStep.name || `Screenshot ${index + 1}`;
+
+                          return (
+                            <Tooltip
+                              key={screenshotStep.id}
+                              title="Double click to edit screenshot name"
+                              arrow
+                              placement="top"
+                            >
+                              <Box
+                                onClick={() => {
+                                  if (!isEditing) {
+                                    setActiveScreenshotTab(index);
+                                  }
+                                }}
+                                onDoubleClick={() => {
+                                  handleStartEditScreenshotName(screenshotStep.id, screenshotName);
+                                }}
+                              sx={{
+                                px: 3,
+                                py: 1.25,
+                                cursor: isEditing ? 'text' : 'pointer',
+                                borderRadius: '8px 8px 0 0',
+                                backgroundColor: darkMode ? '#131313ff' : '#ffffff',
+                                color: isActive
+                                  ? darkMode
+                                    ? '#ffffff'
+                                    : '#000000'
+                                  : darkMode
+                                    ? '#b0b0b0'
+                                    : '#555555',
+                                fontWeight: isActive ? 600 : 400,
+                                fontSize: '0.875rem',
+                                border: '1px solid',
+                                borderColor: darkMode ? '#2a2a2a' : '#d0d0d0',
+                                borderBottom: isActive
+                                  ? darkMode
+                                    ? '2px solid #1c1c1c'
+                                    : '2px solid #ffffff'
+                                  : '2px solid transparent',
+                                transition: 'all 0.2s ease',
+                                '&:hover': {
+                                  backgroundColor: isActive
+                                    ? undefined
+                                    : darkMode
+                                      ? '#161616'
+                                      : '#e9ecef',
+                                },
+                              }}
+                            >
+                              {isEditing ? (
+                                <TextField
+                                  value={editingScreenshotNameValue}
+                                  onChange={(e) => setEditingScreenshotNameValue(e.target.value)}
+                                  onBlur={handleSaveScreenshotName}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleSaveScreenshotName();
+                                    if (e.key === 'Escape') {
+                                      setEditingScreenshotName(null);
+                                      setEditingScreenshotNameValue('');
+                                    }
+                                  }}
+                                  autoFocus
+                                  size="small"
+                                  variant="standard"
+                                  sx={{
+                                    minWidth: '120px',
+                                    '& .MuiInputBase-input': {
+                                      color: darkMode ? '#fff' : '#000',
+                                      fontSize: 'inherit',
+                                      fontWeight: 'inherit',
+                                      padding: 0,
+                                    },
+                                    '& .MuiInput-underline:before': { display: 'none' },
+                                    '& .MuiInput-underline:after': { display: 'none' },
+                                    '& .MuiInput-underline:hover:before': { display: 'none' },
+                                  }}
+                                />
+                              ) : (
+                                screenshotName
+                              )}
+                            </Box>
+                          </Tooltip>
+                        );
+                      });
+                      })()}
+                    </Box>
+
+                    {/* Screenshot Image */}
+                    <Box sx={{
+                      p: 3,
+                      overflow: 'auto',
+                      flexGrow: 1,
+                      backgroundColor: darkMode ? '#131313ff' : '#ffffff',
+                    }}>
+                      <img
+                        src={screenshotData[activeScreenshotTab]}
+                        alt={`Screenshot ${activeScreenshotTab + 1}`}
+                        style={{ maxWidth: '100%', borderRadius: '4px' }}
+                      />
+                    </Box>
                   </Box>
                 )}
 
-                {(activeTab === availableTabs.findIndex(tab => tab.id === 'captureScreenshot') || singleContentType === 'captureScreenshot') && screenshotData.length > 0 && (
-                  <Box>
-                    {screenshotData.length > 1 && (
-                      <Box sx={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        alignItems: 'center', 
-                        mb: 2,
-                        mt: 2 
-                      }}>
-                        <Typography variant="body2">
-                          {`Screenshot ${screenshotPage + 1} of ${screenshotData.length}`}
-                        </Typography>
-                        <Box>
-                          <Button 
-                            onClick={() => setScreenshotPage(prev => Math.max(0, prev - 1))}
-                            disabled={screenshotPage === 0}
-                            size="small"
-                          >
-                            Previous
-                          </Button>
-                          <Button 
-                            onClick={() => setScreenshotPage(prev => Math.min(screenshotData.length - 1, prev + 1))}
-                            disabled={screenshotPage >= screenshotData.length - 1}
-                            size="small"
-                            sx={{ ml: 1 }}
-                          >
-                            Next
-                          </Button>
-                        </Box>
-                      </Box>
-                    )}
-                    {screenshotData.length > 0 && (
-                      <Box sx={{ p: 3 }}>
-                        <Typography variant="body1" gutterBottom>
-                          {t('interpretation_log.titles.screenshot')} {screenshotPage + 1}
-                        </Typography>
-                        <img 
-                          src={screenshotData[screenshotPage]} 
-                          alt={`${t('interpretation_log.titles.screenshot')} ${screenshotPage + 1}`} 
-                          style={{ maxWidth: '100%' }} 
-                        />
-                      </Box>
-                    )}
-                  </Box>
-                )}
-                
                 {(activeTab === availableTabs.findIndex(tab => tab.id === 'captureText') || singleContentType === 'captureText') && captureTextData.length > 0 && (
-                  <Box sx={{ p: 2 }}>
-                    <TableContainer component={Paper} sx={{ boxShadow: 'none', borderRadius: 0 }}>
-                      <Table>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        pt: 2,
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 10,
+                        backgroundColor: darkMode ? '#1d1c1cff' : 'white',
+                      }}
+                    >
+                      <Tooltip
+                        title="Double click to edit captured text name"
+                        arrow
+                        placement="top"
+                      >
+                        <Box
+                          onDoubleClick={handleStartEditTextGroupName}
+                          sx={{
+                            px: 3,
+                            py: 1.25,
+                            cursor: editingTextGroupName ? 'text' : 'pointer',
+                            borderRadius: '8px 8px 0 0',
+                            backgroundColor: darkMode ? '#131313ff' : '#ffffff',
+                            color: darkMode ? '#ffffff' : '#000000',
+                            fontWeight: 600,
+                            fontSize: '0.875rem',
+                            border: '1px solid',
+                            borderColor: darkMode ? '#2a2a2a' : '#d0d0d0',
+                            borderBottom: darkMode ? '2px solid #1c1c1c' : '2px solid #ffffff',
+                            transition: 'all 0.2s ease',
+                          }}
+                        >
+                          {editingTextGroupName ? (
+                            <TextField
+                              value={editingTextGroupNameValue}
+                              onChange={(e) => setEditingTextGroupNameValue(e.target.value)}
+                              onBlur={handleSaveTextGroupName}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSaveTextGroupName();
+                                if (e.key === 'Escape') {
+                                  setEditingTextGroupName(false);
+                                  setEditingTextGroupNameValue(currentTextGroupName);
+                                }
+                              }}
+                              autoFocus
+                              size="small"
+                              variant="standard"
+                              sx={{
+                                minWidth: '120px',
+                                '& .MuiInputBase-input': {
+                                  color: darkMode ? '#fff' : '#000',
+                                  fontSize: 'inherit',
+                                  fontWeight: 'inherit',
+                                  padding: 0,
+                                },
+                                '& .MuiInput-underline:before': { display: 'none' },
+                                '& .MuiInput-underline:after': { display: 'none' },
+                                '& .MuiInput-underline:hover:before': { display: 'none' },
+                              }}
+                            />
+                          ) : (
+                            currentTextGroupName
+                          )}
+                        </Box>
+                      </Tooltip>
+                    </Box>
+
+                    <TableContainer
+                      component={Paper}
+                      sx={{
+                        boxShadow: 'none',
+                        borderRadius: 0,
+                        flexGrow: 1,
+                        overflow: 'auto',
+                        '& .MuiTableHead-root': {
+                          position: 'sticky',
+                          top: 0,
+                          zIndex: 5,
+                        }
+                      }}
+                    >
+                      <Table stickyHeader>
                         <TableHead>
                           <TableRow>
-                            <TableCell 
-                              sx={{ 
+                            <TableCell
+                              sx={{
                                 borderBottom: '1px solid',
-                                borderColor: darkMode ? '#3a4453' : '#dee2e6',
-                                backgroundColor: darkMode ? '#2a3441' : '#f8f9fa',
+                                borderColor: darkMode ? '#080808ff' : '#dee2e6',
+                                backgroundColor: `${darkMode ? '#080808ff' : '#f8f9fa'} !important`,
+                                position: 'sticky',
+                                top: 0,
                               }}
                             >
                               Label
                             </TableCell>
-                            <TableCell 
-                              sx={{ 
+                            <TableCell
+                              sx={{
                                 borderBottom: '1px solid',
-                                borderColor: darkMode ? '#3a4453' : '#dee2e6',
-                                backgroundColor: darkMode ? '#2a3441' : '#f8f9fa',
+                                borderColor: darkMode ? '#080808ff' : '#dee2e6',
+                                backgroundColor: `${darkMode ? '#080808ff' : '#f8f9fa'} !important`,
+                                position: 'sticky',
+                                top: 0,
                               }}
                             >
                               Value
@@ -405,33 +1058,112 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                           </TableRow>
                         </TableHead>
                         <TableBody>
-                          {getCaptureTextColumns.map((column, index) => (
-                            <TableRow 
-                              key={column}
-                              sx={{ 
-                                borderBottom: index < getCaptureTextColumns.length - 1 ? '1px solid' : 'none',
-                                borderColor: darkMode ? '#3a4453' : '#dee2e6'
-                              }}
-                            >
-                              <TableCell 
-                                sx={{ 
-                                  borderBottom: 'none',
-                                  py: 2,
-                                  fontWeight: 500
+                          {captureTextData.map((textStep: any, index) => {
+                            const isEditing = editingTextLabel === textStep.id;
+
+                            return (
+                              <TableRow
+                                key={textStep.id}
+                                sx={{
+                                  borderBottom: index < captureTextData.length - 1 ? '1px solid' : 'none',
+                                  borderColor: darkMode ? '#080808ff' : '#dee2e6'
                                 }}
                               >
-                                {column}
-                              </TableCell>
-                              <TableCell 
-                                sx={{ 
-                                  borderBottom: 'none',
-                                  py: 2
-                                }}
-                              >
-                                {captureTextData[0][column]}
-                              </TableCell>
-                            </TableRow>
-                          ))}
+                                <TableCell
+                                  sx={{
+                                    borderBottom: 'none',
+                                    py: 2,
+                                    fontWeight: 500,
+                                    position: 'relative',
+                                    '&:hover .delete-icon': {
+                                      opacity: 1
+                                    }
+                                  }}
+                                >
+                                  {isEditing ? (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: '200px' }}>
+                                      <TextField
+                                        value={editingTextLabelValue}
+                                        onChange={(e) => setEditingTextLabelValue(e.target.value)}
+                                        onBlur={handleSaveTextLabel}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') handleSaveTextLabel();
+                                          if (e.key === 'Escape') handleCancelTextLabel();
+                                        }}
+                                        autoFocus
+                                        size="small"
+                                        sx={{
+                                          flex: 1,
+                                          minWidth: '150px',
+                                          '& .MuiInputBase-root': {
+                                            backgroundColor: darkMode ? '#2a2929' : '#fff'
+                                          }
+                                        }}
+                                      />
+                                      <IconButton
+                                        size="small"
+                                        onClick={handleSaveTextLabel}
+                                        sx={{
+                                          color: '#4caf50',
+                                          padding: '4px'
+                                        }}
+                                      >
+                                        <CheckIcon fontSize="small" />
+                                      </IconButton>
+                                    </Box>
+                                  ) : (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, pr: 3 }}>
+                                      <Tooltip title="Click to edit label" arrow placement="top">
+                                        <Typography
+                                          sx={{
+                                            flex: 1,
+                                            cursor: 'pointer',
+                                            fontWeight: 500,
+                                            '&:hover': {
+                                              color: darkMode ? '#fff' : '#000',
+                                              textDecoration: 'underline'
+                                            }
+                                          }}
+                                          onClick={() => handleStartEditTextLabel(textStep.id, textStep.label)}
+                                        >
+                                          {textStep.label}
+                                        </Typography>
+                                      </Tooltip>
+                                      <IconButton
+                                        className="delete-icon"
+                                        size="small"
+                                        onClick={() => handleDeleteTextStep(textStep.id)}
+                                        sx={{
+                                          position: 'absolute',
+                                          right: 4,
+                                          top: '50%',
+                                          transform: 'translateY(-50%)',
+                                          opacity: 0,
+                                          transition: 'opacity 0.2s',
+                                          color: darkMode ? '#999' : '#666',
+                                          padding: '4px',
+                                          '&:hover': {
+                                            color: '#f44336',
+                                            backgroundColor: darkMode ? 'rgba(244, 67, 54, 0.1)' : 'rgba(244, 67, 54, 0.05)'
+                                          }
+                                        }}
+                                      >
+                                        <CloseIcon sx={{ fontSize: '16px' }} />
+                                      </IconButton>
+                                    </Box>
+                                  )}
+                                </TableCell>
+                                <TableCell
+                                  sx={{
+                                    borderBottom: 'none',
+                                    py: 2
+                                  }}
+                                >
+                                  {typeof textStep.data === 'object' ? JSON.stringify(textStep.data) : String(textStep.data || '')}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
                         </TableBody>
                       </Table>
                     </TableContainer>
@@ -439,23 +1171,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                 )}
               </Box>
             </>
-          ) : (
-            <Grid container justifyContent="center" alignItems="center" style={{ height: '100%' }}>
-              <Grid item>
-                {hasScrapeListAction || hasScrapeSchemaAction || hasScreenshotAction ? (
-                  <>
-                    <Typography variant="h6" gutterBottom align="left">
-                      {t('interpretation_log.messages.successful_training')}
-                    </Typography>
-                    <SidePanelHeader onPreviewClick={() => setShowPreviewData(true)} />
-                  </>
-                ) : (
-                  <Typography variant="h6" gutterBottom align="left">
-                    {t('interpretation_log.messages.no_selection')}
-                  </Typography>
-                )}
-              </Grid>
-            </Grid>
           )}
           <div style={{ float: 'left', clear: 'both' }} ref={logEndRef} />
         </SwipeableDrawer>

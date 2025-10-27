@@ -36,6 +36,8 @@ export default class Preprocessor {
           what: Joi.array().items({
             action: Joi.string().required(),
             args: Joi.array().items(Joi.any()),
+            name: Joi.string(),
+            actionId: Joi.string()
           }).required(),
         }),
       ).required(),

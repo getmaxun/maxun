@@ -254,7 +254,7 @@ function handleWorkflowActions(workflow: any[], credentials: Credentials) {
 router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
-    const { name, limits, credentials, targetUrl } = req.body;
+  const { name, limits, credentials, targetUrl, workflow: incomingWorkflow } = req.body;
 
     // Validate input
     if (!name && !limits && !credentials && !targetUrl) {
@@ -298,7 +298,10 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
 
     await robot.save();
 
-    let workflow = [...robot.recording.workflow]; // Create a copy of the workflow
+    // Start with existing workflow or allow client to supply a full workflow replacement
+    let workflow = incomingWorkflow && Array.isArray(incomingWorkflow)
+      ? JSON.parse(JSON.stringify(incomingWorkflow))
+      : [...robot.recording.workflow]; // Create a copy of the workflow
 
     if (credentials) {
       workflow = handleWorkflowActions(workflow, credentials);

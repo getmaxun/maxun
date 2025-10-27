@@ -61,7 +61,7 @@ export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
   useEffect(() => {
     if (darkMode) {
 
-      document.body.style.background = 'rgba(18,18,18,1)';
+      document.body.style.background = '#080808ff';
 
     } else {
       document.body.style.background = 'radial-gradient(circle, rgba(255, 255, 255, 1) 0%, rgba(232, 191, 222, 1) 100%, rgba(255, 255, 255, 1) 100%)';
