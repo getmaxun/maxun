@@ -7,6 +7,7 @@ import {
   Button,
   IconButton,
   InputAdornment,
+  Divider,
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { useGlobalInfoStore } from "../../../context/globalInfo";
@@ -728,8 +729,9 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
                 onChange={(e) => handleTargetUrlChange(e.target.value)}
                 style={{ marginBottom: "20px" }}
               />
-
+              <Divider />
               {renderScrapeListLimitFields()}
+              <Divider />
               {renderActionNameFields()}
             </>
           )}
