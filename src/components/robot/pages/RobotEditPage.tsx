@@ -571,7 +571,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
 
     return (
       <>
-        <Typography variant="body1" style={{ marginBottom: '10px' }}>
+        <Typography variant="body1" style={{ marginBottom: '10px', marginTop: '20px' }}>
           {t('Actions')}
         </Typography>
         {inputs}
