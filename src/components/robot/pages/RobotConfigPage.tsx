@@ -62,7 +62,6 @@ export const RobotConfigPage: React.FC<RobotConfigPageProps> = ({
     <Box sx={{
       maxWidth: 1000,
       margin: '50px auto',
-      maxHeight: '100vh',
       display: 'flex',
       flexDirection: 'column',
       width: '1000px',
