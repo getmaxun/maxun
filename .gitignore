@@ -14,5 +14,6 @@
 /server/logs
 
 /build
+/start
 
 package-lock.json
