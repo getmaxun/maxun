@@ -42,6 +42,7 @@ import { Add } from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
 import { canCreateBrowserInState, getActiveBrowserId, stopRecording } from "../../api/recording";
 import { GenericModal } from '../ui/GenericModal';
+import { useTheme } from '@mui/material/styles';
 
 declare global {
   interface Window {
@@ -148,12 +149,15 @@ export const RecordingsTable = ({
   handleEditRobot,
   handleDuplicateRobot }: RecordingsTableProps) => {
   const { t } = useTranslation();
+  const theme = useTheme();
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
   const { data: recordingsData = [], isLoading: isFetching, error, refetch } = useCachedRecordings();
   const [isModalOpen, setModalOpen] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState('');
   const [isWarningModalOpen, setWarningModalOpen] = React.useState(false);
+  const [isDeleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = React.useState<string | null>(null);
   const [activeBrowserId, setActiveBrowserId] = React.useState('');
 
   const columns = useMemo(() => [
@@ -431,6 +435,32 @@ export const RecordingsTable = ({
     return filteredRows.slice(start, start + rowsPerPage);
   }, [filteredRows, page, rowsPerPage]);
 
+  const openDeleteConfirm = React.useCallback((id: string) => {
+     setPendingDeleteId(String(id));
+     setDeleteConfirmOpen(true);
+   }, []);
+
+  const confirmDeleteRecording = React.useCallback(async () => {
+    if (!pendingDeleteId) return;
+    const hasRuns = await checkRunsForRecording(pendingDeleteId);
+    if (hasRuns) {
+      notify('warning', t('recordingtable.notifications.delete_warning'));
+      setDeleteConfirmOpen(false);
+      setPendingDeleteId(null);
+      return;
+    }
+
+    const success = await deleteRecordingFromStorage(pendingDeleteId);
+    if (success) {
+      notify('success', t('recordingtable.notifications.delete_success'));
+      refetch();
+    }
+    setDeleteConfirmOpen(false);
+    setPendingDeleteId(null);
+  }, [pendingDeleteId, notify, t, refetch]);
+
+  const pendingRow = pendingDeleteId ? rows.find(r => String(r.id) === pendingDeleteId) : null;
+
   const handlers = useMemo(() => ({
     handleRunRecording,
     handleScheduleRecording,
@@ -439,19 +469,7 @@ export const RecordingsTable = ({
     handleEditRobot,
     handleDuplicateRobot,
     handleRetrainRobot,
-    handleDelete: async (id: string) => {
-      const hasRuns = await checkRunsForRecording(id);
-      if (hasRuns) {
-        notify('warning', t('recordingtable.notifications.delete_warning'));
-        return;
-      }
-
-      const success = await deleteRecordingFromStorage(id);
-      if (success) {
-        notify('success', t('recordingtable.notifications.delete_success'));
-        refetch();
-      }
-    }
+    handleDelete: async (id: string) => openDeleteConfirm(id)
   }), [handleRunRecording, handleScheduleRecording, handleIntegrateRecording, handleSettingsRecording, handleEditRobot, handleDuplicateRobot, handleRetrainRobot, notify, t, refetch]);
 
   return (
@@ -627,6 +645,33 @@ export const RecordingsTable = ({
             {t('recordingtable.modal.button')}
           </Button>
         </div>
+      </GenericModal>
+      <GenericModal
+        isOpen={isDeleteConfirmOpen}
+        onClose={() => { setDeleteConfirmOpen(false); setPendingDeleteId(null); }}
+        modalStyle={{ ...modalStyle, padding: 0, backgroundColor: 'transparent', width: 'auto', maxWidth: '520px' }}
+      >
+
+        <Box sx={{ padding: theme.spacing(3), borderRadius: 2, backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[900] : theme.palette.background.paper, color: theme.palette.text.primary, width: { xs: '90vw', sm: '460px', md: '420px' }, maxWidth: '90vw', boxSizing: 'border-box', mx: 'auto' }}>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+             {t('recordingtable.delete_confirm.title', { name: pendingRow?.name, defaultValue: 'Delete {{name}}?' })}
+          </Typography>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+             {t('recordingtable.delete_confirm.message', {
+               name: pendingRow?.name, 
+               defaultValue: 'Are you sure you want to delete the robot "{{name}}"?'
+             })}
+           </Typography>
+
+          <Box display="flex" justifyContent="flex-end" mt={2} gap={1}>
+            <Button onClick={() => { setDeleteConfirmOpen(false); setPendingDeleteId(null); }} variant="outlined">
+              {t('common.cancel', { defaultValue: 'Cancel' })}
+            </Button>
+            <Button onClick={confirmDeleteRecording} variant="contained" color="primary">
+              {t('common.delete', { defaultValue: 'Delete' })}
+            </Button>
+          </Box>
+        </Box>
       </GenericModal>
     </React.Fragment>
   );
