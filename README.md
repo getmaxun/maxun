@@ -52,7 +52,7 @@ Maxun lets you create custom robots which emulate user actions and extract data.
 ### Sponsors
 <table>
   <tr>
-    <td width="250">
+    <td width="270">
       <a href="https://app.cyberyozh.com/?utm_source=github&utm_medium=maxun" target="_blank">
         <img src="https://github.com/user-attachments/assets/470c793a-000c-4d78-b10e-f352195a70ec" /><br/>
         <b>CyberYozh App</b>
