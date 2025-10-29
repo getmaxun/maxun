@@ -27,8 +27,6 @@ Maxun lets you train a robot in 2 minutes and scrape the web on auto-pilot. Web 
 
 https://github.com/user-attachments/assets/c6baa75f-b950-482c-8d26-8a8b6c5382c3
 
-<img src="https://static.scarf.sh/a.png?x-pxid=c12a77cc-855e-4602-8a0f-614b2d0da56a" />
-
 ### Getting Started
 The simplest & fastest way to get started is to use the hosted version: https://app.maxun.dev. You can self-host if you like!
 
