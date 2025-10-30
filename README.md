@@ -50,9 +50,18 @@ Maxun lets you create custom robots which emulate user actions and extract data.
 ### Sponsors
 <table>
   <tr>
+  <td width="300">
+      <br/>
+      <a href="https://www.lambdatest.com/?utm_source=maxun&utm_medium=sponsor" target="_blank">
+        <img src="https://github.com/user-attachments/assets/904dd40e-0498-47dd-98f1-7fa6d318adb9" /><br/><br/>
+        <b>LambdaTest</b>
+      </a>
+      <br/>
+      <sub>GenAI-powered Quality Engineering Platform that empowers teams to test intelligently, smarter, and ship faster.</sub>
+    </td>
     <td width="280">
       <a href="https://app.cyberyozh.com/?utm_source=github&utm_medium=maxun" target="_blank">
-        <img src="https://github.com/user-attachments/assets/c0ae7929-003a-4e1e-b23b-d174ac0aba4f" /><br/>
+        <img src="https://github.com/user-attachments/assets/c0ae7929-003a-4e1e-b23b-d174ac0aba4f"  /><br/>
         <b>CyberYozh App</b>
       </a>
       <br/>
