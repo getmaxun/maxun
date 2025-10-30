@@ -50,7 +50,7 @@ Maxun lets you create custom robots which emulate user actions and extract data.
 ### Sponsors
 <table>
   <tr>
-  <td width="250">
+  <td width="229">
       <br/>
       <a href="https://www.lambdatest.com/?utm_source=maxun&utm_medium=sponsor" target="_blank">
         <img src="https://github.com/user-attachments/assets/904dd40e-0498-47dd-98f1-7fa6d318adb9" /><br/><br/>
