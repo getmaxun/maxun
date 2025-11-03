@@ -552,16 +552,49 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
     const screenshotInputs: JSX.Element[] = [];
     const listInputs: JSX.Element[] = [];
 
+    let textCount = 0;
+    let screenshotCount = 0;
+    let listCount = 0;
+
     robot.recording.workflow.forEach((pair, pairIndex) => {
       if (!pair.what) return;
 
       pair.what.forEach((action, actionIndex) => {
         if (!editableActions.has(String(action.action))) return;
 
-        const currentName =
+        let currentName =
           action.name ||
           (action.args && action.args[0] && typeof action.args[0] === 'object' && action.args[0].__name) ||
           '';
+
+        if (!currentName) {
+          switch (action.action) {
+            case 'scrapeSchema':
+              textCount++;
+              currentName = `Text ${textCount}`;
+              break;
+            case 'screenshot':
+              screenshotCount++;
+              currentName = `Screenshot ${screenshotCount}`;
+              break;
+            case 'scrapeList':
+              listCount++;
+              currentName = `List ${listCount}`;
+              break;
+          }
+        } else {
+          switch (action.action) {
+            case 'scrapeSchema':
+              textCount++;
+              break;
+            case 'screenshot':
+              screenshotCount++;
+              break;
+            case 'scrapeList':
+              listCount++;
+              break;
+          }
+        }
 
         const textField = (
           <TextField
@@ -587,6 +620,34 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         }
       });
     });
+
+    if (textInputs.length === 1 && textCount === 1) {
+      robot.recording.workflow.forEach((pair, pairIndex) => {
+        if (!pair.what) return;
+
+        pair.what.forEach((action, actionIndex) => {
+          if (action.action === 'scrapeSchema') {
+            const existingName =
+              action.name ||
+              (action.args && action.args[0] && typeof action.args[0] === 'object' && action.args[0].__name) ||
+              '';
+
+            const currentName = !existingName ? 'Texts' : existingName;
+
+            textInputs[0] = (
+              <TextField
+                key={`action-name-${pairIndex}-${actionIndex}`}
+                type="text"
+                value={currentName}
+                onChange={(e) => handleActionNameChange(pairIndex, actionIndex, e.target.value)}
+                style={{ marginBottom: '12px' }}
+                fullWidth
+              />
+            );
+          }
+        });
+      });
+    }
 
     const hasAnyInputs = textInputs.length > 0 || screenshotInputs.length > 0 || listInputs.length > 0;
     if (!hasAnyInputs) return null;

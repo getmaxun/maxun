@@ -564,14 +564,15 @@ class ClientSelectorGenerator {
       return true;
     }
 
-    if (element.children.length > 0) {
-      return false;
+    const text = (element.textContent || "").trim();
+    const hasVisibleText = text.length > 0;
+
+    if (hasVisibleText || element.querySelector("svg")) {
+      return true;
     }
 
-    const text = (element.textContent || "").trim();
-
-    if (text.length > 0) {
-      return true;
+    if (element.children.length > 0) {
+      return false;
     }
 
     return false;
