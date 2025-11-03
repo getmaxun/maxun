@@ -510,27 +510,36 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
           {t("List Limits")}
         </Typography>
 
-        {scrapeListLimits.map((limitInfo, index) => (
-          <TextField
-            key={`limit-${limitInfo.pairIndex}-${limitInfo.actionIndex}`}
-            label={`${t("List Limit")} ${index + 1}`}
-            type="number"
-            value={limitInfo.currentLimit || ""}
-            onChange={(e) => {
-              const value = parseInt(e.target.value, 10);
-              if (value >= 1) {
-                handleLimitChange(
-                  limitInfo.pairIndex,
-                  limitInfo.actionIndex,
-                  limitInfo.argIndex,
-                  value
-                );
-              }
-            }}
-            inputProps={{ min: 1 }}
-            style={{ marginBottom: "20px" }}
-          />
-        ))}
+        {scrapeListLimits.map((limitInfo, index) => {
+          // Get the corresponding scrapeList action to extract its name
+          const scrapeListAction = robot?.recording?.workflow?.[limitInfo.pairIndex]?.what?.[limitInfo.actionIndex];
+          const actionName = 
+            scrapeListAction?.name ||
+            (scrapeListAction?.args?.[0]?.__name) ||
+            `List Limit ${index + 1}`;
+
+          return (
+            <TextField
+              key={`limit-${limitInfo.pairIndex}-${limitInfo.actionIndex}`}
+              label={actionName}
+              type="number"
+              value={limitInfo.currentLimit || ""}
+              onChange={(e) => {
+                const value = parseInt(e.target.value, 10);
+                if (value >= 1) {
+                  handleLimitChange(
+                    limitInfo.pairIndex,
+                    limitInfo.actionIndex,
+                    limitInfo.argIndex,
+                    value
+                  );
+                }
+              }}
+              inputProps={{ min: 1 }}
+              style={{ marginBottom: "20px" }}
+            />
+          );
+        })}
       </>
     );
   };
