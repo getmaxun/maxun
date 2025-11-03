@@ -201,6 +201,11 @@ export class RemoteBrowser {
     private networkRequestTimeout: NodeJS.Timeout | null = null;
     private pendingNetworkRequests: string[] = [];
     private readonly NETWORK_QUIET_PERIOD = 8000;
+    private readonly INITIAL_LOAD_QUIET_PERIOD = 3000;
+    private networkWaitStartTime: number = 0;
+    private progressInterval: NodeJS.Timeout | null = null;
+    private hasShownInitialLoader: boolean = false;
+    private isInitialLoadInProgress: boolean = false;
 
     /**
      * Initializes a new instances of the {@link Generator} and {@link WorkflowInterpreter} classes and
@@ -432,17 +437,19 @@ export class RemoteBrowser {
       if (!this.currentPage) return;
 
       this.currentPage.on("domcontentloaded", async () => {
-        logger.info("DOM content loaded - triggering snapshot");
-        await this.makeAndEmitDOMSnapshot();
+        if (!this.isInitialLoadInProgress) {
+          logger.info("DOM content loaded - triggering snapshot");
+          await this.makeAndEmitDOMSnapshot();
+        }
       });
 
       this.currentPage.on("response", async (response) => {
         const url = response.url();
-        if (
-          response.request().resourceType() === "document" ||
-          url.includes("api/") ||
-          url.includes("ajax")
-        ) {
+        const isDocumentRequest = response.request().resourceType() === "document";
+
+        if (!this.hasShownInitialLoader && isDocumentRequest && !url.includes("about:blank")) {
+          this.hasShownInitialLoader = true;
+          this.isInitialLoadInProgress = true;
           this.pendingNetworkRequests.push(url);
 
           if (this.networkRequestTimeout) {
@@ -450,21 +457,51 @@ export class RemoteBrowser {
             this.networkRequestTimeout = null;
           }
 
+          if (this.progressInterval) {
+            clearInterval(this.progressInterval);
+            this.progressInterval = null;
+          }
+
+          this.networkWaitStartTime = Date.now();
+          this.progressInterval = setInterval(() => {
+            const elapsed = Date.now() - this.networkWaitStartTime;
+            const navigationProgress = Math.min((elapsed / this.INITIAL_LOAD_QUIET_PERIOD) * 40, 35);
+            const totalProgress = 60 + navigationProgress;
+            this.emitLoadingProgress(totalProgress, this.pendingNetworkRequests.length);
+          }, 500);
+
           logger.debug(
-            `Network request received: ${url}. Total pending: ${this.pendingNetworkRequests.length}`
+            `Initial load network request received: ${url}. Using ${this.INITIAL_LOAD_QUIET_PERIOD}ms quiet period`
           );
 
           this.networkRequestTimeout = setTimeout(async () => {
             logger.info(
-              `Network quiet period reached. Processing ${this.pendingNetworkRequests.length} requests`
+              `Initial load network quiet period reached (${this.INITIAL_LOAD_QUIET_PERIOD}ms)`
             );
+
+            if (this.progressInterval) {
+              clearInterval(this.progressInterval);
+              this.progressInterval = null;
+            }
+
+            this.emitLoadingProgress(100, this.pendingNetworkRequests.length);
 
             this.pendingNetworkRequests = [];
             this.networkRequestTimeout = null;
+            this.isInitialLoadInProgress = false;
 
             await this.makeAndEmitDOMSnapshot();
-          }, this.NETWORK_QUIET_PERIOD);
+          }, this.INITIAL_LOAD_QUIET_PERIOD);
         }
+      });
+    }
+
+    private emitLoadingProgress(progress: number, pendingRequests: number): void {
+      this.socket.emit("domLoadingProgress", {
+        progress: Math.round(progress),
+        pendingRequests,
+        userId: this.userId,
+        timestamp: Date.now(),
       });
     }
 
@@ -521,7 +558,13 @@ export class RemoteBrowser {
         const MAX_RETRIES = 3;
         let retryCount = 0;
         let success = false;
-    
+
+        this.socket.emit("dom-snapshot-loading", {
+          userId: this.userId,
+          timestamp: Date.now(),
+        });
+        this.emitLoadingProgress(0, 0);
+
         while (!success && retryCount < MAX_RETRIES) {
             try {
                 this.browser = <Browser>(await chromium.launch({
@@ -545,7 +588,9 @@ export class RemoteBrowser {
                 if (!this.browser || this.browser.isConnected() === false) {
                     throw new Error('Browser failed to launch or is not connected');
                 }
-                
+
+                this.emitLoadingProgress(20, 0);
+
                 const proxyConfig = await getDecryptedProxyConfig(userId);
                 let proxyOptions: { server: string, username?: string, password?: string } = { server: '' };
                 
@@ -623,6 +668,8 @@ export class RemoteBrowser {
                 
                 this.currentPage = await this.context.newPage();
 
+                this.emitLoadingProgress(40, 0);
+
                 await this.setupPageEventListeners(this.currentPage);
     
                 const viewportSize = await this.currentPage.viewportSize();
@@ -645,7 +692,9 @@ export class RemoteBrowser {
                     // Still need to set up the CDP session even if blocker fails
                     this.client = await this.currentPage.context().newCDPSession(this.currentPage);
                 }
-                
+
+                this.emitLoadingProgress(60, 0);
+
                 success = true;
                 logger.log('debug', `Browser initialized successfully for user ${userId}`);
             } catch (error: any) {
@@ -1520,9 +1569,6 @@ export class RemoteBrowser {
 
         this.isDOMStreamingActive = true;
         logger.info("DOM streaming started successfully");
-
-        // Initial DOM snapshot
-        await this.makeAndEmitDOMSnapshot();
 
         this.setupScrollEventListener();
         this.setupPageChangeListeners();
