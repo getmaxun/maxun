@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Button,
@@ -17,6 +17,7 @@ import {
 import { ContentCopy, Visibility, VisibilityOff, Delete } from '@mui/icons-material';
 import styled from 'styled-components';
 import axios from 'axios';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { apiUrl } from '../../apiConfig';
 import { useTranslation } from 'react-i18next';
@@ -31,55 +32,50 @@ const Container = styled(Box)`
 
 const ApiKeyManager = () => {
   const { t } = useTranslation();
-  const [apiKey, setApiKey] = useState<string | null>(null);
   const [apiKeyName, setApiKeyName] = useState<string>(t('apikey.default_name'));
-  const [loading, setLoading] = useState<boolean>(true);
   const [showKey, setShowKey] = useState<boolean>(false);
   const [copySuccess, setCopySuccess] = useState<boolean>(false);
   const { notify } = useGlobalInfoStore();
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const fetchApiKey = async () => {
-      try {
-        const { data } = await axios.get(`${apiUrl}/auth/api-key`);
-        setApiKey(data.api_key);
-      } catch (error: any) {
-        notify('error', t('apikey.notifications.fetch_error', { error: error.message }));
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Fetch API key with React Query
+  const { data: apiKey, isLoading } = useQuery({
+    queryKey: ['api-key'],
+    queryFn: async () => {
+      const { data } = await axios.get(`${apiUrl}/auth/api-key`);
+      return data.api_key as string | null;
+    },
+    staleTime: 10 * 60 * 1000, // 10 minutes
+  });
 
-    fetchApiKey();
-
-  }, []);
-
-  const generateApiKey = async () => {
-    setLoading(true);
-    try {
+  // Generate mutation
+  const { mutate: generateApiKey, isPending: isGenerating } = useMutation({
+    mutationFn: async () => {
       const { data } = await axios.post(`${apiUrl}/auth/generate-api-key`);
-      setApiKey(data.api_key);
-
+      return data.api_key as string;
+    },
+    onSuccess: (newKey) => {
+      queryClient.setQueryData(['api-key'], newKey);
       notify('success', t('apikey.notifications.generate_success'));
-    } catch (error: any) {
+    },
+    onError: (error: any) => {
       notify('error', t('apikey.notifications.generate_error', { error: error.message }));
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+  });
 
-  const deleteApiKey = async () => {
-    setLoading(true);
-    try {
+  // Delete mutation
+  const { mutate: deleteApiKey, isPending: isDeleting } = useMutation({
+    mutationFn: async () => {
       await axios.delete(`${apiUrl}/auth/delete-api-key`);
-      setApiKey(null);
+    },
+    onSuccess: () => {
+      queryClient.setQueryData(['api-key'], null);
       notify('success', t('apikey.notifications.delete_success'));
-    } catch (error: any) {
+    },
+    onError: (error: any) => {
       notify('error', t('apikey.notifications.delete_error', { error: error.message }));
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+  });
 
   const copyToClipboard = () => {
     if (apiKey) {
@@ -90,7 +86,7 @@ const ApiKeyManager = () => {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Box
         sx={{
@@ -155,7 +151,7 @@ const ApiKeyManager = () => {
                     </IconButton>
                   </Tooltip>
                   <Tooltip title={t('apikey.actions.delete')}>
-                    <IconButton onClick={deleteApiKey} color="error">
+                    <IconButton onClick={() => deleteApiKey()} color="error" disabled={isDeleting}>
                       <Delete />
                     </IconButton>
                   </Tooltip>
@@ -167,7 +163,7 @@ const ApiKeyManager = () => {
       ) : (
         <>
           <Typography>{t('apikey.no_key_message')}</Typography>
-          <Button onClick={generateApiKey} variant="contained" color="primary" sx={{ marginTop: '20px' }}>
+          <Button onClick={() => generateApiKey()} variant="contained" color="primary" sx={{ marginTop: '20px' }} disabled={isGenerating}>
             {t('apikey.generate_button')}
           </Button>
         </>
