@@ -354,6 +354,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
   useEffect(() => {
     let shouldOpenDrawer = false;
+    let switchToListTab = false;
     let switchToTextTab = false;
     let switchToScreenshotTab = false;
 
@@ -362,6 +363,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
       if (captureListData.length > lastListDataLength.current) {
         userClosedDrawer.current = false;
         shouldOpenDrawer = true;
+        switchToListTab = true;
       }
       lastListDataLength.current = captureListData.length;
     }
@@ -386,18 +388,31 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
       lastScreenshotDataLength.current = screenshotData.length;
     }
 
+    const getLatestCaptureType = () => {
+      for (let i = browserSteps.length - 1; i >= 0; i--) {
+        const type = browserSteps[i].type;
+        if (type === "list" || type === "text" || type === "screenshot") {
+          return type;
+        }
+      }
+      return null;
+    };
+
     if (shouldOpenDrawer) {
       setIsOpen(true);
-      if (switchToTextTab) {
-        setTimeout(() => {
-          const textTabIndex = getAvailableTabs().findIndex(tab => tab.id === 'captureText');
-          if (textTabIndex !== -1) {
-            setActiveTab(textTabIndex);
-          }
-        }, 100);
-      } else if (switchToScreenshotTab) {
-        setTimeout(() => {
-          const screenshotTabIndex = getAvailableTabs().findIndex(tab => tab.id === 'captureScreenshot');
+      const latestType = getLatestCaptureType();
+
+      setTimeout(() => {
+        if (latestType === "text") {
+          const idx = getAvailableTabs().findIndex(t => t.id === "captureText");
+          if (idx !== -1) setActiveTab(idx);
+
+        } else if (latestType === "list") {
+          const idx = getAvailableTabs().findIndex(t => t.id === "captureList");
+          if (idx !== -1) setActiveTab(idx);
+
+        } else if (latestType === "screenshot") {
+          const screenshotTabIndex = getAvailableTabs().findIndex(tab => tab.id === "captureScreenshot");
           if (screenshotTabIndex !== -1) {
             setActiveTab(screenshotTabIndex);
             const latestIndex = screenshotData.length - 1;
@@ -406,7 +421,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
             if (!autoFocusedScreenshotIndices.current.has(latestIndex)) {
               autoFocusedScreenshotIndices.current.add(latestIndex);
               setTimeout(() => {
-                const screenshotSteps = browserSteps.filter(step => step.type === 'screenshot') as Array<{ id: number; name?: string; type: 'screenshot' }>;
+                const screenshotSteps = browserSteps.filter(step => step.type === "screenshot");
                 const latestScreenshotStep = screenshotSteps[latestIndex];
                 if (latestScreenshotStep) {
                   const screenshotName = latestScreenshotStep.name || `Screenshot ${latestIndex + 1}`;
@@ -415,8 +430,8 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
               }, 300);
             }
           }
-        }, 100);
-      }
+        }
+      }, 100);
     }
   }, [hasScrapeListAction, hasScrapeSchemaAction, hasScreenshotAction, captureListData, captureTextData, screenshotData, setIsOpen, getText]);
 
