@@ -116,6 +116,10 @@ export const PageWrapper = () => {
                 path="/register"
                 element={<Register />}
               />
+              <Route
+                path="/recording-setup"
+                element={<div />}
+              />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </React.Fragment>
