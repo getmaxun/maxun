@@ -182,7 +182,7 @@ export const RobotConfigPage: React.FC<RobotConfigPageProps> = ({
                   boxShadow: 'none',
                 }}
               >
-                {isLoading ? t("buttons.saving") : (saveButtonText || t("buttons.save"))}
+                {isLoading ? t("Saving...") : (saveButtonText || t("buttons.save"))}
               </Button>
             )}
           </Box>
