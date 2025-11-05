@@ -13,6 +13,7 @@ import UserRoute from '../routes/userRoute';
 import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { NotFoundPage } from '../components/dashboard/NotFound';
 import RobotCreate from '../components/robot/pages/RobotCreate';
+import { Box } from '@mui/material';
 
 export const PageWrapper = () => {
   const [open, setOpen] = useState(false);
@@ -90,34 +91,48 @@ export const PageWrapper = () => {
       <AuthProvider>
         <SocketProvider>
           <React.Fragment>
-            {/* {!browserId && location.pathname !== '/recording' && <NavBar recordingName={recordingName} isRecording={!!browserId} />} */}
-            {location.pathname !== '/recording' && <NavBar recordingName={recordingName} isRecording={false} />}
-            <Routes>
-              <Route element={<UserRoute />}>
-                <Route path="/" element={<Navigate to="/robots" replace />} />
-                <Route path="/robots/create" element={<RobotCreate />} />
-                <Route path="/robots/*" element={<MainPage handleEditRecording={handleEditRecording} initialContent="robots" />} />
-                <Route path="/runs/*" element={<MainPage handleEditRecording={handleEditRecording} initialContent="runs" />} />
-                <Route path="/proxy" element={<MainPage handleEditRecording={handleEditRecording} initialContent="proxy" />} />
-                <Route path="/apikey" element={<MainPage handleEditRecording={handleEditRecording} initialContent="apikey" />} />
-              </Route>
-              <Route element={<UserRoute />}>
-                <Route path="/recording" element={
-                  <BrowserDimensionsProvider>
-                    <RecordingPage recordingName={recordingName} />
-                  </BrowserDimensionsProvider>
-                } />
-              </Route>
-              <Route
-                path="/login"
-                element={<Login />}
-              />
-              <Route
-                path="/register"
-                element={<Register />}
-              />
-              <Route path="*" element={<NotFoundPage />} />
-            </Routes>
+            {/* Sticky NavBar - only show on non-recording pages */}
+            {location.pathname !== '/recording' && (
+              <Box sx={{ 
+                position: 'sticky', 
+                top: 0, 
+                zIndex: 1100,
+                backgroundColor: 'background.paper' 
+              }}>
+                <NavBar recordingName={recordingName} isRecording={false} />
+              </Box>
+            )}
+            <Box sx={{ 
+              display: 'flex', 
+              minHeight: location.pathname !== '/recording' ? 'calc(100vh - 64px)' : '100vh' 
+            }}>
+              <Routes>
+                <Route element={<UserRoute />}>
+                  <Route path="/" element={<Navigate to="/robots" replace />} />
+                  <Route path="/robots/create" element={<RobotCreate />} />
+                  <Route path="/robots/*" element={<MainPage handleEditRecording={handleEditRecording} initialContent="robots" />} />
+                  <Route path="/runs/*" element={<MainPage handleEditRecording={handleEditRecording} initialContent="runs" />} />
+                  <Route path="/proxy" element={<MainPage handleEditRecording={handleEditRecording} initialContent="proxy" />} />
+                  <Route path="/apikey" element={<MainPage handleEditRecording={handleEditRecording} initialContent="apikey" />} />
+                </Route>
+                <Route element={<UserRoute />}>
+                  <Route path="/recording" element={
+                    <BrowserDimensionsProvider>
+                      <RecordingPage recordingName={recordingName} />
+                    </BrowserDimensionsProvider>
+                  } />
+                </Route>
+                <Route
+                  path="/login"
+                  element={<Login />}
+                />
+                <Route
+                  path="/register"
+                  element={<Register />}
+                />
+                <Route path="*" element={<NotFoundPage />} />
+              </Routes>
+            </Box>
           </React.Fragment>
         </SocketProvider>
       </AuthProvider>
