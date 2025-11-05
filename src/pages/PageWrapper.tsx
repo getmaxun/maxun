@@ -13,6 +13,7 @@ import UserRoute from '../routes/userRoute';
 import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { NotFoundPage } from '../components/dashboard/NotFound';
 import RobotCreate from '../components/robot/pages/RobotCreate';
+import { Box } from '@mui/material';
 
 export const PageWrapper = () => {
   const [open, setOpen] = useState(false);
@@ -84,40 +85,57 @@ export const PageWrapper = () => {
       }
     }
   }, [location.pathname, navigate, setBrowserId, setRecordingId, setRecordingName, setRecordingUrl]);
+
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
+  const isRecordingPage = location.pathname === '/recording';
   
   return (
     <div>
       <AuthProvider>
         <SocketProvider>
           <React.Fragment>
-            {/* {!browserId && location.pathname !== '/recording' && <NavBar recordingName={recordingName} isRecording={!!browserId} />} */}
-            {location.pathname !== '/recording' && <NavBar recordingName={recordingName} isRecording={false} />}
-            <Routes>
-              <Route element={<UserRoute />}>
-                <Route path="/" element={<Navigate to="/robots" replace />} />
-                <Route path="/robots/create" element={<RobotCreate />} />
-                <Route path="/robots/*" element={<MainPage handleEditRecording={handleEditRecording} initialContent="robots" />} />
-                <Route path="/runs/*" element={<MainPage handleEditRecording={handleEditRecording} initialContent="runs" />} />
-                <Route path="/proxy" element={<MainPage handleEditRecording={handleEditRecording} initialContent="proxy" />} />
-                <Route path="/apikey" element={<MainPage handleEditRecording={handleEditRecording} initialContent="apikey" />} />
-              </Route>
-              <Route element={<UserRoute />}>
-                <Route path="/recording" element={
-                  <BrowserDimensionsProvider>
-                    <RecordingPage recordingName={recordingName} />
-                  </BrowserDimensionsProvider>
-                } />
-              </Route>
-              <Route
-                path="/login"
-                element={<Login />}
-              />
-              <Route
-                path="/register"
-                element={<Register />}
-              />
-              <Route path="*" element={<NotFoundPage />} />
-            </Routes>
+            {/* Show NavBar only for main app pages, not for recording pages */}
+            {!isRecordingPage && (
+              <Box sx={{ 
+                position: 'sticky', 
+                top: 0, 
+                zIndex: 1100,
+                backgroundColor: 'background.paper'
+              }}>
+                <NavBar recordingName={recordingName} isRecording={false} />
+              </Box>
+            )}
+            <Box sx={{ 
+              display: isAuthPage || isRecordingPage ? 'block' : 'flex', 
+              minHeight: isAuthPage || isRecordingPage ? '100vh' : 'calc(100vh - 64px)'
+            }}>
+              <Routes>
+                <Route element={<UserRoute />}>
+                  <Route path="/" element={<Navigate to="/robots" replace />} />
+                  <Route path="/robots/create" element={<RobotCreate />} />
+                  <Route path="/robots/*" element={<MainPage handleEditRecording={handleEditRecording} initialContent="robots" />} />
+                  <Route path="/runs/*" element={<MainPage handleEditRecording={handleEditRecording} initialContent="runs" />} />
+                  <Route path="/proxy" element={<MainPage handleEditRecording={handleEditRecording} initialContent="proxy" />} />
+                  <Route path="/apikey" element={<MainPage handleEditRecording={handleEditRecording} initialContent="apikey" />} />
+                </Route>
+                <Route element={<UserRoute />}>
+                  <Route path="/recording" element={
+                    <BrowserDimensionsProvider>
+                      <RecordingPage recordingName={recordingName} />
+                    </BrowserDimensionsProvider>
+                  } />
+                </Route>
+                <Route
+                  path="/login"
+                  element={<Login />}
+                />
+                <Route
+                  path="/register"
+                  element={<Register />}
+                />
+                <Route path="*" element={<NotFoundPage />} />
+              </Routes>
+            </Box>
           </React.Fragment>
         </SocketProvider>
       </AuthProvider>
