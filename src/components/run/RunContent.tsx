@@ -87,8 +87,8 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     const hasOldFormat = !row.serializableOutput.scrapeSchema && !row.serializableOutput.scrapeList && Object.keys(row.serializableOutput).length > 0;
 
     if (hasLegacySchema || hasLegacyList || hasOldFormat) {
-      setIsLegacyData(true);
       processLegacyData(row.serializableOutput);
+      setIsLegacyData(false);
       return;
     }
 
@@ -154,11 +154,12 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
       const data = legacyOutput[key];
 
       if (Array.isArray(data)) {
-        const isNestedArray = data.length > 0 && Array.isArray(data[0]);
+        const firstNonNullElement = data.find(item => item !== null && item !== undefined);
+        const isNestedArray = firstNonNullElement && Array.isArray(firstNonNullElement);
 
         if (isNestedArray) {
           data.forEach((subArray, index) => {
-            if (Array.isArray(subArray) && subArray.length > 0) {
+            if (subArray !== null && subArray !== undefined && Array.isArray(subArray) && subArray.length > 0) {
               const filteredData = subArray.filter(row =>
                 row && typeof row === 'object' && Object.values(row).some(value => value !== undefined && value !== "")
               );
@@ -171,7 +172,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
           });
         } else {
           const filteredData = data.filter(row =>
-            row && typeof row === 'object' && Object.values(row).some(value => value !== undefined && value !== "")
+            row && typeof row === 'object' && !Array.isArray(row) && Object.values(row).some(value => value !== undefined && value !== "")
           );
 
           if (filteredData.length > 0) {
@@ -208,7 +209,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
     if (Array.isArray(schemaOutput)) {
       const filteredData = schemaOutput.filter(row =>
-        row && Object.values(row).some(value => value !== undefined && value !== "")
+        row && typeof row === 'object' && Object.values(row).some(value => value !== undefined && value !== "")
       );
 
       if (filteredData.length > 0) {
@@ -231,7 +232,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
       const data = schemaOutput[key];
       if (Array.isArray(data)) {
         const filteredData = data.filter(row =>
-          Object.values(row).some(value => value !== undefined && value !== "")
+          row && typeof row === 'object' && Object.values(row).some(value => value !== undefined && value !== "")
         );
 
         dataByKey[key] = filteredData;
@@ -272,7 +273,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
         const tableData = scrapeListData[key];
         if (Array.isArray(tableData) && tableData.length > 0) {
           const filteredData = tableData.filter(row =>
-            Object.values(row).some(value => value !== undefined && value !== "")
+            row && typeof row === 'object' && Object.values(row).some(value => value !== undefined && value !== "")
           );
           if (filteredData.length > 0) {
             tablesList.push(filteredData);
