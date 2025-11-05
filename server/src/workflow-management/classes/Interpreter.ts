@@ -526,21 +526,6 @@ export class WorkflowInterpreter {
 
           let actionName = this.currentActionName || "";
 
-          if (!actionName) {
-            if (!Array.isArray(data) && Object.keys(data).length === 1) {
-              const soleKey = Object.keys(data)[0];
-              const soleValue = data[soleKey];
-              if (Array.isArray(soleValue) || typeof soleValue === "object") {
-                actionName = soleKey;
-                data = soleValue;
-              }
-            }
-          }
-
-          if (!actionName) {
-            actionName = "Unnamed Action";
-          }
-
           const flattened = Array.isArray(data)
             ? data
             : (data?.List ?? (data && typeof data === 'object' ? Object.values(data).flat?.() ?? data : []));
