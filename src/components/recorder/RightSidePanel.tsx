@@ -534,9 +534,24 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const isDarkMode = theme.darkMode;
 
   return (
-    <Paper sx={{ height: panelHeight, width: 'auto', alignItems: "center", background: 'inherit' }} id="browser-actions" elevation={0}>
+    <Paper sx={{ height: panelHeight, width: 'auto', alignItems: "center", background: 'inherit', overflow: 'hidden' }} id="browser-actions" elevation={0}>
       <ActionDescriptionBox isDarkMode={isDarkMode} />
-      <Box display="flex" flexDirection="column" gap={2} style={{ margin: '13px' }}>
+      <Box
+        display="flex"
+        flexDirection="column"
+        gap={2}
+        style={{ margin: '13px' }}
+        sx={{
+          height: 'calc(100% - 26px)',
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          '&::-webkit-scrollbar': {
+            display: 'none'
+          },
+          msOverflowStyle: 'none',
+          scrollbarWidth: 'none'
+        }}
+      >
         {!isAnyActionActive && (
           <>
             {showCaptureList && (
