@@ -26,8 +26,8 @@ const Container = styled(Box)`
   flex-direction: column;
   align-items: center;
   margin-top: 50px;
-  margin-left: 50px;
-  margin-right: 50px;
+  margin-left: 70px;
+  margin-right: 70px;
 `;
 
 const ApiKeyManager = () => {
