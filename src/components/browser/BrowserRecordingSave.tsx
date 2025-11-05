@@ -143,7 +143,8 @@ const BrowserRecordingSave = () => {
           overflow: 'hidden',
           display: 'flex',
           justifyContent: 'space-between',
-          height: "48px"
+          height: "48px",
+          marginLeft: '10px'
         }}>
           <Button
             onClick={() => setOpenDiscardModal(true)}
