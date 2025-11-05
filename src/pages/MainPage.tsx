@@ -320,20 +320,18 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
 
 return (
   <Box sx={{ display: 'flex', minHeight: 'calc(100vh - 64px)', width: '100%' }}>
-    {/* Sticky Sidebar */}
     <Box sx={{ 
       width: 230,
       flexShrink: 0,
       position: 'sticky',
-      top: 64, // Height of NavBar
+      top: 64,
       height: 'calc(100vh - 64px)', 
-      overflowY: 'auto', // Allow scrolling if menu content is too long
+      overflowY: 'auto',
       zIndex: 1000 
     }}>
       <MainMenu value={content} handleChangeContent={setContent} />
     </Box>
     
-    {/* Scrollable Content Area - Fills remaining space */}
     <Box sx={{ 
       flex: 1,
       minWidth: 0, 
