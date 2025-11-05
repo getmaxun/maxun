@@ -85,26 +85,29 @@ export const PageWrapper = () => {
       }
     }
   }, [location.pathname, navigate, setBrowserId, setRecordingId, setRecordingName, setRecordingUrl]);
+
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
+  const isRecordingPage = location.pathname === '/recording';
   
   return (
     <div>
       <AuthProvider>
         <SocketProvider>
           <React.Fragment>
-            {/* Sticky NavBar - only show on non-recording pages */}
-            {location.pathname !== '/recording' && (
+            {/* Show NavBar only for main app pages, not for recording pages */}
+            {!isRecordingPage && (
               <Box sx={{ 
                 position: 'sticky', 
                 top: 0, 
                 zIndex: 1100,
-                backgroundColor: 'background.paper' 
+                backgroundColor: 'background.paper'
               }}>
                 <NavBar recordingName={recordingName} isRecording={false} />
               </Box>
             )}
             <Box sx={{ 
-              display: 'flex', 
-              minHeight: location.pathname !== '/recording' ? 'calc(100vh - 64px)' : '100vh' 
+              display: isAuthPage || isRecordingPage ? 'block' : 'flex', 
+              minHeight: isAuthPage || isRecordingPage ? '100vh' : 'calc(100vh - 64px)'
             }}>
               <Routes>
                 <Route element={<UserRoute />}>
