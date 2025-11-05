@@ -55,7 +55,7 @@ export const PageWrapper = () => {
     const sessionParam = urlParams.get('session');
     const storedSessionId = getTabState('recordingSessionId');
     const storedRecordingUrl = getTabState('recordingUrl');
-    
+
     if (location.pathname === '/recording-setup' && sessionParam && sessionParam === storedSessionId) {
       setBrowserId('new-recording');
       setRecordingName('');
@@ -67,14 +67,14 @@ export const PageWrapper = () => {
 
       navigate('/recording');
     }
-    else if (location.pathname === '/recording' || 
-           (getTabState('nextTabIsRecording') === 'true' && sessionParam === storedSessionId)) {
+    else if (location.pathname === '/recording' ||
+      (getTabState('nextTabIsRecording') === 'true' && sessionParam === storedSessionId)) {
       setIsRecordingMode(true);
-      
+
       if (location.pathname !== '/recording') {
         navigate('/recording');
       }
-      
+
       window.sessionStorage.removeItem('nextTabIsRecording');
     } else if (tabMode === 'main') {
       console.log('Tab is in main application mode');
@@ -88,7 +88,7 @@ export const PageWrapper = () => {
 
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
   const isRecordingPage = location.pathname === '/recording';
-  
+
   return (
     <div>
       <AuthProvider>
@@ -96,18 +96,18 @@ export const PageWrapper = () => {
           <React.Fragment>
             {/* Show NavBar only for main app pages, not for recording pages */}
             {!isRecordingPage && (
-              <Box sx={{ 
-                position: 'sticky', 
-                top: 0, 
+              <Box sx={{
+                position: 'sticky',
+                top: 0,
                 zIndex: 1100,
                 backgroundColor: 'background.paper'
               }}>
                 <NavBar recordingName={recordingName} isRecording={false} />
               </Box>
             )}
-            <Box sx={{ 
-              display: isAuthPage || isRecordingPage ? 'block' : 'flex', 
-              minHeight: isAuthPage || isRecordingPage ? '100vh' : 'calc(100vh - 64px)'
+            <Box sx={{
+              display: isAuthPage ? 'block' : 'flex',
+              minHeight: isAuthPage ? '100vh' : 'calc(100vh - 64px)'
             }}>
               <Routes>
                 <Route element={<UserRoute />}>
