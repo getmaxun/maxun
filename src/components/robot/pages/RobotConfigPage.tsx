@@ -122,7 +122,7 @@ export const RobotConfigPage: React.FC<RobotConfigPageProps> = ({
         flexDirection: 'column',
         minHeight: 0,
         mt: 2,
-        mb: 3,
+        mb: 5,
       }}>
         {children}
       </Box>
