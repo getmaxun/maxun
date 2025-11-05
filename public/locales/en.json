@@ -580,7 +580,7 @@
       "buttons": {
         "stop": "Stop"
       },
-      "loading": "Loading data...",
+      "loading": "Extracting data...",
       "empty_output": "No output data available",
       "captured_data": {
         "title": "Captured Data",
