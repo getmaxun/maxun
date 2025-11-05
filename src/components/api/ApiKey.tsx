@@ -140,8 +140,8 @@ const ApiKeyManager = () => {
               <TableRow>
                 <TableCell>{apiKeyName}</TableCell>
                 <TableCell>
-                  <Box sx={{ fontFamily: 'monospace', width: '10ch' }}>
-                    {showKey ? `${apiKey?.substring(0, 20)}...` : '***************'}
+                  <Box sx={{ fontFamily: 'monospace', width: '20ch' }}>
+                    {showKey ? `${apiKey?.substring(0, 10)}...` : '**********'}
                   </Box>
                 </TableCell>
                 <TableCell>
