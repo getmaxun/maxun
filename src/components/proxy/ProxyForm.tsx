@@ -156,17 +156,17 @@ const ProxyForm: React.FC = () => {
     }, []);
 
     return (
-        <Box sx={{ 
-            display: 'flex', 
-            gap: 4, 
+        <Box sx={{
+            display: 'flex',
+            gap: 4,
             p: 5,
             width: '100%',
             maxWidth: '100%',
             boxSizing: 'border-box'
         }}>
-            <Box sx={{ 
+            <Box sx={{
                 flex: 1,
-                minWidth: 0, 
+                minWidth: 0,
                 maxWidth: 600
             }}>
                 <Typography variant="h6" gutterBottom component="div">
@@ -269,9 +269,9 @@ const ProxyForm: React.FC = () => {
             </Box>
 
             {/* Instructions Section */}
-            <Box sx={{ 
+            <Box sx={{
                 flex: 1,
-                minWidth: 0, 
+                minWidth: 0,
                 maxWidth: 600
             }}>
                 <Alert severity="info" sx={{ height: 'auto', minHeight: 250 }}>
