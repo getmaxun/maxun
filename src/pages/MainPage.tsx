@@ -322,7 +322,7 @@ return (
   <Box sx={{ display: 'flex', minHeight: 'calc(100vh - 64px)', width: '100%' }}>
     {/* Sticky Sidebar */}
     <Box sx={{ 
-      width: 250,
+      width: 230,
       flexShrink: 0,
       position: 'sticky',
       top: 64, // Height of NavBar
