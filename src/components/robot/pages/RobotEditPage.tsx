@@ -436,15 +436,6 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         // update the standard name field
         action.name = newName;
 
-        // also update legacy __name location if present (args[0].__name)
-        if (action.args && action.args.length > 0 && typeof action.args[0] === 'object' && action.args[0] !== null && '__name' in action.args[0]) {
-          try {
-            action.args[0] = { ...action.args[0], __name: newName };
-          } catch (e) {
-            console.error('Failed to update legacy __name field:', e);
-          }
-        }
-
         updatedWorkflow[pairIndex].what[actionIndex] = action;
       }
 
@@ -515,7 +506,6 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
           const scrapeListAction = robot?.recording?.workflow?.[limitInfo.pairIndex]?.what?.[limitInfo.actionIndex];
           const actionName = 
             scrapeListAction?.name ||
-            (scrapeListAction?.args?.[0]?.__name) ||
             `List Limit ${index + 1}`;
 
           return (
@@ -564,7 +554,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
 
         let currentName =
           action.name ||
-          (action.args && action.args[0] && typeof action.args[0] === 'object' && action.args[0].__name) ||
+          (action.args && action.args[0] && typeof action.args[0] === 'object') ||
           '';
 
         if (!currentName) {
@@ -608,9 +598,49 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         );
 
         switch (action.action) {
-          case 'scrapeSchema':
-            textInputs.push(textField);
+          case 'scrapeSchema': {
+            const existingName =
+              currentName ||
+              (action.args && action.args[0] && typeof action.args[0] === "object") ||
+              "Texts";
+
+            if (!textInputs.length) {
+              textInputs.push(
+                <TextField
+                  key={`schema-${pairIndex}-${actionIndex}`}
+                  type="text"
+                  value={existingName}
+                  onChange={(e) => {
+                    const newName = e.target.value;
+
+                    setRobot((prev) => {
+                      if (!prev?.recording?.workflow) return prev;
+
+                      const updated = { ...prev };
+                      updated.recording = { ...prev.recording };
+                      updated.recording.workflow = prev.recording.workflow.map((p) => ({
+                        ...p,
+                        what: p.what?.map((a) => {
+                          if (a.action === "scrapeSchema") {
+                            const updatedAction = { ...a };
+                            updatedAction.name = newName;
+                            return updatedAction;
+                          }
+                          return a;
+                        }),
+                      }));
+
+                      return updated;
+                    });
+                  }}
+                  style={{ marginBottom: "12px" }}
+                  fullWidth
+                />
+              );
+            }
+
             break;
+          }
           case 'screenshot':
             screenshotInputs.push(textField);
             break;
@@ -620,34 +650,6 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         }
       });
     });
-
-    if (textInputs.length === 1 && textCount === 1) {
-      robot.recording.workflow.forEach((pair, pairIndex) => {
-        if (!pair.what) return;
-
-        pair.what.forEach((action, actionIndex) => {
-          if (action.action === 'scrapeSchema') {
-            const existingName =
-              action.name ||
-              (action.args && action.args[0] && typeof action.args[0] === 'object' && action.args[0].__name) ||
-              '';
-
-            const currentName = !existingName ? 'Texts' : existingName;
-
-            textInputs[0] = (
-              <TextField
-                key={`action-name-${pairIndex}-${actionIndex}`}
-                type="text"
-                value={currentName}
-                onChange={(e) => handleActionNameChange(pairIndex, actionIndex, e.target.value)}
-                style={{ marginBottom: '12px' }}
-                fullWidth
-              />
-            );
-          }
-        });
-      });
-    }
 
     const hasAnyInputs = textInputs.length > 0 || screenshotInputs.length > 0 || listInputs.length > 0;
     if (!hasAnyInputs) return null;
