@@ -11,7 +11,7 @@ import { createAndRunRecording, createRunForStoredRecording, CreateRunResponseWi
 import { io, Socket } from "socket.io-client";
 import { stopRecording } from "../api/recording";
 import { RunSettings } from "../components/run/RunSettings";
-import { ScheduleSettings } from "../components/robot/ScheduleSettings";
+import { ScheduleSettings } from "../components/robot/pages/ScheduleSettingsPage";
 import { apiUrl } from "../apiConfig";
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/auth';
