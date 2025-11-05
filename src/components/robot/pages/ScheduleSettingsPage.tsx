@@ -7,7 +7,6 @@ import {
   Box,
   Button,
 } from "@mui/material";
-import { Schedule } from "@mui/icons-material";
 import { Dropdown } from "../../ui/DropdownMui";
 import { validMomentTimezones } from "../../../constants/const";
 import { useGlobalInfoStore } from "../../../context/globalInfo";
