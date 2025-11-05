@@ -156,8 +156,8 @@ export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
           {isLoaded ? (
             <>
               <Grid container direction="row" style={{ flexGrow: 1, height: '100%' }}>
-                <Grid item xs={12} md={9} lg={9} style={{ height: '100%', overflow: 'hidden', position: 'relative' }}>
-                  <div style={{ height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                 <Grid item xs={12} md={9} lg={9} style={{ height: '100%', overflow: 'hidden', position: 'relative' }}>
+                    <div style={{ height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                     <BrowserContent />
                     <InterpretationLog isOpen={showOutputData} setIsOpen={setShowOutputData} />
                   </div>
