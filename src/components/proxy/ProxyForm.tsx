@@ -156,19 +156,30 @@ const ProxyForm: React.FC = () => {
     }, []);
 
     return (
-        <>
-            <FormContainer>
-                <Typography variant="h6" gutterBottom component="div" style={{ marginTop: '20px' }}>
+        <Box sx={{ 
+            display: 'flex', 
+            gap: 4, 
+            p: 5,
+            width: '100%',
+            maxWidth: '100%',
+            boxSizing: 'border-box'
+        }}>
+            <Box sx={{ 
+                flex: 1,
+                minWidth: 0, 
+                maxWidth: 600
+            }}>
+                <Typography variant="h6" gutterBottom component="div">
                     {t('proxy.title')}
                 </Typography>
-                <Tabs value={tabIndex} onChange={handleTabChange} style={{ marginBottom: '10px' }}>
+                <Tabs value={tabIndex} onChange={handleTabChange} sx={{ mb: 2 }}>
                     <Tab label={t('proxy.tab_standard')} />
                 </Tabs>
 
                 {tabIndex === 0 && (
                     isProxyConfigured ? (
-                        <Box sx={{ maxWidth: 600, width: '100%', marginTop: '5px' }}>
-                            <TableContainer component={Paper} sx={{ marginBottom: '20px' }}>
+                        <Box sx={{ width: '100%', mt: 1 }}>
+                            <TableContainer component={Paper} sx={{ mb: 2 }}>
                                 <Table>
                                     <TableHead>
                                         <TableRow>
@@ -187,13 +198,13 @@ const ProxyForm: React.FC = () => {
                             <Button variant="outlined" color="primary" onClick={testProxy}>
                                 {t('proxy.test_proxy')}
                             </Button>
-                            <Button variant="outlined" color="error" onClick={removeProxy} sx={{ marginLeft: '10px' }}>
+                            <Button variant="outlined" color="error" onClick={removeProxy} sx={{ ml: 1 }}>
                                 {t('proxy.remove_proxy')}
                             </Button>
                         </Box>
                     ) : (
-                        <Box component="form" onSubmit={handleSubmit} sx={{ maxWidth: 500, width: '100%' }}>
-                            <FormControl>
+                        <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
+                            <Box sx={{ mb: 2 }}>
                                 <TextField
                                     label={t('proxy.server_url')}
                                     name="server_url"
@@ -208,16 +219,16 @@ const ProxyForm: React.FC = () => {
                                         </span>
                                     }
                                 />
-                            </FormControl>
-                            <FormControl>
+                            </Box>
+                            <Box sx={{ mb: 2 }}>
                                 <FormControlLabel
                                     control={<Switch checked={requiresAuth} onChange={handleAuthToggle} />}
                                     label={t('proxy.requires_auth')}
                                 />
-                            </FormControl>
+                            </Box>
                             {requiresAuth && (
                                 <>
-                                    <FormControl>
+                                    <Box sx={{ mb: 2 }}>
                                         <TextField
                                             label={t('proxy.username')}
                                             name="username"
@@ -228,8 +239,8 @@ const ProxyForm: React.FC = () => {
                                             error={!!errors.username}
                                             helperText={errors.username || ''}
                                         />
-                                    </FormControl>
-                                    <FormControl>
+                                    </Box>
+                                    <Box sx={{ mb: 2 }}>
                                         <TextField
                                             label={t('proxy.password')}
                                             name="password"
@@ -241,7 +252,7 @@ const ProxyForm: React.FC = () => {
                                             error={!!errors.password}
                                             helperText={errors.password || ''}
                                         />
-                                    </FormControl>
+                                    </Box>
                                 </>
                             )}
                             <Button
@@ -255,27 +266,34 @@ const ProxyForm: React.FC = () => {
                             </Button>
                         </Box>
                     ))}
-            </FormContainer>
+            </Box>
 
-            <Alert severity="info" sx={{ marginTop: '80px', marginLeft: '50px', height: '250px', width: '600px' }}>
-                <AlertTitle>{t('proxy.alert.title')}</AlertTitle>
-                <br />
-                <b>{t('proxy.alert.right_way')}</b>
-                <br />
-                {t('proxy.alert.proxy_url')} http://proxy.com:1337
-                <br />
-                {t('proxy.alert.username')} myusername
-                <br />
-                {t('proxy.alert.password')} mypassword
-                <br />
-                <br />
-                <b>{t('proxy.alert.wrong_way')}</b>
-                <br />
-
-                {t('proxy.alert.proxy_url')} http://myusername:mypassword@proxy.com:1337
-            </Alert>
-        </>
+            {/* Instructions Section */}
+            <Box sx={{ 
+                flex: 1,
+                minWidth: 0, 
+                maxWidth: 600
+            }}>
+                <Alert severity="info" sx={{ height: 'auto', minHeight: 250 }}>
+                    <AlertTitle>{t('proxy.alert.title')}</AlertTitle>
+                    <br />
+                    <b>{t('proxy.alert.right_way')}</b>
+                    <br />
+                    {t('proxy.alert.proxy_url')} http://proxy.com:1337
+                    <br />
+                    {t('proxy.alert.username')} myusername
+                    <br />
+                    {t('proxy.alert.password')} mypassword
+                    <br />
+                    <br />
+                    <b>{t('proxy.alert.wrong_way')}</b>
+                    <br />
+                    {t('proxy.alert.proxy_url')} http://myusername:mypassword@proxy.com:1337
+                </Alert>
+            </Box>
+        </Box>
     );
 };
+
 
 export default ProxyForm;
