@@ -121,7 +121,7 @@ export const RobotConfigPage: React.FC<RobotConfigPageProps> = ({
         display: 'flex',
         flexDirection: 'column',
         minHeight: 0,
-        mt: 2,
+        mt: 1.8,
         mb: 5,
       }}>
         {children}
@@ -160,9 +160,7 @@ export const RobotConfigPage: React.FC<RobotConfigPageProps> = ({
                 onClick={handleBack}
                 disabled={isLoading}
                 sx={{
-                  color: '#ff00c3 !important',
-                  borderColor: '#ff00c3 !important',
-                  backgroundColor: 'white !important',
+                  backgroundColor: 'inherit !important',
                 }} >
                 {cancelButtonText || t("buttons.cancel")}
               </Button>
