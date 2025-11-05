@@ -66,7 +66,6 @@ export const RobotConfigPage: React.FC<RobotConfigPageProps> = ({
       flexDirection: 'column',
       width: '100%',
       height: 'auto',
-      minHeight: 'calc(100vh - 64px)',
       boxSizing: 'border-box'
     }}>
       <Box sx={{
