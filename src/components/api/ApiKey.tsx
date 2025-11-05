@@ -107,73 +107,72 @@ const ApiKeyManager = () => {
   }
 
   return (
-    <Container sx={{ alignSelf: 'flex-start' }}>
-      <Typography variant="body1" sx={{ marginTop: '10px', marginBottom: '40px' }}>
-        Start by creating an API key below. Then,
-        <a href={`${apiUrl}/api-docs/`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', marginLeft: '5px', marginRight: '5px' }}>
-          test your API
-        </a>
-        or read the <a href="https://docs.maxun.dev/category/api-docs" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
-          API documentation
-        </a> for setup instructions.
-      </Typography>
-      <Typography
-        variant="h6"
-        gutterBottom
-        component="div"
-        style={{ marginBottom: '20px', textAlign: 'left', width: '100%' }}
-      >
-        {t('apikey.title')}
-      </Typography>
-      {apiKey ? (
-        <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden' }}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>{t('apikey.table.name')}</TableCell>
-                <TableCell>{t('apikey.table.key')}</TableCell>
-                <TableCell>{t('apikey.table.actions')}</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              <TableRow>
-                <TableCell>{apiKeyName}</TableCell>
-                <TableCell>
-                  <Box sx={{ fontFamily: 'monospace', width: '10ch' }}>
-                    {showKey ? `${apiKey?.substring(0, 10)}...` : '**********'}
-                  </Box>
-                </TableCell>
-                <TableCell>
-                  <Tooltip title={t('apikey.actions.copy')}>
-                    <IconButton onClick={copyToClipboard}>
-                      <ContentCopy />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title={showKey ? t('apikey.actions.hide') : t('apikey.actions.show')}>
-                    <IconButton onClick={() => setShowKey(!showKey)}>
-                      {showKey ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title={t('apikey.actions.delete')}>
-                    <IconButton onClick={deleteApiKey} color="error">
-                      <Delete />
-                    </IconButton>
-                  </Tooltip>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </TableContainer>
-      ) : (
-        <>
-          <Typography>{t('apikey.no_key_message')}</Typography>
-          <Button onClick={generateApiKey} variant="contained" color="primary" sx={{ marginTop: '20px' }}>
-            {t('apikey.generate_button')}
-          </Button>
-        </>
-      )}
-    </Container>
-  );
-};
-
+  <Container sx={{ alignSelf: 'flex-start' }}>
+    <Typography variant="body1" sx={{ marginBottom: '40px' }}>
+      Start by creating an API key below. Then,
+      <a href={`${apiUrl}/api-docs/`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', marginLeft: '5px', marginRight: '5px' }}>
+        test your API
+      </a>
+      or read the <a href="https://docs.maxun.dev/category/api-docs" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+        API documentation
+      </a> for setup instructions.
+    </Typography>
+    <Typography
+      variant="h6"
+      gutterBottom
+      component="div"
+      style={{ marginBottom: '20px', textAlign: 'left', width: '100%' }}
+    >
+      {t('apikey.title')}
+    </Typography>
+    {apiKey ? (
+      <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden' }}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>{t('apikey.table.name')}</TableCell>
+              <TableCell>{t('apikey.table.key')}</TableCell>
+              <TableCell>{t('apikey.table.actions')}</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            <TableRow>
+              <TableCell>{apiKeyName}</TableCell>
+              <TableCell>
+                <Box sx={{ fontFamily: 'monospace', width: '10ch' }}>
+                  {showKey ? `${apiKey?.substring(0, 10)}...` : '**********'}
+                </Box>
+              </TableCell>
+              <TableCell>
+                <Tooltip title={t('apikey.actions.copy')}>
+                  <IconButton onClick={copyToClipboard}>
+                    <ContentCopy />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title={showKey ? t('apikey.actions.hide') : t('apikey.actions.show')}>
+                  <IconButton onClick={() => setShowKey(!showKey)}>
+                    {showKey ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title={t('apikey.actions.delete')}>
+                  <IconButton onClick={deleteApiKey} color="error">
+                    <Delete />
+                  </IconButton>
+                </Tooltip>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </TableContainer>
+    ) : (
+      <>
+        <Typography>{t('apikey.no_key_message')}</Typography>
+        <Button onClick={generateApiKey} variant="contained" color="primary" sx={{ marginTop: '20px' }}>
+          {t('apikey.generate_button')}
+        </Button>
+      </>
+    )}
+  </Container>
+);
+}
 export default ApiKeyManager;
