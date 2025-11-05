@@ -59,142 +59,138 @@ export const RobotConfigPage: React.FC<RobotConfigPageProps> = ({
   };
 
   return (
+  <Box sx={{
+    maxWidth: 1000,
+    margin: '50px auto',
+    display: 'flex',
+    flexDirection: 'column',
+    width: '100%', 
+    height: 'auto', 
+    minHeight: 'calc(100vh - 64px)',
+    boxSizing: 'border-box'
+  }}>
     <Box sx={{
-      maxWidth: 1000,
-      margin: '50px auto',
+      display: 'flex',
+      alignItems: 'center',
+      maxHeight: '64px',
+      mb: 2,
+      flexShrink: 0
+    }}>
+      <IconButton
+        onClick={onArrowBack ? onArrowBack : handleBack}
+        sx={{
+          ml: -1,
+          mr: 1,
+          color: theme.palette.text.primary,
+          backgroundColor: 'transparent !important',
+          '&:hover': {
+            backgroundColor: 'transparent !important',
+          },
+          '&:active': {
+            backgroundColor: 'transparent !important',
+          },
+          '&:focus': {
+            backgroundColor: 'transparent !important',
+          },
+          '&:focus-visible': {
+            backgroundColor: 'transparent !important',
+          },
+        }}
+        disableRipple
+      >
+        <ArrowBack />
+      </IconButton>
+      {icon && (
+        <Box sx={{ mr: 2, color: theme.palette.text.primary }}>
+          {icon}
+        </Box>
+      )}
+      <Typography
+        variant="h5"
+        sx={{
+          color: theme.palette.text.primary,
+          lineHeight: 1.2
+        }}
+      >
+        {title}
+      </Typography>
+    </Box>
+    <Divider sx={{ mb: 4, flexShrink: 0 }} />
+
+    <Box sx={{
+      flex: 1,
       display: 'flex',
       flexDirection: 'column',
-      width: '1000px',
-      height: '100%',
-      overflowY: 'auto', // Allow scrolling if content exceeds height
+      minHeight: 0,
+      mt: 2,
+      mb: 3,
     }}>
-      {/* Header Section - Fixed Position */}
-      <Box sx={{
-        display: 'flex',
-        alignItems: 'center',
-        maxHeight: '64px',
-        mb: 2,
-        flexShrink: 0
-      }}>
-        <IconButton
-          onClick={onArrowBack ? onArrowBack : handleBack}
-          sx={{
-            ml: -1,
-            mr: 1,
-            color: theme.palette.text.primary,
-            backgroundColor: 'transparent !important',
-            '&:hover': {
-              backgroundColor: 'transparent !important',
-            },
-            '&:active': {
-              backgroundColor: 'transparent !important',
-            },
-            '&:focus': {
-              backgroundColor: 'transparent !important',
-            },
-            '&:focus-visible': {
-              backgroundColor: 'transparent !important',
-            },
-          }}
-          disableRipple
-        >
-          <ArrowBack />
-        </IconButton>
-        {icon && (
-          <Box sx={{ mr: 2, color: theme.palette.text.primary }}>
-            {icon}
-          </Box>
+      {children}
+    </Box>
+
+    {(showSaveButton || showCancelButton || onBackToSelection) && (
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: onBackToSelection ? 'space-between' : 'flex-start',
+          gap: 2,
+          pt: 3, 
+          borderTop: `1px solid ${theme.palette.divider}`,
+          flexShrink: 0,
+          width: '100%',
+        }}
+      >
+        {onBackToSelection && (
+          <Button
+            variant="outlined"
+            onClick={onBackToSelection}
+            disabled={isLoading}
+            sx={{
+              color: '#ff00c3 !important',
+              borderColor: '#ff00c3 !important',
+              backgroundColor: 'white !important',
+            }} >
+            {backToSelectionText || t("buttons.back_arrow")}
+          </Button>
         )}
-        <Typography
-          variant="h5"
-          sx={{
-            color: theme.palette.text.primary,
-            lineHeight: 1.2
-          }}
-        >
-          {title}
-        </Typography>
-      </Box>
-      <Divider sx={{ mb: 4, flexShrink: 0 }} />
 
-      {/* Content Section */}
-      <Box sx={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: 0,
-        mt: 2,
-        mb: 3,
-      }}>
-        {children}
-      </Box>
-
-      {/* Action Buttons */}
-      {(showSaveButton || showCancelButton || onBackToSelection) && (
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: onBackToSelection ? 'space-between' : 'flex-start',
-            gap: 2,
-            pt: 3, // Reduce padding top to minimize space above
-            borderTop: `1px solid ${theme.palette.divider}`,
-            flexShrink: 0,
-            width: '100%',
-          }}
-        >
-          {/* Left side - Back to Selection button */}
-          {onBackToSelection && (
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          {showCancelButton && (
             <Button
               variant="outlined"
-              onClick={onBackToSelection}
+              onClick={handleBack}
               disabled={isLoading}
               sx={{
                 color: '#ff00c3 !important',
                 borderColor: '#ff00c3 !important',
                 backgroundColor: 'white !important',
               }} >
-              {backToSelectionText || t("buttons.back_arrow")}
+              {cancelButtonText || t("buttons.cancel")}
             </Button>
           )}
-
-          {/* Right side - Save/Cancel buttons */}
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            {showCancelButton && (
-              <Button
-                variant="outlined"
-                onClick={handleBack}
-                disabled={isLoading}
-                sx={{
-                  color: '#ff00c3 !important',
-                  borderColor: '#ff00c3 !important',
-                  backgroundColor: 'white !important',
-                }} >
-                {cancelButtonText || t("buttons.cancel")}
-              </Button>
-            )}
-            {showSaveButton && onSave && (
-              <Button
-                variant="contained"
-                onClick={onSave}
-                disabled={isLoading}
-                sx={{
-                  bgcolor: '#ff00c3',
-                  '&:hover': {
-                    bgcolor: '#cc0099',
-                    boxShadow: 'none',
-                  },
-                  textTransform: 'none',
-                  fontWeight: 500,
-                  px: 3,
+          {showSaveButton && onSave && (
+            <Button
+              variant="contained"
+              onClick={onSave}
+              disabled={isLoading}
+              sx={{
+                bgcolor: '#ff00c3',
+                '&:hover': {
+                  bgcolor: '#cc0099',
                   boxShadow: 'none',
-                }}
-              >
-                {isLoading ? t("buttons.saving") : (saveButtonText || t("buttons.save"))}
-              </Button>
-            )}
-          </Box>
+                },
+                textTransform: 'none',
+                fontWeight: 500,
+                px: 3,
+                boxShadow: 'none',
+              }}
+            >
+              {isLoading ? t("buttons.saving") : (saveButtonText || t("buttons.save"))}
+            </Button>
+          )}
         </Box>
-      )}
-    </Box>
-  );
-};
+      </Box>
+    )}
+  </Box>
+);
+}
