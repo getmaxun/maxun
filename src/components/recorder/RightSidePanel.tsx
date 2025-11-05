@@ -534,7 +534,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const isDarkMode = theme.darkMode;
 
   return (
-    <Paper sx={{ height: panelHeight, width: 'auto', alignItems: "center", background: 'inherit' }} id="browser-actions" elevation={0}>
+    <Paper sx={{ height: panelHeight, width: 'auto', alignItems: "center", background: 'inherit', position: "relative" }} id="browser-actions" elevation={0}>
       <ActionDescriptionBox isDarkMode={isDarkMode} />
       <Box display="flex" flexDirection="column" gap={2} style={{ margin: '13px' }}>
         {!isAnyActionActive && (
