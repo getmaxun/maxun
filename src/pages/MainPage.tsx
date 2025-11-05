@@ -1,7 +1,7 @@
 import React, { useCallback, useContext, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MainMenu } from "../components/dashboard/MainMenu";
-import { Stack } from "@mui/material";
+import { Stack, Box } from "@mui/material";
 import { Recordings } from "../components/robot/Recordings";
 import { Runs } from "../components/run/Runs";
 import ProxyForm from '../components/proxy/ProxyForm';
@@ -318,12 +318,31 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
     }
   }
 
-  return (
-    <Stack direction='row' spacing={0} sx={{ minHeight: '900px' }}>
-      <Stack sx={{ width: 250, flexShrink: 0 }}>
+return (
+  <Box sx={{ display: 'flex', minHeight: 'calc(100vh - 64px)', width: '100%' }}>
+    {/* Sticky Sidebar */}
+    <Box sx={{ 
+      width: 250,
+      flexShrink: 0,
+      position: 'sticky',
+      top: 64, // Height of NavBar
+      height: 'calc(100vh - 64px)', 
+      overflowY: 'auto', // Allow scrolling if menu content is too long
+      zIndex: 1000 
+    }}>
       <MainMenu value={content} handleChangeContent={setContent} />
-      </Stack>
+    </Box>
+    
+    {/* Scrollable Content Area - Fills remaining space */}
+    <Box sx={{ 
+      flex: 1,
+      minWidth: 0, 
+      overflow: 'auto',
+      minHeight: 'calc(100vh - 64px)',
+      width: 'calc(100% - 250px)' 
+    }}>
       {DisplayContent()}
-    </Stack>
-  );
-};
+    </Box>
+  </Box>
+)
+}
