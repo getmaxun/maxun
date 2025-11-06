@@ -617,10 +617,15 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
       <TabContext value={tab}>
         <TabPanel value='output' sx={{ width: '100%', maxWidth: '900px' }}>
           {row.status === 'running' || row.status === 'queued' ? (
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <CircularProgress size={22} sx={{ marginRight: '10px' }} />
-              {t('run_content.loading')}
-            </Box>
+            <>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <CircularProgress size={22} sx={{ marginRight: '10px' }} />
+                {t('run_content.loading')}
+              </Box>
+              <Button color="error" onClick={abortRunHandler} sx={{ mt: 1 }}>
+                {t('run_content.buttons.stop')}
+              </Button>
+            </>
           ) : (!hasData && !hasScreenshots
             ? <Typography>{t('run_content.empty_output')}</Typography>
             : null)}
