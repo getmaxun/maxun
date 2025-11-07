@@ -253,6 +253,9 @@ export const NavBar: React.FC<NavBarProps> = ({
                     borderRadius: '5px',
                     padding: '8px',
                     marginRight: '20px',
+                    '&:hover': {
+                        background: 'inherit'
+                    }
                   }}>
                     <Update sx={{ marginRight: '5px' }} />
                     <Typography variant="body1">{t('navbar.upgrade.button')}</Typography>
