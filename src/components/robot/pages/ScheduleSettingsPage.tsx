@@ -7,7 +7,6 @@ import {
   Box,
   Button,
 } from "@mui/material";
-import { Schedule } from "@mui/icons-material";
 import { Dropdown } from "../../ui/DropdownMui";
 import { validMomentTimezones } from "../../../constants/const";
 import { useGlobalInfoStore } from "../../../context/globalInfo";
@@ -188,8 +187,8 @@ export const ScheduleSettingsPage = ({
           display: "flex",
           flexDirection: "column",
           alignItems: "flex-start",
-          "& > *": { marginBottom: "20px" },
-          marginTop: "-20px",
+          gap: 3,
+          width: "100%",
         }}
       >
         <>
@@ -215,7 +214,7 @@ export const ScheduleSettingsPage = ({
                 {t("schedule_settings.at_around")}: {schedule.atTimeStart},{" "}
                 {schedule.timezone} {t("schedule_settings.timezone")}
               </Typography>
-              <Box mt={2} display="flex" justifyContent="space-between">
+              <Box sx={{ mt: 2, width: "100%" }}>
                 <Button
                   onClick={deleteRobotSchedule}
                   variant="outlined"
@@ -231,7 +230,7 @@ export const ScheduleSettingsPage = ({
           ) : (
             <>
               <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
-                <Typography sx={{ marginRight: "10px" }}>
+                <Typography sx={{ width: "200px", flexShrink: 0 }}>
                   {t("schedule_settings.labels.run_once_every")}
                 </Typography>
                 <TextField
@@ -263,7 +262,7 @@ export const ScheduleSettingsPage = ({
               </Box>
 
               <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
-                <Typography sx={{ marginBottom: "5px", marginRight: "25px" }}>
+                <Typography sx={{ width: "200px", flexShrink: 0 }}>
                   {["MONTHS", "WEEKS"].includes(settings.runEveryUnit)
                     ? t("schedule_settings.labels.start_from_label")
                     : t("schedule_settings.labels.start_from_label")}
@@ -288,7 +287,7 @@ export const ScheduleSettingsPage = ({
 
               {settings.runEveryUnit === "MONTHS" && (
                 <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
-                  <Typography sx={{ marginBottom: "5px", marginRight: "25px" }}>
+                  <Typography sx={{ width: "200px", flexShrink: 0 }}>
                     {t("schedule_settings.labels.on_day_of_month")}
                   </Typography>
                   <TextField
@@ -305,10 +304,10 @@ export const ScheduleSettingsPage = ({
 
               {["MINUTES", "HOURS"].includes(settings.runEveryUnit) ? (
                 <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
-                  <Box sx={{ marginRight: "20px" }}>
-                    <Typography sx={{ marginBottom: "5px" }}>
-                      {t("schedule_settings.labels.in_between")}
-                    </Typography>
+                  <Typography sx={{ width: "200px", flexShrink: 0 }}>
+                    {t("schedule_settings.labels.in_between")}
+                  </Typography>
+                  <Box sx={{ display: "flex", gap: 1 }}>
                     <TextField
                       type="time"
                       value={settings.atTimeStart}
@@ -329,7 +328,7 @@ export const ScheduleSettingsPage = ({
                 </Box>
               ) : (
                 <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
-                  <Typography sx={{ marginBottom: "5px", marginRight: "10px" }}>
+                  <Typography sx={{ width: "200px", flexShrink: 0 }}>
                     {t("schedule_settings.at_around")}
                   </Typography>
                   <TextField
@@ -344,7 +343,7 @@ export const ScheduleSettingsPage = ({
               )}
 
               <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
-                <Typography sx={{ marginRight: "10px" }}>
+                <Typography sx={{ width: "200px", flexShrink: 0 }}>
                   {t("schedule_settings.timezone")}
                 </Typography>
                 <Dropdown
@@ -370,4 +369,4 @@ export const ScheduleSettingsPage = ({
       </Box>
     </RobotConfigPage>
   );
-};
+}
