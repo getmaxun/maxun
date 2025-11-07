@@ -119,7 +119,7 @@ export const NavBar: React.FC<NavBarProps> = ({
     } catch (error: any) {
       const status = error.response?.status;
       let errorKey = 'unknown';
-  
+
       switch (status) {
         case 401:
           errorKey = 'unauthorized';
@@ -132,7 +132,7 @@ export const NavBar: React.FC<NavBarProps> = ({
             errorKey = 'network';
           }
       }
-  
+
       notify(
         'error',
         t(`navbar.notifications.errors.logout.${errorKey}`, {
@@ -164,8 +164,8 @@ export const NavBar: React.FC<NavBarProps> = ({
         sx={{
           color: darkMode ? '#ffffff' : '#0000008A',
           '&:hover': {
-                        background: 'inherit'
-                    }
+            background: 'inherit'
+          }
         }}
       >
         {darkMode ? <LightMode /> : <DarkMode />}
@@ -257,7 +257,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                     padding: '8px',
                     marginRight: '20px',
                     '&:hover': {
-                        background: 'inherit'
+                      background: 'inherit'
                     }
                   }}>
                     <Update sx={{ marginRight: '5px' }} />
@@ -338,7 +338,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                                 docker-compose down
                                 <br />
                                 <br />
-                                 # Remove existing backend and frontend images
+                                # Remove existing backend and frontend images
                                 <br />
                                 docker rmi getmaxun/maxun-frontend:latest getmaxun/maxun-backend:latest
                                 <br />
@@ -373,7 +373,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                     padding: '8px',
                     marginRight: '10px',
                     '&:hover': {
-                        background: 'inherit'
+                      background: 'inherit'
                     }
                   }}>
                     <AccountCircle sx={{ marginRight: '5px' }} />
