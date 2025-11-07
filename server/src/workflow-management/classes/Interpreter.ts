@@ -117,6 +117,16 @@ export class WorkflowInterpreter {
   private currentScrapeListIndex: number = 0;
 
   /**
+   * Track action counts to generate unique names
+   */
+  private actionCounts: Record<string, number> = {};
+
+  /**
+   * Track used action names to prevent duplicates
+   */
+  private usedActionNames: Set<string> = new Set();
+
+  /**
    * Current run ID for real-time persistence
    */
   private currentRunId: string | null = null;
@@ -379,6 +389,8 @@ export class WorkflowInterpreter {
     };
     this.binaryData = [];
     this.currentScrapeListIndex = 0;
+    this.actionCounts = {};
+    this.usedActionNames = new Set();
     this.currentRunId = null;
     this.persistenceBuffer = [];
     this.persistenceInProgress = false;
@@ -392,6 +404,43 @@ export class WorkflowInterpreter {
   public setRunId = (runId: string): void => {
     this.currentRunId = runId;
     logger.log('debug', `Set run ID for real-time persistence: ${runId}`);
+  };
+
+  /**
+   * Generates a unique action name for data storage
+   * @param actionType The type of action (scrapeList, scrapeSchema, etc.)
+   * @param providedName Optional name provided by the action
+   * @returns A unique action name
+   */
+  private getUniqueActionName = (actionType: string, providedName?: string | null): string => {
+    if (providedName && providedName.trim() !== '' && !this.usedActionNames.has(providedName)) {
+      this.usedActionNames.add(providedName);
+      return providedName;
+    }
+
+    if (!this.actionCounts[actionType]) {
+      this.actionCounts[actionType] = 0;
+    }
+
+    let uniqueName: string;
+    let counter = this.actionCounts[actionType];
+
+    do {
+      counter++;
+      if (actionType === 'scrapeList') {
+        uniqueName = `List ${counter}`;
+      } else if (actionType === 'scrapeSchema') {
+        uniqueName = `Text ${counter}`;
+      } else if (actionType === 'screenshot') {
+        uniqueName = `Screenshot ${counter}`;
+      } else {
+        uniqueName = `${actionType} ${counter}`;
+      }
+    } while (this.usedActionNames.has(uniqueName));
+
+    this.actionCounts[actionType] = counter;
+    this.usedActionNames.add(uniqueName);
+    return uniqueName;
   };
 
   /**
@@ -525,6 +574,9 @@ export class WorkflowInterpreter {
           }
 
           let actionName = this.currentActionName || "";
+          if (typeKey === "scrapeList") {
+            actionName = this.getUniqueActionName(typeKey, this.currentActionName);
+          }
 
           const flattened = Array.isArray(data)
             ? data
@@ -555,9 +607,10 @@ export class WorkflowInterpreter {
           const { name, data, mimeType } = payload;
 
           const base64Data = data.toString("base64");
+          const uniqueName = this.getUniqueActionName('screenshot', name);
 
           const binaryItem = {
-            name,
+            name: uniqueName,
             mimeType,
             data: base64Data
           };
@@ -567,7 +620,7 @@ export class WorkflowInterpreter {
           await this.persistBinaryDataToDatabase(binaryItem);
 
           this.socket.emit("binaryCallback", {
-            name,
+            name: uniqueName,
             data: base64Data,
             mimeType
           });
