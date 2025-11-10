@@ -21,6 +21,7 @@ import { useThemeMode } from '../../context/theme-provider';
 import { useTranslation } from 'react-i18next';
 import { useBrowserSteps } from '../../context/browserSteps';
 import { useActionContext } from '../../context/browserActions';
+import { useSocketStore } from '../../context/socket';
 
 interface InterpretationLogProps {
   isOpen: boolean;
@@ -57,11 +58,12 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
   const previousGetText = useRef<boolean>(false);
   const autoFocusedScreenshotIndices = useRef<Set<number>>(new Set());
 
-  const { browserSteps, updateListTextFieldLabel, removeListTextField, updateListStepName, updateScreenshotStepName, updateBrowserTextStepLabel, deleteBrowserStep, emitForStepId } = useBrowserSteps();
+  const { browserSteps, updateListTextFieldLabel, removeListTextField, updateListStepName, updateScreenshotStepName, updateBrowserTextStepLabel, deleteBrowserStep, deleteStepsByActionId, emitForStepId } = useBrowserSteps();
   const { captureStage, getText } = useActionContext();
+  const { socket } = useSocketStore();
 
   const { browserWidth, outputPreviewHeight, outputPreviewWidth } = useBrowserDimensionsStore();
-  const { currentWorkflowActionsState, shouldResetInterpretationLog, currentTextGroupName, setCurrentTextGroupName } = useGlobalInfoStore();
+  const { currentWorkflowActionsState, shouldResetInterpretationLog, currentTextGroupName, setCurrentTextGroupName, notify } = useGlobalInfoStore();
 
   const [showPreviewData, setShowPreviewData] = useState<boolean>(false);
   const userClosedDrawer = useRef<boolean>(false);
@@ -152,6 +154,76 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
       // Small delay to ensure state update completes
       setTimeout(() => emitForStepId(actionId), 0);
     }
+  };
+
+  const handleRemoveListAction = (listId: number, actionId: string | undefined) => {
+    if (!actionId) return;
+
+    const listIndex = captureListData.findIndex(list => list.id === listId);
+    const listItem = captureListData[listIndex];
+    const listName = listItem?.name || `List Data ${listIndex + 1}`;
+    const isActiveList = listIndex === activeListTab;
+
+    deleteStepsByActionId(actionId);
+
+    if (socket) {
+      socket.emit('removeAction', { actionId });
+    }
+
+    if (isActiveList && captureListData.length > 1) {
+      if (listIndex === captureListData.length - 1) {
+        setActiveListTab(listIndex - 1);
+      }
+    } else if (listIndex < activeListTab) {
+      setActiveListTab(activeListTab - 1);
+    }
+
+    notify('error', `List "${listName}" discarded`);
+  };
+
+  const handleRemoveScreenshotAction = (screenshotId: number, actionId: string | undefined) => {
+    if (!actionId) return;
+
+    const screenshotSteps = browserSteps.filter(step => step.type === 'screenshot' && step.screenshotData);
+    const screenshotIndex = screenshotSteps.findIndex(step => step.id === screenshotId);
+    const screenshotStep = screenshotSteps[screenshotIndex];
+    const screenshotName = screenshotStep?.name || `Screenshot ${screenshotIndex + 1}`;
+    const isActiveScreenshot = screenshotIndex === activeScreenshotTab;
+
+    deleteStepsByActionId(actionId);
+
+    if (socket) {
+      socket.emit('removeAction', { actionId });
+    }
+
+    if (isActiveScreenshot && screenshotData.length > 1) {
+      if (screenshotIndex === screenshotData.length - 1) {
+        setActiveScreenshotTab(screenshotIndex - 1);
+      }
+    } else if (screenshotIndex < activeScreenshotTab) {
+      setActiveScreenshotTab(activeScreenshotTab - 1);
+    }
+
+    notify('error', `Screenshot "${screenshotName}" discarded`);
+  };
+
+  const handleRemoveAllTextActions = () => {
+    const uniqueActionIds = new Set<string>();
+    captureTextData.forEach(textStep => {
+      if (textStep.actionId) {
+        uniqueActionIds.add(textStep.actionId);
+      }
+    });
+
+    uniqueActionIds.forEach(actionId => {
+      deleteStepsByActionId(actionId);
+
+      if (socket) {
+        socket.emit('removeAction', { actionId });
+      }
+    });
+
+    notify('error', `Text data "${currentTextGroupName}" discarded`);
   };
 
   const startEdit = (stepId: number, type: 'list' | 'text' | 'screenshot', currentValue: string) => {
@@ -577,12 +649,16 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                                       : '2px solid #ffffff'
                                     : '2px solid transparent',
                                   transition: 'all 0.2s ease',
+                                  position: 'relative',
                                   '&:hover': {
                                     backgroundColor: isActive
                                       ? undefined
                                       : darkMode
                                         ? '#161616'
                                         : '#e9ecef',
+                                  },
+                                  '&:hover .delete-icon': {
+                                    opacity: 1
                                   },
                                 }}
                               >
@@ -612,7 +688,33 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                                     }}
                                   />
                                 ) : (
-                                  listItem.name || `List Data ${index + 1}`
+                                  <>
+                                    {listItem.name || `List Data ${index + 1}`}
+                                    <IconButton
+                                      className="delete-icon"
+                                      size="small"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRemoveListAction(listItem.id, listItem.actionId);
+                                      }}
+                                      sx={{
+                                        position: 'absolute',
+                                        right: 4,
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        opacity: 0,
+                                        transition: 'opacity 0.2s',
+                                        color: darkMode ? '#999' : '#666',
+                                        padding: '2px',
+                                        '&:hover': {
+                                          color: '#f44336',
+                                          backgroundColor: darkMode ? 'rgba(244, 67, 54, 0.1)' : 'rgba(244, 67, 54, 0.05)'
+                                        }
+                                      }}
+                                    >
+                                      <CloseIcon sx={{ fontSize: '14px' }} />
+                                    </IconButton>
+                                  </>
                                 )}
                               </Box>
                             </Tooltip>
@@ -783,7 +885,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                       }}
                     >
                       {(() => {
-                        const screenshotSteps = browserSteps.filter(step => step.type === 'screenshot' && step.screenshotData) as Array<{ id: number; name?: string; type: 'screenshot'; screenshotData?: string }>;
+                        const screenshotSteps = browserSteps.filter(step => step.type === 'screenshot' && step.screenshotData) as Array<{ id: number; name?: string; type: 'screenshot'; fullPage: boolean; actionId?: string; screenshotData?: string }>;
                         return screenshotData.map((screenshot, index) => {
                           const screenshotStep = screenshotSteps[index];
                           if (!screenshotStep) return null;
@@ -829,12 +931,16 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                                     : '2px solid #ffffff'
                                   : '2px solid transparent',
                                 transition: 'all 0.2s ease',
+                                position: 'relative',
                                 '&:hover': {
                                   backgroundColor: isActive
                                     ? undefined
                                     : darkMode
                                       ? '#161616'
                                       : '#e9ecef',
+                                },
+                                '&:hover .delete-icon': {
+                                  opacity: 1
                                 },
                               }}
                             >
@@ -864,7 +970,33 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                                   }}
                                 />
                               ) : (
-                                screenshotName
+                                <>
+                                  {screenshotName}
+                                  <IconButton
+                                    className="delete-icon"
+                                    size="small"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRemoveScreenshotAction(screenshotStep.id, screenshotStep.actionId);
+                                    }}
+                                    sx={{
+                                      position: 'absolute',
+                                      right: 4,
+                                      top: '50%',
+                                      transform: 'translateY(-50%)',
+                                      opacity: 0,
+                                      transition: 'opacity 0.2s',
+                                      color: darkMode ? '#999' : '#666',
+                                      padding: '2px',
+                                      '&:hover': {
+                                        color: '#f44336',
+                                        backgroundColor: darkMode ? 'rgba(244, 67, 54, 0.1)' : 'rgba(244, 67, 54, 0.05)'
+                                      }
+                                    }}
+                                  >
+                                    <CloseIcon sx={{ fontSize: '14px' }} />
+                                  </IconButton>
+                                </>
                               )}
                             </Box>
                           </Tooltip>
@@ -921,6 +1053,10 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                             borderColor: darkMode ? '#2a2a2a' : '#d0d0d0',
                             borderBottom: darkMode ? '2px solid #1c1c1c' : '2px solid #ffffff',
                             transition: 'all 0.2s ease',
+                            position: 'relative',
+                            '&:hover .delete-icon': {
+                              opacity: 1
+                            },
                           }}
                         >
                           {editingTextGroupName ? (
@@ -952,7 +1088,33 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                               }}
                             />
                           ) : (
-                            currentTextGroupName
+                            <>
+                              {currentTextGroupName}
+                              <IconButton
+                                className="delete-icon"
+                                size="small"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveAllTextActions();
+                                }}
+                                sx={{
+                                  position: 'absolute',
+                                  right: 4,
+                                  top: '50%',
+                                  transform: 'translateY(-50%)',
+                                  opacity: 0,
+                                  transition: 'opacity 0.2s',
+                                  color: darkMode ? '#999' : '#666',
+                                  padding: '2px',
+                                  '&:hover': {
+                                    color: '#f44336',
+                                    backgroundColor: darkMode ? 'rgba(244, 67, 54, 0.1)' : 'rgba(244, 67, 54, 0.05)'
+                                  }
+                                }}
+                              >
+                                <CloseIcon sx={{ fontSize: '14px' }} />
+                              </IconButton>
+                            </>
                           )}
                         </Box>
                       </Tooltip>
