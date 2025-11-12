@@ -13,7 +13,7 @@ import {
 export const BrowserContent = () => {
   const { socket } = useSocketStore();
 
-  const [tabs, setTabs] = useState<string[]>(["current"]);
+  const [tabs, setTabs] = useState<string[]>(["Loading..."]);
   const [tabIndex, setTabIndex] = React.useState(0);
   const [showOutputData, setShowOutputData] = useState(false);
   const { browserWidth } = useBrowserDimensionsStore();
@@ -125,7 +125,7 @@ export const BrowserContent = () => {
   useEffect(() => {
     getCurrentTabs()
       .then((response) => {
-        if (response) {
+        if (response && response.length > 0) {
           setTabs(response);
         }
       })
