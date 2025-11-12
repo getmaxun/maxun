@@ -43,7 +43,7 @@ export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
 
   const { setId, socket } = useSocketStore();
   const { setWidth } = useBrowserDimensionsStore();
-  const { browserId, setBrowserId, recordingId, recordingUrl, setRecordingUrl, setRecordingName, setRetrainRobotId } = useGlobalInfoStore();
+  const { browserId, setBrowserId, recordingId, recordingUrl, setRecordingUrl, setRecordingName, setRetrainRobotId, setIsDOMMode } = useGlobalInfoStore();
 
   const handleShowOutputData = useCallback(() => {
     setShowOutputData(true);
@@ -77,6 +77,8 @@ export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
   useEffect(() => {
     let isCancelled = false;
     const handleRecording = async () => {
+      setIsDOMMode(true);
+
       const storedUrl = window.sessionStorage.getItem('recordingUrl');
       if (storedUrl && !recordingUrl) {
         setRecordingUrl(storedUrl);
@@ -137,9 +139,12 @@ export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
       if (browserId === 'new-recording') {
         socket?.emit('new-recording');
       }
+      if (recordingUrl && socket) {
+        socket.emit('input:url', recordingUrl);
+      }
       setIsLoaded(true);
     }
-  }, [socket, browserId, recordingName, recordingId, isLoaded]);
+  }, [socket, browserId, recordingName, recordingId, recordingUrl, isLoaded]);
 
   useEffect(() => {
     socket?.on('loaded', handleLoaded);
@@ -153,26 +158,20 @@ export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
     <ActionProvider>
       <BrowserStepsProvider>
         <div id="browser-recorder">
-          {isLoaded ? (
-            <>
-              <Grid container direction="row" style={{ flexGrow: 1, height: '100%' }}>
-                <Grid item xs={12} md={9} lg={9} style={{ height: '100%', overflow: 'hidden', position: 'relative' }}>
-                  <div style={{ height: '100%', overflow: 'auto' }}>
-                    <BrowserContent />
-                    <InterpretationLog isOpen={showOutputData} setIsOpen={setShowOutputData} />
-                  </div>
-                </Grid>
-                <Grid item xs={12} md={3} lg={3} style={{ height: '100%', overflow: 'hidden' }}>
-                  <div className="right-side-panel" style={{ height: '100%' }}>
-                    <RightSidePanel onFinishCapture={handleShowOutputData} />
-                    <BrowserRecordingSave />
-                  </div>
-                </Grid>
-              </Grid>
-            </>
-          ) : (
-            <Loader text={t('recording_page.loader.browser_startup', { url: recordingUrl })} />
-          )}
+          <Grid container direction="row" style={{ flexGrow: 1, height: '100%' }}>
+            <Grid item xs={12} md={9} lg={9} style={{ height: '100%', overflow: 'hidden', position: 'relative' }}>
+              <div style={{ height: '100%', overflow: 'auto' }}>
+                <BrowserContent />
+                <InterpretationLog isOpen={showOutputData} setIsOpen={setShowOutputData} />
+              </div>
+            </Grid>
+            <Grid item xs={12} md={3} lg={3} style={{ height: '100%', overflow: 'hidden' }}>
+              <div className="right-side-panel" style={{ height: '100%' }}>
+                <RightSidePanel onFinishCapture={handleShowOutputData} />
+                <BrowserRecordingSave />
+              </div>
+            </Grid>
+          </Grid>
         </div>
       </BrowserStepsProvider>
     </ActionProvider>
