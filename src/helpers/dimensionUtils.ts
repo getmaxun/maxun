@@ -73,7 +73,7 @@ export const getResponsiveDimensions = (): AppDimensions => {
     browserWidth,
     browserHeight,
     panelHeight: browserHeight + 137,   
-    outputPreviewHeight: windowHeight * 0.7,
+    outputPreviewHeight: windowHeight * 0.9,
     outputPreviewWidth,
     canvasWidth: browserWidth,
     canvasHeight: browserHeight
