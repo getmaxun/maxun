@@ -1164,16 +1164,31 @@ export const BrowserWindow = () => {
                     undefined,
                     false
                   );
+
+                  if (pendingNotification) {
+                    notify(pendingNotification.type, pendingNotification.message);
+                    setPendingNotification(null);
+                  }
+                } else {
+                  console.warn(`Failed to extract any fields from list selector: ${listSelector}`);
+
+                  setListSelector(null);
+                  setFields({});
+                  setCachedListSelector(null);
+                  setCachedChildSelectors([]);
+                  setCurrentListId(null);
+                  setInitialAutoFieldIds(new Set());
+                  setPendingNotification(null);
+
+                  notify(
+                    "error",
+                    "The list you have selected is not valid. Please reselect it."
+                  );
                 }
               } catch (error) {
                 console.error("Error during child selector caching:", error);
               } finally {
                 setIsCachingChildSelectors(false);
-
-                if (pendingNotification) {
-                  notify(pendingNotification.type, pendingNotification.message);
-                  setPendingNotification(null);
-                }
               }
             }, 100);
           } else {
@@ -1665,16 +1680,17 @@ export const BrowserWindow = () => {
           let cleanedSelector = highlighterData.selector;
 
           setListSelector(cleanedSelector);
-          notify(
-            `info`,
-            t(
+          setPendingNotification({
+            type: `info`,
+            message: t(
               "browser_window.attribute_modal.notifications.list_select_success",
               {
                 count: highlighterData.groupInfo.groupSize,
               }
             ) ||
-              `Selected group with ${highlighterData.groupInfo.groupSize} similar elements`
-          );
+              `Selected group with ${highlighterData.groupInfo.groupSize} similar elements`,
+            count: highlighterData.groupInfo.groupSize,
+          });
           setCurrentListId(Date.now());
           setFields({});
 
