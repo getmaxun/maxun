@@ -1,8 +1,6 @@
 import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useSocketStore } from '../../context/socket';
 import { Button } from '@mui/material';
-import Canvas from "../recorder/Canvas";
-import { Highlighter } from "../recorder/Highlighter";
 import { GenericModal } from '../ui/GenericModal';
 import { useActionContext } from '../../context/browserActions';
 import { useBrowserSteps, TextStep, ListStep } from '../../context/browserSteps';
@@ -36,12 +34,6 @@ interface ElementInfo {
 interface AttributeOption {
     label: string;
     value: string;
-}
-
-interface ScreencastData {
-    image: string;
-    userId: string;
-    viewport?: ViewportInfo | null;
 }
 
 interface ViewportInfo {
@@ -146,8 +138,6 @@ const getAttributeOptions = (tagName: string, elementInfo: ElementInfo | null): 
 export const BrowserWindow = () => {
     const { t } = useTranslation();
     const { browserWidth, browserHeight } = useBrowserDimensionsStore();
-    const [canvasRef, setCanvasReference] = useState<React.RefObject<HTMLCanvasElement> | undefined>(undefined);
-    const [screenShot, setScreenShot] = useState<string>("");
     const [highlighterData, setHighlighterData] = useState<{
         rect: DOMRect;
         selector: string;
@@ -1174,16 +1164,31 @@ export const BrowserWindow = () => {
                     undefined,
                     false
                   );
+
+                  if (pendingNotification) {
+                    notify(pendingNotification.type, pendingNotification.message);
+                    setPendingNotification(null);
+                  }
+                } else {
+                  console.warn(`Failed to extract any fields from list selector: ${listSelector}`);
+
+                  setListSelector(null);
+                  setFields({});
+                  setCachedListSelector(null);
+                  setCachedChildSelectors([]);
+                  setCurrentListId(null);
+                  setInitialAutoFieldIds(new Set());
+                  setPendingNotification(null);
+
+                  notify(
+                    "error",
+                    "The list you have selected is not valid. Please reselect it."
+                  );
                 }
               } catch (error) {
                 console.error("Error during child selector caching:", error);
               } finally {
                 setIsCachingChildSelectors(false);
-
-                if (pendingNotification) {
-                  notify(pendingNotification.type, pendingNotification.message);
-                  setPendingNotification(null);
-                }
               }
             }, 100);
           } else {
@@ -1303,17 +1308,6 @@ export const BrowserWindow = () => {
     }, []); 
 
     const onMouseMove = (e: MouseEvent) => {
-        if (canvasRef && canvasRef.current && highlighterData) {
-            const canvasRect = canvasRef.current.getBoundingClientRect();
-            if (
-                e.pageX < canvasRect.left
-                || e.pageX > canvasRect.right
-                || e.pageY < canvasRect.top
-                || e.pageY > canvasRect.bottom
-            ) {
-                setHighlighterData(null);
-            }
-        }
     };
 
     const resetListState = useCallback(() => {
@@ -1331,35 +1325,15 @@ export const BrowserWindow = () => {
         }
     }, [getList, resetListState]);
 
-    const screencastHandler = useCallback((data: string | ScreencastData) => {
-        if (typeof data === 'string') {
-            setScreenShot(data);
-        } else if (data && typeof data === 'object' && 'image' in data) {
-            if (!data.userId || data.userId === user?.id) {
-                setScreenShot(data.image);
-                
-                if (data.viewport) {
-                    setViewportInfo(data.viewport);
-                }
-            }
-        }
-    }, [user?.id]);
-
     useEffect(() => {
         if (socket) {
-            socket.on("screencast", screencastHandler);
             socket.on("domcast", rrwebSnapshotHandler);
             socket.on("dom-mode-enabled", domModeHandler);
             socket.on("dom-mode-error", domModeErrorHandler);
         }
 
-        if (canvasRef?.current && !isDOMMode && screenShot) {
-            drawImage(screenShot, canvasRef.current);
-        }
-
         return () => {
             if (socket) {
-                socket.off("screencast", screencastHandler);
                 socket.off("domcast", rrwebSnapshotHandler);
                 socket.off("dom-mode-enabled", domModeHandler);
                 socket.off("dom-mode-error", domModeErrorHandler);
@@ -1367,10 +1341,6 @@ export const BrowserWindow = () => {
         };
     }, [
         socket,
-        screenShot,
-        canvasRef,
-        isDOMMode,
-        screencastHandler,
         rrwebSnapshotHandler,
         domModeHandler,
         domModeErrorHandler,
@@ -1710,16 +1680,17 @@ export const BrowserWindow = () => {
           let cleanedSelector = highlighterData.selector;
 
           setListSelector(cleanedSelector);
-          notify(
-            `info`,
-            t(
+          setPendingNotification({
+            type: `info`,
+            message: t(
               "browser_window.attribute_modal.notifications.list_select_success",
               {
                 count: highlighterData.groupInfo.groupSize,
               }
             ) ||
-              `Selected group with ${highlighterData.groupInfo.groupSize} similar elements`
-          );
+              `Selected group with ${highlighterData.groupInfo.groupSize} similar elements`,
+            count: highlighterData.groupInfo.groupSize,
+          });
           setCurrentListId(Date.now());
           setFields({});
 
@@ -1847,24 +1818,7 @@ export const BrowserWindow = () => {
 
     const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
       if (highlighterData) {
-        let shouldProcessClick = false;
-
-        if (!isDOMMode && canvasRef?.current) {
-          const canvasRect = canvasRef.current.getBoundingClientRect();
-          const clickX = e.clientX - canvasRect.left;
-          const clickY = e.clientY - canvasRect.top;
-          const highlightRect = highlighterData.rect;
-          const mappedRect =
-            coordinateMapper.mapBrowserRectToCanvas(highlightRect);
-
-          shouldProcessClick =
-            clickX >= mappedRect.left &&
-            clickX <= mappedRect.right &&
-            clickY >= mappedRect.top &&
-            clickY <= mappedRect.bottom;
-        } else {
-          shouldProcessClick = true;
-        }
+        const shouldProcessClick = true;
 
         if (shouldProcessClick) {
           const options = getAttributeOptions(
@@ -2209,17 +2163,7 @@ export const BrowserWindow = () => {
             !showAttributeModal &&
             highlighterData?.rect != null && (
               <>
-                {!isDOMMode && canvasRef?.current && (
-                  <Highlighter
-                    unmodifiedRect={highlighterData?.rect}
-                    displayedSelector={highlighterData?.selector}
-                    width={dimensions.width}
-                    height={dimensions.height}
-                    canvasRect={canvasRef.current.getBoundingClientRect()}
-                  />
-                )}
-
-                {isDOMMode && highlighterData && (
+                {highlighterData && (
                   <div
                   id="dom-highlight-overlay"
                   style={{
@@ -2355,31 +2299,27 @@ export const BrowserWindow = () => {
             borderRadius: "0px 0px 5px 5px",
           }}
         >
-          {isDOMMode ? (
+          {currentSnapshot ? (
             <>
-              {currentSnapshot ? (
-                <DOMBrowserRenderer
-                  width={dimensions.width}
-                  height={dimensions.height}
-                  snapshot={currentSnapshot}
-                  getList={getList}
-                  getText={getText}
-                  listSelector={listSelector}
-                  cachedChildSelectors={cachedChildSelectors}
-                  paginationMode={paginationMode}
-                  paginationType={paginationType}
-                  limitMode={limitMode}
-                  isCachingChildSelectors={isCachingChildSelectors}
-                  onHighlight={domHighlighterHandler}
-                  onElementSelect={handleDOMElementSelection}
-                  onShowDatePicker={handleShowDatePicker}
-                  onShowDropdown={handleShowDropdown}
-                  onShowTimePicker={handleShowTimePicker}
-                  onShowDateTimePicker={handleShowDateTimePicker}
-                />
-              ) : (
-                <DOMLoadingIndicator />
-              )}
+              <DOMBrowserRenderer
+                width={dimensions.width}
+                height={dimensions.height}
+                snapshot={currentSnapshot}
+                getList={getList}
+                getText={getText}
+                listSelector={listSelector}
+                cachedChildSelectors={cachedChildSelectors}
+                paginationMode={paginationMode}
+                paginationType={paginationType}
+                limitMode={limitMode}
+                isCachingChildSelectors={isCachingChildSelectors}
+                onHighlight={domHighlighterHandler}
+                onElementSelect={handleDOMElementSelection}
+                onShowDatePicker={handleShowDatePicker}
+                onShowDropdown={handleShowDropdown}
+                onShowTimePicker={handleShowTimePicker}
+                onShowDateTimePicker={handleShowDateTimePicker}
+              />
 
               {/* --- Loading overlay --- */}
               {isCachingChildSelectors && (
@@ -2492,11 +2432,7 @@ export const BrowserWindow = () => {
               )}
             </>
           ) : (
-            <Canvas
-              onCreateRef={setCanvasReference}
-              width={dimensions.width}
-              height={dimensions.height}
-            />
+            <DOMLoadingIndicator />
           )}
         </div>
       </div>
@@ -2589,26 +2525,6 @@ const DOMLoadingIndicator: React.FC = () => {
       </div>
     </div>
   );
-};
-
-
-const drawImage = (image: string, canvas: HTMLCanvasElement): void => {
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const img = new Image();
-    img.onload = () => {
-        requestAnimationFrame(() => {
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        });
-        if (image.startsWith('blob:')) {
-            URL.revokeObjectURL(image);
-        }
-    };
-    img.onerror = () => {
-        console.warn('Failed to load image');
-    };
-    img.src = image;
 };
 
 const modalStyle = {

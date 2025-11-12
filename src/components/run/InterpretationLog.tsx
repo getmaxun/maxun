@@ -61,7 +61,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
   const { captureStage, getText } = useActionContext();
 
   const { browserWidth, outputPreviewHeight, outputPreviewWidth } = useBrowserDimensionsStore();
-  const { currentWorkflowActionsState, shouldResetInterpretationLog, currentTextGroupName, setCurrentTextGroupName } = useGlobalInfoStore();
+  const { currentWorkflowActionsState, shouldResetInterpretationLog, currentTextGroupName, setCurrentTextGroupName, notify } = useGlobalInfoStore();
 
   const [showPreviewData, setShowPreviewData] = useState<boolean>(false);
   const userClosedDrawer = useRef<boolean>(false);
@@ -154,6 +154,28 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     }
   };
 
+  const checkForDuplicateName = (stepId: number, type: 'list' | 'text' | 'screenshot', newName: string): boolean => {
+    const trimmedName = newName.trim();
+
+    if (type === 'list') {
+      const listSteps = browserSteps.filter(step => step.type === 'list' && step.id !== stepId);
+      const duplicate = listSteps.find(step => step.name === trimmedName);
+      if (duplicate) {
+        notify('error', `A list with the name "${trimmedName}" already exists. Please choose a different name.`);
+        return true;
+      }
+    } else if (type === 'screenshot') {
+      const screenshotSteps = browserSteps.filter(step => step.type === 'screenshot' && step.id !== stepId);
+      const duplicate = screenshotSteps.find(step => step.name === trimmedName);
+      if (duplicate) {
+        notify('error', `A screenshot with the name "${trimmedName}" already exists. Please choose a different name.`);
+        return true;
+      }
+    }
+
+    return false;
+  };
+
   const startEdit = (stepId: number, type: 'list' | 'text' | 'screenshot', currentValue: string) => {
     setEditing({ stepId, type, value: currentValue });
   };
@@ -165,6 +187,10 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     const finalValue = value.trim();
     if (!finalValue) {
       setEditing({ stepId: null, type: null, value: '' });
+      return;
+    }
+
+    if (checkForDuplicateName(stepId, type, finalValue)) {
       return;
     }
 
@@ -306,6 +332,8 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
         shouldOpenDrawer = true;
       }
       lastListDataLength.current = captureListData.length;
+    } else if (hasScrapeListAction && captureListData.length === 0) {
+      lastListDataLength.current = 0;
     }
 
     if (hasScrapeSchemaAction && captureTextData.length > 0 && !getText) {
@@ -315,6 +343,8 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
         shouldOpenDrawer = true;
       }
       lastTextDataLength.current = captureTextData.length;
+    } else if (hasScrapeSchemaAction && captureTextData.length === 0) {
+      lastTextDataLength.current = 0;
     }
 
     if (hasScreenshotAction && screenshotData.length > 0) {
@@ -324,6 +354,8 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
         shouldOpenDrawer = true;
       }
       lastScreenshotDataLength.current = screenshotData.length;
+    } else if (hasScreenshotAction && screenshotData.length === 0) {
+      lastScreenshotDataLength.current = 0;
     }
 
     const getLatestCaptureType = () => {
@@ -466,7 +498,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
             {t('interpretation_log.titles.output_preview')}
           </Typography>
 
-          {!(hasScrapeListAction || hasScrapeSchemaAction || hasScreenshotAction) && (
+          {!(hasScrapeListAction || hasScrapeSchemaAction || hasScreenshotAction) && !showPreviewData && availableTabs.length === 0 && (
             <Grid container justifyContent="center" alignItems="center" style={{ height: '100%' }}>
               <Grid item>
                 <Typography variant="h6" gutterBottom align="left">

@@ -552,16 +552,12 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
       pair.what.forEach((action, actionIndex) => {
         if (!editableActions.has(String(action.action))) return;
 
-        let currentName =
-          action.name ||
-          (action.args && action.args[0] && typeof action.args[0] === 'object') ||
-          '';
+        let currentName = action.name || '';
 
         if (!currentName) {
           switch (action.action) {
             case 'scrapeSchema':
-              textCount++;
-              currentName = `Text ${textCount}`;
+              currentName = 'Texts';
               break;
             case 'screenshot':
               screenshotCount++;
@@ -574,9 +570,6 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
           }
         } else {
           switch (action.action) {
-            case 'scrapeSchema':
-              textCount++;
-              break;
             case 'screenshot':
               screenshotCount++;
               break;
@@ -599,10 +592,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
 
         switch (action.action) {
           case 'scrapeSchema': {
-            const existingName =
-              currentName ||
-              (action.args && action.args[0] && typeof action.args[0] === "object") ||
-              "Texts";
+            const existingName = currentName || "Texts";
 
             if (!textInputs.length) {
               textInputs.push(
