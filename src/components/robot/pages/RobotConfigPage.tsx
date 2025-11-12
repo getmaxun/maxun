@@ -62,14 +62,12 @@ export const RobotConfigPage: React.FC<RobotConfigPageProps> = ({
     <Box sx={{
       maxWidth: 1000,
       margin: '50px auto',
-      maxHeight: '100vh',
       display: 'flex',
       flexDirection: 'column',
-      width: '1000px',
-      height: '100%',
-      overflowY: 'auto', // Allow scrolling if content exceeds height
+      width: '100%',
+      height: 'auto',
+      boxSizing: 'border-box'
     }}>
-      {/* Header Section - Fixed Position */}
       <Box sx={{
         display: 'flex',
         alignItems: 'center',
@@ -118,32 +116,29 @@ export const RobotConfigPage: React.FC<RobotConfigPageProps> = ({
       </Box>
       <Divider sx={{ mb: 4, flexShrink: 0 }} />
 
-      {/* Content Section */}
       <Box sx={{
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
         minHeight: 0,
-        mt: 2,
-        mb: 3,
+        mt: 1.8,
+        mb: 5,
       }}>
         {children}
       </Box>
 
-      {/* Action Buttons */}
       {(showSaveButton || showCancelButton || onBackToSelection) && (
         <Box
           sx={{
             display: 'flex',
             justifyContent: onBackToSelection ? 'space-between' : 'flex-start',
             gap: 2,
-            pt: 3, // Reduce padding top to minimize space above
+            pt: 3,
             borderTop: `1px solid ${theme.palette.divider}`,
             flexShrink: 0,
             width: '100%',
           }}
         >
-          {/* Left side - Back to Selection button */}
           {onBackToSelection && (
             <Button
               variant="outlined"
@@ -158,7 +153,6 @@ export const RobotConfigPage: React.FC<RobotConfigPageProps> = ({
             </Button>
           )}
 
-          {/* Right side - Save/Cancel buttons */}
           <Box sx={{ display: 'flex', gap: 2 }}>
             {showCancelButton && (
               <Button
@@ -166,9 +160,7 @@ export const RobotConfigPage: React.FC<RobotConfigPageProps> = ({
                 onClick={handleBack}
                 disabled={isLoading}
                 sx={{
-                  color: '#ff00c3 !important',
-                  borderColor: '#ff00c3 !important',
-                  backgroundColor: 'white !important',
+                  backgroundColor: 'inherit !important',
                 }} >
                 {cancelButtonText || t("buttons.cancel")}
               </Button>
@@ -190,7 +182,7 @@ export const RobotConfigPage: React.FC<RobotConfigPageProps> = ({
                   boxShadow: 'none',
                 }}
               >
-                {isLoading ? t("buttons.saving") : (saveButtonText || t("buttons.save"))}
+                {isLoading ? t("Saving...") : (saveButtonText || t("buttons.save"))}
               </Button>
             )}
           </Box>
@@ -198,4 +190,4 @@ export const RobotConfigPage: React.FC<RobotConfigPageProps> = ({
       )}
     </Box>
   );
-};
+}

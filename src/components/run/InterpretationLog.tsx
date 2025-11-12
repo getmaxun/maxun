@@ -21,6 +21,7 @@ import { useThemeMode } from '../../context/theme-provider';
 import { useTranslation } from 'react-i18next';
 import { useBrowserSteps } from '../../context/browserSteps';
 import { useActionContext } from '../../context/browserActions';
+import { useSocketStore } from '../../context/socket';
 
 interface InterpretationLogProps {
   isOpen: boolean;
@@ -41,17 +42,14 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
   const [editingField, setEditingField] = useState<{listId: number, fieldKey: string} | null>(null);
   const [editingValue, setEditingValue] = useState<string>('');
 
-  const [editingListName, setEditingListName] = useState<number | null>(null);
-  const [editingListNameValue, setEditingListNameValue] = useState<string>('');
-
   const [editingTextGroupName, setEditingTextGroupName] = useState<boolean>(false);
   const [editingTextGroupNameValue, setEditingTextGroupNameValue] = useState<string>('Text Data');
 
-  const [editingTextLabel, setEditingTextLabel] = useState<number | null>(null);
-  const [editingTextLabelValue, setEditingTextLabelValue] = useState<string>('');
-
-  const [editingScreenshotName, setEditingScreenshotName] = useState<number | null>(null);
-  const [editingScreenshotNameValue, setEditingScreenshotNameValue] = useState<string>('');
+  const [editing, setEditing] = useState<{
+    stepId: number | null;
+    type: 'list' | 'text' | 'screenshot' | null;
+    value: string;
+  }>({ stepId: null, type: null, value: '' });
 
   const logEndRef = useRef<HTMLDivElement | null>(null);
   const autoFocusedListIds = useRef<Set<number>>(new Set());
@@ -60,11 +58,12 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
   const previousGetText = useRef<boolean>(false);
   const autoFocusedScreenshotIndices = useRef<Set<number>>(new Set());
 
-  const { browserSteps, updateListTextFieldLabel, removeListTextField, updateListStepName, updateScreenshotStepName, updateBrowserTextStepLabel, deleteBrowserStep, emitForStepId } = useBrowserSteps();
+  const { browserSteps, updateListTextFieldLabel, removeListTextField, updateListStepName, updateScreenshotStepName, updateBrowserTextStepLabel, deleteBrowserStep, deleteStepsByActionId, emitForStepId } = useBrowserSteps();
   const { captureStage, getText } = useActionContext();
+  const { socket } = useSocketStore();
 
   const { browserWidth, outputPreviewHeight, outputPreviewWidth } = useBrowserDimensionsStore();
-  const { currentWorkflowActionsState, shouldResetInterpretationLog, currentTextGroupName, setCurrentTextGroupName } = useGlobalInfoStore();
+  const { currentWorkflowActionsState, shouldResetInterpretationLog, currentTextGroupName, setCurrentTextGroupName, notify } = useGlobalInfoStore();
 
   const [showPreviewData, setShowPreviewData] = useState<boolean>(false);
   const userClosedDrawer = useRef<boolean>(false);
@@ -125,30 +124,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     }
   };
 
-  const handleStartEditListName = (listId: number, currentName: string) => {
-    setEditingListName(listId);
-    setEditingListNameValue(currentName);
-  };
-
-  const handleSaveListName = () => {
-    if (editingListName !== null) {
-      const trimmedName = editingListNameValue.trim();
-      const finalName = trimmedName || `List Data ${captureListData.findIndex(l => l.id === editingListName) + 1}`;
-
-      updateListStepName(editingListName, finalName);
-
-      // Use ref-synced version of browserSteps via emitForStepId
-      const listStep = browserSteps.find(step => step.id === editingListName);
-      if (listStep?.actionId) {
-        // small async delay ensures React state commit
-        setTimeout(() => emitForStepId(listStep.actionId!), 0);
-      }
-
-      setEditingListName(null);
-      setEditingListNameValue('');
-    }
-  };
-
   const handleStartEditTextGroupName = () => {
     setEditingTextGroupName(true);
     setEditingTextGroupNameValue(currentTextGroupName);
@@ -158,7 +133,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     const trimmedName = editingTextGroupNameValue.trim();
     const finalName = trimmedName || 'Text Data';
 
-    console.log("SAVING TEXT GROUP NAME:", finalName);
     setCurrentTextGroupName(finalName);
     setEditingTextGroupName(false);
 
@@ -167,34 +141,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
       const activeTextStep = captureTextData.find(step => step.actionId);
       if (activeTextStep?.actionId) emitForStepId(activeTextStep.actionId);
     }, 0);
-  };
-
-
-  const handleStartEditTextLabel = (textId: number, currentLabel: string) => {
-    setEditingTextLabel(textId);
-    setEditingTextLabelValue(currentLabel);
-  };
-
-  const handleSaveTextLabel = () => {
-    if (editingTextLabel !== null && editingTextLabelValue.trim()) {
-      const textStep = browserSteps.find(step => step.id === editingTextLabel);
-      const actionId = textStep?.actionId;
-
-      updateBrowserTextStepLabel(editingTextLabel, editingTextLabelValue.trim());
-
-      // Emit updated action to backend after state update completes
-      if (actionId) {
-        setTimeout(() => emitForStepId(actionId), 0);
-      }
-
-      setEditingTextLabel(null);
-      setEditingTextLabelValue('');
-    }
-  };
-
-  const handleCancelTextLabel = () => {
-    setEditingTextLabel(null);
-    setEditingTextLabelValue('');
   };
 
   const handleDeleteTextStep = (textId: number) => {
@@ -210,36 +156,132 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     }
   };
 
-  const handleStartEditScreenshotName = (screenshotStepId: number, currentName: string) => {
-    setEditingScreenshotName(screenshotStepId);
-    setEditingScreenshotNameValue(currentName);
+  const handleRemoveListAction = (listId: number, actionId: string | undefined) => {
+    if (!actionId) return;
+
+    const listIndex = captureListData.findIndex(list => list.id === listId);
+    const listItem = captureListData[listIndex];
+    const listName = listItem?.name || `List Data ${listIndex + 1}`;
+    const isActiveList = listIndex === activeListTab;
+
+    deleteStepsByActionId(actionId);
+
+    if (socket) {
+      socket.emit('removeAction', { actionId });
+    }
+
+    if (isActiveList && captureListData.length > 1) {
+      if (listIndex === captureListData.length - 1) {
+        setActiveListTab(listIndex - 1);
+      }
+    } else if (listIndex < activeListTab) {
+      setActiveListTab(activeListTab - 1);
+    }
+
+    notify('error', `List "${listName}" discarded`);
   };
 
-  const handleSaveScreenshotName = () => {
-    if (editingScreenshotName !== null) {
-      const trimmedName = editingScreenshotNameValue.trim();
-      const screenshotSteps = browserSteps.filter(step => step.type === 'screenshot');
-      const screenshotIndex = screenshotSteps.findIndex(s => s.id === editingScreenshotName);
-      const finalName = trimmedName || `Screenshot ${screenshotIndex + 1}`;
-      
-      updateScreenshotStepName(editingScreenshotName, finalName);
+  const handleRemoveScreenshotAction = (screenshotId: number, actionId: string | undefined) => {
+    if (!actionId) return;
 
-      const screenshotStep = browserSteps.find(step => step.id === editingScreenshotName);
-      if (screenshotStep?.actionId) {
-        const originalName = screenshotStep.name?.trim() || "";
-        const trimmedName = editingScreenshotNameValue.trim();
+    const screenshotSteps = browserSteps.filter(step => step.type === 'screenshot' && step.screenshotData);
+    const screenshotIndex = screenshotSteps.findIndex(step => step.id === screenshotId);
+    const screenshotStep = screenshotSteps[screenshotIndex];
+    const screenshotName = screenshotStep?.name || `Screenshot ${screenshotIndex + 1}`;
+    const isActiveScreenshot = screenshotIndex === activeScreenshotTab;
 
-        // 🚫 Only emit if name actually changed
-        if (trimmedName && trimmedName !== originalName) {
-          setTimeout(() => emitForStepId(screenshotStep.actionId!), 500);
-        } else {
-          console.log("🧠 Skipping emit — screenshot name unchanged.");
-        }
-      }
+    deleteStepsByActionId(actionId);
 
-      setEditingScreenshotName(null);
-      setEditingScreenshotNameValue('');
+    if (socket) {
+      socket.emit('removeAction', { actionId });
     }
+
+    if (isActiveScreenshot && screenshotData.length > 1) {
+      if (screenshotIndex === screenshotData.length - 1) {
+        setActiveScreenshotTab(screenshotIndex - 1);
+      }
+    } else if (screenshotIndex < activeScreenshotTab) {
+      setActiveScreenshotTab(activeScreenshotTab - 1);
+    }
+
+    notify('error', `Screenshot "${screenshotName}" discarded`);
+  };
+
+  const handleRemoveAllTextActions = () => {
+    const uniqueActionIds = new Set<string>();
+    captureTextData.forEach(textStep => {
+      if (textStep.actionId) {
+        uniqueActionIds.add(textStep.actionId);
+      }
+    });
+
+    uniqueActionIds.forEach(actionId => {
+      deleteStepsByActionId(actionId);
+
+      if (socket) {
+        socket.emit('removeAction', { actionId });
+      }
+    });
+
+    notify('error', `Text data "${currentTextGroupName}" discarded`);
+  };
+  
+  const checkForDuplicateName = (stepId: number, type: 'list' | 'text' | 'screenshot', newName: string): boolean => {
+    const trimmedName = newName.trim();
+
+    if (type === 'list') {
+      const listSteps = browserSteps.filter(step => step.type === 'list' && step.id !== stepId);
+      const duplicate = listSteps.find(step => step.name === trimmedName);
+      if (duplicate) {
+        notify('error', `A list with the name "${trimmedName}" already exists. Please choose a different name.`);
+        return true;
+      }
+    } else if (type === 'screenshot') {
+      const screenshotSteps = browserSteps.filter(step => step.type === 'screenshot' && step.id !== stepId);
+      const duplicate = screenshotSteps.find(step => step.name === trimmedName);
+      if (duplicate) {
+        notify('error', `A screenshot with the name "${trimmedName}" already exists. Please choose a different name.`);
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  const startEdit = (stepId: number, type: 'list' | 'text' | 'screenshot', currentValue: string) => {
+    setEditing({ stepId, type, value: currentValue });
+  };
+
+  const saveEdit = () => {
+    const { stepId, type, value } = editing;
+    if (stepId == null || !type) return;
+
+    const finalValue = value.trim();
+    if (!finalValue) {
+      setEditing({ stepId: null, type: null, value: '' });
+      return;
+    }
+
+    if (checkForDuplicateName(stepId, type, finalValue)) {
+      return;
+    }
+
+    if (type === 'list') {
+      updateListStepName(stepId, finalValue);
+    } else if (type === 'text') {
+      updateBrowserTextStepLabel(stepId, finalValue);
+    } else if (type === 'screenshot') {
+      updateScreenshotStepName(stepId, finalValue);
+    }
+
+    const step = browserSteps.find(s => s.id === stepId);
+    if (step?.actionId) setTimeout(() => emitForStepId(step.actionId!), 0);
+
+    setEditing({ stepId: null, type: null, value: '' });
+  };
+
+  const cancelEdit = () => {
+    setEditing({ stepId: null, type: null, value: '' });
   };
 
 
@@ -354,8 +396,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
   useEffect(() => {
     let shouldOpenDrawer = false;
-    let switchToTextTab = false;
-    let switchToScreenshotTab = false;
 
     if (hasScrapeListAction && captureListData.length > 0 && captureListData[0]?.data?.length > 0) {
       setShowPreviewData(true);
@@ -364,6 +404,8 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
         shouldOpenDrawer = true;
       }
       lastListDataLength.current = captureListData.length;
+    } else if (hasScrapeListAction && captureListData.length === 0) {
+      lastListDataLength.current = 0;
     }
 
     if (hasScrapeSchemaAction && captureTextData.length > 0 && !getText) {
@@ -371,9 +413,10 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
       if (captureTextData.length > lastTextDataLength.current) {
         userClosedDrawer.current = false;
         shouldOpenDrawer = true;
-        switchToTextTab = true;
       }
       lastTextDataLength.current = captureTextData.length;
+    } else if (hasScrapeSchemaAction && captureTextData.length === 0) {
+      lastTextDataLength.current = 0;
     }
 
     if (hasScreenshotAction && screenshotData.length > 0) {
@@ -381,23 +424,37 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
       if (screenshotData.length > lastScreenshotDataLength.current) {
         userClosedDrawer.current = false;
         shouldOpenDrawer = true;
-        switchToScreenshotTab = true;
       }
       lastScreenshotDataLength.current = screenshotData.length;
+    } else if (hasScreenshotAction && screenshotData.length === 0) {
+      lastScreenshotDataLength.current = 0;
     }
+
+    const getLatestCaptureType = () => {
+      for (let i = browserSteps.length - 1; i >= 0; i--) {
+        const type = browserSteps[i].type;
+        if (type === "list" || type === "text" || type === "screenshot") {
+          return type;
+        }
+      }
+      return null;
+    };
 
     if (shouldOpenDrawer) {
       setIsOpen(true);
-      if (switchToTextTab) {
-        setTimeout(() => {
-          const textTabIndex = getAvailableTabs().findIndex(tab => tab.id === 'captureText');
-          if (textTabIndex !== -1) {
-            setActiveTab(textTabIndex);
-          }
-        }, 100);
-      } else if (switchToScreenshotTab) {
-        setTimeout(() => {
-          const screenshotTabIndex = getAvailableTabs().findIndex(tab => tab.id === 'captureScreenshot');
+      const latestType = getLatestCaptureType();
+
+      setTimeout(() => {
+        if (latestType === "text") {
+          const idx = getAvailableTabs().findIndex(t => t.id === "captureText");
+          if (idx !== -1) setActiveTab(idx);
+
+        } else if (latestType === "list") {
+          const idx = getAvailableTabs().findIndex(t => t.id === "captureList");
+          if (idx !== -1) setActiveTab(idx);
+
+        } else if (latestType === "screenshot") {
+          const screenshotTabIndex = getAvailableTabs().findIndex(tab => tab.id === "captureScreenshot");
           if (screenshotTabIndex !== -1) {
             setActiveTab(screenshotTabIndex);
             const latestIndex = screenshotData.length - 1;
@@ -406,17 +463,17 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
             if (!autoFocusedScreenshotIndices.current.has(latestIndex)) {
               autoFocusedScreenshotIndices.current.add(latestIndex);
               setTimeout(() => {
-                const screenshotSteps = browserSteps.filter(step => step.type === 'screenshot') as Array<{ id: number; name?: string; type: 'screenshot' }>;
+                const screenshotSteps = browserSteps.filter(step => step.type === "screenshot");
                 const latestScreenshotStep = screenshotSteps[latestIndex];
                 if (latestScreenshotStep) {
                   const screenshotName = latestScreenshotStep.name || `Screenshot ${latestIndex + 1}`;
-                  handleStartEditScreenshotName(latestScreenshotStep.id, screenshotName);
+                  startEdit(latestScreenshotStep.id, 'screenshot', screenshotName);
                 }
               }, 300);
             }
           }
-        }, 100);
-      }
+        }
+      }, 100);
     }
   }, [hasScrapeListAction, hasScrapeSchemaAction, hasScreenshotAction, captureListData, captureTextData, screenshotData, setIsOpen, getText]);
 
@@ -424,7 +481,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     if (captureListData.length > 0 && isOpen && captureStage === 'initial') {
       const latestListIndex = captureListData.length - 1;
       const latestList = captureListData[latestListIndex];
-      if (latestList && latestList.data && latestList.data.length > 0 && !editingListName) {
+      if (latestList && latestList.data && latestList.data.length > 0  && editing.type !== 'list') {
         const previousLength = previousDataLengths.current.get(latestList.id) || 0;
         const currentLength = latestList.data.length;
 
@@ -433,7 +490,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
             autoFocusedListIds.current.add(latestList.id);
             setActiveListTab(latestListIndex);
             setTimeout(() => {
-              handleStartEditListName(latestList.id, latestList.name || `List Data ${latestListIndex + 1}`);
+              startEdit(latestList.id, 'list', latestList.name || `List Data ${latestListIndex + 1}`);
             }, 300);
           }
         }
@@ -500,7 +557,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
               background: `${darkMode ? '#1d1c1cff' : 'white'}`,
               color: `${darkMode ? 'white' : 'black'}`,
               padding: '10px',
-              height: "calc(100% - 140px)",
+              height: outputPreviewHeight,
               width: outputPreviewWidth,
               display: 'flex',
               flexDirection: 'column',
@@ -513,7 +570,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
             {t('interpretation_log.titles.output_preview')}
           </Typography>
 
-          {!(hasScrapeListAction || hasScrapeSchemaAction || hasScreenshotAction) && (
+          {!(hasScrapeListAction || hasScrapeSchemaAction || hasScreenshotAction) && !showPreviewData && availableTabs.length === 0 && (
             <Grid container justifyContent="center" alignItems="center" style={{ height: '100%' }}>
               <Grid item>
                 <Typography variant="h6" gutterBottom align="left">
@@ -579,7 +636,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                         }}
                       >
                         {captureListData.map((listItem, index) => {
-                          const isEditing = editingListName === listItem.id;
+                          const isEditing = editing.stepId === listItem.id && editing.type === 'list';
                           const isActive = activeListTab === index;
 
                           return (
@@ -597,10 +654,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                                   }
                                 }}
                                 onDoubleClick={() => {
-                                  handleStartEditListName(
-                                    listItem.id,
-                                    listItem.name || `List Data ${index + 1}`
-                                  );
+                                  startEdit(listItem.id, 'list', listItem.name || `List Data ${index + 1}`)
                                 }}
                                 sx={{
                                   px: 3,
@@ -627,6 +681,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                                       : '2px solid #ffffff'
                                     : '2px solid transparent',
                                   transition: 'all 0.2s ease',
+                                  position: 'relative',
                                   '&:hover': {
                                     backgroundColor: isActive
                                       ? undefined
@@ -634,19 +689,19 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                                         ? '#161616'
                                         : '#e9ecef',
                                   },
+                                  '&:hover .delete-icon': {
+                                    opacity: 1
+                                  },
                                 }}
                               >
                                 {isEditing ? (
                                   <TextField
-                                    value={editingListNameValue}
-                                    onChange={(e) => setEditingListNameValue(e.target.value)}
-                                    onBlur={handleSaveListName}
+                                    value={editing.value}
+                                    onChange={(e) => setEditing({ ...editing, value: e.target.value })}
+                                    onBlur={saveEdit}
                                     onKeyDown={(e) => {
-                                      if (e.key === 'Enter') handleSaveListName();
-                                      if (e.key === 'Escape') {
-                                        setEditingListName(null);
-                                        setEditingListNameValue('');
-                                      }
+                                      if (e.key === 'Enter') saveEdit();
+                                      if (e.key === 'Escape') cancelEdit();
                                     }}
                                     autoFocus
                                     size="small"
@@ -665,7 +720,33 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                                     }}
                                   />
                                 ) : (
-                                  listItem.name || `List Data ${index + 1}`
+                                  <>
+                                    {listItem.name || `List Data ${index + 1}`}
+                                    <IconButton
+                                      className="delete-icon"
+                                      size="small"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRemoveListAction(listItem.id, listItem.actionId);
+                                      }}
+                                      sx={{
+                                        position: 'absolute',
+                                        right: 4,
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        opacity: 0,
+                                        transition: 'opacity 0.2s',
+                                        color: darkMode ? '#999' : '#666',
+                                        padding: '2px',
+                                        '&:hover': {
+                                          color: '#f44336',
+                                          backgroundColor: darkMode ? 'rgba(244, 67, 54, 0.1)' : 'rgba(244, 67, 54, 0.05)'
+                                        }
+                                      }}
+                                    >
+                                      <CloseIcon sx={{ fontSize: '14px' }} />
+                                    </IconButton>
+                                  </>
                                 )}
                               </Box>
                             </Tooltip>
@@ -836,13 +917,13 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                       }}
                     >
                       {(() => {
-                        const screenshotSteps = browserSteps.filter(step => step.type === 'screenshot' && step.screenshotData) as Array<{ id: number; name?: string; type: 'screenshot'; screenshotData?: string }>;
+                        const screenshotSteps = browserSteps.filter(step => step.type === 'screenshot' && step.screenshotData) as Array<{ id: number; name?: string; type: 'screenshot'; fullPage: boolean; actionId?: string; screenshotData?: string }>;
                         return screenshotData.map((screenshot, index) => {
                           const screenshotStep = screenshotSteps[index];
                           if (!screenshotStep) return null;
 
                           const isActive = activeScreenshotTab === index;
-                          const isEditing = editingScreenshotName === screenshotStep.id;
+                          const isEditing = editing.stepId === screenshotStep.id && editing.type === 'screenshot';
                           const screenshotName = screenshotStep.name || `Screenshot ${index + 1}`;
 
                           return (
@@ -858,9 +939,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                                     setActiveScreenshotTab(index);
                                   }
                                 }}
-                                onDoubleClick={() => {
-                                  handleStartEditScreenshotName(screenshotStep.id, screenshotName);
-                                }}
+                                onDoubleClick={() => startEdit(screenshotStep.id, 'screenshot', screenshotName)}
                               sx={{
                                 px: 3,
                                 py: 1.25,
@@ -884,6 +963,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                                     : '2px solid #ffffff'
                                   : '2px solid transparent',
                                 transition: 'all 0.2s ease',
+                                position: 'relative',
                                 '&:hover': {
                                   backgroundColor: isActive
                                     ? undefined
@@ -891,19 +971,19 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                                       ? '#161616'
                                       : '#e9ecef',
                                 },
+                                '&:hover .delete-icon': {
+                                  opacity: 1
+                                },
                               }}
                             >
                               {isEditing ? (
                                 <TextField
-                                  value={editingScreenshotNameValue}
-                                  onChange={(e) => setEditingScreenshotNameValue(e.target.value)}
-                                  onBlur={handleSaveScreenshotName}
+                                  value={editing.value}
+                                  onChange={(e) => setEditing({ ...editing, value: e.target.value })}
+                                  onBlur={saveEdit}
                                   onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleSaveScreenshotName();
-                                    if (e.key === 'Escape') {
-                                      setEditingScreenshotName(null);
-                                      setEditingScreenshotNameValue('');
-                                    }
+                                    if (e.key === 'Enter') saveEdit();
+                                    if (e.key === 'Escape') cancelEdit();
                                   }}
                                   autoFocus
                                   size="small"
@@ -922,7 +1002,33 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                                   }}
                                 />
                               ) : (
-                                screenshotName
+                                <>
+                                  {screenshotName}
+                                  <IconButton
+                                    className="delete-icon"
+                                    size="small"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRemoveScreenshotAction(screenshotStep.id, screenshotStep.actionId);
+                                    }}
+                                    sx={{
+                                      position: 'absolute',
+                                      right: 4,
+                                      top: '50%',
+                                      transform: 'translateY(-50%)',
+                                      opacity: 0,
+                                      transition: 'opacity 0.2s',
+                                      color: darkMode ? '#999' : '#666',
+                                      padding: '2px',
+                                      '&:hover': {
+                                        color: '#f44336',
+                                        backgroundColor: darkMode ? 'rgba(244, 67, 54, 0.1)' : 'rgba(244, 67, 54, 0.05)'
+                                      }
+                                    }}
+                                  >
+                                    <CloseIcon sx={{ fontSize: '14px' }} />
+                                  </IconButton>
+                                </>
                               )}
                             </Box>
                           </Tooltip>
@@ -979,6 +1085,10 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                             borderColor: darkMode ? '#2a2a2a' : '#d0d0d0',
                             borderBottom: darkMode ? '2px solid #1c1c1c' : '2px solid #ffffff',
                             transition: 'all 0.2s ease',
+                            position: 'relative',
+                            '&:hover .delete-icon': {
+                              opacity: 1
+                            },
                           }}
                         >
                           {editingTextGroupName ? (
@@ -1010,7 +1120,33 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                               }}
                             />
                           ) : (
-                            currentTextGroupName
+                            <>
+                              {currentTextGroupName}
+                              <IconButton
+                                className="delete-icon"
+                                size="small"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveAllTextActions();
+                                }}
+                                sx={{
+                                  position: 'absolute',
+                                  right: 4,
+                                  top: '50%',
+                                  transform: 'translateY(-50%)',
+                                  opacity: 0,
+                                  transition: 'opacity 0.2s',
+                                  color: darkMode ? '#999' : '#666',
+                                  padding: '2px',
+                                  '&:hover': {
+                                    color: '#f44336',
+                                    backgroundColor: darkMode ? 'rgba(244, 67, 54, 0.1)' : 'rgba(244, 67, 54, 0.05)'
+                                  }
+                                }}
+                              >
+                                <CloseIcon sx={{ fontSize: '14px' }} />
+                              </IconButton>
+                            </>
                           )}
                         </Box>
                       </Tooltip>
@@ -1059,7 +1195,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                         </TableHead>
                         <TableBody>
                           {captureTextData.map((textStep: any, index) => {
-                            const isEditing = editingTextLabel === textStep.id;
+                            const isEditing = editing.stepId === textStep.id && editing.type === 'text';
 
                             return (
                               <TableRow
@@ -1083,12 +1219,12 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                                   {isEditing ? (
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: '200px' }}>
                                       <TextField
-                                        value={editingTextLabelValue}
-                                        onChange={(e) => setEditingTextLabelValue(e.target.value)}
-                                        onBlur={handleSaveTextLabel}
+                                        value={editing.value}
+                                        onChange={(e) => setEditing({ ...editing, value: e.target.value })}
+                                        onBlur={saveEdit}
                                         onKeyDown={(e) => {
-                                          if (e.key === 'Enter') handleSaveTextLabel();
-                                          if (e.key === 'Escape') handleCancelTextLabel();
+                                          if (e.key === 'Enter') saveEdit();
+                                          if (e.key === 'Escape') cancelEdit();
                                         }}
                                         autoFocus
                                         size="small"
@@ -1102,7 +1238,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                                       />
                                       <IconButton
                                         size="small"
-                                        onClick={handleSaveTextLabel}
+                                        onClick={saveEdit}
                                         sx={{
                                           color: '#4caf50',
                                           padding: '4px'
@@ -1124,7 +1260,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                                               textDecoration: 'underline'
                                             }
                                           }}
-                                          onClick={() => handleStartEditTextLabel(textStep.id, textStep.label)}
+                                          onClick={() => startEdit(textStep.id, 'text', textStep.label)}
                                         >
                                           {textStep.label}
                                         </Typography>

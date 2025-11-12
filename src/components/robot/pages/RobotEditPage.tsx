@@ -436,15 +436,6 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         // update the standard name field
         action.name = newName;
 
-        // also update legacy __name location if present (args[0].__name)
-        if (action.args && action.args.length > 0 && typeof action.args[0] === 'object' && action.args[0] !== null && '__name' in action.args[0]) {
-          try {
-            action.args[0] = { ...action.args[0], __name: newName };
-          } catch (e) {
-            console.error('Failed to update legacy __name field:', e);
-          }
-        }
-
         updatedWorkflow[pairIndex].what[actionIndex] = action;
       }
 
@@ -506,31 +497,39 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
 
     return (
       <>
-        <Typography variant="body1" style={{ marginBottom: "20px" }}>
+        <Typography variant="h6" style={{ marginBottom: "20px", marginTop: "20px" }}>
           {t("List Limits")}
         </Typography>
 
-        {scrapeListLimits.map((limitInfo, index) => (
-          <TextField
-            key={`limit-${limitInfo.pairIndex}-${limitInfo.actionIndex}`}
-            label={`${t("List Limit")} ${index + 1}`}
-            type="number"
-            value={limitInfo.currentLimit || ""}
-            onChange={(e) => {
-              const value = parseInt(e.target.value, 10);
-              if (value >= 1) {
-                handleLimitChange(
-                  limitInfo.pairIndex,
-                  limitInfo.actionIndex,
-                  limitInfo.argIndex,
-                  value
-                );
-              }
-            }}
-            inputProps={{ min: 1 }}
-            style={{ marginBottom: "20px" }}
-          />
-        ))}
+        {scrapeListLimits.map((limitInfo, index) => {
+          // Get the corresponding scrapeList action to extract its name
+          const scrapeListAction = robot?.recording?.workflow?.[limitInfo.pairIndex]?.what?.[limitInfo.actionIndex];
+          const actionName = 
+            scrapeListAction?.name ||
+            `List Limit ${index + 1}`;
+
+          return (
+            <TextField
+              key={`limit-${limitInfo.pairIndex}-${limitInfo.actionIndex}`}
+              label={actionName}
+              type="number"
+              value={limitInfo.currentLimit || ""}
+              onChange={(e) => {
+                const value = parseInt(e.target.value, 10);
+                if (value >= 1) {
+                  handleLimitChange(
+                    limitInfo.pairIndex,
+                    limitInfo.actionIndex,
+                    limitInfo.argIndex,
+                    value
+                  );
+                }
+              }}
+              inputProps={{ min: 1 }}
+              style={{ marginBottom: "20px" }}
+            />
+          );
+        })}
       </>
     );
   };
@@ -539,22 +538,48 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
     if (!robot || !robot.recording || !robot.recording.workflow) return null;
 
     const editableActions = new Set(['screenshot', 'scrapeList', 'scrapeSchema']);
-    const inputs: JSX.Element[] = [];
+    const textInputs: JSX.Element[] = [];
+    const screenshotInputs: JSX.Element[] = [];
+    const listInputs: JSX.Element[] = [];
+
+    let textCount = 0;
+    let screenshotCount = 0;
+    let listCount = 0;
 
     robot.recording.workflow.forEach((pair, pairIndex) => {
       if (!pair.what) return;
 
       pair.what.forEach((action, actionIndex) => {
-        // Only show editable name inputs for meaningful action types
         if (!editableActions.has(String(action.action))) return;
 
-        // derive current name from possible fields
-        const currentName =
-          action.name ||
-          (action.args && action.args[0] && typeof action.args[0] === 'object' && action.args[0].__name) ||
-          '';
+        let currentName = action.name || '';
 
-        inputs.push(
+        if (!currentName) {
+          switch (action.action) {
+            case 'scrapeSchema':
+              currentName = 'Texts';
+              break;
+            case 'screenshot':
+              screenshotCount++;
+              currentName = `Screenshot ${screenshotCount}`;
+              break;
+            case 'scrapeList':
+              listCount++;
+              currentName = `List ${listCount}`;
+              break;
+          }
+        } else {
+          switch (action.action) {
+            case 'screenshot':
+              screenshotCount++;
+              break;
+            case 'scrapeList':
+              listCount++;
+              break;
+          }
+        }
+
+        const textField = (
           <TextField
             key={`action-name-${pairIndex}-${actionIndex}`}
             type="text"
@@ -564,17 +589,93 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
             fullWidth
           />
         );
+
+        switch (action.action) {
+          case 'scrapeSchema': {
+            const existingName = currentName || "Texts";
+
+            if (!textInputs.length) {
+              textInputs.push(
+                <TextField
+                  key={`schema-${pairIndex}-${actionIndex}`}
+                  type="text"
+                  value={existingName}
+                  onChange={(e) => {
+                    const newName = e.target.value;
+
+                    setRobot((prev) => {
+                      if (!prev?.recording?.workflow) return prev;
+
+                      const updated = { ...prev };
+                      updated.recording = { ...prev.recording };
+                      updated.recording.workflow = prev.recording.workflow.map((p) => ({
+                        ...p,
+                        what: p.what?.map((a) => {
+                          if (a.action === "scrapeSchema") {
+                            const updatedAction = { ...a };
+                            updatedAction.name = newName;
+                            return updatedAction;
+                          }
+                          return a;
+                        }),
+                      }));
+
+                      return updated;
+                    });
+                  }}
+                  style={{ marginBottom: "12px" }}
+                  fullWidth
+                />
+              );
+            }
+
+            break;
+          }
+          case 'screenshot':
+            screenshotInputs.push(textField);
+            break;
+          case 'scrapeList':
+            listInputs.push(textField);
+            break;
+        }
       });
     });
 
-    if (inputs.length === 0) return null;
+    const hasAnyInputs = textInputs.length > 0 || screenshotInputs.length > 0 || listInputs.length > 0;
+    if (!hasAnyInputs) return null;
 
     return (
       <>
-        <Typography variant="body1" style={{ marginBottom: '10px' }}>
+        <Typography variant="h6" style={{ marginBottom: '20px', marginTop: '20px' }}>
           {t('Actions')}
         </Typography>
-        {inputs}
+
+        {textInputs.length > 0 && (
+          <>
+            <Typography variant="subtitle1" style={{ marginBottom: '8px' }}>
+              Texts
+            </Typography>
+            {textInputs}
+          </>
+        )}
+
+        {screenshotInputs.length > 0 && (
+          <>
+            <Typography variant="subtitle1" style={{ marginBottom: '8px', marginTop: textInputs.length > 0 ? '16px' : '0' }}>
+              Screenshots
+            </Typography>
+            {screenshotInputs}
+          </>
+        )}
+
+        {listInputs.length > 0 && (
+          <>
+            <Typography variant="subtitle1" style={{ marginBottom: '8px', marginTop: (textInputs.length > 0 || screenshotInputs.length > 0) ? '16px' : '0' }}>
+              Lists
+            </Typography>
+            {listInputs}
+          </>
+        )}
       </>
     );
   };

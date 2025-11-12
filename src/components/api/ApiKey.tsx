@@ -26,7 +26,8 @@ const Container = styled(Box)`
   flex-direction: column;
   align-items: center;
   margin-top: 50px;
-  margin-left: 50px;
+  margin-left: 70px;
+  margin-right: 70px;
 `;
 
 const ApiKeyManager = () => {
@@ -108,7 +109,7 @@ const ApiKeyManager = () => {
 
   return (
     <Container sx={{ alignSelf: 'flex-start' }}>
-      <Typography variant="body1" sx={{ marginTop: '10px', marginBottom: '40px' }}>
+      <Typography variant="body1" sx={{ marginBottom: '40px' }}>
         Start by creating an API key below. Then,
         <a href={`${apiUrl}/api-docs/`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', marginLeft: '5px', marginRight: '5px' }}>
           test your API
@@ -139,7 +140,7 @@ const ApiKeyManager = () => {
               <TableRow>
                 <TableCell>{apiKeyName}</TableCell>
                 <TableCell>
-                  <Box sx={{ fontFamily: 'monospace', width: '10ch' }}>
+                  <Box sx={{ fontFamily: 'monospace', width: '20ch' }}>
                     {showKey ? `${apiKey?.substring(0, 10)}...` : '**********'}
                   </Box>
                 </TableCell>
@@ -174,6 +175,5 @@ const ApiKeyManager = () => {
       )}
     </Container>
   );
-};
-
+}
 export default ApiKeyManager;

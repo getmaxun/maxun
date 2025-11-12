@@ -55,7 +55,7 @@ export default class Preprocessor {
   */
   static getParams(workflow: WorkflowFile): string[] {
     const getParamsRecurse = (object: any): string[] => {
-      if (typeof object === 'object') {
+      if (typeof object === 'object' && object !== null) {
         // Recursion base case
         if (object.$param) {
           return [object.$param];
@@ -141,14 +141,24 @@ export default class Preprocessor {
       }
 
       const out = object;
-      // for every key (child) of the object
+      
       Object.keys(object!).forEach((key) => {
-        // if the field has only one key, which is `k`
-        if (Object.keys((<any>object)[key]).length === 1 && (<any>object)[key][k]) {
-          // process the current special tag (init param, hydrate regex...)
-          (<any>out)[key] = f((<any>object)[key][k]);
-        } else {
-          initSpecialRecurse((<any>object)[key], k, f);
+        const childValue = (<any>object)[key];
+        
+        if (!childValue || typeof childValue !== 'object') {
+          return;
+        }
+        
+        try {
+          const childKeys = Object.keys(childValue);
+          
+          if (childKeys.length === 1 && childValue[k]) {
+            (<any>out)[key] = f(childValue[k]);
+          } else {
+            initSpecialRecurse(childValue, k, f);
+          }
+        } catch (error) {
+          console.warn(`Error processing key "${key}" in initSpecialRecurse:`, error);
         }
       });
       return out;

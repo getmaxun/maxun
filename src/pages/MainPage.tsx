@@ -1,7 +1,7 @@
 import React, { useCallback, useContext, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MainMenu } from "../components/dashboard/MainMenu";
-import { Stack } from "@mui/material";
+import { Stack, Box } from "@mui/material";
 import { Recordings } from "../components/robot/Recordings";
 import { Runs } from "../components/run/Runs";
 import ProxyForm from '../components/proxy/ProxyForm';
@@ -11,7 +11,7 @@ import { createAndRunRecording, createRunForStoredRecording, CreateRunResponseWi
 import { io, Socket } from "socket.io-client";
 import { stopRecording } from "../api/recording";
 import { RunSettings } from "../components/run/RunSettings";
-import { ScheduleSettings } from "../components/robot/ScheduleSettings";
+import { ScheduleSettings } from "../components/robot/pages/ScheduleSettingsPage";
 import { apiUrl } from "../apiConfig";
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/auth';
@@ -318,12 +318,29 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
     }
   }
 
-  return (
-    <Stack direction='row' spacing={0} sx={{ minHeight: '900px' }}>
-      <Stack sx={{ width: 250, flexShrink: 0 }}>
+return (
+  <Box sx={{ display: 'flex', minHeight: 'calc(100vh - 64px)', width: '100%' }}>
+    <Box sx={{ 
+      width: 230,
+      flexShrink: 0,
+      position: 'sticky',
+      top: 64,
+      height: 'calc(100vh - 64px)', 
+      overflowY: 'auto',
+      zIndex: 1000 
+    }}>
       <MainMenu value={content} handleChangeContent={setContent} />
-      </Stack>
+    </Box>
+    
+    <Box sx={{ 
+      flex: 1,
+      minWidth: 0, 
+      overflow: 'auto',
+      minHeight: 'calc(100vh - 64px)',
+      width: 'calc(100% - 250px)' 
+    }}>
       {DisplayContent()}
-    </Stack>
-  );
-};
+    </Box>
+  </Box>
+)
+}

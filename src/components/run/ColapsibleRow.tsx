@@ -3,6 +3,7 @@ import * as React from "react";
 import TableRow from "@mui/material/TableRow";
 import TableCell from "@mui/material/TableCell";
 import { Box, Collapse, IconButton, Typography, Chip, TextField } from "@mui/material";
+import { Button } from "@mui/material";
 import { DeleteForever, KeyboardArrowDown, KeyboardArrowUp, Settings } from "@mui/icons-material";
 import { deleteRunFromStorage } from "../../api/storage";
 import { columns, Data } from "./RunsTable";
@@ -11,6 +12,7 @@ import { GenericModal } from "../ui/GenericModal";
 import { modalStyle } from "../recorder/AddWhereCondModal";
 import { getUserById } from "../../api/auth";
 import { useTranslation } from "react-i18next";
+import { useTheme } from "@mui/material/styles";
 
 interface RunTypeChipProps {
   runByUserId?: string;
@@ -39,6 +41,8 @@ interface CollapsibleRowProps {
 }
 export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, currentLog, abortRunHandler, runningRecordingName, urlRunId }: CollapsibleRowProps) => {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const [isDeleteOpen, setDeleteOpen] = useState(false);
   const [openSettingsModal, setOpenSettingsModal] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const runByLabel = row.runByScheduleId
@@ -83,6 +87,17 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
     fetchUserEmail();
   }, [row.runByUserId]);
 
+  const handleConfirmDelete = async () => {
+    try {
+      const res = await deleteRunFromStorage(`${row.runId}`);
+      if (res) {
+        handleDelete();
+      }
+    } finally {
+      setDeleteOpen(false);
+    }
+  };
+
   return (
     <React.Fragment>
       <TableRow sx={{ '& > *': { borderBottom: 'unset' } }} hover role="checkbox" tabIndex={-1} key={row.id}>
@@ -120,13 +135,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
               case 'delete':
                 return (
                   <TableCell key={column.id} align={column.align}>
-                    <IconButton aria-label="add" size="small" onClick={() => {
-                      deleteRunFromStorage(`${row.runId}`).then((result: boolean) => {
-                        if (result) {
-                          handleDelete();
-                        }
-                      })
-                    }}>
+                    <IconButton aria-label="delete" size="small" onClick={() => setDeleteOpen(true)}>
                       <DeleteForever />
                     </IconButton>
                   </TableCell>
@@ -192,6 +201,32 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
           </Collapse>
         </TableCell>
       </TableRow>
+
+      <GenericModal isOpen={isDeleteOpen} onClose={() => setDeleteOpen(false)} modalStyle={{ ...modalStyle, padding: 0, backgroundColor: 'transparent', width: 'auto', maxWidth: '520px' }}>
+        <Box sx={{ padding: theme.spacing(3), borderRadius: 2, backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[900] : theme.palette.background.paper, color: theme.palette.text.primary, width: { xs: '90vw', sm: '460px', md: '420px' }, maxWidth: '90vw', boxSizing: 'border-box', mx: 'auto' }}>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            {t('runs_table.delete_confirm.title', {
+              name: row.name,
+              defaultValue: 'Delete run "{{name}}"?'
+            })}
+          </Typography>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            {t('runs_table.delete_confirm.message', {
+              name: row.name,
+              defaultValue: 'Are you sure you want to delete the run "{{name}}"?'
+            })}
+          </Typography>
+          <Box display="flex" justifyContent="flex-end" gap={1}>
+            <Button onClick={() => setDeleteOpen(false)} variant="outlined">
+              {t('common.cancel', { defaultValue: 'Cancel' })}
+            </Button>
+            <Button
+              onClick={handleConfirmDelete} variant="contained" color="primary" sx={{ '&:hover': { backgroundColor: theme.palette.primary.dark } }}>
+              {t('common.delete', { defaultValue: 'Delete' })}
+            </Button>
+          </Box>
+        </Box>
+      </GenericModal>
     </React.Fragment>
   );
 }
