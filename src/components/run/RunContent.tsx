@@ -115,27 +115,29 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
       const rawKeys = Object.keys(row.binaryOutput);
 
       const isLegacyPattern = rawKeys.every(key => /^item-\d+-\d+$/.test(key));
+      
+      let normalizedScreenshotKeys: string[];
 
       if (isLegacyPattern) {
-        const renamedKeys = rawKeys.map((_, index) => `Screenshot ${index + 1}`);
-        const keyMap: Record<string, string> = {};
-
-        renamedKeys.forEach((displayName, index) => {
-          keyMap[displayName] = rawKeys[index];
-        });
-
-        setScreenshotKeys(renamedKeys);
-        setScreenshotKeyMap(keyMap);
+        // Legacy unnamed screenshots → Screenshot 1, Screenshot 2...
+        normalizedScreenshotKeys = rawKeys.map((_, index) => `Screenshot ${index + 1}`);
       } else {
-        const keyMap: Record<string, string> = {};
-        rawKeys.forEach(key => {
-          keyMap[key] = key;
+        // Same rule as captured lists: if name missing or generic, auto-label
+        normalizedScreenshotKeys = rawKeys.map((key, index) => {
+          if (!key || key.toLowerCase().includes("screenshot")) {
+            return `Screenshot ${index + 1}`;
+          }
+          return key;
         });
-
-        setScreenshotKeys(rawKeys);
-        setScreenshotKeyMap(keyMap);
       }
 
+      const keyMap: Record<string, string> = {};
+      normalizedScreenshotKeys.forEach((displayName, index) => {
+        keyMap[displayName] = rawKeys[index];
+      });
+
+      setScreenshotKeys(normalizedScreenshotKeys);
+      setScreenshotKeyMap(keyMap);
       setCurrentScreenshotIndex(0);
     } else {
       setScreenshotKeys([]);
@@ -202,7 +204,14 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
   const processSchemaData = (schemaOutput: any) => {
     const keys = Object.keys(schemaOutput);
-    setSchemaKeys(keys);
+    const normalizedKeys = keys.map((key, index) => {
+      if (!key || key.toLowerCase().includes("scrapeschema")) {
+        return keys.length === 1 ? "Texts" : `Text ${index + 1}`;
+      }
+      return key;
+    });
+
+    setSchemaKeys(normalizedKeys);
 
     const dataByKey: Record<string, any[]> = {};
     const columnsByKey: Record<string, string[]> = {};
@@ -248,8 +257,17 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
       }
     });
 
-    setSchemaDataByKey(dataByKey);
-    setSchemaColumnsByKey(columnsByKey);
+    const remappedDataByKey: Record<string, any[]> = {};
+    const remappedColumnsByKey: Record<string, string[]> = {};
+
+    normalizedKeys.forEach((newKey, idx) => {
+      const oldKey = keys[idx];
+      remappedDataByKey[newKey] = dataByKey[oldKey];
+      remappedColumnsByKey[newKey] = columnsByKey[oldKey];
+    });
+
+    setSchemaDataByKey(remappedDataByKey);
+    setSchemaColumnsByKey(remappedColumnsByKey);
 
     if (allData.length > 0) {
       const allColumns = new Set<string>();
@@ -290,7 +308,14 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
     setListData(tablesList);
     setListColumns(columnsList);
-    setListKeys(keys);
+    const normalizedListKeys = keys.map((key, index) => {
+      if (!key || key.toLowerCase().includes("scrapelist")) {
+        return `List ${index + 1}`;
+      }
+      return key;
+    });
+
+    setListKeys(normalizedListKeys);
     setCurrentListIndex(0);
   };
 
