@@ -106,7 +106,7 @@ export const PageWrapper = () => {
               </Box>
             )}
             <Box sx={{
-              display: isAuthPage ? 'block' : 'flex',
+              display: 'block',
               minHeight: isAuthPage ? '100vh' : 'calc(100vh - 64px)'
             }}>
               <Routes>
