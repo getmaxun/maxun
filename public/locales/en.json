@@ -149,7 +149,8 @@
       "table": {
         "name": "API Key Name",
         "key": "API Key",
-        "actions": "Actions"
+        "actions": "Actions",
+        "createdOn": "Created On"
       },
       "actions": {
         "copy": "Copy",
