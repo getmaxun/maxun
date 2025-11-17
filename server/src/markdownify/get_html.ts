@@ -1,4 +1,4 @@
-import { chromium, Browser, Page, BrowserContext } from 'playwright';
+import { chromium, Browser, BrowserContext, Page } from 'playwright';
 
 export interface GetPageSourceOptions {
   wait?: number;
@@ -46,9 +46,10 @@ export async function getPageSource(
     
   } catch (error) {
     console.error('Error while getting page source: ', error);
+    return ''; // Explicitly return empty string on error
   } finally {
     if (page) await page.close();
     if (context) await context.close();
     if (browser) await browser.close();
   }
-  }
+}
