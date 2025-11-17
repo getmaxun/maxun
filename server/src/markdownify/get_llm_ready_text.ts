@@ -1,29 +1,46 @@
 import { getPageSource, GetPageSourceOptions } from './get_html';
-import { getProcessedText, ProcessTextOptions } from './get_llm_input_text';
+import { getProcessedText, ProcessTextOptions, ProcessedResult } from './get_llm_input_text';
 
-export interface UrlToLlmTextOptions extends GetPageSourceOptions, ProcessTextOptions {
-  // Combined options from both interfaces
-}
+export interface UrlToLlmTextOptions extends GetPageSourceOptions, ProcessTextOptions {}
 
 export async function urlToLlmText(
   url: string,
   options: UrlToLlmTextOptions = {}
-): Promise<string> {
+): Promise<ProcessedResult> {
   try {
     const pageSource = await getPageSource(url, options);
     
     if (!pageSource) {
-      return '';
+      return {
+        markdown: '',
+        plainText: '',
+        metadata: {
+          title: '',
+          url: url,
+          processedAt: new Date().toISOString(),
+          textLength: 0,
+          markdownLength: 0
+        }
+      };
     }
 
-    const llmText = await getProcessedText(pageSource, url, options);
-    return llmText;
+    const result = await getProcessedText(pageSource, url, options);
+    return result;
     
   } catch (error) {
     console.error('Error while scraping url: ', error);
-    return '';
+    return {
+      markdown: '',
+      plainText: '',
+      metadata: {
+        title: '',
+        url: url,
+        processedAt: new Date().toISOString(),
+        textLength: 0,
+        markdownLength: 0
+      }
+    };
   }
 }
 
-// Export individual functions as well
 export { getPageSource, getProcessedText };
