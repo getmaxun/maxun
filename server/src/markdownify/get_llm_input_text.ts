@@ -1,9 +1,7 @@
-
 import * as cheerio from 'cheerio';
 import { URL } from 'url';
 
 export interface ProcessTextOptions {
-  htmlParser?: boolean;
   keepImages?: boolean;
   removeSvgImage?: boolean;
   removeGifImage?: boolean;
@@ -12,13 +10,26 @@ export interface ProcessTextOptions {
   removeScriptTag?: boolean;
   removeStyleTag?: boolean;
   removeTags?: string[];
+  formatAsMarkdown?: boolean;
+}
+
+export interface ProcessedResult {
+  markdown: string;
+  plainText: string;
+  metadata: {
+    title: string;
+    url: string;
+    processedAt: string;
+    textLength: number;
+    markdownLength: number;
+  };
 }
 
 export async function getProcessedText(
   pageSource: string,
   baseUrl: string,
   options: ProcessTextOptions = {}
-): Promise<string> {
+): Promise<ProcessedResult> {
   const {
     keepImages = true,
     removeSvgImage = true,
@@ -27,13 +38,14 @@ export async function getProcessedText(
     keepWebpageLinks = true,
     removeScriptTag = true,
     removeStyleTag = true,
-    removeTags = []
+    removeTags = [],
+    formatAsMarkdown = true
   } = options;
 
   try {
     const $ = cheerio.load(pageSource);
     
-    // Remove tags
+    // Remove unwanted tags
     const tagsToRemove: string[] = [];
     if (removeScriptTag) tagsToRemove.push('script');
     if (removeStyleTag) tagsToRemove.push('style');
@@ -44,123 +56,272 @@ export async function getProcessedText(
       $(tag).remove();
     });
 
-    // Process image links
-    const imageTypesToRemove: string[] = [];
-    if (removeSvgImage) imageTypesToRemove.push('.svg');
-    if (removeGifImage) imageTypesToRemove.push('.gif');
-    imageTypesToRemove.push(...removeImageTypes);
+    // Extract page title
+    const title = $('title').text() || $('h1').first().text() || 'Untitled';
     
-    const uniqueImageTypes = [...new Set(imageTypesToRemove)];
+    // Generate both formats
+    const markdown = formatAsMarkdown ? 
+      convertToMarkdown($, baseUrl, options) : 
+      convertToPlainText($, baseUrl, options); // Fallback to plain text if markdown disabled
     
-    $('img').each((_, element) => {
-      try {
-        const $img = $(element);
-        if (!keepImages) {
-          $img.remove();
-        } else {
-          const imageLink = $img.attr('src');
-          let typeReplaced = false;
-          
-          if (imageLink) {
-            if (uniqueImageTypes.length > 0) {
-              for (const imageType of uniqueImageTypes) {
-                if (!typeReplaced && imageLink.includes(imageType)) {
-                  $img.remove();
-                  typeReplaced = true;
-                  break;
-                }
-              }
-            }
-            if (!typeReplaced) {
-              const absoluteUrl = new URL(imageLink, baseUrl).toString();
-              $img.replaceWith('\n' + absoluteUrl + ' ');
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error while processing image link: ', error);
-      }
-    });
+    const plainText = convertToPlainText($, baseUrl, options);
 
-    // Process website links - Preserve the link text AND the URL
-    $('a[href]').each((_, element) => {
-      try {
-        const $link = $(element);
-        if (!keepWebpageLinks) {
-          // Just remove the link but keep the text
-          $link.replaceWith($link.text());
-        } else {
-          const href = $link.attr('href');
-          if (href) {
-            const absoluteUrl = new URL(href, baseUrl).toString();
-            const linkText = $link.text().trim();
-            // Keep both the link text and the URL
-            $link.replaceWith(linkText + ' [' + absoluteUrl + '] ');
-          }
-        }
-      } catch (error) {
-        console.error('Error while processing webpage link: ', error);
+    const result: ProcessedResult = {
+      markdown,
+      plainText,
+      metadata: {
+        title: title.trim(),
+        url: baseUrl,
+        processedAt: new Date().toISOString(),
+        textLength: plainText.length,
+        markdownLength: markdown.length
       }
-    });
+    };
 
-    // Get text content 
-    let text: string;
-    
-    // Use a simpler approach to extract text
-    const bodyContent = $('body');
-    
-    if (bodyContent.length > 0) {
-      // Remove script and style tags that might have been missed
-      bodyContent.find('script, style, noscript').remove();
-      
-      // Get text with proper spacing
-      text = bodyContent
-        .contents()
-        .map((_, el) => {
-          if (el.type === 'text') {
-            return $(el).text();
-          }
-          if (el.type === 'tag') {
-            const $el = $(el);
-            const tagName = el.name?.toLowerCase();
-            
-            // Add appropriate spacing for block elements
-            if (['div', 'p', 'br', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tagName || '')) {
-              return $el.text() + '\n';
-            }
-            return $el.text() + ' ';
-          }
-          return '';
-        })
-        .get()
-        .join('');
-    } else {
-      text = $.text();
-    }
-    
-    // Clean up the text while preserving quotes
-    text = cleanText(text);
-    
-    return text;
+    return result;
 
   } catch (error) {
     console.error('Error while getting processed text: ', error);
-    return '';
+    // Return empty result on error
+    return {
+      markdown: '',
+      plainText: '',
+      metadata: {
+        title: '',
+        url: baseUrl,
+        processedAt: new Date().toISOString(),
+        textLength: 0,
+        markdownLength: 0
+      }
+    };
   }
 }
 
-// Clean up text while preserving quotes and important content
-function cleanText(text: string): string {
-  if (!text) return '';
+function convertToMarkdown($: cheerio.CheerioAPI, baseUrl: string, options: ProcessTextOptions): string {
+  const { keepImages, keepWebpageLinks } = options;
   
+  // Clone the body to avoid modifying the original
+  const $body = $('body').clone();
+  
+  // Process headers
+  $body.find('h1').each((_, element) => {
+    const $el = $(element);
+    $el.replaceWith(`# ${$el.text().trim()}\n\n`);
+  });
+  
+  $body.find('h2').each((_, element) => {
+    const $el = $(element);
+    $el.replaceWith(`## ${$el.text().trim()}\n\n`);
+  });
+  
+  $body.find('h3').each((_, element) => {
+    const $el = $(element);
+    $el.replaceWith(`### ${$el.text().trim()}\n\n`);
+  });
+  
+  $body.find('h4, h5, h6').each((_, element) => {
+    const $el = $(element);
+    const level = element.name?.substring(1) || '4';
+    const hashes = '#'.repeat(parseInt(level));
+    $el.replaceWith(`${hashes} ${$el.text().trim()}\n\n`);
+  });
+
+  // Process paragraphs
+  $body.find('p').each((_, element) => {
+    const $el = $(element);
+    $el.replaceWith(`${$el.text().trim()}\n\n`);
+  });
+
+  // Process lists
+  $body.find('li').each((_, element) => {
+    const $el = $(element);
+    const text = $el.text().trim();
+    if ($el.parent().is('ol')) {
+      $el.replaceWith(`1. ${text}\n`);
+    } else {
+      $el.replaceWith(`- ${text}\n`);
+    }
+  });
+
+  $body.find('ul, ol').each((_, element) => {
+    const $el = $(element);
+    $el.replaceWith(`\n${$el.html()}\n\n`);
+  });
+
+  // Process blockquotes
+  $body.find('blockquote').each((_, element) => {
+    const $el = $(element);
+    const text = $el.text().trim();
+    $el.replaceWith(`> ${text.replace(/\n/g, '\n> ')}\n\n`);
+  });
+
+  // Process code blocks
+  $body.find('pre').each((_, element) => {
+    const $el = $(element);
+    const text = $el.text().trim();
+    $el.replaceWith(`\`\`\`\n${text}\n\`\`\`\n\n`);
+  });
+
+  $body.find('code').each((_, element) => {
+    const $el = $(element);
+    // Only format inline code that's not inside pre blocks
+    if (!$el.closest('pre').length) {
+      const text = $el.text().trim();
+      $el.replaceWith(`\`${text}\``);
+    }
+  });
+
+  // Process images
+  if (keepImages) {
+    $body.find('img').each((_, element) => {
+      const $img = $(element);
+      const src = $img.attr('src');
+      const alt = $img.attr('alt') || '';
+      
+      if (src && !shouldRemoveImage(src, options)) {
+        const absoluteUrl = new URL(src, baseUrl).toString();
+        $img.replaceWith(`![${alt}](${absoluteUrl})\n\n`);
+      } else {
+        $img.remove();
+      }
+    });
+  } else {
+    $body.find('img').remove();
+  }
+
+  // Process links
+  if (keepWebpageLinks) {
+    $body.find('a[href]').each((_, element) => {
+      const $link = $(element);
+      const href = $link.attr('href');
+      const text = $link.text().trim();
+      
+      if (href && text) {
+        const absoluteUrl = new URL(href, baseUrl).toString();
+        $link.replaceWith(`[${text}](${absoluteUrl})`);
+      } else if (text) {
+        $link.replaceWith(text);
+      } else {
+        $link.remove();
+      }
+    });
+  } else {
+    $body.find('a[href]').each((_, element) => {
+      const $link = $(element);
+      $link.replaceWith($link.text().trim());
+    });
+  }
+
+  // Process tables (basic support)
+  $body.find('table').each((_, element) => {
+    const $table = $(element);
+    let markdownTable = '\n';
+    
+    $table.find('tr').each((rowIndex, row) => {
+      const $row = $(row);
+      const cells: string[] = [];
+      
+      $row.find('th, td').each((_, cell) => {
+        const $cell = $(cell);
+        cells.push($cell.text().trim());
+      });
+      
+      if (cells.length > 0) {
+        markdownTable += `| ${cells.join(' | ')} |\n`;
+        
+        // Add header separator after first row
+        if (rowIndex === 0) {
+          markdownTable += `|${cells.map(() => '---').join('|')}|\n`;
+        }
+      }
+    });
+    
+    $table.replaceWith(markdownTable + '\n');
+  });
+
+  // Get the final text and clean it up
+  let markdown = $body.text();
+  
+  // Clean up excessive whitespace while preserving structure
+  markdown = cleanMarkdown(markdown);
+  
+  return markdown;
+}
+
+function convertToPlainText($: cheerio.CheerioAPI, baseUrl: string, options: ProcessTextOptions): string {
+  const { keepImages, keepWebpageLinks } = options;
+  
+  const $body = $('body').clone();
+  
+  // Process images
+  if (keepImages) {
+    $body.find('img').each((_, element) => {
+      const $img = $(element);
+      const src = $img.attr('src');
+      
+      if (src && !shouldRemoveImage(src, options)) {
+        const absoluteUrl = new URL(src, baseUrl).toString();
+        $img.replaceWith(`\nImage: ${absoluteUrl}\n`);
+      } else {
+        $img.remove();
+      }
+    });
+  } else {
+    $body.find('img').remove();
+  }
+
+  // Process links
+  if (keepWebpageLinks) {
+    $body.find('a[href]').each((_, element) => {
+      const $link = $(element);
+      const href = $link.attr('href');
+      const text = $link.text().trim();
+      
+      if (href && text) {
+        const absoluteUrl = new URL(href, baseUrl).toString();
+        $link.replaceWith(`${text}: ${absoluteUrl} `);
+      }
+    });
+  } else {
+    $body.find('a[href]').each((_, element) => {
+      const $link = $(element);
+      $link.replaceWith($link.text().trim());
+    });
+  }
+
+  let text = $body.text();
+  text = cleanText(text);
+  
+  return text;
+}
+
+function shouldRemoveImage(src: string, options: ProcessTextOptions): boolean {
+  const { removeSvgImage, removeGifImage, removeImageTypes = [] } = options;
+  
+  const imageTypesToRemove: string[] = [];
+  if (removeSvgImage) imageTypesToRemove.push('.svg');
+  if (removeGifImage) imageTypesToRemove.push('.gif');
+  imageTypesToRemove.push(...removeImageTypes);
+  
+  return imageTypesToRemove.some(type => src.includes(type));
+}
+
+function cleanMarkdown(markdown: string): string {
+  return markdown
+    // Replace 3+ newlines with 2 newlines
+    .replace(/\n{3,}/g, '\n\n')
+    // Remove excessive spaces
+    .replace(/[ ]{2,}/g, ' ')
+    // Clean up space around headers
+    .replace(/\n\s*(#+)\s*/g, '\n$1 ')
+    // Remove trailing whitespace
+    .replace(/[ \t]+$/gm, '')
+    .trim();
+}
+
+function cleanText(text: string): string {
   return text
-    // Replace multiple spaces with single space, but be careful with quotes
-    .replace(/[^\S\n]+/g, ' ')
-    // Replace multiple newlines with max 2 newlines
+    .replace(/\s+/g, ' ')
     .replace(/\n\s*\n/g, '\n\n')
-    // Clean up spaces around quotes but don't remove the quotes
-    .replace(/\s+"/g, ' "')
-    .replace(/"\s+/g, '" ')
-    // Remove leading/trailing whitespace
     .trim();
 }
