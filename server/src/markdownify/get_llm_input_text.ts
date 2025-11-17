@@ -1,7 +1,4 @@
-// SPDX-License-Identifier: MIT
-
 import * as cheerio from 'cheerio';
-import { AnyAuthClient } from 'node_modules/google-auth-library/build/src';
 import { URL } from 'url';
 
 export interface ProcessTextOptions {
@@ -54,7 +51,7 @@ export async function getProcessedText(
     
     const uniqueImageTypes = [...new Set(imageTypesToRemove)];
     
-    $('img').each((_: any, element: any) => {
+    $('img').each((_, element) => {
       try {
         const $img = $(element);
         if (!keepImages) {
@@ -85,7 +82,7 @@ export async function getProcessedText(
     });
 
     // Process website links
-    $('a[href]').each((_: any, element: any) => {
+    $('a[href]').each((_, element) => {
       try {
         const $link = $(element);
         if (!keepWebpageLinks) {
@@ -107,7 +104,6 @@ export async function getProcessedText(
     const bodyContent = $('body');
     
     if (bodyContent.length > 0) {
-      // For minification, we'll use a simple approach to clean up the HTML
       const bodyHtml = bodyContent.html() || '';
       const minimizedBody = minifyHtml(bodyHtml);
       text = htmlToText(minimizedBody);
@@ -119,11 +115,10 @@ export async function getProcessedText(
 
   } catch (error) {
     console.error('Error while getting processed text: ', error);
-    return '';
+    return ''; // Explicitly return empty string on error
   }
 }
 
-// Simple HTML minification function
 function minifyHtml(html: string): string {
   return html
     .replace(/\s+/g, ' ')
@@ -131,17 +126,13 @@ function minifyHtml(html: string): string {
     .trim();
 }
 
-// Convert HTML to text (simplified version of inscriptis functionality)
 function htmlToText(html: string): string {
   const $ = cheerio.load(html);
   
-  // Remove elements that shouldn't contribute to text
   $('script, style, noscript').remove();
   
-  // Get text content with basic formatting
   let text = $('body').text() || $.text();
   
-  // Clean up the text
   text = text
     .replace(/\s+/g, ' ')
     .replace(/\n\s*\n/g, '\n')
