@@ -1,3 +1,4 @@
+
 import * as cheerio from 'cheerio';
 import { URL } from 'url';
 
@@ -81,17 +82,20 @@ export async function getProcessedText(
       }
     });
 
-    // Process website links
+    // Process website links - Preserve the link text AND the URL
     $('a[href]').each((_, element) => {
       try {
         const $link = $(element);
         if (!keepWebpageLinks) {
-          $link.remove();
+          // Just remove the link but keep the text
+          $link.replaceWith($link.text());
         } else {
           const href = $link.attr('href');
           if (href) {
             const absoluteUrl = new URL(href, baseUrl).toString();
-            $link.replaceWith($link.text() + ': ' + absoluteUrl + ' ');
+            const linkText = $link.text().trim();
+            // Keep both the link text and the URL
+            $link.replaceWith(linkText + ' [' + absoluteUrl + '] ');
           }
         }
       } catch (error) {
@@ -99,44 +103,64 @@ export async function getProcessedText(
       }
     });
 
-    // Get text content
+    // Get text content 
     let text: string;
+    
+    // Use a simpler approach to extract text
     const bodyContent = $('body');
     
     if (bodyContent.length > 0) {
-      const bodyHtml = bodyContent.html() || '';
-      const minimizedBody = minifyHtml(bodyHtml);
-      text = htmlToText(minimizedBody);
+      // Remove script and style tags that might have been missed
+      bodyContent.find('script, style, noscript').remove();
+      
+      // Get text with proper spacing
+      text = bodyContent
+        .contents()
+        .map((_, el) => {
+          if (el.type === 'text') {
+            return $(el).text();
+          }
+          if (el.type === 'tag') {
+            const $el = $(el);
+            const tagName = el.name?.toLowerCase();
+            
+            // Add appropriate spacing for block elements
+            if (['div', 'p', 'br', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tagName || '')) {
+              return $el.text() + '\n';
+            }
+            return $el.text() + ' ';
+          }
+          return '';
+        })
+        .get()
+        .join('');
     } else {
       text = $.text();
     }
+    
+    // Clean up the text while preserving quotes
+    text = cleanText(text);
     
     return text;
 
   } catch (error) {
     console.error('Error while getting processed text: ', error);
-    return ''; // Explicitly return empty string on error
+    return '';
   }
 }
 
-function minifyHtml(html: string): string {
-  return html
-    .replace(/\s+/g, ' ')
-    .replace(/>\s+</g, '><')
+// Clean up text while preserving quotes and important content
+function cleanText(text: string): string {
+  if (!text) return '';
+  
+  return text
+    // Replace multiple spaces with single space, but be careful with quotes
+    .replace(/[^\S\n]+/g, ' ')
+    // Replace multiple newlines with max 2 newlines
+    .replace(/\n\s*\n/g, '\n\n')
+    // Clean up spaces around quotes but don't remove the quotes
+    .replace(/\s+"/g, ' "')
+    .replace(/"\s+/g, '" ')
+    // Remove leading/trailing whitespace
     .trim();
-}
-
-function htmlToText(html: string): string {
-  const $ = cheerio.load(html);
-  
-  $('script, style, noscript').remove();
-  
-  let text = $('body').text() || $.text();
-  
-  text = text
-    .replace(/\s+/g, ' ')
-    .replace(/\n\s*\n/g, '\n')
-    .trim();
-    
-  return text;
 }
