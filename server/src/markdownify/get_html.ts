@@ -1,4 +1,4 @@
-import { chromium, Browser, Page } from 'playwright';
+import { chromium, Browser, Page, BrowserContext } from 'playwright';
 
 export interface GetPageSourceOptions {
   wait?: number;
@@ -17,6 +17,7 @@ export async function getPageSource(
   } = options;
 
   let browser: Browser | null = null;
+  let context: BrowserContext | null = null;
   let page: Page | null = null;
 
   try {
@@ -25,8 +26,8 @@ export async function getPageSource(
       args: ['--no-sandbox', '--disable-dev-shm-usage']
     });
     
-    page = await browser.newPage();
-    await page.setUserAgent(userAgent);
+    context = await browser.newContext({ userAgent });
+    page = await context.newPage();
     
     // Convert wait time to milliseconds
     const waitMs = wait * 1000;
@@ -45,9 +46,9 @@ export async function getPageSource(
     
   } catch (error) {
     console.error('Error while getting page source: ', error);
-    return '';
   } finally {
     if (page) await page.close();
+    if (context) await context.close();
     if (browser) await browser.close();
   }
-}
+  }
