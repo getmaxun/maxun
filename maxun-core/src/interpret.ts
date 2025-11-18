@@ -82,6 +82,8 @@ export default class Interpreter extends EventEmitter {
     scrapeSchema: {}
   };
 
+  private scrapeListCounter: number = 0;
+
   constructor(workflow: WorkflowFile, options?: Partial<InterpreterOptions>) {
     super();
     this.workflow = workflow.workflow;
@@ -575,12 +577,13 @@ export default class Interpreter extends EventEmitter {
 
         try {
           await this.ensureScriptsLoaded(page);
-        
+
           if (this.options.debugChannel?.incrementScrapeListIndex) {
             this.options.debugChannel.incrementScrapeListIndex();
           }
 
           let scrapeResults = [];
+          let paginationUsed = false;
 
           if (!config.pagination) {
             scrapeResults = await page.evaluate((cfg) => {
@@ -592,6 +595,7 @@ export default class Interpreter extends EventEmitter {
               }
             }, config);
           } else {
+            paginationUsed = true;
             scrapeResults = await this.handlePagination(page, config);
           }
 
@@ -599,25 +603,39 @@ export default class Interpreter extends EventEmitter {
             scrapeResults = [];
           }
 
-          const actionType = "scrapeList";
-          const actionName = (config as any).__name || "List";
+          console.log(`ScrapeList completed with ${scrapeResults.length} results`);
 
-          if (!this.serializableDataByType[actionType]) this.serializableDataByType[actionType] = {};
-          if (!this.serializableDataByType[actionType][actionName]) {
-            this.serializableDataByType[actionType][actionName] = [];
+          if (!paginationUsed) {
+            const actionType = "scrapeList";
+            let actionName = (config as any).__name || "";
+
+            if (!actionName || actionName.trim() === "") {
+              this.scrapeListCounter++;
+              actionName = `List ${this.scrapeListCounter}`;
+            }
+
+            if (!this.serializableDataByType[actionType]) this.serializableDataByType[actionType] = {};
+            if (!this.serializableDataByType[actionType][actionName]) {
+              this.serializableDataByType[actionType][actionName] = [];
+            }
+
+            this.serializableDataByType[actionType][actionName].push(...scrapeResults);
+
+            await this.options.serializableCallback({
+              scrapeList: this.serializableDataByType.scrapeList,
+              scrapeSchema: this.serializableDataByType.scrapeSchema
+            });
           }
-
-          this.serializableDataByType[actionType][actionName].push(...scrapeResults);
-
-          await this.options.serializableCallback({
-            scrapeList: this.serializableDataByType.scrapeList,
-            scrapeSchema: this.serializableDataByType.scrapeSchema
-          });
         } catch (error) {
           console.error('ScrapeList action failed completely:', error.message);
-          
+
           const actionType = "scrapeList";
-          const actionName = (config as any).__name || "List";
+          let actionName = (config as any).__name || "";
+
+          if (!actionName || actionName.trim() === "") {
+            this.scrapeListCounter++;
+            actionName = `List ${this.scrapeListCounter}`;
+          }
 
           if (!this.namedResults[actionType]) this.namedResults[actionType] = {};
           this.namedResults[actionType][actionName] = [];
@@ -818,12 +836,26 @@ export default class Interpreter extends EventEmitter {
       return [];
     }
 
+    const actionType = "scrapeList";
+    let actionName = (config as any).__name || "";
+    if (!actionName || actionName.trim() === "") {
+      this.scrapeListCounter++;
+      actionName = `List ${this.scrapeListCounter}`;
+    }
+
+    if (!this.serializableDataByType[actionType]) {
+      this.serializableDataByType[actionType] = {};
+    }
+    if (!this.serializableDataByType[actionType][actionName]) {
+      this.serializableDataByType[actionType][actionName] = [];
+    }
+
     let allResults: Record<string, any>[] = [];
     let previousHeight = 0;
     let scrapedItems: Set<string> = new Set<string>();
     let visitedUrls: Set<string> = new Set<string>();
     const MAX_RETRIES = 3;
-    const RETRY_DELAY = 1000; // 1 second delay between retries
+    const RETRY_DELAY = 1000;
     const MAX_UNCHANGED_RESULTS = 5;
 
     const debugLog = (message: string, ...args: any[]) => {
@@ -831,7 +863,6 @@ export default class Interpreter extends EventEmitter {
     };
 
     const scrapeCurrentPage = async () => {
-        // Check abort flag before scraping current page
         if (this.isAborted) {
           debugLog("Workflow aborted, stopping scrapeCurrentPage");
           return;
@@ -849,7 +880,6 @@ export default class Interpreter extends EventEmitter {
           debugLog(`Page evaluation failed: ${error.message}`);
           return;
         }
-
         const newResults = results.filter(item => {
             const uniqueKey = JSON.stringify(item);
             if (scrapedItems.has(uniqueKey)) return false;
@@ -859,7 +889,11 @@ export default class Interpreter extends EventEmitter {
         allResults = allResults.concat(newResults);
         debugLog("Results collected:", allResults.length);
 
-        await this.options.serializableCallback(allResults);
+        this.serializableDataByType[actionType][actionName] = [...allResults];
+        await this.options.serializableCallback({
+          scrapeList: this.serializableDataByType.scrapeList,
+          scrapeSchema: this.serializableDataByType.scrapeSchema
+        });
     };
 
     const checkLimit = () => {
