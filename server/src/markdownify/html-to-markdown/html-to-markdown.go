@@ -16,9 +16,9 @@ import (
 	"golang.org/x/net/html"
 )
 
-// ConvertHTMLToMarkdown receives HTML and returns a markdown string allocated for C.
-// Function name changed, comment rewritten.
+//export ConvertHTMLToMarkdown
 func ConvertHTMLToMarkdown(input *C.char) *C.char {
+	// ConvertHTMLToMarkdown receives HTML and returns a markdown string allocated for C.
 	engine := md.NewConverter("", true, nil)
 	engine.Use(plugin.GitHubFlavored())
 
