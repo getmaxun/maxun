@@ -1511,3 +1511,126 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
   };
 
 })(window);
+
+/* Media extraction support - listens for clicks on media elements and extracts text.
+   Sends { url, tag, selector, extractedText } via postMessage to the parent window. */
+
+// Extract text from image: alt/title first, then OCR via Tesseract if available
+async function extractImageText(img) {
+  try {
+    const altTitle = (img.alt || img.title || '').trim();
+    if (altTitle) return altTitle;
+
+    if (window.Tesseract && typeof window.Tesseract.recognize === 'function') {
+      // Use the image src (may be data: or remote); ignore if data: that contains large chunks
+      const src = img.currentSrc || img.src || '';
+      if (!src) return '';
+      try {
+        const result = await window.Tesseract.recognize(src, 'eng');
+        return (result?.data?.text || '').trim();
+      } catch (e) {
+        return '';
+      }
+    }
+  } catch (e) {
+    return '';
+  }
+  return '';
+}
+
+// Extract text from PDF using pdf.js if available
+async function extractPdfText(url) {
+  try {
+    if (!window.pdfjsLib) return '';
+    const loadingTask = window.pdfjsLib.getDocument(url);
+    const pdf = await loadingTask.promise;
+    let text = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      // eslint-disable-next-line no-await-in-loop
+      const page = await pdf.getPage(i);
+      // eslint-disable-next-line no-await-in-loop
+      const content = await page.getTextContent();
+      text += content.items.map((it) => it.str).join(' ') + '\n';
+    }
+    return text.trim();
+  } catch (e) {
+    return '';
+  }
+}
+
+// Helper to generate structural selector if function is available
+function structuralSelector(el) {
+  try {
+    if (typeof GetSelectorStructural === 'function') return GetSelectorStructural(el);
+  } catch (e) {
+    // fallthrough
+  }
+  return '';
+}
+
+// Click listener for media elements
+document.addEventListener('click', async (ev) => {
+  try {
+    const el = ev.target;
+    if (!el || !el.tagName) return;
+    const tag = el.tagName.toLowerCase();
+    let url = '';
+    let selector = structuralSelector(el);
+    let extractedText = '';
+
+    if (tag === 'img') {
+      url = el.currentSrc || el.src || '';
+      extractedText = (el.alt || el.title || '').trim();
+      if (!extractedText) extractedText = await extractImageText(el);
+    } else if (tag === 'iframe' || tag === 'embed') {
+      url = el.src || el.data || '';
+      if (url && /\.pdf(\?|$)/i.test(url)) {
+        extractedText = await extractPdfText(url);
+      }
+    } else if (tag === 'object') {
+      // <object data="...pdf"> style
+      url = el.data || '';
+      if (url && /\.pdf(\?|$)/i.test(url)) {
+        extractedText = await extractPdfText(url);
+      }
+    }
+
+    if (url && extractedText) {
+      // Post to parent so the recorder frontend (or wrapper) can relay it to server socket
+      try {
+        window.parent.postMessage({
+          type: 'maxun:media-extracted',
+          url,
+          tag,
+          selector,
+          extractedText
+        }, '*');
+      } catch (e) {
+        // ignore
+      }
+    }
+  } catch (e) {
+    // swallow
+  }
+});
+
+// Load Tesseract and PDF.js if not already present (CDN).
+if (!window.Tesseract) {
+  const s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js';
+  s.async = true;
+  document.head.appendChild(s);
+}
+if (!window.pdfjsLib) {
+  const s2 = document.createElement('script');
+  s2.src = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
+  s2.async = true;
+  s2.onload = () => {
+    try {
+      // eslint-disable-next-line no-undef
+      window.pdfjsLib = window['pdfjs-dist/build/pdf'];
+      if (window.pdfjsLib) window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+    } catch (e) {}
+  };
+  document.head.appendChild(s2);
+}

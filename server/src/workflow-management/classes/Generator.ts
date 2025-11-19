@@ -150,6 +150,36 @@ export class WorkflowGenerator {
   }
 
   /**
+   * Handle media extraction event from browser-side snippet.
+   * Appends a media event object to workflowRecord.events.
+   */
+  public async handleMediaExtracted(data: { url: string; tag: string; selector: string; extractedText: string }, page: Page) {
+    try {
+      if (!this.workflowRecord) this.workflowRecord = { workflow: [] } as WorkflowFile;
+      // Ensure events array exists on workflowRecord (non-standard addition)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (this.workflowRecord as any).events = (this.workflowRecord as any).events || [];
+      (this.workflowRecord as any).events.push({
+        type: 'media',
+        url: data.url,
+        tag: data.tag,
+        selector: data.selector,
+        extractedText: data.extractedText,
+        timestamp: Date.now(),
+      });
+
+      // notify client of new event if needed
+      try {
+        this.socket.emit('workflow:media-added', { url: data.url, selector: data.selector });
+      } catch (e) {
+        // ignore
+      }
+    } catch (e) {
+      logger.log('warn', `handleMediaExtracted failed: ${(e as Error).message}`);
+    }
+  }
+
+  /**
    * Registers the event handlers for all generator-related events on the socket.
    * @param socket The socket used to communicate with the client.
    * @private
