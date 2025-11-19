@@ -52,6 +52,6 @@ export async function convertPageToMarkdown(url: string): Promise<string> {
   await browser.close();
 
   // Convert cleaned HTML → Markdown
-  const markdown = await parseMarkdown(cleanedHtml || "");
+  const markdown = await parseMarkdown(cleanedHtml, url);
   return markdown;
 }
