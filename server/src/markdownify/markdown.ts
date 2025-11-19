@@ -1,8 +1,10 @@
 export async function parseMarkdown(
   html: string | null | undefined,
+  baseUrl?: string | null
 ): Promise<string> {
   const TurndownService = require("turndown");
   const { gfm } = require("joplin-turndown-plugin-gfm");
+  const { URL } = require('url');
 
   const t = new TurndownService();
   t.addRule("inlineLink", {
@@ -11,7 +13,18 @@ export async function parseMarkdown(
       node.nodeName === "A" &&
       node.getAttribute("href"),
     replacement: (content: string, node: any) => {
-      const href = node.getAttribute("href").trim();
+      let href = node.getAttribute("href").trim();
+      
+      // Convert relative URLs to absolute if baseUrl is provided
+      if (baseUrl && isRelativeUrl(href)) {
+        try {
+          const url = new URL(href, baseUrl);
+          href = url.toString();
+        } catch (err) {
+          // If URL construction fails, keep the original href
+        }
+      }
+      
       const title = node.title ? ` "${node.title}"` : "";
       return `[${content.trim()}](${href}${title})\n`;
     },
@@ -28,6 +41,10 @@ export async function parseMarkdown(
     console.error("HTML→Markdown failed", { err });
     return "";
   }
+}
+
+function isRelativeUrl(url: string): boolean {
+  return !url.includes('://') && !url.startsWith('mailto:') && !url.startsWith('tel:');
 }
 
 // ---------------------------------------------
