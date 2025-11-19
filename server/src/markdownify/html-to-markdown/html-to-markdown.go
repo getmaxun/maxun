@@ -11,16 +11,16 @@ import (
 	"unicode/utf8"
 
 	"github.com/PuerkitoBio/goquery"
-	md "github.com/getmaxun/html-to-markdown/v2"
-	"github.com/getmaxun/html-to-markdown/v2/plugin"
-	converter "github.com/getmaxun/html-to-markdown/v2/converter"
+	md "github.com/getmaxun/html-to-markdown"
+	"github.com/getmaxun/html-to-markdown/plugin"
 	"golang.org/x/net/html"
 )
 
 // ConvertHTMLToMarkdown receives HTML and returns a markdown string allocated for C.
+// Function name changed, comment rewritten.
 func ConvertHTMLToMarkdown(input *C.char) *C.char {
-	engine := converter.NewConverter("", true, nil)
-	// engine.Use(plugin.GitHubFlavored())
+	engine := md.NewConverter("", true, nil)
+	engine.Use(plugin.GitHubFlavored())
 
 	registerPreHandler(engine)
 
@@ -44,7 +44,7 @@ func main() {
 
 // registerPreHandler configures a specialized PRE/code block rule
 // to properly extract nested content and detect languages.
-func registerPreHandler(conv *converter.Converter) {
+func registerPreHandler(conv *md.Converter) {
 	isNoiseNode := func(class string) bool {
 		l := strings.ToLower(class)
 		return strings.Contains(l, "gutter") || strings.Contains(l, "line-numbers")
