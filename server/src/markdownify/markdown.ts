@@ -16,6 +16,7 @@ const ext =
 // Build path to the binary **inside the same folder**
 export const GO_MARKDOWN_PARSER_PATH = path.join(
   __dirname,
+  "html-to-markdown",
   `html-to-markdown${ext}`
 );
 
