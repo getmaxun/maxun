@@ -187,7 +187,100 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
       if (!recording) {
         throw new Error(`Recording for run ${data.runId} not found`);
       }
-      
+
+      if (recording.recording_meta.type === 'markdown') {
+        logger.log('info', `Executing markdown robot for run ${data.runId}`);
+
+        await run.update({
+          status: 'running',
+          log: 'Converting page to markdown'
+        });
+
+        try {
+          const { convertPageToMarkdown } = await import('./markdownify/scrape');
+          const url = recording.recording_meta.url;
+
+          if (!url) {
+            throw new Error('No URL specified for markdown robot');
+          }
+
+          const markdown = await convertPageToMarkdown(url);
+
+          await run.update({
+            status: 'success',
+            finishedAt: new Date().toLocaleString(),
+            log: 'Markdown conversion completed successfully',
+            serializableOutput: {
+              markdown: [{ content: markdown }]
+            },
+            binaryOutput: {},
+          });
+
+          logger.log('info', `Markdown robot execution completed for run ${data.runId}`);
+
+          try {
+            const completionData = {
+              runId: data.runId,
+              robotMetaId: plainRun.robotMetaId,
+              robotName: recording.recording_meta.name,
+              status: 'success',
+              finishedAt: new Date().toLocaleString()
+            };
+
+            serverIo.of(browserId).emit('run-completed', completionData);
+            serverIo.of('/queued-run').to(`user-${data.userId}`).emit('run-completed', completionData);
+          } catch (socketError: any) {
+            logger.log('warn', `Failed to send run-completed notification for markdown robot run ${data.runId}: ${socketError.message}`);
+          }
+
+          try {
+            const webhookPayload = {
+              runId: data.runId,
+              robotId: plainRun.robotMetaId,
+              robotName: recording.recording_meta.name,
+              status: 'success',
+              finishedAt: new Date().toLocaleString(),
+              markdown: markdown
+            };
+            await sendWebhook(plainRun.robotMetaId, 'run_completed', webhookPayload);
+            logger.log('info', `Webhooks sent successfully for markdown robot run ${data.runId}`);
+          } catch (webhookError: any) {
+            logger.log('warn', `Failed to send webhooks for markdown robot run ${data.runId}: ${webhookError.message}`);
+          }
+
+          await destroyRemoteBrowser(browserId, data.userId);
+
+          return { success: true };
+        } catch (error: any) {
+          logger.log('error', `Markdown conversion failed for run ${data.runId}: ${error.message}`);
+
+          await run.update({
+            status: 'failed',
+            finishedAt: new Date().toLocaleString(),
+            log: `Markdown conversion failed: ${error.message}`,
+          });
+
+          try {
+            const failureData = {
+              runId: data.runId,
+              robotMetaId: plainRun.robotMetaId,
+              robotName: recording.recording_meta.name,
+              status: 'failed',
+              finishedAt: new Date().toLocaleString()
+            };
+
+            serverIo.of(browserId).emit('run-completed', failureData);
+            serverIo.of('/queued-run').to(`user-${data.userId}`).emit('run-completed', failureData);
+          } catch (socketError: any) {
+            logger.log('warn', `Failed to send run-failed notification for markdown robot run ${data.runId}: ${socketError.message}`);
+          }
+
+          await destroyRemoteBrowser(browserId, data.userId);
+
+          throw error;
+        }
+      }
+
       const isRunAborted = async (): Promise<boolean> => {
         try {
           const currentRun = await Run.findOne({ where: { runId: data.runId } });
