@@ -28,15 +28,24 @@ export const getStoredRecordings = async (): Promise<string[] | null> => {
   }
 };
 
-export const createMarkdownRobot = async (url: string, name?: string): Promise<any> => {
+export const createScrapeRobot = async (
+  url: string,
+  name?: string,
+  formats: string[] = ['markdown']
+): Promise<any> => {
   try {
-    const response = await axios.post(`${apiUrl}/storage/recordings/markdown`, {
-      url,
-      name,
-    }, {
-      headers: { 'Content-Type': 'application/json' },
-      withCredentials: true
-    });
+    const response = await axios.post(
+      `${apiUrl}/storage/recordings/scrape`,
+      {
+        url,
+        name,
+        formats,
+      },
+      {
+        headers: { 'Content-Type': 'application/json' },
+        withCredentials: true,
+      }
+    );
 
     if (response.status === 201) {
       return response.data;
