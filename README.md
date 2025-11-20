@@ -6,14 +6,14 @@
             Maxun
         </a>
     </div>
-    The Easiest Way To Extract Web Data With No Code <br>
+    Transform the Web into Structured Intelligence<br>
 </h2>
 
 <p align="center">
-Maxun lets you train a robot in 2 minutes and scrape the web on auto-pilot. Web data extraction doesn't get easier than this!
-    <br /> Maxun is the open-source alternative to BrowseAI, Octoparse and likes.
+✨ Turn any website into clean, contextualized data pipelines for your AI applications ✨
+<br />
+Maxun is the easiest way to extract web data with no code. The <b>modern</b> open-source alternative to BrowseAI, Octoparse and similar tools.
 </p>
-
 
 <p align="center">
     <a href="https://app.maxun.dev/?ref=ghread"><b>Go To App</b></a> •
@@ -26,29 +26,74 @@ Maxun lets you train a robot in 2 minutes and scrape the web on auto-pilot. Web 
 <a href="https://trendshift.io/repositories/12113" target="_blank"><img src="https://trendshift.io/api/badge/repositories/12113" alt="getmaxun%2Fmaxun | Trendshift" style="width: 250px; height: 55px; margin-top: 10px;" width="250" height="55"/></a>
 </p>
 
+## What is Maxun?
+
+Maxun is a powerful no-code ecosystem for web data extraction. With its intuitive no-code interface, anyone can extract data from **any** website — no coding required. In just minutes, users can build automation robots to **turn websites into structured APIs, LLM-ready markdown, spreadsheets, extract data at scale, and much more.**
+
+## Core Terminologies
+
+Maxun uses web robots to power everything you can do on the platform. There are two types of robots, each designed for a different job.
+
+### 1. Extract Robots
+**Extract robots emulate real user behavior and capture structured data at scale.**
+- Built for automation and structured data extraction
+- Point-and-click interface - no coding required
+- Extract from any website, including behind logins
+- Record user actions (clicks, scrolls, form fills, pagination, etc.)
+- Convert sites into APIs, spreadsheets, and workflows
+- Scale extractions and run on schedules or via API
+- Handle infinite scrolling and pagination
+- Auto-adapt to website layout & structural changes
+
 https://github.com/user-attachments/assets/c6baa75f-b950-482c-8d26-8a8b6c5382c3
 
+### 2. Scrape Robots
+**Built for clean content and AI workflows.**
+- Get clean HTML and LLM-ready Markdown from any website
+- Remove scripts, styling, ads, and clutter automatically
+- Perfect for RAG systems, AI summarization, embeddings, and content pipelines
+- Extract main content while filtering out navigation and irrelevant elements
+- Ideal for feeding clean data to large language models
+
+https://github.com/user-attachments/assets/c774cbd4-5a85-45b7-b41f-128ee570eae6
+
+## Quick Start
+
 ### Getting Started
-The simplest & fastest way to get started is to use the hosted version: https://app.maxun.dev. You can self-host if you like!
+The simplest & fastest way to get started is to use the hosted version: https://app.maxun.dev. You can self-host if you prefer!
 
 ### Installation
-Maxun can run locally with or without Docker
+Maxun can run locally with or without Docker:
 1. [Setup with Docker Compose](https://docs.maxun.dev/installation/docker)
 2. [Setup without Docker](https://docs.maxun.dev/installation/local)
 3. [Environment Variables](https://docs.maxun.dev/installation/environment_variables)
 
-###  Upgrading & Self Hosting
+### Upgrading & Self Hosting
 1. [Self Host Maxun With Docker & Portainer](https://docs.maxun.dev/self-host)
 2. [Upgrade Maxun With Docker Compose Setup](https://docs.maxun.dev/installation/upgrade#upgrading-with-docker-compose)
 3. [Upgrade Maxun Without Docker Compose Setup](https://docs.maxun.dev/installation/upgrade#upgrading-with-local-setup)
 
-### How Does It Work?
-Maxun lets you create custom robots which emulate user actions and extract data. A robot can perform any of the actions: Capture List, Capture Text or Capture Screenshot. Once a robot is created, it will keep extracting data for you without manual intervention.
-1. Capture List: Useful to extract structured and bulk items from the website. 
-2. Capture Text: Useful to extract individual text content from the website.
-3. Capture Screenshot: Get fullpage or visible section screenshots of the website.
+## What Can Robots Do?
 
-### Sponsors
+- ✨ **Open webpages** and navigate sites automatically
+- ✨ **Log in** to secured websites and maintain sessions
+- ✨ **Click on buttons**, links, and interactive elements
+- ✨ **Fill out forms** with custom data
+- ✨ **Select from dropdowns**, radios, checkboxes, dates, times, etc.
+- ✨ **Take screenshots** - fullpage or visible sections
+- ✨ **Capture structured data** without writing code
+- ✨ **Handle infinite scrolling** and pagination automatically
+- ✨ **Run on schedules** - set it and forget it
+- ✨ **Trigger via APIs** for third-party integrations
+- ✨ **Extract behind login** walls and authentication
+- ✨ **Integrate with applications** like N8N, Google Sheets, Airtable, and more
+- ✨ **Send data to webhooks** for real-time processing
+- ✨ **Get clean HTML** from websites for AI applications
+- ✨ **Turn websites into LLM-ready markdown** for AI pipelines
+- ✨ **Talk to your LLM** with MCP (Model Context Protocol)
+
+## Sponsors
+
 <table>
   <tr>
   <td width="229">
@@ -71,16 +116,27 @@ Maxun lets you create custom robots which emulate user actions and extract data.
   </tr>
 </table>
 
-### Features
-- ✨ Extract Data With No-Code
-- ✨ Handle Pagination & Scrolling
-- ✨ Run Robots On A Specific Schedule
-- ✨ Turn Websites to APIs
-- ✨ Turn Websites to Spreadsheets
-- ✨ Adapt To Website Layout Changes
-- ✨ Extract Behind Login
-- ✨ Integrations
-- ✨ MCP 
+## Features
+
+- ✨ **Extract Data With No-Code** - Point and click interface
+- ✨ **Two Robot Types** - Extract for structured data, Scrape for clean content
+- ✨ **Handle Pagination & Scrolling** - Automatic navigation
+- ✨ **Run Robots On Schedules** - Set it and forget it
+- ✨ **Turn Websites to APIs** - RESTful endpoints from any site
+- ✨ **Turn Websites to Spreadsheets** - Direct data export
+- ✨ **Adapt To Website Layout Changes** - Auto-recovery from site updates
+- ✨ **Extract Behind Login** - Handle authentication seamlessly
+- ✨ **Integrations** - Connect with your favorite tools
+- ✨ **MCP Support** - Model Context Protocol integration
+- ✨ **LLM-Ready Data** - Clean Markdown for AI applications
+- ✨ **Self-Hostable** - Full control over your infrastructure
+- ✨ **Open Source** - Transparent and community-driven
+
+---
+
+<p align="center">
+  <i>Start extracting web data in minutes, not days. No code required.</i>
+</p>
 
 ### Use Cases
 Maxun can be used for various use-cases, including lead generation, market research, content aggregation and more.
