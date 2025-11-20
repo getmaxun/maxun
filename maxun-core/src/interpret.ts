@@ -1187,7 +1187,7 @@ export default class Interpreter extends EventEmitter {
                     }).catch(e => {
                       throw e; 
                     }),
-                    button.click()
+                    page.locator(workingSelector).first().click()
                   ]);
                   debugLog("Navigation successful after regular click");
                   await page.waitForTimeout(2000);
@@ -1202,17 +1202,17 @@ export default class Interpreter extends EventEmitter {
                       }).catch(e => {
                         throw e; 
                       }),
-                      button.dispatchEvent('click')
+                      page.locator(workingSelector).first().dispatchEvent('click')
                     ]);
                     debugLog("Navigation successful after dispatch event");
                     await page.waitForTimeout(2000);
                     paginationSuccess = true;
                   } catch (dispatchNavError) {
                     try {
-                      await button.click();
+                      await page.locator(workingSelector).first().click();
                       await page.waitForTimeout(2000);
                     } catch (clickError) {
-                      await button.dispatchEvent('click');
+                      await page.locator(workingSelector).first().dispatchEvent('click');
                       await page.waitForTimeout(2000);
                     }
                   }

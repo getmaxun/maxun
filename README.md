@@ -11,6 +11,7 @@
 
 <p align="center">
 Maxun lets you train a robot in 2 minutes and scrape the web on auto-pilot. Web data extraction doesn't get easier than this!
+    <br /> Maxun is the open-source alternative to BrowseAI, Octoparse and likes.
 </p>
 
 
