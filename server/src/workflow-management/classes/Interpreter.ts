@@ -550,17 +550,15 @@ export class WorkflowInterpreter {
       },
       serializableCallback: async (data: any) => {
         try {
-          if (!this.currentActionType || !this.currentActionName) return;
+          if (!data || typeof data !== "object") return;
 
-          let typeKey = this.currentActionType;
-          let actionName = this.currentActionName;
+          let typeKey = this.currentActionType || "";
 
-          let subtree =
-            typeKey === "scrapeList"
-              ? data?.scrapeList
-              : typeKey === "scrapeSchema"
-                ? data?.scrapeSchema
-                : null;
+          if (this.currentActionType === "scrapeList") {
+            typeKey = "scrapeList";
+          } else if (this.currentActionType === "scrapeSchema") {
+            typeKey = "scrapeSchema";
+          }
 
           if (typeKey === "scrapeList" && data.scrapeList) {
             data = data.scrapeList;
@@ -612,7 +610,7 @@ export class WorkflowInterpreter {
             data: flattened,
           });
         } catch (err: any) {
-          logger.log("error", `serializableCallback failed: ${err.message}`);
+          logger.log('error', `serializableCallback handler failed: ${err.message}`);
         }
       },
       binaryCallback: async (payload: { name: string; data: Buffer; mimeType: string }) => {
