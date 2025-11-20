@@ -399,7 +399,7 @@ const RobotCreate: React.FC = () => {
                 />
 
                 <FormControl component="fieldset" sx={{ width: '100%', textAlign: 'left' }}>
-                  <p >Output Format (Select at least one)</p>
+                  <p>Output Format (Select at least one)</p>
                   <FormControlLabel
                     control={
                       <Checkbox
@@ -476,7 +476,7 @@ const RobotCreate: React.FC = () => {
               >
                 {isLoading
                   ? "Creating..."
-                  : `Create ${outputFormats.join(" + ").toUpperCase()} Robot`
+                  : `Create Robot`
                 }
               </Button>
             </Box>
