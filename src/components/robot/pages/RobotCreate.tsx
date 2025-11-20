@@ -184,8 +184,6 @@ const RobotCreate: React.FC = () => {
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
           <Tabs value={tabValue} onChange={handleTabChange} aria-label="robot type tabs">
             <Tab
-              icon={<Code />}
-              iconPosition="start"
               label="Extract"
               id="robot-tab-0"
               aria-controls="robot-tabpanel-0"
