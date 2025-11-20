@@ -562,14 +562,39 @@ export class WorkflowInterpreter {
                 ? data?.scrapeSchema
                 : null;
 
-          if (!subtree) return;
-
-          if (typeKey === "scrapeList") {
-            actionName = this.getUniqueActionName(typeKey, actionName);
+          if (typeKey === "scrapeList" && data.scrapeList) {
+            data = data.scrapeList;
+          } else if (typeKey === "scrapeSchema" && data.scrapeSchema) {
+            data = data.scrapeSchema;
           }
 
-          const values = Object.values(subtree);
-          const flattened = values.flat();
+          let actionName = "";
+          if (typeKey === "scrapeList" && data && typeof data === "object" && !Array.isArray(data)) {
+            const keys = Object.keys(data);
+            if (keys.length === 1) {
+              actionName = keys[0];
+              data = data[actionName];
+            } else if (keys.length > 1) {
+              actionName = keys[keys.length - 1];
+              data = data[actionName];
+            }
+          }
+
+          if (!actionName) {
+            actionName = this.currentActionName || "";
+            if (typeKey === "scrapeList" && !actionName) {
+              actionName = this.getUniqueActionName(typeKey, "");
+            }
+          }
+
+          const flattened = Array.isArray(data)
+            ? data
+            : (
+              data?.List ??
+              (data && typeof data === "object"
+                ? Object.values(data).flat?.() ?? data
+                : [])
+            );
 
           if (!this.serializableDataByType[typeKey]) {
             this.serializableDataByType[typeKey] = {};
@@ -586,9 +611,6 @@ export class WorkflowInterpreter {
             name: actionName,
             data: flattened,
           });
-
-          this.currentActionType = null;
-          this.currentActionName = null;
         } catch (err: any) {
           logger.log("error", `serializableCallback failed: ${err.message}`);
         }
