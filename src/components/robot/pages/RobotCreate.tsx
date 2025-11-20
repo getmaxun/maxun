@@ -211,6 +211,10 @@ const RobotCreate: React.FC = () => {
               alt="Maxun Logo"
             />
 
+              <Typography variant="body2" color="text.secondary" mb={3}>
+                Extract structured data from websites in a few clicks.
+              </Typography>
+
             {/* Origin URL Input */}
             <Box sx={{ width: '100%', maxWidth: 700, mb: 2 }}>
               <TextField
@@ -364,21 +368,20 @@ const RobotCreate: React.FC = () => {
 
               <Box sx={{ width: '100%', maxWidth: 700, mb: 2 }}>
                 <TextField
-                  placeholder="Example: My Blog Article Robot"
+                  placeholder="Example: YC Companies Scraper"
                   variant="outlined"
                   fullWidth
                   value={markdownRobotName}
                   onChange={(e) => setMarkdownRobotName(e.target.value)}
-                  label="Robot Name"
                   sx={{ mb: 2 }}
                 />
                 <TextField
-                  placeholder="Example: https://example.com/blog/article"
+                  placeholder="Example: https://www.ycombinator.com/companies/"
                   variant="outlined"
                   fullWidth
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
-                  label="URL to convert"
+                  label="Website URL"
                 />
               </Box>
 
