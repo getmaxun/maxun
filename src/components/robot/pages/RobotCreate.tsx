@@ -358,9 +358,6 @@ const RobotCreate: React.FC = () => {
                 alt="Maxun Logo"
               />
 
-              <Typography variant="h6" gutterBottom>
-                Create Markdown Robot
-              </Typography>
               <Typography variant="body2" color="text.secondary" mb={3}>
                 Convert any webpage to clean markdown format
               </Typography>
