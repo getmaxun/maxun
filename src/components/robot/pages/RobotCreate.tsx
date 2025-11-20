@@ -428,7 +428,7 @@ const RobotCreate: React.FC = () => {
                 }}
                 startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
               >
-                {isLoading ? 'Turning...' : 'Turn to Markdown'}
+                {isLoading ? 'Creating...' : 'Create Robot'}
               </Button>
             </Box>
           </Card>
