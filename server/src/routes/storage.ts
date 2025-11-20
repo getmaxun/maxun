@@ -440,9 +440,9 @@ router.post('/recordings/:id/duplicate', requireSignIn, async (req: Authenticate
 /**
  * POST endpoint for creating a markdown robot
  */
-router.post('/recordings/markdown', requireSignIn, async (req: AuthenticatedRequest, res) => {
+router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
-    const { url, name } = req.body;
+    const { url, name, formats } = req.body;
 
     if (!url) {
       return res.status(400).json({ error: 'The "url" field is required.' });
@@ -459,6 +459,18 @@ router.post('/recordings/markdown', requireSignIn, async (req: AuthenticatedRequ
       return res.status(400).json({ error: 'Invalid URL format' });
     }
 
+    // Validate format
+    const validFormats = ['markdown', 'html'];
+
+    if (!Array.isArray(formats) || formats.length === 0) {
+      return res.status(400).json({ error: 'At least one output format must be selected.' });
+    }
+
+    const invalid = formats.filter(f => !validFormats.includes(f));
+    if (invalid.length > 0) {
+      return res.status(400).json({ error: `Invalid formats: ${invalid.join(', ')}` });
+    }
+
     const robotName = name || `Markdown Robot - ${new URL(url).hostname}`;
     const currentTimestamp = new Date().toLocaleString();
     const robotId = uuid();
@@ -473,8 +485,9 @@ router.post('/recordings/markdown', requireSignIn, async (req: AuthenticatedRequ
         updatedAt: currentTimestamp,
         pairs: 0,
         params: [],
-        type: 'markdown',
+        type: 'scrape',
         url: url,
+        formats: formats,
       },
       recording: { workflow: [] },
       google_sheet_email: null,

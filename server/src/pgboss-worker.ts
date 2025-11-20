@@ -20,7 +20,7 @@ import { airtableUpdateTasks, processAirtableUpdates } from './workflow-manageme
 import { io as serverIo } from "./server";
 import { sendWebhook } from './routes/webhook';
 import { BinaryOutputService } from './storage/mino';
-import { convertPageToMarkdown } from './markdownify/scrape';
+import { convertPageToMarkdown, convertPageToHTML } from './markdownify/scrape';
 
 if (!process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_HOST || !process.env.DB_PORT || !process.env.DB_NAME) {
     throw new Error('Failed to start pgboss worker: one or more required environment variables are missing.');
@@ -189,12 +189,14 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
         throw new Error(`Recording for run ${data.runId} not found`);
       }
 
-      if (recording.recording_meta.type === 'markdown') {
-        logger.log('info', `Executing markdown robot for run ${data.runId}`);
+      if (recording.recording_meta.type === 'scrape') {
+        logger.log('info', `Executing scrape robot for run ${data.runId}`);
+
+        const formats = recording.recording_meta.formats || ['markdown'];
 
         await run.update({
           status: 'running',
-          log: 'Converting page to markdown'
+          log: `Converting page to ${formats.join(', ')}`
         });
 
         try {
@@ -204,20 +206,34 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
             throw new Error('No URL specified for markdown robot');
           }
 
-          const markdown = await convertPageToMarkdown(url);
+          let markdown = '';
+          let html = '';
+          const serializableOutput: any = {};
 
+          // Markdown conversion
+          if (formats.includes('markdown')) {
+            markdown = await convertPageToMarkdown(url);
+            serializableOutput.markdown = [{ content: markdown }];
+          }
+
+          // HTML conversion
+          if (formats.includes('html')) {
+            html = await convertPageToHTML(url);
+            serializableOutput.html = [{ content: html }];
+          }
+
+          // Success update
           await run.update({
             status: 'success',
             finishedAt: new Date().toLocaleString(),
-            log: 'Markdown conversion completed successfully',
-            serializableOutput: {
-              markdown: [{ content: markdown }]
-            },
+            log: `${formats.join(', ').toUpperCase()} conversion completed successfully`,
+            serializableOutput,
             binaryOutput: {},
           });
 
           logger.log('info', `Markdown robot execution completed for run ${data.runId}`);
 
+          // Notify sockets
           try {
             const completionData = {
               runId: data.runId,
@@ -233,15 +249,19 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
             logger.log('warn', `Failed to send run-completed notification for markdown robot run ${data.runId}: ${socketError.message}`);
           }
 
+          // Webhooks
           try {
-            const webhookPayload = {
+            const webhookPayload: any = {
               runId: data.runId,
               robotId: plainRun.robotMetaId,
               robotName: recording.recording_meta.name,
               status: 'success',
               finishedAt: new Date().toLocaleString(),
-              markdown: markdown
             };
+
+            if (formats.includes('markdown')) webhookPayload.markdown = markdown;
+            if (formats.includes('html')) webhookPayload.html = html;
+
             await sendWebhook(plainRun.robotMetaId, 'run_completed', webhookPayload);
             logger.log('info', `Webhooks sent successfully for markdown robot run ${data.runId}`);
           } catch (webhookError: any) {
@@ -251,13 +271,14 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
           await destroyRemoteBrowser(browserId, data.userId);
 
           return { success: true };
+
         } catch (error: any) {
-          logger.log('error', `Markdown conversion failed for run ${data.runId}: ${error.message}`);
+          logger.log('error', `${formats.join(', ')} conversion failed for run ${data.runId}: ${error.message}`);
 
           await run.update({
             status: 'failed',
             finishedAt: new Date().toLocaleString(),
-            log: `Markdown conversion failed: ${error.message}`,
+            log: `${formats.join(', ').toUpperCase()} conversion failed: ${error.message}`,
           });
 
           try {

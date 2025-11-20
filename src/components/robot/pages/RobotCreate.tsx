@@ -15,12 +15,16 @@ import {
   Container,
   CardContent,
   Tabs,
-  Tab
+  Tab,
+  RadioGroup,
+  Radio,
+  FormControl,
+  FormLabel
 } from '@mui/material';
 import { ArrowBack, PlayCircleOutline, Article, Code, Description } from '@mui/icons-material';
 import { useGlobalInfoStore } from '../../../context/globalInfo';
 import { canCreateBrowserInState, getActiveBrowserId, stopRecording } from '../../../api/recording';
-import { createMarkdownRobot } from "../../../api/storage";
+import { createScrapeRobot } from "../../../api/storage";
 import { AuthContext } from '../../../context/auth';
 import { GenericModal } from '../../ui/GenericModal';
 
@@ -54,11 +58,12 @@ const RobotCreate: React.FC = () => {
 
   const [tabValue, setTabValue] = useState(0);
   const [url, setUrl] = useState('');
-  const [markdownRobotName, setMarkdownRobotName] = useState('');
+  const [scrapeRobotName, setScrapeRobotName] = useState('');
   const [needsLogin, setNeedsLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isWarningModalOpen, setWarningModalOpen] = useState(false);
   const [activeBrowserId, setActiveBrowserId] = useState('');
+  const [outputFormats, setOutputFormats] = useState<string[]>([]);
 
   const { state } = React.useContext(AuthContext);
   const { user } = state;
@@ -200,7 +205,7 @@ const RobotCreate: React.FC = () => {
             }}
           >
             <Tab label="Extract" id="extract-robot" aria-controls="extract-robot" />
-            <Tab label="Markdown" id="markdown-robot" aria-controls="markdown-robot" />
+            <Tab label="Scrape" id="scrape-robot" aria-controls="scrape-robot" />
           </Tabs>
         </Box>
 
@@ -370,7 +375,7 @@ const RobotCreate: React.FC = () => {
               />
 
               <Typography variant="body2" color="text.secondary" mb={3}>
-                Turn websites into LLM-ready Markdown content for AI apps.
+                Turn websites into LLM-ready Markdown or clean HTML content for AI apps.
               </Typography>
 
               <Box sx={{ width: '100%', maxWidth: 700, mb: 2 }}>
@@ -378,8 +383,8 @@ const RobotCreate: React.FC = () => {
                   placeholder="Example: YC Companies Scraper"
                   variant="outlined"
                   fullWidth
-                  value={markdownRobotName}
-                  onChange={(e) => setMarkdownRobotName(e.target.value)}
+                  value={scrapeRobotName}
+                  onChange={(e) => setScrapeRobotName(e.target.value)}
                   sx={{ mb: 2 }}
                   label="Robot Name"
                 />
@@ -390,7 +395,44 @@ const RobotCreate: React.FC = () => {
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   label="Website URL"
+                  sx={{ mb: 2 }}
                 />
+
+                <FormControl component="fieldset" sx={{ width: '100%', textAlign: 'left' }}>
+                  <FormLabel component="legend" sx={{ mb: 1 }}>Output Format (Select at least one)</FormLabel>
+
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={outputFormats.includes('markdown')}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setOutputFormats([...outputFormats, 'markdown']);
+                          } else {
+                            setOutputFormats(outputFormats.filter(f => f !== 'markdown'));
+                          }
+                        }}
+                      />
+                    }
+                    label="Markdown"
+                  />
+
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={outputFormats.includes('html')}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setOutputFormats([...outputFormats, 'html']);
+                          } else {
+                            setOutputFormats(outputFormats.filter(f => f !== 'html'));
+                          }
+                        }}
+                      />
+                    }
+                    label="HTML"
+                  />
+                </FormControl>
               </Box>
 
               <Button
@@ -401,23 +443,28 @@ const RobotCreate: React.FC = () => {
                     notify('error', 'Please enter a valid URL');
                     return;
                   }
-                  if (!markdownRobotName.trim()) {
+                  if (!scrapeRobotName.trim()) {
                     notify('error', 'Please enter a robot name');
                     return;
                   }
+                  if (outputFormats.length === 0) {
+                    notify('error', 'Please select at least one output format');
+                    return;
+                  }
+
                   setIsLoading(true);
-                  const result = await createMarkdownRobot(url, markdownRobotName);
+                  const result = await createScrapeRobot(url, scrapeRobotName, outputFormats);
                   setIsLoading(false);
 
                   if (result) {
                     setRerenderRobots(true);
-                    notify('success', `${markdownRobotName} created successfully!`);
+                    notify('success', `${scrapeRobotName} created successfully!`);
                     navigate('/robots');
                   } else {
                     notify('error', 'Failed to create markdown robot');
                   }
                 }}
-                disabled={!url.trim() || !markdownRobotName.trim() || isLoading}
+                disabled={!url.trim() || !scrapeRobotName.trim() || outputFormats.length === 0 || isLoading}
                 sx={{
                   bgcolor: '#ff00c3',
                   py: 1.4,
@@ -428,7 +475,10 @@ const RobotCreate: React.FC = () => {
                 }}
                 startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
               >
-                {isLoading ? 'Turning...' : 'Turn to Markdown'}
+                {isLoading
+                  ? "Creating..."
+                  : `Create ${outputFormats.join(" + ").toUpperCase()} Robot`
+                }
               </Button>
             </Box>
           </Card>
