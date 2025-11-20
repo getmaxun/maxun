@@ -9,7 +9,7 @@ export async function convertPageToMarkdown(url: string): Promise<string> {
   const browser = await chromium.launch();
   const page = await browser.newPage();
 
-  await page.goto(url, { waitUntil: "networkidle" });
+  await page.goto(url, { waitUntil: "networkidle", timeout: 100000 });
 
   await page.addInitScript(() => {
     const selectors = [
@@ -64,7 +64,7 @@ export async function convertPageToHTML(url: string): Promise<string> {
   const browser = await chromium.launch();
   const page = await browser.newPage();
 
-  await page.goto(url, { waitUntil: "networkidle" });
+  await page.goto(url, { waitUntil: "networkidle", timeout: 100000 });
 
   await page.addInitScript(() => {
     const selectors = [
