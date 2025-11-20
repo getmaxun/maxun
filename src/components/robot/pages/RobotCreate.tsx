@@ -359,7 +359,7 @@ const RobotCreate: React.FC = () => {
               />
 
               <Typography variant="body2" color="text.secondary" mb={3}>
-                Convert any webpage to clean markdown format
+                Turn websites into LLM-ready Markdown content for AI apps.
               </Typography>
 
               <Box sx={{ width: '100%', maxWidth: 700, mb: 2 }}>
