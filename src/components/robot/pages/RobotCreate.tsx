@@ -189,9 +189,9 @@ const RobotCreate: React.FC = () => {
               aria-controls="extract-robot"
             />
             <Tab
-              label="Scrape"
-              id="scrape-robot"
-              aria-controls="scrape-robot"
+              label="Markdown"
+              id="markdown-robot"
+              aria-controls="markdown-robot"
             />
           </Tabs>
         </Box>
