@@ -20,6 +20,7 @@ import {
 import { ArrowBack, PlayCircleOutline, Article, Code, Description } from '@mui/icons-material';
 import { useGlobalInfoStore } from '../../../context/globalInfo';
 import { canCreateBrowserInState, getActiveBrowserId, stopRecording } from '../../../api/recording';
+import { createMarkdownRobot } from "../../../api/storage";
 import { AuthContext } from '../../../context/auth';
 import { GenericModal } from '../../ui/GenericModal';
 
@@ -401,7 +402,6 @@ const RobotCreate: React.FC = () => {
                     return;
                   }
                   setIsLoading(true);
-                  const { createMarkdownRobot } = await import('../../../api/storage');
                   const result = await createMarkdownRobot(url, markdownRobotName);
                   setIsLoading(false);
 

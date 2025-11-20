@@ -18,6 +18,7 @@ import { WorkflowFile } from "maxun-core";
 import { googleSheetUpdateTasks, processGoogleSheetUpdates } from "../workflow-management/integrations/gsheet";
 import { airtableUpdateTasks, processAirtableUpdates } from "../workflow-management/integrations/airtable";
 import { sendWebhook } from "../routes/webhook";
+import { convertPageToMarkdown } from '../markdownify/scrape';
 
 chromium.use(stealthPlugin());
 
@@ -665,7 +666,6 @@ async function executeRun(id: string, userId: string) {
             });
 
             try {
-                const { convertPageToMarkdown } = await import('../markdownify/scrape');
                 const url = recording.recording_meta.url;
 
                 if (!url) {

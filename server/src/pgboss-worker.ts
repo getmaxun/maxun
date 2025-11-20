@@ -20,6 +20,7 @@ import { airtableUpdateTasks, processAirtableUpdates } from './workflow-manageme
 import { io as serverIo } from "./server";
 import { sendWebhook } from './routes/webhook';
 import { BinaryOutputService } from './storage/mino';
+import { convertPageToMarkdown } from './markdownify/scrape';
 
 if (!process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_HOST || !process.env.DB_PORT || !process.env.DB_NAME) {
     throw new Error('Failed to start pgboss worker: one or more required environment variables are missing.');
@@ -183,7 +184,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
     try {  
       // Find the recording
       const recording = await Robot.findOne({ where: { 'recording_meta.id': plainRun.robotMetaId }, raw: true });
-      
+
       if (!recording) {
         throw new Error(`Recording for run ${data.runId} not found`);
       }
@@ -197,7 +198,6 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
         });
 
         try {
-          const { convertPageToMarkdown } = await import('./markdownify/scrape');
           const url = recording.recording_meta.url;
 
           if (!url) {

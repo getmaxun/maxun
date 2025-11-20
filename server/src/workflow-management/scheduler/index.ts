@@ -15,6 +15,7 @@ import { WorkflowFile } from "maxun-core";
 import { Page } from "playwright";
 import { sendWebhook } from "../../routes/webhook";
 import { airtableUpdateTasks, processAirtableUpdates } from "../integrations/airtable";
+import { convertPageToMarkdown } from "../../markdownify/scrape";
 chromium.use(stealthPlugin());
 
 async function createWorkflowAndStoreMetadata(id: string, userId: string) {
@@ -231,7 +232,6 @@ async function executeRun(id: string, userId: string) {
       }
 
       try {
-        const { convertPageToMarkdown } = await import('../../markdownify/scrape');
         const url = recording.recording_meta.url;
 
         if (!url) {
