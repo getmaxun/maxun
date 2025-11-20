@@ -98,14 +98,10 @@ function cleanUrl(u: string): string {
   }
 }
 
-// CODE 1: attribute cleaner
 function cleanAttribute(attr: string) {
   return attr ? attr.replace(/(\n+\s*)+/g, "\n") : "";
 }
 
-// ---------------------------------------------------------
-// CODE 1: Full tidyHtml cleaning logic (ported verbatim)
-// ---------------------------------------------------------
 function tidyHtml(html: string): string {
   const cheerio = require("cheerio");
   const $ = cheerio.load(html);
