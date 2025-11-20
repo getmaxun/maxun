@@ -16,7 +16,9 @@ interface RobotMeta {
   pairs: number;
   updatedAt: string;
   params: any[];
+  type?: 'extract' | 'scrape';
   url?: string;
+  formats?: ('markdown' | 'html')[];
 }
 
 interface RobotWorkflow {

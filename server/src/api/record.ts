@@ -18,6 +18,7 @@ import { WorkflowFile } from "maxun-core";
 import { googleSheetUpdateTasks, processGoogleSheetUpdates } from "../workflow-management/integrations/gsheet";
 import { airtableUpdateTasks, processAirtableUpdates } from "../workflow-management/integrations/airtable";
 import { sendWebhook } from "../routes/webhook";
+import { convertPageToHTML, convertPageToMarkdown } from '../markdownify/scrape';
 
 chromium.use(stealthPlugin());
 
@@ -344,7 +345,9 @@ function formatRunResponse(run: any) {
         runByAPI: run.runByAPI,
         data: {
             textData: {},
-            listData: {}
+            listData: {},
+            markdown: '',
+            html: ''
         },
         screenshots: [] as any[],
     };
@@ -357,6 +360,14 @@ function formatRunResponse(run: any) {
 
     if (output.scrapeList && typeof output.scrapeList === 'object') {
         formattedRun.data.listData = output.scrapeList;
+    }
+
+    if (output.markdown && Array.isArray(output.markdown)) {
+        formattedRun.data.markdown = output.markdown[0]?.content || '';
+    }
+
+    if (output.html && Array.isArray(output.html)) {
+        formattedRun.data.html = output.html[0]?.content || '';
     }
 
     if (run.binaryOutput) {
@@ -569,9 +580,9 @@ async function triggerIntegrationUpdates(runId: string, robotMetaId: string): Pr
   }
 }
 
-async function readyForRunHandler(browserId: string, id: string, userId: string){
+async function readyForRunHandler(browserId: string, id: string, userId: string, requestedFormats?: string[]){
     try {
-        const result = await executeRun(id, userId);
+        const result = await executeRun(id, userId, requestedFormats);
 
         if (result && result.success) {
             logger.log('info', `Interpretation of ${id} succeeded`);
@@ -608,7 +619,7 @@ function AddGeneratedFlags(workflow: WorkflowFile) {
     return copy;
 };
 
-async function executeRun(id: string, userId: string) {
+async function executeRun(id: string, userId: string, requestedFormats?: string[]) {
     let browser: any = null;
     
     try {
@@ -649,6 +660,166 @@ async function executeRun(id: string, userId: string) {
                 success: false,
                 error: 'Recording not found'
             };
+        }
+
+        if (recording.recording_meta.type === 'scrape') {
+            logger.log('info', `Executing scrape robot for API run ${id}`);
+
+            let formats = recording.recording_meta.formats || ['markdown'];
+
+            // Override if API request defines formats
+            if (requestedFormats && Array.isArray(requestedFormats) && requestedFormats.length > 0) {
+                formats = requestedFormats.filter((f): f is 'markdown' | 'html' => ['markdown', 'html'].includes(f));
+            }
+
+            await run.update({
+                status: 'running',
+                log: `Converting page to: ${formats.join(', ')}`
+            });
+
+            try {
+                const url = recording.recording_meta.url;
+
+                if (!url) {
+                    throw new Error('No URL specified for markdown robot');
+                }
+
+                let markdown = '';
+                let html = '';
+                const serializableOutput: any = {};
+
+                // Markdown conversion
+                if (formats.includes('markdown')) {
+                    markdown = await convertPageToMarkdown(url);
+                    serializableOutput.markdown = [{ content: markdown }];
+                }
+
+                // HTML conversion
+                if (formats.includes('html')) {
+                    html = await convertPageToHTML(url);
+                    serializableOutput.html = [{ content: html }];
+                }
+
+                await run.update({
+                    status: 'success',
+                    finishedAt: new Date().toLocaleString(),
+                    log: `${formats.join(', ')} conversion completed successfully`,
+                    serializableOutput,
+                    binaryOutput: {},
+                });
+
+                logger.log('info', `Markdown robot execution completed for API run ${id}`);
+
+                // Push success socket event
+                try {
+                    const completionData = {
+                        runId: plainRun.runId,
+                        robotMetaId: plainRun.robotMetaId,
+                        robotName: recording.recording_meta.name,
+                        status: 'success',
+                        finishedAt: new Date().toLocaleString()
+                    };
+
+                    serverIo
+                        .of('/queued-run')
+                        .to(`user-${userId}`)
+                        .emit('run-completed', completionData);
+                } catch (socketError: any) {
+                    logger.log(
+                        'warn',
+                        `Failed to send run-completed notification for markdown robot run ${id}: ${socketError.message}`
+                    );
+                }
+
+                // Build webhook payload
+                const webhookPayload: any = {
+                    robot_id: plainRun.robotMetaId,
+                    run_id: plainRun.runId,
+                    robot_name: recording.recording_meta.name,
+                    status: 'success',
+                    started_at: plainRun.startedAt,
+                    finished_at: new Date().toLocaleString(),
+                    metadata: {
+                        browser_id: plainRun.browserId,
+                        user_id: userId,
+                    },
+                };
+
+                if (formats.includes('markdown')) webhookPayload.markdown = markdown;
+                if (formats.includes('html')) webhookPayload.html = html;
+
+                try {
+                    await sendWebhook(plainRun.robotMetaId, 'run_completed', webhookPayload);
+                    logger.log(
+                        'info',
+                        `Webhooks sent successfully for markdown robot API run ${plainRun.runId}`
+                    );
+                } catch (webhookError: any) {
+                    logger.log(
+                        'warn',
+                        `Failed to send webhooks for markdown robot run ${plainRun.runId}: ${webhookError.message}`
+                    );
+                }
+
+                capture("maxun-oss-run-created-api", {
+                    runId: plainRun.runId,
+                    user_id: userId,
+                    status: "success",
+                    robot_type: "scrape",
+                    formats
+                });
+
+                await destroyRemoteBrowser(plainRun.browserId, userId);
+
+                return {
+                    success: true,
+                    interpretationInfo: run.toJSON()
+                };
+            } catch (error: any) {
+                logger.log(
+                    'error',
+                    `${formats.join(', ')} conversion failed for API run ${id}: ${error.message}`
+                );
+
+                await run.update({
+                    status: 'failed',
+                    finishedAt: new Date().toLocaleString(),
+                    log: `${formats.join(', ')} conversion failed: ${error.message}`,
+                });
+
+                // Send failure socket event
+                try {
+                    const failureData = {
+                        runId: plainRun.runId,
+                        robotMetaId: plainRun.robotMetaId,
+                        robotName: recording.recording_meta.name,
+                        status: 'failed',
+                        finishedAt: new Date().toLocaleString()
+                    };
+
+                    serverIo
+                        .of('/queued-run')
+                        .to(`user-${userId}`)
+                        .emit('run-completed', failureData);
+                } catch (socketError: any) {
+                    logger.log(
+                        'warn',
+                        `Failed to send run-failed notification for markdown robot run ${id}: ${socketError.message}`
+                    );
+                }
+
+                capture("maxun-oss-run-created-api", {
+                    runId: plainRun.runId,
+                    user_id: userId,
+                    status: "failed",
+                    robot_type: "scrape",
+                    formats
+                });
+
+                await destroyRemoteBrowser(plainRun.browserId, userId);
+
+                throw error;
+            }
         }
 
         plainRun.status = 'running';
@@ -848,7 +1019,7 @@ async function executeRun(id: string, userId: string) {
     }
 }
 
-export async function handleRunRecording(id: string, userId: string) {
+export async function handleRunRecording(id: string, userId: string, requestedFormats?: string[]) {
     try {
         const result = await createWorkflowAndStoreMetadata(id, userId);
         const { browserId, runId: newRunId } = result;
@@ -862,7 +1033,7 @@ export async function handleRunRecording(id: string, userId: string) {
             rejectUnauthorized: false
         });
 
-        socket.on('ready-for-run', () => readyForRunHandler(browserId, newRunId, userId));
+        socket.on('ready-for-run', () => readyForRunHandler(browserId, newRunId, userId, requestedFormats));
 
         logger.log('info', `Running Robot: ${id}`);
 
@@ -889,12 +1060,11 @@ async function waitForRunCompletion(runId: string, interval: number = 2000) {
         if (!run) throw new Error('Run not found');
 
         if (run.status === 'success') {
-            return run.toJSON();
+            return run;
         } else if (run.status === 'failed') {
             throw new Error('Run failed');
         }
 
-        // Wait for the next polling interval
         await new Promise(resolve => setTimeout(resolve, interval));
     }
 }
@@ -914,6 +1084,21 @@ async function waitForRunCompletion(runId: string, interval: number = 2000) {
  *           type: string
  *         required: true
  *         description: The ID of the robot to run.
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               formats:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   enum: [markdown, html]
+ *                 description: Optional override formats for this run.
+ *           example:
+ *             formats: ["html"]
  *     responses:
  *       200:
  *         description: Robot run started successfully.
@@ -972,7 +1157,10 @@ router.post("/robots/:id/runs", requireAPIKey, async (req: AuthenticatedRequest,
         if (!req.user) {
             return res.status(401).json({ ok: false, error: 'Unauthorized' });
         }
-        const runId = await handleRunRecording(req.params.id, req.user.id);
+
+        const requestedFormats = req.body.formats;
+
+        const runId = await handleRunRecording(req.params.id, req.user.id, requestedFormats);
 
         if (!runId) {
             throw new Error('Run ID is undefined');

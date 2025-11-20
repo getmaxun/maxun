@@ -28,6 +28,36 @@ export const getStoredRecordings = async (): Promise<string[] | null> => {
   }
 };
 
+export const createScrapeRobot = async (
+  url: string,
+  name?: string,
+  formats: string[] = ['markdown']
+): Promise<any> => {
+  try {
+    const response = await axios.post(
+      `${apiUrl}/storage/recordings/scrape`,
+      {
+        url,
+        name,
+        formats,
+      },
+      {
+        headers: { 'Content-Type': 'application/json' },
+        withCredentials: true,
+      }
+    );
+
+    if (response.status === 201) {
+      return response.data;
+    } else {
+      throw new Error('Failed to create markdown robot');
+    }
+  } catch (error: any) {
+    console.error('Error creating markdown robot:', error);
+    return null;
+  }
+};
+
 export const updateRecording = async (id: string, data: { 
   name?: string; 
   limits?: Array<{pairIndex: number, actionIndex: number, argIndex: number, limit: number}>;

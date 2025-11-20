@@ -274,7 +274,10 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
     }
 
     if (targetUrl) {
+      robot.set('recording_meta', { ...robot.recording_meta, url: targetUrl });
+
       const updatedWorkflow = [...robot.recording.workflow];
+      let foundGoto = false;
 
       for (let i = updatedWorkflow.length - 1; i >= 0; i--) {
         const step = updatedWorkflow[i];
@@ -289,6 +292,7 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
 
             robot.set('recording', { ...robot.recording, workflow: updatedWorkflow });
             robot.changed('recording', true);
+            foundGoto = true;
             i = -1;
             break;
           }
@@ -331,10 +335,11 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       }
     };
 
-    if (name) {
+    if (name || targetUrl) {
       updates.recording_meta = {
         ...robot.recording_meta,
-        name
+        ...(name && { name }),
+        ...(targetUrl && { url: targetUrl })
       };
     }
 
@@ -427,6 +432,91 @@ router.post('/recordings/:id/duplicate', requireSignIn, async (req: Authenticate
       return res.status(500).json({ error: error.message });
     } else {
       logger.log('error', `Unknown error duplicating robot with ID ${req.params.id}`);
+      return res.status(500).json({ error: 'An unknown error occurred.' });
+    }
+  }
+});
+
+/**
+ * POST endpoint for creating a markdown robot
+ */
+router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { url, name, formats } = req.body;
+
+    if (!url) {
+      return res.status(400).json({ error: 'The "url" field is required.' });
+    }
+
+    if (!req.user) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+
+    // Validate URL format
+    try {
+      new URL(url);
+    } catch (err) {
+      return res.status(400).json({ error: 'Invalid URL format' });
+    }
+
+    // Validate format
+    const validFormats = ['markdown', 'html'];
+
+    if (!Array.isArray(formats) || formats.length === 0) {
+      return res.status(400).json({ error: 'At least one output format must be selected.' });
+    }
+
+    const invalid = formats.filter(f => !validFormats.includes(f));
+    if (invalid.length > 0) {
+      return res.status(400).json({ error: `Invalid formats: ${invalid.join(', ')}` });
+    }
+
+    const robotName = name || `Markdown Robot - ${new URL(url).hostname}`;
+    const currentTimestamp = new Date().toLocaleString();
+    const robotId = uuid();
+
+    const newRobot = await Robot.create({
+      id: uuid(),
+      userId: req.user.id,
+      recording_meta: {
+        name: robotName,
+        id: robotId,
+        createdAt: currentTimestamp,
+        updatedAt: currentTimestamp,
+        pairs: 0,
+        params: [],
+        type: 'scrape',
+        url: url,
+        formats: formats,
+      },
+      recording: { workflow: [] },
+      google_sheet_email: null,
+      google_sheet_name: null,
+      google_sheet_id: null,
+      google_access_token: null,
+      google_refresh_token: null,
+      schedule: null,
+    });
+
+    logger.log('info', `Markdown robot created with id: ${newRobot.id}`);
+    capture(
+      'maxun-oss-robot-created',
+      {
+        robot_meta: newRobot.recording_meta,
+        recording: newRobot.recording,
+      }
+    )
+
+    return res.status(201).json({
+      message: 'Markdown robot created successfully.',
+      robot: newRobot,
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      logger.log('error', `Error creating markdown robot: ${error.message}`);
+      return res.status(500).json({ error: error.message });
+    } else {
+      logger.log('error', 'Unknown error creating markdown robot');
       return res.status(500).json({ error: 'An unknown error occurred.' });
     }
   }
