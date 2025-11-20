@@ -13,21 +13,6 @@ export async function parseMarkdown(
 
   const t = new TurndownService();
 
-  // Remove irrelevant tags 
-  const elementsToRemove = [
-    "meta",
-    "style",
-    "script",
-    "noscript",
-    "link",
-    "textarea",
-  ];
-
-  t.addRule("remove-irrelevant", {
-    filter: elementsToRemove,
-    replacement: () => "",
-  });
-
   t.addRule("truncate-svg", {
     filter: "svg",
     replacement: () => "",
@@ -106,64 +91,18 @@ function tidyHtml(html: string): string {
   const cheerio = require("cheerio");
   const $ = cheerio.load(html);
 
-  // Fix broken attributes
-  $("*").each(function (this: any) {
-    const element = $(this);
-    const attributes = Object.keys(this.attribs);
-
-    for (let i = 0; i < attributes.length; i++) {
-      let attr = attributes[i];
-      if (attr.includes('"')) {
-        element.remove();
-      }
-    }
-  });
-
   const manuallyCleanedElements = [
-    "aside",
-    "embed",
-    "head",
-    "iframe",
-    "menu",
-    "object",
-    "script",
-    "applet",
-    "audio",
-    "canvas",
-    "map",
-    "svg",
-    "video",
-    "area",
-    "blink",
-    "datalist",
-    "dialog",
-    "frame",
-    "frameset",
-    "link",
-    "input",
-    "ins",
-    "legend",
-    "marquee",
-    "math",
-    "menuitem",
-    "nav",
-    "noscript",
-    "optgroup",
-    "output",
-    "param",
-    "progress",
-    "rp",
-    "rt",
-    "rtc",
-    "source",
-    "style",
-    "track",
-    "textarea",
-    "time",
-    "use",
-    "img",
-    "picture",
-    "figure",
+  "script",
+  "style",
+  "iframe",
+  "noscript",
+  "meta",
+  "link",
+  "object",
+  "embed",
+  "canvas",
+  "audio",
+  "video"
   ];
 
   manuallyCleanedElements.forEach((tag) => $(tag).remove());
