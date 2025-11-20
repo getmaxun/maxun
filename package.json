@@ -28,6 +28,7 @@
     "bcrypt": "^5.1.1",
     "body-parser": "^1.20.3",
     "buffer": "^6.0.3",
+    "cheerio": "^1.1.2",
     "connect-pg-simple": "^10.0.0",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
