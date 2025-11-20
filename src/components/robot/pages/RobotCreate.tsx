@@ -372,6 +372,7 @@ const RobotCreate: React.FC = () => {
                   value={markdownRobotName}
                   onChange={(e) => setMarkdownRobotName(e.target.value)}
                   sx={{ mb: 2 }}
+                  label="Robot Name"
                 />
                 <TextField
                   placeholder="Example: https://www.ycombinator.com/companies/"
