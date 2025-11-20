@@ -186,7 +186,7 @@ const RobotCreate: React.FC = () => {
             <Tab
               icon={<Code />}
               iconPosition="start"
-              label="Data Extraction Robot"
+              label="Extract"
               id="robot-tab-0"
               aria-controls="robot-tabpanel-0"
             />
