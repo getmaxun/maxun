@@ -9,6 +9,8 @@ interface RobotMeta {
   pairs: number;
   updatedAt: string;
   params: any[];
+  type?: 'traditional' | 'markdown';
+  url?: string;
 }
 
 interface RobotWorkflow {

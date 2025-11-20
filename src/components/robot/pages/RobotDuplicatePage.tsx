@@ -24,12 +24,7 @@ interface RobotMeta {
   pairs: number;
   updatedAt: string;
   params: any[];
-  type?: string;
-  description?: string;
-  usedByUsers?: number[];
-  subscriptionLevel?: number;
-  access?: string;
-  sample?: any[];
+  type?: 'traditional' | 'markdown';
   url?: string;
 }
 
