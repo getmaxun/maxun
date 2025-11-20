@@ -182,27 +182,27 @@ const RobotCreate: React.FC = () => {
         </Box>
 
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-  <Tabs
-    value={tabValue}
-    onChange={handleTabChange}
-    aria-label="robot type tabs"
-    sx={{
-      minHeight: 36,
-      '& .MuiTab-root': {
-        minHeight: 36,
-        paddingX: 2,
-        paddingY: 0.5,
-        minWidth: 0,
-      },
-      '& .MuiTabs-indicator': {
-        height: 2,
-      },
-    }}
-  >
-    <Tab label="Extract" id="extract-robot" aria-controls="extract-robot" />
-    <Tab label="Markdown" id="markdown-robot" aria-controls="markdown-robot" />
-  </Tabs>
-</Box>
+          <Tabs
+            value={tabValue}
+            onChange={handleTabChange}
+            aria-label="robot type tabs"
+            sx={{
+              minHeight: 36,
+              '& .MuiTab-root': {
+                minHeight: 36,
+                paddingX: 2,
+                paddingY: 0.5,
+                minWidth: 0,
+              },
+              '& .MuiTabs-indicator': {
+                height: 2,
+              },
+            }}
+          >
+            <Tab label="Extract" id="extract-robot" aria-controls="extract-robot" />
+            <Tab label="Markdown" id="markdown-robot" aria-controls="markdown-robot" />
+          </Tabs>
+        </Box>
 
 
         <TabPanel value={tabValue} index={0}>
