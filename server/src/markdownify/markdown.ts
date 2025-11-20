@@ -17,7 +17,7 @@ export async function parseMarkdown(
   });
 
   // ---------------------------------------------
-  // Fix 1: Proper ATX headings #### instead of underline-style
+  // Proper ATX headings #### instead of underline-style
   // ---------------------------------------------
   t.addRule("forceAtxHeadings", {
     filter: ["h1", "h2", "h3", "h4", "h5", "h6"],
@@ -49,7 +49,7 @@ export async function parseMarkdown(
   });
 
   // ---------------------------------------------
-  // Fix 2: Inline link with fallback text
+  // Inline link with fallback text
   // ---------------------------------------------
   t.addRule("inlineLink", {
     filter: (node: any, opts: any) =>
@@ -74,7 +74,7 @@ export async function parseMarkdown(
         try {
           const u = new URL(href, baseUrl);
           href = u.toString();
-        } catch {}
+        } catch { }
       }
 
       href = cleanUrl(href);
