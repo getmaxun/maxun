@@ -152,20 +152,36 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
                 }}
                 style={{ marginBottom: "20px" }}
               />
-              {robot.recording.workflow?.[0]?.what?.[0]?.args?.[0]?.limit !==
-                undefined && (
-                <TextField
-                  label={t("robot_settings.robot_limit")}
-                  type="number"
-                  value={
-                    robot.recording.workflow[0].what[0].args[0].limit || ""
-                  }
-                  InputProps={{
-                    readOnly: true,
-                  }}
-                  style={{ marginBottom: "20px" }}
-                />
-              )}
+              {(() => {
+                let listCounter = 1;
+
+                return robot.recording.workflow.flatMap((wf, wfIndex) =>
+                  wf.what.flatMap((action, actionIndex) => {
+                    const argsWithLimit = action.args?.filter(
+                      (arg: any) => arg && typeof arg === "object" && arg.limit !== undefined
+                    );
+
+                    if (!argsWithLimit?.length) return [];
+
+                    return argsWithLimit.map((arg, limitIndex) => {
+                      const labelName = action.name || `List ${listCounter++}`;
+                      return (
+                        <TextField
+                          key={`limit-${wfIndex}-${actionIndex}-${limitIndex}`}
+                          label={`${t("robot_settings.robot_limit")} (${labelName})`}
+                          type="number"
+                          value={arg.limit || ""}
+                          InputProps={{
+                            readOnly: true,
+                          }}
+                          style={{ marginBottom: "20px" }}
+                        />
+                      );
+                    });
+                  })
+                );
+              })()}
+
               <TextField
                 label={t("robot_settings.created_by_user")}
                 key="Created By User"
