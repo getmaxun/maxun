@@ -18,6 +18,7 @@ import { WorkflowFile } from "maxun-core";
 import { googleSheetUpdateTasks, processGoogleSheetUpdates } from "../workflow-management/integrations/gsheet";
 import { airtableUpdateTasks, processAirtableUpdates } from "../workflow-management/integrations/airtable";
 import { sendWebhook } from "../routes/webhook";
+import { convertPageToMarkdown } from '../markdownify/scrape';
 
 chromium.use(stealthPlugin());
 
@@ -344,7 +345,8 @@ function formatRunResponse(run: any) {
         runByAPI: run.runByAPI,
         data: {
             textData: {},
-            listData: {}
+            listData: {},
+            markdown: ''
         },
         screenshots: [] as any[],
     };
@@ -357,6 +359,10 @@ function formatRunResponse(run: any) {
 
     if (output.scrapeList && typeof output.scrapeList === 'object') {
         formattedRun.data.listData = output.scrapeList;
+    }
+
+    if (output.markdown && Array.isArray(output.markdown)) {
+        formattedRun.data.markdown = output.markdown[0]?.content || '';
     }
 
     if (run.binaryOutput) {
@@ -651,6 +657,105 @@ async function executeRun(id: string, userId: string) {
             };
         }
 
+        if (recording.recording_meta.type === 'markdown') {
+            logger.log('info', `Executing markdown robot for API run ${id}`);
+
+            await run.update({
+                status: 'running',
+                log: 'Converting page to markdown'
+            });
+
+            try {
+                const url = recording.recording_meta.url;
+
+                if (!url) {
+                    throw new Error('No URL specified for markdown robot');
+                }
+
+                const markdown = await convertPageToMarkdown(url);
+
+                await run.update({
+                    status: 'success',
+                    finishedAt: new Date().toLocaleString(),
+                    log: 'Markdown conversion completed successfully',
+                    serializableOutput: {
+                        markdown: [{ content: markdown }]
+                    },
+                    binaryOutput: {},
+                });
+
+                logger.log('info', `Markdown robot execution completed for API run ${id}`);
+
+                try {
+                    const completionData = {
+                        runId: plainRun.runId,
+                        robotMetaId: plainRun.robotMetaId,
+                        robotName: recording.recording_meta.name,
+                        status: 'success',
+                        finishedAt: new Date().toLocaleString()
+                    };
+
+                    serverIo.of('/queued-run').to(`user-${userId}`).emit('run-completed', completionData);
+                } catch (socketError: any) {
+                    logger.log('warn', `Failed to send run-completed notification for markdown robot run ${id}: ${socketError.message}`);
+                }
+
+                const webhookPayload = {
+                    robot_id: plainRun.robotMetaId,
+                    run_id: plainRun.runId,
+                    robot_name: recording.recording_meta.name,
+                    status: 'success',
+                    started_at: plainRun.startedAt,
+                    finished_at: new Date().toLocaleString(),
+                    markdown: markdown,
+                    metadata: {
+                        browser_id: plainRun.browserId,
+                        user_id: userId,
+                    }
+                };
+
+                try {
+                    await sendWebhook(plainRun.robotMetaId, 'run_completed', webhookPayload);
+                    logger.log('info', `Webhooks sent successfully for markdown robot API run ${plainRun.runId}`);
+                } catch (webhookError: any) {
+                    logger.log('warn', `Failed to send webhooks for markdown robot run ${plainRun.runId}: ${webhookError.message}`);
+                }
+
+                await destroyRemoteBrowser(plainRun.browserId, userId);
+
+                return {
+                    success: true,
+                    interpretationInfo: run.toJSON()
+                };
+            } catch (error: any) {
+                logger.log('error', `Markdown conversion failed for API run ${id}: ${error.message}`);
+
+                await run.update({
+                    status: 'failed',
+                    finishedAt: new Date().toLocaleString(),
+                    log: `Markdown conversion failed: ${error.message}`,
+                });
+
+                try {
+                    const failureData = {
+                        runId: plainRun.runId,
+                        robotMetaId: plainRun.robotMetaId,
+                        robotName: recording.recording_meta.name,
+                        status: 'failed',
+                        finishedAt: new Date().toLocaleString()
+                    };
+
+                    serverIo.of('/queued-run').to(`user-${userId}`).emit('run-completed', failureData);
+                } catch (socketError: any) {
+                    logger.log('warn', `Failed to send run-failed notification for markdown robot run ${id}: ${socketError.message}`);
+                }
+
+                await destroyRemoteBrowser(plainRun.browserId, userId);
+
+                throw error;
+            }
+        }
+
         plainRun.status = 'running';
 
         browser = browserPool.getRemoteBrowser(plainRun.browserId);
@@ -889,12 +994,11 @@ async function waitForRunCompletion(runId: string, interval: number = 2000) {
         if (!run) throw new Error('Run not found');
 
         if (run.status === 'success') {
-            return run.toJSON();
+            return run;
         } else if (run.status === 'failed') {
             throw new Error('Run failed');
         }
 
-        // Wait for the next polling interval
         await new Promise(resolve => setTimeout(resolve, interval));
     }
 }

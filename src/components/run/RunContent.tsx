@@ -37,6 +37,7 @@ interface RunContentProps {
 export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRef, abortRunHandler }: RunContentProps) => {
   const { t } = useTranslation();
   const [tab, setTab] = React.useState<string>('output');
+  const [markdownContent, setMarkdownContent] = useState<string>('');
 
   const [schemaData, setSchemaData] = useState<any[]>([]);
   const [schemaColumns, setSchemaColumns] = useState<string[]>([]);
@@ -62,6 +63,15 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   useEffect(() => {
     setTab(tab);
   }, [interpretationInProgress]);
+
+  useEffect(() => {
+    if (row.serializableOutput?.markdown && Array.isArray(row.serializableOutput.markdown)) {
+      const markdownData = row.serializableOutput.markdown[0];
+      if (markdownData && markdownData.content) {
+        setMarkdownContent(markdownData.content);
+      }
+    }
+  }, [row.serializableOutput]);
 
   useEffect(() => {
     if (row.status === 'running' || row.status === 'queued' || row.status === 'scheduled') {
@@ -374,6 +384,22 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     }, 100);
   };
 
+  const downloadMarkdown = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 100);
+  };
+
 
   const renderDataTable = (
     data: any[],
@@ -636,11 +662,70 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
   const hasData = schemaData.length > 0 || listData.length > 0 || legacyData.length > 0;
   const hasScreenshots = row.binaryOutput && Object.keys(row.binaryOutput).length > 0;
+  const hasMarkdown = markdownContent.length > 0;
 
   return (
     <Box sx={{ width: '100%' }}>
       <TabContext value={tab}>
         <TabPanel value='output' sx={{ width: '100%', maxWidth: '900px' }}>
+          {hasMarkdown ? (
+            <Box>
+              <Accordion defaultExpanded sx={{ mb: 2 }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Typography variant='h6'>
+                      Markdown Output
+                    </Typography>
+                  </Box>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Paper
+                    sx={{
+                      p: 2,
+                      maxHeight: '500px',
+                      overflow: 'auto',
+                      backgroundColor: (theme) => theme.palette.mode === 'dark' ? '#1e1e1e' : '#f5f5f5'
+                    }}
+                  >
+                    <Typography
+                      component="pre"
+                      sx={{
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                        fontFamily: 'monospace',
+                        fontSize: '0.875rem'
+                      }}
+                    >
+                      {markdownContent}
+                    </Typography>
+                  </Paper>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, mt: 2 }}>
+                    <Box>
+                      <Button
+                        component="a"
+                        onClick={() => downloadMarkdown(markdownContent, 'output.md')}
+                        sx={{
+                          color: '#FF00C3',
+                          textTransform: 'none',
+                          p: 0,
+                          minWidth: 'auto',
+                          backgroundColor: 'transparent',
+                          '&:hover': {
+                            backgroundColor: 'transparent',
+                            textDecoration: 'underline',
+                          },
+                        }}
+                      >
+                        Download Markdown
+                      </Button>
+                    </Box>
+                  </Box>
+                </AccordionDetails>
+              </Accordion>
+            </Box>
+          ) : (
+            // Traditional robot output
+            <>
           {row.status === 'running' || row.status === 'queued' ? (
             <>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -938,6 +1023,8 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 </Box>
               </AccordionDetails>
             </Accordion>
+          )}
+          </>
           )}
         </TabPanel>
       </TabContext>
