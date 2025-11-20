@@ -190,8 +190,8 @@ const RobotCreate: React.FC = () => {
             />
             <Tab
               label="Markdown Robot"
-              id="robot-tab-1"
-              aria-controls="robot-tabpanel-1"
+              id="scrape-robot"
+              aria-controls="scrape-robot"
             />
           </Tabs>
         </Box>
