@@ -189,8 +189,6 @@ const RobotCreate: React.FC = () => {
               aria-controls="extract-robot"
             />
             <Tab
-              icon={<Description />}
-              iconPosition="start"
               label="Markdown Robot"
               id="robot-tab-1"
               aria-controls="robot-tabpanel-1"
