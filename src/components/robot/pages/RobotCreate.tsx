@@ -191,7 +191,7 @@ const RobotCreate: React.FC = () => {
               '& .MuiTab-root': {
                 minHeight: 36,
                 paddingX: 2,
-                paddingY: 0.5,
+                paddingY: 1.5,
                 minWidth: 0,
               },
               '& .MuiTabs-indicator': {
