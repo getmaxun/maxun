@@ -110,10 +110,7 @@ const TableRowMemoized = memo(({ row, columns, handlers }: any) => {
             case 'integrate':
               return (
                 <MemoizedTableCell key={column.id} align={column.align}>
-                  <MemoizedIntegrateButton
-                    handleIntegrate={() => handlers.handleIntegrateRecording(row.id, row.name, row.params || [])}
-                    robotType={row.type}
-                  />
+                  <MemoizedIntegrateButton handleIntegrate={() => handlers.handleIntegrateRecording(row.id, row.name, row.params || [])} />
                 </MemoizedTableCell>
               );
             case 'options':
@@ -713,22 +710,13 @@ const ScheduleButton = ({ handleSchedule }: ScheduleButtonProps) => {
 
 interface IntegrateButtonProps {
   handleIntegrate: () => void;
-  robotType: string;
 }
 
-const IntegrateButton = ({ handleIntegrate, robotType }: IntegrateButtonProps) => {
-  const isDisabled = robotType === 'scrape';
-
+const IntegrateButton = ({ handleIntegrate }: IntegrateButtonProps) => {
   return (
-    <IconButton
-      aria-label="integrate"
-      size="small"
-      onClick={isDisabled ? undefined : handleIntegrate}
-      disabled={isDisabled}
-      sx={{
-        opacity: isDisabled ? 0.4 : 1,
-        cursor: isDisabled ? 'not-allowed' : 'pointer',
-      }}
+    <IconButton aria-label="add" size="small" onClick={() => {
+      handleIntegrate();
+    }}
     >
       <Power />
     </IconButton>
