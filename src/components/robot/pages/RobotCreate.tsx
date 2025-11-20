@@ -400,7 +400,6 @@ const RobotCreate: React.FC = () => {
 
                 <FormControl component="fieldset" sx={{ width: '100%', textAlign: 'left' }}>
                   <FormLabel component="legend" sx={{ mb: 1 }}>Output Format (Select at least one)</FormLabel>
-
                   <FormControlLabel
                     control={
                       <Checkbox
