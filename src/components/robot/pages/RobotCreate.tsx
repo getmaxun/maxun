@@ -185,8 +185,8 @@ const RobotCreate: React.FC = () => {
           <Tabs value={tabValue} onChange={handleTabChange} aria-label="robot type tabs">
             <Tab
               label="Extract"
-              id="robot-tab-0"
-              aria-controls="robot-tabpanel-0"
+              id="extract-robot"
+              aria-controls="extract-robot"
             />
             <Tab
               icon={<Description />}
