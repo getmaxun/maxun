@@ -30,7 +30,7 @@ Maxun is the easiest way to extract web data with no code. The <b>modern</b> ope
 
 Maxun is a powerful no-code ecosystem for web data extraction. With its intuitive no-code interface, anyone can extract data from **any** website — no coding required. In just minutes, users can build automation robots to **turn websites into structured APIs, LLM-ready markdown, spreadsheets, extract data at scale, and much more.**
 
-## Core Terminologies
+## How Does It Work?
 
 Maxun uses web robots to power everything you can do on the platform. There are two types of robots, each designed for a different job.
 
