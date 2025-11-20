@@ -268,6 +268,14 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
             logger.log('warn', `Failed to send webhooks for markdown robot run ${data.runId}: ${webhookError.message}`);
           }
 
+          capture("maxun-oss-run-created-manual", {
+            runId: data.runId,
+            user_id: data.userId,
+            status: "success",
+            robot_type: "scrape",
+            formats,
+          });
+
           await destroyRemoteBrowser(browserId, data.userId);
 
           return { success: true };
@@ -295,6 +303,14 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
           } catch (socketError: any) {
             logger.log('warn', `Failed to send run-failed notification for markdown robot run ${data.runId}: ${socketError.message}`);
           }
+
+          capture("maxun-oss-run-created-manual", {
+            runId: data.runId,
+            user_id: data.userId,
+            status: "failed",
+            robot_type: "scrape",
+            formats,
+          });
 
           await destroyRemoteBrowser(browserId, data.userId);
 

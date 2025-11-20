@@ -500,12 +500,12 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
 
     logger.log('info', `Markdown robot created with id: ${newRobot.id}`);
     capture(
-      'maxun-oss-markdown-robot-created',
+      'maxun-oss-robot-created',
       {
         robot_meta: newRobot.recording_meta,
-        url: url,
+        recording: newRobot.recording,
       }
-    );
+    )
 
     return res.status(201).json({
       message: 'Markdown robot created successfully.',

@@ -321,6 +321,14 @@ async function executeRun(id: string, userId: string) {
           );
         }
 
+        capture("maxun-oss-run-created-scheduled", {
+          runId: plainRun.runId,
+          user_id: userId,
+          status: "success",
+          robot_type: "scrape",
+          formats
+        });
+
         await destroyRemoteBrowser(plainRun.browserId, userId);
 
         return true;
@@ -351,6 +359,14 @@ async function executeRun(id: string, userId: string) {
             `Failed to send run-failed notification for markdown robot run ${id}: ${socketError.message}`
           );
         }
+
+        capture("maxun-oss-run-created-scheduled", {
+          runId: plainRun.runId,
+          user_id: userId,
+          status: "failed",
+          robot_type: "scrape",
+          formats
+        });
 
         await destroyRemoteBrowser(plainRun.browserId, userId);
 

@@ -731,54 +731,60 @@ export const RobotIntegrationPage = ({
                 width: "100%",
               }}
             >
-              <Button
-                variant="outlined"
-                disabled={isScrapeRobot}
-                onClick={() => {
-                  if (isScrapeRobot) return;
-                  if (!recordingId) return;
-                  setSelectedIntegrationType("googleSheets");
-                  setSettings({ ...settings, integrationType: "googleSheets" });
-                  const basePath = robotPath === "prebuilt-robots" ? "/prebuilt-robots" : "/robots";
-                  navigate(`${basePath}/${recordingId}/integrate/googleSheets`);
-                }}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  background: 'white',
-                  color: isScrapeRobot ? "#aaa" : "#ff00c3",
-                  opacity: isScrapeRobot ? 0.5 : 1,
-                  cursor: isScrapeRobot ? "not-allowed" : "pointer",
-                }}
-              >
-                <img src="https://ik.imagekit.io/ys1blv5kv/gsheet.svg" alt="Google Sheets" style={{ margin: "6px" }} />
-                Google Sheets
-              </Button>
-              <Button
-                variant="outlined"
-                disabled={isScrapeRobot}
-                onClick={() => {
-                  if (isScrapeRobot) return;
-                  if (!recordingId) return;
-                  setSelectedIntegrationType("airtable");
-                  setSettings({ ...settings, integrationType: "airtable" });
-                  const basePath = robotPath === "prebuilt-robots" ? "/prebuilt-robots" : "/robots";
-                  navigate(`${basePath}/${recordingId}/integrate/airtable`);
-                }}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  background: 'white',
-                  color: isScrapeRobot ? "#aaa" : "#ff00c3",
-                  opacity: isScrapeRobot ? 0.5 : 1,
-                  cursor: isScrapeRobot ? "not-allowed" : "pointer",
-                }}
-              >
-                <img src="https://ik.imagekit.io/ys1blv5kv/airtable.svg" alt="Airtable" style={{ margin: "6px" }} />
-                Airtable
-              </Button>
+              {!isScrapeRobot && (
+                <Button
+                  variant="outlined"
+                  onClick={() => {
+                    if (!recordingId) return;
+                    setSelectedIntegrationType("googleSheets");
+                    setSettings({ ...settings, integrationType: "googleSheets" });
+                    const basePath = robotPath === "prebuilt-robots" ? "/prebuilt-robots" : "/robots";
+                    navigate(`${basePath}/${recordingId}/integrate/googleSheets`);
+                  }}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    background: "white",
+                    color: "#ff00c3",
+                  }}
+                >
+                  <img
+                    src="https://ik.imagekit.io/ys1blv5kv/gsheet.svg"
+                    alt="Google Sheets"
+                    style={{ margin: "6px" }}
+                  />
+                  Google Sheets
+                </Button>
+              )}
+
+              {!isScrapeRobot && (
+                <Button
+                  variant="outlined"
+                  onClick={() => {
+                    if (!recordingId) return;
+                    setSelectedIntegrationType("airtable");
+                    setSettings({ ...settings, integrationType: "airtable" });
+                    const basePath = robotPath === "prebuilt-robots" ? "/prebuilt-robots" : "/robots";
+                    navigate(`${basePath}/${recordingId}/integrate/airtable`);
+                  }}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    background: "white",
+                    color: "#ff00c3",
+                  }}
+                >
+                  <img
+                    src="https://ik.imagekit.io/ys1blv5kv/airtable.svg"
+                    alt="Airtable"
+                    style={{ margin: "6px" }}
+                  />
+                  Airtable
+                </Button>
+              )}
+
 
               <Button variant="outlined" onClick={() => {
                 if (!recordingId) return;
