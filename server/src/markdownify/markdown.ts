@@ -11,13 +11,34 @@ export async function parseMarkdown(
 
   const tidiedHtml = tidyHtml(html);
 
-  const t = new TurndownService();
+  const t = new TurndownService({
+    headingStyle: "atx", // ensures #### instead of ------
+    codeBlockStyle: "fenced",
+  });
 
+  // ---------------------------------------------
+  // Fix 1: Proper ATX headings #### instead of underline-style
+  // ---------------------------------------------
+  t.addRule("forceAtxHeadings", {
+    filter: ["h1", "h2", "h3", "h4", "h5", "h6"],
+    replacement: (content: string, node: any) => {
+      const level = Number(node.nodeName.charAt(1));
+      const clean = content.trim();
+      return `\n${"#".repeat(level)} ${clean}\n`;
+    },
+  });
+
+  // ---------------------------------------------
+  // Remove SVGs
+  // ---------------------------------------------
   t.addRule("truncate-svg", {
     filter: "svg",
     replacement: () => "",
   });
 
+  // ---------------------------------------------
+  // Improved paragraph cleanup
+  // ---------------------------------------------
   t.addRule("improved-paragraph", {
     filter: "p",
     replacement: (innerText: string) => {
@@ -27,16 +48,28 @@ export async function parseMarkdown(
     },
   });
 
+  // ---------------------------------------------
+  // Fix 2: Inline link with fallback text
+  // ---------------------------------------------
   t.addRule("inlineLink", {
     filter: (node: any, opts: any) =>
-      opts.linkStyle === "inlined" &&
-      node.nodeName === "A" &&
-      node.getAttribute("href"),
+      node.nodeName === "A" && node.getAttribute("href"),
 
     replacement: (content: string, node: any) => {
+      let text = content.trim();
+
+      // Fallback: aria-label → title → domain
+      if (!text) {
+        text =
+          node.getAttribute("aria-label")?.trim() ||
+          node.getAttribute("title")?.trim() ||
+          getDomainFromUrl(node.getAttribute("href")) ||
+          "link";
+      }
+
       let href = node.getAttribute("href").trim();
 
-      // Relative → absolute
+      // relative → absolute
       if (baseUrl && isRelativeUrl(href)) {
         try {
           const u = new URL(href, baseUrl);
@@ -44,43 +77,44 @@ export async function parseMarkdown(
         } catch {}
       }
 
-      // Clean URL
       href = cleanUrl(href);
 
-      const title = node.title ? ` "${cleanAttribute(node.title)}"` : "";
-      return `[${content.trim()}](${href}${title})\n`;
+      return `[${text}](${href})`;
     },
   });
 
   t.use(gfm);
 
-  // ---------------------------------------------------
-  // Convert
-  // ---------------------------------------------------
+  // Convert HTML → Markdown
   try {
     let out = await t.turndown(tidiedHtml);
     out = fixBrokenLinks(out);
     out = stripSkipLinks(out);
-    return out;
+    return out.trim();
   } catch (err) {
     console.error("HTML→Markdown failed", { err });
     return "";
   }
 }
 
-// ---------------------------------------------
+// -----------------------------------------------------
 // Helpers
-// ---------------------------------------------
+// -----------------------------------------------------
 function isRelativeUrl(url: string): boolean {
   return !url.includes("://") && !url.startsWith("mailto:") && !url.startsWith("tel:");
 }
 
-function cleanUrl(u: string): string {
+function getDomainFromUrl(url: string): string | null {
   try {
-    return u;
+    const u = new URL(url);
+    return u.hostname.replace("www.", "");
   } catch {
-    return u;
+    return null;
   }
+}
+
+function cleanUrl(u: string): string {
+  return u;
 }
 
 function cleanAttribute(attr: string) {
@@ -92,23 +126,22 @@ function tidyHtml(html: string): string {
   const $ = cheerio.load(html);
 
   const manuallyCleanedElements = [
-  "script",
-  "style",
-  "iframe",
-  "noscript",
-  "meta",
-  "link",
-  "object",
-  "embed",
-  "canvas",
-  "audio",
-  "video"
+    "script",
+    "style",
+    "iframe",
+    "noscript",
+    "meta",
+    "link",
+    "object",
+    "embed",
+    "canvas",
+    "audio",
+    "video",
   ];
 
   manuallyCleanedElements.forEach((tag) => $(tag).remove());
   return $("body").html();
 }
-
 
 function fixBrokenLinks(md: string): string {
   let depth = 0;
