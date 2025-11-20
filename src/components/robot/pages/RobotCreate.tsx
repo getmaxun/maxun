@@ -13,21 +13,47 @@ import {
   Card,
   CircularProgress,
   Container,
-  CardContent
+  CardContent,
+  Tabs,
+  Tab
 } from '@mui/material';
-import { ArrowBack, PlayCircleOutline, Article } from '@mui/icons-material';
+import { ArrowBack, PlayCircleOutline, Article, Code, Description } from '@mui/icons-material';
 import { useGlobalInfoStore } from '../../../context/globalInfo';
 import { canCreateBrowserInState, getActiveBrowserId, stopRecording } from '../../../api/recording';
 import { AuthContext } from '../../../context/auth';
 import { GenericModal } from '../../ui/GenericModal';
 
 
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`robot-tabpanel-${index}`}
+      aria-labelledby={`robot-tab-${index}`}
+      {...other}
+    >
+      {value === index && <Box>{children}</Box>}
+    </div>
+  );
+}
+
 const RobotCreate: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { setBrowserId, setRecordingUrl, notify, setRecordingId } = useGlobalInfoStore();
+  const { setBrowserId, setRecordingUrl, notify, setRecordingId, setRerenderRobots } = useGlobalInfoStore();
 
+  const [tabValue, setTabValue] = useState(0);
   const [url, setUrl] = useState('');
+  const [markdownRobotName, setMarkdownRobotName] = useState('');
   const [needsLogin, setNeedsLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isWarningModalOpen, setWarningModalOpen] = useState(false);
@@ -35,6 +61,10 @@ const RobotCreate: React.FC = () => {
 
   const { state } = React.useContext(AuthContext);
   const { user } = state;
+
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+  };
 
 
   const handleStartRecording = async () => {
@@ -146,11 +176,31 @@ const RobotCreate: React.FC = () => {
             <ArrowBack />
           </IconButton>
           <Typography variant="h5" component="h1">
-            New Data Extraction Robot
+            Create New Robot
           </Typography>
         </Box>
 
-        <Card sx={{ mb: 4, p: 4, textAlign: 'center' }}>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+          <Tabs value={tabValue} onChange={handleTabChange} aria-label="robot type tabs">
+            <Tab
+              icon={<Code />}
+              iconPosition="start"
+              label="Data Extraction Robot"
+              id="robot-tab-0"
+              aria-controls="robot-tabpanel-0"
+            />
+            <Tab
+              icon={<Description />}
+              iconPosition="start"
+              label="Markdown Robot"
+              id="robot-tab-1"
+              aria-controls="robot-tabpanel-1"
+            />
+          </Tabs>
+        </Box>
+
+        <TabPanel value={tabValue} index={0}>
+          <Card sx={{ mb: 4, p: 4, textAlign: 'center' }}>
           <Box display="flex" flexDirection="column" alignItems="center">
             {/* Logo (kept as original) */}
             <img
@@ -295,6 +345,90 @@ const RobotCreate: React.FC = () => {
             </Grid>
           </Grid>
         </Box>
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={1}>
+          <Card sx={{ mb: 4, p: 4, textAlign: 'center' }}>
+            <Box display="flex" flexDirection="column" alignItems="center">
+              <img
+                src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
+                width={73}
+                height={65}
+                style={{
+                  borderRadius: '5px',
+                  marginBottom: '30px'
+                }}
+                alt="Maxun Logo"
+              />
+
+              <Typography variant="h6" gutterBottom>
+                Create Markdown Robot
+              </Typography>
+              <Typography variant="body2" color="text.secondary" mb={3}>
+                Convert any webpage to clean markdown format
+              </Typography>
+
+              <Box sx={{ width: '100%', maxWidth: 700, mb: 2 }}>
+                <TextField
+                  placeholder="Example: My Blog Article Robot"
+                  variant="outlined"
+                  fullWidth
+                  value={markdownRobotName}
+                  onChange={(e) => setMarkdownRobotName(e.target.value)}
+                  label="Robot Name"
+                  sx={{ mb: 2 }}
+                />
+                <TextField
+                  placeholder="Example: https://example.com/blog/article"
+                  variant="outlined"
+                  fullWidth
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  label="URL to convert"
+                />
+              </Box>
+
+              <Button
+                variant="contained"
+                fullWidth
+                onClick={async () => {
+                  if (!url.trim()) {
+                    notify('error', 'Please enter a valid URL');
+                    return;
+                  }
+                  if (!markdownRobotName.trim()) {
+                    notify('error', 'Please enter a robot name');
+                    return;
+                  }
+                  setIsLoading(true);
+                  const { createMarkdownRobot } = await import('../../../api/storage');
+                  const result = await createMarkdownRobot(url, markdownRobotName);
+                  setIsLoading(false);
+
+                  if (result) {
+                    setRerenderRobots(true);
+                    notify('success', `${markdownRobotName} created successfully!`);
+                    navigate('/robots');
+                  } else {
+                    notify('error', 'Failed to create markdown robot');
+                  }
+                }}
+                disabled={!url.trim() || !markdownRobotName.trim() || isLoading}
+                sx={{
+                  bgcolor: '#ff00c3',
+                  py: 1.4,
+                  fontSize: '1rem',
+                  textTransform: 'none',
+                  maxWidth: 700,
+                  borderRadius: 2
+                }}
+                startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
+              >
+                {isLoading ? 'Creating...' : 'Create Markdown Robot'}
+              </Button>
+            </Box>
+          </Card>
+        </TabPanel>
       </Box>
 
 
