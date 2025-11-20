@@ -186,7 +186,7 @@ const RobotCreate: React.FC = () => {
           </Typography>
         </Box>
 
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2, mt: "-30px" }}>
           <Tabs
             value={tabValue}
             centered
