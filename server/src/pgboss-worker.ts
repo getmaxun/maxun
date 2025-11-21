@@ -181,12 +181,36 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
 
     logger.log('info', `Browser ${browserId} found and ready for execution`);
 
-    try {  
+    try {
       // Find the recording
       const recording = await Robot.findOne({ where: { 'recording_meta.id': plainRun.robotMetaId }, raw: true });
 
       if (!recording) {
         throw new Error(`Recording for run ${data.runId} not found`);
+      }
+
+      let currentPage = browser.getCurrentPage();
+
+      const pageWaitStart = Date.now();
+      let lastPageLogTime = 0;
+      let pageAttempts = 0;
+      const MAX_PAGE_ATTEMPTS = 15;
+
+      while (!currentPage && (Date.now() - pageWaitStart) < BROWSER_PAGE_TIMEOUT && pageAttempts < MAX_PAGE_ATTEMPTS) {
+        const currentTime = Date.now();
+        pageAttempts++;
+
+        if (currentTime - lastPageLogTime > 5000) {
+          logger.log('info', `Page not ready for browser ${browserId}, waiting... (${Math.round((currentTime - pageWaitStart) / 1000)}s elapsed)`);
+          lastPageLogTime = currentTime;
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        currentPage = browser.getCurrentPage();
+      }
+
+      if (!currentPage) {
+        throw new Error(`No current page available for browser ${browserId} after ${BROWSER_PAGE_TIMEOUT/1000}s timeout`);
       }
 
       if (recording.recording_meta.type === 'scrape') {
@@ -212,13 +236,13 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
 
           // Markdown conversion
           if (formats.includes('markdown')) {
-            markdown = await convertPageToMarkdown(url);
+            markdown = await convertPageToMarkdown(url, currentPage);
             serializableOutput.markdown = [{ content: markdown }];
           }
 
           // HTML conversion
           if (formats.includes('html')) {
-            html = await convertPageToHTML(url);
+            html = await convertPageToHTML(url, currentPage);
             serializableOutput.html = [{ content: html }];
           }
 
@@ -327,30 +351,6 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
           return false;
         }
       };
-
-      let currentPage = browser.getCurrentPage();
-      
-      const pageWaitStart = Date.now();
-      let lastPageLogTime = 0;
-      let pageAttempts = 0;
-      const MAX_PAGE_ATTEMPTS = 15;
-      
-      while (!currentPage && (Date.now() - pageWaitStart) < BROWSER_PAGE_TIMEOUT && pageAttempts < MAX_PAGE_ATTEMPTS) {
-        const currentTime = Date.now();
-        pageAttempts++;
-        
-        if (currentTime - lastPageLogTime > 5000) {
-          logger.log('info', `Page not ready for browser ${browserId}, waiting... (${Math.round((currentTime - pageWaitStart) / 1000)}s elapsed)`);
-          lastPageLogTime = currentTime;
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        currentPage = browser.getCurrentPage();
-      }
-
-      if (!currentPage) {
-        throw new Error(`No current page available for browser ${browserId} after ${BROWSER_PAGE_TIMEOUT/1000}s timeout`);
-      }
 
       logger.log('info', `Starting workflow execution for run ${data.runId}`);
 

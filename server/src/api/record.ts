@@ -662,6 +662,16 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
             };
         }
 
+        browser = browserPool.getRemoteBrowser(plainRun.browserId);
+        if (!browser) {
+            throw new Error('Could not access browser');
+        }
+
+        let currentPage = await browser.getCurrentPage();
+        if (!currentPage) {
+            throw new Error('Could not create a new page');
+        }
+
         if (recording.recording_meta.type === 'scrape') {
             logger.log('info', `Executing scrape robot for API run ${id}`);
 
@@ -690,13 +700,13 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
 
                 // Markdown conversion
                 if (formats.includes('markdown')) {
-                    markdown = await convertPageToMarkdown(url);
+                    markdown = await convertPageToMarkdown(url, currentPage);
                     serializableOutput.markdown = [{ content: markdown }];
                 }
 
                 // HTML conversion
                 if (formats.includes('html')) {
-                    html = await convertPageToHTML(url);
+                    html = await convertPageToHTML(url, currentPage);
                     serializableOutput.html = [{ content: html }];
                 }
 
@@ -823,16 +833,6 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
         }
 
         plainRun.status = 'running';
-
-        browser = browserPool.getRemoteBrowser(plainRun.browserId);
-        if (!browser) {
-            throw new Error('Could not access browser');
-        }
-
-        let currentPage = await browser.getCurrentPage();
-        if (!currentPage) {
-            throw new Error('Could not create a new page');
-        }
 
         const workflow = AddGeneratedFlags(recording.recording);
 
