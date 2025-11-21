@@ -24,13 +24,9 @@ interface RobotMeta {
   pairs: number;
   updatedAt: string;
   params: any[];
-  type?: string;
-  description?: string;
-  usedByUsers?: number[];
-  subscriptionLevel?: number;
-  access?: string;
-  sample?: any[];
+  type?: 'extract' | 'scrape';
   url?: string;
+  formats?: ('markdown' | 'html')[];
 }
 
 interface RobotWorkflow {
@@ -795,11 +791,6 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
     navigate(basePath);
   };
 
-  const lastPair =
-    robot?.recording.workflow[robot?.recording.workflow.length - 1];
-  const targetUrl = lastPair?.what.find((action) => action.action === "goto")
-    ?.args?.[0];
-
   return (
     <RobotConfigPage
       title={t("robot_edit.title")}
@@ -826,7 +817,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
               <TextField
                 label={t("robot_duplication.fields.target_url")}
                 key={t("robot_duplication.fields.target_url")}
-                value={targetUrl || ""}
+                value={getTargetUrl() || ""}
                 onChange={(e) => handleTargetUrlChange(e.target.value)}
                 style={{ marginBottom: "20px" }}
               />

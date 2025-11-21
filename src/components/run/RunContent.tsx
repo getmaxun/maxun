@@ -37,6 +37,8 @@ interface RunContentProps {
 export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRef, abortRunHandler }: RunContentProps) => {
   const { t } = useTranslation();
   const [tab, setTab] = React.useState<string>('output');
+  const [markdownContent, setMarkdownContent] = useState<string>('');
+  const [htmlContent, setHtmlContent] = useState<string>('');
 
   const [schemaData, setSchemaData] = useState<any[]>([]);
   const [schemaColumns, setSchemaColumns] = useState<string[]>([]);
@@ -62,6 +64,26 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   useEffect(() => {
     setTab(tab);
   }, [interpretationInProgress]);
+
+  useEffect(() => {
+    setMarkdownContent('');
+    setHtmlContent('');
+
+    if (row.serializableOutput?.markdown && Array.isArray(row.serializableOutput.markdown)) {
+      const markdownData = row.serializableOutput.markdown[0];
+      if (markdownData?.content) {
+        setMarkdownContent(markdownData.content);
+      }
+    }
+
+    if (row.serializableOutput?.html && Array.isArray(row.serializableOutput.html)) {
+      const htmlData = row.serializableOutput.html[0];
+      if (htmlData?.content) {
+        setHtmlContent(htmlData.content);
+      }
+    }
+  }, [row.serializableOutput]);
+
 
   useEffect(() => {
     if (row.status === 'running' || row.status === 'queued' || row.status === 'scheduled') {
@@ -374,6 +396,22 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     }, 100);
   };
 
+  const downloadMarkdown = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 100);
+  };
+
 
   const renderDataTable = (
     data: any[],
@@ -636,11 +674,77 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
   const hasData = schemaData.length > 0 || listData.length > 0 || legacyData.length > 0;
   const hasScreenshots = row.binaryOutput && Object.keys(row.binaryOutput).length > 0;
+  const hasMarkdown = markdownContent.length > 0;
+  const hasHTML = htmlContent.length > 0;
 
   return (
     <Box sx={{ width: '100%' }}>
       <TabContext value={tab}>
         <TabPanel value='output' sx={{ width: '100%', maxWidth: '900px' }}>
+          {hasMarkdown || hasHTML ? (
+            <>
+              {hasMarkdown && (
+                <Accordion defaultExpanded sx={{ mb: 2 }}>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography variant='h6'>Markdown</Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Paper sx={{ p: 2, maxHeight: '500px', overflow: 'auto' }}>
+                      <Typography component="pre" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
+                        {markdownContent}
+                      </Typography>
+                    </Paper>
+
+                    <Box sx={{ mt: 2 }}>
+                      <Button
+                        onClick={() => downloadMarkdown(markdownContent, 'output.md')}
+                        sx={{ color: '#FF00C3', textTransform: 'none' }}
+                      >
+                        Download
+                      </Button>
+                    </Box>
+                  </AccordionDetails>
+                </Accordion>
+              )}
+
+              {hasHTML && (
+                <Accordion defaultExpanded sx={{ mb: 2 }}>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography variant='h6'>HTML</Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Paper sx={{ p: 2, maxHeight: '500px', overflow: 'auto' }}>
+                      <Typography
+                        component="pre"
+                        sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}
+                      >
+                        {htmlContent}
+                      </Typography>
+                    </Paper>
+
+                    <Box sx={{ mt: 2 }}>
+                      <Button
+                        onClick={() => {
+                          const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
+                          const url = URL.createObjectURL(blob);
+                          const link = document.createElement("a");
+                          link.href = url;
+                          link.download = "output.html";
+                          link.click();
+                          setTimeout(() => URL.revokeObjectURL(url), 100);
+                        }}
+                        sx={{ color: '#FF00C3', textTransform: 'none' }}
+                      >
+                        Download
+                      </Button>
+                    </Box>
+                  </AccordionDetails>
+                </Accordion>
+              )}
+            </>
+          ) : (
+            // Extract robot output
+            <>
           {row.status === 'running' || row.status === 'queued' ? (
             <>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -938,6 +1042,8 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 </Box>
               </AccordionDetails>
             </Accordion>
+          )}
+          </>
           )}
         </TabPanel>
       </TabContext>

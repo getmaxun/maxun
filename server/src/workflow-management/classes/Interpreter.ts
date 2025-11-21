@@ -552,14 +552,7 @@ export class WorkflowInterpreter {
         try {
           if (!data || typeof data !== "object") return;
 
-          if (!this.currentActionType && Array.isArray(data) && data.length > 0) {
-            const first = data[0];
-            if (first && Object.keys(first).some(k => k.toLowerCase().includes("label") || k.toLowerCase().includes("text"))) {
-              this.currentActionType = "scrapeSchema";
-            }
-          }
-
-          let typeKey = this.currentActionType || "unknown";
+          let typeKey = this.currentActionType || "";
 
           if (this.currentActionType === "scrapeList") {
             typeKey = "scrapeList";
@@ -567,20 +560,39 @@ export class WorkflowInterpreter {
             typeKey = "scrapeSchema";
           }
 
-          if (this.currentActionType === "scrapeList" && data.scrapeList) {
+          if (typeKey === "scrapeList" && data.scrapeList) {
             data = data.scrapeList;
-          } else if (this.currentActionType === "scrapeSchema" && data.scrapeSchema) {
+          } else if (typeKey === "scrapeSchema" && data.scrapeSchema) {
             data = data.scrapeSchema;
           }
 
-          let actionName = this.currentActionName || "";
-          if (typeKey === "scrapeList") {
-            actionName = this.getUniqueActionName(typeKey, this.currentActionName);
+          let actionName = "";
+          if (typeKey === "scrapeList" && data && typeof data === "object" && !Array.isArray(data)) {
+            const keys = Object.keys(data);
+            if (keys.length === 1) {
+              actionName = keys[0];
+              data = data[actionName];
+            } else if (keys.length > 1) {
+              actionName = keys[keys.length - 1];
+              data = data[actionName];
+            }
+          }
+
+          if (!actionName) {
+            actionName = this.currentActionName || "";
+            if (typeKey === "scrapeList" && !actionName) {
+              actionName = this.getUniqueActionName(typeKey, "");
+            }
           }
 
           const flattened = Array.isArray(data)
             ? data
-            : (data?.List ?? (data && typeof data === 'object' ? Object.values(data).flat?.() ?? data : []));
+            : (
+              data?.List ??
+              (data && typeof data === "object"
+                ? Object.values(data).flat?.() ?? data
+                : [])
+            );
 
           if (!this.serializableDataByType[typeKey]) {
             this.serializableDataByType[typeKey] = {};
@@ -588,16 +600,15 @@ export class WorkflowInterpreter {
 
           this.serializableDataByType[typeKey][actionName] = flattened;
 
-          await this.persistDataToDatabase(typeKey, { [actionName]: flattened });
+          await this.persistDataToDatabase(typeKey, {
+            [actionName]: flattened,
+          });
 
           this.socket.emit("serializableCallback", {
             type: typeKey,
             name: actionName,
             data: flattened,
           });
-
-          this.currentActionType = null;
-          this.currentActionName = null;
         } catch (err: any) {
           logger.log('error', `serializableCallback handler failed: ${err.message}`);
         }

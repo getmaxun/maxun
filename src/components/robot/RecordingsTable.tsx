@@ -121,6 +121,7 @@ const TableRowMemoized = memo(({ row, columns, handlers }: any) => {
                     handleEdit={() => handlers.handleEditRobot(row.id, row.name, row.params || [])}
                     handleDuplicate={() => handlers.handleDuplicateRobot(row.id, row.name, row.params || [])}
                     handleDelete={() => handlers.handleDelete(row.id)}
+                    robotType={row.type}
                   />
                 </MemoizedTableCell>
               );
@@ -742,9 +743,10 @@ interface OptionsButtonProps {
   handleEdit: () => void;
   handleDelete: () => void;
   handleDuplicate: () => void;
+  robotType: string;
 }
 
-const OptionsButton = ({ handleRetrain, handleEdit, handleDelete, handleDuplicate }: OptionsButtonProps) => {
+const OptionsButton = ({ handleRetrain, handleEdit, handleDelete, handleDuplicate, robotType }: OptionsButtonProps) => {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -771,34 +773,33 @@ const OptionsButton = ({ handleRetrain, handleEdit, handleDelete, handleDuplicat
         open={Boolean(anchorEl)}
         onClose={handleClose}
       >
-        <MenuItem onClick={() => { handleRetrain(); handleClose(); }}>
-          <ListItemIcon>
-            <Refresh fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>{t('recordingtable.retrain')}</ListItemText>
-        </MenuItem>
+        {robotType !== 'scrape' && (
+          <MenuItem onClick={() => { handleRetrain(); handleClose(); }}>
+            <ListItemIcon>
+              <Refresh fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Retrain</ListItemText>
+          </MenuItem>
+        )}
 
         <MenuItem onClick={() => { handleEdit(); handleClose(); }}>
-          <ListItemIcon>
-            <Edit fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>{t('recordingtable.edit')}</ListItemText>
+          <ListItemIcon><Edit fontSize="small" /></ListItemIcon>
+          <ListItemText>Edit</ListItemText>
         </MenuItem>
 
         <MenuItem onClick={() => { handleDelete(); handleClose(); }}>
-          <ListItemIcon>
-            <DeleteForever fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>{t('recordingtable.delete')}</ListItemText>
+          <ListItemIcon><DeleteForever fontSize="small" /></ListItemIcon>
+          <ListItemText>Delete</ListItemText>
         </MenuItem>
 
-        <MenuItem onClick={() => { handleDuplicate(); handleClose(); }}>
-          <ListItemIcon>
-            <ContentCopy fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>{t('recordingtable.duplicate')}</ListItemText>
-        </MenuItem>
+        {robotType !== 'scrape' && (
+          <MenuItem onClick={() => { handleDuplicate(); handleClose(); }}>
+            <ListItemIcon><ContentCopy fontSize="small" /></ListItemIcon>
+            <ListItemText>Duplicate</ListItemText>
+          </MenuItem>
+        )}
       </Menu>
+
     </>
   );
 };

@@ -13,28 +13,64 @@ import {
   Card,
   CircularProgress,
   Container,
-  CardContent
+  CardContent,
+  Tabs,
+  Tab,
+  RadioGroup,
+  Radio,
+  FormControl,
+  FormLabel
 } from '@mui/material';
-import { ArrowBack, PlayCircleOutline, Article } from '@mui/icons-material';
+import { ArrowBack, PlayCircleOutline, Article, Code, Description } from '@mui/icons-material';
 import { useGlobalInfoStore } from '../../../context/globalInfo';
 import { canCreateBrowserInState, getActiveBrowserId, stopRecording } from '../../../api/recording';
+import { createScrapeRobot } from "../../../api/storage";
 import { AuthContext } from '../../../context/auth';
 import { GenericModal } from '../../ui/GenericModal';
 
 
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`robot-tabpanel-${index}`}
+      aria-labelledby={`robot-tab-${index}`}
+      {...other}
+    >
+      {value === index && <Box>{children}</Box>}
+    </div>
+  );
+}
+
 const RobotCreate: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { setBrowserId, setRecordingUrl, notify, setRecordingId } = useGlobalInfoStore();
+  const { setBrowserId, setRecordingUrl, notify, setRecordingId, setRerenderRobots } = useGlobalInfoStore();
 
+  const [tabValue, setTabValue] = useState(0);
   const [url, setUrl] = useState('');
+  const [scrapeRobotName, setScrapeRobotName] = useState('');
   const [needsLogin, setNeedsLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isWarningModalOpen, setWarningModalOpen] = useState(false);
   const [activeBrowserId, setActiveBrowserId] = useState('');
+  const [outputFormats, setOutputFormats] = useState<string[]>([]);
 
   const { state } = React.useContext(AuthContext);
   const { user } = state;
+
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+  };
 
 
   const handleStartRecording = async () => {
@@ -146,155 +182,307 @@ const RobotCreate: React.FC = () => {
             <ArrowBack />
           </IconButton>
           <Typography variant="h5" component="h1">
-            New Data Extraction Robot
+            Create New Robot
           </Typography>
         </Box>
 
-        <Card sx={{ mb: 4, p: 4, textAlign: 'center' }}>
-          <Box display="flex" flexDirection="column" alignItems="center">
-            {/* Logo (kept as original) */}
-            <img
-              src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
-              width={73}
-              height={65}
-              style={{
-                borderRadius: '5px',
-                marginBottom: '30px'
-              }}
-              alt="Maxun Logo"
-            />
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2, mt: "-30px" }}>
+          <Tabs
+            value={tabValue}
+            centered
+            onChange={handleTabChange}
+            aria-label="robot type tabs"
+            sx={{
+              minHeight: 36,
+              '& .MuiTab-root': {
+                minHeight: 36,
+                paddingX: 2,
+                paddingY: 1.5,
+                minWidth: 0,
+              },
+              '& .MuiTabs-indicator': {
+                height: 2,
+              },
+            }}
+          >
+            <Tab label="Extract" id="extract-robot" aria-controls="extract-robot" />
+            <Tab label="Scrape" id="scrape-robot" aria-controls="scrape-robot" />
+          </Tabs>
+        </Box>
 
-            {/* Origin URL Input */}
-            <Box sx={{ width: '100%', maxWidth: 700, mb: 2 }}>
-              <TextField
-                placeholder="Example: https://www.ycombinator.com/companies/"
-                variant="outlined"
+
+        <TabPanel value={tabValue} index={0}>
+          <Card sx={{ mb: 4, p: 4, textAlign: 'center' }}>
+            <Box display="flex" flexDirection="column" alignItems="center">
+              {/* Logo (kept as original) */}
+              <img
+                src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
+                width={73}
+                height={65}
+                style={{
+                  borderRadius: '5px',
+                  marginBottom: '30px'
+                }}
+                alt="Maxun Logo"
+              />
+
+              <Typography variant="body2" color="text.secondary" mb={3}>
+                Extract structured data from websites in a few clicks.
+              </Typography>
+
+              {/* Origin URL Input */}
+              <Box sx={{ width: '100%', maxWidth: 700, mb: 2 }}>
+                <TextField
+                  placeholder="Example: https://www.ycombinator.com/companies/"
+                  variant="outlined"
+                  fullWidth
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                />
+              </Box>
+
+              {/* Checkbox */}
+              <Box sx={{ width: '100%', maxWidth: 700, mb: 3, textAlign: 'left' }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={needsLogin}
+                      onChange={(e) => setNeedsLogin(e.target.checked)}
+                      color="primary"
+                    />
+                  }
+                  label="This website needs logging in."
+                />
+              </Box>
+
+              {/* Button */}
+              <Button
+                variant="contained"
                 fullWidth
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-              />
+                onClick={handleStartRecording}
+                disabled={!url.trim() || isLoading}
+                sx={{
+                  bgcolor: '#ff00c3',
+                  py: 1.4,
+                  fontSize: '1rem',
+                  textTransform: 'none',
+                  maxWidth: 700,
+                  borderRadius: 2
+                }}
+                startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
+              >
+                {isLoading ? 'Starting...' : 'Start Recording'}
+              </Button>
             </Box>
+          </Card>
 
-            {/* Checkbox */}
-            <Box sx={{ width: '100%', maxWidth: 700, mb: 3, textAlign: 'left' }}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={needsLogin}
-                    onChange={(e) => setNeedsLogin(e.target.checked)}
-                    color="primary"
-                  />
-                }
-                label="This website needs logging in."
-              />
-            </Box>
+          <Box mt={6} textAlign="center">
+            <Typography variant="h6" gutterBottom>
+              First time creating a robot?
+            </Typography>
+            <Typography variant="body2" color="text.secondary" mb={3}>
+              Get help and learn how to use Maxun effectively.
+            </Typography>
 
-            {/* Button */}
-            <Button
-              variant="contained"
-              fullWidth
-              onClick={handleStartRecording}
-              disabled={!url.trim() || isLoading}
-              sx={{
-                bgcolor: '#ff00c3',
-                py: 1.4,
-                fontSize: '1rem',
-                textTransform: 'none',
-                maxWidth: 700,
-                borderRadius: 2
-              }}
-              startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
-            >
-              {isLoading ? 'Starting...' : 'Start Recording'}
-            </Button>
+            <Grid container spacing={3} justifyContent="center">
+
+              {/* YouTube Tutorials */}
+              <Grid item xs={12} sm={6} md={4}>
+                <Card
+                  sx={{
+                    height: 140,
+                    cursor: "pointer",
+                  }}
+                  onClick={() => window.open("https://www.youtube.com/@MaxunOSS/videos", "_blank")}
+                >
+                  <CardContent
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center", // center content
+                      height: "100%",
+                      textAlign: "center",
+                      p: 2,
+                      color: (theme) =>
+                        theme.palette.mode === 'light' ? 'rgba(0, 0, 0, 0.54)' : '',
+                    }}
+                  >
+                    <PlayCircleOutline sx={{ fontSize: "32px", mb: 2 }} />
+
+                    <Box sx={{ textAlign: "center" }}>
+                      <Typography variant="body1" fontWeight="600" sx={{ lineHeight: 1.2 }}>
+                        Video Tutorials
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.4, mt: 1 }}>
+                        Watch step-by-step guides
+                      </Typography>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              {/* Documentation */}
+              <Grid item xs={12} sm={6} md={4}>
+                <Card
+                  sx={{
+                    height: 140,
+                    cursor: "pointer",
+                  }}
+                  onClick={() => window.open("https://docs.maxun.dev", "_blank")}
+                >
+                  <CardContent
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center", // center everything
+                      height: "100%",
+                      textAlign: "center",
+                      p: 2,
+                      color: (theme) =>
+                        theme.palette.mode === 'light' ? 'rgba(0, 0, 0, 0.54)' : '',
+                    }}
+                  >
+                    <Article sx={{ fontSize: "32px", mb: 2 }} />
+
+                    <Box sx={{ textAlign: "center" }}>
+                      <Typography variant="body1" fontWeight="600" sx={{ lineHeight: 1.2 }}>
+                        Documentation
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.4, mt: 1 }}>
+                        Explore detailed guides
+                      </Typography>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
           </Box>
-        </Card>
+        </TabPanel>
 
-
-
-        <Box mt={6} textAlign="center">
-          <Typography variant="h6" gutterBottom>
-            First time creating a robot?
-          </Typography>
-          <Typography variant="body2" color="text.secondary" mb={3}>
-            Get help and learn how to use Maxun effectively.
-          </Typography>
-
-          <Grid container spacing={3} justifyContent="center">
-
-            {/* YouTube Tutorials */}
-            <Grid item xs={12} sm={6} md={4}>
-              <Card
-                sx={{
-                  height: 140,
-                  cursor: "pointer",
+        <TabPanel value={tabValue} index={1}>
+          <Card sx={{ mb: 4, p: 4, textAlign: 'center' }}>
+            <Box display="flex" flexDirection="column" alignItems="center">
+              <img
+                src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
+                width={73}
+                height={65}
+                style={{
+                  borderRadius: '5px',
+                  marginBottom: '30px'
                 }}
-                onClick={() => window.open("https://www.youtube.com/@MaxunOSS/videos", "_blank")}
-              >
-                <CardContent
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center", // center content
-                    height: "100%",
-                    textAlign: "center",
-                    p: 2,
-                    color: (theme) =>
-                      theme.palette.mode === 'light' ? 'rgba(0, 0, 0, 0.54)' : '',
-                  }}
-                >
-                  <PlayCircleOutline sx={{ fontSize: "32px", mb: 2 }} />
+                alt="Maxun Logo"
+              />
 
-                  <Box sx={{ textAlign: "center" }}>
-                    <Typography variant="body1" fontWeight="600" sx={{ lineHeight: 1.2 }}>
-                      Video Tutorials
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.4, mt: 1 }}>
-                      Watch step-by-step guides
-                    </Typography>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
+              <Typography variant="body2" color="text.secondary" mb={3}>
+                Turn websites into LLM-ready Markdown & clean HTML for AI apps.
+              </Typography>
 
-            {/* Documentation */}
-            <Grid item xs={12} sm={6} md={4}>
-              <Card
-                sx={{
-                  height: 140,
-                  cursor: "pointer",
+              <Box sx={{ width: '100%', maxWidth: 700, mb: 2 }}>
+                <TextField
+                  placeholder="Example: YC Companies Scraper"
+                  variant="outlined"
+                  fullWidth
+                  value={scrapeRobotName}
+                  onChange={(e) => setScrapeRobotName(e.target.value)}
+                  sx={{ mb: 2 }}
+                  label="Robot Name"
+                />
+                <TextField
+                  placeholder="Example: https://www.ycombinator.com/companies/"
+                  variant="outlined"
+                  fullWidth
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  label="Website URL"
+                  sx={{ mb: 2 }}
+                />
+
+                <FormControl component="fieldset" sx={{ width: '100%', textAlign: 'left' }}>
+                  <p>Output Format (Select at least one)</p>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={outputFormats.includes('markdown')}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setOutputFormats([...outputFormats, 'markdown']);
+                          } else {
+                            setOutputFormats(outputFormats.filter(f => f !== 'markdown'));
+                          }
+                        }}
+                      />
+                    }
+                    label="Markdown"
+                  />
+
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={outputFormats.includes('html')}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setOutputFormats([...outputFormats, 'html']);
+                          } else {
+                            setOutputFormats(outputFormats.filter(f => f !== 'html'));
+                          }
+                        }}
+                      />
+                    }
+                    label="HTML"
+                  />
+                </FormControl>
+              </Box>
+
+              <Button
+                variant="contained"
+                fullWidth
+                onClick={async () => {
+                  if (!url.trim()) {
+                    notify('error', 'Please enter a valid URL');
+                    return;
+                  }
+                  if (!scrapeRobotName.trim()) {
+                    notify('error', 'Please enter a robot name');
+                    return;
+                  }
+                  if (outputFormats.length === 0) {
+                    notify('error', 'Please select at least one output format');
+                    return;
+                  }
+
+                  setIsLoading(true);
+                  const result = await createScrapeRobot(url, scrapeRobotName, outputFormats);
+                  setIsLoading(false);
+
+                  if (result) {
+                    setRerenderRobots(true);
+                    notify('success', `${scrapeRobotName} created successfully!`);
+                    navigate('/robots');
+                  } else {
+                    notify('error', 'Failed to create markdown robot');
+                  }
                 }}
-                onClick={() => window.open("https://docs.maxun.dev", "_blank")}
+                disabled={!url.trim() || !scrapeRobotName.trim() || outputFormats.length === 0 || isLoading}
+                sx={{
+                  bgcolor: '#ff00c3',
+                  py: 1.4,
+                  fontSize: '1rem',
+                  textTransform: 'none',
+                  maxWidth: 700,
+                  borderRadius: 2
+                }}
+                startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
               >
-                <CardContent
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center", // center everything
-                    height: "100%",
-                    textAlign: "center",
-                    p: 2,
-                    color: (theme) =>
-                      theme.palette.mode === 'light' ? 'rgba(0, 0, 0, 0.54)' : '',
-                  }}
-                >
-                  <Article sx={{ fontSize: "32px", mb: 2 }} />
-
-                  <Box sx={{ textAlign: "center" }}>
-                    <Typography variant="body1" fontWeight="600" sx={{ lineHeight: 1.2 }}>
-                      Documentation
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.4, mt: 1 }}>
-                      Explore detailed guides
-                    </Typography>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-        </Box>
+                {isLoading
+                  ? "Creating..."
+                  : `Create Robot`
+                }
+              </Button>
+            </Box>
+          </Card>
+        </TabPanel>
       </Box>
 
 
