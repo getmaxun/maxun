@@ -10,7 +10,7 @@
 </h2>
 
 <p align="center">
-✨ Turn any website into clean, contextualized data pipeline for your AI applications ✨
+✨ Turn any website into clean, contextualized data pipelines for your AI applications ✨
 <br />
 Maxun is the easiest way to extract web data with no code. The <b>modern</b> open-source alternative to BrowseAI, Octoparse and similar tools.
 </p>
