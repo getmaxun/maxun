@@ -10,7 +10,7 @@
 </h2>
 
 <p align="center">
-✨ Turn any website into clean, contextualized data pipelines for your AI applications ✨
+✨ Turn any website into clean, contextualized data pipeline for your AI applications ✨
 <br />
 Maxun is the easiest way to extract web data with no code. The <b>modern</b> open-source alternative to BrowseAI, Octoparse and similar tools.
 </p>
@@ -131,12 +131,6 @@ Maxun can run locally with or without Docker:
 - ✨ **LLM-Ready Data** - Clean Markdown for AI applications
 - ✨ **Self-Hostable** - Full control over your infrastructure
 - ✨ **Open Source** - Transparent and community-driven
-
----
-
-<p align="center">
-  <i>Start extracting web data in minutes, not days. No code required.</i>
-</p>
 
 ### Use Cases
 Maxun can be used for various use-cases, including lead generation, market research, content aggregation and more.
