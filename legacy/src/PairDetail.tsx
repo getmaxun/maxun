@@ -10,7 +10,7 @@ import { AddButton } from "../../src/components/ui/buttons/AddButton";
 import { WarningText } from "../../src/components/ui/texts";
 import NotificationImportantIcon from '@mui/icons-material/NotificationImportant';
 import { RemoveButton } from "../../src/components/ui/buttons/RemoveButton";
-import { AddWhereCondModal } from "../../src/components/recorder/AddWhereCondModal";
+import { AddWhereCondModal } from "./AddWhereCondModal";
 import { useSocketStore } from "../../src/context/socket";
 import { AddWhatCondModal } from "./AddWhatCondModal";
 

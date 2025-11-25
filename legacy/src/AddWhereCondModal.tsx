@@ -1,15 +1,15 @@
-import { Dropdown as MuiDropdown } from "../ui/DropdownMui";
+import { Dropdown as MuiDropdown } from "../../src/components/ui/DropdownMui";
 import {
   Button,
   MenuItem,
   Typography
 } from "@mui/material";
 import React, { useRef } from "react";
-import { GenericModal } from "../ui/GenericModal";
+import { GenericModal } from "../../src/components/ui/GenericModal";
 import { WhereWhatPair } from "maxun-core";
 import { SelectChangeEvent } from "@mui/material/Select/Select";
-import { DisplayConditionSettings } from "../../../legacy/src/DisplayWhereConditionSettings";
-import { useSocketStore } from "../../context/socket";
+import { DisplayConditionSettings } from "./DisplayWhereConditionSettings";
+import { useSocketStore } from "../../src/context/socket";
 
 interface AddWhereCondModalProps {
   isOpen: boolean;
