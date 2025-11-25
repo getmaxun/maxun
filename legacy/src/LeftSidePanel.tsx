@@ -4,7 +4,7 @@ import { getActiveWorkflow, getParamsOfActiveWorkflow } from "../../src/api/work
 import { useSocketStore } from '../../src/context/socket';
 import { WhereWhatPair, WorkflowFile } from "maxun-core";
 import { emptyWorkflow } from "../../src/shared/constants";
-import { LeftSidePanelContent } from "../../src/components/recorder/LeftSidePanelContent";
+import { LeftSidePanelContent } from "./LeftSidePanelContent";
 import { useGlobalInfoStore } from "../../src/context/globalInfo";
 import { TabContext, TabPanel } from "@mui/lab";
 import { LeftSidePanelSettings } from "../../src/components/recorder/LeftSidePanelSettings";
