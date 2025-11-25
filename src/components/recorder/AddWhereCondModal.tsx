@@ -8,7 +8,7 @@ import React, { useRef } from "react";
 import { GenericModal } from "../ui/GenericModal";
 import { WhereWhatPair } from "maxun-core";
 import { SelectChangeEvent } from "@mui/material/Select/Select";
-import { DisplayConditionSettings } from "./DisplayWhereConditionSettings";
+import { DisplayConditionSettings } from "../../../legacy/src/DisplayWhereConditionSettings";
 import { useSocketStore } from "../../context/socket";
 
 interface AddWhereCondModalProps {
