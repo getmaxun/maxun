@@ -7,7 +7,7 @@ import { emptyWorkflow } from "../../src/shared/constants";
 import { LeftSidePanelContent } from "./LeftSidePanelContent";
 import { useGlobalInfoStore } from "../../src/context/globalInfo";
 import { TabContext, TabPanel } from "@mui/lab";
-import { LeftSidePanelSettings } from "../../src/components/recorder/LeftSidePanelSettings";
+import { LeftSidePanelSettings } from "./LeftSidePanelSettings";
 import { RunSettings } from "../../src/components/run/RunSettings";
 
 const fetchWorkflow = (id: string, callback: (response: WorkflowFile) => void) => {

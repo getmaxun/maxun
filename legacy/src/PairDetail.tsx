@@ -6,13 +6,13 @@ import TreeView from '@mui/lab/TreeView';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import TreeItem from '@mui/lab/TreeItem';
-import { AddButton } from "../ui/buttons/AddButton";
-import { WarningText } from "../ui/texts";
+import { AddButton } from "../../src/components/ui/buttons/AddButton";
+import { WarningText } from "../../src/components/ui/texts";
 import NotificationImportantIcon from '@mui/icons-material/NotificationImportant';
-import { RemoveButton } from "../ui/buttons/RemoveButton";
-import { AddWhereCondModal } from "./AddWhereCondModal";
-import { useSocketStore } from "../../context/socket";
-import { AddWhatCondModal } from "../../../legacy/src/AddWhatCondModal";
+import { RemoveButton } from "../../src/components/ui/buttons/RemoveButton";
+import { AddWhereCondModal } from "../../src/components/recorder/AddWhereCondModal";
+import { useSocketStore } from "../../src/context/socket";
+import { AddWhatCondModal } from "./AddWhatCondModal";
 
 interface PairDetailProps {
   pair: WhereWhatPair | null;
