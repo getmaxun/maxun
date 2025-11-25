@@ -6,7 +6,7 @@ import { Socket } from "socket.io-client";
 import { AddButton } from "../../src/components/ui/buttons/AddButton";
 import { AddPair } from "../../src/api/workflow";
 import { GenericModal } from "../../src/components/ui/GenericModal";
-import { PairEditForm } from "../../src/components/recorder/PairEditForm";
+import { PairEditForm } from "./PairEditForm";
 import { Tooltip } from "@mui/material";
 
 interface LeftSidePanelContentProps {
