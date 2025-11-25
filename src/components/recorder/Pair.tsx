@@ -4,7 +4,7 @@ import { AddPair, deletePair, UpdatePair } from "../../api/workflow";
 import { WorkflowFile } from "maxun-core";
 import { ClearButton } from "../ui/buttons/ClearButton";
 import { GenericModal } from "../ui/GenericModal";
-import { PairEditForm } from "./PairEditForm";
+import { PairEditForm } from "../../../legacy/src/PairEditForm";
 import { PairDisplayDiv } from "../../../legacy/src/PairDisplayDiv";
 import { EditButton } from "../ui/buttons/EditButton";
 import { BreakpointButton } from "../ui/buttons/BreakpointButton";
