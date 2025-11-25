@@ -12,7 +12,7 @@ import NotificationImportantIcon from '@mui/icons-material/NotificationImportant
 import { RemoveButton } from "../ui/buttons/RemoveButton";
 import { AddWhereCondModal } from "./AddWhereCondModal";
 import { useSocketStore } from "../../context/socket";
-import { AddWhatCondModal } from "./AddWhatCondModal";
+import { AddWhatCondModal } from "../../../legacy/src/AddWhatCondModal";
 
 interface PairDetailProps {
   pair: WhereWhatPair | null;
