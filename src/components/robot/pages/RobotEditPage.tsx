@@ -791,6 +791,9 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
     navigate(basePath);
   };
 
+  const scrapeListLimitFields = renderScrapeListLimitFields();
+  const actionNameFields = renderActionNameFields();
+
   return (
     <RobotConfigPage
       title={t("robot_edit.title")}
