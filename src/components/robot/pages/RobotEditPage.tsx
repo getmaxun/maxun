@@ -791,9 +791,6 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
     navigate(basePath);
   };
 
-  const scrapeListLimitFields = renderScrapeListLimitFields();
-  const actionNameFields = renderActionNameFields();
-
   return (
     <RobotConfigPage
       title={t("robot_edit.title")}
@@ -824,10 +821,20 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
                 onChange={(e) => handleTargetUrlChange(e.target.value)}
                 style={{ marginBottom: "20px" }}
               />
-              <Divider />
-              {renderScrapeListLimitFields()}
-              <Divider />
-              {renderActionNameFields()}
+             {renderScrapeListLimitFields() && (
+  <>
+    <Divider />
+    {renderScrapeListLimitFields()}
+  </>
+)}
+
+{renderActionNameFields() && (
+  <>
+    <Divider />
+    {renderActionNameFields()}
+  </>
+)}
+
             </>
           )}
         </Box>
