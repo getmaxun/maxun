@@ -58,7 +58,8 @@ interface AbortRunData {
 
 const pgBoss = new PgBoss({
   connectionString: pgBossConnectionString,
-  expireInHours: 23
+  expireInHours: 23,
+  max: 3,
 });
 
 /**
