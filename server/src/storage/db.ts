@@ -17,6 +17,16 @@ const sequelize = new Sequelize(databaseUrl,
         host,
         dialect: 'postgres',
         logging: false,
+        pool: {
+            max: 10,           // Maximum number of connections in pool (reduced from 20)
+            min: 0,            // Minimum number of connections in pool (let pool shrink to 0)
+            acquire: 30000,    // Maximum time (ms) to try to get connection before throwing error
+            idle: 10000,       // Maximum time (ms) a connection can be idle before being released
+            evict: 1000,       // Time interval (ms) for eviction runs
+        },
+        dialectOptions: {
+            statement_timeout: 60000, // 60 seconds
+        },
     }
 );
 
