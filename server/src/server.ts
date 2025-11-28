@@ -22,6 +22,7 @@ import session from 'express-session';
 import Run from './models/Run';
 import { processQueuedRuns, recoverOrphanedRuns } from './routes/storage';
 import { startWorkers } from './pgboss-worker';
+import { stopPgBossClient, startPgBossClient } from './storage/pgboss'
 
 const app = express();
 app.use(cors({
@@ -37,8 +38,8 @@ const pool = new Pool({
   database: process.env.DB_NAME,
   password: process.env.DB_PASSWORD,
   port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : undefined,
-  max: 50,                    
-  min: 5,                    
+  max: 10,
+  min: 0,                    
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
   maxUses: 7500,
@@ -152,8 +153,13 @@ if (require.main === module) {
       
       logger.log('info', 'Cleaning up stale browser slots...');
       browserPool.cleanupStaleBrowserSlots();
-      
+
+      // Recover orphaned runs from potential crashes
       await recoverOrphanedRuns();
+      // Start pgBoss client for job submission
+      await startPgBossClient();
+
+      // Start pgBoss workers AFTER recovery is complete
       await startWorkers();
       
       io = new Server(server);
