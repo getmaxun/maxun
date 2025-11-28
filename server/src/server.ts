@@ -19,7 +19,6 @@ import swaggerSpec from './swagger/config';
 import connectPgSimple from 'connect-pg-simple';
 import pg from 'pg';
 import session from 'express-session';
-import Run from './models/Run';
 import { processQueuedRuns, recoverOrphanedRuns } from './routes/storage';
 import { startWorkers } from './pgboss-worker';
 import { stopPgBossClient, startPgBossClient } from './storage/pgboss'
