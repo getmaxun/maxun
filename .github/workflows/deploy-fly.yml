@@ -1,11 +1,11 @@
 name: Deploy Maxun to Fly
+env:
+  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
 on:
-  push:
+  workflow_dispatch:
     branches:
-      - main
-      - master
-      - fly-deploy
+      - "main"
 
 jobs:
   deploy-backend:
@@ -36,5 +36,3 @@ jobs:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
           flyctl deploy -c fly.frontend.production.toml --remote-only --app maxun-frontend
-
-
