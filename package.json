@@ -57,7 +57,6 @@
     "node-cron": "^3.0.3",
     "pg": "^8.13.0",
     "pg-boss": "^10.1.6",
-    "pkce-challenge": "^4.1.0",
     "playwright": "^1.48.2",
     "playwright-extra": "^4.3.6",
     "posthog-node": "^4.2.1",
