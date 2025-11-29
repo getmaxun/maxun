@@ -7,9 +7,7 @@ import { Socket } from 'socket.io';
 import logger from "../logger";
 import { Coordinates, ScrollDeltas, KeyboardInput, DatePickerEventData } from '../types';
 import { browserPool } from "../server";
-import { WorkflowGenerator } from "../workflow-management/classes/Generator";
 import { Page } from "playwright";
-import { throttle } from "../../../src/helpers/inputHelpers";
 import { CustomActions } from "../../../src/shared/types";
 import { WhereWhatPair } from "maxun-core";
 import { RemoteBrowser } from './classes/RemoteBrowser';
@@ -899,4 +897,37 @@ const registerInputHandlers = (socket: Socket, userId: string) => {
     socket.on("dom:addpair", (data) => onDOMWorkflowPair(data, userId));
 };
 
-export default registerInputHandlers;
+/**
+ *  Removes all input handler socket listeners to prevent memory leaks
+ * Must be called when socket disconnects or browser session ends
+ * @param socket websocket with established connection
+ * @returns void
+ * @category BrowserManagement
+ */
+const removeInputHandlers = (socket: Socket) => {
+  try {
+    socket.removeAllListeners("input:mousedown");
+    socket.removeAllListeners("input:wheel");
+    socket.removeAllListeners("input:mousemove");
+    socket.removeAllListeners("input:keydown");
+    socket.removeAllListeners("input:keyup");
+    socket.removeAllListeners("input:url");
+    socket.removeAllListeners("input:refresh");
+    socket.removeAllListeners("input:back");
+    socket.removeAllListeners("input:forward");
+    socket.removeAllListeners("input:date");
+    socket.removeAllListeners("input:dropdown");
+    socket.removeAllListeners("input:time");
+    socket.removeAllListeners("input:datetime-local");
+    socket.removeAllListeners("action");
+    socket.removeAllListeners("dom:input");
+    socket.removeAllListeners("dom:click");
+    socket.removeAllListeners("dom:keypress");
+    socket.removeAllListeners("dom:addpair");
+    socket.removeAllListeners("removeAction");
+  } catch (error: any) {
+    console.warn(`Error removing input handlers: ${error.message}`);
+  }
+};
+
+export { registerInputHandlers, removeInputHandlers };
