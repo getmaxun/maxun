@@ -10,7 +10,6 @@ import {
   AccordionSummary,
   AccordionDetails
 } from "@mui/material";
-import Highlight from "react-highlight";
 import * as React from "react";
 import { Data } from "./RunsTable";
 import { TabPanel, TabContext } from "@mui/lab";
