@@ -18,12 +18,21 @@ declare module "express-session" {
 
 export const router = Router();
 
+const isRegistrationAllowed =
+  (process.env.ALLOW_REGISTRATION ?? "true").toLowerCase() === "true";
+
 interface AuthenticatedRequest extends Request {
   user?: { id: string };
 }
 
 router.post("/register", async (req, res) => {
   try {
+    if (!isRegistrationAllowed) {
+      return res.status(403).json({
+        error: "REGISTRATION_DISABLED",
+        code: "register.error.registration_disabled",
+      });
+    }
     const { email, password } = req.body;
 
     if (!email) {

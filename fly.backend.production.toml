@@ -1,0 +1,55 @@
+# fly.toml app configuration file generated for maxun-backend on 2025-11-22T05:49:41+01:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'maxun-backend'
+primary_region = 'fra'
+kill_signal = 'SIGINT'
+kill_timeout = '5m0s'
+swap_size_mb = 2048
+
+[build]
+  dockerfile = 'Dockerfile.backend'
+
+[deploy]
+  strategy = 'immediate'
+
+[env]
+  BACKEND_PORT = '8080'
+  BACKEND_URL = 'https://maxun-backend.fly.dev'
+  MAXUN_TELEMETRY = 'true'
+  NODE_ENV = 'production'
+  PUBLIC_URL = 'https://maxun-frontend.fly.dev'
+  VITE_BACKEND_URL = 'https://maxun-backend.fly.dev'
+  VITE_PUBLIC_URL = 'https://maxun-frontend.fly.dev'
+  ALLOW_REGISTRATION = 'false'
+
+[[services]]
+  protocol = 'tcp'
+  internal_port = 8080
+
+  [[services.ports]]
+    start_port = 8080
+    end_port = 8080
+    handlers = ['http']
+
+  [[services.ports]]
+    start_port = 443
+    end_port = 443
+    handlers = ['http', 'tls']
+
+  [services.concurrency]
+    type = 'connections'
+    hard_limit = 50
+    soft_limit = 40
+
+  [[services.tcp_checks]]
+    interval = '15s'
+    timeout = '2s'
+    grace_period = '60s'
+
+[[vm]]
+  size = 'shared-cpu-2x'
+  memory = '3gb'
+  cpu_kind = 'shared'  

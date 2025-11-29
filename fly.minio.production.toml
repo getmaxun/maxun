@@ -1,0 +1,44 @@
+# fly.toml app configuration file generated for maxun-minio on 2025-11-22T05:47:55+01:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'maxun-minio'
+primary_region = 'fra'
+kill_signal = 'SIGINT'
+kill_timeout = '30s'
+swap_size_mb = 512
+
+[build]
+  dockerfile = 'Dockerfile.minio'
+
+[deploy]
+  strategy = 'rolling'
+
+[env]
+  MINIO_BROWSER = 'on'
+  MINIO_CONSOLE_ADDRESS = ':9001'
+  MINIO_VOLUMES = '/data'
+
+[[mounts]]
+  source = 'maxun_minio_data'
+  destination = '/data'
+
+[[services]]
+  protocol = 'tcp'
+  internal_port = 9000
+
+  # No public ports: MinIO is only reachable over Fly's private network (*.internal)
+  [services.concurrency]
+    type = 'connections'
+    hard_limit = 50
+    soft_limit = 40
+
+  [[services.tcp_checks]]
+    interval = '15s'
+    timeout = '2s'
+    grace_period = '10s'
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '1gb'

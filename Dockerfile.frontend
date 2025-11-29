@@ -1,12 +1,23 @@
-FROM --platform=$BUILDPLATFORM node:18-alpine AS builder
+FROM --platform=$BUILDPLATFORM node:18-alpine
 
 WORKDIR /app
+
+# Build-time configuration for Vite
+# These can be passed from fly.frontend.production.toml via [build.args]
+ARG VITE_BACKEND_URL
+ARG VITE_PUBLIC_URL
+ARG FRONTEND_PORT=5173
+
+# Make sure the build and runtime see the same values
+ENV VITE_BACKEND_URL=${VITE_BACKEND_URL} \
+    VITE_PUBLIC_URL=${VITE_PUBLIC_URL} \
+    FRONTEND_PORT=${FRONTEND_PORT}
 
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install --legacy-peer-deps
+# Install dependencies (includes Vite and React toolchain)
+RUN npm install --legacy-peer-deps && npm install -g serve
 
 # Copy frontend source code and config
 COPY src ./src
@@ -15,8 +26,11 @@ COPY index.html ./
 COPY vite.config.js ./
 COPY tsconfig.json ./
 
-# Expose the frontend port
-EXPOSE ${FRONTEND_PORT:-5173}
+# Build the production bundle (outputs to ./build per vite.config.js)
+RUN npm run build
 
-# Start the frontend using the client script
-CMD ["npm", "run", "client", "--", "--host"]
+# Expose the frontend port
+EXPOSE ${FRONTEND_PORT}
+
+# Serve the built static site with a simple Node HTTP server
+CMD sh -c "serve -s build -l ${FRONTEND_PORT}"

@@ -16,3 +16,4 @@
 /build
 
 package-lock.json
+.env.prod
