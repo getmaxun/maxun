@@ -38,7 +38,6 @@
     "dotenv": "^16.0.0",
     "express": "^4.17.2",
     "express-session": "^1.18.1",
-    "fortawesome": "^0.0.1-security",
     "google-auth-library": "^9.14.1",
     "googleapis": "^144.0.0",
     "i18next": "^24.0.2",
