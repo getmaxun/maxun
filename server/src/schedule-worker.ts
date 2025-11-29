@@ -6,7 +6,6 @@ import logger from './logger';
 import Robot from './models/Robot';
 import { handleRunRecording } from './workflow-management/scheduler';
 import { computeNextRun } from './utils/schedule';
-import { v4 as uuid } from "uuid";
 
 if (!process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_HOST || !process.env.DB_PORT || !process.env.DB_NAME) {
     throw new Error('One or more required environment variables are missing.');
@@ -16,7 +15,7 @@ const pgBossConnectionString = `postgresql://${process.env.DB_USER}:${encodeURIC
 
 const pgBoss = new PgBoss({
   connectionString: pgBossConnectionString,
-  max: 5,
+  max: 3,
   expireInHours: 23,
  });
 
@@ -36,7 +35,7 @@ async function processScheduledWorkflow(job: Job<ScheduledWorkflowData>) {
   
   try {
     // Execute the workflow using the existing handleRunRecording function
-    const result = await handleRunRecording(id, userId);
+    await handleRunRecording(id, userId);
     
     // Update the robot's schedule with last run and next run times
     const robot = await Robot.findOne({ where: { 'recording_meta.id': id } });
@@ -143,11 +142,11 @@ pgBoss.on('error', (error) => {
 process.on('SIGTERM', async () => {
   logger.log('info', 'SIGTERM received, shutting down PgBoss scheduler...');
   await pgBoss.stop();
-  process.exit(0);
+  logger.log('info', 'PgBoss scheduler stopped, ready for termination');
 });
 
 process.on('SIGINT', async () => {
   logger.log('info', 'SIGINT received, shutting down PgBoss scheduler...');
   await pgBoss.stop();
-  process.exit(0);
+  logger.log('info', 'PgBoss scheduler stopped, waiting for main process cleanup...');
 });

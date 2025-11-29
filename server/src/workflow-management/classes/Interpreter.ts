@@ -143,8 +143,10 @@ export class WorkflowInterpreter {
   }> = [];
 
   private persistenceTimer: NodeJS.Timeout | null = null;
+  private persistenceRetryTimer: NodeJS.Timeout | null = null;
   private readonly BATCH_SIZE = 5;
   private readonly BATCH_TIMEOUT = 3000;
+  private readonly MAX_PERSISTENCE_RETRIES = 3;
   private persistenceInProgress = false;
   private persistenceRetryCount = 0;
 
@@ -173,12 +175,31 @@ export class WorkflowInterpreter {
   }
 
   /**
+   * Removes pausing-related socket listeners to prevent memory leaks
+   * Must be called before re-registering listeners or during cleanup
+   * @private
+   */
+  private removePausingListeners(): void {
+    try {
+      this.socket.removeAllListeners('pause');
+      this.socket.removeAllListeners('resume');
+      this.socket.removeAllListeners('step');
+      this.socket.removeAllListeners('breakpoints');
+      logger.log('debug', 'Removed pausing socket listeners');
+    } catch (error: any) {
+      logger.warn(`Error removing pausing listeners: ${error.message}`);
+    }
+  }
+
+  /**
    * Subscribes to the events that are used to control the interpretation.
    * The events are pause, resume, step and breakpoints.
    * Step is used to interpret a single pair and pause on the other matched pair.
    * @returns void
    */
   public subscribeToPausing = () => {
+    this.removePausingListeners();
+
     this.socket.on('pause', () => {
       this.interpretationIsPaused = true;
     });
@@ -363,6 +384,11 @@ export class WorkflowInterpreter {
       this.persistenceTimer = null;
     }
 
+    if (this.persistenceRetryTimer) {
+      clearTimeout(this.persistenceRetryTimer);
+      this.persistenceRetryTimer = null;
+    }
+
     if (this.interpreter) {
       try {
         if (!this.interpreter.getIsAborted()) {
@@ -370,10 +396,17 @@ export class WorkflowInterpreter {
         }
         await this.interpreter.stop();
         logger.log('debug', 'mx-cloud interpreter properly stopped during cleanup');
+
+        if (typeof this.interpreter.cleanup === 'function') {
+          await this.interpreter.cleanup();
+          logger.log('debug', 'mx-cloud interpreter cleanup completed');
+        }
       } catch (error: any) {
         logger.log('warn', `Error stopping mx-cloud interpreter during cleanup: ${error.message}`);
       }
     }
+
+    this.removePausingListeners();
 
     this.debugMessages = [];
     this.interpretationIsPaused = false;
@@ -815,16 +848,22 @@ export class WorkflowInterpreter {
         this.persistenceRetryCount = 0;
       }
 
-      if (this.persistenceRetryCount < 3) {
+      if (this.persistenceRetryCount < this.MAX_PERSISTENCE_RETRIES) {
         this.persistenceBuffer.unshift(...batchToProcess);
         this.persistenceRetryCount++;
 
         const backoffDelay = Math.min(5000 * Math.pow(2, this.persistenceRetryCount), 30000);
-        setTimeout(async () => {
+
+        if (this.persistenceRetryTimer) {
+          clearTimeout(this.persistenceRetryTimer);
+        }
+
+        this.persistenceRetryTimer = setTimeout(async () => {
+          this.persistenceRetryTimer = null;
           await this.flushPersistenceBuffer();
         }, backoffDelay);
 
-        logger.log('warn', `Scheduling persistence retry ${this.persistenceRetryCount}/3 in ${backoffDelay}ms`);
+        logger.log('warn', `Scheduling persistence retry ${this.persistenceRetryCount}/${this.MAX_PERSISTENCE_RETRIES} in ${backoffDelay}ms`);
       } else {
         logger.log('error', `Max persistence retries exceeded for run ${this.currentRunId}, dropping ${batchToProcess.length} items`);
         this.persistenceRetryCount = 0;

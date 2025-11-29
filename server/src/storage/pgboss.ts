@@ -26,11 +26,7 @@ const pgBossConnectionString = `postgres://${process.env.DB_USER}:${encodeURICom
  */
 export const pgBossClient = new PgBoss({
   connectionString: pgBossConnectionString,
-  max: 3,                     // Small pool since we only send jobs
-   ssl: {
-    require: true,
-    rejectUnauthorized: false,
-   },
+  max: 3,
 });
 
 let isStarted = false;
