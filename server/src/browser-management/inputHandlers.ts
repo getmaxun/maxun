@@ -8,7 +8,7 @@ import logger from "../logger";
 import { Coordinates, ScrollDeltas, KeyboardInput, DatePickerEventData } from '../types';
 import { browserPool } from "../server";
 import { WorkflowGenerator } from "../workflow-management/classes/Generator";
-import { Page } from "playwright";
+import { Page } from "playwright-core";
 import { throttle } from "../../../src/helpers/inputHelpers";
 import { CustomActions } from "../../../src/shared/types";
 import { WhereWhatPair } from "maxun-core";
