@@ -2476,6 +2476,46 @@ class ClientSelectorGenerator {
     return null;
   };
 
+  /**
+   * Generate selectors directly from an element
+   * Scrolls the element into view within the iframe only (instant scroll)
+   */
+  public generateSelectorsFromElement = (
+    element: HTMLElement,
+    iframeDoc: Document
+  ): any | null => {
+    try {
+      try {
+        const rect = element.getBoundingClientRect();
+        const iframeWindow = iframeDoc.defaultView;
+
+        if (iframeWindow) {
+          const targetY = rect.top + iframeWindow.scrollY - (iframeWindow.innerHeight / 2) + (rect.height / 2);
+
+          iframeWindow.scrollTo({
+            top: targetY,
+            behavior: 'auto'
+          });
+        }
+      } catch (scrollError) {
+        console.warn('[ClientSelectorGenerator] Could not scroll element into view:', scrollError);
+      }
+
+      const rect = element.getBoundingClientRect();
+      const coordinates = {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2
+      };
+
+      return this.getSelectors(iframeDoc, coordinates);
+    } catch (e) {
+      const { message, stack } = e as Error;
+      console.warn(`Error generating selectors from element: ${message}`);
+      console.warn(`Stack: ${stack}`);
+      return null;
+    }
+  };
+
   public getChildSelectors = (
     iframeDoc: Document,
     parentSelector: string
@@ -4297,4 +4337,5 @@ class ClientSelectorGenerator {
   }
 }
 
+export { ClientSelectorGenerator };
 export const clientSelectorGenerator = new ClientSelectorGenerator();

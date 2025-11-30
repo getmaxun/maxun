@@ -1243,6 +1243,29 @@ export const BrowserWindow = () => {
     }, [browserSteps, getList, listSelector, initialAutoFieldIds, currentListActionId, manuallyAddedFieldIds]);
 
     useEffect(() => {
+      if (currentListActionId && browserSteps.length > 0) {
+        const activeStep = browserSteps.find(
+          s => s.type === 'list' && s.actionId === currentListActionId
+        ) as ListStep | undefined;
+
+        if (activeStep) {
+          if (currentListId !== activeStep.id) {
+            setCurrentListId(activeStep.id);
+          }
+          if (listSelector !== activeStep.listSelector) {
+            setListSelector(activeStep.listSelector);
+          }
+          if (JSON.stringify(fields) !== JSON.stringify(activeStep.fields)) {
+            setFields(activeStep.fields);
+          }
+          if (activeStep.pagination?.selector && paginationSelector !== activeStep.pagination.selector) {
+            setPaginationSelector(activeStep.pagination.selector);
+          }
+        }
+      }
+    }, [currentListActionId, browserSteps, currentListId, listSelector, fields, paginationSelector]);
+  
+    useEffect(() => {
       if (!isDOMMode) {
         capturedElementHighlighter.clearHighlights();
         return;
@@ -1637,6 +1660,22 @@ export const BrowserWindow = () => {
             paginationType !== "scrollUp" &&
             paginationType !== "none"
           ) {
+            let targetListId = currentListId;
+            let targetFields = fields;
+
+            if ((!targetListId || targetListId === 0) && currentListActionId) {
+              const activeStep = browserSteps.find(
+                s => s.type === 'list' && s.actionId === currentListActionId
+              ) as ListStep | undefined;
+
+              if (activeStep) {
+                targetListId = activeStep.id;
+                if (Object.keys(targetFields).length === 0 && Object.keys(activeStep.fields).length > 0) {
+                  targetFields = activeStep.fields;
+                }
+              }
+            }
+
             setPaginationSelector(highlighterData.selector);
             notify(
               `info`,
@@ -1646,8 +1685,8 @@ export const BrowserWindow = () => {
             );
             addListStep(
                 listSelector!,
-                fields,
-                currentListId || 0,
+                targetFields,
+                targetListId || 0,
                 currentListActionId || `list-${crypto.randomUUID()}`,
                 { 
                     type: paginationType, 
@@ -1812,6 +1851,8 @@ export const BrowserWindow = () => {
         socket,
         t,
         paginationSelector,
+        highlighterData,
+        browserSteps
       ]
     );
 
@@ -1864,6 +1905,22 @@ export const BrowserWindow = () => {
               paginationType !== "scrollUp" &&
               paginationType !== "none"
             ) {
+              let targetListId = currentListId;
+              let targetFields = fields;
+
+              if ((!targetListId || targetListId === 0) && currentListActionId) {
+                const activeStep = browserSteps.find(
+                  s => s.type === 'list' && s.actionId === currentListActionId
+                ) as ListStep | undefined;
+
+                if (activeStep) {
+                  targetListId = activeStep.id;
+                  if (Object.keys(targetFields).length === 0 && Object.keys(activeStep.fields).length > 0) {
+                    targetFields = activeStep.fields;
+                  }
+                }
+              }
+
               setPaginationSelector(highlighterData.selector);
               notify(
                 `info`,
@@ -1873,8 +1930,8 @@ export const BrowserWindow = () => {
               );
               addListStep(
                 listSelector!,
-                fields,
-                currentListId || 0,
+                targetFields,
+                targetListId || 0,
                 currentListActionId || `list-${crypto.randomUUID()}`,
                 { type: paginationType, selector: highlighterData.selector, isShadow: highlighterData.isShadow },
                 undefined,
@@ -2045,6 +2102,31 @@ export const BrowserWindow = () => {
             resetPaginationSelector();
         }
     }, [paginationMode, resetPaginationSelector]);
+
+    useEffect(() => {
+      if (paginationMode && currentListActionId) {
+        const currentListStep = browserSteps.find(
+          step => step.type === 'list' && step.actionId === currentListActionId
+        ) as (ListStep & { type: 'list' }) | undefined;
+
+        const currentSelector = currentListStep?.pagination?.selector;
+        const currentType = currentListStep?.pagination?.type;
+
+        if (['clickNext', 'clickLoadMore'].includes(paginationType)) {
+          if (!currentSelector || (currentType && currentType !== paginationType)) {
+            setPaginationSelector('');
+          }
+        }
+
+        const stepSelector = currentListStep?.pagination?.selector;
+
+        if (stepSelector && !paginationSelector) {
+          setPaginationSelector(stepSelector);
+        } else if (!stepSelector && paginationSelector) {
+          setPaginationSelector('');
+        }
+      }
+    }, [browserSteps, paginationMode, currentListActionId, paginationSelector]);
 
     return (
       <div
@@ -2310,6 +2392,7 @@ export const BrowserWindow = () => {
                 listSelector={listSelector}
                 cachedChildSelectors={cachedChildSelectors}
                 paginationMode={paginationMode}
+                paginationSelector={paginationSelector}
                 paginationType={paginationType}
                 limitMode={limitMode}
                 isCachingChildSelectors={isCachingChildSelectors}
