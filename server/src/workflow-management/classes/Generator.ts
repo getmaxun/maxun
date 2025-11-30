@@ -71,6 +71,8 @@ export class WorkflowGenerator {
 
   private poolId: string | null = null;
 
+  private pageCloseListeners: Map<Page, () => void> = new Map();
+
   /**
    * The public constructor of the WorkflowGenerator.
    * Takes socket for communication as a parameter and registers some important events on it.
@@ -885,6 +887,29 @@ export class WorkflowGenerator {
   };
 
   /**
+   * Removes all socket listeners to prevent memory leaks
+   * Must be called before re-registering listeners or during cleanup
+   * @private
+   */
+  private removeSocketListeners(): void {
+    try {
+      this.socket.removeAllListeners('setGetList');
+      this.socket.removeAllListeners('listSelector');
+      this.socket.removeAllListeners('setPaginationMode');
+      this.socket.removeAllListeners('dom-mode-enabled');
+      this.socket.removeAllListeners('screenshot-mode-enabled');
+      this.socket.removeAllListeners('save');
+      this.socket.removeAllListeners('new-recording');
+      this.socket.removeAllListeners('activeIndex');
+      this.socket.removeAllListeners('decision');
+      this.socket.removeAllListeners('updatePair');
+      logger.log('debug', 'Removed all Generator socket listeners');
+    } catch (error: any) {
+      logger.warn(`Error removing Generator socket listeners: ${error.message}`);
+    }
+  }
+
+  /**
    * Removes an action with the given actionId from the workflow.
    * Only removes the specific action from the what array, not the entire pair.
    * If the what array becomes empty after removal, then the entire pair is removed.
@@ -937,6 +962,39 @@ export class WorkflowGenerator {
     this.initializeSocketListeners();
     this.initializeDOMListeners();
   };
+
+  /**
+   * Cleanup method to release resources and prevent memory leaks
+   * Must be called when the generator is no longer needed
+   */
+  public cleanup(): void {
+    try {
+      this.removeSocketListeners();
+
+      for (const [page, listener] of this.pageCloseListeners.entries()) {
+        try {
+          if (!page.isClosed()) {
+            page.removeListener('close', listener);
+          }
+        } catch (error: any) {
+          logger.warn(`Error removing page close listener: ${error.message}`);
+        }
+      }
+      this.pageCloseListeners.clear();
+
+      this.workflowRecord = { workflow: [] };
+      this.generatedData = {
+        lastUsedSelector: '',
+        lastIndex: null,
+        lastAction: '',
+        lastUsedSelectorTagName: '',
+        lastUsedSelectorInnerText: '',
+      };
+      logger.log('debug', 'Generator cleanup completed');
+    } catch (error: any) {
+      logger.error(`Error during Generator cleanup: ${error.message}`);
+    }
+  }
 
   /**
    * Returns the currently generated workflow without all the generated flag actions.

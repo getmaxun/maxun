@@ -6,7 +6,6 @@ import logger from './logger';
 import Robot from './models/Robot';
 import { handleRunRecording } from './workflow-management/scheduler';
 import { computeNextRun } from './utils/schedule';
-import { v4 as uuid } from "uuid";
 
 if (!process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_HOST || !process.env.DB_PORT || !process.env.DB_NAME) {
     throw new Error('One or more required environment variables are missing.');
@@ -14,7 +13,11 @@ if (!process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_HOST || 
 
 const pgBossConnectionString = `postgresql://${process.env.DB_USER}:${encodeURIComponent(process.env.DB_PASSWORD)}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
 
-const pgBoss = new PgBoss({connectionString: pgBossConnectionString });
+const pgBoss = new PgBoss({
+  connectionString: pgBossConnectionString,
+  max: 3,
+  expireInHours: 23,
+ });
 
 const registeredQueues = new Set<string>();
 
@@ -23,70 +26,6 @@ interface ScheduledWorkflowData {
   runId: string;
   userId: string;
 }
-
-/**
- * Utility function to schedule a cron job using PgBoss
- * @param id The robot ID
- * @param userId The user ID
- * @param cronExpression The cron expression for scheduling
- * @param timezone The timezone for the cron expression
- */
-export async function scheduleWorkflow(id: string, userId: string, cronExpression: string, timezone: string): Promise<void> {
-  try {
-    const runId = uuid();
-
-    const queueName = `scheduled-workflow-${id}`;
-    
-    logger.log('info', `Scheduling workflow ${id} with cron expression ${cronExpression} in timezone ${timezone}`);
-
-    await pgBoss.createQueue(queueName);
-    
-    await pgBoss.schedule(queueName, cronExpression, 
-      { id, runId, userId },
-      { tz: timezone }
-    );
-
-    await registerWorkerForQueue(queueName);
-    
-    logger.log('info', `Scheduled workflow job for robot ${id}`);
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.log('error', `Failed to schedule workflow: ${errorMessage}`);
-    throw error;
-  }
-}
-
-/**
- * Utility function to cancel a scheduled job
- * @param robotId The robot ID
- * @returns true if successful
- */
-export async function cancelScheduledWorkflow(robotId: string) {
-  try {
-    const jobs = await pgBoss.getSchedules();
-    
-    const matchingJobs = jobs.filter((job: any) => {
-      try {
-        const data = job.data;
-        return data && data.id === robotId;
-      } catch {
-        return false;
-      }
-    });
-    
-    for (const job of matchingJobs) {
-      logger.log('info', `Cancelling scheduled job ${job.name} for robot ${robotId}`);
-      await pgBoss.unschedule(job.name);
-    }
-    
-    return true;
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.log('error', `Failed to cancel scheduled workflow: ${errorMessage}`);
-    throw error;
-  }
-}
-
 /**
  * Process a scheduled workflow job
  */
@@ -96,7 +35,7 @@ async function processScheduledWorkflow(job: Job<ScheduledWorkflowData>) {
   
   try {
     // Execute the workflow using the existing handleRunRecording function
-    const result = await handleRunRecording(id, userId);
+    await handleRunRecording(id, userId);
     
     // Update the robot's schedule with last run and next run times
     const robot = await Robot.findOne({ where: { 'recording_meta.id': id } });
@@ -203,11 +142,11 @@ pgBoss.on('error', (error) => {
 process.on('SIGTERM', async () => {
   logger.log('info', 'SIGTERM received, shutting down PgBoss scheduler...');
   await pgBoss.stop();
-  process.exit(0);
+  logger.log('info', 'PgBoss scheduler stopped, ready for termination');
 });
 
 process.on('SIGINT', async () => {
   logger.log('info', 'SIGINT received, shutting down PgBoss scheduler...');
   await pgBoss.stop();
-  process.exit(0);
+  logger.log('info', 'PgBoss scheduler stopped, waiting for main process cleanup...');
 });
