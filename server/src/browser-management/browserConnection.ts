@@ -41,47 +41,92 @@ async function getBrowserServiceEndpoint(): Promise<string> {
 }
 
 /**
- * Connect to the remote browser service with retry logic
+ * Launch a local browser as fallback when browser service is unavailable
+ * @returns Promise<Browser> - Locally launched browser instance
+ */
+async function launchLocalBrowser(): Promise<Browser> {
+    logger.warn('Attempting to launch local browser');
+    logger.warn('Note: This requires Chromium binaries to be installed (npx playwright install chromium)');
+
+    try {
+        const browser = await chromium.launch({
+            headless: true,
+            args: [
+                '--disable-blink-features=AutomationControlled',
+                '--disable-web-security',
+                '--disable-features=IsolateOrigins,site-per-process',
+                '--disable-site-isolation-trials',
+                '--disable-extensions',
+                '--no-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--force-color-profile=srgb',
+                '--force-device-scale-factor=2',
+                '--ignore-certificate-errors',
+                '--mute-audio'
+            ],
+        });
+
+        logger.info('Successfully launched local browser');
+        return browser;
+    } catch (error: any) {
+        logger.error(`Failed to launch local browser: ${error.message}`);
+        throw new Error(
+            `Could not launch local browser. ` +
+            `Please either:\n` +
+            `  1. Start the browser service: docker-compose up browser\n` +
+            `  2. Install Chromium binaries: npx playwright@1.57.0 install chromium`
+        );
+    }
+}
+
+/**
+ * Connect to the remote browser service with retry logic, with fallback to local browser
  * @param retries - Number of connection attempts (default: 3)
- * @returns Promise<Browser> - Connected browser instance
- * @throws Error if connection fails after all retries
+ * @returns Promise<Browser> - Connected browser instance (remote or local)
+ * @throws Error if both remote connection and local launch fail
  */
 export async function connectToRemoteBrowser(retries?: number): Promise<Browser> {
     const maxRetries = retries ?? CONNECTION_CONFIG.maxRetries;
-    const wsEndpoint = await getBrowserServiceEndpoint();
 
-    logger.info(`Connecting to browser service at ${wsEndpoint}...`);
+    try {
+        const wsEndpoint = await getBrowserServiceEndpoint();
+        logger.info(`Connecting to browser service at ${wsEndpoint}...`);
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        try {
-            logger.debug(`Connection attempt ${attempt}/${maxRetries}`);
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                logger.debug(`Connection attempt ${attempt}/${maxRetries}`);
 
-            const browser = await chromium.connect(wsEndpoint, {
-                timeout: CONNECTION_CONFIG.connectionTimeout,
-            });
+                const browser = await chromium.connect(wsEndpoint, {
+                    timeout: CONNECTION_CONFIG.connectionTimeout,
+                });
 
-            logger.info(`Successfully connected to browser service`);
-            return browser;
-        } catch (error: any) {
-            logger.warn(
-                `Connection attempt ${attempt}/${maxRetries} failed: ${error.message}`
-            );
-
-            if (attempt === maxRetries) {
-                logger.error(
-                    `Failed to connect to browser service after ${maxRetries} attempts`
+                logger.info('Successfully connected to browser service');
+                return browser;
+            } catch (error: any) {
+                logger.warn(
+                    `Connection attempt ${attempt}/${maxRetries} failed: ${error.message}`
                 );
-                throw new Error(
-                    `Failed to connect to browser service at ${wsEndpoint}: ${error.message}`
-                );
+
+                if (attempt === maxRetries) {
+                    logger.error(
+                        `Failed to connect to browser service after ${maxRetries} attempts`
+                    );
+                    throw new Error(`Remote connection failed: ${error.message}`);
+                }
+
+                logger.debug(`Waiting ${CONNECTION_CONFIG.retryDelay}ms before retry...`);
+                await new Promise(resolve => setTimeout(resolve, CONNECTION_CONFIG.retryDelay));
             }
-
-            logger.debug(`Waiting ${CONNECTION_CONFIG.retryDelay}ms before retry...`);
-            await new Promise(resolve => setTimeout(resolve, CONNECTION_CONFIG.retryDelay));
         }
-    }
 
-    throw new Error('Failed to connect to browser service');
+        throw new Error('Failed to connect to browser service');
+    } catch (error: any) {
+        logger.warn(`Browser service connection failed: ${error.message}`);
+        logger.warn('Falling back to local browser launch...');
+
+        return await launchLocalBrowser();
+    }
 }
 
 /**
