@@ -1687,6 +1687,12 @@ export const BrowserWindow = () => {
     }, [paginationMode, resetPaginationSelector]);
 
     useEffect(() => {
+     if (!paginationMode || !getList) {
+       setHighlighterData(null);
+     }
+    }, [paginationMode, getList]);
+
+    useEffect(() => {
       if (paginationMode && currentListActionId) {
         const currentListStep = browserSteps.find(
           step => step.type === 'list' && step.actionId === currentListActionId
@@ -1841,7 +1847,7 @@ export const BrowserWindow = () => {
                 >
                     {/* Individual element highlight (for non-group or hovered element) */}
                     {((getText && !listSelector) || 
-                      (getList && paginationMode && paginationType !== "" && 
+                      (getList && paginationMode && !paginationSelector && paginationType !== "" && 
                       !["none", "scrollDown", "scrollUp"].includes(paginationType))) && (
                       <div
                         style={{
@@ -1909,6 +1915,7 @@ export const BrowserWindow = () => {
                       listSelector &&
                       !paginationMode &&
                       !limitMode &&
+                      captureStage === 'initial' &&
                       highlighterData.similarElements?.rects?.map((rect, index) => (
                           <React.Fragment key={`item-${index}`}>
                             <div
