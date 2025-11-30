@@ -45,7 +45,7 @@ async function start(): Promise<void> {
         // Health check HTTP server
         const healthServer = http.createServer((req, res) => {
             if (req.url === '/health') {
-                const wsEndpoint = browserServer?.wsEndpoint();
+                const wsEndpoint = browserServer?.wsEndpoint().replace('localhost', BROWSER_WS_HOST) || '';
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({
                     status: 'healthy',
