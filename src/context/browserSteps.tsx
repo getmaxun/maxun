@@ -80,6 +80,7 @@ interface BrowserStepsContextType {
         newLabel: string
     ) => void;
     updateListStepLimit: (listId: number, limit: number) => void;
+    updateListStepPagination: (listId: number, pagination: { type: string; selector: string | null; isShadow?: boolean }) => void;
     updateListStepData: (listId: number, extractedData: any[]) => void;
     updateListStepName: (listId: number, name: string) => void;
     updateScreenshotStepName: (id: number, name: string) => void;
@@ -479,6 +480,26 @@ export const BrowserStepsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         );
     };
 
+    const updateListStepPagination = (
+      listId: number,
+      pagination: { type: string; selector: string | null; isShadow?: boolean }
+    ) => {
+      setBrowserSteps((prevSteps) =>
+        prevSteps.map((step) => {
+          if (step.type === "list" && step.id === listId) {
+            return {
+              ...step,
+              pagination: {
+                ...pagination,
+                selector: pagination.selector || "",
+              },
+            };
+          }
+          return step;
+        })
+      );
+    };
+
     const updateListStepName = (listId: number, name: string) => {
         setBrowserSteps((prevSteps) =>
             prevSteps.map((step) => {
@@ -533,6 +554,7 @@ export const BrowserStepsProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 updateBrowserTextStepLabel,
                 updateListTextFieldLabel,
                 updateListStepLimit,
+                updateListStepPagination,
                 updateListStepData,
                 updateListStepName,
                 updateScreenshotStepName,
