@@ -9,7 +9,6 @@ import { deleteRunFromStorage } from "../../api/storage";
 import { columns, Data } from "./RunsTable";
 import { RunContent } from "./RunContent";
 import { GenericModal } from "../ui/GenericModal";
-import { modalStyle } from "../recorder/AddWhereCondModal";
 import { getUserById } from "../../api/auth";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@mui/material/styles";
@@ -230,3 +229,15 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
     </React.Fragment>
   );
 }
+
+export const modalStyle = {
+  top: '45%',
+  left: '50%',
+  transform: 'translate(-50%, -50%)',
+  width: '30%',
+  backgroundColor: 'background.paper',
+  p: 4,
+  height: 'fit-content',
+  display: 'block',
+  padding: '20px',
+};

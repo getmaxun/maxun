@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pair } from "./Pair";
 import { WhereWhatPair, WorkflowFile } from "maxun-core";
-import { useSocketStore } from "../../context/socket";
+import { useSocketStore } from "../../src/context/socket";
 import { Socket } from "socket.io-client";
-import { AddButton } from "../ui/buttons/AddButton";
-import { AddPair } from "../../api/workflow";
-import { GenericModal } from "../ui/GenericModal";
+import { AddButton } from "../../src/components/ui/buttons/AddButton";
+import { AddPair } from "../../src/api/workflow";
+import { GenericModal } from "../../src/components/ui/GenericModal";
 import { PairEditForm } from "./PairEditForm";
 import { Tooltip } from "@mui/material";
 

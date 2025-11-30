@@ -1,10 +1,10 @@
 import React from "react";
-import { Dropdown as MuiDropdown } from "../ui/DropdownMui";
+import { Dropdown as MuiDropdown } from "../../src/components/ui/DropdownMui";
 import { Checkbox, FormControlLabel, FormGroup, MenuItem, Stack, TextField } from "@mui/material";
-import { AddButton } from "../ui/buttons/AddButton";
-import { RemoveButton } from "../ui/buttons/RemoveButton";
-import { KeyValueForm } from "./KeyValueForm";
-import { WarningText } from "../ui/texts";
+import { AddButton } from "../../src/components/ui/buttons/AddButton";
+import { RemoveButton } from "../../src/components/ui/buttons/RemoveButton";
+import { KeyValueForm } from "../../src/components/recorder/KeyValueForm";
+import { WarningText } from "../../src/components/ui/texts";
 
 interface DisplayConditionSettingsProps {
   whereProp: string;
