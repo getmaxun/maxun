@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Pair } from "../../src/components/recorder/Pair";
+import { Pair } from "./Pair";
 import { WhereWhatPair, WorkflowFile } from "maxun-core";
 import { useSocketStore } from "../../src/context/socket";
 import { Socket } from "socket.io-client";
