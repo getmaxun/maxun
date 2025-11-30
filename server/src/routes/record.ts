@@ -13,14 +13,11 @@ import {
     destroyRemoteBrowser,
     canCreateBrowserInState,
 } from '../browser-management/controller';
-import { chromium } from 'playwright-extra';
-import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import logger from "../logger";
 import { requireSignIn } from '../middlewares/auth';
 import { pgBossClient } from '../storage/pgboss';
 
 export const router = Router();
-chromium.use(stealthPlugin());
 
 export interface AuthenticatedRequest extends Request {
     user?: any;

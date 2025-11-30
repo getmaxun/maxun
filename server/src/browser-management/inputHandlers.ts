@@ -7,7 +7,7 @@ import { Socket } from 'socket.io';
 import logger from "../logger";
 import { Coordinates, ScrollDeltas, KeyboardInput, DatePickerEventData } from '../types';
 import { browserPool } from "../server";
-import { Page } from "playwright";
+import { Page } from "playwright-core";
 import { CustomActions } from "../../../src/shared/types";
 import { WhereWhatPair } from "maxun-core";
 import { RemoteBrowser } from './classes/RemoteBrowser';

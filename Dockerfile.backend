@@ -18,9 +18,6 @@ COPY server/tsconfig.json ./server/
 # Install dependencies
 RUN npm install --legacy-peer-deps
 
-# Install Playwright browsers and dependencies
-RUN npx playwright install --with-deps chromium
-
 # Create the Chromium data directory with necessary permissions
 RUN mkdir -p /tmp/chromium-data-dir && \
     chmod -R 777 /tmp/chromium-data-dir

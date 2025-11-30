@@ -3,7 +3,7 @@ import { GenericModal } from "../ui/GenericModal";
 import { MenuItem, TextField, Typography, Switch, FormControlLabel } from "@mui/material";
 import { Dropdown } from "../ui/DropdownMui";
 import Button from "@mui/material/Button";
-import { modalStyle } from "../recorder/AddWhereCondModal";
+import { modalStyle } from "../run/ColapsibleRow";
 
 interface RunSettingsProps {
   isOpen: boolean;

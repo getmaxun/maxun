@@ -1,6 +1,4 @@
 import { v4 as uuid } from "uuid";
-import { chromium } from 'playwright-extra';
-import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { io, Socket } from "socket.io-client";
 import { createRemoteBrowserForRun, destroyRemoteBrowser } from '../../browser-management/controller';
 import logger from '../../logger';
@@ -12,11 +10,10 @@ import { getDecryptedProxyConfig } from "../../routes/proxy";
 import { BinaryOutputService } from "../../storage/mino";
 import { capture } from "../../utils/analytics";
 import { WorkflowFile } from "maxun-core";
-import { Page } from "playwright";
+import { Page } from "playwright-core";
 import { sendWebhook } from "../../routes/webhook";
 import { addAirtableUpdateTask, airtableUpdateTasks, processAirtableUpdates } from "../integrations/airtable";
 import { convertPageToMarkdown, convertPageToHTML } from "../../markdownify/scrape";
-chromium.use(stealthPlugin());
 
 async function createWorkflowAndStoreMetadata(id: string, userId: string) {
   try {
@@ -220,6 +217,16 @@ async function executeRun(id: string, userId: string) {
       }
     }
 
+    browser = browserPool.getRemoteBrowser(plainRun.browserId);
+    if (!browser) {
+      throw new Error('Could not access browser');
+    }
+
+    let currentPage = await browser.getCurrentPage();
+    if (!currentPage) {
+      throw new Error('Could not create a new page');
+    }
+
     if (recording.recording_meta.type === 'scrape') {
       logger.log('info', `Executing scrape robot for scheduled run ${id}`);
 
@@ -266,7 +273,7 @@ async function executeRun(id: string, userId: string) {
 
         // Markdown conversion
         if (formats.includes("markdown")) {
-          const markdownPromise = convertPageToMarkdown(url);
+          const markdownPromise = convertPageToMarkdown(url, currentPage);
           const timeoutPromise = new Promise<never>((_, reject) => {
             setTimeout(() => reject(new Error(`Markdown conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
           });
@@ -275,7 +282,7 @@ async function executeRun(id: string, userId: string) {
         }
 
         if (formats.includes("html")) {
-          const htmlPromise = convertPageToHTML(url);
+          const htmlPromise = convertPageToHTML(url, currentPage);
           const timeoutPromise = new Promise<never>((_, reject) => {
             setTimeout(() => reject(new Error(`HTML conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
           });
@@ -410,16 +417,6 @@ async function executeRun(id: string, userId: string) {
       logger.log('info', `Run started notification sent for run: ${plainRun.runId} to user-${userId}`);
     } catch (socketError: any) {
       logger.log('warn', `Failed to send run-started notification for run ${plainRun.runId}: ${socketError.message}`);
-    }
-
-    browser = browserPool.getRemoteBrowser(plainRun.browserId);
-    if (!browser) {
-      throw new Error('Could not access browser');
-    }
-
-    let currentPage = await browser.getCurrentPage();
-    if (!currentPage) {
-      throw new Error('Could not create a new page');
     }
 
     const workflow = AddGeneratedFlags(recording.recording);

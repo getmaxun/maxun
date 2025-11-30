@@ -1,7 +1,7 @@
 import Interpreter, { WorkflowFile } from "maxun-core";
 import logger from "../../logger";
 import { Socket } from "socket.io";
-import { Page } from "playwright";
+import { Page } from "playwright-core";
 import { InterpreterSettings } from "../../types";
 import { decrypt } from "../../utils/auth";
 import Run from "../../models/Run";

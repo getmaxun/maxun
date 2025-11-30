@@ -1,6 +1,4 @@
 import { Router, Request, Response } from 'express';
-import { chromium } from "playwright-extra";
-import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { requireAPIKey } from "../middlewares/api";
 import Robot from "../models/Robot";
 import Run from "../models/Run";
@@ -19,8 +17,6 @@ import { addGoogleSheetUpdateTask, googleSheetUpdateTasks, processGoogleSheetUpd
 import { addAirtableUpdateTask, airtableUpdateTasks, processAirtableUpdates } from "../workflow-management/integrations/airtable";
 import { sendWebhook } from "../routes/webhook";
 import { convertPageToHTML, convertPageToMarkdown } from '../markdownify/scrape';
-
-chromium.use(stealthPlugin());
 
 const router = Router();
 
@@ -676,6 +672,16 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
             };
         }
 
+        browser = browserPool.getRemoteBrowser(plainRun.browserId);
+        if (!browser) {
+            throw new Error('Could not access browser');
+        }
+
+        let currentPage = await browser.getCurrentPage();
+        if (!currentPage) {
+            throw new Error('Could not create a new page');
+        }
+
         if (recording.recording_meta.type === 'scrape') {
             logger.log('info', `Executing scrape robot for API run ${id}`);
 
@@ -705,7 +711,7 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
                 const SCRAPE_TIMEOUT = 120000;
 
                 if (formats.includes('markdown')) {
-                    const markdownPromise = convertPageToMarkdown(url);
+                    const markdownPromise = convertPageToMarkdown(url, currentPage);
                     const timeoutPromise = new Promise<never>((_, reject) => {
                         setTimeout(() => reject(new Error(`Markdown conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
                     });
@@ -714,7 +720,7 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
                 }
 
                 if (formats.includes('html')) {
-                    const htmlPromise = convertPageToHTML(url);
+                    const htmlPromise = convertPageToHTML(url, currentPage);
                     const timeoutPromise = new Promise<never>((_, reject) => {
                         setTimeout(() => reject(new Error(`HTML conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
                     });
@@ -861,16 +867,6 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
         }
 
         plainRun.status = 'running';
-
-        browser = browserPool.getRemoteBrowser(plainRun.browserId);
-        if (!browser) {
-            throw new Error('Could not access browser');
-        }
-
-        let currentPage = await browser.getCurrentPage();
-        if (!currentPage) {
-            throw new Error('Could not create a new page');
-        }
 
         const workflow = AddGeneratedFlags(recording.recording);
 

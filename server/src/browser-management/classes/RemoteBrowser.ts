@@ -2,11 +2,9 @@ import {
     Page,
     Browser,
     CDPSession,
-    BrowserContext,
-} from 'playwright';
+    BrowserContext
+} from 'playwright-core';
 import { Socket } from "socket.io";
-import { chromium } from 'playwright-extra';
-import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { PlaywrightBlocker } from '@cliqz/adblocker-playwright';
 import fetch from 'cross-fetch';
 import logger from '../../logger';
@@ -17,6 +15,7 @@ import { getDecryptedProxyConfig } from '../../routes/proxy';
 import { getInjectableScript } from 'idcac-playwright';
 import { FingerprintInjector } from "fingerprint-injector";
 import { FingerprintGenerator } from "fingerprint-generator";
+import { connectToRemoteBrowser } from '../browserConnection';
 
 declare global {
   interface Window {
@@ -38,8 +37,6 @@ interface ProcessedSnapshot {
   snapshot: RRWebSnapshot;
   baseUrl: string;
 }
-
-chromium.use(stealthPlugin());
 
 const MEMORY_CONFIG = {
     gcInterval: 20000, // Check memory more frequently (20s instead of 60s)
@@ -460,26 +457,10 @@ export class RemoteBrowser {
         const initializationPromise = (async () => {
           while (!success && retryCount < MAX_RETRIES) {
             try {
-              this.browser = <Browser>(await chromium.launch({
-                headless: true,
-                args: [
-                  "--disable-blink-features=AutomationControlled",
-                  "--disable-web-security",
-                  "--disable-features=IsolateOrigins,site-per-process",
-                  "--disable-site-isolation-trials",
-                  "--disable-extensions",
-                  "--no-sandbox",
-                  "--disable-dev-shm-usage",
-                  "--disable-gpu",
-                  "--force-color-profile=srgb",
-                  "--force-device-scale-factor=2",
-                  "--ignore-certificate-errors",
-                  "--mute-audio"
-                ],
-              }));
+              this.browser = await connectToRemoteBrowser();
 
               if (!this.browser || this.browser.isConnected() === false) {
-                throw new Error('Browser failed to launch or is not connected');
+                  throw new Error('Browser failed to launch or is not connected');
               }
 
               this.emitLoadingProgress(20, 0);

@@ -1,17 +1,35 @@
-import { chromium } from "playwright";
+import { connectToRemoteBrowser } from "../browser-management/browserConnection";
 import { parseMarkdown } from "./markdown";
+import logger from "../logger";
+
+async function gotoWithFallback(page: any, url: string) {
+  try {
+    return await page.goto(url, {
+      waitUntil: "networkidle",
+      timeout: 100000,
+    });
+  } catch (err) {
+    // fallback: JS-heavy or unstable sites
+    return await page.goto(url, {
+      waitUntil: "domcontentloaded",
+      timeout: 100000,
+    });
+  }
+}
 
 /**
  * Fetches a webpage, strips scripts/styles/images/etc,
  * returns clean Markdown using parser.
+ * @param url - The URL to convert
+ * @param existingPage - Optional existing Playwright page instance to reuse
  */
 export async function convertPageToMarkdown(url: string): Promise<string> {
-  const browser = await chromium.launch();
+  const browser = await connectToRemoteBrowser();
   const page = await browser.newPage();
 
   await page.goto(url, { waitUntil: "networkidle", timeout: 100000 });
 
-  await page.addInitScript(() => {
+  const cleanedHtml = await page.evaluate(() => {
     const selectors = [
       "script",
       "style",
@@ -42,14 +60,16 @@ export async function convertPageToMarkdown(url: string): Promise<string> {
         }
       });
     });
-  });
 
-  // Re-extract HTML after cleanup
-  const cleanedHtml = await page.evaluate(() => {
     return document.documentElement.outerHTML;
   });
 
-  await browser.close();
+  if (shouldCloseBrowser && browser) {
+    logger.log('info', `[Scrape] Closing browser instance created for markdown conversion`);
+    await browser.close();
+  } else {
+    logger.log('info', `[Scrape] Keeping existing browser instance open after markdown conversion`);
+  }
 
   // Convert cleaned HTML → Markdown
   const markdown = await parseMarkdown(cleanedHtml, url);
@@ -59,14 +79,16 @@ export async function convertPageToMarkdown(url: string): Promise<string> {
 /**
  * Fetches a webpage, strips scripts/styles/images/etc,
  * returns clean HTML.
+ * @param url - The URL to convert
+ * @param existingPage - Optional existing Playwright page instance to reuse
  */
 export async function convertPageToHTML(url: string): Promise<string> {
-  const browser = await chromium.launch();
+  const browser = await connectToRemoteBrowser();
   const page = await browser.newPage();
 
   await page.goto(url, { waitUntil: "networkidle", timeout: 100000 });
 
-  await page.addInitScript(() => {
+  const cleanedHtml = await page.evaluate(() => {
     const selectors = [
       "script",
       "style",
@@ -97,14 +119,16 @@ export async function convertPageToHTML(url: string): Promise<string> {
         }
       });
     });
-  });
 
-  // Re-extract HTML after cleanup
-  const cleanedHtml = await page.evaluate(() => {
     return document.documentElement.outerHTML;
   });
 
-  await browser.close();
+  if (shouldCloseBrowser && browser) {
+    logger.log('info', `[Scrape] Closing browser instance created for HTML conversion`);
+    await browser.close();
+  } else {
+    logger.log('info', `[Scrape] Keeping existing browser instance open after HTML conversion`);
+  }
 
   // Return cleaned HTML directly
   return cleanedHtml;

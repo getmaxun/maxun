@@ -13,7 +13,7 @@ import { WorkflowFile } from 'maxun-core';
 import Run from './models/Run';
 import Robot from './models/Robot';
 import { browserPool } from './server';
-import { Page } from 'playwright';
+import { Page } from 'playwright-core';
 import { capture } from './utils/analytics';
 import { addGoogleSheetUpdateTask, googleSheetUpdateTasks, processGoogleSheetUpdates } from './workflow-management/integrations/gsheet';
 import { addAirtableUpdateTask, airtableUpdateTasks, processAirtableUpdates } from './workflow-management/integrations/airtable';
@@ -192,12 +192,36 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
 
     logger.log('info', `Browser ${browserId} found and ready for execution`);
 
-    try {  
+    try {
       // Find the recording
       const recording = await Robot.findOne({ where: { 'recording_meta.id': plainRun.robotMetaId }, raw: true });
 
       if (!recording) {
         throw new Error(`Recording for run ${data.runId} not found`);
+      }
+
+      let currentPage = browser.getCurrentPage();
+
+      const pageWaitStart = Date.now();
+      let lastPageLogTime = 0;
+      let pageAttempts = 0;
+      const MAX_PAGE_ATTEMPTS = 15;
+
+      while (!currentPage && (Date.now() - pageWaitStart) < BROWSER_PAGE_TIMEOUT && pageAttempts < MAX_PAGE_ATTEMPTS) {
+        const currentTime = Date.now();
+        pageAttempts++;
+
+        if (currentTime - lastPageLogTime > 5000) {
+          logger.log('info', `Page not ready for browser ${browserId}, waiting... (${Math.round((currentTime - pageWaitStart) / 1000)}s elapsed)`);
+          lastPageLogTime = currentTime;
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        currentPage = browser.getCurrentPage();
+      }
+
+      if (!currentPage) {
+        throw new Error(`No current page available for browser ${browserId} after ${BROWSER_PAGE_TIMEOUT/1000}s timeout`);
       }
 
       if (recording.recording_meta.type === 'scrape') {
@@ -224,7 +248,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
           const SCRAPE_TIMEOUT = 120000;
 
           if (formats.includes('markdown')) {
-            const markdownPromise = convertPageToMarkdown(url);
+            const markdownPromise = convertPageToMarkdown(url, currentPage);
             const timeoutPromise = new Promise<never>((_, reject) => {
               setTimeout(() => reject(new Error(`Markdown conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
             });
@@ -233,7 +257,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
           }
 
           if (formats.includes('html')) {
-            const htmlPromise = convertPageToHTML(url);
+            const htmlPromise = convertPageToHTML(url, currentPage);
             const timeoutPromise = new Promise<never>((_, reject) => {
               setTimeout(() => reject(new Error(`HTML conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
             });
@@ -346,30 +370,6 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
           return false;
         }
       };
-
-      let currentPage = browser.getCurrentPage();
-      
-      const pageWaitStart = Date.now();
-      let lastPageLogTime = 0;
-      let pageAttempts = 0;
-      const MAX_PAGE_ATTEMPTS = 15;
-      
-      while (!currentPage && (Date.now() - pageWaitStart) < BROWSER_PAGE_TIMEOUT && pageAttempts < MAX_PAGE_ATTEMPTS) {
-        const currentTime = Date.now();
-        pageAttempts++;
-        
-        if (currentTime - lastPageLogTime > 5000) {
-          logger.log('info', `Page not ready for browser ${browserId}, waiting... (${Math.round((currentTime - pageWaitStart) / 1000)}s elapsed)`);
-          lastPageLogTime = currentTime;
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        currentPage = browser.getCurrentPage();
-      }
-
-      if (!currentPage) {
-        throw new Error(`No current page available for browser ${browserId} after ${BROWSER_PAGE_TIMEOUT/1000}s timeout`);
-      }
 
       logger.log('info', `Starting workflow execution for run ${data.runId}`);
 

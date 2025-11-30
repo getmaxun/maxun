@@ -100,6 +100,7 @@ interface RRWebDOMBrowserRendererProps {
   listSelector?: string | null;
   cachedChildSelectors?: string[];
   paginationMode?: boolean;
+  paginationSelector?: string;
   paginationType?: string;
   limitMode?: boolean;
   isCachingChildSelectors?: boolean;
@@ -153,6 +154,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
   listSelector = null,
   cachedChildSelectors = [],
   paginationMode = false,
+  paginationSelector = "",
   paginationType = "",
   limitMode = false,
   isCachingChildSelectors = false,
@@ -256,6 +258,13 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           }
           else if (listSelector) {
             if (limitMode) {
+              shouldHighlight = false;
+            } else if (
+              paginationMode &&
+              paginationSelector &&
+              paginationType !== "" &&
+              !["none", "scrollDown", "scrollUp"].includes(paginationType)
+            ) {
               shouldHighlight = false;
             } else if (
               paginationMode &&

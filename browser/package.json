@@ -1,0 +1,21 @@
+{
+    "name": "maxun-browser-service",
+    "version": "1.0.0",
+    "description": "Browser service that exposes Playwright browsers via WebSocket with stealth plugins",
+    "main": "dist/server.js",
+    "scripts": {
+        "build": "tsc",
+        "start": "node dist/server.js",
+        "dev": "ts-node server.ts"
+    },
+    "dependencies": {
+        "playwright": "1.57.0",
+        "playwright-extra": "^4.3.6",
+        "puppeteer-extra-plugin-stealth": "^2.11.2"
+    },
+    "devDependencies": {
+        "@types/node": "^22.7.9",
+        "typescript": "^5.0.0",
+        "ts-node": "^10.9.2"
+    }
+}

@@ -1,4 +1,4 @@
-import { Page } from "playwright";
+import { Page } from "playwright-core";
 import { Coordinates } from "../types";
 import { WhereWhatPair, WorkflowFile } from "maxun-core";
 import logger from "../logger";
