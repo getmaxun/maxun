@@ -2499,34 +2499,24 @@ class ClientSelectorGenerator {
         return [];
       }
 
-      if (parentElements.length > 10) {
-        parentElements = parentElements.slice(0, 10);
-      }
+      const maxItems = 10;
+      const limitedParents = parentElements.slice(0, Math.min(maxItems, parentElements.length));
 
-      const allChildSelectors = new Set<string>();
-      const processedParents = new Set<HTMLElement>();
+      const allChildSelectors: string[] = [];
 
-      for (const parentElement of parentElements) {
-        if (processedParents.has(parentElement)) continue;
-        processedParents.add(parentElement);
+      for (let i = 0; i < limitedParents.length; i++) {
+        const parent = limitedParents[i];
+        const otherListElements = limitedParents.filter((_, index) => index !== i);
 
-        const otherListElements = parentElements.filter(
-          (el) => el !== parentElement
-        );
-
-        const childSelectors = this.generateOptimizedChildXPaths(
-          parentElement,
+        const selectors = this.generateOptimizedChildXPaths(
+          parent,
           parentSelector,
-          iframeDoc,
           otherListElements
         );
-        
-        for (const selector of childSelectors) {
-          allChildSelectors.add(selector);
-        }
+        allChildSelectors.push(...selectors);
       }
 
-      const result = Array.from(allChildSelectors).sort();
+      const result = Array.from(new Set(allChildSelectors)).sort();
       this.selectorCache.set(cacheKey, result);
       return result;
     } catch (error) {
@@ -2609,7 +2599,6 @@ class ClientSelectorGenerator {
   private generateOptimizedChildXPaths(
     parentElement: HTMLElement,
     listSelector: string,
-    document: Document,
     otherListElements: HTMLElement[] = []
   ): string[] {
     const selectors: string[] = [];
