@@ -11,6 +11,7 @@ let browserServer: BrowserServer | null = null;
 // Configurable ports with defaults
 const BROWSER_WS_PORT = parseInt(process.env.BROWSER_WS_PORT || '3001', 10);
 const BROWSER_HEALTH_PORT = parseInt(process.env.BROWSER_HEALTH_PORT || '3002', 10);
+const BROWSER_WS_HOST = process.env.BROWSER_WS_HOST || 'localhost';
 
 async function start(): Promise<void> {
     console.log('Starting Maxun Browser Service...');
@@ -44,17 +45,19 @@ async function start(): Promise<void> {
         // Health check HTTP server
         const healthServer = http.createServer((req, res) => {
             if (req.url === '/health') {
+                const wsEndpoint = browserServer?.wsEndpoint();
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({
                     status: 'healthy',
-                    wsEndpoint: browserServer?.wsEndpoint(),
+                    wsEndpoint,
                     wsPort: BROWSER_WS_PORT,
                     healthPort: BROWSER_HEALTH_PORT,
                     timestamp: new Date().toISOString()
                 }));
             } else if (req.url === '/') {
                 res.writeHead(200, { 'Content-Type': 'text/plain' });
-                res.end(`Maxun Browser Service\nWebSocket: ${browserServer?.wsEndpoint()}\nHealth: http://localhost:${BROWSER_HEALTH_PORT}/health`);
+                const wsEndpoint = browserServer?.wsEndpoint().replace('localhost', BROWSER_WS_HOST) || '';
+                res.end(`Maxun Browser Service\nWebSocket: ${wsEndpoint}\nHealth: http://localhost:${BROWSER_HEALTH_PORT}/health`);
             } else {
                 res.writeHead(404);
                 res.end('Not Found');
