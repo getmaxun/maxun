@@ -1,6 +1,4 @@
 import { Router, Request, Response } from 'express';
-import { chromium } from "playwright-extra";
-import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { requireAPIKey } from "../middlewares/api";
 import Robot from "../models/Robot";
 import Run from "../models/Run";
@@ -19,8 +17,6 @@ import { googleSheetUpdateTasks, processGoogleSheetUpdates } from "../workflow-m
 import { airtableUpdateTasks, processAirtableUpdates } from "../workflow-management/integrations/airtable";
 import { sendWebhook } from "../routes/webhook";
 import { convertPageToHTML, convertPageToMarkdown } from '../markdownify/scrape';
-
-chromium.use(stealthPlugin());
 
 const router = Router();
 

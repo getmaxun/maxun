@@ -1,4 +1,4 @@
-import {BrowserType, LaunchOptions} from "playwright";
+import {BrowserType, LaunchOptions} from "playwright-core";
 
 /**
  * Interpreter settings properties including recording parameters.

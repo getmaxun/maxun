@@ -2,7 +2,7 @@ import { Action, ActionType, Coordinates, TagName, DatePickerEventData } from ".
 import { WhereWhatPair, WorkflowFile } from 'maxun-core';
 import logger from "../../logger";
 import { Socket } from "socket.io";
-import { Page } from "playwright";
+import { Page } from "playwright-core";
 import {
   getElementInformation,
   getRect,

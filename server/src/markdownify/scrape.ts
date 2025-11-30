@@ -1,4 +1,4 @@
-import { chromium, Page } from "playwright";
+import { connectToRemoteBrowser } from "../browser-management/browserConnection";
 import { parseMarkdown } from "./markdown";
 import logger from "../logger";
 
@@ -23,22 +23,11 @@ async function gotoWithFallback(page: any, url: string) {
  * @param url - The URL to convert
  * @param existingPage - Optional existing Playwright page instance to reuse
  */
-export async function convertPageToMarkdown(url: string, existingPage?: Page): Promise<string> {
-  let browser: any = null;
-  let page: Page;
-  let shouldCloseBrowser = false;
+export async function convertPageToMarkdown(url: string): Promise<string> {
+  const browser = await connectToRemoteBrowser();
+  const page = await browser.newPage();
 
-  if (existingPage) {
-    logger.log('info', `[Scrape] Reusing existing Playwright page instance for markdown conversion of ${url}`);
-    page = existingPage;
-  } else {
-    logger.log('info', `[Scrape] Creating new Chromium browser instance for markdown conversion of ${url}`);
-    browser = await chromium.launch();
-    page = await browser.newPage();
-    shouldCloseBrowser = true;
-  }
-
-  await gotoWithFallback(page, url);
+  await page.goto(url, { waitUntil: "networkidle", timeout: 100000 });
 
   const cleanedHtml = await page.evaluate(() => {
     const selectors = [
@@ -93,22 +82,11 @@ export async function convertPageToMarkdown(url: string, existingPage?: Page): P
  * @param url - The URL to convert
  * @param existingPage - Optional existing Playwright page instance to reuse
  */
-export async function convertPageToHTML(url: string, existingPage?: Page): Promise<string> {
-  let browser: any = null;
-  let page: Page;
-  let shouldCloseBrowser = false;
+export async function convertPageToHTML(url: string): Promise<string> {
+  const browser = await connectToRemoteBrowser();
+  const page = await browser.newPage();
 
-  if (existingPage) {
-    logger.log('info', `[Scrape] Reusing existing Playwright page instance for HTML conversion of ${url}`);
-    page = existingPage;
-  } else {
-    logger.log('info', `[Scrape] Creating new Chromium browser instance for HTML conversion of ${url}`);
-    browser = await chromium.launch();
-    page = await browser.newPage();
-    shouldCloseBrowser = true;
-  }
-
-  await gotoWithFallback(page, url);
+  await page.goto(url, { waitUntil: "networkidle", timeout: 100000 });
 
   const cleanedHtml = await page.evaluate(() => {
     const selectors = [

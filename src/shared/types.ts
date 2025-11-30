@@ -1,5 +1,5 @@
 import { WorkflowFile } from "maxun-core";
-import { Locator } from "playwright";
+import { Locator } from "playwright-core";
 
 export type Workflow = WorkflowFile["workflow"];
 
