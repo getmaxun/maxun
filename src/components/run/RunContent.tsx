@@ -10,7 +10,6 @@ import {
   AccordionSummary,
   AccordionDetails
 } from "@mui/material";
-import Highlight from "react-highlight";
 import * as React from "react";
 import { Data } from "./RunsTable";
 import { TabPanel, TabContext } from "@mui/lab";
@@ -22,7 +21,6 @@ import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
-import 'highlight.js/styles/github.css';
 import { useTranslation } from "react-i18next";
 import { useThemeMode } from "../../context/theme-provider";
 
