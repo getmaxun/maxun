@@ -178,8 +178,6 @@ if (require.main === module) {
 
       await startWorkers();
 
-      io = new Server(server);
-
       io.of('/queued-run').on('connection', (socket) => {
         const userId = socket.handshake.query.userId as string;
 
