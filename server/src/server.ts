@@ -5,7 +5,7 @@ import { Server } from "socket.io";
 import cors from 'cors';
 import dotenv from 'dotenv';
 dotenv.config();
-import { record, workflow, storage, auth, integration, proxy, webhook } from './routes';
+import { record, workflow, storage, auth, proxy, webhook } from './routes';
 import { BrowserPool } from "./browser-management/classes/BrowserPool";
 import logger from './logger';
 import sequelize, { connectDB, syncDB } from './storage/db'
@@ -107,7 +107,6 @@ app.use('/record', record);
 app.use('/workflow', workflow);
 app.use('/storage', storage);
 app.use('/auth', auth);
-app.use('/integration', integration);
 app.use('/proxy', proxy);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
