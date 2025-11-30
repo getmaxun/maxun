@@ -30,9 +30,9 @@ services:
       - minio_data:/data
 
   backend:
-    #build:
-      #context: .
-      #dockerfile: server/Dockerfile
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile.backend
     image: getmaxun/maxun-backend:latest
     restart: unless-stopped
     ports:
@@ -60,9 +60,9 @@ services:
       - /var/run/dbus:/var/run/dbus
 
   frontend:
-      #build:
-      #context: .
-      #dockerfile: Dockerfile
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile.frontend 
     image: getmaxun/maxun-frontend:latest
     restart: unless-stopped
     ports:
@@ -89,6 +89,8 @@ services:
       - DEBUG=pw:browser*
       - BROWSER_WS_PORT=${BROWSER_WS_PORT:-3001}
       - BROWSER_HEALTH_PORT=${BROWSER_HEALTH_PORT:-3002}
+      - BROWSER_WS_HOST=${BROWSER_WS_HOST:-browser}
+      - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:${BROWSER_HEALTH_PORT:-3002}/health"]

@@ -1,4 +1,4 @@
-import { connectToRemoteBrowser } from "../browser-management/browserConnection";
+import { Page } from "playwright-core";
 import { parseMarkdown } from "./markdown";
 import logger from "../logger";
 
@@ -21,115 +21,105 @@ async function gotoWithFallback(page: any, url: string) {
  * Fetches a webpage, strips scripts/styles/images/etc,
  * returns clean Markdown using parser.
  * @param url - The URL to convert
- * @param existingPage - Optional existing Playwright page instance to reuse
+ * @param page - Existing Playwright page instance to use
  */
-export async function convertPageToMarkdown(url: string): Promise<string> {
-  const browser = await connectToRemoteBrowser();
-  const page = await browser.newPage();
+export async function convertPageToMarkdown(url: string, page: Page): Promise<string> {
+  try {
+    logger.log('info', `[Scrape] Using existing page instance for markdown conversion of ${url}`);
 
-  await page.goto(url, { waitUntil: "networkidle", timeout: 100000 });
+    await gotoWithFallback(page, url);
 
-  const cleanedHtml = await page.evaluate(() => {
-    const selectors = [
-      "script",
-      "style",
-      "link[rel='stylesheet']",
-      "noscript",
-      "meta",
-      "svg",
-      "img",
-      "picture",
-      "source",
-      "video",
-      "audio",
-      "iframe",
-      "object",
-      "embed"
-    ];
+    const cleanedHtml = await page.evaluate(() => {
+      const selectors = [
+        "script",
+        "style",
+        "link[rel='stylesheet']",
+        "noscript",
+        "meta",
+        "svg",
+        "img",
+        "picture",
+        "source",
+        "video",
+        "audio",
+        "iframe",
+        "object",
+        "embed"
+      ];
 
-    selectors.forEach(sel => {
-      document.querySelectorAll(sel).forEach(e => e.remove());
-    });
-
-    // Remove inline event handlers (onclick, onload…)
-    const all = document.querySelectorAll("*");
-    all.forEach(el => {
-      [...el.attributes].forEach(attr => {
-        if (attr.name.startsWith("on")) {
-          el.removeAttribute(attr.name);
-        }
+      selectors.forEach(sel => {
+        document.querySelectorAll(sel).forEach(e => e.remove());
       });
+
+      const all = document.querySelectorAll("*");
+      all.forEach(el => {
+        [...el.attributes].forEach(attr => {
+          if (attr.name.startsWith("on")) {
+            el.removeAttribute(attr.name);
+          }
+        });
+      });
+
+      return document.documentElement.outerHTML;
     });
 
-    return document.documentElement.outerHTML;
-  });
-
-  if (shouldCloseBrowser && browser) {
-    logger.log('info', `[Scrape] Closing browser instance created for markdown conversion`);
-    await browser.close();
-  } else {
-    logger.log('info', `[Scrape] Keeping existing browser instance open after markdown conversion`);
+    const markdown = await parseMarkdown(cleanedHtml, url);
+    return markdown;
+  } catch (error: any) {
+    logger.error(`[Scrape] Error during markdown conversion: ${error.message}`);
+    throw error;
   }
-
-  // Convert cleaned HTML → Markdown
-  const markdown = await parseMarkdown(cleanedHtml, url);
-  return markdown;
 }
 
 /**
  * Fetches a webpage, strips scripts/styles/images/etc,
  * returns clean HTML.
  * @param url - The URL to convert
- * @param existingPage - Optional existing Playwright page instance to reuse
+ * @param page - Existing Playwright page instance to use
  */
-export async function convertPageToHTML(url: string): Promise<string> {
-  const browser = await connectToRemoteBrowser();
-  const page = await browser.newPage();
+export async function convertPageToHTML(url: string, page: Page): Promise<string> {
+  try {
+    logger.log('info', `[Scrape] Using existing page instance for HTML conversion of ${url}`);
 
-  await page.goto(url, { waitUntil: "networkidle", timeout: 100000 });
+    await gotoWithFallback(page, url);
 
-  const cleanedHtml = await page.evaluate(() => {
-    const selectors = [
-      "script",
-      "style",
-      "link[rel='stylesheet']",
-      "noscript",
-      "meta",
-      "svg",
-      "img",
-      "picture",
-      "source",
-      "video",
-      "audio",
-      "iframe",
-      "object",
-      "embed"
-    ];
+    const cleanedHtml = await page.evaluate(() => {
+      const selectors = [
+        "script",
+        "style",
+        "link[rel='stylesheet']",
+        "noscript",
+        "meta",
+        "svg",
+        "img",
+        "picture",
+        "source",
+        "video",
+        "audio",
+        "iframe",
+        "object",
+        "embed"
+      ];
 
-    selectors.forEach(sel => {
-      document.querySelectorAll(sel).forEach(e => e.remove());
-    });
-
-    // Remove inline event handlers (onclick, onload…)
-    const all = document.querySelectorAll("*");
-    all.forEach(el => {
-      [...el.attributes].forEach(attr => {
-        if (attr.name.startsWith("on")) {
-          el.removeAttribute(attr.name);
-        }
+      selectors.forEach(sel => {
+        document.querySelectorAll(sel).forEach(e => e.remove());
       });
+
+      const all = document.querySelectorAll("*");
+      all.forEach(el => {
+        [...el.attributes].forEach(attr => {
+          if (attr.name.startsWith("on")) {
+            el.removeAttribute(attr.name);
+          }
+        });
+      });
+
+      return document.documentElement.outerHTML;
     });
 
-    return document.documentElement.outerHTML;
-  });
-
-  if (shouldCloseBrowser && browser) {
-    logger.log('info', `[Scrape] Closing browser instance created for HTML conversion`);
-    await browser.close();
-  } else {
-    logger.log('info', `[Scrape] Keeping existing browser instance open after HTML conversion`);
+    return cleanedHtml;
+  } catch (error: any) {
+    logger.error(`[Scrape] Error during HTML conversion: ${error.message}`);
+    throw error;
   }
-
-  // Return cleaned HTML directly
-  return cleanedHtml;
 }

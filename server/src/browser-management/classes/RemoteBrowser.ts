@@ -550,9 +550,9 @@ export class RemoteBrowser {
 
               try {
                 const blocker = await PlaywrightBlocker.fromLists(fetch, ['https://easylist.to/easylist/easylist.txt']);
-                await blocker.enableBlockingInPage(this.currentPage);
+                await blocker.enableBlockingInPage(this.currentPage as any);
                 this.client = await this.currentPage.context().newCDPSession(this.currentPage);
-                await blocker.disableBlockingInPage(this.currentPage);
+                await blocker.disableBlockingInPage(this.currentPage as any);
                 console.log('Adblocker initialized');
               } catch (error: any) {
                 console.warn('Failed to initialize adblocker, continuing without it:', error.message);

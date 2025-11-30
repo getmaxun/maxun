@@ -6,7 +6,7 @@ WORKDIR /app
 COPY browser/package*.json ./
 
 # Install dependencies
-RUN npm ci
+RUN npm install
 
 # Copy TypeScript source and config
 COPY browser/server.ts ./

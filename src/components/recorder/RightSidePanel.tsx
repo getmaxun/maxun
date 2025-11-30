@@ -415,6 +415,46 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   }, [stopGetList, resetListState]);
 
   const stopCaptureAndEmitGetListSettings = useCallback(() => {
+    if (autoDetectedPagination?.selector) {
+      const iframeElement = document.querySelector('#browser-window iframe') as HTMLIFrameElement;
+      if (iframeElement?.contentDocument) {
+        try {
+          function evaluateSelector(selector: string, doc: Document): Element[] {
+            if (selector.startsWith('//') || selector.startsWith('(//')) {
+              try {
+                const result = doc.evaluate(selector, doc, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+                const elements: Element[] = [];
+                for (let i = 0; i < result.snapshotLength; i++) {
+                  const node = result.snapshotItem(i);
+                  if (node && node.nodeType === Node.ELEMENT_NODE) {
+                    elements.push(node as Element);
+                  }
+                }
+                return elements;
+              } catch (err) {
+                return [];
+              }
+            } else {
+              try {
+                return Array.from(doc.querySelectorAll(selector));
+              } catch (err) {
+                return [];
+              }
+            }
+          }
+
+          const elements = evaluateSelector(autoDetectedPagination.selector, iframeElement.contentDocument);
+          elements.forEach((el: Element) => {
+            (el as HTMLElement).style.outline = '';
+            (el as HTMLElement).style.outlineOffset = '';
+            (el as HTMLElement).style.zIndex = '';
+          });
+        } catch (error) {
+          console.error('Error removing pagination highlight on completion:', error);
+        }
+      }
+    }
+
     const latestListStep = getLatestListStep(browserSteps);
     if (latestListStep) {
       extractDataClientSide(latestListStep.listSelector!, latestListStep.fields, latestListStep.id);
@@ -423,7 +463,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         ...currentWorkflowActionsState,
         hasScrapeListAction: true
       });
-      
+
       emitActionForStep(latestListStep);
 
       handleStopGetList();
@@ -441,7 +481,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
       onFinishCapture();
       clientSelectorGenerator.cleanup();
     }
-  }, [socket, notify, handleStopGetList, resetInterpretationLog, finishAction, onFinishCapture, t, browserSteps, extractDataClientSide, setCurrentWorkflowActionsState, currentWorkflowActionsState, emitActionForStep]);
+  }, [socket, notify, handleStopGetList, resetInterpretationLog, finishAction, onFinishCapture, t, browserSteps, extractDataClientSide, setCurrentWorkflowActionsState, currentWorkflowActionsState, emitActionForStep, autoDetectedPagination]);
 
   const getLatestListStep = (steps: BrowserStep[]) => {
     const listSteps = steps.filter(step => step.type === 'list');

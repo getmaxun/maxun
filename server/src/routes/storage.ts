@@ -15,7 +15,6 @@ import { encrypt, decrypt } from '../utils/auth';
 import { WorkflowFile } from 'maxun-core';
 import { cancelScheduledWorkflow, scheduleWorkflow } from '../storage/schedule';
 import { pgBossClient } from '../storage/pgboss';
-chromium.use(stealthPlugin());
 
 export const router = Router();
 
