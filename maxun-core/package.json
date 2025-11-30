@@ -31,10 +31,10 @@
   "license": "AGPL-3.0-or-later",
   "dependencies": {
     "@cliqz/adblocker-playwright": "^1.31.3",
+    "@types/node": "22.7.9",
     "cross-fetch": "^4.0.0",
     "joi": "^17.6.0",
-    "playwright": "^1.20.1",
-    "playwright-extra": "^4.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2"
+    "playwright-core": "1.57.0",
+    "turndown": "^7.2.2"
   }
 }

@@ -13,7 +13,7 @@ import { WorkflowFile } from 'maxun-core';
 import Run from './models/Run';
 import Robot from './models/Robot';
 import { browserPool } from './server';
-import { Page } from 'playwright';
+import { Page } from 'playwright-core';
 import { capture } from './utils/analytics';
 import { googleSheetUpdateTasks, processGoogleSheetUpdates } from './workflow-management/integrations/gsheet';
 import { airtableUpdateTasks, processAirtableUpdates } from './workflow-management/integrations/airtable';

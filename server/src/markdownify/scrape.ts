@@ -1,4 +1,4 @@
-import { chromium } from "playwright";
+import { connectToRemoteBrowser } from "../browser-management/browserConnection";
 import { parseMarkdown } from "./markdown";
 
 /**
@@ -6,7 +6,7 @@ import { parseMarkdown } from "./markdown";
  * returns clean Markdown using parser.
  */
 export async function convertPageToMarkdown(url: string): Promise<string> {
-  const browser = await chromium.launch();
+  const browser = await connectToRemoteBrowser();
   const page = await browser.newPage();
 
   await page.goto(url, { waitUntil: "networkidle", timeout: 100000 });
@@ -61,7 +61,7 @@ export async function convertPageToMarkdown(url: string): Promise<string> {
  * returns clean HTML.
  */
 export async function convertPageToHTML(url: string): Promise<string> {
-  const browser = await chromium.launch();
+  const browser = await connectToRemoteBrowser();
   const page = await browser.newPage();
 
   await page.goto(url, { waitUntil: "networkidle", timeout: 100000 });

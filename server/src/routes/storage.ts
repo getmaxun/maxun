@@ -1,8 +1,6 @@
 import { Router } from 'express';
 import logger from "../logger";
 import { createRemoteBrowserForRun, destroyRemoteBrowser, getActiveBrowserIdByState } from "../browser-management/controller";
-import { chromium } from 'playwright-extra';
-import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { browserPool } from "../server";
 import { v4 as uuid } from "uuid";
 import moment from 'moment-timezone';
@@ -18,7 +16,6 @@ import { encrypt, decrypt } from '../utils/auth';
 import { WorkflowFile } from 'maxun-core';
 import { cancelScheduledWorkflow, scheduleWorkflow } from '../schedule-worker';
 import { pgBoss, registerWorkerForQueue, registerAbortWorkerForQueue } from '../pgboss-worker';
-chromium.use(stealthPlugin());
 
 export const router = Router();
 

@@ -1,6 +1,4 @@
 import { v4 as uuid } from "uuid";
-import { chromium } from 'playwright-extra';
-import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { io, Socket } from "socket.io-client";
 import { createRemoteBrowserForRun, destroyRemoteBrowser } from '../../browser-management/controller';
 import logger from '../../logger';
@@ -12,11 +10,10 @@ import { getDecryptedProxyConfig } from "../../routes/proxy";
 import { BinaryOutputService } from "../../storage/mino";
 import { capture } from "../../utils/analytics";
 import { WorkflowFile } from "maxun-core";
-import { Page } from "playwright";
+import { Page } from "playwright-core";
 import { sendWebhook } from "../../routes/webhook";
 import { airtableUpdateTasks, processAirtableUpdates } from "../integrations/airtable";
 import { convertPageToMarkdown, convertPageToHTML } from "../../markdownify/scrape";
-chromium.use(stealthPlugin());
 
 async function createWorkflowAndStoreMetadata(id: string, userId: string) {
   try {

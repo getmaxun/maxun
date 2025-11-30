@@ -1,5 +1,5 @@
 /* eslint-disable no-await-in-loop, no-restricted-syntax */
-import { ElementHandle, Page, PageScreenshotOptions } from 'playwright';
+import { ElementHandle, Page, PageScreenshotOptions } from 'playwright-core';
 import { PlaywrightBlocker } from '@cliqz/adblocker-playwright';
 import fetch from 'cross-fetch';
 import path from 'path';
@@ -144,7 +144,7 @@ export default class Interpreter extends EventEmitter {
   private async applyAdBlocker(page: Page): Promise<void> {
     if (this.blocker) {
       try {
-        await this.blocker.enableBlockingInPage(page);
+        await this.blocker.enableBlockingInPage(page as any);
       } catch (err) {
         this.log(`Ad-blocker operation failed:`, Level.ERROR);
       }
@@ -154,7 +154,7 @@ export default class Interpreter extends EventEmitter {
   private async disableAdBlocker(page: Page): Promise<void> {
     if (this.blocker) {
       try {
-        await this.blocker.disableBlockingInPage(page);
+        await this.blocker.disableBlockingInPage(page as any);
       } catch (err) {
         this.log(`Ad-blocker operation failed:`, Level.ERROR);
       }
