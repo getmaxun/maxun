@@ -1,13 +1,10 @@
 import { Router } from 'express';
 import logger from "../logger";
 import { createRemoteBrowserForRun, destroyRemoteBrowser, getActiveBrowserIdByState } from "../browser-management/controller";
-import { chromium } from 'playwright-extra';
-import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { browserPool } from "../server";
 import { v4 as uuid } from "uuid";
 import moment from 'moment-timezone';
 import cron from 'node-cron';
-import { getDecryptedProxyConfig } from './proxy';
 import { requireSignIn } from '../middlewares/auth';
 import Robot from '../models/Robot';
 import Run from '../models/Run';
@@ -16,9 +13,8 @@ import { computeNextRun } from '../utils/schedule';
 import { capture } from "../utils/analytics";
 import { encrypt, decrypt } from '../utils/auth';
 import { WorkflowFile } from 'maxun-core';
-import { cancelScheduledWorkflow, scheduleWorkflow } from '../schedule-worker';
-import { pgBoss, registerWorkerForQueue, registerAbortWorkerForQueue } from '../pgboss-worker';
-chromium.use(stealthPlugin());
+import { cancelScheduledWorkflow, scheduleWorkflow } from '../storage/schedule';
+import { pgBossClient } from '../storage/pgboss';
 
 export const router = Router();
 
@@ -591,7 +587,7 @@ router.delete('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res)
  * PUT endpoint for starting a remote browser instance and saving run metadata to the storage.
  * Making it ready for interpretation and returning a runId.
  * 
- * If the user has reached their browser limit, the run will be queued using PgBoss.
+ * If the user has reached their browser limit, the run will be queued using pgBossClient.
  */
 router.put('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
@@ -665,10 +661,9 @@ router.put('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res) =>
 
       try {
         const userQueueName = `execute-run-user-${req.user.id}`;
-        await pgBoss.createQueue(userQueueName);
-        await registerWorkerForQueue(userQueueName);
-        
-        const jobId = await pgBoss.send(userQueueName, {
+        await pgBossClient.createQueue(userQueueName);
+       
+        const jobId = await pgBossClient.send(userQueueName, {
           userId: req.user.id,
           runId: runId,
           browserId: browserId, 
@@ -783,10 +778,9 @@ router.post('/runs/run/:id', requireSignIn, async (req: AuthenticatedRequest, re
       const userQueueName = `execute-run-user-${req.user.id}`;
 
       // Queue the execution job
-      await pgBoss.createQueue(userQueueName);
-      await registerWorkerForQueue(userQueueName);
+      await pgBossClient.createQueue(userQueueName);
 
-      const jobId = await pgBoss.send(userQueueName, {
+      const jobId = await pgBossClient.send(userQueueName, {
         userId: req.user.id,
         runId: req.params.id,
         browserId: plainRun.browserId
@@ -975,7 +969,7 @@ router.delete('/schedule/:id', requireSignIn, async (req: AuthenticatedRequest, 
       return res.status(404).json({ error: 'Robot not found' });
     }
 
-    // Cancel the scheduled job in PgBoss
+    // Cancel the scheduled job in pgBossClient
     try {
       await cancelScheduledWorkflow(id);
     } catch (error) {
@@ -1056,10 +1050,9 @@ router.post('/runs/abort/:id', requireSignIn, async (req: AuthenticatedRequest, 
     }
 
     const userQueueName = `abort-run-user-${req.user.id}`;
-    await pgBoss.createQueue(userQueueName);
-    await registerAbortWorkerForQueue(userQueueName);
-
-    const jobId = await pgBoss.send(userQueueName, {
+    await pgBossClient.createQueue(userQueueName);
+  
+    const jobId = await pgBossClient.send(userQueueName, {
       userId: req.user.id,
       runId: req.params.id
     });
@@ -1080,13 +1073,22 @@ router.post('/runs/abort/:id', requireSignIn, async (req: AuthenticatedRequest, 
   }
 });
 
+// Circuit breaker for database connection issues
+let consecutiveDbErrors = 0;
+const MAX_CONSECUTIVE_ERRORS = 3;
+const CIRCUIT_BREAKER_COOLDOWN = 30000;
+let circuitBreakerOpenUntil = 0;
+
 async function processQueuedRuns() {
   try {
+    if (Date.now() < circuitBreakerOpenUntil) {
+      return;
+    }
     const queuedRun = await Run.findOne({
       where: { status: 'queued' },
-      order: [['startedAt', 'ASC']]
+      order: [['startedAt', 'ASC']],
     });
-
+    consecutiveDbErrors = 0;
     if (!queuedRun) return;
 
     const userId = queuedRun.runByUserId;
@@ -1124,10 +1126,9 @@ async function processQueuedRuns() {
         });
 
         const userQueueName = `execute-run-user-${userId}`;
-        await pgBoss.createQueue(userQueueName);
-        await registerWorkerForQueue(userQueueName);
+        await pgBossClient.createQueue(userQueueName);
         
-        const jobId = await pgBoss.send(userQueueName, {
+        const jobId = await pgBossClient.send(userQueueName, {
           userId: userId,
           runId: queuedRun.runId,
           browserId: newBrowserId,
@@ -1145,7 +1146,14 @@ async function processQueuedRuns() {
       }
     }
   } catch (error: any) {
-    logger.log('error', `Error processing queued runs: ${error.message}`);
+    consecutiveDbErrors++;
+
+    if (consecutiveDbErrors >= MAX_CONSECUTIVE_ERRORS) {
+      circuitBreakerOpenUntil = Date.now() + CIRCUIT_BREAKER_COOLDOWN;
+      logger.log('error', `Circuit breaker opened after ${MAX_CONSECUTIVE_ERRORS} consecutive errors. Cooling down for ${CIRCUIT_BREAKER_COOLDOWN/1000}s`);
+    }
+
+    logger.log('error', `Error processing queued runs (${consecutiveDbErrors}/${MAX_CONSECUTIVE_ERRORS}): ${error.message}`);
   }
 }
 

@@ -31,22 +31,50 @@ export const initializeRemoteBrowserForRecording = (userId: string, mode: string
       if (activeId) {
         const remoteBrowser = browserPool.getRemoteBrowser(activeId);
         remoteBrowser?.updateSocket(socket);
-        await remoteBrowser?.makeAndEmitScreenshot();
+
+        if (remoteBrowser?.isDOMStreamingActive) {
+          remoteBrowser?.makeAndEmitDOMSnapshot();
+        }
       } else {
         const browserSession = new RemoteBrowser(socket, userId, id);
         browserSession.interpreter.subscribeToPausing();
-        await browserSession.initialize(userId);
-        await browserSession.registerEditorEvents();
-
-        if (mode === "dom") {
-          await browserSession.subscribeToDOM();
-          logger.info('DOM streaming started for scraping browser in recording mode');
-        } else {
-          await browserSession.subscribeToScreencast();
-          logger.info('Screenshot streaming started for local browser in recording mode');
-        }
         
-        browserPool.addRemoteBrowser(id, browserSession, userId, false, "recording");
+        try {
+          await browserSession.initialize(userId);
+          await browserSession.registerEditorEvents();
+
+          await browserSession.subscribeToDOM();
+          logger.info('DOM streaming started for remote browser in recording mode');
+
+          browserPool.addRemoteBrowser(id, browserSession, userId, false, "recording");
+        } catch (initError: any) {
+          logger.error(`Failed to initialize browser for recording: ${initError.message}`);
+          logger.info('Sending browser failure notification to frontend');
+
+          socket.emit('dom-mode-error', {
+            userId: userId,
+            error: 'Failed to start the browser, please try again in some time.'
+          });
+
+          socket.emit('error', {
+            userId: userId,
+            message: 'Failed to start the browser, please try again in some time.',
+            details: initError.message
+          });
+
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          try {
+            await browserSession.switchOff();
+            logger.debug('Cleaned up failed browser session');
+          } catch (cleanupError: any) {
+            logger.warn(`Failed to cleanup browser session: ${cleanupError.message}`);
+          }
+
+          logger.info('Browser initialization failed, user notified');
+
+          return id;
+        }
       }
       socket.emit('loaded');
     });
@@ -69,7 +97,7 @@ export const createRemoteBrowserForRun = (userId: string): string => {
   
   const id = uuid();
 
-  const slotReserved = browserPool.reserveBrowserSlot(id, userId, "run");
+  const slotReserved = browserPool.reserveBrowserSlotAtomic(id, userId, "run");
   if (!slotReserved) {
     logger.log('warn', `Cannot create browser for user ${userId}: no available slots`);
     throw new Error('User has reached maximum browser limit');
@@ -94,45 +122,78 @@ export const createRemoteBrowserForRun = (userId: string): string => {
  * @category BrowserManagement-Controller
  */
 export const destroyRemoteBrowser = async (id: string, userId: string): Promise<boolean> => {
+  const DESTROY_TIMEOUT = 30000;
+
+  const destroyPromise = (async () => {
+    try {
+      const browserSession = browserPool.getRemoteBrowser(id);
+      if (!browserSession) {
+        logger.log('info', `Browser with id: ${id} not found, may have already been destroyed`);
+        return true;
+      }
+
+      logger.log('debug', `Switching off the browser with id: ${id}`);
+
+      try {
+        await browserSession.switchOff();
+      } catch (switchOffError) {
+        logger.log('warn', `Error switching off browser ${id}: ${switchOffError}`);
+      }
+
+      try {
+        const namespace = io.of(id);
+
+        const sockets = await namespace.fetchSockets();
+        for (const socket of sockets) {
+          socket.disconnect(true);
+        }
+
+        namespace.removeAllListeners();
+
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        const nsps = (io as any)._nsps;
+        if (nsps && nsps.has(`/${id}`)) {
+          const ns = nsps.get(`/${id}`);
+          if (ns && ns.sockets && ns.sockets.size === 0) {
+            nsps.delete(`/${id}`);
+            logger.log('debug', `Deleted empty namespace /${id} from io._nsps Map`);
+          } else {
+            logger.log('warn', `Namespace /${id} still has ${ns?.sockets?.size || 0} sockets, skipping manual deletion`);
+          }
+        }
+
+        logger.log('debug', `Cleaned up socket namespace for browser ${id}`);
+      } catch (namespaceCleanupError: any) {
+        logger.log('warn', `Error cleaning up socket namespace for browser ${id}: ${namespaceCleanupError.message}`);
+      }
+
+      return browserPool.deleteRemoteBrowser(id);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.log('error', `Failed to destroy browser ${id}: ${errorMessage}`);
+
+      try {
+        return browserPool.deleteRemoteBrowser(id);
+      } catch (deleteError) {
+        logger.log('error', `Failed to delete browser ${id} from pool: ${deleteError}`);
+        return false;
+      }
+    }
+  })();
+
   try {
-    const browserSession = browserPool.getRemoteBrowser(id);
-    if (!browserSession) {
-      logger.log('info', `Browser with id: ${id} not found, may have already been destroyed`);
-      return true; 
-    }
-    
-    logger.log('debug', `Switching off the browser with id: ${id}`);
-    
-    try {
-      await browserSession.stopCurrentInterpretation();
-    } catch (stopError) {
-      logger.log('warn', `Error stopping interpretation for browser ${id}: ${stopError}`);
-    }
-    
-    try {
-      await browserSession.switchOff();
-    } catch (switchOffError) {
-      logger.log('warn', `Error switching off browser ${id}: ${switchOffError}`);
-    }
+    const timeoutPromise = new Promise<boolean>((_, reject) =>
+      setTimeout(() => reject(new Error(`Browser destruction timed out after ${DESTROY_TIMEOUT}ms`)), DESTROY_TIMEOUT)
+    );
 
-    try {
-      const namespace = io.of(id);
-      namespace.removeAllListeners();
-      namespace.disconnectSockets(true);
-      logger.log('debug', `Cleaned up socket namespace for browser ${id}`);
-    } catch (namespaceCleanupError: any) {
-      logger.log('warn', `Error cleaning up socket namespace for browser ${id}: ${namespaceCleanupError.message}`);
-    }
-
-    return browserPool.deleteRemoteBrowser(id);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.log('error', `Failed to destroy browser ${id}: ${errorMessage}`);
-    
+    return await Promise.race([destroyPromise, timeoutPromise]);
+  } catch (timeoutError: any) {
+    logger.log('error', `Browser ${id} destruction timeout: ${timeoutError.message} - force removing from pool`);
     try {
       return browserPool.deleteRemoteBrowser(id);
     } catch (deleteError) {
-      logger.log('error', `Failed to delete browser ${id} from pool: ${deleteError}`);
+      logger.log('error', `Failed to force delete browser ${id} after timeout: ${deleteError}`);
       return false;
     }
   }
@@ -229,8 +290,8 @@ export const interpretWholeWorkflow = async (userId: string) => {
 export const stopRunningInterpretation = async (userId: string) => {
   const id = getActiveBrowserIdByState(userId, "recording");
   if (id) {
-    const browser = browserPool.getRemoteBrowser(id);
-    await browser?.stopCurrentInterpretation();
+    const browserSession = browserPool.getRemoteBrowser(id);
+    await browserSession?.switchOff();
   } else {
     logger.log('error', 'Cannot stop interpretation: No active browser or generator.');
   }
@@ -264,7 +325,31 @@ const initializeBrowserAsync = async (id: string, userId: string) => {
       browserPool.failBrowserSlot(id);
     });
 
-    const socket = await waitForConnection;
+    const connectWithRetry = async (maxRetries: number = 3): Promise<Socket | null> => {
+      let retryCount = 0;
+      
+      while (retryCount < maxRetries) {
+        try {
+          const socket = await waitForConnection;
+          if (socket || retryCount === maxRetries - 1) {
+            return socket;
+          }
+        } catch (error: any) {
+          logger.log('warn', `Connection attempt ${retryCount + 1} failed for browser ${id}: ${error.message}`);
+        }
+        
+        retryCount++;
+        if (retryCount < maxRetries) {
+          const delay = Math.pow(2, retryCount) * 1000;
+          logger.log('info', `Retrying connection for browser ${id} in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+      
+      return null;
+    };
+
+    const socket = await connectWithRetry(3);
     
     try {
       let browserSession: RemoteBrowser;
@@ -288,9 +373,17 @@ const initializeBrowserAsync = async (id: string, userId: string) => {
       logger.log('debug', `Starting browser initialization for ${id}`);
 
       try {
-        await browserSession.initialize(userId);
-        logger.log('debug', `Browser initialization completed for ${id}`);
+        const BROWSER_INIT_TIMEOUT = 45000;
+        logger.log('info', `Browser initialization starting with ${BROWSER_INIT_TIMEOUT/1000}s timeout`);
+
+        const initPromise = browserSession.initialize(userId);
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('Browser initialization timeout')), BROWSER_INIT_TIMEOUT);
+        });
+
+        await Promise.race([initPromise, timeoutPromise]);
       } catch (initError: any) {
+        logger.log('error', `Browser initialization failed for ${id}: ${initError.message}`);
         try {
           await browserSession.switchOff();
           logger.log('info', `Cleaned up failed browser initialization for ${id}`);

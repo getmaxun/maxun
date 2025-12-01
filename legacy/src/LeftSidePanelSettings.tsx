@@ -1,8 +1,8 @@
 import React from "react";
 import { Button, MenuItem, TextField, Typography } from "@mui/material";
-import { Dropdown } from "../ui/DropdownMui";
-import { RunSettings } from "../run/RunSettings";
-import { useSocketStore } from "../../context/socket";
+import { Dropdown } from "../../src/components/ui/DropdownMui";
+import { RunSettings } from "../../src/components/run/RunSettings";
+import { useSocketStore } from "../../src/context/socket";
 
 interface LeftSidePanelSettingsProps {
   params: any[]

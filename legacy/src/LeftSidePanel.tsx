@@ -1,14 +1,14 @@
 import { Box, Paper, Tab, Tabs } from "@mui/material";
 import React, { useCallback, useEffect, useState } from "react";
-import { getActiveWorkflow, getParamsOfActiveWorkflow } from "../../api/workflow";
-import { useSocketStore } from '../../context/socket';
+import { getActiveWorkflow, getParamsOfActiveWorkflow } from "../../src/api/workflow";
+import { useSocketStore } from '../../src/context/socket';
 import { WhereWhatPair, WorkflowFile } from "maxun-core";
-import { emptyWorkflow } from "../../shared/constants";
+import { emptyWorkflow } from "../../src/shared/constants";
 import { LeftSidePanelContent } from "./LeftSidePanelContent";
-import { useGlobalInfoStore } from "../../context/globalInfo";
+import { useGlobalInfoStore } from "../../src/context/globalInfo";
 import { TabContext, TabPanel } from "@mui/lab";
 import { LeftSidePanelSettings } from "./LeftSidePanelSettings";
-import { RunSettings } from "../run/RunSettings";
+import { RunSettings } from "../../src/components/run/RunSettings";
 
 const fetchWorkflow = (id: string, callback: (response: WorkflowFile) => void) => {
   getActiveWorkflow(id).then(

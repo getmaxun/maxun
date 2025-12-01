@@ -2476,6 +2476,46 @@ class ClientSelectorGenerator {
     return null;
   };
 
+  /**
+   * Generate selectors directly from an element
+   * Scrolls the element into view within the iframe only (instant scroll)
+   */
+  public generateSelectorsFromElement = (
+    element: HTMLElement,
+    iframeDoc: Document
+  ): any | null => {
+    try {
+      try {
+        const rect = element.getBoundingClientRect();
+        const iframeWindow = iframeDoc.defaultView;
+
+        if (iframeWindow) {
+          const targetY = rect.top + iframeWindow.scrollY - (iframeWindow.innerHeight / 2) + (rect.height / 2);
+
+          iframeWindow.scrollTo({
+            top: targetY,
+            behavior: 'auto'
+          });
+        }
+      } catch (scrollError) {
+        console.warn('[ClientSelectorGenerator] Could not scroll element into view:', scrollError);
+      }
+
+      const rect = element.getBoundingClientRect();
+      const coordinates = {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2
+      };
+
+      return this.getSelectors(iframeDoc, coordinates);
+    } catch (e) {
+      const { message, stack } = e as Error;
+      console.warn(`Error generating selectors from element: ${message}`);
+      console.warn(`Stack: ${stack}`);
+      return null;
+    }
+  };
+
   public getChildSelectors = (
     iframeDoc: Document,
     parentSelector: string
@@ -2499,34 +2539,24 @@ class ClientSelectorGenerator {
         return [];
       }
 
-      if (parentElements.length > 10) {
-        parentElements = parentElements.slice(0, 10);
-      }
+      const maxItems = 10;
+      const limitedParents = parentElements.slice(0, Math.min(maxItems, parentElements.length));
 
-      const allChildSelectors = new Set<string>();
-      const processedParents = new Set<HTMLElement>();
+      const allChildSelectors: string[] = [];
 
-      for (const parentElement of parentElements) {
-        if (processedParents.has(parentElement)) continue;
-        processedParents.add(parentElement);
+      for (let i = 0; i < limitedParents.length; i++) {
+        const parent = limitedParents[i];
+        const otherListElements = limitedParents.filter((_, index) => index !== i);
 
-        const otherListElements = parentElements.filter(
-          (el) => el !== parentElement
-        );
-
-        const childSelectors = this.generateOptimizedChildXPaths(
-          parentElement,
+        const selectors = this.generateOptimizedChildXPaths(
+          parent,
           parentSelector,
-          iframeDoc,
           otherListElements
         );
-        
-        for (const selector of childSelectors) {
-          allChildSelectors.add(selector);
-        }
+        allChildSelectors.push(...selectors);
       }
 
-      const result = Array.from(allChildSelectors).sort();
+      const result = Array.from(new Set(allChildSelectors)).sort();
       this.selectorCache.set(cacheKey, result);
       return result;
     } catch (error) {
@@ -2609,7 +2639,6 @@ class ClientSelectorGenerator {
   private generateOptimizedChildXPaths(
     parentElement: HTMLElement,
     listSelector: string,
-    document: Document,
     otherListElements: HTMLElement[] = []
   ): string[] {
     const selectors: string[] = [];
@@ -4297,4 +4326,5 @@ class ClientSelectorGenerator {
   }
 }
 
+export { ClientSelectorGenerator };
 export const clientSelectorGenerator = new ClientSelectorGenerator();

@@ -1,13 +1,13 @@
 import React, { FC, useState } from 'react';
 import { Stack, Button, IconButton, Tooltip, Badge } from "@mui/material";
-import { AddPair, deletePair, UpdatePair } from "../../api/workflow";
+import { AddPair, deletePair, UpdatePair } from "../../src/api/workflow";
 import { WorkflowFile } from "maxun-core";
-import { ClearButton } from "../ui/buttons/ClearButton";
-import { GenericModal } from "../ui/GenericModal";
+import { ClearButton } from "../../src/components/ui/buttons/ClearButton";
+import { GenericModal } from "../../src/components/ui/GenericModal";
 import { PairEditForm } from "./PairEditForm";
 import { PairDisplayDiv } from "./PairDisplayDiv";
-import { EditButton } from "../ui/buttons/EditButton";
-import { BreakpointButton } from "../ui/buttons/BreakpointButton";
+import { EditButton } from "../../src/components/ui/buttons/EditButton";
+import { BreakpointButton } from "../../src/components/ui/buttons/BreakpointButton";
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import styled from "styled-components";
 import { LoadingButton } from "@mui/lab";

@@ -100,6 +100,7 @@ interface RRWebDOMBrowserRendererProps {
   listSelector?: string | null;
   cachedChildSelectors?: string[];
   paginationMode?: boolean;
+  paginationSelector?: string;
   paginationType?: string;
   limitMode?: boolean;
   isCachingChildSelectors?: boolean;
@@ -153,6 +154,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
   listSelector = null,
   cachedChildSelectors = [],
   paginationMode = false,
+  paginationSelector = "",
   paginationType = "",
   limitMode = false,
   isCachingChildSelectors = false,
@@ -259,6 +261,14 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
               shouldHighlight = false;
             } else if (
               paginationMode &&
+              paginationSelector &&
+              paginationType !== "" &&
+              !["none", "scrollDown", "scrollUp"].includes(paginationType)
+            ) {
+              shouldHighlight = false;
+            } else if (
+              paginationMode &&
+              !paginationSelector &&
               paginationType !== "" &&
               !["none", "scrollDown", "scrollUp"].includes(paginationType)
             ) {
@@ -344,7 +354,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           const options: boolean | AddEventListenerOptions = ['wheel', 'touchstart', 'touchmove'].includes(event)
             ? { passive: false }
             : false;
-           iframeDoc.removeEventListener(event, handler as EventListener, options);
+          iframeDoc.removeEventListener(event, handler as EventListener, options);
         });
       }
 
@@ -579,7 +589,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
             const elementRect = element.getBoundingClientRect();
             const relativeX = iframeX - elementRect.left;
             const relativeY = iframeY - elementRect.top;
-            
+
             socket.emit("dom:click", {
               selector,
               url: snapshot.baseUrl,
@@ -627,7 +637,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           if (iframe) {
             const focusedElement = iframeDoc.activeElement as HTMLElement;
             let coordinates = { x: 0, y: 0 };
-            
+
             if (focusedElement && focusedElement !== iframeDoc.body) {
               // Get coordinates from the focused element
               const rect = focusedElement.getBoundingClientRect();

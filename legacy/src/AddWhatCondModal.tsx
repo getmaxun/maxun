@@ -1,11 +1,11 @@
 import { WhereWhatPair } from "maxun-core";
-import { GenericModal } from "../ui/GenericModal";
+import { GenericModal } from "../../src/components/ui/GenericModal";
 import { modalStyle } from "./AddWhereCondModal";
 import { Button, TextField, Typography } from "@mui/material";
 import React, { useRef } from "react";
-import { KeyValueForm } from "./KeyValueForm";
-import { ClearButton } from "../ui/buttons/ClearButton";
-import { useSocketStore } from "../../context/socket";
+import { KeyValueForm } from "../../src/components/recorder/KeyValueForm";
+import { ClearButton } from "../../src/components/ui/buttons/ClearButton";
+import { useSocketStore } from "../../src/context/socket";
 
 interface AddWhatCondModalProps {
   isOpen: boolean;

@@ -11,13 +11,31 @@ interface GoogleSheetUpdateTask {
 }
 
 interface SerializableOutput {
-  scrapeSchema?: any[];
-  scrapeList?: any[];
+  scrapeSchema?: Record<string, any[]>;
+  scrapeList?: Record<string, any[]>;
 }
 
+
 const MAX_RETRIES = 5;
+const MAX_QUEUE_SIZE = 1000;
 
 export let googleSheetUpdateTasks: { [runId: string]: GoogleSheetUpdateTask } = {};
+let isProcessingGoogleSheets = false;
+
+export function addGoogleSheetUpdateTask(runId: string, task: GoogleSheetUpdateTask): boolean {
+  const currentSize = Object.keys(googleSheetUpdateTasks).length;
+
+  if (currentSize >= MAX_QUEUE_SIZE) {
+    logger.log('warn', `Google Sheets task queue full (${currentSize}/${MAX_QUEUE_SIZE}), dropping oldest task`);
+    const oldestKey = Object.keys(googleSheetUpdateTasks)[0];
+    if (oldestKey) {
+      delete googleSheetUpdateTasks[oldestKey];
+    }
+  }
+
+  googleSheetUpdateTasks[runId] = task;
+  return true;
+}
 
 export async function updateGoogleSheet(robotId: string, runId: string) {
   try {
@@ -144,7 +162,7 @@ async function ensureSheetExists(spreadsheetId: string, sheetName: string, robot
       fields: 'sheets.properties.title'
     });
     
-    const existingSheets = response.data.sheets?.map(sheet => sheet.properties?.title) || [];
+    const existingSheets = response.data.sheets?.map((sheet: any) => sheet.properties?.title) || [];
     
     if (!existingSheets.includes(sheetName)) {
       await sheets.spreadsheets.batchUpdate({
@@ -219,7 +237,7 @@ export async function writeDataToSheet(
       refresh_token: robot.google_refresh_token,
     });
 
-    oauth2Client.on('tokens', async (tokens) => {
+    oauth2Client.once('tokens', async (tokens: any) => {
       if (tokens.refresh_token || tokens.access_token) {
         const robotModel = await Robot.findOne({ where: { 'recording_meta.id': robotId } });
         if (robotModel) {
@@ -292,10 +310,18 @@ export async function writeDataToSheet(
 }
 
 export const processGoogleSheetUpdates = async () => {
-  const maxProcessingTime = 60000;
-  const startTime = Date.now();
+  if (isProcessingGoogleSheets) {
+    logger.log('info', 'Google Sheets processing already in progress, skipping');
+    return;
+  }
 
-  while (Date.now() - startTime < maxProcessingTime) {
+  isProcessingGoogleSheets = true;
+
+  try {
+    const maxProcessingTime = 60000;
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < maxProcessingTime) {
     let hasPendingTasks = false;
 
     for (const runId in googleSheetUpdateTasks) {
@@ -328,9 +354,12 @@ export const processGoogleSheetUpdates = async () => {
       break;
     }
 
-    console.log('Waiting for 5 seconds before checking again...');
-    await new Promise(resolve => setTimeout(resolve, 5000));
-  }
+      console.log('Waiting for 5 seconds before checking again...');
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
 
-  console.log('Google Sheets processing completed or timed out');
+    console.log('Google Sheets processing completed or timed out');
+  } finally {
+    isProcessingGoogleSheets = false;
+  }
 };

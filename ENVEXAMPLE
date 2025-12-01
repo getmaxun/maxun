@@ -38,3 +38,8 @@ AIRTABLE_REDIRECT_URI=http://localhost:8080/auth/airtable/callback
 
 # Telemetry Settings - Please keep it enabled. Keeping it enabled helps us understand how the product is used and assess the impact of any new changes. 
 MAXUN_TELEMETRY=true
+
+# WebSocket port for browser CDP connections
+BROWSER_WS_PORT=3001
+BROWSER_HEALTH_PORT=3002
+BROWSER_WS_HOST=browser

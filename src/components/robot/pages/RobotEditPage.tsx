@@ -500,7 +500,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         {scrapeListLimits.map((limitInfo, index) => {
           // Get the corresponding scrapeList action to extract its name
           const scrapeListAction = robot?.recording?.workflow?.[limitInfo.pairIndex]?.what?.[limitInfo.actionIndex];
-          const actionName = 
+          const actionName =
             scrapeListAction?.name ||
             `List Limit ${index + 1}`;
 
@@ -821,10 +821,19 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
                 onChange={(e) => handleTargetUrlChange(e.target.value)}
                 style={{ marginBottom: "20px" }}
               />
-              <Divider />
-              {renderScrapeListLimitFields()}
-              <Divider />
-              {renderActionNameFields()}
+              {renderScrapeListLimitFields() && (
+                <>
+                  <Divider />
+                  {renderScrapeListLimitFields()}
+                </>
+              )}
+
+              {renderActionNameFields() && (
+                <>
+                  <Divider />
+                  {renderActionNameFields()}
+                </>
+              )}
             </>
           )}
         </Box>

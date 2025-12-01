@@ -1,22 +1,19 @@
 import { v4 as uuid } from "uuid";
-import { chromium } from 'playwright-extra';
-import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { io, Socket } from "socket.io-client";
 import { createRemoteBrowserForRun, destroyRemoteBrowser } from '../../browser-management/controller';
 import logger from '../../logger';
 import { browserPool, io as serverIo } from "../../server";
-import { googleSheetUpdateTasks, processGoogleSheetUpdates } from "../integrations/gsheet";
+import { addGoogleSheetUpdateTask, googleSheetUpdateTasks, processGoogleSheetUpdates } from "../integrations/gsheet";
 import Robot from "../../models/Robot";
 import Run from "../../models/Run";
 import { getDecryptedProxyConfig } from "../../routes/proxy";
 import { BinaryOutputService } from "../../storage/mino";
 import { capture } from "../../utils/analytics";
 import { WorkflowFile } from "maxun-core";
-import { Page } from "playwright";
+import { Page } from "playwright-core";
 import { sendWebhook } from "../../routes/webhook";
-import { airtableUpdateTasks, processAirtableUpdates } from "../integrations/airtable";
+import { addAirtableUpdateTask, airtableUpdateTasks, processAirtableUpdates } from "../integrations/airtable";
 import { convertPageToMarkdown, convertPageToHTML } from "../../markdownify/scrape";
-chromium.use(stealthPlugin());
 
 async function createWorkflowAndStoreMetadata(id: string, userId: string) {
   try {
@@ -104,24 +101,36 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string) {
   }
 }
 
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, operation: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`${operation} timed out after ${timeoutMs}ms`)), timeoutMs)
+    )
+  ]);
+}
+
 async function triggerIntegrationUpdates(runId: string, robotMetaId: string): Promise<void> {
   try {
-    googleSheetUpdateTasks[runId] = {
+    addGoogleSheetUpdateTask(runId, {
       robotId: robotMetaId,
       runId: runId,
       status: 'pending',
       retries: 5,
-    };
+    });
 
-    airtableUpdateTasks[runId] = {
+    addAirtableUpdateTask(runId, {
       robotId: robotMetaId,
       runId: runId,
       status: 'pending',
       retries: 5,
-    };
+    });
 
-    processAirtableUpdates().catch(err => logger.log('error', `Airtable update error: ${err.message}`));
-    processGoogleSheetUpdates().catch(err => logger.log('error', `Google Sheets update error: ${err.message}`));
+    withTimeout(processAirtableUpdates(), 65000, 'Airtable update')
+      .catch(err => logger.log('error', `Airtable update error: ${err.message}`));
+
+    withTimeout(processGoogleSheetUpdates(), 65000, 'Google Sheets update')
+      .catch(err => logger.log('error', `Google Sheets update error: ${err.message}`));
   } catch (err: any) {
     logger.log('error', `Failed to update integrations for run: ${runId}: ${err.message}`);
   }
@@ -208,6 +217,16 @@ async function executeRun(id: string, userId: string) {
       }
     }
 
+    browser = browserPool.getRemoteBrowser(plainRun.browserId);
+    if (!browser) {
+      throw new Error('Could not access browser');
+    }
+
+    let currentPage = await browser.getCurrentPage();
+    if (!currentPage) {
+      throw new Error('Could not create a new page');
+    }
+
     if (recording.recording_meta.type === 'scrape') {
       logger.log('info', `Executing scrape robot for scheduled run ${id}`);
 
@@ -250,15 +269,24 @@ async function executeRun(id: string, userId: string) {
         let html = '';
         const serializableOutput: any = {};
 
+        const SCRAPE_TIMEOUT = 120000;
+
         // Markdown conversion
-        if (formats.includes('markdown')) {
-          markdown = await convertPageToMarkdown(url);
+        if (formats.includes("markdown")) {
+          const markdownPromise = convertPageToMarkdown(url, currentPage);
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error(`Markdown conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
+          });
+          markdown = await Promise.race([markdownPromise, timeoutPromise]);
           serializableOutput.markdown = [{ content: markdown }];
         }
 
-        // HTML conversion
-        if (formats.includes('html')) {
-          html = await convertPageToHTML(url);
+        if (formats.includes("html")) {
+          const htmlPromise = convertPageToHTML(url, currentPage);
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error(`HTML conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
+          });
+          html = await Promise.race([htmlPromise, timeoutPromise]);
           serializableOutput.html = [{ content: html }];
         }
 
@@ -391,24 +419,22 @@ async function executeRun(id: string, userId: string) {
       logger.log('warn', `Failed to send run-started notification for run ${plainRun.runId}: ${socketError.message}`);
     }
 
-    browser = browserPool.getRemoteBrowser(plainRun.browserId);
-    if (!browser) {
-      throw new Error('Could not access browser');
-    }
-
-    let currentPage = await browser.getCurrentPage();
-    if (!currentPage) {
-      throw new Error('Could not create a new page');
-    }
-
     const workflow = AddGeneratedFlags(recording.recording);
     
     // Set run ID for real-time data persistence
     browser.interpreter.setRunId(id);
     
-    const interpretationInfo = await browser.interpreter.InterpretRecording(
+    const INTERPRETATION_TIMEOUT = 600000;
+
+    const interpretationPromise = browser.interpreter.InterpretRecording(
       workflow, currentPage, (newPage: Page) => currentPage = newPage, plainRun.interpreterSettings
     );
+
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error(`Workflow interpretation timed out after ${INTERPRETATION_TIMEOUT/1000}s`)), INTERPRETATION_TIMEOUT);
+    });
+
+    const interpretationInfo = await Promise.race([interpretationPromise, timeoutPromise]);
 
     const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
     const uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, interpretationInfo.binaryOutput);
@@ -523,9 +549,19 @@ async function executeRun(id: string, userId: string) {
     return true;
   } catch (error: any) {
     logger.log('info', `Error while running a robot with id: ${id} - ${error.message}`);
-    console.log(error.message);
     const run = await Run.findOne({ where: { runId: id } });
     if (run) {
+      if (browser) {
+        try {
+          if (browser.interpreter) {
+            await browser.interpreter.clearState();
+          }
+          await destroyRemoteBrowser(run.browserId, userId);
+        } catch (cleanupError: any) {
+          logger.error(`Failed to cleanup browser in error handler: ${cleanupError.message}`);
+        }
+      }
+
       await run.update({
         status: 'failed',
         finishedAt: new Date().toLocaleString(),
@@ -586,7 +622,7 @@ async function executeRun(id: string, userId: string) {
   }
 }
 
-async function readyForRunHandler(browserId: string, id: string, userId: string) {
+async function readyForRunHandler(browserId: string, id: string, userId: string, socket: Socket) {
   try {
     const interpretation = await executeRun(id, userId);
 
@@ -602,6 +638,8 @@ async function readyForRunHandler(browserId: string, id: string, userId: string)
   } catch (error: any) {
     logger.error(`Error during readyForRunHandler: ${error.message}`);
     await destroyRemoteBrowser(browserId, userId);
+  } finally {
+    cleanupSocketConnection(socket, browserId, id);
   }
 }
 
@@ -611,6 +649,8 @@ function resetRecordingState(browserId: string, id: string) {
 }
 
 export async function handleRunRecording(id: string, userId: string) {
+  let socket: Socket | null = null;
+  
   try {
     const result = await createWorkflowAndStoreMetadata(id, userId);
     const { browserId, runId: newRunId } = result;
@@ -619,27 +659,57 @@ export async function handleRunRecording(id: string, userId: string) {
       throw new Error('browserId or runId or userId is undefined');
     }
 
-    const socket = io(`${process.env.BACKEND_URL ? process.env.BACKEND_URL : 'http://localhost:8080'}/${browserId}`, {
+    const CONNECTION_TIMEOUT = 30000;
+
+    socket = io(`${process.env.BACKEND_URL ? process.env.BACKEND_URL : 'http://localhost:5000'}/${browserId}`, {
       transports: ['websocket'],
-      rejectUnauthorized: false
+      rejectUnauthorized: false,
+      timeout: CONNECTION_TIMEOUT,
     });
 
-    socket.on('ready-for-run', () => readyForRunHandler(browserId, newRunId, userId));
+    const readyHandler = () => readyForRunHandler(browserId, newRunId, userId, socket!);
+
+    socket.on('ready-for-run', readyHandler);
+
+    socket.on('connect_error', (error: Error) => {
+      logger.error(`Socket connection error for scheduled run ${newRunId}: ${error.message}`);
+      cleanupSocketConnection(socket!, browserId, newRunId);
+    });
+
+    socket.on('disconnect', () => {
+      cleanupSocketConnection(socket!, browserId, newRunId);
+    });
 
     logger.log('info', `Running robot: ${id}`);
 
-    socket.on('disconnect', () => {
-      cleanupSocketListeners(socket, browserId, newRunId, userId);
-    });
-
   } catch (error: any) {
     logger.error('Error running recording:', error);
+    if (socket) {
+      cleanupSocketConnection(socket, '', '');
+    }
   }
 }
 
-function cleanupSocketListeners(socket: Socket, browserId: string, id: string, userId: string) {
-  socket.off('ready-for-run', () => readyForRunHandler(browserId, id, userId));
-  logger.log('info', `Cleaned up listeners for browserId: ${browserId}, runId: ${id}`);
+function cleanupSocketConnection(socket: Socket, browserId: string, id: string) {
+  try {
+    socket.removeAllListeners();
+    socket.disconnect();
+
+    if (browserId) {
+      const namespace = serverIo.of(browserId);
+      namespace.removeAllListeners();
+      namespace.disconnectSockets(true);
+      const nsps = (serverIo as any)._nsps;
+      if (nsps && nsps.has(`/${browserId}`)) {
+        nsps.delete(`/${browserId}`);
+        logger.log('debug', `Deleted namespace /${browserId} from io._nsps Map`);
+      }
+    }
+
+    logger.log('info', `Cleaned up socket connection for browserId: ${browserId}, runId: ${id}`);
+  } catch (error: any) {
+    logger.error(`Error cleaning up socket connection: ${error.message}`);
+  }
 }
 
 export { createWorkflowAndStoreMetadata };

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Button, Paper, Box, TextField, IconButton, Tooltip } from "@mui/material";
 import { WorkflowFile } from "maxun-core";
 import Typography from "@mui/material/Typography";
@@ -15,9 +15,9 @@ import ActionDescriptionBox from '../action/ActionDescriptionBox';
 import { useThemeMode } from '../../context/theme-provider';
 import { useTranslation } from 'react-i18next';
 import { useBrowserDimensionsStore } from '../../context/browserDimensions';
-import { emptyWorkflow } from '../../shared/constants';
 import { clientListExtractor } from '../../helpers/clientListExtractor';
 import { clientSelectorGenerator } from '../../helpers/clientSelectorGenerator';
+import { clientPaginationDetector } from '../../helpers/clientPaginationDetector';
 
 const fetchWorkflow = (id: string, callback: (response: WorkflowFile) => void) => {
   getActiveWorkflow(id).then(
@@ -45,6 +45,13 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const [showCaptureText, setShowCaptureText] = useState(true);
   const { panelHeight } = useBrowserDimensionsStore();
 
+  const [autoDetectedPagination, setAutoDetectedPagination] = useState<{
+    type: PaginationType;
+    selector: string | null;
+    confidence: 'high' | 'medium' | 'low';
+  } | null>(null);
+  const autoDetectionRunRef = useRef<string | null>(null);
+
   const { lastAction, notify, currentWorkflowActionsState, setCurrentWorkflowActionsState, resetInterpretationLog, currentListActionId, setCurrentListActionId, currentTextActionId, setCurrentTextActionId, currentScreenshotActionId, setCurrentScreenshotActionId, isDOMMode, setIsDOMMode, currentSnapshot, setCurrentSnapshot, updateDOMMode, initialUrl, setRecordingUrl, currentTextGroupName } = useGlobalInfoStore();  
   const { 
     getText, startGetText, stopGetText, 
@@ -62,7 +69,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     startAction, finishAction 
   } = useActionContext();
   
-  const { browserSteps, updateBrowserTextStepLabel, deleteBrowserStep, addScreenshotStep, updateListTextFieldLabel, removeListTextField, updateListStepLimit, deleteStepsByActionId, updateListStepData, updateScreenshotStepData, emitActionForStep } = useBrowserSteps();
+  const { browserSteps, addScreenshotStep, updateListStepLimit, updateListStepPagination, deleteStepsByActionId, updateListStepData, updateScreenshotStepData, emitActionForStep } = useBrowserSteps();
   const { id, socket } = useSocketStore();
   const { t } = useTranslation();
 
@@ -71,6 +78,73 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const workflowHandler = useCallback((data: WorkflowFile) => {
     setWorkflow(data);
   }, [setWorkflow]);
+
+  useEffect(() => {
+    if (!paginationType || !currentListActionId) return;
+
+    const currentListStep = browserSteps.find(
+      step => step.type === 'list' && step.actionId === currentListActionId
+    ) as (BrowserStep & { type: 'list' }) | undefined;
+
+    const currentSelector = currentListStep?.pagination?.selector;
+    const currentType = currentListStep?.pagination?.type;
+
+    if (['clickNext', 'clickLoadMore'].includes(paginationType)) {
+      const needsSelector = !currentSelector && !currentType;
+      const typeChanged = currentType && currentType !== paginationType;
+
+      if (typeChanged) {
+        const iframeElement = document.querySelector('#browser-window iframe') as HTMLIFrameElement;
+        if (iframeElement?.contentDocument && currentSelector) {
+          try {
+            function evaluateSelector(selector: string, doc: Document): Element[] {
+              if (selector.startsWith('//') || selector.startsWith('(//')) {
+                try {
+                  const result = doc.evaluate(selector, doc, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+                  const elements: Element[] = [];
+                  for (let i = 0; i < result.snapshotLength; i++) {
+                    const node = result.snapshotItem(i);
+                    if (node && node.nodeType === Node.ELEMENT_NODE) {
+                      elements.push(node as Element);
+                    }
+                  }
+                  return elements;
+                } catch (err) {
+                  return [];
+                }
+              } else {
+                try {
+                  return Array.from(doc.querySelectorAll(selector));
+                } catch (err) {
+                  return [];
+                }
+              }
+            }
+
+            const elements = evaluateSelector(currentSelector, iframeElement.contentDocument);
+            elements.forEach((el: Element) => {
+              (el as HTMLElement).style.outline = '';
+              (el as HTMLElement).style.outlineOffset = '';
+              (el as HTMLElement).style.zIndex = '';
+            });
+          } catch (error) {
+            console.error('Error removing pagination highlight:', error);
+          }
+        }
+
+        if (currentListStep) {
+          updateListStepPagination(currentListStep.id, {
+            type: paginationType,
+            selector: null,
+          });
+        }
+
+        startPaginationMode();
+      } else if (needsSelector) {
+        startPaginationMode();
+      }
+    }
+  }, [paginationType, currentListActionId, browserSteps, updateListStepPagination, startPaginationMode]);
 
   useEffect(() => {
     if (socket) {
@@ -341,6 +415,46 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   }, [stopGetList, resetListState]);
 
   const stopCaptureAndEmitGetListSettings = useCallback(() => {
+    if (autoDetectedPagination?.selector) {
+      const iframeElement = document.querySelector('#browser-window iframe') as HTMLIFrameElement;
+      if (iframeElement?.contentDocument) {
+        try {
+          function evaluateSelector(selector: string, doc: Document): Element[] {
+            if (selector.startsWith('//') || selector.startsWith('(//')) {
+              try {
+                const result = doc.evaluate(selector, doc, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+                const elements: Element[] = [];
+                for (let i = 0; i < result.snapshotLength; i++) {
+                  const node = result.snapshotItem(i);
+                  if (node && node.nodeType === Node.ELEMENT_NODE) {
+                    elements.push(node as Element);
+                  }
+                }
+                return elements;
+              } catch (err) {
+                return [];
+              }
+            } else {
+              try {
+                return Array.from(doc.querySelectorAll(selector));
+              } catch (err) {
+                return [];
+              }
+            }
+          }
+
+          const elements = evaluateSelector(autoDetectedPagination.selector, iframeElement.contentDocument);
+          elements.forEach((el: Element) => {
+            (el as HTMLElement).style.outline = '';
+            (el as HTMLElement).style.outlineOffset = '';
+            (el as HTMLElement).style.zIndex = '';
+          });
+        } catch (error) {
+          console.error('Error removing pagination highlight on completion:', error);
+        }
+      }
+    }
+
     const latestListStep = getLatestListStep(browserSteps);
     if (latestListStep) {
       extractDataClientSide(latestListStep.listSelector!, latestListStep.fields, latestListStep.id);
@@ -349,7 +463,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         ...currentWorkflowActionsState,
         hasScrapeListAction: true
       });
-      
+
       emitActionForStep(latestListStep);
 
       handleStopGetList();
@@ -367,7 +481,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
       onFinishCapture();
       clientSelectorGenerator.cleanup();
     }
-  }, [socket, notify, handleStopGetList, resetInterpretationLog, finishAction, onFinishCapture, t, browserSteps, extractDataClientSide, setCurrentWorkflowActionsState, currentWorkflowActionsState, emitActionForStep]);
+  }, [socket, notify, handleStopGetList, resetInterpretationLog, finishAction, onFinishCapture, t, browserSteps, extractDataClientSide, setCurrentWorkflowActionsState, currentWorkflowActionsState, emitActionForStep, autoDetectedPagination]);
 
   const getLatestListStep = (steps: BrowserStep[]) => {
     const listSteps = steps.filter(step => step.type === 'list');
@@ -391,7 +505,182 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
           return;
         }
         
-        startPaginationMode();
+        const currentListStepForAutoDetect = browserSteps.find(
+          step => step.type === 'list' && step.actionId === currentListActionId
+        ) as (BrowserStep & { type: 'list'; listSelector?: string }) | undefined;
+
+        if (currentListStepForAutoDetect?.listSelector) {
+          if (autoDetectionRunRef.current !== currentListActionId) {
+            autoDetectionRunRef.current = currentListActionId;
+
+            notify('info', 'Detecting pagination...');
+
+            try {
+              socket?.emit('testPaginationScroll', {
+                listSelector: currentListStepForAutoDetect.listSelector
+              });
+
+              const handleScrollTestResult = (result: any) => {
+                if (result.success && result.contentLoaded) {
+                  setAutoDetectedPagination({
+                    type: 'scrollDown',
+                    selector: null,
+                    confidence: 'high'
+                  });
+                  updatePaginationType('scrollDown');
+
+                  const latestListStep = browserSteps.find(
+                    step => step.type === 'list' && step.actionId === currentListActionId
+                  );
+                  if (latestListStep) {
+                    updateListStepPagination(latestListStep.id, {
+                      type: 'scrollDown',
+                      selector: null,
+                      isShadow: false
+                    });
+                  }
+                } else if (result.success && !result.contentLoaded) {
+                  const iframeElement = document.querySelector('#browser-window iframe') as HTMLIFrameElement;
+                  const iframeDoc = iframeElement?.contentDocument;
+
+                  if (iframeDoc) {
+                    const detectionResult = clientPaginationDetector.autoDetectPagination(
+                      iframeDoc,
+                      currentListStepForAutoDetect.listSelector!,
+                      clientSelectorGenerator,
+                      { disableScrollDetection: true }
+                    );
+
+                    if (detectionResult.type) {
+                      setAutoDetectedPagination({
+                        type: detectionResult.type,
+                        selector: detectionResult.selector,
+                        confidence: detectionResult.confidence
+                      });
+
+                      const latestListStep = browserSteps.find(
+                        step => step.type === 'list' && step.actionId === currentListActionId
+                      );
+                      if (latestListStep) {
+                        updateListStepPagination(latestListStep.id, {
+                          type: detectionResult.type,
+                          selector: detectionResult.selector,
+                          isShadow: false
+                        });
+                      }
+
+                      updatePaginationType(detectionResult.type);
+
+                      if (detectionResult.selector && (detectionResult.type === 'clickNext' || detectionResult.type === 'clickLoadMore')) {
+                        try {
+                          function evaluateSelector(selector: string, doc: Document): Element[] {
+                            try {
+                              const isXPath = selector.startsWith('//') || selector.startsWith('(//');
+                              if (isXPath) {
+                                const result = doc.evaluate(
+                                  selector,
+                                  doc,
+                                  null,
+                                  XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+                                  null
+                                );
+                                const elements: Element[] = [];
+                                for (let i = 0; i < result.snapshotLength; i++) {
+                                  const node = result.snapshotItem(i);
+                                  if (node && node.nodeType === Node.ELEMENT_NODE) {
+                                    elements.push(node as Element);
+                                  }
+                                }
+                                return elements;
+                              } else {
+                                try {
+                                  const allElements = Array.from(doc.querySelectorAll(selector));
+                                  if (allElements.length > 0) {
+                                    return allElements;
+                                  }
+                                } catch (err) {
+                                  console.warn('[RightSidePanel] Full chained selector failed, trying individual selectors:', err);
+                                }
+
+                                const selectorParts = selector.split(',');
+                                for (const part of selectorParts) {
+                                  try {
+                                    const elements = Array.from(doc.querySelectorAll(part.trim()));
+                                    if (elements.length > 0) {
+                                      return elements;
+                                    }
+                                  } catch (err) {
+                                    console.warn('[RightSidePanel] Selector part failed:', part.trim(), err);
+                                    continue;
+                                  }
+                                }
+                                return [];
+                              }
+                            } catch (err) {
+                              console.error('[RightSidePanel] Selector evaluation failed:', selector, err);
+                              return [];
+                            }
+                          }
+
+                          const elements = evaluateSelector(detectionResult.selector, iframeDoc);
+                          if (elements.length > 0) {
+                            elements.forEach((el: Element) => {
+                              (el as HTMLElement).style.outline = '3px dashed #ff00c3';
+                              (el as HTMLElement).style.outlineOffset = '2px';
+                              (el as HTMLElement).style.zIndex = '9999';
+                            });
+
+                            const firstElement = elements[0] as HTMLElement;
+                            const elementRect = firstElement.getBoundingClientRect();
+                            const iframeWindow = iframeElement.contentWindow;
+                            if (iframeWindow) {
+                              const targetY = elementRect.top + iframeWindow.scrollY - (iframeWindow.innerHeight / 2) + (elementRect.height / 2);
+                              iframeWindow.scrollTo({ top: targetY, behavior: 'smooth' });
+                            }
+
+                            const paginationTypeLabel = detectionResult.type === 'clickNext' ? 'Next Button' : 'Load More Button';
+                            notify('info', `${paginationTypeLabel} has been auto-detected and highlighted on the page`);
+                          } else {
+                            console.warn(' No elements found for selector:', detectionResult.selector);
+                          }
+                        } catch (error) {
+                          console.error('Error highlighting pagination button:', error);
+                        }
+                      }
+                    } else {
+                      setAutoDetectedPagination(null);
+                    }
+                  }
+                } else {
+                  console.error('Scroll test failed:', result.error);
+                  setAutoDetectedPagination(null);
+                }
+
+                socket?.off('paginationScrollTestResult', handleScrollTestResult);
+              };
+
+              socket?.on('paginationScrollTestResult', handleScrollTestResult);
+
+              setTimeout(() => {
+                socket?.off('paginationScrollTestResult', handleScrollTestResult);
+              }, 5000);
+
+            } catch (error) {
+              console.error('Scroll test failed:', error);
+              setAutoDetectedPagination(null);
+            }
+          }
+        }
+
+        const shouldSkipPaginationMode = autoDetectedPagination && (
+          ['scrollDown', 'scrollUp'].includes(autoDetectedPagination.type) ||
+          (['clickNext', 'clickLoadMore'].includes(autoDetectedPagination.type) && autoDetectedPagination.selector)
+        );
+
+        if (!shouldSkipPaginationMode) {
+          startPaginationMode();
+        }
+
         setShowPaginationOptions(true);
         setCaptureStage('pagination');
         break;
@@ -460,6 +749,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
       case 'pagination':
         stopPaginationMode();
         setShowPaginationOptions(false);
+        setAutoDetectedPagination(null);
         setCaptureStage('initial');
         break;
     }
@@ -495,17 +785,58 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         socket.emit('removeAction', { actionId: currentListActionId });
       }
     }
+
+    if (autoDetectedPagination?.selector) {
+      const iframeElement = document.querySelector('#browser-window iframe') as HTMLIFrameElement;
+      if (iframeElement?.contentDocument) {
+        try {
+          function evaluateSelector(selector: string, doc: Document): Element[] {
+            if (selector.startsWith('//') || selector.startsWith('(//')) {
+              try {
+                const result = doc.evaluate(selector, doc, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+                const elements: Element[] = [];
+                for (let i = 0; i < result.snapshotLength; i++) {
+                  const node = result.snapshotItem(i);
+                  if (node && node.nodeType === Node.ELEMENT_NODE) {
+                    elements.push(node as Element);
+                  }
+                }
+                return elements;
+              } catch (err) {
+                return [];
+              }
+            } else {
+              try {
+                return Array.from(doc.querySelectorAll(selector));
+              } catch (err) {
+                return [];
+              }
+            }
+          }
+
+          const elements = evaluateSelector(autoDetectedPagination.selector, iframeElement.contentDocument);
+          elements.forEach((el: Element) => {
+            (el as HTMLElement).style.outline = '';
+            (el as HTMLElement).style.outlineOffset = '';
+            (el as HTMLElement).style.zIndex = '';
+          });
+        } catch (error) {
+          console.error('Error removing pagination highlight on discard:', error);
+        }
+      }
+    }
     
     resetListState();
     stopPaginationMode();
     stopLimitMode();
     setShowPaginationOptions(false);
     setShowLimitOptions(false);
+    setAutoDetectedPagination(null);
     setCaptureStage('initial');
     setCurrentListActionId('');
     clientSelectorGenerator.cleanup();
     notify('error', t('right_panel.errors.capture_list_discarded'));
-  }, [currentListActionId, browserSteps, stopGetList, deleteStepsByActionId, resetListState, setShowPaginationOptions, setShowLimitOptions, setCaptureStage, notify, t, stopPaginationMode, stopLimitMode, socket]);
+  }, [currentListActionId, browserSteps, stopGetList, deleteStepsByActionId, resetListState, setShowPaginationOptions, setShowLimitOptions, setCaptureStage, notify, t, stopPaginationMode, stopLimitMode, socket, autoDetectedPagination]);
 
   const captureScreenshot = (fullPage: boolean) => {
     const screenshotCount = browserSteps.filter(s => s.type === 'screenshot').length + 1;
@@ -615,6 +946,114 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
             {showPaginationOptions && (
               <Box display="flex" flexDirection="column" gap={2} style={{ margin: '13px' }}>
                 <Typography>{t('right_panel.pagination.title')}</Typography>
+                
+                {autoDetectedPagination && autoDetectedPagination.type !== '' && (
+                  <Box
+                    sx={{
+                      p: 2,
+                      mb: 1,
+                      borderRadius: '8px',
+                      backgroundColor: isDarkMode ? '#1a3a1a' : '#e8f5e9',
+                      border: `1px solid ${isDarkMode ? '#2e7d32' : '#4caf50'}`,
+                    }}
+                  >
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: isDarkMode ? '#81c784' : '#2e7d32',
+                        fontWeight: 'bold',
+                        mb: 0.5
+                      }}
+                    >
+                      ✓ Auto-detected: {
+                        autoDetectedPagination.type === 'clickNext' ? 'Click Next' :
+                          autoDetectedPagination.type === 'clickLoadMore' ? 'Click Load More' :
+                            autoDetectedPagination.type === 'scrollDown' ? 'Scroll Down' :
+                              autoDetectedPagination.type === 'scrollUp' ? 'Scroll Up' :
+                                autoDetectedPagination.type
+                      }
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: isDarkMode ? '#a5d6a7' : '#388e3c',
+                        display: 'block',
+                        mb: 1
+                      }}
+                    >
+                      You can continue with this or manually select a different pagination type below.
+                    </Typography>
+                    {autoDetectedPagination.selector && ['clickNext', 'clickLoadMore'].includes(autoDetectedPagination.type) && (
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => {
+                          const currentListStep = browserSteps.find(
+                            step => step.type === 'list' && step.actionId === currentListActionId
+                          ) as (BrowserStep & { type: 'list' }) | undefined;
+
+                          if (currentListStep) {
+                            const iframeElement = document.querySelector('#browser-window iframe') as HTMLIFrameElement;
+                            if (iframeElement?.contentDocument && autoDetectedPagination.selector) {
+                              try {
+                                function evaluateSelector(selector: string, doc: Document): Element[] {
+                                  if (selector.startsWith('//') || selector.startsWith('(//')) {
+                                    try {
+                                      const result = doc.evaluate(selector, doc, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+                                      const elements: Element[] = [];
+                                      for (let i = 0; i < result.snapshotLength; i++) {
+                                        const node = result.snapshotItem(i);
+                                        if (node && node.nodeType === Node.ELEMENT_NODE) {
+                                          elements.push(node as Element);
+                                        }
+                                      }
+                                      return elements;
+                                    } catch (err) {
+                                      return [];
+                                    }
+                                  } else {
+                                    try {
+                                      return Array.from(doc.querySelectorAll(selector));
+                                    } catch (err) {
+                                      return [];
+                                    }
+                                  }
+                                }
+
+                                const elements = evaluateSelector(autoDetectedPagination.selector, iframeElement.contentDocument);
+                                elements.forEach((el: Element) => {
+                                  (el as HTMLElement).style.outline = '';
+                                  (el as HTMLElement).style.outlineOffset = '';
+                                  (el as HTMLElement).style.zIndex = '';
+                                });
+                              } catch (error) {
+                                console.error('Error removing pagination highlight:', error);
+                              }
+                            }
+
+                            updateListStepPagination(currentListStep.id, {
+                              type: autoDetectedPagination.type,
+                              selector: null,
+                            });
+
+                            startPaginationMode();
+                            notify('info', 'Please select a different pagination element');
+                          }
+                        }}
+                        sx={{
+                          color: isDarkMode ? '#81c784' : '#2e7d32',
+                          borderColor: isDarkMode ? '#81c784' : '#2e7d32',
+                          '&:hover': {
+                            borderColor: isDarkMode ? '#a5d6a7' : '#4caf50',
+                            backgroundColor: isDarkMode ? '#1a3a1a' : '#f1f8f4',
+                          }
+                        }}
+                      >
+                        Choose Different Element
+                      </Button>
+                    )}
+                  </Box>
+                )}
                 <Button
                   variant={paginationType === 'clickNext' ? "contained" : "outlined"}
                   onClick={() => handlePaginationSettingSelect('clickNext')}

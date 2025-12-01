@@ -1,10 +1,8 @@
 import { Router, Request, Response } from 'express';
-import { chromium } from 'playwright-extra';
-import stealthPlugin from 'puppeteer-extra-plugin-stealth';
+import { connectToRemoteBrowser } from '../browser-management/browserConnection';
 import User from '../models/User';
 import { encrypt, decrypt } from '../utils/auth';
 import { requireSignIn } from '../middlewares/auth';
-chromium.use(stealthPlugin());
 
 export const router = Router();
 
@@ -86,11 +84,7 @@ router.get('/test', requireSignIn, async (req: Request, res: Response) => {
             }),
         };
 
-        const browser = await chromium.launch({
-            headless: true,
-            proxy: proxyOptions,
-            args:["--ignore-certificate-errors"]
-        });
+        const browser = await connectToRemoteBrowser();
         const page = await browser.newPage();
         await page.goto('https://example.com');
         await browser.close();

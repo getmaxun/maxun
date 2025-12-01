@@ -30,9 +30,9 @@ services:
       - minio_data:/data
 
   backend:
-    #build:
-      #context: .
-      #dockerfile: server/Dockerfile
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile.backend
     image: getmaxun/maxun-backend:latest
     restart: unless-stopped
     ports:
@@ -60,9 +60,9 @@ services:
       - /var/run/dbus:/var/run/dbus
 
   frontend:
-      #build:
-      #context: .
-      #dockerfile: Dockerfile
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile.frontend 
     image: getmaxun/maxun-frontend:latest
     restart: unless-stopped
     ports:
@@ -73,6 +73,44 @@ services:
       BACKEND_URL: ${BACKEND_URL}
     depends_on:
       - backend
+
+  browser:
+    build:
+      context: .
+      dockerfile: browser/Dockerfile
+      args:
+        BROWSER_WS_PORT: ${BROWSER_WS_PORT:-3001}
+        BROWSER_HEALTH_PORT: ${BROWSER_HEALTH_PORT:-3002}
+    ports:
+      - "${BROWSER_WS_PORT:-3001}:${BROWSER_WS_PORT:-3001}"
+      - "${BROWSER_HEALTH_PORT:-3002}:${BROWSER_HEALTH_PORT:-3002}"
+    environment:
+      - NODE_ENV=production
+      - DEBUG=pw:browser*
+      - BROWSER_WS_PORT=${BROWSER_WS_PORT:-3001}
+      - BROWSER_HEALTH_PORT=${BROWSER_HEALTH_PORT:-3002}
+      - BROWSER_WS_HOST=${BROWSER_WS_HOST:-browser}
+      - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${BROWSER_HEALTH_PORT:-3002}/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.5'
+        reservations:
+          memory: 1G
+          cpus: '1.0'
+    security_opt:
+      - seccomp:unconfined
+    shm_size: 2gb
+    cap_add:
+      - SYS_ADMIN
 
 volumes:
   postgres_data:

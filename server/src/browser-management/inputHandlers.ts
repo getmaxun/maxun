@@ -7,9 +7,7 @@ import { Socket } from 'socket.io';
 import logger from "../logger";
 import { Coordinates, ScrollDeltas, KeyboardInput, DatePickerEventData } from '../types';
 import { browserPool } from "../server";
-import { WorkflowGenerator } from "../workflow-management/classes/Generator";
-import { Page } from "playwright";
-import { throttle } from "../../../src/helpers/inputHelpers";
+import { Page } from "playwright-core";
 import { CustomActions } from "../../../src/shared/types";
 import { WhereWhatPair } from "maxun-core";
 import { RemoteBrowser } from './classes/RemoteBrowser';
@@ -865,6 +863,157 @@ const onRemoveAction = async (
 };
 
 /**
+ * Tests pagination by scrolling down and checking if new content loads
+ * @param data Object containing listSelector
+ * @param userId The user ID
+ * @param socket The socket connection to emit results
+ */
+const onTestPaginationScroll = async (
+  data: { listSelector: string },
+  userId: string,
+  socket: Socket
+) => {
+  logger.log("debug", "Testing pagination scroll emitted from client");
+
+  const id = browserPool.getActiveBrowserId(userId, "recording");
+  if (!id) {
+    logger.log("warn", `No active browser for id ${id}`);
+    socket.emit("paginationScrollTestResult", {
+      success: false,
+      error: "No active browser"
+    });
+    return;
+  }
+
+  const activeBrowser = browserPool.getRemoteBrowser(id);
+  const currentPage = activeBrowser?.getCurrentPage();
+
+  if (!currentPage || !activeBrowser) {
+    logger.log("warn", `No active page for browser ${id}`);
+    socket.emit("paginationScrollTestResult", {
+      success: false,
+      error: "No active page"
+    });
+    return;
+  }
+
+  try {
+    const { listSelector } = data;
+
+    logger.log("info", `Starting pagination scroll test for selector: ${listSelector}`);
+
+    const initialCount = await currentPage.evaluate((selector) => {
+      function evaluateSelector(sel: string): Element[] {
+        try {
+          const isXPath = sel.startsWith('//') || sel.startsWith('(//');
+          if (isXPath) {
+            const result = document.evaluate(
+              sel,
+              document,
+              null,
+              XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+              null
+            );
+            const elements: Element[] = [];
+            for (let i = 0; i < result.snapshotLength; i++) {
+              const node = result.snapshotItem(i);
+              if (node && node.nodeType === Node.ELEMENT_NODE) {
+                elements.push(node as Element);
+              }
+            }
+            return elements;
+          } else {
+            return Array.from(document.querySelectorAll(sel));
+          }
+        } catch (err) {
+          console.error('Selector evaluation failed:', sel, err);
+          return [];
+        }
+      }
+
+      return evaluateSelector(selector).length;
+    }, listSelector);
+
+    logger.log("info", `Initial list count: ${initialCount}`);
+
+    const scrollInfo = await currentPage.evaluate(() => {
+      return {
+        scrollY: window.scrollY,
+        scrollHeight: document.documentElement.scrollHeight,
+        viewportHeight: window.innerHeight
+      };
+    });
+
+    logger.log("info", `Scroll info:`, scrollInfo);
+
+    await currentPage.evaluate(() => {
+      window.scrollTo(0, document.body.scrollHeight);
+    });
+
+    logger.log("info", "Scrolled to bottom, waiting for potential content load...");
+
+    await currentPage.waitForTimeout(2000);
+
+    const newCount = await currentPage.evaluate((selector) => {
+      function evaluateSelector(sel: string): Element[] {
+        try {
+          const isXPath = sel.startsWith('//') || sel.startsWith('(//');
+          if (isXPath) {
+            const result = document.evaluate(
+              sel,
+              document,
+              null,
+              XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+              null
+            );
+            const elements: Element[] = [];
+            for (let i = 0; i < result.snapshotLength; i++) {
+              const node = result.snapshotItem(i);
+              if (node && node.nodeType === Node.ELEMENT_NODE) {
+                elements.push(node as Element);
+              }
+            }
+            return elements;
+          } else {
+            return Array.from(document.querySelectorAll(sel));
+          }
+        } catch (err) {
+          return [];
+        }
+      }
+
+      return evaluateSelector(selector).length;
+    }, listSelector);
+
+    logger.log("info", `New list count after scroll: ${newCount}`);
+
+    await currentPage.evaluate((originalY) => {
+      window.scrollTo(0, originalY);
+    }, scrollInfo.scrollY);
+
+    const contentLoaded = newCount > initialCount;
+
+    logger.log("info", `Scroll test result: ${contentLoaded ? 'Content loaded' : 'No new content'}`);
+
+    socket.emit("paginationScrollTestResult", {
+      success: true,
+      contentLoaded: contentLoaded,
+      initialCount: initialCount,
+      newCount: newCount,
+      itemsAdded: newCount - initialCount
+    });
+
+  } catch (error) {
+    const { message } = error as Error;
+    logger.log("error", `Error during pagination scroll test: ${message}`);
+    socket.emit("paginationScrollTestResult", {
+      success: false,
+      error: message
+    });
+  }
+};
+
+/**
  * Helper function for registering the handlers onto established websocket connection.
  * Registers various input handlers.
  *
@@ -897,6 +1046,41 @@ const registerInputHandlers = (socket: Socket, userId: string) => {
     socket.on("dom:click", (data) => onDOMClickAction(data, userId));
     socket.on("dom:keypress", (data) => onDOMKeyboardAction(data, userId));
     socket.on("dom:addpair", (data) => onDOMWorkflowPair(data, userId));
+    socket.on("testPaginationScroll", (data) => onTestPaginationScroll(data, userId, socket));
 };
 
-export default registerInputHandlers;
+/**
+ *  Removes all input handler socket listeners to prevent memory leaks
+ * Must be called when socket disconnects or browser session ends
+ * @param socket websocket with established connection
+ * @returns void
+ * @category BrowserManagement
+ */
+const removeInputHandlers = (socket: Socket) => {
+  try {
+    socket.removeAllListeners("input:mousedown");
+    socket.removeAllListeners("input:wheel");
+    socket.removeAllListeners("input:mousemove");
+    socket.removeAllListeners("input:keydown");
+    socket.removeAllListeners("input:keyup");
+    socket.removeAllListeners("input:url");
+    socket.removeAllListeners("input:refresh");
+    socket.removeAllListeners("input:back");
+    socket.removeAllListeners("input:forward");
+    socket.removeAllListeners("input:date");
+    socket.removeAllListeners("input:dropdown");
+    socket.removeAllListeners("input:time");
+    socket.removeAllListeners("input:datetime-local");
+    socket.removeAllListeners("action");
+    socket.removeAllListeners("dom:input");
+    socket.removeAllListeners("dom:click");
+    socket.removeAllListeners("dom:keypress");
+    socket.removeAllListeners("dom:addpair");
+    socket.removeAllListeners("removeAction");
+    socket.removeAllListeners("testPaginationScroll");
+  } catch (error: any) {
+    console.warn(`Error removing input handlers: ${error.message}`);
+  }
+};
+
+export { registerInputHandlers, removeInputHandlers };

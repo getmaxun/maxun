@@ -1,111 +1,125 @@
-import { chromium } from "playwright";
+import { Page } from "playwright-core";
 import { parseMarkdown } from "./markdown";
+import logger from "../logger";
+
+async function gotoWithFallback(page: any, url: string) {
+  try {
+    return await page.goto(url, {
+      waitUntil: "networkidle",
+      timeout: 100000,
+    });
+  } catch (err) {
+    // fallback: JS-heavy or unstable sites
+    return await page.goto(url, {
+      waitUntil: "domcontentloaded",
+      timeout: 100000,
+    });
+  }
+}
 
 /**
  * Fetches a webpage, strips scripts/styles/images/etc,
  * returns clean Markdown using parser.
+ * @param url - The URL to convert
+ * @param page - Existing Playwright page instance to use
  */
-export async function convertPageToMarkdown(url: string): Promise<string> {
-  const browser = await chromium.launch();
-  const page = await browser.newPage();
+export async function convertPageToMarkdown(url: string, page: Page): Promise<string> {
+  try {
+    logger.log('info', `[Scrape] Using existing page instance for markdown conversion of ${url}`);
 
-  await page.goto(url, { waitUntil: "networkidle", timeout: 100000 });
+    await gotoWithFallback(page, url);
 
-  await page.addInitScript(() => {
-    const selectors = [
-      "script",
-      "style",
-      "link[rel='stylesheet']",
-      "noscript",
-      "meta",
-      "svg",
-      "img",
-      "picture",
-      "source",
-      "video",
-      "audio",
-      "iframe",
-      "object",
-      "embed"
-    ];
+    const cleanedHtml = await page.evaluate(() => {
+      const selectors = [
+        "script",
+        "style",
+        "link[rel='stylesheet']",
+        "noscript",
+        "meta",
+        "svg",
+        "img",
+        "picture",
+        "source",
+        "video",
+        "audio",
+        "iframe",
+        "object",
+        "embed"
+      ];
 
-    selectors.forEach(sel => {
-      document.querySelectorAll(sel).forEach(e => e.remove());
-    });
-
-    // Remove inline event handlers (onclick, onload…)
-    const all = document.querySelectorAll("*");
-    all.forEach(el => {
-      [...el.attributes].forEach(attr => {
-        if (attr.name.startsWith("on")) {
-          el.removeAttribute(attr.name);
-        }
+      selectors.forEach(sel => {
+        document.querySelectorAll(sel).forEach(e => e.remove());
       });
+
+      const all = document.querySelectorAll("*");
+      all.forEach(el => {
+        [...el.attributes].forEach(attr => {
+          if (attr.name.startsWith("on")) {
+            el.removeAttribute(attr.name);
+          }
+        });
+      });
+
+      return document.documentElement.outerHTML;
     });
-  });
 
-  // Re-extract HTML after cleanup
-  const cleanedHtml = await page.evaluate(() => {
-    return document.documentElement.outerHTML;
-  });
-
-  await browser.close();
-
-  // Convert cleaned HTML → Markdown
-  const markdown = await parseMarkdown(cleanedHtml, url);
-  return markdown;
+    const markdown = await parseMarkdown(cleanedHtml, url);
+    return markdown;
+  } catch (error: any) {
+    logger.error(`[Scrape] Error during markdown conversion: ${error.message}`);
+    throw error;
+  }
 }
 
 /**
  * Fetches a webpage, strips scripts/styles/images/etc,
  * returns clean HTML.
+ * @param url - The URL to convert
+ * @param page - Existing Playwright page instance to use
  */
-export async function convertPageToHTML(url: string): Promise<string> {
-  const browser = await chromium.launch();
-  const page = await browser.newPage();
+export async function convertPageToHTML(url: string, page: Page): Promise<string> {
+  try {
+    logger.log('info', `[Scrape] Using existing page instance for HTML conversion of ${url}`);
 
-  await page.goto(url, { waitUntil: "networkidle", timeout: 100000 });
+    await gotoWithFallback(page, url);
 
-  await page.addInitScript(() => {
-    const selectors = [
-      "script",
-      "style",
-      "link[rel='stylesheet']",
-      "noscript",
-      "meta",
-      "svg",
-      "img",
-      "picture",
-      "source",
-      "video",
-      "audio",
-      "iframe",
-      "object",
-      "embed"
-    ];
+    const cleanedHtml = await page.evaluate(() => {
+      const selectors = [
+        "script",
+        "style",
+        "link[rel='stylesheet']",
+        "noscript",
+        "meta",
+        "svg",
+        "img",
+        "picture",
+        "source",
+        "video",
+        "audio",
+        "iframe",
+        "object",
+        "embed"
+      ];
 
-    selectors.forEach(sel => {
-      document.querySelectorAll(sel).forEach(e => e.remove());
-    });
-
-    // Remove inline event handlers (onclick, onload…)
-    const all = document.querySelectorAll("*");
-    all.forEach(el => {
-      [...el.attributes].forEach(attr => {
-        if (attr.name.startsWith("on")) {
-          el.removeAttribute(attr.name);
-        }
+      selectors.forEach(sel => {
+        document.querySelectorAll(sel).forEach(e => e.remove());
       });
+
+      const all = document.querySelectorAll("*");
+      all.forEach(el => {
+        [...el.attributes].forEach(attr => {
+          if (attr.name.startsWith("on")) {
+            el.removeAttribute(attr.name);
+          }
+        });
+      });
+
+      return document.documentElement.outerHTML;
     });
-  });
 
-  // Re-extract HTML after cleanup
-  const cleanedHtml = await page.evaluate(() => {
-    return document.documentElement.outerHTML;
-  });
-
-  await browser.close();
-
-  // Return cleaned HTML directly
-  return cleanedHtml;
+    return cleanedHtml;
+  } catch (error: any) {
+    logger.error(`[Scrape] Error during HTML conversion: ${error.message}`);
+    throw error;
+  }
 }

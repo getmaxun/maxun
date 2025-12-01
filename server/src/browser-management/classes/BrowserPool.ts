@@ -646,14 +646,6 @@ export class BrowserPool {
     };
 
     /**
-     * Legacy method - kept for backwards compatibility but now uses atomic version
-     * @deprecated Use reserveBrowserSlotAtomic instead
-     */
-    public reserveBrowserSlot = (id: string, userId: string, state: BrowserState = "run"): boolean => {
-        return this.reserveBrowserSlotAtomic(id, userId, state);
-    };
-
-    /**
      * Upgrades a reserved slot to an actual browser instance.
      * 
      * @param id browser ID that was previously reserved

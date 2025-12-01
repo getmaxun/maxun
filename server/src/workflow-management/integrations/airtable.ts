@@ -18,8 +18,25 @@ interface SerializableOutput {
 
 const MAX_RETRIES = 3;
 const BASE_API_DELAY = 2000;
+const MAX_QUEUE_SIZE = 1000;
 
 export let airtableUpdateTasks: { [runId: string]: AirtableUpdateTask } = {};
+let isProcessingAirtable = false;
+
+export function addAirtableUpdateTask(runId: string, task: AirtableUpdateTask): boolean {
+  const currentSize = Object.keys(airtableUpdateTasks).length;
+
+  if (currentSize >= MAX_QUEUE_SIZE) {
+    logger.log('warn', `Airtable task queue full (${currentSize}/${MAX_QUEUE_SIZE}), dropping oldest task`);
+    const oldestKey = Object.keys(airtableUpdateTasks)[0];
+    if (oldestKey) {
+      delete airtableUpdateTasks[oldestKey];
+    }
+  }
+
+  airtableUpdateTasks[runId] = task;
+  return true;
+}
 
 async function refreshAirtableToken(refreshToken: string) {
   try {
@@ -44,15 +61,13 @@ async function refreshAirtableToken(refreshToken: string) {
   }
 }
 
-
 function mergeRelatedData(serializableOutput: SerializableOutput, binaryOutput: Record<string, string>) {
   const allRecords: Record<string, any>[] = [];
-  
+
   const schemaData: Array<{ Group: string; Field: string; Value: any }> = [];
   const listData: any[] = [];
-  const screenshotData: Array<{key: string, url: string}> = [];
-  
-  // Collect schema data
+  const screenshotData: Array<{ key: string; url: string }> = [];
+
   if (serializableOutput.scrapeSchema) {
     if (Array.isArray(serializableOutput.scrapeSchema)) {
       for (const schemaArray of serializableOutput.scrapeSchema) {
@@ -82,8 +97,7 @@ function mergeRelatedData(serializableOutput: SerializableOutput, binaryOutput: 
       }
     }
   }
-  
-  // Collect list data
+
   if (serializableOutput.scrapeList) {
     if (Array.isArray(serializableOutput.scrapeList)) {
       for (const listArray of serializableOutput.scrapeList) {
@@ -107,8 +121,8 @@ function mergeRelatedData(serializableOutput: SerializableOutput, binaryOutput: 
       }
     }
   }
-  
-  // Collect screenshot data
+
+  // Collect screenshot data (handles both string and object forms safely)
   // if (binaryOutput && Object.keys(binaryOutput).length > 0) {
   //   Object.entries(binaryOutput).forEach(([key, rawValue]: [string, any]) => {
   //     if (!key || key.trim() === "") return;
@@ -136,37 +150,38 @@ function mergeRelatedData(serializableOutput: SerializableOutput, binaryOutput: 
   //     }
   //   });
   // }
-  
-  // Mix all data types together to create consecutive records
+
+  // --- Merge all types into Airtable rows ---
   const maxLength = Math.max(schemaData.length, listData.length, screenshotData.length);
-  
+
   for (let i = 0; i < maxLength; i++) {
     const record: Record<string, any> = {};
-    
+
     if (i < schemaData.length) {
       record.Group = schemaData[i].Group;
       record.Label = schemaData[i].Field;
       record.Value = schemaData[i].Value;
     }
-    
+
     if (i < listData.length) {
-      Object.entries(listData[i]).forEach(([key, value]) => {
-        if (value !== null && value !== undefined && value !== '') {
+      Object.entries(listData[i] || {}).forEach(([key, value]) => {
+        if (value !== null && value !== undefined && value !== "") {
           record[key] = value;
         }
       });
     }
-    
+
     if (i < screenshotData.length) {
       record.Key = screenshotData[i].key;
       record.Screenshot = screenshotData[i].url;
     }
-    
+
     if (Object.keys(record).length > 0) {
       allRecords.push(record);
     }
   }
-  
+
+  // Push leftovers
   for (let i = maxLength; i < schemaData.length; i++) {
     allRecords.push({ Label: schemaData[i].Field, Value: schemaData[i].Value });
   }
@@ -179,7 +194,7 @@ function mergeRelatedData(serializableOutput: SerializableOutput, binaryOutput: 
       Screenshot: screenshotData[i].url,
     });
   }
-  
+
   return allRecords;
 }
 
@@ -497,10 +512,18 @@ function isValidUrl(str: string): boolean {
 }
 
 export const processAirtableUpdates = async () => {
-  const maxProcessingTime = 60000;
-  const startTime = Date.now();
+  if (isProcessingAirtable) {
+    logger.log('info', 'Airtable processing already in progress, skipping');
+    return;
+  }
 
-  while (Date.now() - startTime < maxProcessingTime) {
+  isProcessingAirtable = true;
+
+  try {
+    const maxProcessingTime = 60000;
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < maxProcessingTime) {
     let hasPendingTasks = false;
 
     for (const runId in airtableUpdateTasks) {
@@ -535,9 +558,12 @@ export const processAirtableUpdates = async () => {
       break;
     }
 
-    console.log('Waiting for 5 seconds before checking again...');
-    await new Promise(resolve => setTimeout(resolve, 5000));
-  }
+      console.log('Waiting for 5 seconds before checking again...');
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
 
-  console.log('Airtable processing completed or timed out');
+    console.log('Airtable processing completed or timed out');
+  } finally {
+    isProcessingAirtable = false;
+  }
 };
