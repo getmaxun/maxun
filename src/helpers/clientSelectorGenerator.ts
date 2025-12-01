@@ -122,6 +122,7 @@ class ClientSelectorGenerator {
     similarityThreshold: 0.7,
     minWidth: 50,
     minHeight: 20,
+    maxParentLevels: 3,
     excludeSelectors: ["script", "style", "meta", "link", "title", "head"],
   };
 
@@ -479,15 +480,43 @@ class ClientSelectorGenerator {
       });
   
       if (currentGroup.length >= this.groupingConfig.minGroupSize && this.hasAnyMeaningfulChildren(element)) {
-        const group: ElementGroup = {
-          elements: currentGroup,
-          fingerprint,
-          representative: element,
-        };
-        currentGroup.forEach((el) => {
-          this.elementGroups.set(el, group);
-          this.groupedElements.add(el);
-        });
+        let grouped = false;
+
+        for (let level = 1; level <= this.groupingConfig.maxParentLevels && !grouped; level++) {
+          let ancestor: HTMLElement | null = currentGroup[0];
+          for (let i = 0; i < level && ancestor; i++) {
+            ancestor = ancestor.parentElement;
+          }
+
+          if (!ancestor) break;
+
+          const allShareAncestor = currentGroup.every(el => {
+            let elAncestor: HTMLElement | null = el;
+            for (let i = 0; i < level && elAncestor; i++) {
+              elAncestor = elAncestor.parentElement;
+            }
+            return elAncestor === ancestor;
+          });
+
+          if (allShareAncestor) {
+            const group: ElementGroup = {
+              elements: currentGroup,
+              fingerprint,
+              representative: element,
+            };
+            currentGroup.forEach((el) => {
+              this.elementGroups.set(el, group);
+              this.groupedElements.add(el);
+            });
+            grouped = true;
+          }
+        }
+
+        if (!grouped) {
+          currentGroup.forEach((el, idx) => {
+            if (idx > 0) processedElements.delete(el);
+          });
+        }
       }
     });
   }
