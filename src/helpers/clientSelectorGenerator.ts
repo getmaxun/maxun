@@ -122,7 +122,7 @@ class ClientSelectorGenerator {
     similarityThreshold: 0.7,
     minWidth: 50,
     minHeight: 20,
-    maxParentLevels: 3,
+    maxParentLevels: 5,
     excludeSelectors: ["script", "style", "meta", "link", "title", "head"],
   };
 
