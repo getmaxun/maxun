@@ -105,14 +105,6 @@ Maxun can run locally with or without Docker:
       <br/>
       <sub>GenAI-powered Quality Engineering Platform that empowers teams to test intelligently, smarter, and ship faster.</sub>
     </td>
-    <td width="250">
-      <a href="https://app.cyberyozh.com/?utm_source=github&utm_medium=maxun" target="_blank">
-        <img src="https://github.com/user-attachments/assets/c0ae7929-003a-4e1e-b23b-d174ac0aba4f"  /><br/>
-        <b>CyberYozh App</b>
-      </a>
-      <br/>
-      <sub>Infrastructure for developers working with multi‑accounting & automation in one place.</sub>
-    </td>
   </tr>
 </table>
 
