@@ -383,15 +383,18 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
       if (!prev) return prev;
 
       const updatedWorkflow = [...prev.recording.workflow];
+      const pair = updatedWorkflow[pairIndex];
+      const action = pair?.what?.[actionIndex];
       if (
         updatedWorkflow.length > pairIndex &&
-        updatedWorkflow[pairIndex]?.what &&
-        updatedWorkflow[pairIndex].what.length > actionIndex &&
-        updatedWorkflow[pairIndex].what[actionIndex].args &&
-        updatedWorkflow[pairIndex].what[actionIndex].args.length > argIndex
+        pair?.what &&
+        pair.what.length > actionIndex &&
+        action?.args &&
+        action.args.length > argIndex
       ) {
-        updatedWorkflow[pairIndex].what[actionIndex].args[argIndex].limit =
-          newLimit;
+        if (action.args[argIndex]) {
+          action.args[argIndex].limit = newLimit;
+        }
 
         setScrapeListLimits((prev) => {
           return prev.map((item) => {
