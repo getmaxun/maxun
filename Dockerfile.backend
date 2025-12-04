@@ -4,7 +4,6 @@ FROM node:20-slim
 WORKDIR /app
 
 COPY .sequelizerc .sequelizerc
-COPY .env .env
 
 # Install node dependencies
 COPY package*.json ./
