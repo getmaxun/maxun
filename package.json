@@ -83,7 +83,7 @@
     "winston": "^3.5.1"
   },
   "scripts": {
-    "start": "concurrently -k \"npm run server\" \"npm run client\"",
+    "start": "npm run build:server && concurrently -k \"npm run server\" \"npm run client\"",
     "server": "cross-env NODE_OPTIONS='--max-old-space-size=512' node server/dist/server/src/server.js",
     "client": "vite",
     "build": "vite build",
