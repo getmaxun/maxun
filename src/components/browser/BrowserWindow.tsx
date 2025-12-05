@@ -482,11 +482,37 @@ export const BrowserWindow = () => {
 
         validatedChildSelectors.forEach((selector, index) => {
           try {
-            const elements = evaluateXPathAllWithShadowSupport(
+            const listElements = evaluateXPathAllWithShadowSupport(
+            iframeElement.contentDocument!,
+            listSelector,
+            listSelector.includes(">>") || listSelector.startsWith("//")
+          );
+
+          if (listElements.length === 0) return;
+
+          const hasNumericPredicate = /\[\d+\](?![^\[]*@)/.test(selector);
+
+          if (hasNumericPredicate && listElements.length >= 3) {
+            const allMatches = evaluateXPathAllWithShadowSupport(
               iframeElement.contentDocument!,
               selector,
               selector.includes(">>") || selector.startsWith("//")
             );
+
+            const matchRatio = allMatches.length / listElements.length;
+
+            if (matchRatio < 0.6) {
+              return;
+            }
+          }
+
+          const firstListElement = listElements[0];
+              
+            const elements = evaluateXPathAllWithShadowSupport(
+              iframeElement.contentDocument!,
+              selector,
+              selector.includes(">>") || selector.startsWith("//")
+            ).filter(el => firstListElement.contains(el as Node));
 
             if (elements.length === 0) return;
 
@@ -591,10 +617,44 @@ export const BrowserWindow = () => {
                       selectorObj: fieldData.selectorObj
                     }
                   });
+                  const anchorParent = element.closest('a');
+                  if (anchorParent) {
+                    const href = anchorParent.getAttribute('href');
+                    if (href && href !== '#' && !href.startsWith('javascript:') && isValidData(href)) {
+                      let anchorSelector = selector;
+                      if (selector.includes('/a[')) {
+                        const anchorMatch = selector.match(/(.*\/a\[[^\]]+\])/);
+                        if (anchorMatch) {
+                          anchorSelector = anchorMatch[1];
+                        }
+                      }
+
+                  const fieldId = Date.now() + index * 1000 + 500;
+                  candidateFields.push({
+                    id: fieldId,
+                    element: anchorParent as HTMLElement,
+                    isLeaf: true,
+                    depth: 0,
+                    position: position,
+                    field: {
+                      id: fieldId,
+                      type: "text",
+                      label: `Label ${index + 1} Link`,
+                      data: href,
+                      selectorObj: {
+                        selector: anchorSelector,
+                        attribute: 'href',
+                        tag: 'A',
+                        isShadow: anchorParent.getRootNode() instanceof ShadowRoot,
+                        fallbackSelector: generateFallbackSelector(anchorParent as HTMLElement)
+                      }
+                    }
+                  });
                 }
               }
             }
-          } catch (error) {
+          }
+        } catch (error) {
             console.warn(`Failed to process child selector ${selector}:`, error);
           }
         });
@@ -610,8 +670,43 @@ export const BrowserWindow = () => {
         });
 
         const filteredCandidates = removeParentChildDuplicates(candidateFields);
-        const finalFields = removeDuplicateContent(filteredCandidates);
-        return finalFields;
+        const cleanedCandidates = filteredCandidates.filter((candidate) => {
+        const data = candidate.field.data.trim();
+
+        const textChildren = Array.from(candidate.element.children).filter(child =>
+          (child.textContent || '').trim().length > 0
+        );
+
+        if (textChildren.length === 0) {
+          return true;
+        }
+
+        const childCandidates = filteredCandidates.filter((other) => {
+          if (other === candidate) return false;
+          return candidate.element.contains(other.element);
+        });
+
+        if (childCandidates.length === 0) {
+          return true;
+        }
+
+        let coveredLength = 0;
+        childCandidates.forEach(child => {
+          const childText = child.field.data.trim();
+          if (data.includes(childText)) {
+            coveredLength += childText.length;
+          }
+        });
+
+        const coverageRatio = coveredLength / data.length;
+        const hasMultipleChildTexts = childCandidates.length >= 2;
+        const highCoverage = coverageRatio > 0.7;
+
+        return !(hasMultipleChildTexts && highCoverage);
+      });
+
+      const finalFields = removeDuplicateContent(cleanedCandidates);
+      return finalFields;
       },
       [currentSnapshot]
     );
