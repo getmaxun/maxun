@@ -280,27 +280,39 @@ if (require.main === module) {
               const run = await Run.findOne({ where: { browserId, status: 'running' } });
               if (run) {
                 const limitedData = {
-                  scrapeSchemaOutput: browser.interpreter.serializableDataByType?.scrapeSchema
-                    ? { "schema-tabular": browser.interpreter.serializableDataByType.scrapeSchema }
-                    : {},
+                  scrapeSchemaOutput: browser.interpreter.serializableDataByType?.scrapeSchema || {},
                   scrapeListOutput: browser.interpreter.serializableDataByType?.scrapeList || {},
                   binaryOutput: browser.interpreter.binaryData || []
                 };
 
                 const binaryOutputRecord = limitedData.binaryOutput.reduce((acc: Record<string, any>, item: any, index: number) => {
-                  acc[`item-${index}`] = item;
+                  const key = item.name || `Screenshot ${index + 1}`;
+                  acc[key] = { data: item.data, mimeType: item.mimeType };
                   return acc;
                 }, {});
+
+                let uploadedBinaryOutput = {};
+                if (Object.keys(binaryOutputRecord).length > 0) {
+                  try {
+                    const { BinaryOutputService } = require('./storage/mino');
+                    const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
+                    uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, binaryOutputRecord);
+                    logger.log('info', `Successfully uploaded ${Object.keys(uploadedBinaryOutput).length} screenshots to MinIO for interrupted run`);
+                  } catch (minioError: any) {
+                    logger.log('error', `Failed to upload binary data to MinIO during shutdown: ${minioError.message}`);
+                    uploadedBinaryOutput = binaryOutputRecord;
+                  }
+                }
 
                 await run.update({
                   status: 'failed',
                   finishedAt: new Date().toLocaleString(),
                   log: 'Process interrupted during execution - partial data preserved',
                   serializableOutput: {
-                    scrapeSchema: Object.values(limitedData.scrapeSchemaOutput),
-                    scrapeList: Object.values(limitedData.scrapeListOutput),
+                    scrapeSchema: limitedData.scrapeSchemaOutput,
+                    scrapeList: limitedData.scrapeListOutput,
                   },
-                  binaryOutput: binaryOutputRecord
+                  binaryOutput: uploadedBinaryOutput
                 });
               }
             }
