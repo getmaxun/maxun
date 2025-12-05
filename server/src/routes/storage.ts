@@ -456,7 +456,7 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
     }
 
     // Validate format
-    const validFormats = ['markdown', 'html'];
+    const validFormats = ['markdown', 'html', 'screenshot-visible', 'screenshot-fullpage'];
 
     if (!Array.isArray(formats) || formats.length === 0) {
       return res.status(400).json({ error: 'At least one output format must be selected.' });

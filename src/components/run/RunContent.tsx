@@ -135,16 +135,19 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
       const rawKeys = Object.keys(row.binaryOutput);
 
       const isLegacyPattern = rawKeys.every(key => /^item-\d+-\d+$/.test(key));
-      
+
       let normalizedScreenshotKeys: string[];
 
       if (isLegacyPattern) {
         // Legacy unnamed screenshots → Screenshot 1, Screenshot 2...
         normalizedScreenshotKeys = rawKeys.map((_, index) => `Screenshot ${index + 1}`);
       } else {
-        // Same rule as captured lists: if name missing or generic, auto-label
         normalizedScreenshotKeys = rawKeys.map((key, index) => {
-          if (!key || key.toLowerCase().includes("screenshot")) {
+          if (key === 'screenshot-visible') {
+            return 'Screenshot (Visible)';
+          } else if (key === 'screenshot-fullpage') {
+            return 'Screenshot (Full Page)';
+          } else if (!key || key.toLowerCase().includes("screenshot")) {
             return `Screenshot ${index + 1}`;
           }
           return key;
@@ -735,6 +738,67 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                       >
                         Download
                       </Button>
+                    </Box>
+                  </AccordionDetails>
+                </Accordion>
+              )}
+
+              {hasScreenshots && (
+                <Accordion defaultExpanded sx={{ mb: 2 }}>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Typography variant='h6'>
+                        {t('run_content.captured_screenshot.title', 'Captured Screenshots')}
+                      </Typography>
+                    </Box>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    {screenshotKeys.length > 1 && (
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          borderBottom: '1px solid',
+                          borderColor: 'divider',
+                          mb: 2,
+                        }}
+                      >
+                        {screenshotKeys.map((key, idx) => (
+                          <Box
+                            key={key}
+                            onClick={() => setCurrentScreenshotIndex(idx)}
+                            sx={{
+                              px: 3,
+                              py: 1,
+                              cursor: 'pointer',
+                              backgroundColor:
+                                currentScreenshotIndex === idx
+                                  ? (theme) => theme.palette.mode === 'dark'
+                                    ? '#121111ff'
+                                    : '#e9ecef'
+                                  : 'transparent',
+                              borderBottom: currentScreenshotIndex === idx ? '3px solid #FF00C3' : 'none',
+                              color: (theme) => theme.palette.mode === 'dark' ? '#fff' : '#000',
+                            }}
+                          >
+                            {key}
+                          </Box>
+                        ))}
+                      </Box>
+                    )}
+
+                    <Box sx={{ mt: 1 }}>
+                      {screenshotKeys.length > 0 && (
+                        <img
+                          src={row.binaryOutput[screenshotKeyMap[screenshotKeys[currentScreenshotIndex]]]}
+                          alt={`Screenshot ${screenshotKeys[currentScreenshotIndex]}`}
+                          style={{
+                            maxWidth: '100%',
+                            height: 'auto',
+                            border: '1px solid #e0e0e0',
+                            borderRadius: '4px'
+                          }}
+                        />
+                      )}
                     </Box>
                   </AccordionDetails>
                 </Accordion>
