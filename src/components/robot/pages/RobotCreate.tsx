@@ -16,10 +16,10 @@ import {
   CardContent,
   Tabs,
   Tab,
-  RadioGroup,
-  Radio,
   FormControl,
-  FormLabel
+  Select,
+  MenuItem,
+  InputLabel
 } from '@mui/material';
 import { ArrowBack, PlayCircleOutline, Article, Code, Description } from '@mui/icons-material';
 import { useGlobalInfoStore } from '../../../context/globalInfo';
@@ -376,7 +376,7 @@ const RobotCreate: React.FC = () => {
               />
 
               <Typography variant="body2" color="text.secondary" mb={3}>
-                Turn websites into LLM-ready Markdown & clean HTML for AI apps.
+                Turn websites into LLM-ready Markdown, clean HTML, or screenshots for AI apps.
               </Typography>
 
               <Box sx={{ width: '100%', maxWidth: 700, mb: 2 }}>
@@ -399,40 +399,52 @@ const RobotCreate: React.FC = () => {
                   sx={{ mb: 2 }}
                 />
 
-                <FormControl component="fieldset" sx={{ width: '100%', textAlign: 'left' }}>
-                  <p>Output Format (Select at least one)</p>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={outputFormats.includes('markdown')}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setOutputFormats([...outputFormats, 'markdown']);
-                          } else {
-                            setOutputFormats(outputFormats.filter(f => f !== 'markdown'));
-                          }
-                        }}
-                      />
-                    }
-                    label="Markdown"
-                  />
-
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={outputFormats.includes('html')}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setOutputFormats([...outputFormats, 'html']);
-                          } else {
-                            setOutputFormats(outputFormats.filter(f => f !== 'html'));
-                          }
-                        }}
-                      />
-                    }
-                    label="HTML"
-                  />
-                </FormControl>
+                <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start' }}>
+                  <FormControl sx={{ mb: 2, width: '300px' }}>
+                    <InputLabel id="output-formats-label">Output Formats *</InputLabel>
+                    <Select
+                      labelId="output-formats-label"
+                      id="output-formats"
+                      multiple
+                      value={outputFormats}
+                      label="Output Formats *"
+                      onChange={(e) => {
+                        const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
+                        setOutputFormats(value);
+                      }}
+                      renderValue={(selected) => {
+                        if (selected.length === 0) {
+                          return <em style={{ color: '#999' }}>Select formats</em>;
+                        }
+                        return `${selected.length} format${selected.length > 1 ? 's' : ''} selected`;
+                      }}
+                      MenuProps={{
+                        PaperProps: {
+                          style: {
+                            maxHeight: 300,
+                          },
+                        },
+                      }}
+                    >
+                      <MenuItem value="markdown">
+                        <Checkbox checked={outputFormats.includes('markdown')} />
+                        Markdown
+                      </MenuItem>
+                      <MenuItem value="html">
+                        <Checkbox checked={outputFormats.includes('html')} />
+                        HTML
+                      </MenuItem>
+                      <MenuItem value="screenshot-visible">
+                        <Checkbox checked={outputFormats.includes('screenshot-visible')} />
+                        Screenshot - Visible Viewport
+                      </MenuItem>
+                      <MenuItem value="screenshot-fullpage">
+                        <Checkbox checked={outputFormats.includes('screenshot-fullpage')} />
+                        Screenshot - Full Page
+                      </MenuItem>
+                    </Select>
+                  </FormControl>
+                </Box>
               </Box>
 
               <Button
@@ -461,7 +473,7 @@ const RobotCreate: React.FC = () => {
                     notify('success', `${scrapeRobotName} created successfully!`);
                     navigate('/robots');
                   } else {
-                    notify('error', 'Failed to create markdown robot');
+                    notify('error', 'Failed to create scrape robot');
                   }
                 }}
                 disabled={!url.trim() || !scrapeRobotName.trim() || outputFormats.length === 0 || isLoading}
