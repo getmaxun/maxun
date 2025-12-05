@@ -23,7 +23,7 @@ interface RunAttributes {
   runByUserId?: string;
   runByScheduleId?: string;
   runByAPI?: boolean;
-  serializableOutput: Record<string, any[]>;
+  serializableOutput: Record<string, any>;
   binaryOutput: Record<string, string>;
   retryCount?: number;
 }
@@ -45,7 +45,7 @@ class Run extends Model<RunAttributes, RunCreationAttributes> implements RunAttr
   public runByUserId!: string;
   public runByScheduleId!: string;
   public runByAPI!: boolean;
-  public serializableOutput!: Record<string, any[]>;
+  public serializableOutput!: Record<string, any>;
   public binaryOutput!: Record<string, any>;
   public retryCount!: number;
 }

@@ -123,3 +123,28 @@ export async function convertPageToHTML(url: string, page: Page): Promise<string
     throw error;
   }
 }
+
+/**
+ * Takes a screenshot of the page
+ * @param url - The URL to screenshot
+ * @param page - Existing Playwright page instance to use
+ * @param fullPage - Whether to capture the full scrollable page (true) or just visible viewport (false)
+ */
+export async function convertPageToScreenshot(url: string, page: Page, fullPage: boolean = false): Promise<Buffer> {
+  try {
+    const screenshotType = fullPage ? 'full page' : 'visible viewport';
+    logger.log('info', `[Scrape] Taking ${screenshotType} screenshot of ${url}`);
+
+    await gotoWithFallback(page, url);
+
+    const screenshot = await page.screenshot({
+      type: 'png',
+      fullPage
+    });
+
+    return screenshot;
+  } catch (error: any) {
+    logger.error(`[Scrape] Error during screenshot: ${error.message}`);
+    throw error;
+  }
+}

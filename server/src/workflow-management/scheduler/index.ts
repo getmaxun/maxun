@@ -13,7 +13,7 @@ import { WorkflowFile } from "maxun-core";
 import { Page } from "playwright-core";
 import { sendWebhook } from "../../routes/webhook";
 import { addAirtableUpdateTask, airtableUpdateTasks, processAirtableUpdates } from "../integrations/airtable";
-import { convertPageToMarkdown, convertPageToHTML } from "../../markdownify/scrape";
+import { convertPageToMarkdown, convertPageToHTML, convertPageToScreenshot } from "../../markdownify/scrape";
 
 async function createWorkflowAndStoreMetadata(id: string, userId: string) {
   try {
@@ -268,6 +268,7 @@ async function executeRun(id: string, userId: string) {
         let markdown = '';
         let html = '';
         const serializableOutput: any = {};
+        const binaryOutput: any = {};
 
         const SCRAPE_TIMEOUT = 120000;
 
@@ -290,13 +291,51 @@ async function executeRun(id: string, userId: string) {
           serializableOutput.html = [{ content: html }];
         }
 
+        if (formats.includes("screenshot-visible")) {
+          const screenshotPromise = convertPageToScreenshot(url, currentPage, false);
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error(`Screenshot conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
+          });
+          const screenshotBuffer = await Promise.race([screenshotPromise, timeoutPromise]);
+
+          if (!binaryOutput['screenshot-visible']) {
+            binaryOutput['screenshot-visible'] = {
+              data: screenshotBuffer.toString('base64'),
+              mimeType: 'image/png'
+            };
+          }
+        }
+
+        // Screenshot - full page
+        if (formats.includes("screenshot-fullpage")) {
+          const screenshotPromise = convertPageToScreenshot(url, currentPage, true);
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error(`Screenshot conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
+          });
+          const screenshotBuffer = await Promise.race([screenshotPromise, timeoutPromise]);
+
+          if (!binaryOutput['screenshot-fullpage']) {
+            binaryOutput['screenshot-fullpage'] = {
+              data: screenshotBuffer.toString('base64'),
+              mimeType: 'image/png'
+            };
+          }
+        }
+
         await run.update({
           status: 'success',
           finishedAt: new Date().toLocaleString(),
           log: `${formats.join(', ')} conversion completed successfully`,
           serializableOutput,
-          binaryOutput: {},
+          binaryOutput,
         });
+        
+        let uploadedBinaryOutput: Record<string, string> = {};
+        if (Object.keys(binaryOutput).length > 0) {
+          const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
+          uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, binaryOutput);
+          await run.update({ binaryOutput: uploadedBinaryOutput });
+        }
 
         logger.log('info', `Markdown robot execution completed for scheduled run ${id}`);
 
@@ -335,6 +374,8 @@ async function executeRun(id: string, userId: string) {
 
         if (formats.includes('markdown')) webhookPayload.markdown = markdown;
         if (formats.includes('html')) webhookPayload.html = html;
+        if (uploadedBinaryOutput['screenshot-visible']) webhookPayload.screenshot_visible = uploadedBinaryOutput['screenshot-visible'];
+        if (uploadedBinaryOutput['screenshot-fullpage']) webhookPayload.screenshot_fullpage = uploadedBinaryOutput['screenshot-fullpage'];
 
         try {
           await sendWebhook(plainRun.robotMetaId, 'run_completed', webhookPayload);

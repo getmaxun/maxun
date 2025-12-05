@@ -210,12 +210,13 @@ router.get(
   requireSignIn,
   async (req: AuthenticatedRequest, res) => {
     try {
-      const { id } = req.params;
-      if (!id) {
-        return res.status(400).json({ message: "User ID is required" });
+      if (!req.user || !req.user.id) {
+        return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const user = await User.findByPk(id, {
+      const userId = req.user.id;
+
+      const user = await User.findByPk(userId, {
         attributes: { exclude: ["password"] },
       });
 

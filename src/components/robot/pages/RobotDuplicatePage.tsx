@@ -26,7 +26,7 @@ interface RobotMeta {
   params: any[];
   type?: 'extract' | 'scrape';
   url?: string;
-  formats?: ('markdown' | 'html')[];
+  formats?: ('markdown' | 'html' | 'screenshot-visible' | 'screenshot-fullpage')[];
 }
 
 interface RobotWorkflow {

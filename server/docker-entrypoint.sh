@@ -27,7 +27,7 @@ wait_for_postgres() {
 wait_for_postgres
 
 # Run the application with migrations before startup
-NODE_OPTIONS="--max-old-space-size=4096" node -e "require('./server/src/db/migrate')().then(() => { console.log('Migration process completed.'); })"
+NODE_OPTIONS="--max-old-space-size=4096" node -e "require('./server/dist/server/src/db/migrate')().then(() => { console.log('Migration process completed.'); })"
 
-# Run the server normally 
+# Run the server normally
 exec "$@"

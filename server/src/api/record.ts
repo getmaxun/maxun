@@ -16,7 +16,7 @@ import { WorkflowFile } from "maxun-core";
 import { addGoogleSheetUpdateTask, googleSheetUpdateTasks, processGoogleSheetUpdates } from "../workflow-management/integrations/gsheet";
 import { addAirtableUpdateTask, airtableUpdateTasks, processAirtableUpdates } from "../workflow-management/integrations/airtable";
 import { sendWebhook } from "../routes/webhook";
-import { convertPageToHTML, convertPageToMarkdown } from '../markdownify/scrape';
+import { convertPageToHTML, convertPageToMarkdown, convertPageToScreenshot } from '../markdownify/scrape';
 
 const router = Router();
 
@@ -689,7 +689,9 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
 
             // Override if API request defines formats
             if (requestedFormats && Array.isArray(requestedFormats) && requestedFormats.length > 0) {
-                formats = requestedFormats.filter((f): f is 'markdown' | 'html' => ['markdown', 'html'].includes(f));
+                formats = requestedFormats.filter((f): f is 'markdown' | 'html' | 'screenshot-visible' | 'screenshot-fullpage' =>
+                    ['markdown', 'html', 'screenshot-visible', 'screenshot-fullpage'].includes(f)
+                );
             }
 
             await run.update({
@@ -707,6 +709,7 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
                 let markdown = '';
                 let html = '';
                 const serializableOutput: any = {};
+                const binaryOutput: any = {};
 
                 const SCRAPE_TIMEOUT = 120000;
 
@@ -728,13 +731,51 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
                     serializableOutput.html = [{ content: html }];
                 }
 
+                if (formats.includes("screenshot-visible")) {
+                    const screenshotPromise = convertPageToScreenshot(url, currentPage, false);
+                    const timeoutPromise = new Promise<never>((_, reject) => {
+                        setTimeout(() => reject(new Error(`Screenshot conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
+                    });
+                    const screenshotBuffer = await Promise.race([screenshotPromise, timeoutPromise]);
+
+                    if (!binaryOutput['screenshot-visible']) {
+                        binaryOutput['screenshot-visible'] = {
+                            data: screenshotBuffer.toString('base64'),
+                            mimeType: 'image/png'
+                        };
+                    }
+                }
+
+                if (formats.includes("screenshot-fullpage")) {
+                    const screenshotPromise = convertPageToScreenshot(url, currentPage, true);
+                    const timeoutPromise = new Promise<never>((_, reject) => {
+                        setTimeout(() => reject(new Error(`Screenshot conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
+                    });
+                    const screenshotBuffer = await Promise.race([screenshotPromise, timeoutPromise]);
+
+                    if (!binaryOutput['screenshot-fullpage']) {
+                        binaryOutput['screenshot-fullpage'] = {
+                            data: screenshotBuffer.toString('base64'),
+                            mimeType: 'image/png'
+                        };
+                    }
+                }
+
                 await run.update({
                     status: 'success',
                     finishedAt: new Date().toLocaleString(),
                     log: `${formats.join(', ')} conversion completed successfully`,
                     serializableOutput,
-                    binaryOutput: {},
+                    binaryOutput,
                 });
+
+                // Upload binary output (screenshots) to MinIO if present
+                let uploadedBinaryOutput: Record<string, string> = {};
+                if (Object.keys(binaryOutput).length > 0) {
+                    const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
+                    uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, binaryOutput);
+                    await run.update({ binaryOutput: uploadedBinaryOutput });
+                }
 
                 logger.log('info', `Markdown robot execution completed for API run ${id}`);
 
@@ -775,6 +816,8 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
 
                 if (formats.includes('markdown')) webhookPayload.markdown = markdown;
                 if (formats.includes('html')) webhookPayload.html = html;
+                if (uploadedBinaryOutput['screenshot-visible']) webhookPayload.screenshot_visible = uploadedBinaryOutput['screenshot-visible'];
+                if (uploadedBinaryOutput['screenshot-fullpage']) webhookPayload.screenshot_fullpage = uploadedBinaryOutput['screenshot-fullpage'];
 
                 try {
                     await sendWebhook(plainRun.robotMetaId, 'run_completed', webhookPayload);
