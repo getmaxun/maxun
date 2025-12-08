@@ -5,7 +5,6 @@
 import { v4 as uuid } from 'uuid';
 import logger from '../logger';
 import { pgBossClient } from './pgboss';
-import { registerWorkerForQueue } from '../schedule-worker';
 
 /**
  * Utility function to schedule a cron job using PgBoss
