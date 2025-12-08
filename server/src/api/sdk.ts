@@ -300,7 +300,7 @@ router.put("/sdk/robots/:id", requireAPIKey, async (req: AuthenticatedRequest, r
                 }
 
                 try {
-                    await scheduleWorkflow(robotId, cronExpression, timezone);
+                    await scheduleWorkflow(robotId, req.user.id, cronExpression, timezone);
                 } catch (scheduleError: any) {
                     logger.error(`[SDK] Failed to schedule workflow for robot ${robotId}: ${scheduleError.message}`);
                     return res.status(500).json({
