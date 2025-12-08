@@ -4,6 +4,7 @@
   "author": "Maxun",
   "license": "AGPL-3.0-or-later",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
     "@cliqz/adblocker-playwright": "^1.30.0",
     "@emotion/react": "^11.9.0",
     "@emotion/styled": "^11.8.1",
