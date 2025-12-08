@@ -33,7 +33,7 @@ export class WorkflowEnricher {
    */
   static async enrichWorkflow(
     simplifiedWorkflow: SimplifiedWorkflowPair[],
-    userId: string = 'sdk-validation-user'
+    userId: string
   ): Promise<{ success: boolean; workflow?: any[]; errors?: string[]; url?: string }> {
     const errors: string[] = [];
     const enrichedWorkflow: any[] = [];

@@ -34,7 +34,17 @@ export class SelectorValidator {
    */
   async initialize(page: Page, url: string): Promise<void> {
     this.page = page;
-    await this.page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+    try {
+      await page.goto(url, {
+        waitUntil: "networkidle",
+        timeout: 100000,
+      });
+    } catch (err) {
+      await page.goto(url, {
+        waitUntil: "domcontentloaded",
+        timeout: 100000,
+      });
+    }
     logger.info(`Navigated to ${url} using RemoteBrowser page`);
   }
 

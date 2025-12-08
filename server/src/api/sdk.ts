@@ -60,9 +60,11 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
                 });
             }
         } else {
-            const enrichResult = await WorkflowEnricher.enrichWorkflow(workflowFile.workflow);
+            const enrichResult = await WorkflowEnricher.enrichWorkflow(workflowFile.workflow, user.id);
 
             if (!enrichResult.success) {
+                logger.error("[SDK] Error in Selector Validation:\n" + JSON.stringify(enrichResult.errors, null, 2))
+
                 return res.status(400).json({
                     error: "Workflow validation failed",
                     details: enrichResult.errors
@@ -640,7 +642,7 @@ router.post("/sdk/robots/:id/runs/:runId/abort", requireAPIKey, async (req: Auth
  */
 router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
     try {
-        const user = req.user.id
+        const user = req.user
         const { url, prompt, llmProvider, llmModel, llmApiKey, llmBaseUrl, robotName } = req.body;
 
         if (!url || !prompt) {
@@ -654,7 +656,7 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
             model: llmModel,
             apiKey: llmApiKey,
             baseUrl: llmBaseUrl
-        });
+        }, user.id);
 
         if (!workflowResult.success || !workflowResult.workflow) {
             return res.status(400).json({
