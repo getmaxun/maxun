@@ -1029,13 +1029,13 @@
    * Returns: { type: string, selector: string | null }
    * Types: 'scrollDown', 'scrollUp', 'clickNext', 'clickLoadMore', ''
    */
-  window.autoDetectPagination = function (listSelector) {
+  window.autoDetectPagination = function (listSelector, options) {
     try {
 
       const listElements = evaluateSelector(listSelector, document);
 
       if (listElements.length === 0) {
-        return { type: '', selector: null, debug: 'No list elements found' };
+        return { type: '', selector: null, confidence: 'low', debug: 'No list elements found' };
       }
 
       const listContainer = listElements[0];
@@ -1046,7 +1046,8 @@
         /page\s+suivante/i,
         /siguiente/i,
         /weiter/i,
-        />>|›|→|»|⟩/,
+        />>/i,
+        /›|→|»|⟩/,
         /\bforward\b/i,
         /\bnewer\b/i,
         /\bolder\b/i
@@ -2123,14 +2124,18 @@
         }
       }
 
-      const infiniteScrollScore = detectInfiniteScrollScore();
+      const infiniteScrollScore = options && options.disableScrollDetection 
+        ? 0 
+        : detectInfiniteScrollScore();
       const hasStrongInfiniteScrollSignals = infiniteScrollScore >= 8;
       const hasMediumInfiniteScrollSignals = infiniteScrollScore >= 5 && infiniteScrollScore < 8;
 
       if (hasStrongInfiniteScrollSignals) {
+        const confidence = infiniteScrollScore >= 12 ? 'high' : infiniteScrollScore >= 10 ? 'medium' : 'low';
         return {
           type: 'scrollDown',
-          selector: null
+          selector: null,
+          confidence: confidence
         };
       }
 
@@ -2138,7 +2143,8 @@
         const selector = generatePaginationSelector(loadMoreButton);
         return {
           type: 'clickLoadMore',
-          selector: selector
+          selector: selector,
+          confidence: 'high'
         };
       }
 
@@ -2146,43 +2152,53 @@
         const selector = generatePaginationSelector(nextButton);
         return {
           type: 'clickNext',
-          selector: selector
+          selector: selector,
+          confidence: 'high'
         };
       }
 
       if (hasMediumInfiniteScrollSignals) {
+        const confidence = infiniteScrollScore >= 7 ? 'medium' : 'low';
         return {
           type: 'scrollDown',
-          selector: null
+          selector: null,
+          confidence: confidence
         };
       }
 
       if (loadMoreButton && loadMoreScore >= 8) {
         const selector = generatePaginationSelector(loadMoreButton);
+        const confidence = loadMoreScore >= 10 ? 'medium' : 'low';
         return {
           type: 'clickLoadMore',
-          selector: selector
+          selector: selector,
+          confidence: confidence
         };
       }
 
       if (nextButton && nextButtonScore >= 8) {
         const selector = generatePaginationSelector(nextButton);
+        const confidence = nextButtonScore >= 10 ? 'medium' : 'low';
         return {
           type: 'clickNext',
-          selector: selector
+          selector: selector,
+          confidence: confidence
         };
       }
 
       if (prevButton && prevButtonScore >= 8) {
+        const confidence = prevButtonScore >= 15 ? 'high' : prevButtonScore >= 10 ? 'medium' : 'low';
         return {
           type: 'scrollUp',
-          selector: null
+          selector: null,
+          confidence: confidence
         };
       }
 
       return {
         type: '',
         selector: null,
+        confidence: 'low',
         debug: {
           clickableElementsCount: clickableElements.length,
           nextCandidatesCount: nextButtonCandidates.length,
@@ -2195,7 +2211,8 @@
           finalScores: {
             loadMore: loadMoreScore,
             next: nextButtonScore,
-            prev: prevButtonScore
+            prev: prevButtonScore,
+            infiniteScroll: infiniteScrollScore
           }
         }
       };
@@ -2204,6 +2221,7 @@
       return {
         type: '',
         selector: null,
+        confidence: 'low',
         error: error.message,
         debug: 'Exception thrown: ' + error.message
       };
