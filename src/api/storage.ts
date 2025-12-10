@@ -58,12 +58,50 @@ export const createScrapeRobot = async (
   }
 };
 
+export const createLLMRobot = async (
+  url: string,
+  prompt: string,
+  llmProvider?: 'anthropic' | 'openai' | 'ollama',
+  llmModel?: string,
+  llmApiKey?: string,
+  llmBaseUrl?: string,
+  robotName?: string
+): Promise<any> => {
+  try {
+    const response = await axios.post(
+      `${apiUrl}/storage/recordings/llm`,
+      {
+        url,
+        prompt,
+        llmProvider,
+        llmModel,
+        llmApiKey,
+        llmBaseUrl,
+        robotName,
+      },
+      {
+        headers: { 'Content-Type': 'application/json' },
+        withCredentials: true,
+        timeout: 300000,
+      }
+    );
+
+    if (response.status === 201) {
+      return response.data;
+    } else {
+      throw new Error('Failed to create LLM robot');
+    }
+  } catch (error: any) {
+    console.error('Error creating LLM robot:', error);
+    return null;
+  }
+};
+
 export const updateRecording = async (id: string, data: { 
   name?: string; 
   limits?: Array<{pairIndex: number, actionIndex: number, argIndex: number, limit: number}>;
   credentials?: Credentials; 
   targetUrl?: string;
-  // optional full workflow replacement (useful for action renames)
   workflow?: any[];
 }): Promise<boolean> => {
   try {

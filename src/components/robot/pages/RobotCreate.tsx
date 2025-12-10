@@ -22,9 +22,9 @@ import {
   InputLabel
 } from '@mui/material';
 import { ArrowBack, PlayCircleOutline, Article, Code, Description } from '@mui/icons-material';
-import { useGlobalInfoStore } from '../../../context/globalInfo';
+import { useGlobalInfoStore, useCacheInvalidation } from '../../../context/globalInfo';
 import { canCreateBrowserInState, getActiveBrowserId, stopRecording } from '../../../api/recording';
-import { createScrapeRobot } from "../../../api/storage";
+import { createScrapeRobot, createLLMRobot, createAndRunRecording } from "../../../api/storage";
 import { AuthContext } from '../../../context/auth';
 import { GenericModal } from '../../ui/GenericModal';
 
@@ -65,8 +65,17 @@ const RobotCreate: React.FC = () => {
   const [activeBrowserId, setActiveBrowserId] = useState('');
   const [outputFormats, setOutputFormats] = useState<string[]>([]);
 
+  // AI Extract tab state
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [llmProvider, setLlmProvider] = useState<'anthropic' | 'openai' | 'ollama'>('ollama');
+  const [llmModel, setLlmModel] = useState('');
+  const [llmApiKey, setLlmApiKey] = useState('');
+  const [llmBaseUrl, setLlmBaseUrl] = useState('');
+  const [aiRobotName, setAiRobotName] = useState('');
+
   const { state } = React.useContext(AuthContext);
   const { user } = state;
+  const { addOptimisticRobot, removeOptimisticRobot, invalidateRecordings } = useCacheInvalidation();
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -206,6 +215,7 @@ const RobotCreate: React.FC = () => {
             }}
           >
             <Tab label="Extract" id="extract-robot" aria-controls="extract-robot" />
+            <Tab label="AI Extract" id="ai-extract-robot" aria-controls="ai-extract-robot" />
             <Tab label="Scrape" id="scrape-robot" aria-controls="scrape-robot" />
           </Tabs>
         </Box>
@@ -362,6 +372,241 @@ const RobotCreate: React.FC = () => {
         </TabPanel>
 
         <TabPanel value={tabValue} index={1}>
+          <Card sx={{ mb: 4, p: 4, textAlign: 'center' }}>
+            <Box display="flex" flexDirection="column" alignItems="center">
+              <img
+                src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
+                width={73}
+                height={65}
+                style={{
+                  borderRadius: '5px',
+                  marginBottom: '30px'
+                }}
+                alt="Maxun Logo"
+              />
+
+              <Typography variant="body2" color="text.secondary" mb={3}>
+                AI-powered extraction: Describe what you want to extract in natural language.
+              </Typography>
+
+              <Box sx={{ width: '100%', maxWidth: 700, mb: 2 }}>
+                <TextField
+                  placeholder="Example: AI Product Extractor"
+                  variant="outlined"
+                  fullWidth
+                  value={aiRobotName}
+                  onChange={(e) => setAiRobotName(e.target.value)}
+                  sx={{ mb: 2 }}
+                  label="Robot Name (Optional)"
+                />
+                <TextField
+                  placeholder="Example: https://www.ycombinator.com/companies/"
+                  variant="outlined"
+                  fullWidth
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  label="Website URL"
+                  sx={{ mb: 2 }}
+                />
+                <TextField
+                  placeholder="Example: Extract first 15 company names, descriptions, and batch information"
+                  variant="outlined"
+                  fullWidth
+                  multiline
+                  rows={3}
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  label="Extraction Prompt"
+                  sx={{ mb: 2 }}
+                />
+
+                <Box sx={{ width: '100%', display: 'flex', gap: 2, mb: 2 }}>
+                  <FormControl sx={{ flex: 1 }}>
+                    <InputLabel id="llm-provider-label">LLM Provider</InputLabel>
+                    <Select
+                      labelId="llm-provider-label"
+                      id="llm-provider"
+                      value={llmProvider}
+                      label="LLM Provider"
+                      onChange={(e) => {
+                        const provider = e.target.value as 'anthropic' | 'openai' | 'ollama';
+                        setLlmProvider(provider);
+                        setLlmModel('');
+                        if (provider === 'ollama') {
+                          setLlmBaseUrl('http://localhost:11434');
+                        } else {
+                          setLlmBaseUrl('');
+                        }
+                      }}
+                    >
+                      <MenuItem value="ollama">Ollama (Local)</MenuItem>
+                      <MenuItem value="anthropic">Anthropic (Claude)</MenuItem>
+                      <MenuItem value="openai">OpenAI (GPT-4)</MenuItem>
+                    </Select>
+                  </FormControl>
+
+                  <FormControl sx={{ flex: 1 }}>
+                    <InputLabel id="llm-model-label">Model (Optional)</InputLabel>
+                    <Select
+                      labelId="llm-model-label"
+                      id="llm-model"
+                      value={llmModel}
+                      label="Model (Optional)"
+                      onChange={(e) => setLlmModel(e.target.value)}
+                    >
+                      {llmProvider === 'ollama' && (
+                        <>
+                          <MenuItem value="">Default (llama3.2-vision)</MenuItem>
+                          <MenuItem value="llama3.2-vision">llama3.2-vision</MenuItem>
+                          <MenuItem value="llama3.2">llama3.2</MenuItem>
+                        </>
+                      )}
+                      {llmProvider === 'anthropic' && (
+                        <>
+                          <MenuItem value="">Default (claude-3-5-sonnet)</MenuItem>
+                          <MenuItem value="claude-3-5-sonnet-20241022">claude-3-5-sonnet-20241022</MenuItem>
+                          <MenuItem value="claude-3-opus-20240229">claude-3-opus-20240229</MenuItem>
+                        </>
+                      )}
+                      {llmProvider === 'openai' && (
+                        <>
+                          <MenuItem value="">Default (gpt-4-vision-preview)</MenuItem>
+                          <MenuItem value="gpt-4-vision-preview">gpt-4-vision-preview</MenuItem>
+                          <MenuItem value="gpt-4o">gpt-4o</MenuItem>
+                        </>
+                      )}
+                    </Select>
+                  </FormControl>
+                </Box>
+
+                {llmProvider !== 'ollama' && (
+                  <TextField
+                    placeholder={`${llmProvider === 'anthropic' ? 'Anthropic' : 'OpenAI'} API Key (or set in .env)`}
+                    variant="outlined"
+                    fullWidth
+                    type="password"
+                    value={llmApiKey}
+                    onChange={(e) => setLlmApiKey(e.target.value)}
+                    label="API Key (Optional if set in .env)"
+                    sx={{ mb: 2 }}
+                  />
+                )}
+
+                {llmProvider === 'ollama' && (
+                  <TextField
+                    placeholder="http://localhost:11434"
+                    variant="outlined"
+                    fullWidth
+                    value={llmBaseUrl}
+                    onChange={(e) => setLlmBaseUrl(e.target.value)}
+                    label="Ollama Base URL (Optional)"
+                    sx={{ mb: 2 }}
+                  />
+                )}
+              </Box>
+
+              <Button
+                variant="contained"
+                fullWidth
+                onClick={async () => {
+                  if (!url.trim()) {
+                    notify('error', 'Please enter a valid URL');
+                    return;
+                  }
+                  if (!aiPrompt.trim()) {
+                    notify('error', 'Please enter an extraction prompt');
+                    return;
+                  }
+
+                  const tempRobotId = `temp-${Date.now()}`;
+                  const robotDisplayName = aiRobotName || `LLM Extract: ${aiPrompt.substring(0, 50)}`;
+
+                  const optimisticRobot = {
+                    id: tempRobotId,
+                    recording_meta: {
+                      id: tempRobotId,
+                      name: robotDisplayName,
+                      createdAt: new Date().toISOString(),
+                      updatedAt: new Date().toISOString(),
+                      pairs: 0,
+                      params: [],
+                      type: 'extract',
+                      url: url,
+                    },
+                    recording: { workflow: [] },
+                    isLoading: true,
+                    isOptimistic: true
+                  };
+
+                  addOptimisticRobot(optimisticRobot);
+
+                  notify('info', `Robot ${robotDisplayName} creation started (AI Powered)`);
+                  navigate('/robots');
+
+                  try {
+                    const result = await createLLMRobot(
+                      url,
+                      aiPrompt,
+                      llmProvider,
+                      llmModel || undefined,
+                      llmApiKey || undefined,
+                      llmBaseUrl || undefined,
+                      aiRobotName || undefined
+                    );
+
+                    removeOptimisticRobot(tempRobotId);
+
+                    if (!result || !result.robot) {
+                      notify('error', 'Failed to create AI robot. Please check your LLM configuration.');
+                      invalidateRecordings();
+                      return;
+                    }
+
+                    const robotMetaId = result.robot.recording_meta.id;
+                    notify('success', `${result.robot.recording_meta.name} created successfully!`);
+
+                    invalidateRecordings();
+
+                    await new Promise(resolve => setTimeout(resolve, 500));
+
+                    notify('info', 'Starting robot execution...');
+                    const runResponse = await createAndRunRecording(robotMetaId, {
+                      maxConcurrency: 1,
+                      maxRepeats: 1,
+                      debug: true
+                    });
+
+                    if (runResponse && runResponse.runId) {
+                      notify('success', 'Robot is now running!');
+                      navigate(`/runs/${robotMetaId}/run/${runResponse.runId}`);
+                    } else {
+                      notify('warning', 'Robot created but failed to start execution. You can run it manually from the robots page.');
+                    }
+                  } catch (error: any) {
+                    console.error('Error in AI robot creation:', error);
+                    removeOptimisticRobot(tempRobotId);
+                    invalidateRecordings();
+                    notify('error', error?.message || 'Failed to create and run AI robot');
+                  }
+                }}
+                disabled={!url.trim() || !aiPrompt.trim() || isLoading}
+                sx={{
+                  bgcolor: '#ff00c3',
+                  py: 1.4,
+                  fontSize: '1rem',
+                  textTransform: 'none',
+                  maxWidth: 700,
+                  borderRadius: 2
+                }}
+                startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
+              >
+                {isLoading ? 'Creating & Running...' : 'Create & Run AI Robot'}
+              </Button>
+            </Box>
+          </Card>
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={2}>
           <Card sx={{ mb: 4, p: 4, textAlign: 'center' }}>
             <Box display="flex" flexDirection="column" alignItems="center">
               <img
