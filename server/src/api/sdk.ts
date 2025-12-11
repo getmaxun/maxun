@@ -651,12 +651,12 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
             });
         }
 
-        const workflowResult = await WorkflowEnricher.generateWorkflowFromPrompt(url, prompt, {
+        const workflowResult = await WorkflowEnricher.generateWorkflowFromPrompt(url, prompt, user.id, {
             provider: llmProvider,
             model: llmModel,
             apiKey: llmApiKey,
             baseUrl: llmBaseUrl
-        }, user.id);
+        });
 
         if (!workflowResult.success || !workflowResult.workflow) {
             return res.status(400).json({

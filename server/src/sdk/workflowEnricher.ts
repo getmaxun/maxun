@@ -183,7 +183,6 @@ export class WorkflowEnricher {
 
               enrichedFields = autoDetectResult.fields;
               listSelector = autoDetectResult.listSelector!;
-              logger.info('Auto-detected', Object.keys(enrichedFields).length, 'fields');
             } catch (error: any) {
               errors.push(`Field auto-detection failed: ${error.message}`);
               continue;
@@ -277,13 +276,13 @@ export class WorkflowEnricher {
   static async generateWorkflowFromPrompt(
     url: string,
     prompt: string,
+    userId: string,
     llmConfig?: {
       provider?: 'anthropic' | 'openai' | 'ollama';
       model?: string;
       apiKey?: string;
       baseUrl?: string;
     },
-    userId: string = 'sdk-validation-user',
   ): Promise<{ success: boolean; workflow?: any[]; url?: string; errors?: string[] }> {
     let browserId: string | null = null;
     const validator = new SelectorValidator();
@@ -299,7 +298,13 @@ export class WorkflowEnricher {
       await validator.initialize(page as any, url);
 
       const validatorPage = (validator as any).page;
-      const screenshotBuffer = await page.screenshot({ fullPage: true, type: 'png' });
+      // Use JPEG with quality 85 for faster processing and smaller file size
+      // Vision models handle this compression well while maintaining accuracy
+      const screenshotBuffer = await page.screenshot({ 
+        fullPage: true, 
+        type: 'jpeg',
+        quality: 85
+      });
       const screenshotBase64 = screenshotBuffer.toString('base64');
 
       const elementGroups = await this.analyzePageGroups(validator);
@@ -994,14 +999,18 @@ Example - if extracting products:
         throw new Error('Failed to auto-detect fields from selected group');
       }
 
-      logger.info(`Auto-detected ${Object.keys(autoDetectResult.fields).length} fields`);
-
-      logger.info('Extracting field samples for semantic labeling...');
-      const fieldSamples = await this.extractFieldSamples(
-        autoDetectResult.fields,
-        autoDetectResult.listSelector || '',
-        validator
-      );
+      logger.info('Extracting field samples and detecting pagination in parallel...');
+      const [fieldSamples, paginationResult] = await Promise.all([
+        this.extractFieldSamples(
+          autoDetectResult.fields,
+          autoDetectResult.listSelector || '',
+          validator
+        ),
+        validator.autoDetectPagination(llmDecision.itemSelector).catch((error: any) => {
+          logger.warn('Pagination auto-detection failed:', error.message);
+          return { success: false, type: 'none', selector: '' };
+        })
+      ]);
 
       logger.info('Generating semantic field labels with LLM...');
       const fieldLabels = await this.generateFieldLabels(
@@ -1021,14 +1030,9 @@ Example - if extracting products:
       let paginationType = 'none';
       let paginationSelector = '';
 
-      try {
-        const paginationResult = await validator.autoDetectPagination(llmDecision.itemSelector);
-        if (paginationResult.success && paginationResult.type) {
-          paginationType = paginationResult.type;
-          paginationSelector = paginationResult.selector || '';
-        }
-      } catch (error: any) {
-        logger.warn('Pagination auto-detection failed:', error.message);
+      if (paginationResult.success && paginationResult.type) {
+        paginationType = paginationResult.type;
+        paginationSelector = paginationResult.selector || '';
       }
 
       const limit = llmDecision.limit || 100;
