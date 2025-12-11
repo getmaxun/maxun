@@ -28,32 +28,56 @@ Maxun is the easiest way to extract web data with no code. The <b>modern</b> ope
 
 ## What is Maxun?
 
-Maxun is a powerful no-code ecosystem for web data extraction. With its intuitive no-code interface, anyone can extract data from **any** website — no coding required. In just minutes, users can build automation robots to **turn websites into structured APIs, LLM-ready markdown, spreadsheets, extract data at scale, and much more.**
+Maxun helps you transform websites into structured APIs, clean markdown for AI workflows, and production-ready data pipelines — all in minutes.
+
+Choose your approach
+1. [No-code UI](https://docs.maxun.dev/category/extract) – Visual interface with Recorder Mode and AI Mode.
+2. [SDK](https://github.com/getmaxun/node-sdk) – Programmatic control for developers.
+
+Whether you prefer clicking through a website or integrating automation into your codebase, Maxun adapts to your workflow.
+
 
 ## How Does It Work?
 
 Maxun uses web robots to power everything you can do on the platform. There are two types of robots, each designed for a different job.
 
 ### 1. Extract Robots
-**Extract robots emulate real user behavior and capture structured data at scale.**
-- Built for automation and structured data extraction
-- Point-and-click interface - no coding required
+**Extract robots emulate real user behavior and capture structured data.**
+
+Choose how to build them
+### a. Recorder Mode: Point-and-click interface to record your actions
+- Build robots visually by browsing like a human.
+- Perfect for structured, deterministic data extraction.
+
+### Example: Extract 10 Property Listings from Airbnb
+
+[https://github.com/user-attachments/assets/recorder-mode-demo-video](https://github.com/user-attachments/assets/c6baa75f-b950-482c-8d26-8a8b6c5382c3)
+
+### b. LLM Extraction (Beta): Describe what you want in plain language
+- Use natural language to define extraction patterns.
+- Works with closed source & open source LLMs.
+
+Get Started with LLM Extraction: https://docs.maxun.dev/robot/extract/llm-extraction
+
+### Example: Extract Names, Rating & Duration of Top 50 Movies from IMDb
+
+https://github.com/user-attachments/assets/f714e860-58d6-44ed-bbcd-c9374b629384
+
+### Core capabilities
 - Extract from any website, including behind logins
-- Record user actions (clicks, scrolls, form fills, pagination, etc.)
 - Convert sites into APIs, spreadsheets, and workflows
 - Scale extractions and run on schedules or via API
 - Handle infinite scrolling and pagination
 - Auto-adapt to website layout & structural changes
-
-https://github.com/user-attachments/assets/c6baa75f-b950-482c-8d26-8a8b6c5382c3
 
 ### 2. Scrape Robots
 **Built for clean content and AI workflows.**
 - Get clean HTML and LLM-ready Markdown from any website
 - Remove scripts, styling, ads, and clutter automatically
 - Perfect for RAG systems, AI summarization, embeddings, and content pipelines
-- Extract main content while filtering out navigation and irrelevant elements
-- Ideal for feeding clean data to large language models
+- Ideal for feeding clean data to LLMs
+
+### Example: Scrape GitHub Trending Repositories in clean Markdown format 
 
 https://github.com/user-attachments/assets/c774cbd4-5a85-45b7-b41f-128ee570eae6
 
@@ -63,10 +87,11 @@ https://github.com/user-attachments/assets/c774cbd4-5a85-45b7-b41f-128ee570eae6
 The simplest & fastest way to get started is to use the hosted version: https://app.maxun.dev. You can self-host if you prefer!
 
 ### Installation
-Maxun can run locally with or without Docker:
+Maxun can run locally with or without Docker
 1. [Setup with Docker Compose](https://docs.maxun.dev/installation/docker)
 2. [Setup without Docker](https://docs.maxun.dev/installation/local)
 3. [Environment Variables](https://docs.maxun.dev/installation/environment_variables)
+4. [SDK](https://github.com/getmaxun/node-sdk)
 
 ### Upgrading & Self Hosting
 1. [Self Host Maxun With Docker & Portainer](https://docs.maxun.dev/self-host)
