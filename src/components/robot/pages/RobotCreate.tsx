@@ -254,30 +254,6 @@ const RobotCreate: React.FC = () => {
 
                 <Box sx={{ display: 'flex', gap: 2 }}>
                   <Card
-                    onClick={() => setGenerationMode('agent')}
-                    sx={{
-                      flex: 1,
-                      cursor: 'pointer',
-                      border: '2px solid',
-                      borderColor: generationMode === 'agent' ? '#ff00c3' : 'divider',
-                      transition: 'all 0.2s',
-                      '&:hover': {
-                        borderColor: '#ff00c3',
-                      }
-                    }}
-                  >
-                    <CardContent sx={{ textAlign: 'center', py: 3 }}>
-                      <SmartToy sx={{ fontSize: 32, mb: 1 }} />
-                      <Typography variant="h6" gutterBottom>
-                        AI Powered
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        AI will take care of everything
-                      </Typography>
-                    </CardContent>
-                  </Card>
-
-                  <Card
                     onClick={() => setGenerationMode('recorder')}
                     sx={{
                       flex: 1,
@@ -297,6 +273,29 @@ const RobotCreate: React.FC = () => {
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         You control the browser
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                  <Card
+                    onClick={() => setGenerationMode('agent')}
+                    sx={{
+                      flex: 1,
+                      cursor: 'pointer',
+                      border: '2px solid',
+                      borderColor: generationMode === 'agent' ? '#ff00c3' : 'divider',
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        borderColor: '#ff00c3',
+                      }
+                    }}
+                  >
+                    <CardContent sx={{ textAlign: 'center', py: 3 }}>
+                      <SmartToy sx={{ fontSize: 32, mb: 1 }} />
+                      <Typography variant="h6" gutterBottom>
+                        AI Powered
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        AI will take care of everything
                       </Typography>
                     </CardContent>
                   </Card>
