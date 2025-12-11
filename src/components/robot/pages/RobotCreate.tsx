@@ -6,10 +6,8 @@ import {
   Typography,
   TextField,
   Button,
-  FormControlLabel,
   Checkbox,
   IconButton,
-  Grid,
   Card,
   CircularProgress,
   Container,
@@ -21,10 +19,10 @@ import {
   MenuItem,
   InputLabel
 } from '@mui/material';
-import { ArrowBack, PlayCircleOutline, Article, Code, Description } from '@mui/icons-material';
-import { useGlobalInfoStore } from '../../../context/globalInfo';
+import { ArrowBack, AutoAwesome, HighlightAlt } from '@mui/icons-material';
+import { useGlobalInfoStore, useCacheInvalidation } from '../../../context/globalInfo';
 import { canCreateBrowserInState, getActiveBrowserId, stopRecording } from '../../../api/recording';
-import { createScrapeRobot } from "../../../api/storage";
+import { createScrapeRobot, createLLMRobot, createAndRunRecording } from "../../../api/storage";
 import { AuthContext } from '../../../context/auth';
 import { GenericModal } from '../../ui/GenericModal';
 
@@ -59,14 +57,24 @@ const RobotCreate: React.FC = () => {
   const [tabValue, setTabValue] = useState(0);
   const [url, setUrl] = useState('');
   const [scrapeRobotName, setScrapeRobotName] = useState('');
+  const [extractRobotName, setExtractRobotName] = useState('');
   const [needsLogin, setNeedsLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isWarningModalOpen, setWarningModalOpen] = useState(false);
   const [activeBrowserId, setActiveBrowserId] = useState('');
   const [outputFormats, setOutputFormats] = useState<string[]>([]);
+  const [generationMode, setGenerationMode] = useState<'agent' | 'recorder' | null>(null);
+
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [llmProvider, setLlmProvider] = useState<'anthropic' | 'openai' | 'ollama'>('ollama');
+  const [llmModel, setLlmModel] = useState('default');
+  const [llmApiKey, setLlmApiKey] = useState('');
+  const [llmBaseUrl, setLlmBaseUrl] = useState('');
+  const [aiRobotName, setAiRobotName] = useState('');
 
   const { state } = React.useContext(AuthContext);
   const { user } = state;
+  const { addOptimisticRobot, removeOptimisticRobot, invalidateRecordings, invalidateRuns, addOptimisticRun } = useCacheInvalidation();
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -147,11 +155,6 @@ const RobotCreate: React.FC = () => {
     navigate('/robots');
   };
 
-
-
-
-
-
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
       <Box>
@@ -210,11 +213,9 @@ const RobotCreate: React.FC = () => {
           </Tabs>
         </Box>
 
-
         <TabPanel value={tabValue} index={0}>
-          <Card sx={{ mb: 4, p: 4, textAlign: 'center' }}>
+          <Card sx={{ mb: 4, p: 4 }}>
             <Box display="flex" flexDirection="column" alignItems="center">
-              {/* Logo (kept as original) */}
               <img
                 src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
                 width={73}
@@ -227,138 +228,339 @@ const RobotCreate: React.FC = () => {
               />
 
               <Typography variant="body2" color="text.secondary" mb={3}>
-                Extract structured data from websites in a few clicks.
+                Extract structured data from websites using AI or record your own extraction workflow.
               </Typography>
-
-              {/* Origin URL Input */}
-              <Box sx={{ width: '100%', maxWidth: 700, mb: 2 }}>
+              <Box sx={{ width: '100%', maxWidth: 700, mb: 3 }}>
                 <TextField
                   placeholder="Example: https://www.ycombinator.com/companies/"
                   variant="outlined"
                   fullWidth
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
+                  label="Website URL"
                 />
               </Box>
 
-              {/* Checkbox */}
-              <Box sx={{ width: '100%', maxWidth: 700, mb: 3, textAlign: 'left' }}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={needsLogin}
-                      onChange={(e) => setNeedsLogin(e.target.checked)}
-                      color="primary"
-                    />
-                  }
-                  label="This website needs logging in."
-                />
-              </Box>
+              <Box sx={{ width: '100%', maxWidth: 700, mb: 3 }}>
+                <Typography variant="subtitle1" gutterBottom sx={{ mb: 2 }} color="text.secondary">
+                  Choose How to Build
+                </Typography>
 
-              {/* Button */}
-              <Button
-                variant="contained"
-                fullWidth
-                onClick={handleStartRecording}
-                disabled={!url.trim() || isLoading}
-                sx={{
-                  bgcolor: '#ff00c3',
-                  py: 1.4,
-                  fontSize: '1rem',
-                  textTransform: 'none',
-                  maxWidth: 700,
-                  borderRadius: 2
-                }}
-                startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
-              >
-                {isLoading ? 'Starting...' : 'Start Recording'}
-              </Button>
-            </Box>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <Card
+                    onClick={() => setGenerationMode('recorder')}
+                    sx={{
+                      flex: 1,
+                      cursor: 'pointer',
+                      border: '2px solid',
+                      borderColor: generationMode === 'recorder' ? '#ff00c3' : 'divider',
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        borderColor: '#ff00c3',
+                      }
+                    }}
+                  >
+                    <CardContent sx={{ textAlign: 'center', py: 3, color:"text.secondary" }}>
+                      <HighlightAlt sx={{ fontSize: 32, mb: 1 }} />
+                      <Typography variant="h6" gutterBottom>
+                        Recorder Mode
+                      </Typography>
+                      <Typography variant="body2">
+                        Record your actions into a workflow.
+                      </Typography>
+                    </CardContent>
+                  </Card>
+
+                  <Card
+                    onClick={() => setGenerationMode('agent')}
+                    sx={{
+                      flex: 1,
+                      cursor: 'pointer',
+                      border: '2px solid',
+                      borderColor: generationMode === 'agent' ? '#ff00c3' : 'divider',
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        borderColor: '#ff00c3',
+                      },
+                      position: 'relative'
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        top: 8,
+                        right: 8,
+                        background: '#ff00c3',
+                        color: '#fff',
+                        px: 1,
+                        py: 0.3,
+                        borderRadius: '10px',
+                        fontSize: '0.7rem',
+                      }}
+                    >
+                      Beta
+                    </Box>
+
+                    <CardContent sx={{ textAlign: 'center', py: 3, color:"text.secondary" }}>
+                      <AutoAwesome sx={{ fontSize: 32, mb: 1 }} />
+                      <Typography variant="h6" gutterBottom>
+                        AI Mode
+                      </Typography>
+                      <Typography variant="body2">
+                        Describe the task. It builds it for you.
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Box>
+              </Box>
+                {generationMode === 'agent' && (
+                  <Box sx={{ width: '100%', maxWidth: 700 }}>
+                    <Box sx={{ mb: 3 }}>
+                      <TextField
+                        placeholder="Robot Name"
+                        variant="outlined"
+                        fullWidth
+                        value={extractRobotName}
+                        onChange={(e) => setExtractRobotName(e.target.value)}
+                        label="Robot Name"
+                      />
+                    </Box>
+
+                    <Box sx={{ mb: 3 }}>
+                      <TextField
+                        placeholder="Example: Extract first 15 company names, descriptions, and batch information"
+                        variant="outlined"
+                        fullWidth
+                        multiline
+                        rows={3}
+                        value={aiPrompt}
+                        onChange={(e) => setAiPrompt(e.target.value)}
+                        label="Extraction Prompt"
+                      />
+                    </Box>
+
+                    <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                      <FormControl sx={{ flex: 1 }}>
+                        <InputLabel>LLM Provider</InputLabel>
+                        <Select
+                          value={llmProvider}
+                          label="LLM Provider"
+                          onChange={(e) => {
+                            const provider = e.target.value as 'anthropic' | 'openai' | 'ollama';
+                            setLlmProvider(provider);
+                            setLlmModel('default');
+                            if (provider === 'ollama') {
+                              setLlmBaseUrl('http://localhost:11434');
+                            } else {
+                              setLlmBaseUrl('');
+                            }
+                          }}
+                        >
+                          <MenuItem value="ollama">Ollama (Local)</MenuItem>
+                          <MenuItem value="anthropic">Anthropic (Claude)</MenuItem>
+                          <MenuItem value="openai">OpenAI (GPT-4)</MenuItem>
+                        </Select>
+                      </FormControl>
+
+                      <FormControl sx={{ flex: 1 }}>
+                        <InputLabel>Model</InputLabel>
+                        <Select
+                          value={llmModel}
+                          label="Model"
+                          onChange={(e) => setLlmModel(e.target.value)}
+                        >
+                          {llmProvider === 'ollama' ? (
+                            [
+                              <MenuItem key="default" value="default">Default (llama3.2-vision)</MenuItem>,
+                              <MenuItem key="llama3.2-vision" value="llama3.2-vision">llama3.2-vision</MenuItem>,
+                              <MenuItem key="llama3.2" value="llama3.2">llama3.2</MenuItem>
+                            ]
+                          ) : llmProvider === 'anthropic' ? (
+                            [
+                              <MenuItem key="default" value="default">Default (claude-3-5-sonnet)</MenuItem>,
+                              <MenuItem key="claude-3-5-sonnet-20241022" value="claude-3-5-sonnet-20241022">claude-3-5-sonnet-20241022</MenuItem>,
+                              <MenuItem key="claude-3-opus-20240229" value="claude-3-opus-20240229">claude-3-opus-20240229</MenuItem>
+                            ]
+                          ) : (
+                            [
+                              <MenuItem key="default" value="default">Default (gpt-4-vision-preview)</MenuItem>,
+                              <MenuItem key="gpt-4-vision-preview" value="gpt-4-vision-preview">gpt-4-vision-preview</MenuItem>,
+                              <MenuItem key="gpt-4o" value="gpt-4o">gpt-4o</MenuItem>
+                            ]
+                          )}
+                        </Select>
+                      </FormControl>
+                    </Box>
+
+                    {/* API Key for non-Ollama providers */}
+                    {llmProvider !== 'ollama' && (
+                      <Box sx={{ mb: 3 }}>
+                        <TextField
+                          placeholder={`${llmProvider === 'anthropic' ? 'Anthropic' : 'OpenAI'} API Key`}
+                          variant="outlined"
+                          fullWidth
+                          type="password"
+                          value={llmApiKey}
+                          onChange={(e) => setLlmApiKey(e.target.value)}
+                          label="API Key (Optional if set in .env)"
+                        />
+                      </Box>
+                    )}
+
+                    {llmProvider === 'ollama' && (
+                      <Box sx={{ mb: 3 }}>
+                        <TextField
+                          placeholder="http://localhost:11434"
+                          variant="outlined"
+                          fullWidth
+                          value={llmBaseUrl}
+                          onChange={(e) => setLlmBaseUrl(e.target.value)}
+                          label="Ollama Base URL (Optional)"
+                        />
+                      </Box>
+                    )}
+
+                    <Button
+                      variant="contained"
+                      fullWidth
+                      onClick={async () => {
+                        if (!url.trim()) {
+                          notify('error', 'Please enter a valid URL');
+                          return;
+                        }
+                        if (!extractRobotName.trim()) {
+                          notify('error', 'Please enter a robot name');
+                          return;
+                        }
+                        if (!aiPrompt.trim()) {
+                          notify('error', 'Please enter an extraction prompt');
+                          return;
+                        }
+
+                        const tempRobotId = `temp-${Date.now()}`;
+                        const robotDisplayName = extractRobotName;
+
+                        const optimisticRobot = {
+                          id: tempRobotId,
+                          recording_meta: {
+                            id: tempRobotId,
+                            name: robotDisplayName,
+                            createdAt: new Date().toISOString(),
+                            updatedAt: new Date().toISOString(),
+                            pairs: 0,
+                            params: [],
+                            type: 'extract',
+                            url: url,
+                          },
+                          recording: { workflow: [] },
+                          isLoading: true,
+                          isOptimistic: true
+                        };
+
+                        addOptimisticRobot(optimisticRobot);
+
+                        notify('info', `Robot ${robotDisplayName} creation started`);
+                        navigate('/robots');
+
+                        try {
+                          const result = await createLLMRobot(
+                            url,
+                            aiPrompt,
+                            llmProvider,
+                            llmModel === 'default' ? undefined : llmModel,
+                            llmApiKey || undefined,
+                            llmBaseUrl || undefined,
+                            extractRobotName
+                          );
+
+                          removeOptimisticRobot(tempRobotId);
+
+                          if (!result || !result.robot) {
+                            notify('error', 'Failed to create AI robot. Please check your LLM configuration.');
+                            invalidateRecordings();
+                            return;
+                          }
+
+                          const robotMetaId = result.robot.recording_meta.id;
+                          const robotName = result.robot.recording_meta.name;
+
+                          invalidateRecordings();
+                          notify('success', `${robotName} created successfully!`);
+
+                          const optimisticRun = {
+                            id: robotMetaId,
+                            runId: `temp-${Date.now()}`,
+                            status: 'running',
+                            name: robotName,
+                            startedAt: new Date().toISOString(),
+                            finishedAt: '',
+                            robotMetaId: robotMetaId,
+                            log: 'Starting...',
+                            isOptimistic: true
+                          };
+
+                          addOptimisticRun(optimisticRun);
+
+                          const runResponse = await createAndRunRecording(robotMetaId, {
+                            maxConcurrency: 1,
+                            maxRepeats: 1,
+                            debug: false
+                          });
+
+                          invalidateRuns();
+
+                          if (runResponse && runResponse.runId) {
+                            await new Promise(resolve => setTimeout(resolve, 300));
+                            navigate(`/runs/${robotMetaId}/run/${runResponse.runId}`);
+                            notify('info', `Run started: ${robotName}`);
+                          } else {
+                            notify('warning', 'Robot created but failed to start execution.');
+                            navigate('/robots');
+                          }
+                        } catch (error: any) {
+                          console.error('Error in AI robot creation:', error);
+                          removeOptimisticRobot(tempRobotId);
+                          invalidateRecordings();
+                          notify('error', error?.message || 'Failed to create and run AI robot');
+                        }
+                      }}
+                      disabled={!url.trim() || !extractRobotName.trim() || !aiPrompt.trim() || isLoading}
+                      sx={{
+                        bgcolor: '#ff00c3',
+                        py: 1.4,
+                        fontSize: '1rem',
+                        textTransform: 'none',
+                        borderRadius: 2
+                      }}
+                      startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
+                    >
+                      {isLoading ? 'Creating & Running...' : 'Create & Run Robot'}
+                    </Button>
+                  </Box>
+                )}
+
+                {generationMode === 'recorder' && (
+                  <Box sx={{ width: '100%', maxWidth: 700 }}>
+                    <Button
+                      variant="contained"
+                      fullWidth
+                      onClick={handleStartRecording}
+                      disabled={!url.trim() || isLoading}
+                      sx={{
+                        bgcolor: '#ff00c3',
+                        py: 1.4,
+                        fontSize: '1rem',
+                        textTransform: 'none',
+                        borderRadius: 2
+                      }}
+                      startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
+                    >
+                      {isLoading ? 'Starting...' : 'Start Recording'}
+                    </Button>
+                  </Box>
+                )}
+              </Box>
           </Card>
-
-          <Box mt={6} textAlign="center">
-            <Typography variant="h6" gutterBottom>
-              First time creating a robot?
-            </Typography>
-            <Typography variant="body2" color="text.secondary" mb={3}>
-              Get help and learn how to use Maxun effectively.
-            </Typography>
-
-            <Grid container spacing={3} justifyContent="center">
-
-              {/* YouTube Tutorials */}
-              <Grid item xs={12} sm={6} md={4}>
-                <Card
-                  sx={{
-                    height: 140,
-                    cursor: "pointer",
-                  }}
-                  onClick={() => window.open("https://www.youtube.com/@MaxunOSS/videos", "_blank")}
-                >
-                  <CardContent
-                    sx={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center", // center content
-                      height: "100%",
-                      textAlign: "center",
-                      p: 2,
-                      color: (theme) =>
-                        theme.palette.mode === 'light' ? 'rgba(0, 0, 0, 0.54)' : '',
-                    }}
-                  >
-                    <PlayCircleOutline sx={{ fontSize: "32px", mb: 2 }} />
-
-                    <Box sx={{ textAlign: "center" }}>
-                      <Typography variant="body1" fontWeight="600" sx={{ lineHeight: 1.2 }}>
-                        Video Tutorials
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.4, mt: 1 }}>
-                        Watch step-by-step guides
-                      </Typography>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              {/* Documentation */}
-              <Grid item xs={12} sm={6} md={4}>
-                <Card
-                  sx={{
-                    height: 140,
-                    cursor: "pointer",
-                  }}
-                  onClick={() => window.open("https://docs.maxun.dev", "_blank")}
-                >
-                  <CardContent
-                    sx={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center", // center everything
-                      height: "100%",
-                      textAlign: "center",
-                      p: 2,
-                      color: (theme) =>
-                        theme.palette.mode === 'light' ? 'rgba(0, 0, 0, 0.54)' : '',
-                    }}
-                  >
-                    <Article sx={{ fontSize: "32px", mb: 2 }} />
-
-                    <Box sx={{ textAlign: "center" }}>
-                      <Typography variant="body1" fontWeight="600" sx={{ lineHeight: 1.2 }}>
-                        Documentation
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.4, mt: 1 }}>
-                        Explore detailed guides
-                      </Typography>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            </Grid>
-          </Box>
         </TabPanel>
 
         <TabPanel value={tabValue} index={1}>

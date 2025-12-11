@@ -81,8 +81,46 @@ interface RecordingsTableProps {
   handleDuplicateRobot: (id: string, name: string, params: string[]) => void;
 }
 
+const LoadingRobotRow = memo(({ row, columns }: any) => {
+  return (
+    <TableRow hover role="checkbox" tabIndex={-1} sx={{ backgroundColor: 'action.hover' }}>
+      {columns.map((column: Column) => {
+        if (column.id === 'name') {
+          return (
+            <MemoizedTableCell key={column.id} align={column.align}>
+              <Box display="flex" alignItems="center" gap={2}>
+                <CircularProgress size={20} />
+                <Typography variant="body2" color="text.secondary">
+                  {row.name} (Creating...)
+                </Typography>
+              </Box>
+            </MemoizedTableCell>
+          );
+        } else if (column.id === 'interpret') {
+          return (
+            <MemoizedTableCell key={column.id} align={column.align}>
+              <CircularProgress size={20} />
+            </MemoizedTableCell>
+          );
+        } else {
+          return (
+            <MemoizedTableCell key={column.id} align={column.align}>
+              <Box sx={{ opacity: 0.3 }}>-</Box>
+            </MemoizedTableCell>
+          );
+        }
+      })}
+    </TableRow>
+  );
+});
+
 // Virtualized row component for efficient rendering
 const TableRowMemoized = memo(({ row, columns, handlers }: any) => {
+  // If robot is loading, show loading row
+  if (row.isLoading) {
+    return <LoadingRobotRow row={row} columns={columns} />;
+  }
+
   return (
     <TableRow hover role="checkbox" tabIndex={-1}>
       {columns.map((column: Column) => {
@@ -261,7 +299,9 @@ export const RecordingsTable = ({
             id: index,
             ...recording.recording_meta,
             content: recording.recording,
-            parsedDate
+            parsedDate,
+            isLoading: recording.isLoading || false,
+            isOptimistic: recording.isOptimistic || false
           };
         }
         return null;
@@ -552,7 +592,7 @@ export const RecordingsTable = ({
         <>
           <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden', marginTop: '15px' }}>
             <Table stickyHeader aria-label="sticky table">
-              {/* <TableHead> */}
+              <TableHead>
                 <TableRow>
                   {columns.map((column) => (
                     <MemoizedTableCell
@@ -563,7 +603,7 @@ export const RecordingsTable = ({
                     </MemoizedTableCell>
                   ))}
                 </TableRow>
-              {/* </TableHead> */}
+              </TableHead>
               <TableBody>
                 {visibleRows.map((row) => (
                   <TableRowMemoized
