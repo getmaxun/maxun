@@ -99,7 +99,10 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
             }
         });
 
-        capture("maxun-oss-llm-robot-created", {
+              const eventName = robotMeta.isLLM 
+          ? "maxun-oss-llm-robot-created" 
+            : "maxun-oss-robot-created";
+        capture(eventName, {
             robot_meta: robot.recording_meta,
             recording: robot.recording,
         });
