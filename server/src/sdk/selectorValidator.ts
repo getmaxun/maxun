@@ -315,7 +315,7 @@ export class SelectorValidator {
         const win = window as any;
 
         if (typeof win.autoDetectPagination === 'function') {
-          const result = win.autoDetectPagination(selector, { disableScrollDetection: false });
+          const result = win.autoDetectPagination(selector);
           return result;
         } else {
           console.error('autoDetectPagination function not found!');

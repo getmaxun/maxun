@@ -2124,19 +2124,10 @@
       }
 
       const infiniteScrollScore = (options && options.disableScrollDetection)
-        ? 0 
+        ? 0
         : detectInfiniteScrollScore();
       const hasStrongInfiniteScrollSignals = infiniteScrollScore >= 8;
       const hasMediumInfiniteScrollSignals = infiniteScrollScore >= 5 && infiniteScrollScore < 8;
-
-      if (hasStrongInfiniteScrollSignals) {
-        const confidence = infiniteScrollScore >= 12 ? 'high' : infiniteScrollScore >= 10 ? 'medium' : 'low';
-        return {
-          type: 'scrollDown',
-          selector: null,
-          confidence: confidence
-        };
-      }
 
       if (loadMoreButton && loadMoreScore >= 15) {
         const selector = generatePaginationSelector(loadMoreButton);
@@ -2147,12 +2138,41 @@
         };
       }
 
-      if (nextButton && nextButtonScore >= 15 && !hasMediumInfiniteScrollSignals) {
+      if (nextButton && nextButtonScore >= 15) {
         const selector = generatePaginationSelector(nextButton);
         return {
           type: 'clickNext',
           selector: selector,
           confidence: 'high'
+        };
+      }
+
+      if (hasStrongInfiniteScrollSignals) {
+        const confidence = infiniteScrollScore >= 12 ? 'high' : infiniteScrollScore >= 10 ? 'medium' : 'low';
+        return {
+          type: 'scrollDown',
+          selector: null,
+          confidence: confidence
+        };
+      }
+
+      if (loadMoreButton && loadMoreScore >= 10) {
+        const selector = generatePaginationSelector(loadMoreButton);
+        const confidence = 'medium';
+        return {
+          type: 'clickLoadMore',
+          selector: selector,
+          confidence: confidence
+        };
+      }
+
+      if (nextButton && nextButtonScore >= 10) {
+        const selector = generatePaginationSelector(nextButton);
+        const confidence = 'medium';
+        return {
+          type: 'clickNext',
+          selector: selector,
+          confidence: confidence
         };
       }
 
