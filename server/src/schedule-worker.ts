@@ -13,7 +13,7 @@ if (!process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_HOST || 
 
 const pgBossConnectionString = `postgresql://${process.env.DB_USER}:${encodeURIComponent(process.env.DB_PASSWORD)}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
 
-const pgBoss = new PgBoss({
+export const pgBoss = new PgBoss({
   connectionString: pgBossConnectionString,
   max: 3,
   expireInHours: 23,
@@ -87,8 +87,9 @@ async function registerScheduledWorkflowWorker() {
 
 /**
  * Register a worker for a specific queue
+ * Exported to allow dynamic registration when new schedules are created
  */
-async function registerWorkerForQueue(queueName: string) {
+export async function registerWorkerForQueue(queueName: string) {
   try {
     if (registeredQueues.has(queueName)) {
       return;

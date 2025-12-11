@@ -894,7 +894,7 @@ router.put('/schedule/:id/', requireSignIn, async (req: AuthenticatedRequest, re
       logger.log('warn', `Failed to cancel existing schedule for robot ${id}: ${cancelError}`);
     }
 
-    const jobId = await scheduleWorkflow(id, req.user.id, cronExpression, timezone);
+    await scheduleWorkflow(id, req.user.id, cronExpression, timezone);
 
     const nextRunAt = computeNextRun(cronExpression, timezone);
 
