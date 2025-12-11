@@ -660,10 +660,68 @@ Note: selectedGroupIndex must be between 0 and ${elementGroups.length - 1}`;
   ): Promise<Record<string, string>> {
     try {
       const provider = llmConfig?.provider || 'ollama';
+
+      const BATCH_SIZE = provider === 'ollama' ? 25 : 50;
+
+      const fieldEntries = Object.entries(fieldSamples);
+      const totalFields = fieldEntries.length;
+
+      logger.info(`Processing ${totalFields} fields in batches of ${BATCH_SIZE} for LLM labeling`);
+
+      const allLabels: Record<string, string> = {};
+
+      for (let i = 0; i < fieldEntries.length; i += BATCH_SIZE) {
+        const batch = fieldEntries.slice(i, i + BATCH_SIZE);
+        const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
+        const totalBatches = Math.ceil(fieldEntries.length / BATCH_SIZE);
+
+        logger.info(`Processing batch ${batchNumber}/${totalBatches} (${batch.length} fields)`);
+
+        const batchLabels = await this.generateFieldLabelsBatch(
+          fields,
+          Object.fromEntries(batch),
+          prompt,
+          url,
+          llmConfig,
+          allLabels
+        );
+
+        Object.assign(allLabels, batchLabels);
+      }
+
+      logger.info(`Completed labeling for ${Object.keys(allLabels).length}/${totalFields} fields`);
+
+      return allLabels;
+    } catch (error: any) {
+      logger.error(`Error generating field labels with LLM: ${error.message}`);
+      logger.error(`Using fallback: keeping generic field labels`);
+      const fallbackLabels: Record<string, string> = {};
+      Object.keys(fields).forEach(label => {
+        fallbackLabels[label] = label;
+      });
+      return fallbackLabels;
+    }
+  }
+
+  private static async generateFieldLabelsBatch(
+    allFields: Record<string, any>,
+    fieldSamplesBatch: Record<string, string[]>,
+    prompt: string,
+    url: string,
+    llmConfig?: {
+      provider?: 'anthropic' | 'openai' | 'ollama';
+      model?: string;
+      apiKey?: string;
+      baseUrl?: string;
+    },
+    previousLabels?: Record<string, string>
+  ): Promise<Record<string, string>> {
+    try {
+      const provider = llmConfig?.provider || 'ollama';
       const axios = require('axios');
 
-      const fieldDescriptions = Object.entries(fieldSamples).map(([genericLabel, samples]) => {
-        const fieldInfo = fields[genericLabel];
+      const fieldDescriptions = Object.entries(fieldSamplesBatch).map(([genericLabel, samples]) => {
+        const fieldInfo = allFields[genericLabel];
         const tagType = fieldInfo?.tag?.toLowerCase() || 'unknown';
         const attribute = fieldInfo?.attribute || 'innerText';
 
@@ -680,6 +738,11 @@ Note: selectedGroupIndex must be between 0 and ${elementGroups.length - 1}`;
 ${samples.slice(0, 3).map((s, i) => `    ${i + 1}. "${s}"`).join('\n')}`;
       }).join('\n\n');
 
+      const hasPreviousLabels = previousLabels && Object.keys(previousLabels).length > 0;
+      const previousLabelsText = hasPreviousLabels
+        ? `\n\nPREVIOUSLY ASSIGNED LABELS (from earlier batches):\n${Object.entries(previousLabels!).map(([orig, sem]) => `- "${sem}"`).join('\n')}\n\nIMPORTANT: DO NOT reuse these exact labels. Use them as context to maintain consistent naming patterns and avoid duplicates. Add qualifiers like "Secondary", "Alternative", numbers, or additional context to distinguish similar fields.`
+        : '';
+
       const systemPrompt = `You are a data field labeling assistant. Your job is to generate clear, semantic field names for extracted data based on the user's request and the actual field content.
 
 RULES FOR FIELD NAMING:
@@ -693,6 +756,7 @@ RULES FOR FIELD NAMING:
 8. Avoid generic terms like "Text", "Field", "Data" unless absolutely necessary
 9. If you can't determine the meaning, use a descriptive observation based on the content type
 10. Adapt to the domain: e-commerce (Product, Price), jobs (Title, Company), articles (Headline, Author), etc.
+11. CRITICAL: Check previously assigned labels to avoid duplicates and maintain consistent naming patterns${previousLabelsText}
 
 You must return a JSON object mapping each generic label to its semantic name.`;
 
@@ -825,8 +889,6 @@ Return a JSON object with this exact structure:
         throw new Error(`Unsupported LLM provider: ${provider}`);
       }
 
-      logger.info(`LLM Field Labeling Response: ${llmResponse}`);
-
       let jsonStr = llmResponse.trim();
 
       const jsonMatch = jsonStr.match(/```json\s*([\s\S]*?)\s*```/) || jsonStr.match(/```\s*([\s\S]*?)\s*```/);
@@ -849,7 +911,7 @@ Return a JSON object with this exact structure:
       }
 
       const missingLabels: string[] = [];
-      Object.keys(fields).forEach(genericLabel => {
+      Object.keys(fieldSamplesBatch).forEach(genericLabel => {
         if (!labelMapping[genericLabel]) {
           missingLabels.push(genericLabel);
         }
@@ -864,10 +926,9 @@ Return a JSON object with this exact structure:
 
       return labelMapping;
     } catch (error: any) {
-      logger.error(`Error generating field labels with LLM: ${error.message}`);
-      logger.error(`Using fallback: keeping generic field labels`);
+      logger.error(`Error in batch field labeling: ${error.message}`);
       const fallbackLabels: Record<string, string> = {};
-      Object.keys(fields).forEach(label => {
+      Object.keys(fieldSamplesBatch).forEach(label => {
         fallbackLabels[label] = label;
       });
       return fallbackLabels;
@@ -899,16 +960,12 @@ Return a JSON object with this exact structure:
 
       const fieldDescriptions = Object.entries(labeledFields).map(([fieldName, fieldInfo]) => {
         const samples = fieldSamples[fieldName] || [];
-        const sampleText = samples.length > 0 
-          ? samples.slice(0, 3).map((s, i) => `    ${i + 1}. "${s}"`).join('\n')
-          : '    (no samples available)';
+        const sampleText = samples.length > 0
+          ? samples.slice(0, 1).map((s, i) => `"${s.substring(0, 100)}"`).join(', ')
+          : '(no samples)';
 
-        return `${fieldName}:
-  Type: ${fieldInfo.tag || 'unknown'}
-  Attribute: ${fieldInfo.attribute || 'innerText'}
-  Sample values:
-${sampleText}`;
-      }).join('\n\n');
+        return `${fieldName}: ${fieldInfo.tag || 'unknown'} - ${sampleText}`;
+      }).join('\n');
 
       const systemPrompt = `You are a field filter assistant. Your job is to analyze the user's extraction request and select ONLY the fields that match their intent.
 
