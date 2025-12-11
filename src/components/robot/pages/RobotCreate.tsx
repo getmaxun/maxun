@@ -260,7 +260,7 @@ const RobotCreate: React.FC = () => {
                       }
                     }}
                   >
-                    <CardContent sx={{ textAlign: 'center', py: 3 }}>
+                    <CardContent sx={{ textAlign: 'center', py: 3, color:"text.secondary" }}>
                       <HighlightAlt sx={{ fontSize: 32, mb: 1 }} />
                       <Typography variant="h6" gutterBottom color="text.secondary">
                         Recorder Mode
