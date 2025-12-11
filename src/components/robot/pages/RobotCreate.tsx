@@ -294,9 +294,8 @@ const RobotCreate: React.FC = () => {
                         color: '#fff',
                         px: 1,
                         py: 0.3,
-                        borderRadius: '6px',
+                        borderRadius: '10px',
                         fontSize: '0.7rem',
-                        fontWeight: 600
                       }}
                     >
                       Beta
