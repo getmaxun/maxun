@@ -158,11 +158,6 @@ const RobotCreate: React.FC = () => {
     navigate('/robots');
   };
 
-
-
-
-
-
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
       <Box>
