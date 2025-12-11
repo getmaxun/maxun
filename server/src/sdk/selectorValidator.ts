@@ -315,7 +315,7 @@ export class SelectorValidator {
         const win = window as any;
 
         if (typeof win.autoDetectPagination === 'function') {
-          const result = win.autoDetectPagination(selector, { disableScrollDetection: true });
+          const result = win.autoDetectPagination(selector, { disableScrollDetection: false });
           return result;
         } else {
           console.error('autoDetectPagination function not found!');
@@ -345,7 +345,16 @@ export class SelectorValidator {
           const loadMoreVerified = await this.testLoadMoreButton(buttonResult.selector, listSelector);
 
           if (!loadMoreVerified) {
-            logger.warn('Load More button did not load content, trying other detection methods');
+            logger.warn('Load More button did not load content, falling back to scroll detection');
+            const scrollTestResult = await this.testInfiniteScrollByScrolling(listSelector);
+
+            if (scrollTestResult.detected) {
+              return {
+                success: true,
+                type: 'scrollDown',
+                selector: null
+              };
+            }
           } else {
             logger.info(`Verified Load More button works`);
             return {
@@ -362,16 +371,6 @@ export class SelectorValidator {
             selector: buttonResult.selector
           };
         }
-      }
-
-      const scrollTestResult = await this.testInfiniteScrollByScrolling(listSelector);
-
-      if (scrollTestResult.detected) {
-        return {
-          success: true,
-          type: 'scrollDown',
-          selector: null
-        };
       }
 
       return {
