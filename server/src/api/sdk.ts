@@ -99,7 +99,10 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
             }
         });
 
-        capture("maxun-oss-robot-created", {
+        const eventName = robotMeta.isLLM
+            ? "maxun-oss-llm-robot-created"
+            : "maxun-oss-robot-created";
+        capture(eventName, {
             robot_meta: robot.recording_meta,
             recording: robot.recording,
         });
@@ -389,13 +392,14 @@ router.delete("/sdk/robots/:id", requireAPIKey, async (req: AuthenticatedRequest
 
         logger.info(`[SDK] Robot deleted: ${robotId}`);
 
-        capture(
-            'maxun-oss-robot-deleted',
-            {
-                robotId: robotId,
-                user_id: req.user?.id,
-                deleted_at: new Date().toISOString(),
-            }
+        const deleteEventName = robot.recording_meta.isLLM
+            ? "maxun-oss-llm-robot-deleted"
+            : "maxun-oss-robot-deleted";
+        capture(deleteEventName, {
+            robotId: robotId,
+            user_id: req.user?.id,
+            deleted_at: new Date().toISOString(),
+        }
         )
 
         return res.status(200).json({
@@ -431,7 +435,7 @@ router.post("/sdk/robots/:id/execute", requireAPIKey, async (req: AuthenticatedR
         let listData: any[] = [];
         if (run.serializableOutput?.scrapeList) {
             const scrapeList: any = run.serializableOutput.scrapeList;
-            
+
             if (scrapeList.scrapeList && Array.isArray(scrapeList.scrapeList)) {
                 listData = scrapeList.scrapeList;
             }
@@ -677,6 +681,7 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
             params: [],
             type: 'extract',
             url: workflowResult.url,
+            isLLM: true,
         };
 
         const robot = await Robot.create({
@@ -690,7 +695,7 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
 
         logger.info(`[SDK] Persistent robot created: ${metaId} for LLM extraction`);
 
-        capture("maxun-oss-robot-created", {
+        capture("maxun-oss-llm-robot-created", {
             robot_meta: robot.recording_meta,
             recording: robot.recording,
         });

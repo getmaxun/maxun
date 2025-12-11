@@ -573,6 +573,7 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
         params: [],
         type: 'extract',
         url: workflowResult.url || url,
+        isLLM: true,
       },
       recording: { workflow: workflowResult.workflow },
       google_sheet_email: null,
@@ -584,7 +585,7 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
     });
 
     logger.log('info', `LLM robot created with id: ${newRobot.id}`);
-    capture('maxun-oss-robot-created', {
+    capture('maxun-oss-llm-robot-created', {
       robot_meta: newRobot.recording_meta,
       recording: newRobot.recording,
       llm_provider: llmProvider || 'ollama',
