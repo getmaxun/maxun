@@ -864,9 +864,7 @@ Example - if extracting products:
         });
       }
 
-      logger.info(`Generated semantic field labels: ${JSON.stringify(labelMapping, null, 2)}`);
       return labelMapping;
-
     } catch (error: any) {
       logger.error(`Error generating field labels with LLM: ${error.message}`);
       logger.error(`Using fallback: keeping generic field labels`);
@@ -951,9 +949,7 @@ Example - if extracting products:
         return results;
       }, { fieldsData: fields, listSel: listSelector });
 
-      logger.info(`Extracted field samples: ${JSON.stringify(Object.keys(samples).map(key => ({ field: key, sampleCount: samples[key].length })))}`);
       return samples;
-
     } catch (error: any) {
       logger.error(`Error extracting field samples: ${error.message}`);
       logger.error(`Error stack: ${error.stack}`);
@@ -1021,8 +1017,6 @@ Example - if extracting products:
         const semanticLabel = fieldLabels[genericLabel] || genericLabel;
         renamedFields[semanticLabel] = fieldInfo;
       });
-
-      logger.info(`Renamed fields: ${JSON.stringify(Object.keys(renamedFields))}`);
 
       let paginationType = 'none';
       let paginationSelector = '';
