@@ -392,13 +392,14 @@ router.delete("/sdk/robots/:id", requireAPIKey, async (req: AuthenticatedRequest
 
         logger.info(`[SDK] Robot deleted: ${robotId}`);
 
-        capture(
-            'maxun-oss-llm-robot-deleted',
-            {
-                robotId: robotId,
-                user_id: req.user?.id,
-                deleted_at: new Date().toISOString(),
-            }
+        const deleteEventName = robot.recording_meta.isLLM
+            ? "maxun-oss-llm-robot-deleted"
+            : "maxun-oss-robot-deleted";
+        capture(deleteEventName, {
+            robotId: robotId,
+            user_id: req.user?.id,
+            deleted_at: new Date().toISOString(),
+        }
         )
 
         return res.status(200).json({
