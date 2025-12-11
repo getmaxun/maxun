@@ -991,8 +991,6 @@ Example - if extracting products:
     });
 
     if (llmDecision.actionType === 'captureList') {
-      logger.info(`Auto-detecting fields for: ${llmDecision.itemSelector}`);
-
       const autoDetectResult = await validator.autoDetectListFields(llmDecision.itemSelector);
 
       if (!autoDetectResult.success || !autoDetectResult.fields || Object.keys(autoDetectResult.fields).length === 0) {
