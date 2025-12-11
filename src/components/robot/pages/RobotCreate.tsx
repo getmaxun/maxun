@@ -242,7 +242,7 @@ const RobotCreate: React.FC = () => {
               </Box>
 
               <Box sx={{ width: '100%', maxWidth: 700, mb: 3 }}>
-                <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
+                <Typography variant="subtitle1" gutterBottom sx={{ mb: 2 }}>
                   Choose How to Build
                 </Typography>
 
