@@ -1046,8 +1046,7 @@
         /page\s+suivante/i,
         /siguiente/i,
         /weiter/i,
-        />>/i,
-        /›|→|»|⟩/,
+        />>|›|→|»|⟩/,
         /\bforward\b/i,
         /\bnewer\b/i,
         /\bolder\b/i
@@ -2124,7 +2123,7 @@
         }
       }
 
-      const infiniteScrollScore = options && options.disableScrollDetection 
+      const infiniteScrollScore = (options && options.disableScrollDetection)
         ? 0 
         : detectInfiniteScrollScore();
       const hasStrongInfiniteScrollSignals = infiniteScrollScore >= 8;
@@ -2386,6 +2385,72 @@
         return maxScore > 0 ? score / maxScore : 0;
       };
 
+      const hasAnyMeaningfulChildren = (element) => {
+        const meaningfulChildren = [];
+
+        const traverse = (el, depth) => {
+          if (depth === undefined) depth = 0;
+          if (depth > 5) return;
+
+          Array.from(el.children).forEach(function(child) {
+            const tagName = child.tagName.toLowerCase();
+
+            if (tagName === 'img' && child.hasAttribute('src')) {
+              meaningfulChildren.push(child);
+              return;
+            }
+
+            if (tagName === 'a' && child.hasAttribute('href')) {
+              meaningfulChildren.push(child);
+              return;
+            }
+
+            const text = (child.textContent || '').trim();
+            const hasVisibleText = text.length > 0;
+
+            if (hasVisibleText || child.querySelector('svg')) {
+              meaningfulChildren.push(child);
+              return;
+            }
+
+            if (child.children.length > 0) {
+              traverse(child, depth + 1);
+            }
+          });
+
+          if (el.shadowRoot) {
+            Array.from(el.shadowRoot.children).forEach(function(shadowChild) {
+              const tagName = shadowChild.tagName.toLowerCase();
+
+              if (tagName === 'img' && shadowChild.hasAttribute('src')) {
+                meaningfulChildren.push(shadowChild);
+                return;
+              }
+
+              if (tagName === 'a' && shadowChild.hasAttribute('href')) {
+                meaningfulChildren.push(shadowChild);
+                return;
+              }
+
+              const text = (shadowChild.textContent || '').trim();
+              const hasVisibleText = text.length > 0;
+
+              if (hasVisibleText || shadowChild.querySelector('svg')) {
+                meaningfulChildren.push(shadowChild);
+                return;
+              }
+
+              if (shadowChild.children.length > 0) {
+                traverse(shadowChild, depth + 1);
+              }
+            });
+          }
+        };
+
+        traverse(element);
+        return meaningfulChildren.length > 0;
+      };
+
       const getAllVisibleElements = () => {
         const allElements = [];
         const visited = new Set();
@@ -2481,7 +2546,7 @@
           }
         });
 
-        if (currentGroup.length >= minGroupSize) {
+        if (currentGroup.length >= minGroupSize && hasAnyMeaningfulChildren(element)) {
           let grouped = false;
 
           for (let level = 1; level <= maxParentLevels && !grouped; level++) {
@@ -2512,6 +2577,12 @@
               });
               grouped = true;
             }
+          }
+
+          if (!grouped) {
+            currentGroup.forEach((el, idx) => {
+              if (idx > 0) processedElements.delete(el);
+            });
           }
         }
       });
