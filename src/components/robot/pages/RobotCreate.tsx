@@ -270,7 +270,7 @@ const RobotCreate: React.FC = () => {
                         Recorder Mode
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        Capture actions step-by-step
+                        Record your actions into a workflow.
                       </Typography>
                     </CardContent>
                   </Card>
