@@ -99,8 +99,8 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
             }
         });
 
-              const eventName = robotMeta.isLLM 
-          ? "maxun-oss-llm-robot-created" 
+        const eventName = robotMeta.isLLM
+            ? "maxun-oss-llm-robot-created"
             : "maxun-oss-robot-created";
         capture(eventName, {
             robot_meta: robot.recording_meta,
@@ -434,7 +434,7 @@ router.post("/sdk/robots/:id/execute", requireAPIKey, async (req: AuthenticatedR
         let listData: any[] = [];
         if (run.serializableOutput?.scrapeList) {
             const scrapeList: any = run.serializableOutput.scrapeList;
-            
+
             if (scrapeList.scrapeList && Array.isArray(scrapeList.scrapeList)) {
                 listData = scrapeList.scrapeList;
             }
