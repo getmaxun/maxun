@@ -21,7 +21,7 @@ import {
   MenuItem,
   InputLabel
 } from '@mui/material';
-import { ArrowBack, PlayCircleOutline, Article, Code, Description, SmartToy, HighlightAlt } from '@mui/icons-material';
+import { ArrowBack, PlayCircleOutline, Article, Code, Description, AutoAwesome, HighlightAlt } from '@mui/icons-material';
 import { useGlobalInfoStore, useCacheInvalidation } from '../../../context/globalInfo';
 import { canCreateBrowserInState, getActiveBrowserId, stopRecording } from '../../../api/recording';
 import { createScrapeRobot, createLLMRobot, createAndRunRecording } from "../../../api/storage";
@@ -308,7 +308,7 @@ const RobotCreate: React.FC = () => {
                     </Box>
 
                     <CardContent sx={{ textAlign: 'center', py: 3 }}>
-                      <SmartToy sx={{ fontSize: 32, mb: 1 }} />
+                      <AutoAwesome sx={{ fontSize: 32, mb: 1 }} />
                       <Typography variant="h6" gutterBottom>
                         AI Mode
                       </Typography>
