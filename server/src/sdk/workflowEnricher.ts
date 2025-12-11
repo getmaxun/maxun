@@ -316,7 +316,7 @@ export class WorkflowEnricher {
       );
       logger.info(`LLM decided action type: ${llmDecision.actionType}`);
 
-      const workflow = await this.buildWorkflowFromLLMDecision(llmDecision, url, validator);
+      const workflow = await this.buildWorkflowFromLLMDecision(llmDecision, url, validator, prompt, llmConfig);
 
       await validator.close();
 
@@ -639,12 +639,345 @@ Note: selectedGroupIndex must be between 0 and ${elementGroups.length - 1}`;
   }
 
   /**
+   * Generate semantic field labels using LLM based on content and context
+   */
+  private static async generateFieldLabels(
+    fields: Record<string, any>,
+    fieldSamples: Record<string, string[]>,
+    prompt: string,
+    url: string,
+    llmConfig?: {
+      provider?: 'anthropic' | 'openai' | 'ollama';
+      model?: string;
+      apiKey?: string;
+      baseUrl?: string;
+    }
+  ): Promise<Record<string, string>> {
+    try {
+      const provider = llmConfig?.provider || 'ollama';
+      const axios = require('axios');
+
+      const fieldDescriptions = Object.entries(fieldSamples).map(([genericLabel, samples]) => {
+        const fieldInfo = fields[genericLabel];
+        const tagType = fieldInfo?.tag?.toLowerCase() || 'unknown';
+        const attribute = fieldInfo?.attribute || 'innerText';
+
+        let typeHint = '';
+        if (attribute === 'href') typeHint = '(link/URL)';
+        else if (attribute === 'src') typeHint = '(image)';
+        else if (tagType === 'img') typeHint = '(image)';
+        else if (tagType === 'a') typeHint = '(link)';
+
+        return `${genericLabel}:
+  Type: ${tagType} ${typeHint}
+  Attribute: ${attribute}
+  Sample values:
+${samples.slice(0, 3).map((s, i) => `    ${i + 1}. "${s}"`).join('\n')}`;
+      }).join('\n\n');
+
+      const systemPrompt = `You are a data field labeling assistant. Your job is to generate clear, semantic field names for extracted data based on the user's request and the actual field content.
+
+RULES FOR FIELD NAMING:
+1. Use clear, descriptive names that match the content (e.g., "Product Name", "Price", "Rating")
+2. Keep names concise (2-4 words maximum)
+3. Use Title Case for field names
+4. Match the user's terminology when possible
+5. Be specific - if it's a product name, call it "Product Name" not just "Name"
+6. For images, include "Image" or "Photo" in the name (e.g., "Product Image")
+7. For links/URLs, you can use "URL" or "Link" (e.g., "Product URL" or "Details Link")
+8. Avoid generic terms like "Text", "Field", "Data" unless absolutely necessary
+9. If you can't determine the meaning, use a descriptive observation (e.g., "Star Rating", "Numeric Value")
+
+You must return a JSON object mapping each generic label to its semantic name.`;
+
+      const userPrompt = `URL: ${url}
+
+User's extraction request: "${prompt}"
+
+Detected fields with sample data:
+${fieldDescriptions}
+
+TASK: Generate a semantic name for each field that accurately describes what it contains.
+Consider:
+- What the user is trying to extract (from their request)
+- The actual content in the sample values
+- The HTML element type and attribute being extracted
+- Common naming conventions for this type of data
+
+Return a JSON object with this exact structure:
+{
+  "Label 1": "Semantic Field Name 1",
+  "Label 2": "Semantic Field Name 2",
+  ...
+}
+
+Example - if extracting products:
+{
+  "Label 1": "Product Name",
+  "Label 2": "Price",
+  "Label 3": "Product Image",
+  "Label 4": "Rating"
+}`;
+
+      let llmResponse: string;
+
+      if (provider === 'ollama') {
+        const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+        const ollamaModel = llmConfig?.model || 'llama3.2-vision';
+
+        logger.info(`Using Ollama at ${ollamaBaseUrl} with model ${ollamaModel}`);
+
+        const jsonSchema = {
+          type: 'object',
+          required: ['fieldLabels'],
+          properties: {
+            fieldLabels: {
+              type: 'object',
+              description: 'Mapping of generic labels to semantic field names',
+              patternProperties: {
+                '^Label \\d+$': {
+                  type: 'string',
+                  description: 'Semantic field name in Title Case'
+                }
+              }
+            }
+          }
+        };
+
+        try {
+          const response = await axios.post(`${ollamaBaseUrl}/api/chat`, {
+            model: ollamaModel,
+            messages: [
+              {
+                role: 'system',
+                content: systemPrompt
+              },
+              {
+                role: 'user',
+                content: userPrompt
+              }
+            ],
+            stream: false,
+            format: jsonSchema,
+            options: {
+              temperature: 0.1,
+              top_p: 0.9
+            }
+          });
+
+          llmResponse = response.data.message.content;
+        } catch (ollamaError: any) {
+          logger.error(`Ollama request failed: ${ollamaError.message}`);
+          if (ollamaError.response) {
+            logger.error(`Ollama response status: ${ollamaError.response.status}`);
+            logger.error(`Ollama response data: ${JSON.stringify(ollamaError.response.data)}`);
+          }
+          throw new Error(`Ollama API error: ${ollamaError.message}. Make sure Ollama is running at ${ollamaBaseUrl}`);
+        }
+
+      } else if (provider === 'anthropic') {
+        const anthropic = new Anthropic({
+          apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
+        });
+        const anthropicModel = llmConfig?.model || 'claude-3-5-sonnet-20241022';
+
+        const response = await anthropic.messages.create({
+          model: anthropicModel,
+          max_tokens: 2048,
+          temperature: 0.1,
+          messages: [{
+            role: 'user',
+            content: userPrompt
+          }],
+          system: systemPrompt
+        });
+
+        const textContent = response.content.find((c: any) => c.type === 'text');
+        llmResponse = textContent?.type === 'text' ? textContent.text : '';
+
+      } else if (provider === 'openai') {
+        const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
+        const openaiModel = llmConfig?.model || 'gpt-4o-mini';
+
+        const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
+          model: openaiModel,
+          messages: [
+            {
+              role: 'system',
+              content: systemPrompt
+            },
+            {
+              role: 'user',
+              content: userPrompt
+            }
+          ],
+          max_tokens: 2048,
+          temperature: 0.1,
+          response_format: { type: 'json_object' }
+        }, {
+          headers: {
+            'Authorization': `Bearer ${llmConfig?.apiKey || process.env.OPENAI_API_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        llmResponse = response.data.choices[0].message.content;
+
+      } else {
+        throw new Error(`Unsupported LLM provider: ${provider}`);
+      }
+
+      logger.info(`LLM Field Labeling Response: ${llmResponse}`);
+
+      let jsonStr = llmResponse.trim();
+
+      const jsonMatch = jsonStr.match(/```json\s*([\s\S]*?)\s*```/) || jsonStr.match(/```\s*([\s\S]*?)\s*```/);
+      if (jsonMatch) {
+        jsonStr = jsonMatch[1].trim();
+      }
+
+      const objectMatch = jsonStr.match(/\{[\s\S]*\}/);
+      if (objectMatch) {
+        jsonStr = objectMatch[0];
+      }
+
+      const parsedResponse = JSON.parse(jsonStr);
+
+      let labelMapping: Record<string, string>;
+      if (parsedResponse.fieldLabels) {
+        labelMapping = parsedResponse.fieldLabels;
+      } else {
+        labelMapping = parsedResponse;
+      }
+
+      const missingLabels: string[] = [];
+      Object.keys(fields).forEach(genericLabel => {
+        if (!labelMapping[genericLabel]) {
+          missingLabels.push(genericLabel);
+        }
+      });
+
+      if (missingLabels.length > 0) {
+        logger.warn(`LLM did not provide labels for: ${missingLabels.join(', ')}`);
+        missingLabels.forEach(label => {
+          labelMapping[label] = label;
+        });
+      }
+
+      logger.info(`Generated semantic field labels: ${JSON.stringify(labelMapping, null, 2)}`);
+      return labelMapping;
+
+    } catch (error: any) {
+      logger.error(`Error generating field labels with LLM: ${error.message}`);
+      logger.error(`Using fallback: keeping generic field labels`);
+      const fallbackLabels: Record<string, string> = {};
+      Object.keys(fields).forEach(label => {
+        fallbackLabels[label] = label;
+      });
+      return fallbackLabels;
+    }
+  }
+
+  /**
+   * Extract sample data from fields for LLM labeling
+   */
+  private static async extractFieldSamples(
+    fields: Record<string, any>,
+    listSelector: string,
+    validator: SelectorValidator
+  ): Promise<Record<string, string[]>> {
+    const fieldSamples: Record<string, string[]> = {};
+
+    try {
+      const page = (validator as any).page;
+      if (!page) {
+        throw new Error('Page not available');
+      }
+
+      const samples = await page.evaluate((args: { fieldsData: any; listSel: string }) => {
+        const results: Record<string, string[]> = {};
+
+        function evaluateSelector(selector: string, doc: Document): Element[] {
+          const isXPath = selector.startsWith('//') || selector.startsWith('(//');
+          if (isXPath) {
+            const result = doc.evaluate(selector, doc, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+            const elements: Element[] = [];
+            for (let i = 0; i < result.snapshotLength; i++) {
+              const node = result.snapshotItem(i);
+              if (node && node.nodeType === Node.ELEMENT_NODE) {
+                elements.push(node as Element);
+              }
+            }
+            return elements;
+          } else {
+            return Array.from(doc.querySelectorAll(selector));
+          }
+        }
+
+        const listItems = evaluateSelector(args.listSel, document).slice(0, 5);
+
+        Object.entries(args.fieldsData).forEach(([fieldLabel, fieldInfo]: [string, any]) => {
+          const samples: string[] = [];
+          const selector = fieldInfo.selector;
+          const attribute = fieldInfo.attribute || 'innerText';
+
+          listItems.forEach((listItem: Element) => {
+            try {
+              const elements = evaluateSelector(selector, document);
+
+              const matchingElement = elements.find((el: Element) => {
+                return listItem.contains(el);
+              });
+
+              if (matchingElement) {
+                let value = '';
+                if (attribute === 'innerText') {
+                  value = (matchingElement.textContent || '').trim();
+                } else {
+                  value = matchingElement.getAttribute(attribute) || '';
+                }
+
+                if (value && value.length > 0 && !samples.includes(value)) {
+                  samples.push(value.substring(0, 200));
+                }
+              }
+            } catch (e) {
+            }
+          });
+
+          results[fieldLabel] = samples;
+        });
+
+        return results;
+      }, { fieldsData: fields, listSel: listSelector });
+
+      logger.info(`Extracted field samples: ${JSON.stringify(Object.keys(samples).map(key => ({ field: key, sampleCount: samples[key].length })))}`);
+      return samples;
+
+    } catch (error: any) {
+      logger.error(`Error extracting field samples: ${error.message}`);
+      logger.error(`Error stack: ${error.stack}`);
+      Object.keys(fields).forEach(label => {
+        fieldSamples[label] = [];
+      });
+      return fieldSamples;
+    }
+  }
+
+  /**
    * Build workflow from LLM decision
    */
   private static async buildWorkflowFromLLMDecision(
     llmDecision: any,
     url: string,
-    validator: SelectorValidator
+    validator: SelectorValidator,
+    prompt?: string,
+    llmConfig?: {
+      provider?: 'anthropic' | 'openai' | 'ollama';
+      model?: string;
+      apiKey?: string;
+      baseUrl?: string;
+    }
   ): Promise<any[]> {
     const workflow: any[] = [];
 
@@ -667,6 +1000,30 @@ Note: selectedGroupIndex must be between 0 and ${elementGroups.length - 1}`;
 
       logger.info(`Auto-detected ${Object.keys(autoDetectResult.fields).length} fields`);
 
+      logger.info('Extracting field samples for semantic labeling...');
+      const fieldSamples = await this.extractFieldSamples(
+        autoDetectResult.fields,
+        autoDetectResult.listSelector || '',
+        validator
+      );
+
+      logger.info('Generating semantic field labels with LLM...');
+      const fieldLabels = await this.generateFieldLabels(
+        autoDetectResult.fields,
+        fieldSamples,
+        prompt || 'Extract list data',
+        url,
+        llmConfig
+      );
+
+      const renamedFields: Record<string, any> = {};
+      Object.entries(autoDetectResult.fields).forEach(([genericLabel, fieldInfo]) => {
+        const semanticLabel = fieldLabels[genericLabel] || genericLabel;
+        renamedFields[semanticLabel] = fieldInfo;
+      });
+
+      logger.info(`Renamed fields: ${JSON.stringify(Object.keys(renamedFields))}`);
+
       let paginationType = 'none';
       let paginationSelector = '';
 
@@ -688,7 +1045,7 @@ Note: selectedGroupIndex must be between 0 and ${elementGroups.length - 1}`;
         actionId: `list-${uuid()}`,
         name: 'List 1',
         args: [{
-          fields: autoDetectResult.fields,
+          fields: renamedFields,
           listSelector: autoDetectResult.listSelector,
           pagination: {
             type: paginationType,
