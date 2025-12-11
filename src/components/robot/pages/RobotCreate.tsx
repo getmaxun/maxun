@@ -234,7 +234,6 @@ const RobotCreate: React.FC = () => {
               <Typography variant="body2" color="text.secondary" mb={3}>
                 Extract structured data from websites using AI or record your own extraction workflow.
               </Typography>
-              {/* Website URL */}
               <Box sx={{ width: '100%', maxWidth: 700, mb: 3 }}>
                 <TextField
                   placeholder="Example: https://www.ycombinator.com/companies/"
@@ -246,7 +245,6 @@ const RobotCreate: React.FC = () => {
                 />
               </Box>
 
-              {/* Generation Mode Selection */}
               <Box sx={{ width: '100%', maxWidth: 700, mb: 3 }}>
                 <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
                   Generation Mode
@@ -302,10 +300,8 @@ const RobotCreate: React.FC = () => {
                 </Box>
               </Box>
 
-              {/* Conditional rendering based on generation mode */}
               {generationMode === 'agent' && (
                 <Box sx={{ width: '100%', maxWidth: 700 }}>
-                  {/* Robot Name */}
                   <Box sx={{ mb: 3 }}>
                     <TextField
                       placeholder="Robot Name"
@@ -317,7 +313,6 @@ const RobotCreate: React.FC = () => {
                     />
                   </Box>
 
-                  {/* Extraction Prompt */}
                   <Box sx={{ mb: 3 }}>
                     <TextField
                       placeholder="Example: Extract first 15 company names, descriptions, and batch information"
@@ -331,7 +326,6 @@ const RobotCreate: React.FC = () => {
                     />
                   </Box>
 
-                  {/* LLM Provider and Model */}
                   <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
                     <FormControl sx={{ flex: 1 }}>
                       <InputLabel>LLM Provider</InputLabel>
@@ -402,7 +396,6 @@ const RobotCreate: React.FC = () => {
                     </Box>
                   )}
 
-                  {/* Ollama Base URL */}
                   {llmProvider === 'ollama' && (
                     <Box sx={{ mb: 3 }}>
                       <TextField
@@ -416,7 +409,6 @@ const RobotCreate: React.FC = () => {
                     </Box>
                   )}
 
-                  {/* Create & Run Button */}
                   <Button
                     variant="contained"
                     fullWidth
