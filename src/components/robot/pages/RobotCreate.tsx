@@ -65,10 +65,9 @@ const RobotCreate: React.FC = () => {
   const [outputFormats, setOutputFormats] = useState<string[]>([]);
   const [generationMode, setGenerationMode] = useState<'agent' | 'recorder' | null>(null);
 
-  // AI Extract tab state
   const [aiPrompt, setAiPrompt] = useState('');
   const [llmProvider, setLlmProvider] = useState<'anthropic' | 'openai' | 'ollama'>('ollama');
-  const [llmModel, setLlmModel] = useState('');
+  const [llmModel, setLlmModel] = useState('default');
   const [llmApiKey, setLlmApiKey] = useState('');
   const [llmBaseUrl, setLlmBaseUrl] = useState('');
   const [aiRobotName, setAiRobotName] = useState('');
@@ -350,7 +349,7 @@ const RobotCreate: React.FC = () => {
                           onChange={(e) => {
                             const provider = e.target.value as 'anthropic' | 'openai' | 'ollama';
                             setLlmProvider(provider);
-                            setLlmModel('');
+                            setLlmModel('default');
                             if (provider === 'ollama') {
                               setLlmBaseUrl('http://localhost:11434');
                             } else {
@@ -371,26 +370,24 @@ const RobotCreate: React.FC = () => {
                           label="Model"
                           onChange={(e) => setLlmModel(e.target.value)}
                         >
-                          {llmProvider === 'ollama' && (
-                            <>
-                              <MenuItem value="">Default (llama3.2-vision)</MenuItem>
-                              <MenuItem value="llama3.2-vision">llama3.2-vision</MenuItem>
-                              <MenuItem value="llama3.2">llama3.2</MenuItem>
-                            </>
-                          )}
-                          {llmProvider === 'anthropic' && (
-                            <>
-                              <MenuItem value="">Default (claude-3-5-sonnet)</MenuItem>
-                              <MenuItem value="claude-3-5-sonnet-20241022">claude-3-5-sonnet-20241022</MenuItem>
-                              <MenuItem value="claude-3-opus-20240229">claude-3-opus-20240229</MenuItem>
-                            </>
-                          )}
-                          {llmProvider === 'openai' && (
-                            <>
-                              <MenuItem value="">Default (gpt-4-vision-preview)</MenuItem>
-                              <MenuItem value="gpt-4-vision-preview">gpt-4-vision-preview</MenuItem>
-                              <MenuItem value="gpt-4o">gpt-4o</MenuItem>
-                            </>
+                          {llmProvider === 'ollama' ? (
+                            [
+                              <MenuItem key="default" value="default">Default (llama3.2-vision)</MenuItem>,
+                              <MenuItem key="llama3.2-vision" value="llama3.2-vision">llama3.2-vision</MenuItem>,
+                              <MenuItem key="llama3.2" value="llama3.2">llama3.2</MenuItem>
+                            ]
+                          ) : llmProvider === 'anthropic' ? (
+                            [
+                              <MenuItem key="default" value="default">Default (claude-3-5-sonnet)</MenuItem>,
+                              <MenuItem key="claude-3-5-sonnet-20241022" value="claude-3-5-sonnet-20241022">claude-3-5-sonnet-20241022</MenuItem>,
+                              <MenuItem key="claude-3-opus-20240229" value="claude-3-opus-20240229">claude-3-opus-20240229</MenuItem>
+                            ]
+                          ) : (
+                            [
+                              <MenuItem key="default" value="default">Default (gpt-4-vision-preview)</MenuItem>,
+                              <MenuItem key="gpt-4-vision-preview" value="gpt-4-vision-preview">gpt-4-vision-preview</MenuItem>,
+                              <MenuItem key="gpt-4o" value="gpt-4o">gpt-4o</MenuItem>
+                            ]
                           )}
                         </Select>
                       </FormControl>
@@ -471,7 +468,7 @@ const RobotCreate: React.FC = () => {
                             url,
                             aiPrompt,
                             llmProvider,
-                            llmModel || undefined,
+                            llmModel === 'default' ? undefined : llmModel,
                             llmApiKey || undefined,
                             llmBaseUrl || undefined,
                             extractRobotName
