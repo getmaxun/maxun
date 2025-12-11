@@ -1001,6 +1001,7 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
                 schemaItemsExtracted: totalSchemaItemsExtracted,
                 listItemsExtracted: totalListItemsExtracted,
                 extractedScreenshotsCount,
+                is_llm: (recording.recording_meta as any).isLLM,
             }
         )
 
@@ -1121,15 +1122,16 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
             } catch (webhookError: any) {
                 logger.log('error', `Failed to send failure webhooks for run ${run.runId}: ${webhookError.message}`);
             }
+            capture(
+               'maxun-oss-run-created-api',
+               {
+                    runId: id,
+                    created_at: new Date().toISOString(),
+                    status: 'failed',
+                    is_llm: (recording?.recording_meta as any)?.isLLM,
+                }
+            );
         }
-        capture(
-           'maxun-oss-run-created-api',
-           {
-                runId: id,
-                created_at: new Date().toISOString(),
-                status: 'failed',
-            }
-        );
         return {
             success: false,
             error: error.message,

@@ -677,6 +677,7 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
             params: [],
             type: 'extract',
             url: workflowResult.url,
+            isLLM: true,
         };
 
         const robot = await Robot.create({
