@@ -6,10 +6,8 @@ import {
   Typography,
   TextField,
   Button,
-  FormControlLabel,
   Checkbox,
   IconButton,
-  Grid,
   Card,
   CircularProgress,
   Container,
@@ -21,7 +19,7 @@ import {
   MenuItem,
   InputLabel
 } from '@mui/material';
-import { ArrowBack, PlayCircleOutline, Article, Code, Description, AutoAwesome, HighlightAlt } from '@mui/icons-material';
+import { ArrowBack, AutoAwesome, HighlightAlt } from '@mui/icons-material';
 import { useGlobalInfoStore, useCacheInvalidation } from '../../../context/globalInfo';
 import { canCreateBrowserInState, getActiveBrowserId, stopRecording } from '../../../api/recording';
 import { createScrapeRobot, createLLMRobot, createAndRunRecording } from "../../../api/storage";
@@ -216,7 +214,6 @@ const RobotCreate: React.FC = () => {
           </Tabs>
         </Box>
 
-
         <TabPanel value={tabValue} index={0}>
           <Card sx={{ mb: 4, p: 4 }}>
             <Box display="flex" flexDirection="column" alignItems="center">
@@ -289,7 +286,6 @@ const RobotCreate: React.FC = () => {
                       position: 'relative'
                     }}
                   >
-                    {/* Beta Tag */}
                     <Box
                       sx={{
                         position: 'absolute',
