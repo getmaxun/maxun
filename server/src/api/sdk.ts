@@ -99,7 +99,7 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
             }
         });
 
-        capture("maxun-oss-robot-created", {
+        capture("maxun-oss-llm-robot-created", {
             robot_meta: robot.recording_meta,
             recording: robot.recording,
         });
@@ -390,7 +390,7 @@ router.delete("/sdk/robots/:id", requireAPIKey, async (req: AuthenticatedRequest
         logger.info(`[SDK] Robot deleted: ${robotId}`);
 
         capture(
-            'maxun-oss-robot-deleted',
+            'maxun-oss-llm-robot-deleted',
             {
                 robotId: robotId,
                 user_id: req.user?.id,
@@ -690,7 +690,7 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
 
         logger.info(`[SDK] Persistent robot created: ${metaId} for LLM extraction`);
 
-        capture("maxun-oss-robot-created", {
+        capture("maxun-oss-llm-robot-created", {
             robot_meta: robot.recording_meta,
             recording: robot.recording,
         });
