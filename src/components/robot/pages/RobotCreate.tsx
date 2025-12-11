@@ -262,10 +262,10 @@ const RobotCreate: React.FC = () => {
                   >
                     <CardContent sx={{ textAlign: 'center', py: 3, color:"text.secondary" }}>
                       <HighlightAlt sx={{ fontSize: 32, mb: 1 }} />
-                      <Typography variant="h6" gutterBottom color="text.secondary">
+                      <Typography variant="h6" gutterBottom>
                         Recorder Mode
                       </Typography>
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="body2">
                         Record your actions into a workflow.
                       </Typography>
                     </CardContent>
@@ -307,7 +307,7 @@ const RobotCreate: React.FC = () => {
                       <Typography variant="h6" gutterBottom>
                         AI Mode
                       </Typography>
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="body2">
                         Describe the task. It builds it for you.
                       </Typography>
                     </CardContent>
