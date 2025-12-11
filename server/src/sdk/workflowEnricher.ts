@@ -415,11 +415,11 @@ export class WorkflowEnricher {
 3. Extract any numeric limit from their request
 
 CRITICAL GROUP SELECTION RULES:
-- Groups with "Has text content: YES" are usually better than groups with NO text content
-- Match the sample content to what the user is asking for
-- Avoid groups that only show images/icons (Has text content: NO)
-- The group with the most relevant sample content should be selected, NOT just the first group
-- Analyze the keywords in the user's request and find the group whose sample content contains related text
+- Match the sample content to what the user is asking for - this is the PRIMARY criterion
+- Groups with text content are often easier to match, but image galleries, icon grids, or data-attribute based groups can also be correct
+- Analyze the keywords in the user's request and find the group whose sample content or structure best matches
+- Consider the context: product sites may have image grids, job sites have text listings, etc.
+- The group with the most relevant content should be selected, NOT just the first group or the group with most text
 
 LIMIT EXTRACTION:
 - Look for numbers in the request that indicate quantity (e.g., "50", "25", "100", "first 30", "top 10")
@@ -683,15 +683,16 @@ ${samples.slice(0, 3).map((s, i) => `    ${i + 1}. "${s}"`).join('\n')}`;
       const systemPrompt = `You are a data field labeling assistant. Your job is to generate clear, semantic field names for extracted data based on the user's request and the actual field content.
 
 RULES FOR FIELD NAMING:
-1. Use clear, descriptive names that match the content (e.g., "Product Name", "Price", "Rating")
+1. Use clear, descriptive names that match the content and context
 2. Keep names concise (2-4 words maximum)
 3. Use Title Case for field names
 4. Match the user's terminology when possible
-5. Be specific - if it's a product name, call it "Product Name" not just "Name"
-6. For images, include "Image" or "Photo" in the name (e.g., "Product Image")
-7. For links/URLs, you can use "URL" or "Link" (e.g., "Product URL" or "Details Link")
+5. Be specific - include context when needed (e.g., "Product Name", "Job Title", "Article Headline", "Company Name")
+6. For images, include "Image" or "Photo" in the name (e.g., "Product Image", "Profile Photo", "Thumbnail")
+7. For links/URLs, you can use "URL" or "Link" (e.g., "Details Link", "Company Website")
 8. Avoid generic terms like "Text", "Field", "Data" unless absolutely necessary
-9. If you can't determine the meaning, use a descriptive observation (e.g., "Star Rating", "Numeric Value")
+9. If you can't determine the meaning, use a descriptive observation based on the content type
+10. Adapt to the domain: e-commerce (Product, Price), jobs (Title, Company), articles (Headline, Author), etc.
 
 You must return a JSON object mapping each generic label to its semantic name.`;
 
@@ -714,14 +715,6 @@ Return a JSON object with this exact structure:
   "Label 1": "Semantic Field Name 1",
   "Label 2": "Semantic Field Name 2",
   ...
-}
-
-Example - if extracting products:
-{
-  "Label 1": "Product Name",
-  "Label 2": "Price",
-  "Label 3": "Product Image",
-  "Label 4": "Rating"
 }`;
 
       let llmResponse: string;
@@ -882,6 +875,231 @@ Example - if extracting products:
   }
 
   /**
+   * Filter fields based on user intent using LLM with confidence scoring
+   */
+  private static async filterFieldsByIntent(
+    labeledFields: Record<string, any>,
+    fieldSamples: Record<string, string[]>,
+    prompt: string,
+    llmConfig?: {
+      provider?: 'anthropic' | 'openai' | 'ollama';
+      model?: string;
+      apiKey?: string;
+      baseUrl?: string;
+    }
+  ): Promise<{
+    selectedFields: Record<string, any>;
+    confidence: number;
+    reasoning: string;
+    needsUserConfirmation: boolean;
+  }> {
+    try {
+      const provider = llmConfig?.provider || 'ollama';
+      const axios = require('axios');
+
+      const fieldDescriptions = Object.entries(labeledFields).map(([fieldName, fieldInfo]) => {
+        const samples = fieldSamples[fieldName] || [];
+        const sampleText = samples.length > 0 
+          ? samples.slice(0, 3).map((s, i) => `    ${i + 1}. "${s}"`).join('\n')
+          : '    (no samples available)';
+
+        return `${fieldName}:
+  Type: ${fieldInfo.tag || 'unknown'}
+  Attribute: ${fieldInfo.attribute || 'innerText'}
+  Sample values:
+${sampleText}`;
+      }).join('\n\n');
+
+      const systemPrompt = `You are a field filter assistant. Your job is to analyze the user's extraction request and select ONLY the fields that match their intent.
+
+CRITICAL RULES:
+1. Only include fields explicitly mentioned or clearly implied by the user's request
+2. Use semantic matching (e.g., "quotes" matches "Quote Text", "company names" matches "Company Name")
+3. If the user specifies a count (e.g., "20 quotes"), note it but return the matching fields
+4. Be strict: when in doubt, exclude the field rather than include it
+5. Return high confidence (0.9-1.0) only if matches are exact or obvious
+6. Return medium confidence (0.6-0.8) if matches are semantic/implied
+7. Return low confidence (<0.6) if uncertain
+
+You must return a JSON object with selectedFields, confidence, and reasoning.`;
+
+      const userPrompt = `User's extraction request: "${prompt}"
+
+Available labeled fields:
+${fieldDescriptions}
+
+TASK: Determine which fields the user wants to extract based on their request.
+
+Return a JSON object with this exact structure:
+{
+  "selectedFields": ["Field Name 1", "Field Name 2"],
+  "confidence": 0.95,
+  "reasoning": "Brief explanation of why these fields were selected and confidence level"
+}
+
+Rules:
+- selectedFields: Array of field names that match the user's intent
+- confidence: Number between 0 and 1 (1.0 = exact match, 0.8+ = semantic match, <0.7 = uncertain)
+- reasoning: Explain which keywords from the user's request matched which fields`;
+
+      let llmResponse: string;
+
+      if (provider === 'ollama') {
+        const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+        const ollamaModel = llmConfig?.model || 'llama3.2-vision';
+
+        const jsonSchema = {
+          type: 'object',
+          required: ['selectedFields', 'confidence', 'reasoning'],
+          properties: {
+            selectedFields: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Array of field names that match user intent'
+            },
+            confidence: {
+              type: 'number',
+              minimum: 0,
+              maximum: 1,
+              description: 'Confidence score from 0 to 1'
+            },
+            reasoning: {
+              type: 'string',
+              description: 'Explanation of field selection and confidence'
+            }
+          }
+        };
+
+        const response = await axios.post(`${ollamaBaseUrl}/api/chat`, {
+          model: ollamaModel,
+          messages: [
+            {
+              role: 'system',
+              content: systemPrompt
+            },
+            {
+              role: 'user',
+              content: userPrompt
+            }
+          ],
+          stream: false,
+          format: jsonSchema,
+          options: {
+            temperature: 0.1,
+            top_p: 0.9
+          }
+        });
+
+        llmResponse = response.data.message.content;
+
+      } else if (provider === 'anthropic') {
+        const anthropic = new Anthropic({
+          apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
+        });
+        const anthropicModel = llmConfig?.model || 'claude-3-5-sonnet-20241022';
+
+        const response = await anthropic.messages.create({
+          model: anthropicModel,
+          max_tokens: 1024,
+          temperature: 0.1,
+          messages: [{
+            role: 'user',
+            content: userPrompt
+          }],
+          system: systemPrompt
+        });
+
+        const textContent = response.content.find((c: any) => c.type === 'text');
+        llmResponse = textContent?.type === 'text' ? textContent.text : '';
+
+      } else if (provider === 'openai') {
+        const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
+        const openaiModel = llmConfig?.model || 'gpt-4o-mini';
+
+        const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
+          model: openaiModel,
+          messages: [
+            {
+              role: 'system',
+              content: systemPrompt
+            },
+            {
+              role: 'user',
+              content: userPrompt
+            }
+          ],
+          max_tokens: 1024,
+          temperature: 0.1,
+          response_format: { type: 'json_object' }
+        }, {
+          headers: {
+            'Authorization': `Bearer ${llmConfig?.apiKey || process.env.OPENAI_API_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        llmResponse = response.data.choices[0].message.content;
+
+      } else {
+        throw new Error(`Unsupported LLM provider: ${provider}`);
+      }
+
+      logger.info(`LLM Field Filtering Response: ${llmResponse}`);
+
+      // Parse JSON response
+      let jsonStr = llmResponse.trim();
+
+      const jsonMatch = jsonStr.match(/```json\s*([\s\S]*?)\s*```/) || jsonStr.match(/```\s*([\s\S]*?)\s*```/);
+      if (jsonMatch) {
+        jsonStr = jsonMatch[1].trim();
+      }
+
+      const objectMatch = jsonStr.match(/\{[\s\S]*\}/);
+      if (objectMatch) {
+        jsonStr = objectMatch[0];
+      }
+
+      const filterResult = JSON.parse(jsonStr);
+
+      if (!Array.isArray(filterResult.selectedFields)) {
+        throw new Error('Invalid response: selectedFields must be an array');
+      }
+
+      if (typeof filterResult.confidence !== 'number' || filterResult.confidence < 0 || filterResult.confidence > 1) {
+        throw new Error('Invalid response: confidence must be a number between 0 and 1');
+      }
+
+      const filteredFields: Record<string, any> = {};
+      for (const fieldName of filterResult.selectedFields) {
+        if (labeledFields[fieldName]) {
+          filteredFields[fieldName] = labeledFields[fieldName];
+        } else {
+          logger.warn(`LLM selected field "${fieldName}" but it doesn't exist in labeled fields`);
+        }
+      }
+
+      const needsUserConfirmation = filterResult.confidence < 0.8 || Object.keys(filteredFields).length === 0;
+
+      return {
+        selectedFields: filteredFields,
+        confidence: filterResult.confidence,
+        reasoning: filterResult.reasoning || 'No reasoning provided',
+        needsUserConfirmation
+      };
+
+    } catch (error: any) {
+      logger.error(`Error filtering fields by intent: ${error.message}`);
+      
+      return {
+        selectedFields: labeledFields,
+        confidence: 0.5,
+        reasoning: 'Error during filtering, returning all fields as fallback',
+        needsUserConfirmation: true
+      };
+    }
+  }
+
+  /**
    * Extract sample data from fields for LLM labeling
    */
   private static async extractFieldSamples(
@@ -1024,6 +1242,28 @@ Example - if extracting products:
         const semanticLabel = fieldLabels[genericLabel] || genericLabel;
         renamedFields[semanticLabel] = fieldInfo;
       });
+      
+      const renamedSamples: Record<string, string[]> = {};
+      Object.entries(fieldSamples).forEach(([genericLabel, samples]) => {
+        const semanticLabel = fieldLabels[genericLabel] || genericLabel;
+        renamedSamples[semanticLabel] = samples;
+      });
+
+      const filterResult = await this.filterFieldsByIntent(
+        renamedFields,
+        renamedSamples,
+        prompt || 'Extract list data',
+        llmConfig
+      );
+
+      let finalFields = renamedFields;
+      if (filterResult.confidence >= 0.8 && Object.keys(filterResult.selectedFields).length > 0) {
+        finalFields = filterResult.selectedFields;
+      } else if (filterResult.confidence >= 0.6 && Object.keys(filterResult.selectedFields).length > 0) {
+        finalFields = filterResult.selectedFields;
+      } else {
+        logger.warn(`Low confidence (${filterResult.confidence}) or no fields selected. Using all detected fields as fallback.`);
+      }
 
       let paginationType = 'none';
       let paginationSelector = '';
@@ -1041,7 +1281,7 @@ Example - if extracting products:
         actionId: `list-${uuid()}`,
         name: 'List 1',
         args: [{
-          fields: renamedFields,
+          fields: finalFields,
           listSelector: autoDetectResult.listSelector,
           pagination: {
             type: paginationType,
