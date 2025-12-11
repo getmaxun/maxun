@@ -542,12 +542,12 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
 
     logger.log('info', `Starting LLM workflow generation for URL: ${url}`);
 
-    const workflowResult = await WorkflowEnricher.generateWorkflowFromPrompt(url, prompt, {
+    const workflowResult = await WorkflowEnricher.generateWorkflowFromPrompt(url, prompt, req.user.id, {
       provider: llmProvider || 'ollama',
       model: llmModel,
       apiKey: llmApiKey,
       baseUrl: llmBaseUrl
-    }, req.user.id);
+    });
 
     if (!workflowResult.success || !workflowResult.workflow) {
       logger.log('error', `Failed to generate workflow: ${JSON.stringify(workflowResult.errors)}`);
