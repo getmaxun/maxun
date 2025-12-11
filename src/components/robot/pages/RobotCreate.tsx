@@ -267,7 +267,7 @@ const RobotCreate: React.FC = () => {
                     <CardContent sx={{ textAlign: 'center', py: 3 }}>
                       <PlayCircleOutline sx={{ fontSize: 32, mb: 1 }} />
                       <Typography variant="h6" gutterBottom>
-                        Manual Mode
+                        Recorder Mode
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         Capture actions step-by-step
