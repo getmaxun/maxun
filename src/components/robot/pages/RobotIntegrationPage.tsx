@@ -614,7 +614,7 @@ export const RobotIntegrationPage = ({
       case "webhook":
         return "Webhook Integration";
       default:
-        return "Integration";
+        return "Integrations";
     }
   };
 

@@ -181,6 +181,7 @@ export const ScheduleSettingsPage = ({
       cancelButtonText={t("schedule_settings.buttons.cancel")}
       showSaveButton={schedule === null}
       isLoading={isLoading}
+      showCancelButton={false}
     >
       <Box
         sx={{

@@ -12,6 +12,7 @@ interface RobotMeta {
   type?: 'extract' | 'scrape';
   url?: string;
   formats?: ('markdown' | 'html' | 'screenshot-visible' | 'screenshot-fullpage')[];
+  isLLM?: boolean;
 }
 
 interface RobotWorkflow {

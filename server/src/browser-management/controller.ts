@@ -4,7 +4,7 @@
  */
 import { Socket } from "socket.io";
 import { v4 as uuid } from "uuid";
-
+import { Page } from "playwright-core";
 import { createSocketConnection, createSocketConnectionForRun } from "../socket-connection/connection";
 import { io, browserPool } from "../server";
 import { RemoteBrowser } from "./classes/RemoteBrowser";
@@ -431,6 +431,66 @@ const initializeBrowserAsync = async (id: string, userId: string) => {
   } catch (error: any) {
     logger.log('error', `Error setting up browser ${id}: ${error.message}`);
     browserPool.failBrowserSlot(id);
+    throw error;
+  }
+};
+
+/**
+ * Creates a RemoteBrowser instance specifically for SDK validation
+ * Uses dummy socket and returns browser ID and Page for validation tasks
+ * @param userId User ID for browser ownership
+ * @returns Promise with browser ID and Page instance
+ * @category BrowserManagement-Controller
+ */
+export const createRemoteBrowserForValidation = async (
+  userId: string
+): Promise<{ browserId: string; page: Page }> => {
+  const id = uuid();
+
+  logger.log('info', `Creating validation browser ${id} for user ${userId}`);
+
+  try {
+    const dummySocket = {
+      emit: (event: string, data?: any) => {
+        logger.log('debug', `Browser ${id} emitted ${event}`);
+      },
+      on: () => {},
+      off: () => {},
+      id: `validation-${id}`,
+    } as any;
+
+    const browserSession = new RemoteBrowser(dummySocket, userId, id);
+
+    const VALIDATION_INIT_TIMEOUT = 45000;
+    const initPromise = browserSession.initialize(userId);
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Validation browser initialization timeout')), VALIDATION_INIT_TIMEOUT);
+    });
+
+    await Promise.race([initPromise, timeoutPromise]);
+
+    const added = browserPool.addRemoteBrowser(id, browserSession, userId, true, 'run');
+    if (!added) {
+      await browserSession.switchOff();
+      throw new Error('Failed to add validation browser to pool');
+    }
+
+    const page = browserSession.getCurrentPage();
+    if (!page) {
+      await destroyRemoteBrowser(id, userId);
+      throw new Error('Failed to get page from validation browser');
+    }
+
+    logger.log('info', `Browser ${id} initialized successfully`);
+
+    return { browserId: id, page };
+  } catch (error: any) {
+    logger.log('error', `Failed to create validation browser ${id}: ${error.message}`);
+    try {
+      await destroyRemoteBrowser(id, userId);
+    } catch (cleanupError) {
+      logger.log('warn', `Failed to cleanup browser ${id}: ${cleanupError}`);
+    }
     throw error;
   }
 };

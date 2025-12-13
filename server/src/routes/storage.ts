@@ -15,6 +15,7 @@ import { encrypt, decrypt } from '../utils/auth';
 import { WorkflowFile } from 'maxun-core';
 import { cancelScheduledWorkflow, scheduleWorkflow } from '../storage/schedule';
 import { pgBossClient } from '../storage/pgboss';
+import { WorkflowEnricher } from '../sdk/workflowEnricher';
 
 export const router = Router();
 
@@ -519,6 +520,93 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
 });
 
 /**
+ * POST endpoint for creating an LLM-powered extraction robot
+ */
+router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { url, prompt, llmProvider, llmModel, llmApiKey, llmBaseUrl, robotName } = req.body;
+
+    if (!url || !prompt) {
+      return res.status(400).json({ error: 'Both "url" and "prompt" fields are required.' });
+    }
+
+    if (!req.user) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+
+    try {
+      new URL(url);
+    } catch (err) {
+      return res.status(400).json({ error: 'Invalid URL format' });
+    }
+
+    logger.log('info', `Starting LLM workflow generation for URL: ${url}`);
+
+    const workflowResult = await WorkflowEnricher.generateWorkflowFromPrompt(url, prompt, req.user.id, {
+      provider: llmProvider || 'ollama',
+      model: llmModel,
+      apiKey: llmApiKey,
+      baseUrl: llmBaseUrl
+    });
+
+    if (!workflowResult.success || !workflowResult.workflow) {
+      logger.log('error', `Failed to generate workflow: ${JSON.stringify(workflowResult.errors)}`);
+      return res.status(400).json({
+        error: 'Failed to generate workflow from prompt',
+        details: workflowResult.errors
+      });
+    }
+
+    const robotId = uuid();
+    const currentTimestamp = new Date().toISOString();
+    const finalRobotName = robotName || `LLM Extract: ${prompt.substring(0, 50)}`;
+
+    const newRobot = await Robot.create({
+      id: uuid(),
+      userId: req.user.id,
+      recording_meta: {
+        name: finalRobotName,
+        id: robotId,
+        createdAt: currentTimestamp,
+        updatedAt: currentTimestamp,
+        pairs: workflowResult.workflow.length,
+        params: [],
+        type: 'extract',
+        url: workflowResult.url || url,
+        isLLM: true,
+      },
+      recording: { workflow: workflowResult.workflow },
+      google_sheet_email: null,
+      google_sheet_name: null,
+      google_sheet_id: null,
+      google_access_token: null,
+      google_refresh_token: null,
+      schedule: null,
+    });
+
+    logger.log('info', `LLM robot created with id: ${newRobot.id}`);
+    capture('maxun-oss-llm-robot-created', {
+      robot_meta: newRobot.recording_meta,
+      recording: newRobot.recording,
+      llm_provider: llmProvider || 'ollama',
+    });
+
+    return res.status(201).json({
+      message: 'LLM robot created successfully.',
+      robot: newRobot,
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      logger.log('error', `Error creating LLM robot: ${error.message}`);
+      return res.status(500).json({ error: error.message });
+    } else {
+      logger.log('error', 'Unknown error creating LLM robot');
+      return res.status(500).json({ error: 'An unknown error occurred.' });
+    }
+  }
+});
+
+/**
  * DELETE endpoint for deleting a recording from the storage.
  */
 router.delete('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
@@ -894,7 +982,7 @@ router.put('/schedule/:id/', requireSignIn, async (req: AuthenticatedRequest, re
       logger.log('warn', `Failed to cancel existing schedule for robot ${id}: ${cancelError}`);
     }
 
-    const jobId = await scheduleWorkflow(id, req.user.id, cronExpression, timezone);
+    await scheduleWorkflow(id, req.user.id, cronExpression, timezone);
 
     const nextRunAt = computeNextRun(cronExpression, timezone);
 
