@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useTranslation } from 'react-i18next';
 import Paper from '@mui/material/Paper';
 import Table from '@mui/material/Table';
@@ -13,10 +13,12 @@ import { Accordion, AccordionSummary, AccordionDetails, Typography, Box, TextFie
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SearchIcon from '@mui/icons-material/Search';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useGlobalInfoStore, useCachedRuns } from "../../context/globalInfo";
+import { useGlobalInfoStore, useCachedRuns, useCacheInvalidation } from "../../context/globalInfo";
 import { RunSettings } from "./RunSettings";
 import { CollapsibleRow } from "./ColapsibleRow";
 import { ArrowDownward, ArrowUpward, UnfoldMore } from '@mui/icons-material';
+import { io, Socket } from 'socket.io-client';
+import { apiUrl } from '../../apiConfig';
 
 export const columns: readonly Column[] = [
   { id: 'runStatus', label: 'Status', minWidth: 80 },
@@ -133,6 +135,9 @@ export const RunsTable: React.FC<RunsTableProps> = ({
 
   const { notify, rerenderRuns, setRerenderRuns } = useGlobalInfoStore();
   const { data: rows = [], isLoading: isFetching, error, refetch } = useCachedRuns();
+  const { invalidateRuns } = useCacheInvalidation();
+  
+  const activeSocketsRef = useRef<Map<string, Socket>>(new Map());
 
   const [searchTerm, setSearchTerm] = useState('');
   const [paginationStates, setPaginationStates] = useState<PaginationState>({});
@@ -284,6 +289,98 @@ export const RunsTable: React.FC<RunsTableProps> = ({
       setRerenderRuns(false);
     }
   }, [rerenderRuns, refetch, setRerenderRuns]);
+
+  useEffect(() => {
+    if (!rows || rows.length === 0) return;
+
+    const activeRuns = rows.filter((row: Data) => 
+      row.status === 'running' && row.browserId && row.browserId.trim() !== ''
+    );
+
+    activeRuns.forEach((run: Data) => {
+      const { browserId, runId: currentRunId, name } = run;
+      
+      if (activeSocketsRef.current.has(browserId)) {
+        return;
+      }
+
+      console.log(`[RunsTable] Connecting to browser socket: ${browserId} for run: ${currentRunId}`);
+
+      try {
+        const socket = io(`${apiUrl}/${browserId}`, {
+          transports: ['websocket'],
+          rejectUnauthorized: false
+        });
+
+        socket.on('connect', () => {
+          console.log(`[RunsTable] Connected to browser ${browserId}`);
+        });
+
+        socket.on('debugMessage', (msg: string) => {
+          console.log(`[RunsTable] Debug message for ${browserId}:`, msg);
+          // Optionally update logs in real-time here
+        });
+
+        socket.on('run-completed', (data: any) => {
+          console.log(`[RunsTable] Run completed for ${browserId}:`, data);
+          
+          // Invalidate cache to show updated run status
+          invalidateRuns();
+          setRerenderRuns(true);
+          
+          // Show notification
+          if (data.status === 'success') {
+            notify('success', t('main_page.notifications.interpretation_success', { name: data.robotName || name }));
+          } else {
+            notify('error', t('main_page.notifications.interpretation_failed', { name: data.robotName || name }));
+          }
+          
+          socket.disconnect();
+          activeSocketsRef.current.delete(browserId);
+        });
+
+        socket.on('urlChanged', (url: string) => {
+          console.log(`[RunsTable] URL changed for ${browserId}:`, url);
+        });
+
+        socket.on('dom-snapshot-loading', () => {
+          console.log(`[RunsTable] DOM snapshot loading for ${browserId}`);
+        });
+
+        socket.on('connect_error', (error: Error) => {
+          console.error(`[RunsTable] Connection error for browser ${browserId}:`, error.message);
+        });
+
+        socket.on('disconnect', (reason: string) => {
+          console.log(`[RunsTable] Disconnected from browser ${browserId}:`, reason);
+          activeSocketsRef.current.delete(browserId);
+        });
+
+        activeSocketsRef.current.set(browserId, socket);
+      } catch (error) {
+        console.error(`[RunsTable] Error connecting to browser ${browserId}:`, error);
+      }
+    });
+
+    // Disconnect from sockets for runs that are no longer active
+    const activeBrowserIds = new Set(activeRuns.map((run: Data) => run.browserId));
+    activeSocketsRef.current.forEach((socket, browserId) => {
+      if (!activeBrowserIds.has(browserId)) {
+        console.log(`[RunsTable] Disconnecting from inactive browser: ${browserId}`);
+        socket.disconnect();
+        activeSocketsRef.current.delete(browserId);
+      }
+    });
+
+    // Cleanup on unmount
+    return () => {
+      console.log('[RunsTable] Cleaning up all socket connections');
+      activeSocketsRef.current.forEach((socket) => {
+        socket.disconnect();
+      });
+      activeSocketsRef.current.clear();
+    };
+  }, [rows, notify, t, invalidateRuns, setRerenderRuns]);
 
   const handleDelete = useCallback(() => {
     notify('success', t('runstable.notifications.delete_success'));

@@ -30,6 +30,7 @@ interface RobotMeta {
     type?: 'extract' | 'scrape';
     url?: string;
     formats?: ('markdown' | 'html' | 'screenshot-visible' | 'screenshot-fullpage')[];
+    isLLM?: boolean;
 }
 
 interface RobotWorkflow {
@@ -204,31 +205,47 @@ export const useCachedRuns = () => {
 
 export const useCacheInvalidation = () => {
   const queryClient = useQueryClient();
-  
+
   const invalidateRuns = () => {
     queryClient.invalidateQueries({ queryKey: dataCacheKeys.runs });
   };
-  
+
   const invalidateRecordings = () => {
     queryClient.invalidateQueries({ queryKey: dataCacheKeys.recordings });
   };
-  
+
   const addOptimisticRun = (newRun: any) => {
     queryClient.setQueryData(dataCacheKeys.runs, (oldData: any) => {
       if (!oldData) return [{ id: 0, ...newRun }];
       return [{ id: oldData.length, ...newRun }, ...oldData];
     });
   };
-  
+
+  const addOptimisticRobot = (newRobot: any) => {
+    queryClient.setQueryData(dataCacheKeys.recordings, (oldData: any) => {
+      if (!oldData) return [newRobot];
+      return [newRobot, ...oldData];
+    });
+  };
+
+  const removeOptimisticRobot = (tempId: string) => {
+    queryClient.setQueryData(dataCacheKeys.recordings, (oldData: any) => {
+      if (!oldData) return [];
+      return oldData.filter((robot: any) => robot.id !== tempId);
+    });
+  };
+
   const invalidateAllCache = () => {
     invalidateRuns();
     invalidateRecordings();
   };
-  
+
   return {
     invalidateRuns,
-    invalidateRecordings, 
+    invalidateRecordings,
     addOptimisticRun,
+    addOptimisticRobot,
+    removeOptimisticRobot,
     invalidateAllCache
   };
 };

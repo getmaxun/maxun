@@ -536,6 +536,7 @@ async function executeRun(id: string, userId: string) {
         schemaItemsExtracted: totalSchemaItemsExtracted,
         listItemsExtracted: totalListItemsExtracted,
         extractedScreenshotsCount,
+        is_llm: (recording.recording_meta as any).isLLM,
       }
     );
 
@@ -650,15 +651,16 @@ async function executeRun(id: string, userId: string) {
       } catch (socketError: any) {
         logger.log('warn', `Failed to emit failure event in main catch: ${socketError.message}`);
       }
+      capture(
+        'maxun-oss-run-created-scheduled',
+        {
+          runId: id,
+          created_at: new Date().toISOString(),
+          status: 'failed',
+          is_llm: (recording?.recording_meta as any)?.isLLM,
+        }
+      );
     }
-    capture(
-      'maxun-oss-run-created-scheduled',
-      {
-        runId: id,
-        created_at: new Date().toISOString(),
-        status: 'failed',
-      }
-    );
     return false;
   }
 }

@@ -5,6 +5,7 @@
 import { v4 as uuid } from 'uuid';
 import logger from '../logger';
 import { pgBossClient } from './pgboss';
+import { registerWorkerForQueue } from '../schedule-worker';
 
 /**
  * Utility function to schedule a cron job using PgBoss
@@ -13,7 +14,7 @@ import { pgBossClient } from './pgboss';
  * @param cronExpression The cron expression for scheduling
  * @param timezone The timezone for the cron expression
  */
-export async function scheduleWorkflow(id: string, userId: string, cronExpression: string, timezone: string): Promise<void> {
+export async function scheduleWorkflow(id: string, userId: string,  cronExpression: string, timezone: string): Promise<void> {
   try {
     const runId = uuid();
 
@@ -27,6 +28,8 @@ export async function scheduleWorkflow(id: string, userId: string, cronExpressio
       { id, runId, userId },
       { tz: timezone }
     );
+
+    await registerWorkerForQueue(queueName);
 
     logger.log('info', `Scheduled workflow job for robot ${id}`);
   } catch (error: unknown) {

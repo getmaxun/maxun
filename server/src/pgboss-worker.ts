@@ -538,6 +538,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
           schemaItemsExtracted: totalSchemaItemsExtracted,
           listItemsExtracted: totalListItemsExtracted,
           extractedScreenshotsCount,
+          is_llm: (recording.recording_meta as any).isLLM,
         }
       );
 
@@ -703,6 +704,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
         error_message: executionError.message,
         partial_data_extracted: partialDataExtracted,
         totalRowsExtracted: partialData?.totalSchemaItemsExtracted + partialData?.totalListItemsExtracted + partialData?.extractedScreenshotsCount || 0,
+        is_llm: (recording?.recording_meta as any)?.isLLM,
       });
 
       try {

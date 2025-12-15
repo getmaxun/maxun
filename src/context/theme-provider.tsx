@@ -122,8 +122,6 @@ const darkTheme = createTheme({
           },
         },
         outlined: {
-          // Dark mode outlined buttons
-          backgroundColor: '#1e1e1e',
           borderColor: '#ff00c3',
           color: '#ff00c3',
           "&:hover": {

@@ -53,6 +53,10 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
   const { invalidateRuns, addOptimisticRun } = useCacheInvalidation();
   const navigate  = useNavigate();
 
+  React.useEffect(() => {
+    setContent(initialContent);
+  }, [initialContent]);
+
   const { state } = useContext(AuthContext);
   const { user } = state;
 
