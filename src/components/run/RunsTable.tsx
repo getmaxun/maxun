@@ -646,8 +646,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
             page={accordionPage}
             rowsPerPage={accordionsPerPage}
             onPageChange={handleAccordionPageChange}
-            onRowsPerPageChange={handleAccordionsPerPageChange}
-            rowsPerPageOptions={[10, 25, 50, 100]}
+            rowsPerPageOptions={[]}
           />
         </>
       )}
