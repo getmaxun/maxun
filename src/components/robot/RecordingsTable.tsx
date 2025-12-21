@@ -618,13 +618,12 @@ export const RecordingsTable = ({
           </TableContainer>
 
           <TablePagination
-            rowsPerPageOptions={[10, 25, 50, 100]}
             component="div"
             count={filteredRows.length}
-            rowsPerPage={rowsPerPage}
             page={page}
+            rowsPerPage={rowsPerPage}
             onPageChange={handleChangePage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[]}
           />
         </>
       )}
