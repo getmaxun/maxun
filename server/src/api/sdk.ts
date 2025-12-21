@@ -88,6 +88,7 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
             type,
             url: extractedUrl,
             formats: (workflowFile.meta as any).formats || [],
+            isLLM: (workflowFile.meta as any).isLLM,
         };
 
         const robot = await Robot.create({
@@ -102,10 +103,14 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
         const eventName = robotMeta.isLLM
             ? "maxun-oss-llm-robot-created"
             : "maxun-oss-robot-created";
-        capture(eventName, {
+        const telemetryData: any = {
             robot_meta: robot.recording_meta,
             recording: robot.recording,
-        });
+        };
+        if (robotMeta.isLLM && (workflowFile.meta as any).prompt) {
+            telemetryData.prompt = (workflowFile.meta as any).prompt;
+        }
+        capture(eventName, telemetryData);
 
         return res.status(201).json({
             data: robot,
@@ -698,6 +703,7 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
         capture("maxun-oss-llm-robot-created", {
             robot_meta: robot.recording_meta,
             recording: robot.recording,
+            prompt: prompt,
         });
 
         return res.status(200).json({
