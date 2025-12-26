@@ -193,10 +193,10 @@ const darkTheme = createTheme({
           },
         },
         outlinedInfo: {
-          color: '#ff00c3',
-          borderColor: '#ff00c3',
+          color: '#ffffff',
+          borderColor: '#ffffff',
           "& .MuiAlert-icon": {
-            color: "#ff00c3",
+            color: "#ffffff",
           },
         },
       },
