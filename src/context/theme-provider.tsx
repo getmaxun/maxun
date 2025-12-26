@@ -66,10 +66,10 @@ const lightTheme = createTheme({
           },
         },
         outlinedInfo: {
-          color: '#ff00c3',
-          borderColor: '#ff00c3',
+          color: '#000000ff',
+          borderColor: '#000000ff',
           "& .MuiAlert-icon": {
-            color: "#ff00c3",
+            color: "#000000ff",
           },
         },
       },
