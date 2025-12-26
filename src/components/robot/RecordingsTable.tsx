@@ -5,7 +5,6 @@ import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
-import TableHead from '@mui/material/TableHead';
 import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
 import { memo, useCallback, useEffect, useMemo } from "react";
@@ -116,7 +115,6 @@ const LoadingRobotRow = memo(({ row, columns }: any) => {
 
 // Virtualized row component for efficient rendering
 const TableRowMemoized = memo(({ row, columns, handlers }: any) => {
-  // If robot is loading, show loading row
   if (row.isLoading) {
     return <LoadingRobotRow row={row} columns={columns} />;
   }
@@ -592,7 +590,6 @@ export const RecordingsTable = ({
         <>
           <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden', marginTop: '15px' }}>
             <Table stickyHeader aria-label="sticky table">
-              <TableHead>
                 <TableRow>
                   {columns.map((column) => (
                     <MemoizedTableCell
@@ -603,7 +600,6 @@ export const RecordingsTable = ({
                     </MemoizedTableCell>
                   ))}
                 </TableRow>
-              </TableHead>
               <TableBody>
                 {visibleRows.map((row) => (
                   <TableRowMemoized
