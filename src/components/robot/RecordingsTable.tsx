@@ -116,7 +116,6 @@ const LoadingRobotRow = memo(({ row, columns }: any) => {
 
 // Virtualized row component for efficient rendering
 const TableRowMemoized = memo(({ row, columns, handlers }: any) => {
-  // If robot is loading, show loading row
   if (row.isLoading) {
     return <LoadingRobotRow row={row} columns={columns} />;
   }
