@@ -65,6 +65,13 @@ const lightTheme = createTheme({
             color: "#ff00c3",
           },
         },
+        outlinedInfo: {
+          color: '#000000ff',
+          borderColor: '#000000ff',
+          "& .MuiAlert-icon": {
+            color: "#000000ff",
+          },
+        },
       },
     },
     MuiAlertTitle: {
@@ -185,6 +192,13 @@ const darkTheme = createTheme({
             color: "#ff66d9",
           },
         },
+        outlinedInfo: {
+          color: '#ffffff',
+          borderColor: '#ffffff',
+          "& .MuiAlert-icon": {
+            color: "#ffffff",
+          },
+        },
       },
     },
     MuiAlertTitle: {
@@ -196,7 +210,6 @@ const darkTheme = createTheme({
         },
       },
     },
-    // Additional dark mode specific components
     MuiPaper: {
       styleOverrides: {
         root: {
@@ -233,14 +246,6 @@ const darkTheme = createTheme({
         },
       },
     },
-    //   MuiTextField:{
-    //     styleOverrides: {
-    //       root: {
-    //         '& .MuiInputBase-root': {
-    //           backgroundColor: '#1d1c1cff',
-    //         },
-    //   }
-    // }}
   },
 });
 
