@@ -210,7 +210,6 @@ const darkTheme = createTheme({
         },
       },
     },
-    // Additional dark mode specific components
     MuiPaper: {
       styleOverrides: {
         root: {
@@ -247,14 +246,6 @@ const darkTheme = createTheme({
         },
       },
     },
-    //   MuiTextField:{
-    //     styleOverrides: {
-    //       root: {
-    //         '& .MuiInputBase-root': {
-    //           backgroundColor: '#1d1c1cff',
-    //         },
-    //   }
-    // }}
   },
 });
 
