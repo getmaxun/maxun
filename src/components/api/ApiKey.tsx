@@ -34,6 +34,7 @@ const ApiKeyManager = () => {
   const { t } = useTranslation();
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [apiKeyName, setApiKeyName] = useState<string>(t('apikey.default_name'));
+  const [apiKeyCreatedAt, setApiKeyCreatedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [showKey, setShowKey] = useState<boolean>(false);
   const [copySuccess, setCopySuccess] = useState<boolean>(false);
@@ -44,6 +45,7 @@ const ApiKeyManager = () => {
       try {
         const { data } = await axios.get(`${apiUrl}/auth/api-key`);
         setApiKey(data.api_key);
+        setApiKeyCreatedAt(data.api_key_created_at);
       } catch (error: any) {
         notify('error', t('apikey.notifications.fetch_error', { error: error.message }));
       } finally {
@@ -60,7 +62,7 @@ const ApiKeyManager = () => {
     try {
       const { data } = await axios.post(`${apiUrl}/auth/generate-api-key`);
       setApiKey(data.api_key);
-
+      setApiKeyCreatedAt(data.api_key_created_at);
       notify('success', t('apikey.notifications.generate_success'));
     } catch (error: any) {
       notify('error', t('apikey.notifications.generate_error', { error: error.message }));
@@ -74,6 +76,7 @@ const ApiKeyManager = () => {
     try {
       await axios.delete(`${apiUrl}/auth/delete-api-key`);
       setApiKey(null);
+      setApiKeyCreatedAt(null);
       notify('success', t('apikey.notifications.delete_success'));
     } catch (error: any) {
       notify('error', t('apikey.notifications.delete_error', { error: error.message }));
@@ -133,6 +136,7 @@ const ApiKeyManager = () => {
               <TableRow>
                 <TableCell>{t('apikey.table.name')}</TableCell>
                 <TableCell>{t('apikey.table.key')}</TableCell>
+                <TableCell>Created On</TableCell>
                 <TableCell>{t('apikey.table.actions')}</TableCell>
               </TableRow>
             </TableHead>
@@ -144,6 +148,15 @@ const ApiKeyManager = () => {
                     {showKey ? `${apiKey?.substring(0, 10)}...` : '**********'}
                   </Box>
                 </TableCell>
+                {apiKeyCreatedAt && (
+                  <TableCell>
+                    {new Date(apiKeyCreatedAt).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </TableCell>
+                )}
                 <TableCell>
                   <Tooltip title={t('apikey.actions.copy')}>
                     <IconButton onClick={copyToClipboard}>
