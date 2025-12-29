@@ -7,6 +7,7 @@ interface UserAttributes {
     password: string;
     api_key_name?: string | null;
     api_key?: string | null;
+    api_key_created_at?: Date | null;
     proxy_url?: string | null;
     proxy_username?: string | null;
     proxy_password?: string | null;
@@ -20,6 +21,7 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
     public password!: string;
     public api_key_name!: string | null;
     public api_key!: string | null;
+    public api_key_created_at!: Date | null;
     public proxy_url!: string | null;
     public proxy_username!: string | null;
     public proxy_password!: string | null;
@@ -51,6 +53,10 @@ User.init(
         },
         api_key: {
             type: DataTypes.STRING,
+            allowNull: true,
+        },
+        api_key_created_at: {
+            type: DataTypes.DATE,
             allowNull: true,
         },
         proxy_url: {
