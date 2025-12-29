@@ -131,7 +131,7 @@ const ApiKeyManager = () => {
       </Typography>
       {apiKey ? (
         <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden' }}>
-          <Table>
+          <Table sx={{ tableLayout: 'fixed', width: '100%' }}>
             <TableHead>
               <TableRow>
                 <TableCell>{t('apikey.table.name')}</TableCell>
