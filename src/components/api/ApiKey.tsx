@@ -137,7 +137,7 @@ const ApiKeyManager = () => {
                 <TableCell>{t('apikey.table.name')}</TableCell>
                 <TableCell>{t('apikey.table.key')}</TableCell>
                 <TableCell>Created On</TableCell>
-                <TableCell>{t('apikey.table.actions')}</TableCell>
+                <TableCell align="center" sx={{ width: 160 }}>{t('apikey.table.actions')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
