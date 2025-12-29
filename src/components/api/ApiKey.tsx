@@ -157,7 +157,7 @@ const ApiKeyManager = () => {
                     })}
                   </TableCell>
                 )}
-                <TableCell>
+                <TableCell align="right" sx={{ width: 160 }}>
                   <Tooltip title={t('apikey.actions.copy')}>
                     <IconButton onClick={copyToClipboard}>
                       <ContentCopy />
