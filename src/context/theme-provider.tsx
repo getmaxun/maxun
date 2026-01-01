@@ -102,6 +102,29 @@ const darkTheme = createTheme({
     },
   },
   components: {
+    MuiTableContainer: {
+      styleOverrides: {
+      root: {
+        overflow: 'auto',
+        /* Firefox */
+        scrollbarWidth: 'thin',
+        scrollbarColor: 'currentColor transparent',
+
+        /* WebKit (Chrome, Edge, Safari) */
+        '&::-webkit-scrollbar': {
+          width: '5px',
+          height: '5px',
+        },
+        '&::-webkit-scrollbar-track': {
+          background: 'transparent',
+        },
+        '&::-webkit-scrollbar-thumb': {
+          backgroundColor: 'currentColor',
+          borderRadius: '8px',
+        },
+      },
+    },
+  },
     MuiButton: {
       styleOverrides: {
         root: {
