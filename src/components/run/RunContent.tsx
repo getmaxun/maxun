@@ -23,8 +23,6 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import { useTranslation } from "react-i18next";
 import { useThemeMode } from "../../context/theme-provider";
-import { apiUrl } from "../../apiConfig";
-import { io } from "socket.io-client";
 
 interface RunContentProps {
   row: Data,
