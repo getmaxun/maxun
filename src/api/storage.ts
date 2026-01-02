@@ -336,3 +336,80 @@ export const deleteSchedule = async (id: string): Promise<boolean> => {
     return false;
   }
 }
+
+export const createCrawlRobot = async (
+  url: string,
+  name: string,
+  crawlConfig: {
+    mode: 'domain' | 'subdomain' | 'path';
+    limit: number;
+    maxDepth: number;
+    includePaths: string[];
+    excludePaths: string[];
+    useSitemap: boolean;
+    followLinks: boolean;
+    respectRobots: boolean;
+  }
+): Promise<any> => {
+  try {
+    const response = await axios.post(
+      `${apiUrl}/recordings/crawl`,
+      {
+        url,
+        name,
+        crawlConfig,
+      },
+      {
+        headers: { 'Content-Type': 'application/json' },
+        withCredentials: true,
+      }
+    );
+
+    if (response.status === 201) {
+      return response.data;
+    } else {
+      throw new Error('Failed to create crawl robot');
+    }
+  } catch (error: any) {
+    console.error('Error creating crawl robot:', error);
+    return null;
+  }
+};
+
+export const createSearchRobot = async (
+  name: string,
+  searchConfig: {
+    query: string;
+    limit: number;
+    provider: 'google' | 'bing' | 'duckduckgo';
+    filters?: {
+      timeRange?: 'day' | 'week' | 'month' | 'year';
+      location?: string;
+      lang?: string;
+    };
+    mode: 'discover' | 'scrape';
+  }
+): Promise<any> => {
+  try {
+    const response = await axios.post(
+      `${apiUrl}/recordings/search`,
+      {
+        name,
+        searchConfig,
+      },
+      {
+        headers: { 'Content-Type': 'application/json' },
+        withCredentials: true,
+      }
+    );
+
+    if (response.status === 201) {
+      return response.data;
+    } else {
+      throw new Error('Failed to create search robot');
+    }
+  } catch (error: any) {
+    console.error('Error creating search robot:', error);
+    return null;
+  }
+};

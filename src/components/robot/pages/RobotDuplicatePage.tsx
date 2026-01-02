@@ -24,7 +24,7 @@ interface RobotMeta {
   pairs: number;
   updatedAt: string;
   params: any[];
-  type?: 'extract' | 'scrape';
+  type?: 'extract' | 'scrape' | 'crawl' | 'search';
   url?: string;
   formats?: ('markdown' | 'html' | 'screenshot-visible' | 'screenshot-fullpage')[];
   isLLM?: boolean;
