@@ -13,7 +13,7 @@ import { getUserById } from "../../api/auth";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@mui/material/styles";
 import { io, Socket } from "socket.io-client";
-import { remoteBrowserApiUrl } from "../../apiConfig";
+import { apiUrl } from "../../apiConfig";
 
 const socketCache = new Map<string, Socket>();
 const progressCallbacks = new Map<string, Set<(data: any) => void>>();
@@ -23,7 +23,7 @@ function getOrCreateSocket(browserId: string): Socket {
     return socketCache.get(browserId)!;
   }
 
-  const socket = io(`${remoteBrowserApiUrl}/${browserId}`, {
+  const socket = io(`${apiUrl}/${browserId}`, {
     transports: ["websocket"],
     rejectUnauthorized: false
   });
