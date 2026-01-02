@@ -54,12 +54,6 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
   
   const logEndRef = useRef<HTMLDivElement | null>(null);
 
-  const scrollToLogBottom = () => {
-    if (logEndRef.current) {
-      logEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }
-
   const handleAbort = () => {
     abortRunHandler(row.runId, row.name, row.browserId);
   }
@@ -67,12 +61,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
   const handleRowExpand = () => {
     const newOpen = !isOpen;
     onToggleExpanded(newOpen);
-    //scrollToLogBottom();
   };
-  
-  // useEffect(() => {
-  //   scrollToLogBottom();
-  // }, [currentLog])
 
   useEffect(() => {
     const fetchUserEmail = async () => {
