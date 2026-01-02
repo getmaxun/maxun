@@ -353,7 +353,7 @@ export const createCrawlRobot = async (
 ): Promise<any> => {
   try {
     const response = await axios.post(
-      `${apiUrl}/recordings/crawl`,
+      `${apiUrl}/storage/recordings/crawl`,
       {
         url,
         name,
@@ -392,7 +392,7 @@ export const createSearchRobot = async (
 ): Promise<any> => {
   try {
     const response = await axios.post(
-      `${apiUrl}/recordings/search`,
+      `${apiUrl}/storage/recordings/search`,
       {
         name,
         searchConfig,

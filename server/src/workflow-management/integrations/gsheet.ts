@@ -13,6 +13,10 @@ interface GoogleSheetUpdateTask {
 interface SerializableOutput {
   scrapeSchema?: Record<string, any[]>;
   scrapeList?: Record<string, any[]>;
+  markdown?: Array<{ content: string }>;
+  html?: Array<{ content: string }>;
+  crawl?: Record<string, any[]>;
+  search?: any;
 }
 
 
@@ -90,6 +94,72 @@ export async function updateGoogleSheet(robotId: string, runId: string) {
               spreadsheetId,
               `List - ${listName}`,
               listArray,
+              plainRobot
+            );
+          }
+        }
+
+        if (serializableOutput.markdown && Array.isArray(serializableOutput.markdown) && serializableOutput.markdown.length > 0) {
+          const markdownData = serializableOutput.markdown.map((item, index) => ({
+            "Index": index + 1,
+            "Content": item.content || ""
+          }));
+
+          await processOutputType(
+            robotId,
+            spreadsheetId,
+            'Markdown',
+            markdownData,
+            plainRobot
+          );
+        }
+
+        if (serializableOutput.html && Array.isArray(serializableOutput.html) && serializableOutput.html.length > 0) {
+          const htmlData = serializableOutput.html.map((item, index) => ({
+            "Index": index + 1,
+            "Content": item.content || ""
+          }));
+
+          await processOutputType(
+            robotId,
+            spreadsheetId,
+            'HTML',
+            htmlData,
+            plainRobot
+          );
+        }
+
+        if (serializableOutput.crawl && typeof serializableOutput.crawl === "object") {
+          for (const [crawlName, crawlArray] of Object.entries(serializableOutput.crawl)) {
+            if (!Array.isArray(crawlArray) || crawlArray.length === 0) continue;
+
+            await processOutputType(
+              robotId,
+              spreadsheetId,
+              `Crawl - ${crawlName}`,
+              crawlArray,
+              plainRobot
+            );
+          }
+        }
+
+        if (serializableOutput.search) {
+          let searchData: any[] = [];
+
+          if (serializableOutput.search.results && Array.isArray(serializableOutput.search.results)) {
+            searchData = serializableOutput.search.results;
+          } else if (Array.isArray(serializableOutput.search)) {
+            searchData = serializableOutput.search;
+          } else {
+            searchData = [serializableOutput.search];
+          }
+
+          if (searchData.length > 0) {
+            await processOutputType(
+              robotId,
+              spreadsheetId,
+              'Search Results',
+              searchData,
               plainRobot
             );
           }

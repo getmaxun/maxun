@@ -1051,7 +1051,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         })),
         credentials: credentialsForPayload,
         targetUrl: targetUrl,
-        workflow: robot.recording.workflow,
+        workflow: updatedWorkflow,
       };
 
       const success = await updateRecording(robot.recording_meta.id, payload);
@@ -1101,13 +1101,15 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
                 style={{ marginBottom: "20px" }}
               />
 
-              <TextField
-                label={t("robot_duplication.fields.target_url")}
-                key={t("robot_duplication.fields.target_url")}
-                value={getTargetUrl() || ""}
-                onChange={(e) => handleTargetUrlChange(e.target.value)}
-                style={{ marginBottom: "20px" }}
-              />
+              {robot.recording_meta.type !== 'search' && (
+                <TextField
+                  label={t("robot_duplication.fields.target_url")}
+                  key={t("robot_duplication.fields.target_url")}
+                  value={getTargetUrl() || ""}
+                  onChange={(e) => handleTargetUrlChange(e.target.value)}
+                  style={{ marginBottom: "20px" }}
+                />
+              )}
               
               {renderCrawlConfigFields()}
               {renderSearchConfigFields()}

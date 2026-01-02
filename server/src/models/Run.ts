@@ -23,6 +23,7 @@ interface RunAttributes {
   runByUserId?: string;
   runByScheduleId?: string;
   runByAPI?: boolean;
+  runBySDK?: boolean;
   serializableOutput: Record<string, any>;
   binaryOutput: Record<string, string>;
   retryCount?: number;

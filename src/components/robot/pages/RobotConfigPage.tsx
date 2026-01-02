@@ -154,7 +154,7 @@ export const RobotConfigPage: React.FC<RobotConfigPageProps> = ({
           )}
 
           <Box sx={{ display: 'flex', gap: 2 }}>
-            /* {showCancelButton && (
+            {/* {showCancelButton && (
               <Button
                 variant="outlined"
                 onClick={handleBack}
@@ -164,7 +164,7 @@ export const RobotConfigPage: React.FC<RobotConfigPageProps> = ({
                 }} >
                 {cancelButtonText || t("buttons.cancel")}
               </Button>
-            )} */
+            )} */}
             {showSaveButton && onSave && (
               <Button
                 variant="contained"

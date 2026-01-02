@@ -13,8 +13,8 @@ import { AuthenticatedRequest } from "../routes/record"
 import {capture} from "../utils/analytics";
 import { Page } from "playwright-core";
 import { WorkflowFile } from "maxun-core";
-import { addGoogleSheetUpdateTask, googleSheetUpdateTasks, processGoogleSheetUpdates } from "../workflow-management/integrations/gsheet";
-import { addAirtableUpdateTask, airtableUpdateTasks, processAirtableUpdates } from "../workflow-management/integrations/airtable";
+import { addGoogleSheetUpdateTask, processGoogleSheetUpdates } from "../workflow-management/integrations/gsheet";
+import { addAirtableUpdateTask, processAirtableUpdates } from "../workflow-management/integrations/airtable";
 import { sendWebhook } from "../routes/webhook";
 import { convertPageToHTML, convertPageToMarkdown, convertPageToScreenshot } from '../markdownify/scrape';
 
@@ -309,8 +309,8 @@ router.get("/robots/:id/runs",requireAPIKey, async (req: Request, res: Response)
             statusCode: 200,
             messageCode: "success",
             runs: {
-            totalCount: formattedRuns.length,
-            items: formattedRuns,
+                totalCount: formattedRuns.length,
+                items: formattedRuns,
             },
         };
 
@@ -342,6 +342,8 @@ function formatRunResponse(run: any) {
         data: {
             textData: {},
             listData: {},
+            crawlData: {},
+            searchData: {},
             markdown: '',
             html: ''
         },
@@ -356,6 +358,14 @@ function formatRunResponse(run: any) {
 
     if (output.scrapeList && typeof output.scrapeList === 'object') {
         formattedRun.data.listData = output.scrapeList;
+    }
+
+    if (output.crawl && typeof output.crawl === 'object') {
+        formattedRun.data.crawlData = output.crawl;
+    }
+
+    if (output.search && typeof output.search === 'object') {
+        formattedRun.data.searchData = output.search;
     }
 
     if (output.markdown && Array.isArray(output.markdown)) {
@@ -466,7 +476,7 @@ router.get("/robots/:id/runs/:runId", requireAPIKey, async (req: Request, res: R
     }
 });
 
-async function createWorkflowAndStoreMetadata(id: string, userId: string) {
+async function createWorkflowAndStoreMetadata(id: string, userId: string, isSDK: boolean) {
     try {
         const recording = await Robot.findOne({
             where: {
@@ -510,7 +520,9 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string) {
             interpreterSettings: { maxConcurrency: 1, maxRepeats: 1, debug: true },
             log: '',
             runId,
-            runByAPI: true,
+            runByUserId: userId,
+            runByAPI: !isSDK,
+            runBySDK: isSDK,
             serializableOutput: {},
             binaryOutput: {},
             retryCount: 0
@@ -687,7 +699,6 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
 
             let formats = recording.recording_meta.formats || ['markdown'];
 
-            // Override if API request defines formats
             if (requestedFormats && Array.isArray(requestedFormats) && requestedFormats.length > 0) {
                 formats = requestedFormats.filter((f): f is 'markdown' | 'html' | 'screenshot-visible' | 'screenshot-fullpage' =>
                     ['markdown', 'html', 'screenshot-visible', 'screenshot-fullpage'].includes(f)
@@ -714,50 +725,70 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
                 const SCRAPE_TIMEOUT = 120000;
 
                 if (formats.includes('markdown')) {
-                    const markdownPromise = convertPageToMarkdown(url, currentPage);
-                    const timeoutPromise = new Promise<never>((_, reject) => {
-                        setTimeout(() => reject(new Error(`Markdown conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
-                    });
-                    markdown = await Promise.race([markdownPromise, timeoutPromise]);
-                    serializableOutput.markdown = [{ content: markdown }];
+                    try {
+                        const markdownPromise = convertPageToMarkdown(url, currentPage);
+                        const timeoutPromise = new Promise<never>((_, reject) => {
+                            setTimeout(() => reject(new Error(`Markdown conversion timed out after ${SCRAPE_TIMEOUT / 1000}s`)), SCRAPE_TIMEOUT);
+                        });
+                        markdown = await Promise.race([markdownPromise, timeoutPromise]);
+                        if (markdown && markdown.trim().length > 0) {
+                            serializableOutput.markdown = [{ content: markdown }];
+                        }
+                    } catch (error: any) {
+                        logger.log('warn', `Markdown conversion failed for API run ${plainRun.runId}: ${error.message}`);
+                    }
                 }
 
                 if (formats.includes('html')) {
-                    const htmlPromise = convertPageToHTML(url, currentPage);
-                    const timeoutPromise = new Promise<never>((_, reject) => {
-                        setTimeout(() => reject(new Error(`HTML conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
-                    });
-                    html = await Promise.race([htmlPromise, timeoutPromise]);
-                    serializableOutput.html = [{ content: html }];
+                    try {
+                        const htmlPromise = convertPageToHTML(url, currentPage);
+                        const timeoutPromise = new Promise<never>((_, reject) => {
+                            setTimeout(() => reject(new Error(`HTML conversion timed out after ${SCRAPE_TIMEOUT / 1000}s`)), SCRAPE_TIMEOUT);
+                        });
+                        html = await Promise.race([htmlPromise, timeoutPromise]);
+                        if (html && html.trim().length > 0) {
+                            serializableOutput.html = [{ content: html }];
+                        }
+                    } catch (error: any) {
+                        logger.log('warn', `HTML conversion failed for API run ${plainRun.runId}: ${error.message}`);
+                    }
                 }
 
                 if (formats.includes("screenshot-visible")) {
-                    const screenshotPromise = convertPageToScreenshot(url, currentPage, false);
-                    const timeoutPromise = new Promise<never>((_, reject) => {
-                        setTimeout(() => reject(new Error(`Screenshot conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
-                    });
-                    const screenshotBuffer = await Promise.race([screenshotPromise, timeoutPromise]);
+                    try {
+                        const screenshotPromise = convertPageToScreenshot(url, currentPage, false);
+                        const timeoutPromise = new Promise<never>((_, reject) => {
+                            setTimeout(() => reject(new Error(`Screenshot conversion timed out after ${SCRAPE_TIMEOUT / 1000}s`)), SCRAPE_TIMEOUT);
+                        });
+                        const screenshotBuffer = await Promise.race([screenshotPromise, timeoutPromise]);
 
-                    if (!binaryOutput['screenshot-visible']) {
-                        binaryOutput['screenshot-visible'] = {
-                            data: screenshotBuffer.toString('base64'),
-                            mimeType: 'image/png'
-                        };
+                        if (screenshotBuffer && screenshotBuffer.length > 0) {
+                            binaryOutput['screenshot-visible'] = {
+                                data: screenshotBuffer.toString('base64'),
+                                mimeType: 'image/png'
+                            };
+                        }
+                    } catch (error: any) {
+                        logger.log('warn', `Screenshot-visible conversion failed for API run ${plainRun.runId}: ${error.message}`);
                     }
                 }
 
                 if (formats.includes("screenshot-fullpage")) {
-                    const screenshotPromise = convertPageToScreenshot(url, currentPage, true);
-                    const timeoutPromise = new Promise<never>((_, reject) => {
-                        setTimeout(() => reject(new Error(`Screenshot conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
-                    });
-                    const screenshotBuffer = await Promise.race([screenshotPromise, timeoutPromise]);
+                    try {
+                        const screenshotPromise = convertPageToScreenshot(url, currentPage, true);
+                        const timeoutPromise = new Promise<never>((_, reject) => {
+                            setTimeout(() => reject(new Error(`Screenshot conversion timed out after ${SCRAPE_TIMEOUT / 1000}s`)), SCRAPE_TIMEOUT);
+                        });
+                        const screenshotBuffer = await Promise.race([screenshotPromise, timeoutPromise]);
 
-                    if (!binaryOutput['screenshot-fullpage']) {
-                        binaryOutput['screenshot-fullpage'] = {
-                            data: screenshotBuffer.toString('base64'),
-                            mimeType: 'image/png'
-                        };
+                        if (screenshotBuffer && screenshotBuffer.length > 0) {
+                            binaryOutput['screenshot-fullpage'] = {
+                                data: screenshotBuffer.toString('base64'),
+                                mimeType: 'image/png'
+                            };
+                        }
+                    } catch (error: any) {
+                        logger.log('warn', `Screenshot-fullpage conversion failed for API run ${plainRun.runId}: ${error.message}`);
                     }
                 }
 
@@ -769,7 +800,6 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
                     binaryOutput,
                 });
 
-                // Upload binary output (screenshots) to MinIO if present
                 let uploadedBinaryOutput: Record<string, string> = {};
                 if (Object.keys(binaryOutput).length > 0) {
                     const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
@@ -779,7 +809,6 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
 
                 logger.log('info', `Markdown robot execution completed for API run ${id}`);
 
-                // Push success socket event
                 try {
                     const completionData = {
                         runId: plainRun.runId,
@@ -800,7 +829,6 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
                     );
                 }
 
-                // Build webhook payload
                 const webhookPayload: any = {
                     robot_id: plainRun.robotMetaId,
                     run_id: plainRun.runId,
@@ -814,8 +842,8 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
                     },
                 };
 
-                if (formats.includes('markdown')) webhookPayload.markdown = markdown;
-                if (formats.includes('html')) webhookPayload.html = html;
+                if (serializableOutput.markdown) webhookPayload.markdown = markdown;
+                if (serializableOutput.html) webhookPayload.html = html;
                 if (uploadedBinaryOutput['screenshot-visible']) webhookPayload.screenshot_visible = uploadedBinaryOutput['screenshot-visible'];
                 if (uploadedBinaryOutput['screenshot-fullpage']) webhookPayload.screenshot_fullpage = uploadedBinaryOutput['screenshot-fullpage'];
 
@@ -834,9 +862,12 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
 
                 capture("maxun-oss-run-created-api", {
                     runId: plainRun.runId,
-                    user_id: userId,
+                    userId: userId,
+                    robotId: recording.recording_meta.id,
+                    robotType: "scrape",
+                    source: "api",
                     status: "success",
-                    robot_type: "scrape",
+                    createdAt: new Date().toISOString(),
                     formats
                 });
 
@@ -858,14 +889,14 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
                     log: `${formats.join(', ')} conversion failed: ${error.message}`,
                 });
 
-                // Send failure socket event
                 try {
                     const failureData = {
                         runId: plainRun.runId,
                         robotMetaId: plainRun.robotMetaId,
                         robotName: recording.recording_meta.name,
                         status: 'failed',
-                        finishedAt: new Date().toLocaleString()
+                        finishedAt: new Date().toLocaleString(),
+                        error: error.message
                     };
 
                     serverIo
@@ -895,11 +926,14 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
                     logger.log('warn', `Failed to send webhook for failed API scrape run ${plainRun.runId}: ${webhookError.message}`);
                 }
 
-                capture("maxun-oss-run-created-api", {
+                capture("maxun-oss-run-created", {
                     runId: plainRun.runId,
-                    user_id: userId,
+                    userId: userId,
+                    robotId: recording.recording_meta.id,
+                    robotType: "scrape",
+                    source: "api",
                     status: "failed",
-                    robot_type: "scrape",
+                    createdAt: new Date().toISOString(),
                     formats
                 });
 
@@ -993,15 +1027,18 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
         
         const totalRowsExtracted = totalSchemaItemsExtracted + totalListItemsExtracted;
 
-        capture('maxun-oss-run-created-api',{
+        capture('maxun-oss-run-created',{
                 runId: id,
-                created_at: new Date().toISOString(),
+                userId: userId,
+                robotId: recording.recording_meta.id,
+                robotType: recording.recording_meta.type || 'extract',
+                source: 'api',
+                createdAt: new Date().toISOString(),
                 status: 'success',
-                totalRowsExtracted,
-                schemaItemsExtracted: totalSchemaItemsExtracted,
-                listItemsExtracted: totalListItemsExtracted,
+                totalSchemaItemsExtracted,
+                totalListItemsExtracted,
                 extractedScreenshotsCount,
-                is_llm: (recording.recording_meta as any).isLLM,
+                totalRowsExtracted
             }
         )
 
@@ -1019,6 +1056,16 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
             typeof parsedOutput.scrapeSchema === "string"
                 ? JSON.parse(parsedOutput.scrapeSchema)
                 : parsedOutput.scrapeSchema || {};
+                
+        const parsedCrawl =
+            typeof parsedOutput.crawl === "string"
+                ? JSON.parse(parsedOutput.crawl)
+                : parsedOutput.crawl || {};
+
+        const parsedSearch =
+            typeof parsedOutput.search === "string"
+                ? JSON.parse(parsedOutput.search)
+                : parsedOutput.search || {};
 
         const webhookPayload = {
             robot_id: plainRun.robotMetaId,
@@ -1030,6 +1077,8 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
             extracted_data: {
                 captured_texts: parsedSchema || {},
                 captured_lists: parsedList || {},
+                crawl_data: parsedCrawl || {},
+                search_data: parsedSearch || {},
                 captured_texts_count: totalSchemaItemsExtracted,
                 captured_lists_count: totalListItemsExtracted,
                 screenshots_count: extractedScreenshotsCount
@@ -1097,7 +1146,6 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
 
             const recording = await Robot.findOne({ where: { 'recording_meta.id': run.robotMetaId }, raw: true });
 
-            // Trigger webhooks for run failure
             const failedWebhookPayload = {
                 robot_id: run.robotMetaId,
                 run_id: run.runId,
@@ -1123,10 +1171,14 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
                 logger.log('error', `Failed to send failure webhooks for run ${run.runId}: ${webhookError.message}`);
             }
             capture(
-               'maxun-oss-run-created-api',
+               'maxun-oss-run-created',
                {
                     runId: id,
-                    created_at: new Date().toISOString(),
+                    userId: userId,
+                    robotId: recording?.recording_meta?.id || run.robotMetaId,
+                    robotType: recording?.recording_meta?.type || 'extract',
+                    source: 'api',
+                    createdAt: new Date().toISOString(),
                     status: 'failed',
                     is_llm: (recording?.recording_meta as any)?.isLLM,
                 }
@@ -1139,11 +1191,11 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
     }
 }
 
-export async function handleRunRecording(id: string, userId: string, requestedFormats?: string[]) {
+export async function handleRunRecording(id: string, userId: string, isSDK: boolean = false) {
     let socket: Socket | null = null;
 
     try {
-        const result = await createWorkflowAndStoreMetadata(id, userId);
+        const result = await createWorkflowAndStoreMetadata(id, userId, isSDK);
         const { browserId, runId: newRunId } = result;
 
         if (!browserId || !newRunId || !userId) {
@@ -1165,6 +1217,10 @@ export async function handleRunRecording(id: string, userId: string, requestedFo
         socket.on('connect_error', (error: Error) => {
             logger.error(`Socket connection error for API run ${newRunId}: ${error.message}`);
             cleanupSocketConnection(socket!, browserId, newRunId);
+        });
+
+        socket.on('error', (error: Error) => {
+            logger.error(`Socket error for API run ${newRunId}: ${error.message}`);
         });
 
         socket.on('disconnect', () => {
@@ -1318,9 +1374,7 @@ router.post("/robots/:id/runs", requireAPIKey, async (req: AuthenticatedRequest,
             return res.status(401).json({ ok: false, error: 'Unauthorized' });
         }
 
-        const requestedFormats = req.body.formats;
-
-        const runId = await handleRunRecording(req.params.id, req.user.id, requestedFormats);
+        const runId = await handleRunRecording(req.params.id, req.user.id);
 
         if (!runId) {
             throw new Error('Run ID is undefined');
