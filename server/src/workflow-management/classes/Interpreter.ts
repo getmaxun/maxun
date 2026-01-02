@@ -580,6 +580,13 @@ export class WorkflowInterpreter {
         setActionName: (name: string) => {
           this.currentActionName = name;
         },
+        progressUpdate: (current: number, total: number, percentage: number) => {
+          this.socket.nsp.emit('workflowProgress', {
+            current,
+            total,
+            percentage
+          });
+        },
       },
       serializableCallback: async (data: any) => {
         try {
