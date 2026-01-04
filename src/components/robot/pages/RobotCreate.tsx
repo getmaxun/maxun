@@ -611,14 +611,46 @@ const RobotCreate: React.FC = () => {
                       value={outputFormats}
                       label="Output Formats *"
                       onChange={(e) => {
-                        const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
+                        const value =
+                          typeof e.target.value === 'string'
+                            ? e.target.value.split(',')
+                            : e.target.value;
                         setOutputFormats(value);
                       }}
                       renderValue={(selected) => {
                         if (selected.length === 0) {
                           return <em style={{ color: '#999' }}>Select formats</em>;
                         }
-                        return `${selected.length} format${selected.length > 1 ? 's' : ''} selected`;
+
+                        const OUTPUT_FORMAT_LABELS: Record<string, string> = {
+                          markdown: 'Markdown',
+                          html: 'HTML',
+                          'screenshot-visible': 'Screenshot (Visible)',
+                          'screenshot-fullpage': 'Screenshot (Full Page)',
+                        };
+
+                        const labels = selected.map(
+                          (value) => OUTPUT_FORMAT_LABELS[value] ?? value
+                        );
+
+                        const MAX_ITEMS = 2; // Show only first 2, then ellipsis
+
+                        const display =
+                          labels.length > MAX_ITEMS
+                            ? `${labels.slice(0, MAX_ITEMS).join(', ')}…`
+                            : labels.join(', ');
+
+                        return (
+                          <Box
+                            sx={{
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
+                            {display}
+                          </Box>
+                        );
                       }}
                       MenuProps={{
                         PaperProps: {
