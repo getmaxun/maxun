@@ -953,7 +953,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                     {t('run_content.loading')}
                   </>
                 )}
-                {t('run_content.loading')}
               </Box>
               <Button color="error" onClick={abortRunHandler} sx={{ mt: 1 }}>
                 {t('run_content.buttons.stop')}
