@@ -349,12 +349,13 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
             logger.log('warn', `Failed to send webhooks for markdown robot run ${data.runId}: ${webhookError.message}`);
           }
 
-          capture("maxun-oss-run-created-manual", {
+          capture("maxun-oss-run-created", {
             runId: data.runId,
             user_id: data.userId,
             status: "success",
             robot_type: "scrape",
             formats,
+            source: "manual"
           });
 
           await destroyRemoteBrowser(browserId, data.userId);
@@ -385,12 +386,13 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
             logger.log('warn', `Failed to send run-failed notification for markdown robot run ${data.runId}: ${socketError.message}`);
           }
 
-          capture("maxun-oss-run-created-manual", {
+          capture("maxun-oss-run-created", {
             runId: data.runId,
             user_id: data.userId,
             status: "failed",
             robot_type: "scrape",
             formats,
+            source: "manual"
           });
 
           await destroyRemoteBrowser(browserId, data.userId);
@@ -523,7 +525,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
 
       // Capture metrics
       capture(
-        'maxun-oss-run-created-manual',
+        'maxun-oss-run-created',
         {
           runId: data.runId,
           user_id: data.userId,
@@ -534,6 +536,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
           listItemsExtracted: totalListItemsExtracted,
           extractedScreenshotsCount,
           is_llm: (recording.recording_meta as any).isLLM,
+          source: 'manual'
         }
       );
 
@@ -693,7 +696,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
         logger.log('warn', `Failed to emit failure event in main catch: ${socketError.message}`);
       }
 
-      capture('maxun-oss-run-created-manual', {
+      capture('maxun-oss-run-created', {
         runId: data.runId,
         user_id: data.userId,
         created_at: new Date().toISOString(),
@@ -702,6 +705,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
         partial_data_extracted: partialDataExtracted,
         totalRowsExtracted: partialData?.totalSchemaItemsExtracted + partialData?.totalListItemsExtracted + partialData?.extractedScreenshotsCount || 0,
         is_llm: (recording?.recording_meta as any)?.isLLM,
+        source: 'manual'
       });
 
       try {

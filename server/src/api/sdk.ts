@@ -752,7 +752,9 @@ router.post("/sdk/crawl", requireAPIKey, async (req: AuthenticatedRequest, res: 
             url: url,
             robotType: 'crawl',
             crawlConfig: crawlConfig,
-            source: 'sdk'
+            source: 'sdk',
+            robot_meta: robot.recording_meta,
+            recording: robot.recording,
         });
 
         return res.status(201).json({
@@ -846,7 +848,9 @@ router.post("/sdk/search", requireAPIKey, async (req: AuthenticatedRequest, res:
             searchQuery: searchConfig.query,
             searchProvider: searchConfig.provider || 'duckduckgo',
             searchLimit: searchConfig.limit || 10,
-            source: 'sdk'
+            source: 'sdk',
+            robot_meta: robot.recording_meta,
+            recording: robot.recording,
         });
 
         return res.status(201).json({

@@ -886,13 +886,14 @@ router.post('/runs/run/:id', requireSignIn, async (req: AuthenticatedRequest, re
     }
     logger.log('info', `Error while running a robot with id: ${req.params.id} - ${message}`);
     capture(
-      'maxun-oss-run-created-manual',
+      'maxun-oss-run-created',
       {
         runId: req.params.id,
         user_id: req.user?.id,
         created_at: new Date().toISOString(),
         status: 'failed',
         error_message: message,
+        source: 'manual'
       }
     );
     return res.send(false);
@@ -1407,7 +1408,9 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
       robotName: robotName,
       url: url,
       robotType: 'crawl',
-      crawlConfig: crawlConfig
+      crawlConfig: crawlConfig,
+      robot_meta: newRobot.recording_meta,
+      recording: newRobot.recording,
     });
 
     return res.status(201).json({
@@ -1493,7 +1496,9 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
       robotType: 'search',
       searchQuery: searchConfig.query,
       searchProvider: searchConfig.provider || 'duckduckgo',
-      searchLimit: searchConfig.limit || 10
+      searchLimit: searchConfig.limit || 10,
+      robot_meta: newRobot.recording_meta,
+      recording: newRobot.recording,
     });
 
     return res.status(201).json({

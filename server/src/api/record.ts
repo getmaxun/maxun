@@ -861,7 +861,7 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
                     );
                 }
 
-                capture("maxun-oss-run-created-api", {
+                capture("maxun-oss-run-created", {
                     runId: plainRun.runId,
                     userId: userId,
                     robotId: recording.recording_meta.id,
