@@ -601,9 +601,9 @@ async function triggerIntegrationUpdates(runId: string, robotMetaId: string): Pr
   }
 }
 
-async function readyForRunHandler(browserId: string, id: string, userId: string, socket: Socket){
+async function readyForRunHandler(browserId: string, id: string, userId: string, socket: Socket, requestedFormats?: string[]){
     try {
-        const result = await executeRun(id, userId);
+        const result = await executeRun(id, userId, requestedFormats);
 
         if (result && result.success) {
             logger.log('info', `Interpretation of ${id} succeeded`);
@@ -1192,7 +1192,7 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
     }
 }
 
-export async function handleRunRecording(id: string, userId: string, isSDK: boolean = false) {
+export async function handleRunRecording(id: string, userId: string, isSDK: boolean = false, requestedFormats?: string[]) {
     let socket: Socket | null = null;
 
     try {
@@ -1211,7 +1211,7 @@ export async function handleRunRecording(id: string, userId: string, isSDK: bool
             timeout: CONNECTION_TIMEOUT,
         });
 
-        const readyHandler = () => readyForRunHandler(browserId, newRunId, userId, socket!);
+        const readyHandler = () => readyForRunHandler(browserId, newRunId, userId, socket!, requestedFormats);
 
         socket.on('ready-for-run', readyHandler);
 
@@ -1375,7 +1375,8 @@ router.post("/robots/:id/runs", requireAPIKey, async (req: AuthenticatedRequest,
             return res.status(401).json({ ok: false, error: 'Unauthorized' });
         }
 
-        const runId = await handleRunRecording(req.params.id, req.user.id);
+        const requestedFormats = req.body?.formats;
+        const runId = await handleRunRecording(req.params.id, req.user.id, false, requestedFormats);
 
         if (!runId) {
             throw new Error('Run ID is undefined');
