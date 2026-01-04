@@ -430,7 +430,7 @@ router.post("/sdk/robots/:id/execute", requireAPIKey, async (req: AuthenticatedR
 
         logger.info(`[SDK] Starting execution for robot ${robotId}`);
 
-        const runId = await handleRunRecording(robotId, user.id.toString());
+        const runId = await handleRunRecording(robotId, user.id.toString(), true);
         if (!runId) {
             throw new Error('Failed to start robot execution');
         }
