@@ -30,10 +30,14 @@ interface RunContentProps {
   interpretationInProgress: boolean,
   logEndRef: React.RefObject<HTMLDivElement>,
   abortRunHandler: () => void,
+  workflowProgress: {
+    current: number;
+    total: number;
+    percentage: number;
+  } | null,
 }
 
-export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRef, abortRunHandler }: RunContentProps) => {
-  const { t } = useTranslation();
+export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRef, abortRunHandler, workflowProgress }: RunContentProps) => {  const { t } = useTranslation();
   const [tab, setTab] = React.useState<string>('output');
   const [markdownContent, setMarkdownContent] = useState<string>('');
   const [htmlContent, setHtmlContent] = useState<string>('');
@@ -62,6 +66,15 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   useEffect(() => {
     setTab(tab);
   }, [interpretationInProgress]);
+
+  const getProgressMessage = (percentage: number): string => {
+    if (percentage === 0) return 'Initializing workflow...';
+    if (percentage < 25) return 'Starting execution...';
+    if (percentage < 50) return 'Processing actions...';
+    if (percentage < 75) return 'Extracting data...';
+    if (percentage < 100) return 'Finalizing results...';
+    return 'Completing...';
+  };
 
   useEffect(() => {
     setMarkdownContent('');
@@ -810,7 +823,20 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
           {row.status === 'running' || row.status === 'queued' ? (
             <>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <CircularProgress size={22} sx={{ marginRight: '10px' }} />
+                {workflowProgress ? (
+                  <>
+                    <CircularProgress 
+                      size={22} 
+                      sx={{ marginRight: '10px' }} 
+                    />
+                    {getProgressMessage(workflowProgress.percentage)}
+                  </>
+                ) : (
+                  <>
+                    <CircularProgress size={22} sx={{ marginRight: '10px' }} />
+                    {t('run_content.loading')}
+                  </>
+                )}
                 {t('run_content.loading')}
               </Box>
               <Button color="error" onClick={abortRunHandler} sx={{ mt: 1 }}>
