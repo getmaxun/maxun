@@ -113,7 +113,7 @@ export const NavBar: React.FC<NavBarProps> = ({
       if (data.ok) {
         dispatch({ type: "LOGOUT" });
         window.localStorage.removeItem("user");
-        notify('success', t('navbar.notifications.success.logout'));
+        // notify('success', t('navbar.notifications.success.logout'));
         navigate("/login");
       }
     } catch (error: any) {
