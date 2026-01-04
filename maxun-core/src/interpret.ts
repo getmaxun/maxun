@@ -48,6 +48,7 @@ interface InterpreterOptions {
     debugMessage: (msg: string) => void,
     setActionType: (type: string) => void,
     incrementScrapeListIndex: () => void,
+    progressUpdate: (current: number, total: number, percentage: number) => void,
   }>
 }
 
@@ -85,6 +86,10 @@ export default class Interpreter extends EventEmitter {
   };
 
   private scrapeListCounter: number = 0;
+
+  private totalActions: number = 0;
+
+  private executedActions: number = 0;
 
   constructor(workflow: WorkflowFile, options?: Partial<InterpreterOptions>) {
     super();
@@ -2346,6 +2351,17 @@ export default class Interpreter extends EventEmitter {
 
           workflowCopy.splice(actionId, 1);
           console.log(`Action with ID ${action.id} removed from the workflow copy.`);
+
+          this.executedActions++;
+          const percentage = Math.round((this.executedActions / this.totalActions) * 100);
+
+          if (this.options.debugChannel?.progressUpdate) {
+            this.options.debugChannel.progressUpdate(
+              this.executedActions,
+              this.totalActions,
+              percentage
+            );
+          }
           
           // const newSelectors = this.getPreviousSelectors(workflow, actionId);
           // const newSelectors = this.getSelectors(workflowCopy);
@@ -2435,6 +2451,13 @@ export default class Interpreter extends EventEmitter {
      * `this.workflow` with the parameters initialized.
      */
     this.initializedWorkflow = Preprocessor.initWorkflow(this.workflow, params);
+
+    this.totalActions = this.initializedWorkflow.length;
+    this.executedActions = 0;
+
+    if (this.options.debugChannel?.progressUpdate) {
+      this.options.debugChannel.progressUpdate(0, this.totalActions, 0);
+    }
 
     await this.ensureScriptsLoaded(page);
 

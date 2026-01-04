@@ -7,7 +7,7 @@ const Alert = React.forwardRef<HTMLDivElement, AlertProps>(function Alert(
   props,
   ref,
 ) {
-  return <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />;
+  return <MuiAlert elevation={6} ref={ref} variant="outlined" {...props} />;
 });
 
 export interface AlertSnackbarProps {
@@ -32,7 +32,7 @@ export const AlertSnackbar = ({ severity, message, isOpen }: AlertSnackbarProps)
 
   return (
     <Snackbar anchorOrigin={{ vertical: 'top', horizontal: 'center' }} open={open} autoHideDuration={5000} onClose={handleClose}>
-      <Alert onClose={handleClose} severity={severity} sx={{ width: '100%' }}>
+      <Alert onClose={handleClose} severity={severity} sx={{ width: '100%', bgcolor: 'background.paper' }} variant="outlined">
         {message}
       </Alert>
     </Snackbar>

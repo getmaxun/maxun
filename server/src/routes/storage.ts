@@ -583,6 +583,7 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
       robot_meta: newRobot.recording_meta,
       recording: newRobot.recording,
       llm_provider: llmProvider || 'ollama',
+      prompt: prompt,
     });
 
     return res.status(201).json({

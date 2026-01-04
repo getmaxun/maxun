@@ -1241,6 +1241,168 @@ Rules:
   }
 
   /**
+   * Generate semantic list name using LLM based on user prompt and field context
+   */
+  private static async generateListName(
+    prompt: string,
+    url: string,
+    fieldNames: string[],
+    llmConfig?: {
+      provider?: 'anthropic' | 'openai' | 'ollama';
+      model?: string;
+      apiKey?: string;
+      baseUrl?: string;
+    }
+  ): Promise<string> {
+    try {
+      const provider = llmConfig?.provider || 'ollama';
+      const axios = require('axios');
+
+      const fieldContext = fieldNames.length > 0
+        ? `\n\nDetected fields in the list:\n${fieldNames.slice(0, 10).map((name, idx) => `${idx + 1}. ${name}`).join('\n')}`
+        : '';
+
+      const systemPrompt = `You are a list naming assistant. Your job is to generate a clear, concise name for a data list based on the user's extraction request and the fields being extracted.
+
+RULES FOR LIST NAMING:
+1. Use 1-3 words maximum (prefer 2 words)
+2. Use Title Case (e.g., "Product Listings", "Job Postings")
+3. Be specific and descriptive
+4. Match the user's terminology when possible
+5. Adapt to the domain: e-commerce (Products, Listings), jobs (Jobs, Postings), articles (Articles, News), etc.
+6. Avoid generic terms like "List", "Data", "Items" unless absolutely necessary
+7. Focus on WHAT is being extracted, not HOW
+
+Examples:
+- User wants "product listings" → "Product Listings" or "Products"
+- User wants "job postings" → "Job Postings" or "Jobs"
+- User wants "article titles" → "Articles"
+- User wants "company information" → "Companies"
+- User wants "quotes from page" → "Quotes"
+
+You must return ONLY the list name, nothing else. No JSON, no explanation, just the name.`;
+
+      const userPrompt = `URL: ${url}
+
+User's extraction request: "${prompt}"
+${fieldContext}
+
+TASK: Generate a concise, descriptive name for this list (1-3 words in Title Case).
+
+Return ONLY the list name, nothing else:`;
+
+      let llmResponse: string;
+
+      if (provider === 'ollama') {
+        const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+        const ollamaModel = llmConfig?.model || 'llama3.2-vision';
+
+        try {
+          const response = await axios.post(`${ollamaBaseUrl}/api/chat`, {
+            model: ollamaModel,
+            messages: [
+              {
+                role: 'system',
+                content: systemPrompt
+              },
+              {
+                role: 'user',
+                content: userPrompt
+              }
+            ],
+            stream: false,
+            options: {
+              temperature: 0.1,
+              top_p: 0.9,
+              num_predict: 20
+            }
+          });
+
+          llmResponse = response.data.message.content;
+        } catch (ollamaError: any) {
+          logger.error(`Ollama request failed for list naming: ${ollamaError.message}`);
+          logger.info('Using fallback list name: "List 1"');
+          return 'List 1';
+        }
+      } else if (provider === 'anthropic') {
+        const anthropic = new Anthropic({
+          apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
+        });
+        const anthropicModel = llmConfig?.model || 'claude-3-5-sonnet-20241022';
+
+        const response = await anthropic.messages.create({
+          model: anthropicModel,
+          max_tokens: 20,
+          temperature: 0.1,
+          messages: [{
+            role: 'user',
+            content: userPrompt
+          }],
+          system: systemPrompt
+        });
+
+        const textContent = response.content.find((c: any) => c.type === 'text');
+        llmResponse = textContent?.type === 'text' ? textContent.text : '';
+
+      } else if (provider === 'openai') {
+        const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
+        const openaiModel = llmConfig?.model || 'gpt-4o-mini';
+
+        const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
+          model: openaiModel,
+          messages: [
+            {
+              role: 'system',
+              content: systemPrompt
+            },
+            {
+              role: 'user',
+              content: userPrompt
+            }
+          ],
+          max_tokens: 20,
+          temperature: 0.1
+        }, {
+          headers: {
+            'Authorization': `Bearer ${llmConfig?.apiKey || process.env.OPENAI_API_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        llmResponse = response.data.choices[0].message.content;
+      } else {
+        throw new Error(`Unsupported LLM provider: ${provider}`);
+      }
+
+      let listName = (llmResponse || '').trim();
+      logger.info(`LLM List Naming Response: "${listName}"`);
+
+      listName = listName.replace(/^["']|["']$/g, '');
+      listName = listName.split('\n')[0];
+      listName = listName.trim();
+
+      if (!listName || listName.length === 0) {
+        throw new Error('LLM returned empty list name');
+      }
+
+      if (listName.length > 50) {
+        throw new Error('LLM returned list name that is too long');
+      }
+
+      listName = listName.split(' ')
+        .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+
+      logger.info(`✓ Generated list name: "${listName}"`);
+      return listName;
+    } catch (error: any) {
+      logger.error(`Error in generateListName: ${error.message}`);
+      logger.info('Using fallback list name: "List 1"');
+      return 'List 1';
+    }
+  }
+
+  /**
    * Build workflow from LLM decision
    */
   private static async buildWorkflowFromLLMDecision(
@@ -1333,10 +1495,19 @@ Rules:
       const limit = llmDecision.limit || 100;
       logger.info(`Using limit: ${limit}`);
 
+      logger.info('Generating semantic list name with LLM...');
+      const listName = await this.generateListName(
+        prompt || 'Extract list data',
+        url,
+        Object.keys(finalFields),
+        llmConfig
+      );
+      logger.info(`Using list name: "${listName}"`);
+
       workflow[0].what.push({
         action: 'scrapeList',
         actionId: `list-${uuid()}`,
-        name: 'List 1',
+        name: listName,
         args: [{
           fields: finalFields,
           listSelector: autoDetectResult.listSelector,
