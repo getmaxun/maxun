@@ -1,6 +1,5 @@
 /* eslint-disable no-await-in-loop, no-restricted-syntax */
 import { ElementHandle, Page, PageScreenshotOptions } from 'playwright-core';
-import { PlaywrightBlocker } from '@cliqz/adblocker-playwright';
 import fetch from 'cross-fetch';
 import path from 'path';
 
@@ -70,7 +69,7 @@ export default class Interpreter extends EventEmitter {
 
   private log: typeof log;
 
-  private blocker: PlaywrightBlocker | null = null;
+  // private blocker: PlaywrightBlocker | null = null;
 
   private cumulativeResults: Record<string, any>[] = [];
 
@@ -125,13 +124,13 @@ export default class Interpreter extends EventEmitter {
       };
     }
 
-    PlaywrightBlocker.fromLists(fetch, ['https://easylist.to/easylist/easylist.txt']).then(blocker => {
-      this.blocker = blocker;
-    }).catch(err => {
-      this.log(`Failed to initialize ad-blocker: ${err.message}`, Level.ERROR);
-      // Continue without ad-blocker rather than crashing
-      this.blocker = null;
-    })
+    // PlaywrightBlocker.fromLists(fetch, ['https://easylist.to/easylist/easylist.txt']).then(blocker => {
+    //   this.blocker = blocker;
+    // }).catch(err => {
+    //   this.log(`Failed to initialize ad-blocker: ${err.message}`, Level.ERROR);
+    //   // Continue without ad-blocker rather than crashing
+    //   this.blocker = null;
+    // })
   }
 
   /**
@@ -146,26 +145,6 @@ export default class Interpreter extends EventEmitter {
    */
   public getIsAborted(): boolean {
     return this.isAborted;
-  }
-
-  private async applyAdBlocker(page: Page): Promise<void> {
-    if (this.blocker) {
-      try {
-        await this.blocker.enableBlockingInPage(page as any);
-      } catch (err) {
-        this.log(`Ad-blocker operation failed:`, Level.ERROR);
-      }
-    }
-  }
-
-  private async disableAdBlocker(page: Page): Promise<void> {
-    if (this.blocker) {
-      try {
-        await this.blocker.disableBlockingInPage(page as any);
-      } catch (err) {
-        this.log(`Ad-blocker operation failed:`, Level.ERROR);
-      }
-    }
   }
 
   // private getSelectors(workflow: Workflow, actionId: number): string[] {
@@ -2210,12 +2189,6 @@ export default class Interpreter extends EventEmitter {
 
     workflowCopy = this.removeSpecialSelectors(workflowCopy);
 
-    // apply ad-blocker to the current page
-    try {
-      await this.applyAdBlocker(p);
-    } catch (error) {
-      this.log(`Failed to apply ad-blocker: ${error.message}`, Level.ERROR);
-    }
     const usedActions: string[] = [];
     let selectors: string[] = [];
     let lastAction = null;
@@ -2492,16 +2465,6 @@ export default class Interpreter extends EventEmitter {
           await this.stop();
         } catch (error: any) {
           this.log(`Error stopping workflow during cleanup: ${error.message}`, Level.WARN);
-        }
-      }
-
-      // Clear ad-blocker resources
-      if (this.blocker) {
-        try {
-          this.blocker = null;
-          this.log('Ad-blocker resources cleared', Level.DEBUG);
-        } catch (error: any) {
-          this.log(`Error cleaning up ad-blocker: ${error.message}`, Level.WARN);
         }
       }
 
