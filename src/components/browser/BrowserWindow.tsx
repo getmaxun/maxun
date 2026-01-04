@@ -321,81 +321,12 @@ export const BrowserWindow = () => {
 
         const uniqueChildSelectors = [...new Set(childSelectors)];
 
-        const validateChildSelectors = (selectors: string[]): string[] => {
-          try {
-            // Get first 10 list elements
-            const listElements = evaluateXPathAllWithShadowSupport(
-              iframeElement.contentDocument!,
-              listSelector,
-              listSelector.includes(">>") || listSelector.startsWith("//")
-            ).slice(0, 10);
-
-            if (listElements.length < 2) {
-              return selectors;
-            }
-
-            const validSelectors: string[] = [];
-
-            for (const selector of selectors) {
-              // First, try to access the element directly
-              try {
-                const testElement = iframeElement.contentDocument!.evaluate(
-                  selector,
-                  iframeElement.contentDocument!,
-                  null,
-                  XPathResult.FIRST_ORDERED_NODE_TYPE,
-                  null
-                ).singleNodeValue;
-
-                // If we can't access the element, it's likely in shadow DOM - include it
-                if (!testElement) {
-                  validSelectors.push(selector);
-                  continue;
-                }
-              } catch (accessError) {
-                validSelectors.push(selector);
-                continue;
-              }
-
-              let occurrenceCount = 0;
-
-              // Get all elements that match this child selector
-              const childElements = evaluateXPathAllWithShadowSupport(
-                iframeElement.contentDocument!,
-                selector,
-                selector.includes(">>") || selector.startsWith("//")
-              );
-
-              // Check how many of these child elements are contained within our list elements
-              for (const childElement of childElements) {
-                for (const listElement of listElements) {
-                  if (listElement.contains(childElement)) {
-                    occurrenceCount++;
-                    break;
-                  }
-                }
-              }
-
-              // Only include selectors that occur in at least 2 list elements
-              if (occurrenceCount >= 2) {
-                validSelectors.push(selector);
-              }
-            }
-
-            return validSelectors;
-          } catch (error) {
-            console.warn("Failed to validate child selectors:", error);
-            return selectors;
-          }
-        };
-
         const evaluateXPathAllWithShadowSupport = (
           document: Document,
           xpath: string,
           isShadow: boolean = false
         ): Element[] => {
           try {
-            // First try regular XPath evaluation
             const result = document.evaluate(
               xpath,
               document,
@@ -478,9 +409,51 @@ export const BrowserWindow = () => {
           };
         };
 
-        const validatedChildSelectors = validateChildSelectors(uniqueChildSelectors);
+        try {
+          const listElements = evaluateXPathAllWithShadowSupport(
+            iframeElement.contentDocument!,
+            listSelector,
+            listSelector.includes(">>") || listSelector.startsWith("//")
+          );
 
-        validatedChildSelectors.forEach((selector, index) => {
+          if (listElements.length > 0) {
+            const firstListElement = listElements[0] as HTMLElement;
+            const listTagName = firstListElement.tagName.toLowerCase();
+
+            if (listTagName === 'a' && isElementVisible(firstListElement)) {
+              const href = firstListElement.getAttribute('href');
+
+              if (href && href !== '#' && !href.startsWith('javascript:') && isValidData(href)) {
+                const rect = firstListElement.getBoundingClientRect();
+                const fieldId = Date.now();
+
+                candidateFields.push({
+                  id: fieldId,
+                  element: firstListElement,
+                  isLeaf: true,
+                  depth: 0,
+                  position: { x: rect.left, y: rect.top },
+                  field: {
+                    id: fieldId,
+                    type: "text",
+                    label: "Label 1",
+                    data: href,
+                    selectorObj: {
+                      selector: listSelector,
+                      attribute: 'href',
+                      tag: 'A',
+                      isShadow: firstListElement.getRootNode() instanceof ShadowRoot
+                    }
+                  }
+                });
+              }
+            }
+          }
+        } catch (error) {
+          console.warn('Failed to extract list container data:', error);
+        }
+
+        uniqueChildSelectors.forEach((selector, index) => {
           try {
             const listElements = evaluateXPathAllWithShadowSupport(
               iframeElement.contentDocument!,
@@ -501,13 +474,16 @@ export const BrowserWindow = () => {
 
               const matchRatio = allMatches.length / listElements.length;
 
-              if (matchRatio < 0.6) {
+              const isLinkOrImage = allMatches.length > 0 &&
+                (allMatches[0].tagName === 'A' || allMatches[0].tagName === 'IMG');
+
+              if (!isLinkOrImage && matchRatio < 0.6) {
                 return;
               }
             }
 
             const firstListElement = listElements[0];
-                
+
             const elements = evaluateXPathAllWithShadowSupport(
               iframeElement.contentDocument!,
               selector,
@@ -617,8 +593,13 @@ export const BrowserWindow = () => {
                       selectorObj: fieldData.selectorObj
                     }
                   });
-                  const anchorParent = element.closest('a');
-                  if (anchorParent) {
+                }
+
+                const anchorParent = element.closest('a');
+                if (anchorParent) {
+                  const isListContainer = listElements.some(listEl => listEl === anchorParent);
+
+                  if (!isListContainer) {
                     const href = anchorParent.getAttribute('href');
                     if (href && href !== '#' && !href.startsWith('javascript:') && isValidData(href)) {
                       let anchorSelector = selector;
@@ -645,7 +626,7 @@ export const BrowserWindow = () => {
                             selector: anchorSelector,
                             attribute: 'href',
                             tag: 'A',
-                            isShadow: anchorParent.getRootNode() instanceof ShadowRoot,
+                            isShadow: anchorParent.getRootNode() instanceof ShadowRoot
                           }
                         }
                       });
@@ -659,54 +640,63 @@ export const BrowserWindow = () => {
           }
         });
 
+        // Sort candidates by visual position (top-to-bottom, then left-to-right)
         candidateFields.sort((a, b) => {
           const yDiff = a.position.y - b.position.y;
 
+          // If elements are roughly on the same horizontal line (within 5px tolerance)
           if (Math.abs(yDiff) <= 5) {
-            return a.position.x - b.position.x;
+            return a.position.x - b.position.x; // Sort by x-position (left to right)
           }
 
-          return yDiff;
+          return yDiff; // Sort by y-position (top to bottom)
         });
 
         const filteredCandidates = removeParentChildDuplicates(candidateFields);
+
         const cleanedCandidates = filteredCandidates.filter((candidate) => {
-        const data = candidate.field.data.trim();
+          const data = candidate.field.data.trim();
 
-        const textChildren = Array.from(candidate.element.children).filter(child =>
-          (child.textContent || '').trim().length > 0
-        );
-
-        if (textChildren.length === 0) {
-          return true;
-        }
-
-        const childCandidates = filteredCandidates.filter((other) => {
-          if (other === candidate) return false;
-          return candidate.element.contains(other.element);
-        });
-
-        if (childCandidates.length === 0) {
-          return true;
-        }
-
-        let coveredLength = 0;
-        childCandidates.forEach(child => {
-          const childText = child.field.data.trim();
-          if (data.includes(childText)) {
-            coveredLength += childText.length;
+          const isHrefField = candidate.field.selectorObj?.attribute === 'href';
+          if (isHrefField) {
+            return true;
           }
+
+          const textChildren = Array.from(candidate.element.children).filter(child =>
+            (child.textContent || '').trim().length > 0
+          );
+
+          if (textChildren.length === 0) {
+            return true;
+          }
+
+          const childCandidates = filteredCandidates.filter((other) => {
+            if (other === candidate) return false;
+            return candidate.element.contains(other.element);
+          });
+
+          if (childCandidates.length === 0) {
+            return true;
+          }
+
+          let coveredLength = 0;
+          childCandidates.forEach(child => {
+            const childText = child.field.data.trim();
+            if (data.includes(childText)) {
+              coveredLength += childText.length;
+            }
+          });
+
+          const coverageRatio = coveredLength / data.length;
+          const hasMultipleChildTexts = childCandidates.length >= 2;
+          const highCoverage = coverageRatio > 0.7;
+
+          return !(hasMultipleChildTexts && highCoverage);
         });
 
-        const coverageRatio = coveredLength / data.length;
-        const hasMultipleChildTexts = childCandidates.length >= 2;
-        const highCoverage = coverageRatio > 0.7;
+        const finalFields = removeDuplicateContent(cleanedCandidates);
 
-        return !(hasMultipleChildTexts && highCoverage);
-      });
-
-      const finalFields = removeDuplicateContent(cleanedCandidates);
-      return finalFields;
+        return finalFields;
       },
       [currentSnapshot]
     );
@@ -738,6 +728,14 @@ export const BrowserWindow = () => {
       }> = [];
 
       for (const candidate of candidates) {
+        const isAnchorWithHref = candidate.element.tagName.toLowerCase() === "a" && 
+                                candidate.field.selectorObj?.attribute === 'href';
+        
+        if (isAnchorWithHref) {
+          filtered.push(candidate);
+          continue;
+        }
+
         let shouldInclude = true;
 
         for (const existing of filtered) {
@@ -745,14 +743,15 @@ export const BrowserWindow = () => {
             shouldInclude = false;
             break;
           } else if (existing.element.contains(candidate.element)) {
-            const existingIndex = filtered.indexOf(existing);
-            filtered.splice(existingIndex, 1);
+            const existingIsAnchorWithHref = existing.element.tagName.toLowerCase() === "a" && 
+                                            existing.field.selectorObj?.attribute === 'href';
+            
+            if (!existingIsAnchorWithHref) {
+              const existingIndex = filtered.indexOf(existing);
+              filtered.splice(existingIndex, 1);
+            }
             break;
           }
-        }
-
-        if (candidate.element.tagName.toLowerCase() === "a") {
-          shouldInclude = true;
         }
 
         if (shouldInclude) {
