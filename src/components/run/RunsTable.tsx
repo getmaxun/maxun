@@ -630,11 +630,10 @@ export const RunsTable: React.FC<RunsTableProps> = ({
                       count={data.length}
                       rowsPerPage={getPaginationState(robotMetaId).rowsPerPage}
                       page={getPaginationState(robotMetaId).page}
-                      onPageChange={(_, newPage) => handleChangePage(robotMetaId, newPage)}
-                      onRowsPerPageChange={(event) => 
-                        handleChangeRowsPerPage(robotMetaId, +event.target.value)
+                      onPageChange={(_, newPage) =>
+                        handleChangePage(robotMetaId, newPage)
                       }
-                      rowsPerPageOptions={[10, 25, 50, 100]}
+                      rowsPerPageOptions={[]}
                     />
                   </AccordionDetails>
                 </Accordion>
@@ -647,8 +646,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
             page={accordionPage}
             rowsPerPage={accordionsPerPage}
             onPageChange={handleAccordionPageChange}
-            onRowsPerPageChange={handleAccordionsPerPageChange}
-            rowsPerPageOptions={[10, 25, 50, 100]}
+            rowsPerPageOptions={[]}
           />
         </>
       )}
