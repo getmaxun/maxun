@@ -548,9 +548,10 @@
     },
     "runs_table": {
       "run_type_chips": {
-        "manual_run": "Manual Run",
-        "scheduled_run": "Scheduled Run", 
+        "manual_run": "Manual",
+        "scheduled_run": "Scheduled", 
         "api": "API",
+        "sdk": "SDK",
         "unknown_run_type": "Unknown Run Type"
       },
       "run_status_chips": {

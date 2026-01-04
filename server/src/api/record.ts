@@ -339,6 +339,7 @@ function formatRunResponse(run: any) {
         runByUserId: run.runByUserId,
         runByScheduleId: run.runByScheduleId,
         runByAPI: run.runByAPI,
+        runBySDK: run.runBySDK,
         data: {
             textData: {},
             listData: {},

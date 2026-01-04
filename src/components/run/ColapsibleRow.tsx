@@ -56,12 +56,14 @@ interface RunTypeChipProps {
   runByUserId?: string;
   runByScheduledId?: string;
   runByAPI: boolean;
+  runBySDK?: boolean;
 }
 
-const RunTypeChip: React.FC<RunTypeChipProps> = ({ runByUserId, runByScheduledId, runByAPI }) => {
+const RunTypeChip: React.FC<RunTypeChipProps> = ({ runByUserId, runByScheduledId, runByAPI, runBySDK }) => {
   const { t } = useTranslation();
 
   if (runByScheduledId) return <Chip label={t('runs_table.run_type_chips.scheduled_run')} color="primary" variant="outlined" />;
+  if (runBySDK) return <Chip label={t('runs_table.run_type_chips.sdk')} color="primary" variant="outlined" />;
   if (runByAPI) return <Chip label={t('runs_table.run_type_chips.api')} color="primary" variant="outlined" />;
   if (runByUserId) return <Chip label={t('runs_table.run_type_chips.manual_run')} color="primary" variant="outlined" />;
   return <Chip label={t('runs_table.run_type_chips.unknown_run_type')} color="primary" variant="outlined" />;
@@ -84,12 +86,14 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
   const [openSettingsModal, setOpenSettingsModal] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const runByLabel = row.runByScheduleId
-    ?  `${row.runByScheduleId}` 
-    : row.runByUserId
-      ? `${userEmail}`
-      : row.runByAPI
-        ? 'API'
-        : 'Unknown';
+    ?  `${row.runByScheduleId}`
+      : row.runByUserId
+        ? `${userEmail}`
+        : row.runBySDK
+          ? 'SDK'
+          : row.runByAPI
+            ? 'API'
+            : 'Unknown';
   
   const logEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -254,6 +258,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                               runByUserId={row.runByUserId}
                               runByScheduledId={row.runByScheduleId}
                               runByAPI={row.runByAPI ?? false}
+                              runBySDK={row.runBySDK}
                             />
                           </Box>
                         </Box>
