@@ -484,6 +484,8 @@ async function executeRun(id: string, userId: string) {
     const categorizedOutput = {
       scrapeSchema: finalRun?.serializableOutput?.scrapeSchema || {},
       scrapeList: finalRun?.serializableOutput?.scrapeList || {},
+      crawl: finalRun?.serializableOutput?.crawl || {},
+      search: finalRun?.serializableOutput?.search || {}
     };
 
     await destroyRemoteBrowser(plainRun.browserId, userId);
@@ -570,6 +572,8 @@ async function executeRun(id: string, userId: string) {
             }, {} as Record<string, any[]>)
           : {},
         captured_lists: categorizedOutput.scrapeList,
+        crawl_data: categorizedOutput.crawl,
+        search_data: categorizedOutput.search,
         captured_texts_count: totalSchemaItemsExtracted,
         captured_lists_count: totalListItemsExtracted,
         screenshots_count: extractedScreenshotsCount

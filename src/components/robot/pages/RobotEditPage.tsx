@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   TextField,
@@ -7,7 +7,13 @@ import {
   Button,
   IconButton,
   InputAdornment,
-  Divider,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  FormControlLabel,
+  Checkbox,
+  Collapse
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { useGlobalInfoStore } from "../../../context/globalInfo";
@@ -24,7 +30,7 @@ interface RobotMeta {
   pairs: number;
   updatedAt: string;
   params: any[];
-  type?: 'extract' | 'scrape';
+  type?: 'extract' | 'scrape' | 'crawl' | 'search';
   url?: string;
   formats?: ('markdown' | 'html' | 'screenshot-visible' | 'screenshot-fullpage')[];
   isLLM?: boolean;
@@ -97,6 +103,25 @@ interface ScrapeListLimit {
   currentLimit: number;
 }
 
+interface CrawlConfig {
+  mode?: string;
+  limit?: number;
+  maxDepth?: number;
+  useSitemap?: boolean;
+  followLinks?: boolean;
+  excludePaths?: string[];
+  includePaths?: string[];
+  respectRobots?: boolean;
+}
+
+interface SearchConfig {
+  mode?: 'discover' | 'scrape';
+  limit?: number;
+  query?: string;
+  filters?: Record<string, any>;
+  provider?: string;
+}
+
 export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -115,6 +140,9 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
     []
   );
   const [isLoading, setIsLoading] = useState(false);
+  const [crawlConfig, setCrawlConfig] = useState<CrawlConfig>({});
+  const [searchConfig, setSearchConfig] = useState<SearchConfig>({});
+  const [showCrawlAdvanced, setShowCrawlAdvanced] = useState(false);
 
   const isEmailPattern = (value: string): boolean => {
     return value.includes("@");
@@ -163,6 +191,8 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
       setCredentialGroups(groupCredentialsByType(extractedCredentials));
 
       findScrapeListLimits(robot.recording.workflow);
+      extractCrawlConfig(robot.recording.workflow);
+      extractSearchConfig(robot.recording.workflow);
     }
   }, [robot]);
 
@@ -193,6 +223,36 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
     });
 
     setScrapeListLimits(limits);
+  };
+
+  const extractCrawlConfig = (workflow: WhereWhatPair[]) => {
+    workflow.forEach((pair) => {
+      if (!pair.what) return;
+
+      pair.what.forEach((action: any) => {
+        if (action.action === "crawl" && action.args && action.args.length > 0) {
+          const config = action.args[0];
+          if (config && typeof config === "object") {
+            setCrawlConfig(config as CrawlConfig);
+          }
+        }
+      });
+    });
+  };
+
+  const extractSearchConfig = (workflow: WhereWhatPair[]) => {
+    workflow.forEach((pair) => {
+      if (!pair.what) return;
+
+      pair.what.forEach((action: any) => {
+        if (action.action === "search" && action.args && action.args.length > 0) {
+          const config = action.args[0];
+          if (config && typeof config === "object") {
+            setSearchConfig(config as SearchConfig);
+          }
+        }
+      });
+    });
   };
 
   function extractInitialCredentials(workflow: any[]): Credentials {
@@ -475,19 +535,17 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
       <>
         {renderCredentialFields(
           credentialGroups.usernames,
-          t("Username"),
-          "text"
+          t("Username")
         )}
 
-        {renderCredentialFields(credentialGroups.emails, t("Email"), "text")}
+        {renderCredentialFields(credentialGroups.emails, t("Email"))}
 
         {renderCredentialFields(
           credentialGroups.passwords,
-          t("Password"),
-          "password"
+          t("Password")
         )}
 
-        {renderCredentialFields(credentialGroups.others, t("Other"), "text")}
+        {renderCredentialFields(credentialGroups.others, t("Other"))}
       </>
     );
   };
@@ -502,7 +560,6 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         </Typography>
 
         {scrapeListLimits.map((limitInfo, index) => {
-          // Get the corresponding scrapeList action to extract its name
           const scrapeListAction = robot?.recording?.workflow?.[limitInfo.pairIndex]?.what?.[limitInfo.actionIndex];
           const actionName =
             scrapeListAction?.name ||
@@ -542,7 +599,6 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
     const screenshotInputs: JSX.Element[] = [];
     const listInputs: JSX.Element[] = [];
 
-    let textCount = 0;
     let screenshotCount = 0;
     let listCount = 0;
 
@@ -683,7 +739,6 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
   const renderCredentialFields = (
     selectors: string[],
     headerText: string,
-    defaultType: "text" | "password" = "text"
   ) => {
     if (selectors.length === 0) return null;
 
@@ -737,6 +792,193 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
     return url;
   };
 
+  const renderCrawlConfigFields = () => {
+    if (robot?.recording_meta.type !== 'crawl') return null;
+
+    return (
+      <>
+        <TextField
+          label="Max Pages to Crawl"
+          type="number"
+          fullWidth
+          value={crawlConfig.limit || 10}
+          onChange={(e) => {
+            const value = parseInt(e.target.value, 10);
+            if (value >= 1) {
+              setCrawlConfig((prev) => ({ ...prev, limit: value }));
+            }
+          }}
+          inputProps={{ min: 1 }}
+          style={{ marginBottom: "20px" }}
+        />
+
+        <Button
+          onClick={() => setShowCrawlAdvanced(!showCrawlAdvanced)}
+          sx={{
+            mb: 2,
+            textTransform: 'none',
+            color: '#ff00c3'
+          }}
+        >
+          {showCrawlAdvanced ? 'Hide Advanced Options' : 'Advanced Options'}
+        </Button>
+
+        <Collapse in={showCrawlAdvanced}>
+          <Box sx={{ mb: 2 }}>
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>Crawl Scope</InputLabel>
+              <Select
+                value={crawlConfig.mode || 'domain'}
+                label="Crawl Scope"
+                onChange={(e) => setCrawlConfig((prev) => ({ ...prev, mode: e.target.value }))}
+              >
+                <MenuItem value="domain">Same Domain Only</MenuItem>
+                <MenuItem value="subdomain">Include Subdomains</MenuItem>
+                <MenuItem value="path">Specific Path Only</MenuItem>
+              </Select>
+            </FormControl>
+
+            <TextField
+              label="Max Depth"
+              type="number"
+              fullWidth
+              value={crawlConfig.maxDepth || 3}
+              onChange={(e) => {
+                const value = parseInt(e.target.value, 10);
+                if (value >= 1) {
+                  setCrawlConfig((prev) => ({ ...prev, maxDepth: value }));
+                }
+              }}
+              inputProps={{ min: 1 }}
+              sx={{ mb: 2 }}
+              helperText="How many links deep to follow (default: 3)"
+            />
+
+            <TextField
+              label="Include Paths"
+              placeholder="Example: /products, /blog"
+              fullWidth
+              value={crawlConfig.includePaths?.join(', ') || ''}
+              onChange={(e) => {
+                const paths = e.target.value ? e.target.value.split(',').map(p => p.trim()) : [];
+                setCrawlConfig((prev) => ({ ...prev, includePaths: paths }));
+              }}
+              sx={{ mb: 2 }}
+              helperText="Only crawl URLs matching these paths (comma-separated)"
+            />
+
+            <TextField
+              label="Exclude Paths"
+              placeholder="Example: /admin, /login"
+              fullWidth
+              value={crawlConfig.excludePaths?.join(', ') || ''}
+              onChange={(e) => {
+                const paths = e.target.value ? e.target.value.split(',').map(p => p.trim()) : [];
+                setCrawlConfig((prev) => ({ ...prev, excludePaths: paths }));
+              }}
+              sx={{ mb: 2 }}
+              helperText="Skip URLs matching these paths (comma-separated)"
+            />
+
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={crawlConfig.useSitemap ?? true}
+                    onChange={(e) => setCrawlConfig((prev) => ({ ...prev, useSitemap: e.target.checked }))}
+                  />
+                }
+                label="Use sitemap.xml for URL discovery"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={crawlConfig.followLinks ?? true}
+                    onChange={(e) => setCrawlConfig((prev) => ({ ...prev, followLinks: e.target.checked }))}
+                  />
+                }
+                label="Follow links on pages"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={crawlConfig.respectRobots ?? true}
+                    onChange={(e) => setCrawlConfig((prev) => ({ ...prev, respectRobots: e.target.checked }))}
+                  />
+                }
+                label="Respect robots.txt"
+              />
+            </Box>
+          </Box>
+        </Collapse>
+      </>
+    );
+  };
+
+  const renderSearchConfigFields = () => {
+    if (robot?.recording_meta.type !== 'search') return null;
+
+    return (
+      <>
+        <TextField
+          label="Search Query"
+          placeholder="Example: latest AI breakthroughs 2025"
+          fullWidth
+          value={searchConfig.query || ''}
+          onChange={(e) => {
+            setSearchConfig((prev) => ({ ...prev, query: e.target.value }));
+          }}
+          sx={{ mb: 2 }}
+        />
+
+        <TextField
+          label="Number of Results"
+          type="number"
+          fullWidth
+          value={searchConfig.limit || 10}
+          onChange={(e) => {
+            const value = parseInt(e.target.value, 10);
+            if (value >= 1) {
+              setSearchConfig((prev) => ({ ...prev, limit: value }));
+            }
+          }}
+          inputProps={{ min: 1 }}
+          sx={{ mb: 2 }}
+        />
+
+        <FormControl fullWidth sx={{ mb: 2 }}>
+          <InputLabel>Mode</InputLabel>
+          <Select
+            value={searchConfig.mode || 'discover'}
+            label="Mode"
+            onChange={(e) => setSearchConfig((prev) => ({ ...prev, mode: e.target.value as 'discover' | 'scrape' }))}
+          >
+            <MenuItem value="discover">Discover URLs Only</MenuItem>
+            <MenuItem value="scrape">Extract Data from Results</MenuItem>
+          </Select>
+        </FormControl>
+
+        <FormControl fullWidth sx={{ mb: 2 }}>
+          <InputLabel>Time Range</InputLabel>
+          <Select
+            value={searchConfig.filters?.timeRange || ''}
+            label="Time Range"
+            onChange={(e) => setSearchConfig((prev) => ({
+              ...prev,
+              filters: { ...prev.filters, timeRange: e.target.value as '' | 'day' | 'week' | 'month' | 'year' || undefined }
+            }))}
+          >
+            <MenuItem value="">No Filter</MenuItem>
+            <MenuItem value="day">Past 24 Hours</MenuItem>
+            <MenuItem value="week">Past Week</MenuItem>
+            <MenuItem value="month">Past Month</MenuItem>
+            <MenuItem value="year">Past Year</MenuItem>
+          </Select>
+        </FormControl>
+      </>
+    );
+  };
+
   const handleSave = async () => {
     if (!robot) return;
 
@@ -757,6 +999,48 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
 
       const targetUrl = getTargetUrl();
 
+      let updatedWorkflow = robot.recording.workflow;
+      if (robot.recording_meta.type === 'crawl') {
+        updatedWorkflow = updatedWorkflow.map((pair: any) => {
+          if (!pair.what) return pair;
+
+          return {
+            ...pair,
+            what: pair.what.map((action: any) => {
+              if (action.action === 'crawl') {
+                return {
+                  ...action,
+                  args: [{ ...crawlConfig }]
+                };
+              }
+              return action;
+            })
+          };
+        });
+      }
+
+      if (robot.recording_meta.type === 'search') {
+        updatedWorkflow = updatedWorkflow.map((pair: any) => {
+          if (!pair.what) return pair;
+
+          return {
+            ...pair,
+            what: pair.what.map((action: any) => {
+              if (action.action === 'search') {
+                return {
+                  ...action,
+                  args: [{
+                    ...searchConfig,
+                    provider: 'duckduckgo'
+                  }]
+                };
+              }
+              return action;
+            })
+          };
+        });
+      }
+
       const payload: any = {
         name: robot.recording_meta.name,
         limits: scrapeListLimits.map((limit) => ({
@@ -767,8 +1051,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         })),
         credentials: credentialsForPayload,
         targetUrl: targetUrl,
-        // send the (possibly edited) workflow so backend can persist action name changes
-        workflow: robot.recording.workflow,
+        workflow: updatedWorkflow,
       };
 
       const success = await updateRecording(robot.recording_meta.id, payload);
@@ -818,26 +1101,21 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
                 style={{ marginBottom: "20px" }}
               />
 
-              <TextField
-                label={t("robot_duplication.fields.target_url")}
-                key={t("robot_duplication.fields.target_url")}
-                value={getTargetUrl() || ""}
-                onChange={(e) => handleTargetUrlChange(e.target.value)}
-                style={{ marginBottom: "20px" }}
-              />
-              {renderScrapeListLimitFields() && (
-                <>
-                  <Divider />
-                  {renderScrapeListLimitFields()}
-                </>
+              {robot.recording_meta.type !== 'search' && (
+                <TextField
+                  label={t("robot_duplication.fields.target_url")}
+                  key={t("robot_duplication.fields.target_url")}
+                  value={getTargetUrl() || ""}
+                  onChange={(e) => handleTargetUrlChange(e.target.value)}
+                  style={{ marginBottom: "20px" }}
+                />
               )}
+              
+              {renderCrawlConfigFields()}
+              {renderSearchConfigFields()}
 
-              {renderActionNameFields() && (
-                <>
-                  <Divider />
-                  {renderActionNameFields()}
-                </>
-              )}
+              {renderScrapeListLimitFields()}
+              {renderActionNameFields()}
             </>
           )}
         </Box>

@@ -1,20 +1,20 @@
 import {
   Box,
-  Tabs,
   Typography,
-  Tab,
   Paper,
   Button,
   CircularProgress,
   Accordion,
   AccordionSummary,
-  AccordionDetails
+  AccordionDetails,
+  Link
 } from "@mui/material";
 import * as React from "react";
 import { Data } from "./RunsTable";
 import { TabPanel, TabContext } from "@mui/lab";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useEffect, useState } from "react";
+import JSZip from "jszip";
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -37,7 +37,9 @@ interface RunContentProps {
   } | null,
 }
 
-export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRef, abortRunHandler, workflowProgress }: RunContentProps) => {  const { t } = useTranslation();
+export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRef, abortRunHandler, workflowProgress }: RunContentProps) => {
+  const { t } = useTranslation();
+  const { darkMode } = useThemeMode();
   const [tab, setTab] = React.useState<string>('output');
   const [markdownContent, setMarkdownContent] = useState<string>('');
   const [htmlContent, setHtmlContent] = useState<string>('');
@@ -53,6 +55,15 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   const [listColumns, setListColumns] = useState<string[][]>([]);
   const [listKeys, setListKeys] = useState<string[]>([]);
   const [currentListIndex, setCurrentListIndex] = useState<number>(0);
+
+  const [crawlData, setCrawlData] = useState<any[][]>([]);
+  const [crawlColumns, setCrawlColumns] = useState<string[][]>([]);
+  const [crawlKeys, setCrawlKeys] = useState<string[]>([]);
+  const [currentCrawlIndex, setCurrentCrawlIndex] = useState<number>(0);
+
+  const [searchData, setSearchData] = useState<any[]>([]);
+  const [searchMode, setSearchMode] = useState<'discover' | 'scrape'>('discover');
+  const [currentSearchIndex, setCurrentSearchIndex] = useState<number>(0);
 
   const [screenshotKeys, setScreenshotKeys] = useState<string[]>([]);
   const [screenshotKeyMap, setScreenshotKeyMap] = useState<Record<string, string>>({});
@@ -106,6 +117,10 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
       setListData([]);
       setListColumns([]);
       setListKeys([]);
+      setCrawlData([]);
+      setCrawlColumns([]);
+      setCrawlKeys([]);
+      setSearchData([]);
       setLegacyData([]);
       setLegacyColumns([]);
       setIsLegacyData(false);
@@ -117,7 +132,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
     const hasLegacySchema = row.serializableOutput.scrapeSchema && Array.isArray(row.serializableOutput.scrapeSchema);
     const hasLegacyList = row.serializableOutput.scrapeList && Array.isArray(row.serializableOutput.scrapeList);
-    const hasOldFormat = !row.serializableOutput.scrapeSchema && !row.serializableOutput.scrapeList && Object.keys(row.serializableOutput).length > 0;
+    const hasOldFormat = !row.serializableOutput.scrapeSchema && !row.serializableOutput.scrapeList && !row.serializableOutput.crawl && !row.serializableOutput.search && Object.keys(row.serializableOutput).length > 0;
 
     if (hasLegacySchema || hasLegacyList || hasOldFormat) {
       processLegacyData(row.serializableOutput);
@@ -133,6 +148,14 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
     if (row.serializableOutput.scrapeList) {
       processScrapeList(row.serializableOutput.scrapeList);
+    }
+
+    if (row.serializableOutput.crawl) {
+      processCrawl(row.serializableOutput.crawl);
+    }
+
+    if (row.serializableOutput.search) {
+      processSearch(row.serializableOutput.search);
     }
   }, [row.serializableOutput, row.status]);
 
@@ -152,7 +175,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
       let normalizedScreenshotKeys: string[];
 
       if (isLegacyPattern) {
-        // Legacy unnamed screenshots → Screenshot 1, Screenshot 2...
         normalizedScreenshotKeys = rawKeys.map((_, index) => `Screenshot ${index + 1}`);
       } else {
         normalizedScreenshotKeys = rawKeys.map((key, index) => {
@@ -355,6 +377,76 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     setCurrentListIndex(0);
   };
 
+  const processCrawl = (crawlDataInput: any) => {
+    const tablesList: any[][] = [];
+    const columnsList: string[][] = [];
+    const keys: string[] = [];
+
+    if (typeof crawlDataInput === 'object') {
+      Object.keys(crawlDataInput).forEach(key => {
+        const tableData = crawlDataInput[key];
+
+        if (Array.isArray(tableData) && tableData.length > 0) {
+          const filteredData = tableData.filter(row =>
+            row && typeof row === 'object' && Object.values(row).some(value => value !== undefined && value !== "")
+          );
+
+          if (filteredData.length > 0) {
+            tablesList.push(filteredData);
+            keys.push(key);
+            const tableColumns = new Set<string>();
+            filteredData.forEach(item => {
+              Object.keys(item).forEach(key => tableColumns.add(key));
+            });
+            columnsList.push(Array.from(tableColumns));
+          }
+        }
+      });
+    }
+
+    setCrawlData(tablesList);
+    setCrawlColumns(columnsList);
+    const normalizedCrawlKeys = keys.map((key, index) => {
+      if (!key || key.toLowerCase().includes("crawl")) {
+        return `Crawl ${index + 1}`;
+      }
+      return key;
+    });
+
+    setCrawlKeys(normalizedCrawlKeys);
+    setCurrentCrawlIndex(0);
+  };
+
+  const processSearch = (searchDataInput: any) => {
+    if (typeof searchDataInput === 'object') {
+      const keys = Object.keys(searchDataInput);
+
+      if (keys.length > 0) {
+        const searchKey = keys[0];
+        const searchInfo = searchDataInput[searchKey];
+
+        if (searchInfo && searchInfo.results && Array.isArray(searchInfo.results)) {
+          const mode = searchInfo.mode || 'discover';
+          setSearchMode(mode);
+
+          if (mode === 'scrape') {
+            setSearchData(searchInfo.results);
+          } else {
+            const normalizedResults = searchInfo.results.map((result: any, index: number) => ({
+              title: result.title || '-',
+              url: result.url || '-',
+              description: result.description || '-',
+              position: result.position || index + 1,
+            }));
+            setSearchData(normalizedResults);
+          }
+
+          setCurrentSearchIndex(0);
+        }
+      }
+    }
+  };
+
   const convertToCSV = (data: any[], columns: string[], isSchemaData: boolean = false, isTabular: boolean = false): string => {
     if (isSchemaData && !isTabular && data.length === 1) {
       const header = 'Label,Value';
@@ -375,7 +467,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     }
   };
 
-  // Function to download a specific dataset as CSV
   const downloadCSV = (data: any[], columns: string[], filename: string, isSchemaData: boolean = false, isTabular: boolean = false) => {
     const csvContent = convertToCSV(data, columns, isSchemaData, isTabular);
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -426,6 +517,33 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     }, 100);
   };
 
+  const downloadAllCrawlsAsZip = async (crawlDataArray: any[], zipFilename: string) => {
+    const zip = new JSZip();
+
+    crawlDataArray.forEach((item, index) => {
+      const url = item?.metadata?.url || item?.url || '';
+      const filename = url
+        ? url.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') + '.json'
+        : `crawl_url_${index + 1}.json`;
+
+      const jsonContent = JSON.stringify(item, null, 2);
+      zip.file(filename, jsonContent);
+    });
+
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", zipFilename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 100);
+  };
 
   const renderDataTable = (
     data: any[],
@@ -433,14 +551,13 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     title: string,
     csvFilename: string,
     jsonFilename: string,
-    isPaginatedList: boolean = false,
     isSchemaData: boolean = false
   ) => {
     if (data.length === 0) return null;
 
     const shouldShowAsKeyValue = isSchemaData && !isSchemaTabular && data.length === 1;
 
-    if (title === '') {
+    if (!title || title.trim() === '') {
       return (
         <>
           <Box sx={{ mb: 2 }}>
@@ -686,7 +803,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     );
   };
 
-  const hasData = schemaData.length > 0 || listData.length > 0 || legacyData.length > 0;
+  const hasData = schemaData.length > 0 || listData.length > 0 || crawlData.length > 0 || searchData.length > 0 || legacyData.length > 0;
   const hasScreenshots = row.binaryOutput && Object.keys(row.binaryOutput).length > 0;
   const hasMarkdown = markdownContent.length > 0;
   const hasHTML = htmlContent.length > 0;
@@ -818,7 +935,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
             </>
           ) : (
-            // Extract robot output
             <>
           {row.status === 'running' || row.status === 'queued' ? (
             <>
@@ -910,7 +1026,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                           '',
                           `${schemaKeys[currentSchemaIndex] || 'schema_data'}.csv`,
                           `${schemaKeys[currentSchemaIndex] || 'schema_data'}.json`,
-                          false,
                           true
                         )}
                       </AccordionDetails>
@@ -1058,6 +1173,588 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                     </Accordion>
                   )}
                 </>
+              )}
+
+              {crawlData.length > 0 && crawlData[0] && crawlData[0].length > 0 && (
+                <Accordion defaultExpanded sx={{ mb: 2 }}>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Typography variant='h6'>
+                        Crawl Results
+                      </Typography>
+                    </Box>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        overflowX: 'auto',
+                        borderBottom: '1px solid',
+                        borderColor: darkMode ? '#2a3441' : '#dee2e6',
+                        mb: 2,
+                        '&::-webkit-scrollbar': {
+                          height: '8px',
+                        },
+                        '&::-webkit-scrollbar-track': {
+                          backgroundColor: darkMode ? '#1e1e1e' : '#f1f1f1',
+                        },
+                        '&::-webkit-scrollbar-thumb': {
+                          backgroundColor: darkMode ? '#555' : '#888',
+                          borderRadius: '4px',
+                        },
+                        '&::-webkit-scrollbar-thumb:hover': {
+                          backgroundColor: '#FF00C3',
+                        },
+                      }}
+                    >
+                      {crawlData[0].map((item: any, idx: number) => {
+                        const url = item?.metadata?.url || item?.url || `URL ${idx + 1}`;
+
+                        return (
+                          <Box
+                            key={idx}
+                            onClick={() => setCurrentCrawlIndex(idx)}
+                            sx={{
+                              px: 2,
+                              py: 1,
+                              cursor: 'pointer',
+                              backgroundColor: currentCrawlIndex === idx
+                                ? darkMode ? '#121111ff' : '#e9ecef'
+                                : 'transparent',
+                              borderBottom: currentCrawlIndex === idx ? '3px solid #FF00C3' : 'none',
+                              color: darkMode ? '#fff' : '#000',
+                              whiteSpace: 'nowrap',
+                              fontSize: '0.875rem',
+                              flexShrink: 0,
+                            }}
+                            title={url}
+                          >
+                            Link {idx + 1}
+                          </Box>
+                        );
+                      })}
+                    </Box>
+
+                    {crawlData[0][currentCrawlIndex] && (
+                      <>
+                        <Accordion defaultExpanded sx={{ mb: 2 }}>
+                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                              <Typography variant='h6'>
+                                Metadata
+                              </Typography>
+                            </Box>
+                          </AccordionSummary>
+                          <AccordionDetails>
+                            <TableContainer component={Paper} sx={{ maxHeight: 300 }}>
+                              <Table size="small">
+                                <TableBody>
+                                  {crawlData[0][currentCrawlIndex].metadata &&
+                                    Object.entries(crawlData[0][currentCrawlIndex].metadata).map(([key, value]: [string, any]) => (
+                                      <TableRow key={key}>
+                                        <TableCell sx={{ fontWeight: 500, width: '200px' }}>
+                                          {key}
+                                        </TableCell>
+                                        <TableCell sx={{ wordBreak: 'break-word' }}>
+                                          {value === undefined || value === '' ? '-' : String(value)}
+                                        </TableCell>
+                                      </TableRow>
+                                    ))
+                                  }
+                                </TableBody>
+                              </Table>
+                            </TableContainer>
+                          </AccordionDetails>
+                        </Accordion>
+
+                        {crawlData[0][currentCrawlIndex].text && (
+                          <Accordion defaultExpanded sx={{ mb: 2 }}>
+                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <Typography variant='h6'>
+                                  Text Content
+                                </Typography>
+                              </Box>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                              <Paper
+                                sx={{
+                                  p: 2,
+                                  maxHeight: '300px',
+                                  overflow: 'auto',
+                                  backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
+                                }}
+                              >
+                                <Typography
+                                  component="pre"
+                                  sx={{
+                                    whiteSpace: 'pre-wrap',
+                                    wordBreak: 'break-word',
+                                    fontFamily: 'monospace',
+                                    fontSize: '0.75rem',
+                                    m: 0
+                                  }}
+                                >
+                                  {crawlData[0][currentCrawlIndex].text}
+                                </Typography>
+                              </Paper>
+                            </AccordionDetails>
+                          </Accordion>
+                        )}
+
+                        {crawlData[0][currentCrawlIndex].html && (
+                          <Accordion defaultExpanded sx={{ mb: 2 }}>
+                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <Typography variant='h6'>
+                                  HTML
+                                </Typography>
+                              </Box>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                              <Paper
+                                sx={{
+                                  p: 2,
+                                  maxHeight: '300px',
+                                  overflow: 'auto',
+                                  backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
+                                }}
+                              >
+                                <Typography
+                                  component="pre"
+                                  sx={{
+                                    whiteSpace: 'pre-wrap',
+                                    wordBreak: 'break-word',
+                                    fontFamily: 'monospace',
+                                    fontSize: '0.65rem',
+                                    m: 0
+                                  }}
+                                >
+                                  {crawlData[0][currentCrawlIndex].html}
+                                </Typography>
+                              </Paper>
+                            </AccordionDetails>
+                          </Accordion>
+                        )}
+
+                        {crawlData[0][currentCrawlIndex].links && crawlData[0][currentCrawlIndex].links.length > 0 && (
+                          <Accordion defaultExpanded sx={{ mb: 2 }}>
+                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <Typography variant='h6'>
+                                  Links ({crawlData[0][currentCrawlIndex].links.length})
+                                </Typography>
+                              </Box>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                              <Paper sx={{ maxHeight: 200, overflow: 'auto', p: 1 }}>
+                                {crawlData[0][currentCrawlIndex].links.map((link: string, idx: number) => (
+                                  <Typography key={idx} sx={{ fontSize: '0.75rem', mb: 0.5 }}>
+                                    {link}
+                                  </Typography>
+                                ))}
+                              </Paper>
+                            </AccordionDetails>
+                          </Accordion>
+                        )}
+
+                        <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+                          <Button
+                            onClick={() => {
+                              const currentUrl = crawlData[0][currentCrawlIndex]?.metadata?.url || crawlData[0][currentCrawlIndex]?.url || '';
+                              const filename = currentUrl
+                                ? currentUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') + '.json'
+                                : `crawl_url_${currentCrawlIndex + 1}.json`;
+                              downloadJSON(
+                                [crawlData[0][currentCrawlIndex]],
+                                filename
+                              );
+                            }}
+                            sx={{
+                              color: '#FF00C3',
+                              textTransform: 'none',
+                              p: 0,
+                              minWidth: 'auto',
+                              backgroundColor: 'transparent',
+                              '&:hover': {
+                                backgroundColor: 'transparent',
+                                textDecoration: 'underline',
+                              },
+                            }}
+                          >
+                            Download This Page as JSON
+                          </Button>
+
+                          <Button
+                            onClick={() => {
+                              const firstUrl = crawlData[0][0]?.metadata?.url || crawlData[0][0]?.url || '';
+                              const baseFilename = firstUrl
+                                ? firstUrl.replace(/^https?:\/\//, '').split('/')[0].replace(/[^a-zA-Z0-9_.-]/g, '_')
+                                : 'crawl';
+                              downloadAllCrawlsAsZip(
+                                crawlData[0],
+                                `${baseFilename}_all_urls.zip`
+                              );
+                            }}
+                            sx={{
+                              color: '#FF00C3',
+                              textTransform: 'none',
+                              p: 0,
+                              minWidth: 'auto',
+                              backgroundColor: 'transparent',
+                              '&:hover': {
+                                backgroundColor: 'transparent',
+                                textDecoration: 'underline',
+                              },
+                            }}
+                          >
+                            Download All Pages as JSON
+                          </Button>
+                        </Box>
+                      </>
+                    )}
+                  </AccordionDetails>
+                </Accordion>
+              )}
+
+              {searchData.length > 0 && (
+                <Accordion defaultExpanded sx={{ mb: 2 }}>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Typography variant='h6'>
+                        Search Results
+                      </Typography>
+                    </Box>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    {searchMode === 'scrape' && searchData.length > 0 ? (
+                      <>
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            overflowX: 'auto',
+                            borderBottom: '1px solid',
+                            borderColor: darkMode ? '#2a3441' : '#dee2e6',
+                            mb: 2,
+                            '&::-webkit-scrollbar': {
+                              height: '8px',
+                            },
+                            '&::-webkit-scrollbar-track': {
+                              backgroundColor: darkMode ? '#1e1e1e' : '#f1f1f1',
+                            },
+                            '&::-webkit-scrollbar-thumb': {
+                              backgroundColor: darkMode ? '#555' : '#888',
+                              borderRadius: '4px',
+                            },
+                            '&::-webkit-scrollbar-thumb:hover': {
+                              backgroundColor: '#FF00C3',
+                            },
+                          }}
+                        >
+                          {searchData.map((item: any, idx: number) => {
+                            const url = item?.metadata?.url || item?.url || `Result ${idx + 1}`;
+
+                            return (
+                              <Box
+                                key={idx}
+                                onClick={() => setCurrentSearchIndex(idx)}
+                                sx={{
+                                  px: 2,
+                                  py: 1,
+                                  cursor: 'pointer',
+                                  backgroundColor: currentSearchIndex === idx
+                                    ? darkMode ? '#121111ff' : '#e9ecef'
+                                    : 'transparent',
+                                  borderBottom: currentSearchIndex === idx ? '3px solid #FF00C3' : 'none',
+                                  color: darkMode ? '#fff' : '#000',
+                                  whiteSpace: 'nowrap',
+                                  fontSize: '0.875rem',
+                                  flexShrink: 0,
+                                }}
+                                title={url}
+                              >
+                                Link {idx + 1}
+                              </Box>
+                            );
+                          })}
+                        </Box>
+
+                        {searchData[currentSearchIndex] && (
+                          <>
+                            <Accordion defaultExpanded sx={{ mb: 2 }}>
+                              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                  <Typography variant='h6'>
+                                    Metadata
+                                  </Typography>
+                                </Box>
+                              </AccordionSummary>
+                              <AccordionDetails>
+                                <TableContainer component={Paper} sx={{ maxHeight: 300 }}>
+                                  <Table size="small">
+                                    <TableBody>
+                                      {searchData[currentSearchIndex].metadata &&
+                                        Object.entries(searchData[currentSearchIndex].metadata).map(([key, value]: [string, any]) => (
+                                          <TableRow key={key}>
+                                            <TableCell sx={{ fontWeight: 500, width: '200px' }}>
+                                              {key}
+                                            </TableCell>
+                                            <TableCell sx={{ wordBreak: 'break-word' }}>
+                                              {value === undefined || value === '' ? '-' : String(value)}
+                                            </TableCell>
+                                          </TableRow>
+                                        ))
+                                      }
+                                    </TableBody>
+                                  </Table>
+                                </TableContainer>
+                              </AccordionDetails>
+                            </Accordion>
+
+                            {searchData[currentSearchIndex].text && (
+                              <Accordion defaultExpanded sx={{ mb: 2 }}>
+                                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <Typography variant='h6'>
+                                      Text Content
+                                    </Typography>
+                                  </Box>
+                                </AccordionSummary>
+                                <AccordionDetails>
+                                  <Paper
+                                    sx={{
+                                      p: 2,
+                                      maxHeight: '300px',
+                                      overflow: 'auto',
+                                      backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
+                                    }}
+                                  >
+                                    <Typography
+                                      component="pre"
+                                      sx={{
+                                        whiteSpace: 'pre-wrap',
+                                        wordBreak: 'break-word',
+                                        fontFamily: 'monospace',
+                                        fontSize: '0.75rem',
+                                        m: 0
+                                      }}
+                                    >
+                                      {searchData[currentSearchIndex].text}
+                                    </Typography>
+                                  </Paper>
+                                </AccordionDetails>
+                              </Accordion>
+                            )}
+
+                            {searchData[currentSearchIndex].html && (
+                              <Accordion defaultExpanded sx={{ mb: 2 }}>
+                                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <Typography variant='h6'>
+                                      HTML
+                                    </Typography>
+                                  </Box>
+                                </AccordionSummary>
+                                <AccordionDetails>
+                                  <Paper
+                                    sx={{
+                                      p: 2,
+                                      maxHeight: '300px',
+                                      overflow: 'auto',
+                                      backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
+                                    }}
+                                  >
+                                    <Typography
+                                      component="pre"
+                                      sx={{
+                                        whiteSpace: 'pre-wrap',
+                                        wordBreak: 'break-word',
+                                        fontFamily: 'monospace',
+                                        fontSize: '0.75rem',
+                                        m: 0
+                                      }}
+                                    >
+                                      {searchData[currentSearchIndex].html}
+                                    </Typography>
+                                  </Paper>
+                                </AccordionDetails>
+                              </Accordion>
+                            )}
+
+                            {searchData[currentSearchIndex].markdown && (
+                              <Accordion defaultExpanded sx={{ mb: 2 }}>
+                                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <Typography variant='h6'>
+                                      Markdown
+                                    </Typography>
+                                  </Box>
+                                </AccordionSummary>
+                                <AccordionDetails>
+                                  <Paper
+                                    sx={{
+                                      p: 2,
+                                      maxHeight: '300px',
+                                      overflow: 'auto',
+                                      backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
+                                    }}
+                                  >
+                                    <Typography
+                                      component="pre"
+                                      sx={{
+                                        whiteSpace: 'pre-wrap',
+                                        wordBreak: 'break-word',
+                                        fontFamily: 'monospace',
+                                        fontSize: '0.75rem',
+                                        m: 0
+                                      }}
+                                    >
+                                      {searchData[currentSearchIndex].markdown}
+                                    </Typography>
+                                  </Paper>
+                                </AccordionDetails>
+                              </Accordion>
+                            )}
+
+                            {searchData[currentSearchIndex].links && searchData[currentSearchIndex].links.length > 0 && (
+                              <Accordion defaultExpanded sx={{ mb: 2 }}>
+                                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <Typography variant='h6'>
+                                      Links ({searchData[currentSearchIndex].links.length})
+                                    </Typography>
+                                  </Box>
+                                </AccordionSummary>
+                                <AccordionDetails>
+                                  <Paper sx={{ maxHeight: 200, overflow: 'auto', p: 1 }}>
+                                    {searchData[currentSearchIndex].links.map((link: string, idx: number) => (
+                                      <Typography key={idx} sx={{ fontSize: '0.75rem', mb: 0.5 }}>
+                                        {link}
+                                      </Typography>
+                                    ))}
+                                  </Paper>
+                                </AccordionDetails>
+                              </Accordion>
+                            )}
+
+                            <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
+                              <Button
+                                onClick={() => {
+                                  const result = searchData[currentSearchIndex];
+                                  const filename = `search_result_${currentSearchIndex + 1}.json`;
+                                  downloadJSON(result, filename);
+                                }}
+                                sx={{
+                                  color: '#FF00C3',
+                                  textTransform: 'none',
+                                  mr: 2,
+                                  p: 0,
+                                  minWidth: 'auto',
+                                  backgroundColor: 'transparent',
+                                  '&:hover': {
+                                    backgroundColor: 'transparent',
+                                    textDecoration: 'underline',
+                                  },
+                                }}
+                              >
+                                Download as JSON
+                              </Button>
+                            </Box>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <TableContainer component={Paper} sx={{ maxHeight: 600 }}>
+                          <Table stickyHeader aria-label="search-results-table">
+                            <TableHead>
+                              <TableRow>
+                                <TableCell
+                                  sx={{
+                                    backgroundColor: darkMode ? '#11111' : '#f8f9fa',
+                                    minWidth: '200px'
+                                  }}
+                                >
+                                  Title
+                                </TableCell>
+                                <TableCell
+                                  sx={{
+                                    backgroundColor: darkMode ? '#11111' : '#f8f9fa',
+                                    minWidth: '250px'
+                                  }}
+                                >
+                                  URL
+                                </TableCell>
+                                <TableCell
+                                  sx={{
+                                    backgroundColor: darkMode ? '#11111' : '#f8f9fa',
+                                    minWidth: '300px'
+                                  }}
+                                >
+                                  Description
+                                </TableCell>
+                              </TableRow>
+                            </TableHead>
+
+                            <TableBody>
+                              {searchData.map((result: any, idx: number) => (
+                                <TableRow key={idx}>
+                                  <TableCell>
+                                    {result.title || '-'}
+                                  </TableCell>
+                                  <TableCell>
+                                    {result.url ? (
+                                      <Link
+                                        href={result.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        sx={{
+                                          color: '#FF00C3',
+                                          textDecoration: 'none',
+                                          '&:hover': {
+                                            textDecoration: 'underline'
+                                          },
+                                          wordBreak: 'break-all'
+                                        }}
+                                      >
+                                        {result.url}
+                                      </Link>
+                                    ) : '-'}
+                                  </TableCell>
+                                  <TableCell>
+                                    {result.description || '-'}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+
+                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
+                          <Button
+                            onClick={() => {
+                              downloadJSON(searchData, 'search_results.json');
+                            }}
+                            sx={{
+                              color: '#FF00C3',
+                              textTransform: 'none',
+                              mr: 2,
+                              p: 0,
+                              minWidth: 'auto',
+                              backgroundColor: 'transparent',
+                              '&:hover': {
+                                backgroundColor: 'transparent',
+                                textDecoration: 'underline',
+                              },
+                            }}
+                          >
+                            Download as JSON
+                          </Button>
+                        </Box>
+                      </>
+                    )}
+                  </AccordionDetails>
+                </Accordion>
               )}
             </Box>
           )}

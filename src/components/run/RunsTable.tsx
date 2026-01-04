@@ -56,6 +56,7 @@ export interface Data {
   runByScheduleId?: string;
   browserId: string;
   runByAPI?: boolean;
+  runBySDK?: boolean;
   log: string;
   runId: string;
   robotId: string;
