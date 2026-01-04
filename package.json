@@ -49,6 +49,7 @@
     "joi": "^17.6.0",
     "joplin-turndown-plugin-gfm": "^1.0.12",
     "jsonwebtoken": "^9.0.2",
+    "jszip": "^3.10.1",
     "jwt-decode": "^4.0.0",
     "lodash": "^4.17.21",
     "loglevel": "^1.8.0",
@@ -86,6 +87,8 @@
   "scripts": {
     "start": "npm run build:server && concurrently -k \"npm run server\" \"npm run client\"",
     "server": "cross-env NODE_OPTIONS='--max-old-space-size=512' node server/dist/server/src/server.js",
+    "start:dev": "concurrently -k \"npm run server:dev\" \"npm run client\"",
+    "server:dev": "cross-env NODE_OPTIONS='--max-old-space-size=2048' nodemon server/src/server.ts",
     "client": "vite",
     "build": "vite build",
     "build:server": "tsc -p server/tsconfig.json",
