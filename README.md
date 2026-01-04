@@ -122,9 +122,9 @@ Maxun can run locally with or without Docker
 - ✨ **Self-Hostable** – Full control over your infrastructure
 - ✨ **Open Source** – Transparent and community-driven
 
-## Use Cases
+## Demos
 Maxun can be used for various use-cases, including lead generation, market research, content aggregation and more.
-View use-cases in detail here: https://www.maxun.dev/#usecases
+View demos here: https://www.maxun.dev/usecases
 
 ## Note
 This project is in early stages of development. Your feedback is very important for us - we're actively working on improvements. </a>
