@@ -36,10 +36,6 @@ interface RightSidePanelProps {
 }
 
 export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture }) => {
-  const [textLabels, setTextLabels] = useState<{ [id: string]: string }>({});
-  const [errors, setErrors] = useState<{ [id: string]: string }>({});
-  const [confirmedTextSteps, setConfirmedTextSteps] = useState<{ [id: string]: boolean }>({});
-  const [confirmedListTextFields, setConfirmedListTextFields] = useState<{ [listId: string]: { [fieldKey: string]: boolean } }>({});
   const [showCaptureList, setShowCaptureList] = useState(true);
   const [showCaptureScreenshot, setShowCaptureScreenshot] = useState(true);
   const [showCaptureText, setShowCaptureText] = useState(true);
@@ -52,7 +48,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   } | null>(null);
   const autoDetectionRunRef = useRef<string | null>(null);
 
-  const { lastAction, notify, currentWorkflowActionsState, setCurrentWorkflowActionsState, resetInterpretationLog, currentListActionId, setCurrentListActionId, currentTextActionId, setCurrentTextActionId, currentScreenshotActionId, setCurrentScreenshotActionId, isDOMMode, setIsDOMMode, currentSnapshot, setCurrentSnapshot, updateDOMMode, initialUrl, setRecordingUrl, currentTextGroupName } = useGlobalInfoStore();  
+  const { notify, currentWorkflowActionsState, setCurrentWorkflowActionsState, resetInterpretationLog, currentListActionId, setCurrentListActionId, currentTextActionId, setCurrentTextActionId, currentScreenshotActionId, setCurrentScreenshotActionId, isDOMMode, updateDOMMode, currentTextGroupName } = useGlobalInfoStore();  
   const { 
     getText, startGetText, stopGetText, 
     getList, startGetList, stopGetList, 
@@ -65,8 +61,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     showPaginationOptions, setShowPaginationOptions, 
     showLimitOptions, setShowLimitOptions, 
     workflow, setWorkflow, 
-    activeAction, setActiveAction, 
-    startAction, finishAction 
+    activeAction, setActiveAction, finishAction 
   } = useActionContext();
   
   const { browserSteps, addScreenshotStep, updateListStepLimit, updateListStepPagination, deleteStepsByActionId, updateListStepData, updateScreenshotStepData, emitActionForStep } = useBrowserSteps();
@@ -154,20 +149,10 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         }
       };
 
-      const domcastHandler = (data: any) => {
-        if (!data.userId || data.userId === id) {
-          if (data.snapshotData && data.snapshotData.snapshot) {
-            updateDOMMode(true, data.snapshotData);
-          }
-        }
-      };
-
       socket.on("dom-mode-enabled", domModeHandler);
-      socket.on("domcast", domcastHandler);
 
       return () => {
         socket.off("dom-mode-enabled", domModeHandler);
-        socket.off("domcast", domcastHandler);
       };
     }
   }, [socket, id, updateDOMMode]);
@@ -176,11 +161,9 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     if (socket) {
       socket.on("workflow", workflowHandler);
     }
-    // fetch the workflow every time the id changes
     if (id) {
       fetchWorkflow(id, workflowHandler);
     }
-    // fetch workflow in 15min intervals
     let interval = setInterval(() => {
       if (id) {
         fetchWorkflow(id, workflowHandler);
@@ -267,7 +250,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
       fields: Record<string, any>,
       currentListId: number
     ) => {
-      if (isDOMMode && currentSnapshot) {
+      if (isDOMMode) {
         try {
           let iframeElement = document.querySelector(
             "#dom-browser-iframe"
@@ -318,25 +301,9 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
           console.error("Error in client-side data extraction:", error);
           notify("error", "Failed to extract data client-side");
         }
-      } else {
-        if (!socket) {
-          console.error("Socket not available for backend extraction");
-          return;
-        }
-
-        try {
-          socket.emit("extractListData", {
-            listSelector,
-            fields,
-            currentListId,
-            pagination: { type: "", selector: "" },
-          });
-        } catch (error) {
-          console.error("Error in backend data extraction:", error);
-        }
       }
     },
-    [isDOMMode, currentSnapshot, updateListStepData, socket, notify, currentWorkflowActionsState]
+    [isDOMMode, updateListStepData, socket, notify, currentWorkflowActionsState]
   );
 
   useEffect(() => {

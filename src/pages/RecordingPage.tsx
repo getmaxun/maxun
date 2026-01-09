@@ -56,8 +56,6 @@ export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
     });
   };
 
-  useEffect(() => changeBrowserDimensions(), [isLoaded])
-
   useEffect(() => {
     if (darkMode) {
 
@@ -117,20 +115,6 @@ export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
       isCancelled = true;
     }
   }, [setId, recordingUrl, setRecordingUrl, setRecordingName, setRetrainRobotId]);
-
-  const changeBrowserDimensions = useCallback(() => {
-    if (browserContentRef.current) {
-      const currentWidth = Math.floor(browserContentRef.current.getBoundingClientRect().width);
-      const innerHeightWithoutNavBar = window.innerHeight - 54.5;
-      if (innerHeightWithoutNavBar <= (currentWidth / 1.6)) {
-        setWidth(currentWidth - 10);
-        setHasScrollbar(true);
-      } else {
-        setWidth(currentWidth);
-      }
-      socket?.emit("rerender");
-    }
-  }, [socket]);
 
   const handleLoaded = useCallback(() => {
     if (recordingName && browserId && recordingId) {

@@ -640,7 +640,6 @@ export class RemoteBrowser {
     private removeAllSocketListeners(): void {
       try {
         this.socket.removeAllListeners('captureDirectScreenshot');
-        this.socket.removeAllListeners('rerender');
         this.socket.removeAllListeners('settings');
         this.socket.removeAllListeners('changeTab');
         this.socket.removeAllListeners('addTab');
