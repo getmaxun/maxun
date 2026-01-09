@@ -6,6 +6,7 @@ import { Recordings } from "../components/robot/Recordings";
 import { Runs } from "../components/run/Runs";
 import ProxyForm from '../components/proxy/ProxyForm';
 import ApiKey from '../components/api/ApiKey';
+import { AutoRobots } from '../components/robot/AutoRobots';
 import { useGlobalInfoStore, useCacheInvalidation } from "../context/globalInfo";
 import { createAndRunRecording, createRunForStoredRecording, CreateRunResponseWithQueue, interpretStoredRecording, notifyAboutAbort, scheduleStoredRecording } from "../api/storage";
 import { io, Socket } from "socket.io-client";
@@ -317,6 +318,8 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
         return <ProxyForm />;
       case 'apikey':
         return <ApiKey />;
+      case 'prebuilt-robots':
+        return <AutoRobots />;
       default:
         return null;
     }
