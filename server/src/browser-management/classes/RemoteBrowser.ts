@@ -8,6 +8,7 @@ import { Socket } from "socket.io";
 import { PlaywrightBlocker } from '@cliqz/adblocker-playwright';
 import fetch from 'cross-fetch';
 import logger from '../../logger';
+import { readFileSync } from "fs";
 import { InterpreterSettings } from "../../types";
 import { WorkflowGenerator } from "../../workflow-management/classes/Generator";
 import { WorkflowInterpreter } from "../../workflow-management/classes/Interpreter";
@@ -19,30 +20,17 @@ import { connectToRemoteBrowser } from '../browserConnection';
 
 declare global {
   interface Window {
-    rrwebSnapshot?: any;
+    rrweb?: any;
+    isRecording?: boolean;
+    emitEventToBackend?: (event: any) => Promise<void>;
   }
 }
 
-interface RRWebSnapshot {
-  type: number;
-  childNodes?: RRWebSnapshot[];
-  tagName?: string;
-  attributes?: Record<string, string>;
-  textContent?: string;
-  id: number;
-  [key: string]: any;
-}
-
-interface ProcessedSnapshot {
-  snapshot: RRWebSnapshot;
-  baseUrl: string;
-}
-
-const MEMORY_CONFIG = {
-    gcInterval: 20000, // Check memory more frequently (20s instead of 60s)
-    maxHeapSize: 1536 * 1024 * 1024, // 1.5GB
-    heapUsageThreshold: 0.7 // 70% (reduced threshold to react earlier)
-};
+// const MEMORY_CONFIG = {
+//     gcInterval: 20000,
+//     maxHeapSize: 1536 * 1024 * 1024,
+//     heapUsageThreshold: 0.7
+// };
 
 /**
  * This class represents a remote browser instance.
@@ -110,22 +98,11 @@ export class RemoteBrowser {
     public interpreter: WorkflowInterpreter;
 
     public isDOMStreamingActive: boolean = false;
-    private domUpdateInterval: NodeJS.Timeout | null = null;
-
     private lastScrollPosition = { x: 0, y: 0 };
-    private scrollThreshold = 200; // pixels
-    private snapshotDebounceTimeout: NodeJS.Timeout | null = null;
+    private scrollThreshold = 200;
 
-    private networkRequestTimeout: NodeJS.Timeout | null = null;
-    private pendingNetworkRequests: string[] = [];
-    private readonly INITIAL_LOAD_QUIET_PERIOD = 3000;
-    private networkWaitStartTime: number = 0;
-    private progressInterval: NodeJS.Timeout | null = null;
-    private hasShownInitialLoader: boolean = false;
-    private isInitialLoadInProgress: boolean = false;
-
-    private memoryCleanupInterval: NodeJS.Timeout | null = null;
-    private memoryManagementInterval: NodeJS.Timeout | null = null;
+    // private memoryCleanupInterval: NodeJS.Timeout | null = null;
+    // private memoryManagementInterval: NodeJS.Timeout | null = null;
 
     /**
      * Initializes a new instances of the {@link Generator} and {@link WorkflowInterpreter} classes and
@@ -140,64 +117,53 @@ export class RemoteBrowser {
         this.generator = new WorkflowGenerator(socket, poolId);
     }
 
-    private async processRRWebSnapshot(
-      snapshot: RRWebSnapshot
-    ): Promise<ProcessedSnapshot> {
-      const baseUrl = this.currentPage?.url() || "";
+    // private initializeMemoryManagement(): void {
+    //   this.memoryManagementInterval = setInterval(() => {
+    //     const memoryUsage = process.memoryUsage();
+    //     const heapUsageRatio = memoryUsage.heapUsed / MEMORY_CONFIG.maxHeapSize;
 
-      return {
-        snapshot,
-        baseUrl
-      };
-    }
+    //     if (heapUsageRatio > MEMORY_CONFIG.heapUsageThreshold * 1.2) {
+    //       logger.warn(
+    //         "Critical memory pressure detected, triggering emergency cleanup"
+    //       );
+    //       this.performMemoryCleanup();
+    //     } else if (heapUsageRatio > MEMORY_CONFIG.heapUsageThreshold) {
+    //       logger.warn("High memory usage detected, triggering cleanup");
 
-    private initializeMemoryManagement(): void {
-      this.memoryManagementInterval = setInterval(() => {
-        const memoryUsage = process.memoryUsage();
-        const heapUsageRatio = memoryUsage.heapUsed / MEMORY_CONFIG.maxHeapSize;
+    //       if (
+    //         global.gc &&
+    //         heapUsageRatio > MEMORY_CONFIG.heapUsageThreshold * 1.1
+    //       ) {
+    //         global.gc();
+    //       }
+    //     }
+    //   }, MEMORY_CONFIG.gcInterval);
+    // }
 
-        if (heapUsageRatio > MEMORY_CONFIG.heapUsageThreshold * 1.2) {
-          logger.warn(
-            "Critical memory pressure detected, triggering emergency cleanup"
-          );
-          this.performMemoryCleanup();
-        } else if (heapUsageRatio > MEMORY_CONFIG.heapUsageThreshold) {
-          logger.warn("High memory usage detected, triggering cleanup");
+    // private async performMemoryCleanup(): Promise<void> {
+    //   if (global.gc) {
+    //     try {
+    //       global.gc();
+    //       logger.info("Garbage collection requested");
+    //     } catch (error) {
+    //       logger.error("Error during garbage collection:", error);
+    //     }
+    //   }
 
-          if (
-            global.gc &&
-            heapUsageRatio > MEMORY_CONFIG.heapUsageThreshold * 1.1
-          ) {
-            global.gc();
-          }
-        }
-      }, MEMORY_CONFIG.gcInterval);
-    }
+    //   if (this.currentPage) {
+    //     try {
+    //       await new Promise((resolve) => setTimeout(resolve, 500));
+    //       logger.info("CDP session reset completed");
+    //     } catch (error) {
+    //       logger.error("Error resetting CDP session:", error);
+    //     }
+    //   }
 
-    private async performMemoryCleanup(): Promise<void> {
-      if (global.gc) {
-        try {
-          global.gc();
-          logger.info("Garbage collection requested");
-        } catch (error) {
-          logger.error("Error during garbage collection:", error);
-        }
-      }
-
-      if (this.currentPage) {
-        try {
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          logger.info("CDP session reset completed");
-        } catch (error) {
-          logger.error("Error resetting CDP session:", error);
-        }
-      }
-
-      this.socket.emit("memory-cleanup", {
-        userId: this.userId,
-        timestamp: Date.now(),
-      });
-    }
+    //   this.socket.emit("memory-cleanup", {
+    //     userId: this.userId,
+    //     timestamp: Date.now(),
+    //   });
+    // }
 
     /**
      * Normalizes URLs to prevent navigation loops while maintaining consistent format
@@ -205,9 +171,7 @@ export class RemoteBrowser {
     private normalizeUrl(url: string): string {
         try {
             const parsedUrl = new URL(url);
-            // Remove trailing slashes except for root path
             parsedUrl.pathname = parsedUrl.pathname.replace(/\/+$/, '') || '/';
-            // Ensure consistent protocol handling
             parsedUrl.protocol = parsedUrl.protocol.toLowerCase();
             return parsedUrl.toString();
         } catch {
@@ -260,93 +224,12 @@ export class RemoteBrowser {
 
             if (scrollDelta > this.scrollThreshold) {
               this.lastScrollPosition = { x: scrollInfo.x, y: scrollInfo.y };
-
-              if (this.snapshotDebounceTimeout) {
-                clearTimeout(this.snapshotDebounceTimeout);
-              }
-
-              this.snapshotDebounceTimeout = setTimeout(async () => {
-                await this.makeAndEmitDOMSnapshot();
-              }, 300);
             }
           } catch (error) {
             logger.error("Error handling scroll event:", error);
           }
         }
       );
-    }
-
-    private setupPageChangeListeners(): void {
-      if (!this.currentPage) return;
-
-      try {
-        if (!this.currentPage.isClosed()) {
-          this.currentPage.removeAllListeners("domcontentloaded");
-          this.currentPage.removeAllListeners("response");
-        }
-      } catch (error: any) {
-        logger.warn(`Error removing page change listeners: ${error.message}`);
-      }
-
-      this.currentPage.on("domcontentloaded", async () => {
-        if (!this.isInitialLoadInProgress) {
-          logger.info("DOM content loaded - triggering snapshot");
-          await this.makeAndEmitDOMSnapshot();
-        }
-      });
-
-      this.currentPage.on("response", async (response) => {
-        const url = response.url();
-        const isDocumentRequest = response.request().resourceType() === "document";
-
-        if (!this.hasShownInitialLoader && isDocumentRequest && !url.includes("about:blank")) {
-          this.hasShownInitialLoader = true;
-          this.isInitialLoadInProgress = true;
-          this.pendingNetworkRequests.push(url);
-
-          if (this.networkRequestTimeout) {
-            clearTimeout(this.networkRequestTimeout);
-            this.networkRequestTimeout = null;
-          }
-
-          if (this.progressInterval) {
-            clearInterval(this.progressInterval);
-            this.progressInterval = null;
-          }
-
-          this.networkWaitStartTime = Date.now();
-
-          this.progressInterval = setInterval(() => {
-            const elapsed = Date.now() - this.networkWaitStartTime;
-            const navigationProgress = Math.min((elapsed / this.INITIAL_LOAD_QUIET_PERIOD) * 40, 35);
-            const totalProgress = 60 + navigationProgress;
-            this.emitLoadingProgress(totalProgress, this.pendingNetworkRequests.length);
-          }, 500);
-
-          logger.debug(
-            `Initial load network request received: ${url}. Using ${this.INITIAL_LOAD_QUIET_PERIOD}ms quiet period`
-          );
-
-          this.networkRequestTimeout = setTimeout(async () => {
-            logger.info(
-              `Initial load network quiet period reached (${this.INITIAL_LOAD_QUIET_PERIOD}ms)`
-            );
-
-            if (this.progressInterval) {
-              clearInterval(this.progressInterval);
-              this.progressInterval = null;
-            }
-
-            this.emitLoadingProgress(100, this.pendingNetworkRequests.length);
-
-            this.pendingNetworkRequests = [];
-            this.networkRequestTimeout = null;
-            this.isInitialLoadInProgress = false;
-
-            await this.makeAndEmitDOMSnapshot();
-          }, this.INITIAL_LOAD_QUIET_PERIOD);
-        }
-      });
     }
 
     private emitLoadingProgress(progress: number, pendingRequests: number): void {
@@ -368,16 +251,27 @@ export class RemoteBrowser {
         }
 
         page.on('framenavigated', async (frame) => {
-            if (frame === page.mainFrame()) {
-                const currentUrl = page.url();
-                if (this.shouldEmitUrlChange(currentUrl)) {
-                    this.lastEmittedUrl = currentUrl;
-                    this.socket.emit('urlChanged', {url: currentUrl, userId: this.userId});
-                }
+          if (frame === page.mainFrame()) {
+            const currentUrl = page.url();
+            if (this.shouldEmitUrlChange(currentUrl)) {
+              this.lastEmittedUrl = currentUrl;
+              this.socket.emit('urlChanged', { url: currentUrl, userId: this.userId });
             }
+
+            await page.evaluate(() => {
+              if (window.rrweb && window.isRecording) {
+                window.isRecording = false;
+              }
+            });
+
+            await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {
+              logger.warn('[rrweb] Network idle timeout on navigation, proceeding with rrweb initialization');
+            });
+
+            await this.initializeRRWebRecording(page);
+          }
         });
 
-        // Handle page load events with retry mechanism
         page.on('load', async () => {
             const injectScript = async (): Promise<boolean> => {
                 try {
@@ -399,6 +293,96 @@ export class RemoteBrowser {
             const success = await injectScript();
             console.log("Script injection result:", success);
         });
+    }
+
+    /**
+   * Initialize rrweb recording for real-time DOM streaming
+   * This replaces the snapshot-based approach with live event streaming
+   */
+    private async initializeRRWebRecording(page: Page): Promise<void> {
+      try {
+        const rrwebJsPath = require.resolve('rrweb/dist/rrweb.min.js');
+        const rrwebScriptContent = readFileSync(rrwebJsPath, 'utf8');
+
+        await page.context().addInitScript(rrwebScriptContent);
+
+        await page.evaluate((scriptContent) => {
+          if (typeof window.rrweb === 'undefined') {
+            try {
+              (0, eval)(scriptContent);
+            } catch (e) {
+              console.error('[rrweb] eval failed:', e);
+            }
+          }
+        }, rrwebScriptContent);
+
+        const rrwebLoaded = await page.evaluate(() => typeof window.rrweb !== 'undefined');
+        if (rrwebLoaded) {
+          logger.debug('[rrweb] Script injected successfully');
+        } else {
+          logger.warn('[rrweb] Script injection failed - window.rrweb not found');
+        }
+
+        const isAlreadyExposed = await page.evaluate(() => {
+          return typeof window.emitEventToBackend === 'function';
+        });
+
+        if (!isAlreadyExposed) {
+          let hasEmittedFullSnapshot = false;
+          await page.exposeFunction('emitEventToBackend', (event: any) => {
+            this.socket.emit('rrweb-event', event);
+
+            if (event.type === 2 && !hasEmittedFullSnapshot) {
+              hasEmittedFullSnapshot = true;
+              this.emitLoadingProgress(100, 0);
+              logger.debug(`[rrweb] Full snapshot sent, loading progress at 100%`);
+            }
+          });
+        }
+
+        const rrwebStatus = await page.evaluate(() => {
+          if (!window.rrweb) {
+            console.error('[rrweb] window.rrweb is not defined!');
+            return { success: false, error: 'window.rrweb is not defined' };
+          }
+
+          if (window.isRecording) {
+            return { success: false, error: 'already recording' };
+          }
+
+          window.isRecording = true;
+
+          try {
+            const recordHandle = window.rrweb.record({
+              emit(event: any) {
+                if (window.emitEventToBackend) {
+                  window.emitEventToBackend(event).catch(() => { });
+                }
+              },
+              maskAllInputs: false,
+              recordCanvas: true,
+              input: true
+            });
+
+            (window as any).rrwebRecordHandle = recordHandle;
+
+            return { success: true };
+          } catch (error: any) {
+            console.error('[rrweb] Failed to start recording:', error);
+            return { success: false, error: error.message };
+          }
+        });
+
+        if (rrwebStatus.success) {
+          this.isDOMStreamingActive = true;
+          this.emitLoadingProgress(80, 0);
+          this.setupScrollEventListener();
+        } else {
+          logger.error(`Failed to initialize rrweb recording: ${rrwebStatus.error}`);
+        }
+      } catch (error: any) {
+        logger.error(`Failed to initialize rrweb recording: ${error.message}`);
+      }
     }
 
     private getUserAgent() {
@@ -432,7 +416,6 @@ export class RemoteBrowser {
       }
     } catch (error: any) {
       logger.error(`Enhanced fingerprinting failed: ${error.message}`);
-      // Don't throw - fallback to basic functionality
     }
   }
 
@@ -540,13 +523,17 @@ export class RemoteBrowser {
                       patchedGetter.toString();`
               );
 
-              await this.context.addInitScript({ path: './server/src/browser-management/classes/rrweb-bundle.js' });
-
               this.currentPage = await this.context.newPage();
 
               this.emitLoadingProgress(40, 0);
 
               await this.setupPageEventListeners(this.currentPage);
+
+              await this.currentPage.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {
+                logger.warn('[rrweb] Network idle timeout, proceeding with rrweb initialization');
+              });
+
+              await this.initializeRRWebRecording(this.currentPage);
 
               try {
                 const blocker = await PlaywrightBlocker.fromLists(fetch, ['https://easylist.to/easylist/easylist.txt']);
@@ -556,11 +543,8 @@ export class RemoteBrowser {
                 console.log('Adblocker initialized');
               } catch (error: any) {
                 console.warn('Failed to initialize adblocker, continuing without it:', error.message);
-                // Still need to set up the CDP session even if blocker fails
                 this.client = await this.currentPage.context().newCDPSession(this.currentPage);
               }
-
-              this.emitLoadingProgress(60, 0);
 
               success = true;
               logger.log('debug', `Browser initialized successfully for user ${userId}`);
@@ -683,13 +667,6 @@ export class RemoteBrowser {
         await this.captureDirectScreenshot(settings);
       });
 
-      this.socket.on("rerender", async () => {
-        logger.debug(
-          `General rerender event received, checking if for user ${this.userId}`
-        );
-        await this.makeAndEmitDOMSnapshot();
-      });
-
       this.socket.on(
         "changeTab",
         async (tabIndex) => await this.changeTab(tabIndex)
@@ -719,157 +696,6 @@ export class RemoteBrowser {
     };
 
     /**
-     * Subscribe to DOM streaming - simplified version following screenshot pattern
-     */
-    public async subscribeToDOM(): Promise<void> {
-      if (!this.client) {
-        logger.warn("DOM streaming requires scraping browser with CDP client");
-        return;
-      }
-
-      try {
-        this.isDOMStreamingActive = true;
-        logger.info("DOM streaming started successfully");
-
-        this.setupScrollEventListener();
-        this.setupPageChangeListeners();
-      } catch (error) {
-        logger.error("Failed to start DOM streaming:", error);
-        this.isDOMStreamingActive = false;
-      }
-    }
-
-    /**
-     * CDP-based DOM snapshot creation using captured network resources
-     */
-    public async makeAndEmitDOMSnapshot(): Promise<void> {
-      if (!this.currentPage || !this.isDOMStreamingActive) {
-        return;
-      }
-
-      try {
-        // Check if page is still valid and not closed
-        if (this.currentPage.isClosed()) {
-          logger.debug("Skipping DOM snapshot - page is closed");
-          return;
-        }
-
-        // Double-check page state after network wait
-        if (this.currentPage.isClosed()) {
-          logger.debug("Skipping DOM snapshot - page closed during network wait");
-          return;
-        }
-
-        // Get current scroll position
-        const currentScrollInfo = await this.currentPage.evaluate(() => ({
-          x: window.scrollX,
-          y: window.scrollY,
-          maxX: Math.max(
-            0,
-            document.documentElement.scrollWidth - window.innerWidth
-          ),
-          maxY: Math.max(
-            0,
-            document.documentElement.scrollHeight - window.innerHeight
-          ),
-          documentHeight: document.documentElement.scrollHeight,
-        }));
-
-        logger.info(
-          `Creating rrweb snapshot at scroll position: ${currentScrollInfo.y}/${currentScrollInfo.maxY}`
-        );
-
-        // Update our tracked scroll position
-        this.lastScrollPosition = {
-          x: currentScrollInfo.x,
-          y: currentScrollInfo.y,
-        };
-
-        // Final check before snapshot
-        if (this.currentPage.isClosed()) {
-          logger.debug("Skipping DOM snapshot - page closed before snapshot");
-          return;
-        }
-
-        // Capture snapshot using rrweb
-        const rawSnapshot = await this.currentPage.evaluate(() => {
-          if (typeof window.rrwebSnapshot === "undefined") {
-            throw new Error("rrweb-snapshot library not available");
-          }
-
-          return window.rrwebSnapshot.snapshot(document, {
-            inlineImages: false,
-            collectFonts: true,
-          });
-        });
-
-        // Process the snapshot to proxy resources
-        const processedSnapshot = await this.processRRWebSnapshot(rawSnapshot);
-
-        // Add scroll position information
-        const enhancedSnapshot = {
-          ...processedSnapshot,
-          scrollPosition: currentScrollInfo,
-          captureTime: Date.now(),
-        };
-
-        // Emit the processed snapshot
-        this.emitRRWebSnapshot(enhancedSnapshot);
-      } catch (error) {
-        // Handle navigation context destruction gracefully
-        if (
-          error instanceof Error &&
-          (error.message.includes("Execution context was destroyed") ||
-            error.message.includes("most likely because of a navigation") ||
-            error.message.includes("Target closed"))
-        ) {
-          logger.debug("DOM snapshot skipped due to page navigation or closure");
-          return;
-        }
-
-        logger.error("Failed to create rrweb snapshot:", error);
-        this.socket.emit("dom-mode-error", {
-          userId: this.userId,
-          message: "Failed to create rrweb snapshot",
-          error: error instanceof Error ? error.message : String(error),
-          timestamp: Date.now(),
-        });
-      }
-    }
-
-    /**
-     * Emit DOM snapshot to client - following screenshot pattern
-     */
-    private emitRRWebSnapshot(processedSnapshot: ProcessedSnapshot): void {
-      this.socket.emit("domcast", {
-        snapshotData: processedSnapshot,
-        userId: this.userId,
-        timestamp: Date.now(),
-      });
-    }
-
-    /**
-     * Stop DOM streaming - following dom snapshot pattern
-     */
-    private async stopDOM(): Promise<void> {
-      this.isDOMStreamingActive = false;
-
-      if (this.domUpdateInterval) {
-        clearInterval(this.domUpdateInterval);
-        this.domUpdateInterval = null;
-      }
-
-      if (this.networkRequestTimeout) {
-        clearTimeout(this.networkRequestTimeout);
-        this.networkRequestTimeout = null;
-      }
-
-      this.pendingNetworkRequests = [];
-
-      logger.info("DOM streaming stopped successfully");
-    }
-
-    /**rrweb-bundle
      * Terminates the dom snapshot session and closes the remote browser.
      * If an interpretation was running it will be stopped.
      * @returns {Promise<void>}
@@ -877,35 +703,15 @@ export class RemoteBrowser {
     public async switchOff(): Promise<void> {
       this.isDOMStreamingActive = false;
 
-      if (this.domUpdateInterval) {
-        clearInterval(this.domUpdateInterval);
-        this.domUpdateInterval = null;
-      }
+      // if (this.memoryCleanupInterval) {
+      //   clearInterval(this.memoryCleanupInterval);
+      //   this.memoryCleanupInterval = null;
+      // }
 
-      if (this.memoryCleanupInterval) {
-        clearInterval(this.memoryCleanupInterval);
-        this.memoryCleanupInterval = null;
-      }
-
-      if (this.memoryManagementInterval) {
-        clearInterval(this.memoryManagementInterval);
-        this.memoryManagementInterval = null;
-      }
-
-      if (this.progressInterval) {
-        clearInterval(this.progressInterval);
-        this.progressInterval = null;
-      }
-
-      if (this.snapshotDebounceTimeout) {
-        clearTimeout(this.snapshotDebounceTimeout);
-        this.snapshotDebounceTimeout = null;
-      }
-
-      if (this.networkRequestTimeout) {
-        clearTimeout(this.networkRequestTimeout);
-        this.networkRequestTimeout = null;
-      }
+      // if (this.memoryManagementInterval) {
+      //   clearInterval(this.memoryManagementInterval);
+      //   this.memoryManagementInterval = null;
+      // }
 
       this.removeAllSocketListeners();
 
@@ -923,7 +729,6 @@ export class RemoteBrowser {
         logger.warn(`Error removing page listeners: ${error.message}`);
       }
 
-      // Clean up Generator listeners to prevent memory leaks
       if (this.generator) {
         try {
           this.generator.cleanup();
@@ -933,18 +738,10 @@ export class RemoteBrowser {
         }
       }
 
-      // Stop interpretation with individual error handling (also calls clearState which removes pausing listeners)
       try {
         await this.interpreter.stopInterpretation();
       } catch (error) {
         logger.error("Error stopping interpretation during shutdown:", error);
-      }
-
-      // Stop DOM streaming with individual error handling
-      try {
-        await this.stopDOM();
-      } catch (error) {
-        logger.error("Error stopping DOM during shutdown:", error);
       }
 
       try {
@@ -1081,7 +878,6 @@ export class RemoteBrowser {
     private changeTab = async (tabIndex: number): Promise<void> => {
         const page = this.currentPage?.context().pages()[tabIndex];
         if (page) {
-            await this.stopDOM();
             this.currentPage = page;
 
             await this.setupPageEventListeners(this.currentPage);
@@ -1093,10 +889,6 @@ export class RemoteBrowser {
                 url: this.currentPage.url(),
                 userId: this.userId
             });
-            if (this.isDOMStreamingActive) {
-              await this.makeAndEmitDOMSnapshot();
-              await this.subscribeToDOM();
-            }
         } else {
             logger.log('error', `${tabIndex} index out of range of pages`)
         }
@@ -1118,8 +910,7 @@ export class RemoteBrowser {
         this.currentPage = newPage;
         if (this.currentPage) {
             await this.setupPageEventListeners(this.currentPage);
-
-            await this.subscribeToDOM();
+            logger.debug('Using rrweb live recording for new page');
         } else {
             logger.log('error', 'Could not get a new page, returned undefined');
         }
