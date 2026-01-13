@@ -1255,7 +1255,11 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                           {key}
                                         </TableCell>
                                         <TableCell sx={{ wordBreak: 'break-word' }}>
-                                          {value === undefined || value === '' ? '-' : String(value)}
+                                          {value === undefined || value === ''
+                                            ? '-'
+                                            : typeof value === 'object'
+                                              ? JSON.stringify(value)
+                                              : String(value)}
                                         </TableCell>
                                       </TableRow>
                                     ))
@@ -1294,7 +1298,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                     m: 0
                                   }}
                                 >
-                                  {crawlData[0][currentCrawlIndex].text}
+                                  {typeof crawlData[0][currentCrawlIndex].text === 'object'
+                                    ? JSON.stringify(crawlData[0][currentCrawlIndex].text, null, 2)
+                                    : crawlData[0][currentCrawlIndex].text}
                                 </Typography>
                               </Paper>
                             </AccordionDetails>
@@ -1329,33 +1335,41 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                     m: 0
                                   }}
                                 >
-                                  {crawlData[0][currentCrawlIndex].html}
+                                  {typeof crawlData[0][currentCrawlIndex].html === 'object'
+                                    ? JSON.stringify(crawlData[0][currentCrawlIndex].html, null, 2)
+                                    : crawlData[0][currentCrawlIndex].html}
                                 </Typography>
                               </Paper>
                             </AccordionDetails>
                           </Accordion>
                         )}
 
-                        {crawlData[0][currentCrawlIndex].links && crawlData[0][currentCrawlIndex].links.length > 0 && (
-                          <Accordion defaultExpanded sx={{ mb: 2 }}>
-                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Typography variant='h6'>
-                                  Links ({crawlData[0][currentCrawlIndex].links.length})
-                                </Typography>
-                              </Box>
-                            </AccordionSummary>
-                            <AccordionDetails>
-                              <Paper sx={{ maxHeight: 200, overflow: 'auto', p: 1 }}>
-                                {crawlData[0][currentCrawlIndex].links.map((link: string, idx: number) => (
-                                  <Typography key={idx} sx={{ fontSize: '0.75rem', mb: 0.5 }}>
-                                    {link}
+                        {(() => {
+                          const validLinks = crawlData[0][currentCrawlIndex].links?.filter((link: any) =>
+                            typeof link === 'string' && link.trim() !== ''
+                          ) || [];
+
+                          return validLinks.length > 0 && (
+                            <Accordion defaultExpanded sx={{ mb: 2 }}>
+                              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                  <Typography variant='h6'>
+                                    Links ({validLinks.length})
                                   </Typography>
-                                ))}
-                              </Paper>
-                            </AccordionDetails>
-                          </Accordion>
-                        )}
+                                </Box>
+                              </AccordionSummary>
+                              <AccordionDetails>
+                                <Paper sx={{ maxHeight: 200, overflow: 'auto', p: 1 }}>
+                                  {validLinks.map((link: string, idx: number) => (
+                                    <Typography key={idx} sx={{ fontSize: '0.75rem', mb: 0.5 }}>
+                                      {link}
+                                    </Typography>
+                                  ))}
+                                </Paper>
+                              </AccordionDetails>
+                            </Accordion>
+                          );
+                        })()}
 
                         <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
                           <Button
@@ -1499,7 +1513,11 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                               {key}
                                             </TableCell>
                                             <TableCell sx={{ wordBreak: 'break-word' }}>
-                                              {value === undefined || value === '' ? '-' : String(value)}
+                                              {value === undefined || value === ''
+                                                ? '-'
+                                                : typeof value === 'object'
+                                                  ? JSON.stringify(value)
+                                                  : String(value)}
                                             </TableCell>
                                           </TableRow>
                                         ))
@@ -1573,7 +1591,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                         m: 0
                                       }}
                                     >
-                                      {searchData[currentSearchIndex].html}
+                                      {typeof searchData[currentSearchIndex].html === 'object'
+                                        ? JSON.stringify(searchData[currentSearchIndex].html, null, 2)
+                                        : searchData[currentSearchIndex].html}
                                     </Typography>
                                   </Paper>
                                 </AccordionDetails>
@@ -1608,33 +1628,63 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                         m: 0
                                       }}
                                     >
-                                      {searchData[currentSearchIndex].markdown}
+                                      {typeof searchData[currentSearchIndex].markdown === 'object'
+                                        ? JSON.stringify(searchData[currentSearchIndex].markdown, null, 2)
+                                        : searchData[currentSearchIndex].markdown}
                                     </Typography>
                                   </Paper>
                                 </AccordionDetails>
                               </Accordion>
                             )}
 
-                            {searchData[currentSearchIndex].links && searchData[currentSearchIndex].links.length > 0 && (
-                              <Accordion defaultExpanded sx={{ mb: 2 }}>
-                                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    <Typography variant='h6'>
-                                      Links ({searchData[currentSearchIndex].links.length})
-                                    </Typography>
-                                  </Box>
-                                </AccordionSummary>
-                                <AccordionDetails>
-                                  <Paper sx={{ maxHeight: 200, overflow: 'auto', p: 1 }}>
-                                    {searchData[currentSearchIndex].links.map((link: string, idx: number) => (
-                                      <Typography key={idx} sx={{ fontSize: '0.75rem', mb: 0.5 }}>
-                                        {link}
+                            {(() => {
+                              const validLinks = searchData[currentSearchIndex].links?.filter((link: any) =>
+                                typeof link === 'string' && link.trim() !== ''
+                              ) || [];
+
+                              return validLinks.length > 0 && (
+                                <Accordion sx={{ mb: 2 }}>
+                                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                      <Typography variant='h6'>
+                                        Links ({validLinks.length})
                                       </Typography>
-                                    ))}
+                                    </Box>
+                                  </AccordionSummary>
+                                  <AccordionDetails>
+                                    <Paper
+                                      sx={{
+                                        p: 2,
+                                        maxHeight: '300px',
+                                        overflow: 'auto',
+                                        backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
+                                      }}
+                                    >
+                                      {validLinks.map((link: string, linkIdx: number) => {
+                                        return (
+                                          <Box key={linkIdx} sx={{ mb: 0.5 }}>
+                                            <Link
+                                              href={link}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              sx={{
+                                                color: '#FF00C3',
+                                                textDecoration: 'none',
+                                                fontSize: '0.75rem',
+                                                '&:hover': { textDecoration: 'underline' },
+                                                wordBreak: 'break-all'
+                                              }}
+                                            >
+                                              {link}
+                                            </Link>
+                                          </Box>
+                                        );
+                                      })}
                                   </Paper>
                                 </AccordionDetails>
                               </Accordion>
-                            )}
+                              );
+                            })()}
 
                             <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
                               <Button
