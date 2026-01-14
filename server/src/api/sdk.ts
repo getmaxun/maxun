@@ -904,16 +904,11 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
         let finalUrl: string;
 
         if (url) {
-            logger.info(`[SDK] LLM extraction with provided URL: ${url}`);
             workflowResult = await WorkflowEnricher.generateWorkflowFromPrompt(url, prompt, user.id, llmConfig);
             finalUrl = workflowResult.url || url;
         } else {
-            logger.info(`[SDK] LLM extraction with automatic URL detection for prompt: "${prompt}"`);
             workflowResult = await WorkflowEnricher.generateWorkflowFromPromptWithSearch(prompt, user.id, llmConfig);
             finalUrl = workflowResult.url || '';
-            if (finalUrl) {
-                logger.info(`[SDK] Auto-detected URL: ${finalUrl}`);
-            }
         }
 
         if (!workflowResult.success || !workflowResult.workflow) {
@@ -935,7 +930,7 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
             params: [],
             type: 'extract',
             url: finalUrl,
-            isLLM: true,
+            isLLM: true
         };
 
         const robot = await Robot.create({
@@ -952,8 +947,7 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
         capture("maxun-oss-llm-robot-created", {
             robot_meta: robot.recording_meta,
             recording: robot.recording,
-            prompt: prompt,
-            urlAutoDetected: !url,
+            prompt: prompt
         });
 
         return res.status(200).json({
