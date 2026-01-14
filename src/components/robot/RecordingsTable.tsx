@@ -97,7 +97,7 @@ const LoadingRobotRow = memo(({ row, columns }: any) => {
         } else if (column.id === 'interpret') {
           return (
             <MemoizedTableCell key={column.id} align={column.align}>
-              <CircularProgress size={20} />
+               <Box sx={{ opacity: 0.3 }}>-</Box>
             </MemoizedTableCell>
           );
         } else {
