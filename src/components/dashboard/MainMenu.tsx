@@ -233,7 +233,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
           }
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <span>Star us on GitHub</span>
+            <span style={{ fontSize: "0.85rem"}}>Star On GitHub</span>
             {isLoading ? (
               <Typography 
                 variant="caption" 
@@ -250,7 +250,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
                   backgroundColor: theme.palette.mode === 'light' ? '#f0f0f0' : 'rgba(255, 255, 255, 0.1)',
                   borderRadius: '12px',
                   padding: '2px 8px',
-                  fontSize: '0.75rem',
+                  fontSize: '0.7rem',
                   color: theme.palette.mode === 'light' ? '#666' : '#ccc',
                   fontWeight: 500,
                 }}
