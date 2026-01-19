@@ -131,7 +131,7 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
               {robot.recording_meta.type !== 'search' && (
                 <TextField
                   label={t("robot_settings.target_url")}
-                  key="Robot Target URL"
+                  key="Target URL"
                   value={targetUrl}
                   InputProps={{
                     readOnly: true,
