@@ -18,14 +18,11 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  const { notify } = useGlobalInfoStore();
 
   const [sponsorModalOpen, setSponsorModalOpen] = useState(false);
   const [docModalOpen, setDocModalOpen] = useState(false);
   const [starCount, setStarCount] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-
-  const ossDiscountCode = "MAXUNOSS8";
 
   useEffect(() => {
     const fetchStarCount = async () => {
@@ -68,15 +65,6 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
       navigate('/robots');
       handleChangeContent('robots');
     }
-  };
-
-  const copyDiscountCode = () => {
-    navigator.clipboard.writeText(ossDiscountCode).then(() => {
-      notify("success", "Discount code copied to clipboard!");
-    }).catch(err => {
-      console.error('Failed to copy text: ', err);
-      notify("error", "Failed to copy discount code.");
-    });
   };
 
   const defaultcolor = theme.palette.mode === 'light' ? 'black' : 'white';
