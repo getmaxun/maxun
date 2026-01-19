@@ -51,7 +51,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
   const buttonStyles = {
     justifyContent: 'flex-start',
     textAlign: 'left',
-    fontSize: '17px',
+    fontSize: '15px',
     letterSpacing: '0.02857em',
     padding: '20px 20px 20px 22px',
     minHeight: '48px',
@@ -92,29 +92,29 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             <Tab
               value="robots"
               label={t('mainmenu.recordings')}
-              icon={<AutoAwesome />}
+              icon={<AutoAwesome sx={{ fontSize: 20 }} />}
               iconPosition="start"
               disableRipple={true}
-              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }}
+              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '16px' }}
               onClick={handleRobotsClick} />
             <Tab value="runs"
               label={t('mainmenu.runs')}
-              icon={<PlayArrow />}
+              icon={<PlayArrow sx={{ fontSize: 20 }} />}
               iconPosition="start"
               disableRipple={true}
-              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
+              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '16px' }} />
             <Tab value="proxy"
               label={t('mainmenu.proxy')}
-              icon={<Usb />}
+              icon={<Usb sx={{ fontSize: 20 }} />}
               iconPosition="start"
               disableRipple={true}
-              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
+              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '16px' }} />
             <Tab value="apikey"
               label={t('mainmenu.apikey')}
-              icon={<VpnKey />}
+              icon={<VpnKey sx={{ fontSize: 20 }}/>}
               iconPosition="start"
               disableRipple={true}
-              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: 'medium' }} />
+              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '16px' }} />
           </Tabs>
           <Divider sx={{ borderColor: theme.palette.mode === 'dark' ? "#080808ff" : "" }} />
           <Box sx={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
@@ -162,10 +162,10 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               href='https://app.maxun.dev/'
               target="_blank"
               rel="noopener noreferrer"
-              sx={buttonStyles} startIcon={<CloudQueue sx={{ fontSize: 20 }} />}>
+              sx={buttonStyles} startIcon={<CloudQueue sx={{ fontSize: 16 }} />}>
               Join Maxun Cloud
             </Button>
-            <Button onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite sx={{ fontSize: 20 }} />}>
+            <Button onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite sx={{ fontSize: 16 }} />}>
               Sponsor Us
             </Button>
           </Box>
