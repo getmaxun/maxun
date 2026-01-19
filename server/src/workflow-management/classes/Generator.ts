@@ -198,7 +198,6 @@ export class WorkflowGenerator {
   private async getSelectorsForSchema(page: Page, schema: Record<string, { selector: string }>): Promise<string[]> {
     const selectors = Object.values(schema).map((field) => field.selector);
     
-    // Verify if the selectors are present and actionable on the current page
     const actionableSelectors: string[] = [];
     for (const selector of selectors) {
       const isActionable = await page.isVisible(selector).catch(() => false);
@@ -235,7 +234,6 @@ export class WorkflowGenerator {
   private addPairToWorkflowAndNotifyClient = async (pair: WhereWhatPair, page: Page) => {
     let matched = false;
   
-    // Check for scrapeSchema actions and enhance the where condition
     if (pair.what[0].action === 'scrapeSchema') {
       const schema = pair.what[0]?.args?.[0];
       if (schema) {
@@ -244,7 +242,6 @@ export class WorkflowGenerator {
       }
     }
   
-    // Validate if the pair is already in the workflow
     if (pair.where.selectors && pair.where.selectors[0]) {
       const match = selectorAlreadyInWorkflow(pair.where.selectors[0], this.workflowRecord.workflow);
       if (match) {
@@ -260,7 +257,6 @@ export class WorkflowGenerator {
       }
     }
   
-    // Handle cases where the where condition isn't already present
     if (!matched) {
       const handled = await this.handleOverShadowing(pair, page, this.generatedData.lastIndex || 0);
       if (!handled) {
@@ -282,7 +278,6 @@ export class WorkflowGenerator {
       }
     }
   
-    // Emit the updated workflow to the client
     this.socket.emit('workflow', this.workflowRecord);
     logger.log('info', `Workflow emitted`);
   };
@@ -367,7 +362,6 @@ export class WorkflowGenerator {
     await this.addPairToWorkflowAndNotifyClient(pair, page);
   };
 
-  // Handles click events on the DOM, generating a pair for the click action
   public onDOMClickAction = async (page: Page, data: { 
     selector: string, 
     url: string, 
@@ -388,7 +382,6 @@ export class WorkflowGenerator {
       }],
     };
 
-    // Handle special input elements with cursor positioning
     if (elementInfo && coordinates && 
         (elementInfo.tagName === 'INPUT' || elementInfo.tagName === 'TEXTAREA')) {
       pair.what[0] = {
@@ -403,7 +396,6 @@ export class WorkflowGenerator {
     await this.addPairToWorkflowAndNotifyClient(pair, page);
   };
 
-  // Handles keyboard actions on the DOM, generating a pair for the key press action
   public onDOMKeyboardAction = async (page: Page, data: {
     selector: string,
     key: string,
@@ -430,7 +422,6 @@ export class WorkflowGenerator {
     await this.addPairToWorkflowAndNotifyClient(pair, page);
   };
 
-  // Handles navigation events on the DOM, generating a pair for the navigation action
   public onDOMNavigation = async (page: Page, data: {
     url: string,
     currentUrl: string,
@@ -450,13 +441,6 @@ export class WorkflowGenerator {
     await this.addPairToWorkflowAndNotifyClient(pair, page);
   };
 
-  // Handles workflow pair events on the DOM
-  public onDOMWorkflowPair = async (page: Page, data: { pair: WhereWhatPair, userId: string }) => {
-    const { pair } = data;
-    
-    await this.addPairToWorkflowAndNotifyClient(pair, page);
-  };
-
   /**
    * Generates a pair for the click event.
    * @param coordinates The coordinates of the click event.
@@ -471,25 +455,22 @@ export class WorkflowGenerator {
     const elementInfo = await getElementInformation(page, coordinates, '', false);
     console.log("Element info: ", elementInfo);
 
-    // Check if clicked element is a select dropdown
     const isDropdown = elementInfo?.tagName === 'SELECT';
     
     if (isDropdown && elementInfo.innerHTML) {
-      // Parse options from innerHTML
       const options = elementInfo.innerHTML
         .split('<option')
-        .slice(1) // Remove first empty element
+        .slice(1)
         .map(optionHtml => {
           const valueMatch = optionHtml.match(/value="([^"]*)"/);
           const disabledMatch = optionHtml.includes('disabled="disabled"');
           const selectedMatch = optionHtml.includes('selected="selected"');
           
-          // Extract text content between > and </option>
           const textMatch = optionHtml.match(/>([^<]*)</);
           const text = textMatch 
             ? textMatch[1]
-                .replace(/\n/g, '') // Remove all newlines
-                .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+                .replace(/\n/g, '')
+                .replace(/\s+/g, ' ')
                 .trim()
             : '';
           
@@ -501,7 +482,6 @@ export class WorkflowGenerator {
           };
         });
 
-      // Notify client to show dropdown overlay
       this.socket.emit('showDropdown', {
           coordinates,
           selector,
@@ -510,11 +490,9 @@ export class WorkflowGenerator {
       return;
     }
 
-    // Check if clicked element is a date input
     const isDateInput = elementInfo?.tagName === 'INPUT' && elementInfo?.attributes?.type === 'date';
 
     if (isDateInput) {
-      // Notify client to show datepicker overlay
       this.socket.emit('showDatePicker', {
           coordinates,
           selector
@@ -640,8 +618,6 @@ export class WorkflowGenerator {
       }
     }
 
-    //const element = await getElementMouseIsOver(page, coordinates);
-    //logger.log('debug', `Element: ${JSON.stringify(element, null, 2)}`);
     if (selector) {
       where.selectors = [selector];
     }
@@ -675,37 +651,6 @@ export class WorkflowGenerator {
           args: [newUrl],
         }
       ],
-    }
-    await this.addPairToWorkflowAndNotifyClient(pair, page);
-  };
-
-  /**
-   * Generates a pair for the keypress event.
-   * @param key The key to be pressed.
-   * @param coordinates The coordinates of the keypress event.
-   * @param page The page to use for obtaining the needed data.
-   * @returns {Promise<void>}
-   */
-  public onKeyboardInput = async (key: string, coordinates: Coordinates, page: Page) => {
-    let where: WhereWhatPair["where"] = { url: this.getBestUrl(page.url()) };
-    const selector = await this.generateSelector(page, coordinates, ActionType.Keydown);
-
-    const elementInfo = await getElementInformation(page, coordinates, '', false);
-    const inputType = elementInfo?.attributes?.type || "text";
-
-    if (selector) {
-      where.selectors = [selector];
-    }
-    const pair: WhereWhatPair = {
-      where,
-      what: [{
-        action: 'press',
-        args: [selector, encrypt(key), inputType],
-      }],
-    }
-    if (selector) {
-      this.generatedData.lastUsedSelector = selector;
-      this.generatedData.lastAction = 'press';
     }
     await this.addPairToWorkflowAndNotifyClient(pair, page);
   };
@@ -940,7 +885,7 @@ export class WorkflowGenerator {
 
         return pair;
       })
-      .filter((pair) => pair !== null) as WhereWhatPair[]; // Remove null entries
+      .filter((pair) => pair !== null) as WhereWhatPair[];
 
     if (actionWasRemoved) {
       logger.log("info", `Action with actionId ${actionId} removed from workflow`);
@@ -995,24 +940,6 @@ export class WorkflowGenerator {
       logger.error(`Error during Generator cleanup: ${error.message}`);
     }
   }
-
-  /**
-   * Returns the currently generated workflow without all the generated flag actions.
-   * @param workflow The workflow for removing the generated flag actions from.
-   * @private
-   * @returns {WorkflowFile}
-   */
-  private removeAllGeneratedFlags = (workflow: WorkflowFile): WorkflowFile => {
-    for (let i = 0; i < workflow.workflow.length; i++) {
-      if (
-        workflow.workflow[i].what[0] &&
-        workflow.workflow[i].what[0].action === 'flag' &&
-        workflow.workflow[i].what[0].args?.includes('generated')) {
-        workflow.workflow[i].what.splice(0, 1);
-      }
-    }
-    return workflow;
-  };
 
   /**
    * Adds generated flag actions to the workflow's pairs' what conditions.
@@ -1127,7 +1054,6 @@ export class WorkflowGenerator {
       : await getSelectors(page, coordinates);
     
     if (this.paginationMode && selectorBasedOnCustomAction) {
-      // Chain selectors in specific priority order
       const selectors = selectorBasedOnCustomAction;
       const selectorChain = [
         selectors?.iframeSelector?.full,
@@ -1324,17 +1250,15 @@ export class WorkflowGenerator {
               if (this.workflowRecord.workflow[index].where.selectors?.includes(selector)) {
                 break;
               } else {
-                // add new selector to the where part of the overshadowing pair
                 this.workflowRecord.workflow[index].where.selectors?.push(selector);
               }
             }
           }
-          // push the action automatically to the first/the closest rule which would be overShadowed
+          
           this.workflowRecord.workflow[index].what =
             this.workflowRecord.workflow[index].what.concat(pair.what);
           return true;
         } else {
-          // notify client about overshadowing a further rule
           return false;
         }
       }
@@ -1352,8 +1276,7 @@ export class WorkflowGenerator {
     const parsedUrl = new URL(url);
     const protocol = parsedUrl.protocol === 'https:' || parsedUrl.protocol === 'http:' ? `${parsedUrl.protocol}//` : parsedUrl.protocol;
     const regex = new RegExp(/(?=.*[A-Z])/g)
-    // remove all params with uppercase letters, they are most likely dynamically generated
-    // also escapes all regex characters from the params
+
     const search = parsedUrl.search
       .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
       .split('&').map((param, index) => {
@@ -1380,8 +1303,6 @@ export class WorkflowGenerator {
    * @param workflow The workflow to be checked.
    */
   private checkWorkflowForParams = (workflow: WorkflowFile): string[] | null => {
-    // for now the where condition cannot have any params, so we're checking only what part of the pair
-    // where only the args part of what condition can have a parameter
     for (const pair of workflow.workflow) {
       for (const condition of pair.what) {
         if (condition.args) {

@@ -7,7 +7,6 @@ import { useBrowserSteps, TextStep, ListStep } from '../../context/browserSteps'
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../../context/auth';
-import { coordinateMapper } from '../../helpers/coordinateMapper';
 import { useBrowserDimensionsStore } from '../../context/browserDimensions';
 import { clientSelectorGenerator, ElementFingerprint } from "../../helpers/clientSelectorGenerator";
 import { capturedElementHighlighter } from "../../helpers/capturedElementHighlighter";
@@ -34,79 +33,6 @@ interface ElementInfo {
 interface AttributeOption {
     label: string;
     value: string;
-}
-
-interface ViewportInfo {
-    width: number;
-    height: number;
-}
-
-interface RRWebSnapshot {
-  type: number;
-  childNodes?: RRWebSnapshot[];
-  tagName?: string;
-  attributes?: Record<string, string>;
-  textContent: string;
-  id: number;
-  [key: string]: any;
-}
-
-interface ProcessedSnapshot {
-  snapshot: RRWebSnapshot;
-  resources: {
-    stylesheets: Array<{
-      href: string;
-      content: string;
-      media?: string;
-    }>;
-    images: Array<{
-      src: string;
-      dataUrl: string;
-      alt?: string;
-    }>;
-    fonts: Array<{
-      url: string;
-      dataUrl: string;
-      format?: string;
-    }>;
-    scripts: Array<{
-      src: string;
-      content: string;
-      type?: string;
-    }>;
-    media: Array<{
-      src: string;
-      dataUrl: string;
-      type: string;
-    }>;
-  };
-  baseUrl: string;
-  viewport: { width: number; height: number };
-  timestamp: number;
-  processingStats: {
-    totalReplacements: number;
-    discoveredResources: {
-      images: number;
-      stylesheets: number;
-      scripts: number;
-      fonts: number;
-      media: number;
-    };
-    cachedResources: {
-      stylesheets: number;
-      images: number;
-      fonts: number;
-      scripts: number;
-      media: number;
-    };
-    totalCacheSize: number;
-  };
-}
-
-interface RRWebDOMCastData {
-  snapshotData: ProcessedSnapshot;
-  userId: string;
-  timestamp: number;
 }
 
 const getAttributeOptions = (tagName: string, elementInfo: ElementInfo | null): AttributeOption[] => {
@@ -154,8 +80,6 @@ export const BrowserWindow = () => {
     const [attributeOptions, setAttributeOptions] = useState<AttributeOption[]>([]);
     const [selectedElement, setSelectedElement] = useState<{ selector: string, info: ElementInfo | null } | null>(null);
     const [currentListId, setCurrentListId] = useState<number | null>(null);
-    const [viewportInfo, setViewportInfo] = useState<ViewportInfo>({ width: browserWidth, height: browserHeight });
-    const [isLoading, setIsLoading] = useState(false);
     const [cachedChildSelectors, setCachedChildSelectors] = useState<string[]>([]);
     const [processingGroupCoordinates, setProcessingGroupCoordinates] = useState<Array<{ element: HTMLElement; rect: DOMRect }>>([]);
     const [listSelector, setListSelector] = useState<string | null>(null);
@@ -177,7 +101,7 @@ export const BrowserWindow = () => {
     const [manuallyAddedFieldIds, setManuallyAddedFieldIds] = useState<Set<number>>(new Set());
 
     const { socket } = useSocketStore();
-    const { notify, currentTextActionId, currentListActionId, updateDOMMode, isDOMMode, currentSnapshot } = useGlobalInfoStore();
+    const { notify, currentTextActionId, currentListActionId, updateDOMMode, isDOMMode } = useGlobalInfoStore();
     const { getText, getList, paginationMode, paginationType, limitMode, captureStage } = useActionContext();
     const { addTextStep, addListStep, browserSteps } = useBrowserSteps();
 
@@ -258,27 +182,11 @@ export const BrowserWindow = () => {
         []
     );
 
-    const rrwebSnapshotHandler = useCallback(
-        (data: RRWebDOMCastData) => {
-        if (!data.userId || data.userId === user?.id) {
-            if (data.snapshotData && data.snapshotData.snapshot) {
-                updateDOMMode(true, data.snapshotData);
-                socket?.emit("dom-mode-enabled");
-                setIsLoading(false);
-            } else {
-                setIsLoading(false);
-            }
-        }
-        },
-        [user?.id, socket, updateDOMMode]
-    );
-
     const domModeHandler = useCallback(
         (data: any) => {
             if (!data.userId || data.userId === user?.id) {
                 updateDOMMode(true);
                 socket?.emit("dom-mode-enabled");
-                setIsLoading(false);
             }
         },
         [user?.id, socket, updateDOMMode]
@@ -288,18 +196,21 @@ export const BrowserWindow = () => {
         (data: any) => {
             if (!data.userId || data.userId === user?.id) {
                 updateDOMMode(false);
-                setIsLoading(false);
+
+                if (data.error) {
+                  notify("error", data.error);
+                }
             }
         },
-        [user?.id, updateDOMMode]
+        [user?.id, updateDOMMode, notify]
     );
 
     useEffect(() => {
-        if (isDOMMode) {
+      if (isDOMMode) {
         clientSelectorGenerator.setGetList(getList);
         clientSelectorGenerator.setListSelector(listSelector || "");
         clientSelectorGenerator.setPaginationMode(paginationMode);
-        }
+      }
     }, [isDOMMode, getList, listSelector, paginationMode]);
 
     const createFieldsFromChildSelectors = useCallback(
@@ -698,7 +609,7 @@ export const BrowserWindow = () => {
 
         return finalFields;
       },
-      [currentSnapshot]
+      []
     );
 
     const removeParentChildDuplicates = (
@@ -798,7 +709,7 @@ export const BrowserWindow = () => {
 
         clientSelectorGenerator.setListSelector(listSelector);
 
-        if (currentSnapshot && cachedListSelector !== listSelector) {
+        if (cachedListSelector !== listSelector) {
           setCachedChildSelectors([]);
           setIsCachingChildSelectors(true);
           setCachedListSelector(listSelector);
@@ -878,7 +789,6 @@ export const BrowserWindow = () => {
       listSelector,
       socket,
       getList,
-      currentSnapshot,
       cachedListSelector,
       pendingNotification,
       notify,
@@ -990,10 +900,6 @@ export const BrowserWindow = () => {
     }, [browserSteps, getText, getList, listSelector, currentTextActionId, currentListActionId, isDOMMode, manuallyAddedFieldIds]);
 
     useEffect(() => {
-        coordinateMapper.updateDimensions(dimensions.width, dimensions.height, viewportInfo.width, viewportInfo.height);
-    }, [viewportInfo, dimensions.width, dimensions.height]);
-
-    useEffect(() => {
         if (listSelector) {
           sessionStorage.setItem('recordingListSelector', listSelector);
         }
@@ -1027,21 +933,18 @@ export const BrowserWindow = () => {
 
     useEffect(() => {
         if (socket) {
-            socket.on("domcast", rrwebSnapshotHandler);
             socket.on("dom-mode-enabled", domModeHandler);
             socket.on("dom-mode-error", domModeErrorHandler);
         }
 
         return () => {
             if (socket) {
-                socket.off("domcast", rrwebSnapshotHandler);
                 socket.off("dom-mode-enabled", domModeHandler);
                 socket.off("dom-mode-error", domModeErrorHandler);
             }
         };
     }, [
         socket,
-        rrwebSnapshotHandler,
         domModeHandler,
         domModeErrorHandler,
     ]);
@@ -1066,14 +969,15 @@ export const BrowserWindow = () => {
             isDOMMode?: boolean;
         }) => {
             if (paginationMode && paginationSelector) {
-            return;
+              return;
             }
+
             if (!getText && !getList) {
                 setHighlighterData(null);
                 return;
             }
 
-            if (!isDOMMode || !currentSnapshot) {
+            if (!isDOMMode) {
                 return;
             }
 
@@ -1187,7 +1091,6 @@ export const BrowserWindow = () => {
         },
         [
             isDOMMode,
-            currentSnapshot,
             getText,
             getList,
             socket,
@@ -1199,105 +1102,6 @@ export const BrowserWindow = () => {
             cachedChildSelectors,
         ]
     );
-
-    const highlighterHandler = useCallback((data: { rect: DOMRect, selector: string, elementInfo: ElementInfo | null, childSelectors?: string[], isDOMMode?: boolean; }) => {
-        if (paginationMode && paginationSelector) {
-        return;
-        }
-        if (isDOMMode || data.isDOMMode) {
-            domHighlighterHandler(data);
-            return;
-        }
-        
-        const now = performance.now();
-        if (now - highlighterUpdateRef.current < 16) {
-            return;
-        }
-        highlighterUpdateRef.current = now;
-        
-        const mappedRect = new DOMRect(
-            data.rect.x,
-            data.rect.y,
-            data.rect.width,
-            data.rect.height
-        );
-        
-        const mappedData = {
-            ...data,
-            rect: mappedRect
-        };
-        
-        if (getList === true) {
-            if (listSelector) {
-                socket?.emit('listSelector', { selector: listSelector });
-                const hasValidChildSelectors = Array.isArray(mappedData.childSelectors) && mappedData.childSelectors.length > 0;
-
-                if (limitMode) {
-                    setHighlighterData(null);
-                } else if (paginationMode) {
-                    if (paginationType !== '' && !['none', 'scrollDown', 'scrollUp'].includes(paginationType)) {
-                        setHighlighterData(mappedData);
-                    } else {
-                        setHighlighterData(null);
-                    }
-                } else if (mappedData.childSelectors && mappedData.childSelectors.includes(mappedData.selector)) {
-                    setHighlighterData(mappedData);
-                } else if (mappedData.elementInfo?.isIframeContent && mappedData.childSelectors) {
-                    const isIframeChild = mappedData.childSelectors.some(childSelector =>
-                        mappedData.selector.includes(':>>') && 
-                        childSelector.split(':>>').some(part =>
-                            mappedData.selector.includes(part.trim())
-                        )
-                    );
-                    setHighlighterData(isIframeChild ? mappedData : null);
-                } else if (mappedData.selector.includes(':>>') && hasValidChildSelectors) {
-                    const selectorParts = mappedData.selector.split(':>>').map(part => part.trim());
-                    const isValidMixedSelector = selectorParts.some(part =>
-                        mappedData.childSelectors!.some(childSelector =>
-                            childSelector.includes(part)
-                        )
-                    );
-                    setHighlighterData(isValidMixedSelector ? mappedData : null);
-                } else if (mappedData.elementInfo?.isShadowRoot && mappedData.childSelectors) {
-                    const isShadowChild = mappedData.childSelectors.some(childSelector =>
-                        mappedData.selector.includes('>>') &&
-                        childSelector.split('>>').some(part =>
-                            mappedData.selector.includes(part.trim())
-                        )
-                    );
-                    setHighlighterData(isShadowChild ? mappedData : null);
-                } else if (mappedData.selector.includes('>>') && hasValidChildSelectors) {
-                    const selectorParts = mappedData.selector.split('>>').map(part => part.trim());
-                    const isValidMixedSelector = selectorParts.some(part =>
-                        mappedData.childSelectors!.some(childSelector =>
-                            childSelector.includes(part)
-                        )
-                    );
-                    setHighlighterData(isValidMixedSelector ? mappedData : null);
-                } else {
-                    setHighlighterData(null);
-                }
-            } else {
-                setHighlighterData(mappedData);
-            }
-        } else {
-            setHighlighterData(mappedData);
-        }
-    }, [getList, socket, listSelector, paginationMode, paginationType, limitMode]);
-
-    useEffect(() => {
-        document.addEventListener("mousemove", onMouseMove, false);
-        if (socket) {
-            socket.off("highlighter", highlighterHandler);
-            socket.on("highlighter", highlighterHandler);
-        }
-        return () => {
-            document.removeEventListener("mousemove", onMouseMove);
-            if (socket) {
-                socket.off("highlighter", highlighterHandler);
-            }
-        };
-    }, [socket, highlighterHandler, getList, listSelector]);
 
     useEffect(() => {
         if (socket && listSelector) {
@@ -1533,7 +1337,6 @@ export const BrowserWindow = () => {
       ]
     );
 
-
     const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
       if (highlighterData) {
         const shouldProcessClick = true;
@@ -1720,49 +1523,50 @@ export const BrowserWindow = () => {
                 default:
                     data = selectedElement.info?.innerText || '';
             }
-            {
-                if (getText === true) {
-                    addTextStep('', data, {
+            
+            if (getText === true) {
+                addTextStep('', data, {
+                    selector: selectedElement.selector,
+                    tag: selectedElement.info?.tagName,
+                    isShadow: highlighterData?.isShadow || selectedElement.info?.isShadowRoot,
+                    attribute: attribute
+                }, currentTextActionId || `text-${crypto.randomUUID()}`);
+            }
+
+            if (getList === true && listSelector && currentListId) {
+                const newField: TextStep = {
+                    id: Date.now(),
+                    type: 'text',
+                    label: `Label ${Object.keys(fields).length + 1}`,
+                    data: data,
+                    selectorObj: {
                         selector: selectedElement.selector,
                         tag: selectedElement.info?.tagName,
-                        isShadow: highlighterData?.isShadow || selectedElement.info?.isShadowRoot,
+                        isShadow: highlighterData?.isShadow || highlighterData?.elementInfo?.isShadowRoot,
                         attribute: attribute
-                    }, currentTextActionId || `text-${crypto.randomUUID()}`);
-                }
-                if (getList === true && listSelector && currentListId) {
-                    const newField: TextStep = {
-                        id: Date.now(),
-                        type: 'text',
-                        label: `Label ${Object.keys(fields).length + 1}`,
-                        data: data,
-                        selectorObj: {
-                            selector: selectedElement.selector,
-                            tag: selectedElement.info?.tagName,
-                            isShadow: highlighterData?.isShadow || highlighterData?.elementInfo?.isShadowRoot,
-                            attribute: attribute
-                        }
-                    };
-
-                    const updatedFields = {
-                        ...fields,
-                        [newField.id]: newField
-                      };
-                      
-                    setFields(updatedFields);
-
-                    if (listSelector) {
-                        addListStep(
-                            listSelector, 
-                            updatedFields, 
-                            currentListId, 
-                            currentListActionId || `list-${crypto.randomUUID()}`,
-                            { type: "", selector: paginationSelector, isShadow: highlighterData?.isShadow },
-                            undefined,
-                            highlighterData?.isShadow
-                        );
                     }
+                };
+
+                const updatedFields = {
+                    ...fields,
+                    [newField.id]: newField
+                  };
+                  
+                setFields(updatedFields);
+
+                if (listSelector) {
+                    addListStep(
+                        listSelector, 
+                        updatedFields, 
+                        currentListId, 
+                        currentListActionId || `list-${crypto.randomUUID()}`,
+                        { type: "", selector: paginationSelector, isShadow: highlighterData?.isShadow },
+                        undefined,
+                        highlighterData?.isShadow
+                    );
                 }
             }
+            
         }
         
         setShowAttributeModal(false);
@@ -1817,7 +1621,6 @@ export const BrowserWindow = () => {
         style={{ width: browserWidth }}
         id="browser-window"
       >
-        {/* Attribute selection modal */}
         {(getText === true || getList === true) && (
           <GenericModal
             isOpen={showAttributeModal}
@@ -1906,17 +1709,15 @@ export const BrowserWindow = () => {
           />
         )}
 
-        {/* Main content area */}
         <div
-        style={{
-          position: "relative",
-          width: "100%",
-          height: dimensions.height,
-          overflow: "hidden",
-          borderRadius: "0px 0px 5px 5px",
-        }}
-      >
-          {/* Add CSS for the spinner animation */}
+          style={{
+            position: "relative",
+            width: "100%",
+            height: dimensions.height,
+            overflow: "hidden",
+            borderRadius: "0px 0px 5px 5px",
+          }}
+        >
           <style>{`
           @keyframes spin {
             0% { transform: rotate(0deg); }
@@ -1933,13 +1734,12 @@ export const BrowserWindow = () => {
                   id="dom-highlight-overlay"
                   style={{
                     position: "absolute",
-                    inset: 0, // top:0; right:0; bottom:0; left:0
-                    overflow: "hidden", // clip everything within iframe area
+                    inset: 0,
+                    overflow: "hidden",
                     pointerEvents: "none",
                     zIndex: 1000,
                   }}
                 >
-                    {/* Individual element highlight (for non-group or hovered element) */}
                     {((getText && !listSelector) || 
                       (getList && paginationMode && !paginationSelector && paginationType !== "" && 
                       !["none", "scrollDown", "scrollUp"].includes(paginationType))) && (
@@ -1960,7 +1760,6 @@ export const BrowserWindow = () => {
                       />
                     )}
 
-                    {/* Grouped list element highlights */}
                     {getList &&
                       !listSelector &&
                       currentGroupInfo?.isGroupElement &&
@@ -2029,7 +1828,6 @@ export const BrowserWindow = () => {
                               }}
                             />
 
-                            {/* Label for similar element */}
                             <div
                               style={{
                                 position: "absolute",
@@ -2054,23 +1852,22 @@ export const BrowserWindow = () => {
               )}
             </>
           )}
-          {/* --- Main DOM Renderer Section --- */}
+
         <div
           id="iframe-wrapper"
           style={{
             position: "relative",
             width: "100%",
             height: "100%",
-            overflow: "hidden", // key: confine everything below
+            overflow: "hidden",
             borderRadius: "0px 0px 5px 5px",
           }}
         >
-          {currentSnapshot ? (
+          {isDOMMode ? (
             <>
               <DOMBrowserRenderer
                 width={dimensions.width}
                 height={dimensions.height}
-                snapshot={currentSnapshot}
                 getList={getList}
                 getText={getText}
                 listSelector={listSelector}
@@ -2088,7 +1885,6 @@ export const BrowserWindow = () => {
                 onShowDateTimePicker={handleShowDateTimePicker}
               />
 
-              {/* --- Loading overlay --- */}
               {isCachingChildSelectors && (
                 <>
                   <div
@@ -2209,7 +2005,6 @@ export const BrowserWindow = () => {
 
 const DOMLoadingIndicator: React.FC = () => {
   const [progress, setProgress] = useState(0);
-  const [pendingRequests, setPendingRequests] = useState(0);
   const [hasStartedLoading, setHasStartedLoading] = useState(false);
   const { socket } = useSocketStore();
   const { state } = useContext(AuthContext);
@@ -2225,15 +2020,12 @@ const DOMLoadingIndicator: React.FC = () => {
       userId: string;
     }) => {
       if (!data.userId || data.userId === user?.id) {
-        // Once loading has started, never reset progress to 0
         if (!hasStartedLoading && data.progress > 0) {
           setHasStartedLoading(true);
         }
-        
-        // Only update progress if we haven't started or if new progress is higher
+      
         if (!hasStartedLoading || data.progress >= progress) {
           setProgress(data.progress);
-          setPendingRequests(data.pendingRequests);
         }
       }
     };
@@ -2259,7 +2051,6 @@ const DOMLoadingIndicator: React.FC = () => {
         gap: "15px",
       }}
     >
-      {/* Loading text with percentage */}
       <div
         style={{
           fontSize: "18px",
@@ -2270,7 +2061,6 @@ const DOMLoadingIndicator: React.FC = () => {
         Loading {progress}%
       </div>
 
-      {/* Progress bar */}
       <div
         style={{
           width: "240px",

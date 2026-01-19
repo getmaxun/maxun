@@ -59,7 +59,12 @@ class CapturedElementHighlighter {
    * Get the iframe document
    */
   private getIframeDocument(): Document | null {
-    const iframeElement = document.querySelector('#dom-browser-iframe') as HTMLIFrameElement;
+    let iframeElement = document.querySelector('#dom-browser-iframe') as HTMLIFrameElement;
+
+    if (!iframeElement) {
+      iframeElement = document.querySelector('.replayer-wrapper iframe') as HTMLIFrameElement;
+    }
+    
     return iframeElement?.contentDocument || null;
   }
 

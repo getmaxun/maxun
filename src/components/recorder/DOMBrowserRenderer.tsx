@@ -7,9 +7,8 @@ import React, {
 } from "react";
 import { useSocketStore } from "../../context/socket";
 import { useGlobalInfoStore } from "../../context/globalInfo";
-import { useTranslation } from "react-i18next";
 import { AuthContext } from "../../context/auth";
-import { rebuild, createMirror } from "rrweb-snapshot";
+import { Replayer } from "rrweb"
 import {
   ActionType,
   clientSelectorGenerator,
@@ -29,72 +28,9 @@ interface ElementInfo {
   isDOMMode?: boolean;
 }
 
-interface ProcessedSnapshot {
-  snapshot: RRWebSnapshot;
-  resources: {
-    stylesheets: Array<{
-      href: string;
-      content: string;
-      media?: string;
-    }>;
-    images: Array<{
-      src: string;
-      dataUrl: string;
-      alt?: string;
-    }>;
-    fonts: Array<{
-      url: string;
-      dataUrl: string;
-      format?: string;
-    }>;
-    scripts: Array<{
-      src: string;
-      content: string;
-      type?: string;
-    }>;
-    media: Array<{
-      src: string;
-      dataUrl: string;
-      type: string;
-    }>;
-  };
-  baseUrl: string;
-  viewport: { width: number; height: number };
-  timestamp: number;
-  processingStats: {
-    totalReplacements: number;
-    discoveredResources: {
-      images: number;
-      stylesheets: number;
-      scripts: number;
-      fonts: number;
-      media: number;
-    };
-    cachedResources: {
-      stylesheets: number;
-      images: number;
-      fonts: number;
-      scripts: number;
-      media: number;
-    };
-    totalCacheSize: number;
-  };
-}
-
-interface RRWebSnapshot {
-  type: number;
-  childNodes?: RRWebSnapshot[];
-  tagName?: string;
-  attributes?: Record<string, string>;
-  textContent: string;
-  id: number;
-  [key: string]: any;
-}
-
 interface RRWebDOMBrowserRendererProps {
   width: number;
   height: number;
-  snapshot: ProcessedSnapshot;
   getList?: boolean;
   getText?: boolean;
   listSelector?: string | null;
@@ -148,7 +84,6 @@ interface RRWebDOMBrowserRendererProps {
 export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
   width,
   height,
-  snapshot,
   getList = false,
   getText = false,
   listSelector = null,
@@ -165,8 +100,9 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
   onShowTimePicker,
   onShowDateTimePicker,
 }) => {
-  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
+  const replayerIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const replayerRef = useRef<any>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isRendered, setIsRendered] = useState(false);
   const [lastMousePosition, setLastMousePosition] = useState({ x: 0, y: 0 });
@@ -184,7 +120,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
   const { state } = useContext(AuthContext);
   const { user } = state;
 
-  const MOUSE_MOVE_THROTTLE = 16; // ~60fps
+  const MOUSE_MOVE_THROTTLE = 16;
   const lastMouseMoveTime = useRef(0);
 
   const notifyLastAction = (action: string) => {
@@ -313,7 +249,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
                 isShadow,
                 childSelectors,
                 groupInfo,
-                similarElements, // Pass similar elements data
+                similarElements,
               });
             }
           }
@@ -337,12 +273,14 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
       getList,
       listSelector,
       paginationMode,
+      paginationSelector,
       cachedChildSelectors,
       paginationType,
       limitMode,
       onHighlight,
     ]
   );
+
   /**
    * Set up enhanced interaction handlers for DOM mode
    */
@@ -379,7 +317,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
         const iframeX = mouseEvent.clientX;
         const iframeY = mouseEvent.clientY;
 
-        const iframe = iframeRef.current;
+        const iframe = replayerIframeRef.current;
         if (iframe) {
           const iframeRect = iframe.getBoundingClientRect();
           setLastMousePosition({
@@ -407,7 +345,6 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           e.stopPropagation();
 
           if (currentHighlight && onElementSelect) {
-            // Get the group info for the current highlight
             const highlighterData =
               clientSelectorGenerator.generateDataForHighlighter(
                 { x: iframeX, y: iframeY },
@@ -438,6 +375,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           e.stopPropagation();
 
           const href = linkElement.href;
+          const originalTarget = linkElement.target;
 
           if (linkElement.target) {
             linkElement.target = "";
@@ -447,12 +385,17 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           linkElement.removeAttribute("href");
 
           setTimeout(() => {
-            linkElement.setAttribute("href", originalHref);
+            try {
+              linkElement.setAttribute("href", originalHref);
+              if (originalTarget) {
+                linkElement.setAttribute("target", originalTarget);
+              }
+            } catch (error) {
+              console.warn("Could not restore link attributes:", error);
+            }
           }, 100);
 
-          const isSPALink =
-            href.endsWith("#") ||
-            (href.includes("#") && new URL(href).hash !== "");
+          const isSPALink = href.startsWith('#');
 
           const selector = clientSelectorGenerator.generateSelector(
             iframeDoc,
@@ -470,7 +413,6 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           if (selector && socket) {
             socket.emit("dom:click", {
               selector,
-              url: snapshot.baseUrl,
               userId: user?.id || "unknown",
               elementInfo,
               coordinates: undefined,
@@ -592,17 +534,14 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
 
             socket.emit("dom:click", {
               selector,
-              url: snapshot.baseUrl,
               userId: user?.id || "unknown",
               elementInfo,
               coordinates: { x: relativeX, y: relativeY },
               isSPA: false,
             });
           } else if (elementInfo?.tagName !== "SELECT") {
-            // Handle other elements normally
             socket.emit("dom:click", {
               selector,
-              url: snapshot.baseUrl,
               userId: user?.id || "unknown",
               elementInfo,
               coordinates: { x: iframeX, y: iframeY },
@@ -632,21 +571,19 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
         const keyboardEvent = e as KeyboardEvent;
         const target = keyboardEvent.target as HTMLElement;
 
-        if (!isInCaptureMode && socket && snapshot?.baseUrl) {
-          const iframe = iframeRef.current;
+        if (!isInCaptureMode && socket) {
+          const iframe = replayerIframeRef.current;
           if (iframe) {
             const focusedElement = iframeDoc.activeElement as HTMLElement;
             let coordinates = { x: 0, y: 0 };
 
             if (focusedElement && focusedElement !== iframeDoc.body) {
-              // Get coordinates from the focused element
               const rect = focusedElement.getBoundingClientRect();
               coordinates = {
                 x: rect.left + rect.width / 2,
                 y: rect.top + rect.height / 2
               };
             } else {
-              // Fallback to last mouse position if no focused element
               const iframeRect = iframe.getBoundingClientRect();
               coordinates = {
                 x: lastMousePosition.x - iframeRect.left,
@@ -671,7 +608,6 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
               socket.emit("dom:keypress", {
                 selector,
                 key: keyboardEvent.key,
-                url: snapshot.baseUrl,
                 userId: user?.id || "unknown",
                 inputType: elementInfo?.attributes?.type || "text",
               });
@@ -768,12 +704,11 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
         iframeDoc.addEventListener(event, handler, options);
       });
 
-      // Store handlers for cleanup
       (iframeDoc as any)._domRendererHandlers = handlers;
 
-      // Make iframe focusable for keyboard events
-      if (iframeRef.current) {
-        iframeRef.current.tabIndex = 0;
+      const iframe = replayerIframeRef.current;
+      if (iframe) {
+        iframe.tabIndex = 0;
       }
     },
     [
@@ -784,287 +719,219 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
       currentHighlight,
       onElementSelect,
       isInCaptureMode,
-      snapshot,
       user?.id,
       onShowDatePicker,
       onShowDropdown,
       onShowTimePicker,
       onShowDateTimePicker,
+      cachedChildSelectors
     ]
   );
 
   /**
-   * Render DOM snapshot using rrweb
+   * Cleanup replayer on unmount
    */
-  const renderRRWebSnapshot = useCallback(
-    (snapshotData: ProcessedSnapshot) => {
-      if (!iframeRef.current) {
-        console.warn("No iframe reference available");
-        return;
-      }
-
-      if (isInCaptureMode || isCachingChildSelectors) {
-        return; // Skip rendering in capture mode
-      }
-
-      try {
-        setIsRendered(false);
-
-        const iframe = iframeRef.current!;
-        let iframeDoc: Document;
-
-        try {
-          iframeDoc = iframe.contentDocument!;
-          if (!iframeDoc) {
-            throw new Error("Cannot access iframe document");
-          }
-        } catch (crossOriginError) {
-          console.warn("Cross-origin iframe access blocked, recreating iframe");
-
-          const newIframe = document.createElement('iframe');
-          newIframe.style.cssText = iframe.style.cssText;
-          newIframe.sandbox = iframe.sandbox.value;
-          newIframe.title = iframe.title;
-          newIframe.tabIndex = iframe.tabIndex;
-          newIframe.id = iframe.id;
-
-          iframe.parentNode?.replaceChild(newIframe, iframe);
-          Object.defineProperty(iframeRef, 'current', {
-            value: newIframe,
-            writable: false,
-            enumerable: true,
-            configurable: true
-          });
-
-          iframeDoc = newIframe.contentDocument!;
-          if (!iframeDoc) {
-            throw new Error("Cannot access new iframe document");
-          }
-        }
-
-        const styleTags = Array.from(
-          document.querySelectorAll('link[rel="stylesheet"], style')
-        )
-          .map((tag) => tag.outerHTML)
-          .join("\n");
-
-        const enhancedCSS = `
-          /* rrweb rebuilt content styles */
-          html, body {
-            margin: 0 !important;
-            padding: 8px !important;
-            overflow-x: hidden !important;
-          }
-
-          html::-webkit-scrollbar,
-          body::-webkit-scrollbar {
-              display: none !important;
-              width: 0 !important;
-              height: 0 !important;
-              background: transparent !important;
-          }
-          
-          /* Hide scrollbars for all elements */
-          *::-webkit-scrollbar {
-              display: none !important;
-              width: 0 !important;
-              height: 0 !important;
-              background: transparent !important;
-          }
-          
-          * {
-              scrollbar-width: none !important; /* Firefox */
-              -ms-overflow-style: none !important; /* Internet Explorer 10+ */
-          }
-          
-          /* Make everything interactive */
-          * { 
-              cursor: "pointer" !important; 
-          }
-        `;
-
-        const skeleton = `
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <meta charset="utf-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1">
-              <base href="${snapshotData.baseUrl}">
-              ${styleTags}
-              <style>${enhancedCSS}</style>
-            </head>
-            <body></body>
-          </html>
-        `;
-
-        if (!iframeDoc) {
-          throw new Error("Cannot access iframe document");
-        }
-
-        // Write the skeleton into the iframe
-        iframeDoc.open();
-        iframeDoc.write(skeleton);
-        iframeDoc.close();
-
-        const mirror = createMirror();
-
-        try {
-          rebuild(snapshotData.snapshot, {
-            doc: iframeDoc,
-            mirror: mirror,
-            hackCss: false,
-            cache: { stylesWithHoverClass: new Map() },
-            afterAppend: (node) => {
-              if (node.nodeType === Node.TEXT_NODE && node.textContent) {
-                const text = node.textContent.trim();
-
-                if (
-                  text.startsWith("<") &&
-                  text.includes(">") &&
-                  text.length > 50
-                ) {
-                  if (node.parentNode) {
-                    node.parentNode.removeChild(node);
-                  }
-                }
-              }
-            },
-          });
-        } catch (rebuildError) {
-          console.error("rrweb rebuild failed:", rebuildError);
-          throw new Error(`rrweb rebuild failed: ${rebuildError}`);
-        }
-
-        setIsRendered(true);
-        setupIframeInteractions(iframeDoc);
-      } catch (error) {
-        console.error("Error rendering rrweb snapshot:", error);
-      }
-    },
-    [setupIframeInteractions, isInCaptureMode, isCachingChildSelectors]
-  );
-
-  useEffect(() => {
-    if (snapshot && iframeRef.current) {
-      renderRRWebSnapshot(snapshot);
-    }
-  }, [snapshot]);
-
-  useEffect(() => {
-    if (isRendered && iframeRef.current) {
-      const iframeDoc = iframeRef.current.contentDocument;
-      if (iframeDoc) {
-        setupIframeInteractions(iframeDoc);
-      }
-    }
-  }, [getText, getList, listSelector, isRendered, setupIframeInteractions]);
-
   useEffect(() => {
     return () => {
-      if (iframeRef.current) {
-        const iframeDoc = iframeRef.current.contentDocument;
-        if (iframeDoc) {
-          const handlers = (iframeDoc as any)._domRendererHandlers;
-          if (handlers) {
-            Object.entries(handlers).forEach(([event, handler]) => {
-              const options: boolean | AddEventListenerOptions = ['wheel', 'touchstart', 'touchmove'].includes(event)
-                ? { passive: false }
-                : false;
-              iframeDoc.removeEventListener(
-                event,
-                handler as EventListener,
-                options
-              );
-            });
-          }
-        }
+      if (replayerRef.current) {
+        replayerRef.current.pause();
+        replayerRef.current = null;
       }
     };
   }, []);
 
+  /**
+   * Listen for rrweb events from backend and add to replayer
+   */
+  useEffect(() => {
+    if (!socket) {
+      console.warn('No socket available, skipping event listener setup');
+      return;
+    }
+
+    const handleRRWebEvent = (event: any) => {
+      if (!replayerRef.current && event.type === 2) {
+        const container = document.getElementById('mirror-container');
+        if (!container) {
+          console.warn('Container #mirror-container not found');
+          return;
+        }
+        
+        const replayer = new Replayer([], {
+          root: container,
+          liveMode: true,
+          mouseTail: false
+        });
+
+        replayer.startLive();     
+        replayer.addEvent(event);
+        
+        replayerRef.current = replayer;
+
+        setTimeout(() => {
+          const replayerWrapper = container.querySelector('.replayer-wrapper');
+          const replayerIframe = replayerWrapper?.querySelector('iframe') as HTMLIFrameElement;
+
+          if (replayerIframe) {
+            replayerIframe.style.width = '100%';
+            replayerIframe.style.height = '100%';
+            replayerIframe.style.border = 'none';
+            replayerIframe.style.position = 'absolute';
+            replayerIframe.style.top = '0';
+            replayerIframe.style.left = '0';
+            replayerIframe.style.backgroundColor = '#ffffff';
+            replayerIframe.style.display = 'block';
+            replayerIframe.style.pointerEvents = 'auto';
+            
+            replayerIframe.id = 'dom-browser-iframe';
+
+            replayerIframeRef.current = replayerIframe;
+
+            try {
+              const iframeDoc = replayerIframe.contentDocument;
+              if (iframeDoc) {
+                setupIframeInteractions(iframeDoc);
+              }
+            } catch (err) {
+              console.warn('Error accessing iframe:', err);
+            }
+            
+            replayer.on('fullsnapshot-rebuilded', () => {
+              const iframe = replayerIframeRef.current;
+              if (iframe && iframe.contentDocument) {
+                setupIframeInteractions(iframe.contentDocument);
+                
+                iframe.style.pointerEvents = 'auto';
+                const wrapper = container.querySelector('.replayer-wrapper') as HTMLElement;
+                if(wrapper) wrapper.style.pointerEvents = 'auto';
+                
+                setIsRendered(true);
+              }
+            });
+            
+          } else {
+            console.warn('Could not find iframe in replayer-wrapper');
+          }
+        }, 150);
+      } else if (replayerRef.current) {
+        replayerRef.current.addEvent(event);
+      }
+    };
+
+    socket.on('rrweb-event', handleRRWebEvent);
+    socket.emit('request-refresh');
+
+    return () => {
+      socket.off('rrweb-event', handleRRWebEvent);
+    };
+  }, [socket, setupIframeInteractions]);
+
+  useEffect(() => {
+    const iframe = replayerIframeRef.current;
+    if (iframe && iframe.contentDocument) {
+      setupIframeInteractions(iframe.contentDocument);
+    }
+  }, [setupIframeInteractions]);
+
   return (
     <div
+      id="mirror-container"
       ref={containerRef}
       style={{
         width: width,
         height: height,
-        overflow: "hidden !important",
         position: "relative",
-        borderRadius: "0px 0px 5px 5px",
-        backgroundColor: "white",
+        backgroundColor: "#ffffff",
+        overflow: "hidden",
+        isolation: "isolate",
       }}
     >
-      <iframe
-        ref={iframeRef}
-        id="dom-browser-iframe"
-        style={{
-          width: "100%",
-          height: "100%",
-          border: "none",
-          display: "block",
-          overflow: isCachingChildSelectors ? "hidden !important" : "hidden !important",
-          pointerEvents: isCachingChildSelectors ? "none" : "auto",
-        }}
-        sandbox="allow-same-origin allow-forms allow-scripts"
-        title="DOM Browser Content"
-        tabIndex={0}
-      />
-
-      {/* Loading indicator */}
       {!isRendered && (
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(255, 255, 255, 0.9)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "18px",
-            color: "#666",
-            flexDirection: "column",
-            gap: "10px",
-          }}
-        >
-          <div
-            style={{
-              width: "40px",
-              height: "40px",
-              border: "3px solid #ff00c3",
-              borderTop: "3px solid transparent",
-              borderRadius: "50%",
-              animation: "spin 1s linear infinite",
-            }}
-          />
-          <div>Loading website...</div>
-          <style>{`
-              @keyframes spin {
-                  0% { transform: rotate(0deg); }
-                  100% { transform: rotate(360deg); }
-              }
-          `}</style>
-        </div>
+        <DOMLoadingIndicator />
       )}
+    </div>
+  );
+};
 
-      {/* Capture mode overlay */}
-      {isInCaptureMode && (
+const DOMLoadingIndicator: React.FC = () => {
+  const [progress, setProgress] = useState(0);
+  const [hasStartedLoading, setHasStartedLoading] = useState(false);
+  const { socket } = useSocketStore();
+  const { state } = useContext(AuthContext);
+  const { user } = state;
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleLoadingProgress = (data: {
+      progress: number;
+      pendingRequests: number;
+      userId: string;
+    }) => {
+      if (!data.userId || data.userId === user?.id) {
+        if (!hasStartedLoading && data.progress > 0) {
+          setHasStartedLoading(true);
+        }
+
+        if (!hasStartedLoading || data.progress >= progress) {
+          setProgress(data.progress);
+        }
+      }
+    };
+
+    socket.on("domLoadingProgress", handleLoadingProgress);
+
+    return () => {
+      socket.off("domLoadingProgress", handleLoadingProgress);
+    };
+  }, [socket, user?.id, hasStartedLoading, progress]);
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: "#f5f5f5",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexDirection: "column",
+        gap: "15px",
+        zIndex: 9999,
+      }}
+    >
+      <div
+        style={{
+          fontSize: "18px",
+          fontWeight: "500",
+          color: "#333",
+        }}
+      >
+        Loading {progress}%
+      </div>
+
+      <div
+        style={{
+          width: "240px",
+          height: "6px",
+          background: "#e0e0e0",
+          borderRadius: "3px",
+          overflow: "hidden",
+        }}
+      >
         <div
           style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            cursor: "pointer",
-            pointerEvents: "none",
-            zIndex: 999,
-            borderRadius: "0px 0px 5px 5px",
+            width: `${progress}%`,
+            height: "100%",
+            background: "linear-gradient(90deg, #ff00c3, #ff66d9)",
+            borderRadius: "3px",
+            transition: "width 0.3s ease-out",
           }}
         />
-      )}
+      </div>
     </div>
   );
 };
