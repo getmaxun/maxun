@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'; // Added useEffect
+import React, { useState, useEffect } from 'react'; 
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
@@ -6,7 +6,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Paper, Button, useTheme, Modal, Typography, Stack, Divider } from "@mui/material";
 import { AutoAwesome, VpnKey, Usb, CloudQueue, Description, Favorite, SlowMotionVideo, PlayArrow, ArrowForwardIos, Star } from "@mui/icons-material";
 import { useTranslation } from 'react-i18next';
-import { useGlobalInfoStore } from "../../context/globalInfo";
 
 interface MainMenuProps {
   value: string;
