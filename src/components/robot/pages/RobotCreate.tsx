@@ -682,7 +682,7 @@ const RobotCreate: React.FC = () => {
                   value={scrapeRobotName}
                   onChange={(e) => setScrapeRobotName(e.target.value)}
                   sx={{ mb: 2 }}
-                  label="Robot Name"
+                  label="Name"
                 />
                 <TextField
                   placeholder="Example: https://www.ycombinator.com/companies/"
@@ -843,7 +843,7 @@ const RobotCreate: React.FC = () => {
 
               <Box sx={{ width: '100%', maxWidth: 700, mb: 2 }}>
                 <TextField
-                  label="Robot Name"
+                  label="Name"
                   placeholder="Example: YC Companies Crawler"
                   fullWidth
                   value={crawlRobotName}
