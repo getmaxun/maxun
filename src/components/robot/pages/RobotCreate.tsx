@@ -1002,7 +1002,7 @@ const RobotCreate: React.FC = () => {
 
               <Box sx={{ width: '100%', maxWidth: 700, mb: 2 }}>
                 <TextField
-                  label="Robot Name"
+                  label="Name"
                   placeholder="Example: AI News Monitor"
                   fullWidth
                   value={searchRobotName}
