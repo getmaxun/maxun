@@ -410,12 +410,12 @@ const RobotCreate: React.FC = () => {
                   <Box sx={{ width: '100%', maxWidth: 700 }}>
                     <Box sx={{ mb: 3 }}>
                       <TextField
-                        placeholder="Robot Name"
+                        placeholder="Name"
                         variant="outlined"
                         fullWidth
                         value={extractRobotName}
                         onChange={(e) => setExtractRobotName(e.target.value)}
-                        label="Robot Name"
+                        label="Name"
                       />
                     </Box>
 
