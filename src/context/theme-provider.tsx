@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 
+
 const lightTheme = createTheme({
   palette: {
     primary: {
@@ -75,7 +76,8 @@ const lightTheme = createTheme({
     MuiTab: {
       styleOverrides: {
         root: {
-          textTransform: "none",
+         minHeight: 60, 
+         textTransform: "none",
         },
       },
     },
@@ -221,6 +223,7 @@ const darkTheme = createTheme({
     MuiTab: {
       styleOverrides: {
         root: {
+          minHeight: 60, 
           textTransform: "none",
           color: '#ffffff',
           "&.Mui-selected": {
