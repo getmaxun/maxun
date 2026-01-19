@@ -266,7 +266,7 @@
     },
     "save_recording": {
       "title": "Save Robot",
-      "robot_name": "Robot Name",
+      "robot_name": "Name",
       "buttons": {
         "save": "Save",
         "confirm": "Confirm"
