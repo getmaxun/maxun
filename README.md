@@ -90,17 +90,17 @@ Maxun can run locally with or without Docker
 3. [Upgrade Maxun Without Docker Compose Setup](https://docs.maxun.dev/installation/upgrade#upgrading-with-local-setup)
 
 ## Sponsors
-
 <table>
   <tr>
   <td width="229">
       <br/>
-      <a href="https://www.lambdatest.com/?utm_source=maxun&utm_medium=sponsor" target="_blank">
-        <img src="https://github.com/user-attachments/assets/904dd40e-0498-47dd-98f1-7fa6d318adb9" /><br/><br/>
-        <b>LambdaTest</b>
+      <a href="https://www.testmu.ai/?utm_source=maxun&utm_medium=sponsor" target="_blank">
+        <img src="https://github.com/user-attachments/assets/6c96005b-85df-43e0-9b63-96aaca676c11" /><br/><br/>
+        <b>TestMu AI</b>
       </a>
       <br/>
-      <sub>GenAI-powered Quality Engineering Platform that empowers teams to test intelligently, smarter, and ship faster.</sub>
+      <sub>The Native AI-Agentic Cloud Platform to Supercharge Quality Engineering. Test Intelligently and Ship Faster.
+      </sub>
     </td>
   </tr>
 </table>
