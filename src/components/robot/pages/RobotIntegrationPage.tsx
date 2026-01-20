@@ -800,6 +800,30 @@ export const RobotIntegrationPage = ({
                 <img src="/svg/mcp.svg" alt="MCP" style={{ margin: "6px" }} />
                 MCP
               </Button>
+              <Button variant="outlined" onClick={() => { window.open("https://docs.maxun.dev/mcp/setup", "_blank", "noopener,noreferrer"); }} style={{ display: "flex", flexDirection: "column", alignItems: "center", background: 'white', color: '#ff00c3' }}>
+                <img src="/svg/mcp.svg" alt="MCP" style={{ margin: "6px" }} />
+                LangChain
+              </Button>
+              <Button variant="outlined" onClick={() => { window.open("https://docs.maxun.dev/mcp/setup", "_blank", "noopener,noreferrer"); }} style={{ display: "flex", flexDirection: "column", alignItems: "center", background: 'white', color: '#ff00c3' }}>
+                <img src="/svg/mcp.svg" alt="MCP" style={{ margin: "6px" }} />
+                LangGraph
+              </Button>
+              <Button variant="outlined" onClick={() => { window.open("https://docs.maxun.dev/mcp/setup", "_blank", "noopener,noreferrer"); }} style={{ display: "flex", flexDirection: "column", alignItems: "center", background: 'white', color: '#ff00c3' }}>
+                <img src="/svg/mcp.svg" alt="MCP" style={{ margin: "6px" }} />
+                Vercel AI SDK
+              </Button>
+              <Button variant="outlined" onClick={() => { window.open("https://docs.maxun.dev/mcp/setup", "_blank", "noopener,noreferrer"); }} style={{ display: "flex", flexDirection: "column", alignItems: "center", background: 'white', color: '#ff00c3' }}>
+                <img src="/svg/mcp.svg" alt="MCP" style={{ margin: "6px" }} />
+                Open AI SDK
+              </Button>
+              <Button variant="outlined" onClick={() => { window.open("https://docs.maxun.dev/mcp/setup", "_blank", "noopener,noreferrer"); }} style={{ display: "flex", flexDirection: "column", alignItems: "center", background: 'white', color: '#ff00c3' }}>
+                <img src="/svg/mcp.svg" alt="MCP" style={{ margin: "6px" }} />
+                Mastra
+              </Button>
+               <Button variant="outlined" onClick={() => { window.open("https://docs.maxun.dev/mcp/setup", "_blank", "noopener,noreferrer"); }} style={{ display: "flex", flexDirection: "column", alignItems: "center", background: 'white', color: '#ff00c3' }}>
+                <img src="/svg/mcp.svg" alt="MCP" style={{ margin: "6px" }} />
+                LlamaIndex
+              </Button>
             </div>
           </div>
         </div>
