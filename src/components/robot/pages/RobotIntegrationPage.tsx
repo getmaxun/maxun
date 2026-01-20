@@ -35,7 +35,7 @@ import { getStoredRecording } from "../../../api/storage";
 import { apiUrl } from "../../../apiConfig.js";
 import { v4 as uuid } from "uuid";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   addWebhook,
   updateWebhook,
