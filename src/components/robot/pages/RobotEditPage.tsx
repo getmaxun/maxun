@@ -1094,7 +1094,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
             <>
               <TextField
                 label={t("robot_edit.change_name")}
-                key="Robot Name"
+                key="Name"
                 type="text"
                 value={robot.recording_meta.name}
                 onChange={(e) => handleRobotNameChange(e.target.value)}

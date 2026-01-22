@@ -266,7 +266,7 @@
     },
     "save_recording": {
       "title": "Save Robot",
-      "robot_name": "Robot Name",
+      "robot_name": "Name",
       "buttons": {
         "save": "Save",
         "confirm": "Confirm"
@@ -440,7 +440,7 @@
         "warning": "⚠️ Ensure the new page has the same structure as the original page."
       },
       "fields": {
-        "target_url": "Robot Target URL"
+        "target_url": "Target URL"
       },
       "buttons": {
         "duplicate": "Duplicate Robot",
@@ -456,7 +456,7 @@
     },
     "robot_settings": {
       "title": "Robot Settings",
-      "target_url": "Robot Target URL",
+      "target_url": "Target URL",
       "robot_id": "Robot ID",
       "robot_limit": "Robot Limit",
       "created_by_user": "Created By User",
@@ -470,7 +470,7 @@
     },
     "robot_edit": {
       "title": "Edit Robot",
-      "change_name": "Robot Name",
+      "change_name": "Name",
       "robot_limit": "Robot Limit",
       "save": "Save Changes",
       "cancel": "Cancel",
