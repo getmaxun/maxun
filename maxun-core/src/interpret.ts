@@ -706,7 +706,6 @@ export default class Interpreter extends EventEmitter {
           return;
         }
 
-
         if (this.options.debugChannel?.setActionType) {
           this.options.debugChannel.setActionType('crawl');
         }
@@ -728,7 +727,291 @@ export default class Interpreter extends EventEmitter {
           const parsedBase = new URL(baseUrl);
           const baseDomain = parsedBase.hostname;
 
-          let discoveredUrls: string[] = [];
+          interface RobotRules {
+            disallowedPaths: string[];
+            allowedPaths: string[];
+            crawlDelay: number | null;
+          }
+
+          let robotRules: RobotRules = {
+            disallowedPaths: [],
+            allowedPaths: [],
+            crawlDelay: null
+          };
+
+          if (crawlConfig.respectRobots) {
+            this.log('Fetching robots.txt...', Level.LOG);
+            try {
+              const robotsUrl = `${parsedBase.protocol}//${parsedBase.host}/robots.txt`;
+
+              const robotsContent = await page.evaluate((url) => {
+                return new Promise<string>((resolve) => {
+                  const xhr = new XMLHttpRequest();
+                  xhr.open('GET', url, true);
+                  xhr.onload = function() {
+                    if (xhr.status === 200) {
+                      resolve(xhr.responseText);
+                    } else {
+                      resolve('');
+                    }
+                  };
+                  xhr.onerror = function() {
+                    resolve('');
+                  };
+                  xhr.send();
+                });
+              }, robotsUrl);
+
+              if (robotsContent) {
+                const lines = robotsContent.split('\n');
+                let isRelevantUserAgent = false;
+                let foundSpecificUserAgent = false;
+
+                for (const line of lines) {
+                  const trimmedLine = line.trim().toLowerCase();
+
+                  if (trimmedLine.startsWith('#') || trimmedLine === '') {
+                    continue;
+                  }
+
+                  const colonIndex = line.indexOf(':');
+                  if (colonIndex === -1) continue;
+
+                  const directive = line.substring(0, colonIndex).trim().toLowerCase();
+                  const value = line.substring(colonIndex + 1).trim();
+
+                  if (directive === 'user-agent') {
+                    const agent = value.toLowerCase();
+                    if (agent === '*' && !foundSpecificUserAgent) {
+                      isRelevantUserAgent = true;
+                    } else if (agent.includes('bot') || agent.includes('crawler') || agent.includes('spider')) {
+                      isRelevantUserAgent = true;
+                      foundSpecificUserAgent = true;
+                    } else {
+                      if (!foundSpecificUserAgent) {
+                        isRelevantUserAgent = false;
+                      }
+                    }
+                  } else if (isRelevantUserAgent) {
+                    if (directive === 'disallow' && value) {
+                      robotRules.disallowedPaths.push(value);
+                    } else if (directive === 'allow' && value) {
+                      robotRules.allowedPaths.push(value);
+                    } else if (directive === 'crawl-delay' && value) {
+                      const delay = parseFloat(value);
+                      if (!isNaN(delay) && delay > 0) {
+                        robotRules.crawlDelay = delay * 1000;
+                      }
+                    }
+                  }
+                }
+
+                this.log(`Robots.txt parsed: ${robotRules.disallowedPaths.length} disallowed paths, ${robotRules.allowedPaths.length} allowed paths, crawl-delay: ${robotRules.crawlDelay || 'none'}`, Level.LOG);
+              } else {
+                this.log('No robots.txt found or not accessible, proceeding without restrictions', Level.WARN);
+              }
+            } catch (error) {
+              this.log(`Failed to fetch robots.txt: ${error.message}, proceeding without restrictions`, Level.WARN);
+            }
+          }
+
+          const isUrlAllowedByRobots = (url: string): boolean => {
+            if (!crawlConfig.respectRobots) return true;
+
+            try {
+              const urlObj = new URL(url);
+              const pathname = urlObj.pathname;
+
+              for (const allowedPath of robotRules.allowedPaths) {
+                if (allowedPath === pathname || pathname.startsWith(allowedPath)) {
+                  return true;
+                }
+                if (allowedPath.includes('*')) {
+                  const regex = new RegExp('^' + allowedPath.replace(/\*/g, '.*').replace(/\?/g, '.') + '$');
+                  if (regex.test(pathname)) {
+                    return true;
+                  }
+                }
+              }
+
+              for (const disallowedPath of robotRules.disallowedPaths) {
+                if (disallowedPath === '/') {
+                  return false;
+                }
+                if (pathname.startsWith(disallowedPath)) {
+                  return false;
+                }
+                if (disallowedPath.includes('*')) {
+                  const regex = new RegExp('^' + disallowedPath.replace(/\*/g, '.*').replace(/\?/g, '.') + '$');
+                  if (regex.test(pathname)) {
+                    return false;
+                  }
+                }
+                if (disallowedPath.endsWith('$')) {
+                  const pattern = disallowedPath.slice(0, -1);
+                  if (pathname === pattern || pathname.endsWith(pattern)) {
+                    return false;
+                  }
+                }
+              }
+
+              return true;
+            } catch (error) {
+              return true;
+            }
+          };
+
+          const isUrlAllowedByConfig = (url: string): boolean => {
+            try {
+              const urlObj = new URL(url);
+
+              if (crawlConfig.mode === 'domain') {
+                if (urlObj.hostname !== baseDomain) return false;
+              } else if (crawlConfig.mode === 'subdomain') {
+                if (!urlObj.hostname.endsWith(baseDomain) && urlObj.hostname !== baseDomain) return false;
+              } else if (crawlConfig.mode === 'path') {
+                if (urlObj.hostname !== baseDomain || !urlObj.pathname.startsWith(parsedBase.pathname)) return false;
+              }
+
+              if (crawlConfig.includePaths && crawlConfig.includePaths.length > 0) {
+                const matches = crawlConfig.includePaths.some(pattern => {
+                  try {
+                    const regex = new RegExp(pattern);
+                    return regex.test(url);
+                  } catch {
+                    return url.includes(pattern);
+                  }
+                });
+                if (!matches) return false;
+              }
+
+              if (crawlConfig.excludePaths && crawlConfig.excludePaths.length > 0) {
+                const matches = crawlConfig.excludePaths.some(pattern => {
+                  try {
+                    const regex = new RegExp(pattern);
+                    return regex.test(url);
+                  } catch {
+                    return url.includes(pattern);
+                  }
+                });
+                if (matches) return false;
+              }
+
+              return true;
+            } catch (error) {
+              return false;
+            }
+          };
+
+          const normalizeUrl = (url: string): string => {
+            return url.replace(/#.*$/, '').replace(/\/$/, '');
+          };
+
+          const extractLinksFromPage = async (): Promise<string[]> => {
+            try {
+              await page.waitForLoadState('load', { timeout: 15000 }).catch(() => {});
+              await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+              await new Promise(resolve => setTimeout(resolve, 1000));
+
+              const pageLinks = await page.evaluate(() => {
+                const links: string[] = [];
+                const allAnchors = document.querySelectorAll('a');
+
+                for (let i = 0; i < allAnchors.length; i++) {
+                  const anchor = allAnchors[i] as HTMLAnchorElement;
+                  const fullHref = anchor.href;
+
+                  if (fullHref && (fullHref.startsWith('http://') || fullHref.startsWith('https://'))) {
+                    links.push(fullHref);
+                  }
+                }
+
+                return links;
+              });
+
+              return pageLinks;
+            } catch (error) {
+              this.log(`Link extraction failed: ${error.message}`, Level.WARN);
+              return [];
+            }
+          };
+
+          const scrapePageContent = async (url: string) => {
+            const pageData = await page.evaluate(() => {
+              const getMeta = (name: string) => {
+                const meta = document.querySelector(`meta[name="${name}"], meta[property="${name}"]`);
+                return meta?.getAttribute('content') || '';
+              };
+
+              const getAllMeta = () => {
+                const metadata: Record<string, string> = {};
+                const metaTags = document.querySelectorAll('meta');
+                metaTags.forEach(tag => {
+                  const name = tag.getAttribute('name') || tag.getAttribute('property');
+                  const content = tag.getAttribute('content');
+                  if (name && content) {
+                    metadata[name] = content;
+                  }
+                });
+                return metadata;
+              };
+
+              const title = document.title || '';
+              const bodyText = document.body?.innerText || '';
+
+              const elementsWithMxId = document.querySelectorAll('[data-mx-id]');
+              elementsWithMxId.forEach(el => el.removeAttribute('data-mx-id'));
+
+              const html = document.documentElement.outerHTML;
+              const links = Array.from(document.querySelectorAll('a')).map(a => a.href);
+              const allMetadata = getAllMeta();
+
+              return {
+                title,
+                description: getMeta('description'),
+                text: bodyText,
+                html: html,
+                links: links,
+                wordCount: bodyText.split(/\s+/).filter(w => w.length > 0).length,
+                metadata: {
+                  ...allMetadata,
+                  title,
+                  language: document.documentElement.lang || '',
+                  favicon: (document.querySelector('link[rel="icon"], link[rel="shortcut icon"]') as HTMLLinkElement)?.href || '',
+                  statusCode: 200
+                }
+              };
+            });
+
+            return {
+              metadata: {
+                ...pageData.metadata,
+                url: url,
+                sourceURL: url
+              } as Record<string, any>,
+              html: pageData.html,
+              text: pageData.text,
+              links: pageData.links,
+              wordCount: pageData.wordCount,
+              scrapedAt: new Date().toISOString()
+            };
+          };
+
+          const visitedUrls = new Set<string>();
+          const crawlResults: any[] = [];
+
+          interface CrawlQueueItem {
+            url: string;
+            depth: number;
+          }
+
+          const crawlQueue: CrawlQueueItem[] = [];
+
+          const normalizedBaseUrl = normalizeUrl(baseUrl);
+          visitedUrls.add(normalizedBaseUrl);
+          crawlQueue.push({ url: baseUrl, depth: 0 });
+
+          this.log(`Starting breadth-first crawl with maxDepth: ${crawlConfig.maxDepth}, limit: ${crawlConfig.limit}`, Level.LOG);
 
           if (crawlConfig.useSitemap) {
             this.log('Fetching sitemap URLs...', Level.LOG);
@@ -764,7 +1047,14 @@ export default class Interpreter extends EventEmitter {
                   !url.endsWith('/sitemap') && !url.endsWith('sitemap.xml') && !url.includes('/sitemap/')
                 );
 
-                discoveredUrls.push(...regularUrls);
+                for (const sitemapPageUrl of regularUrls) {
+                  const normalized = normalizeUrl(sitemapPageUrl);
+                  if (!visitedUrls.has(normalized) && isUrlAllowedByConfig(sitemapPageUrl) && isUrlAllowedByRobots(sitemapPageUrl)) {
+                    visitedUrls.add(normalized);
+                    crawlQueue.push({ url: sitemapPageUrl, depth: 1 });
+                  }
+                }
+
                 this.log(`Found ${regularUrls.length} regular URLs from main sitemap`, Level.LOG);
 
                 for (const nestedUrl of nestedSitemaps.slice(0, 10)) {
@@ -791,16 +1081,21 @@ export default class Interpreter extends EventEmitter {
                       });
                     }, nestedUrl);
 
-                    if (nestedUrls.length > 0) {
-                      discoveredUrls.push(...nestedUrls);
-                      this.log(`Found ${nestedUrls.length} URLs from nested sitemap ${nestedUrl}`, Level.LOG);
+                    for (const nestedPageUrl of nestedUrls) {
+                      const normalized = normalizeUrl(nestedPageUrl);
+                      if (!visitedUrls.has(normalized) && isUrlAllowedByConfig(nestedPageUrl) && isUrlAllowedByRobots(nestedPageUrl)) {
+                        visitedUrls.add(normalized);
+                        crawlQueue.push({ url: nestedPageUrl, depth: 1 });
+                      }
                     }
+
+                    this.log(`Found ${nestedUrls.length} URLs from nested sitemap ${nestedUrl}`, Level.LOG);
                   } catch (error) {
                     this.log(`Failed to fetch nested sitemap ${nestedUrl}: ${error.message}`, Level.WARN);
                   }
                 }
 
-                this.log(`Total URLs from all sitemaps: ${discoveredUrls.length}`, Level.LOG);
+                this.log(`Total URLs queued from sitemaps: ${crawlQueue.length - 1}`, Level.LOG);
               } else {
                 this.log('No URLs found in sitemap or sitemap not available', Level.WARN);
               }
@@ -809,196 +1104,76 @@ export default class Interpreter extends EventEmitter {
             }
           }
 
-          if (crawlConfig.followLinks) {
-            this.log('Extracting links from current page...', Level.LOG);
-            try {
-              await page.waitForLoadState('load', { timeout: 15000 }).catch(() => {});
+          let processedCount = 0;
 
-              await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {
-                this.log('Network did not become idle, continuing anyway', Level.WARN);
-              });
-
-              await new Promise(resolve => setTimeout(resolve, 5000));
-
-              const anchorCount = await page.evaluate(() => {
-                return document.querySelectorAll('a').length;
-              });
-              this.log(`Page has ${anchorCount} total anchor tags`, Level.LOG);
-
-              const pageLinks = await page.evaluate(() => {
-                const links: string[] = [];
-                const allAnchors = document.querySelectorAll('a');
-                console.log('Total anchors found:', allAnchors.length);
-
-                for (let i = 0; i < allAnchors.length; i++) {
-                  const anchor = allAnchors[i] as HTMLAnchorElement;
-                  const href = anchor.getAttribute('href');
-                  const fullHref = anchor.href;
-
-                  if (fullHref && (fullHref.startsWith('http://') || fullHref.startsWith('https://'))) {
-                    links.push(fullHref);
-                  }
-                }
-
-                console.log('Links extracted:', links.length);
-                return links;
-              });
-
-              discoveredUrls.push(...pageLinks);
-              this.log(`Found ${pageLinks.length} links from page`, Level.LOG);
-            } catch (error) {
-              this.log(`Link extraction failed: ${error.message}`, Level.WARN);
+          while (crawlQueue.length > 0 && crawlResults.length < crawlConfig.limit) {
+            if (this.isAborted) {
+              this.log('Workflow aborted during crawl', Level.WARN);
+              break;
             }
-          }
 
-          const filteredUrls = discoveredUrls.filter(url => {
+            const { url, depth } = crawlQueue.shift()!;
+            processedCount++;
+
+            this.log(`[${crawlResults.length + 1}/${crawlConfig.limit}] Crawling (depth ${depth}): ${url}`, Level.LOG);
+
             try {
-              const urlObj = new URL(url);
-
-              if (crawlConfig.mode === 'domain') {
-                if (urlObj.hostname !== baseDomain) return false;
-              } else if (crawlConfig.mode === 'subdomain') {
-                if (!urlObj.hostname.endsWith(baseDomain) && urlObj.hostname !== baseDomain) return false;
-              } else if (crawlConfig.mode === 'path') {
-                if (urlObj.hostname !== baseDomain || !urlObj.pathname.startsWith(parsedBase.pathname)) return false;
+              if (robotRules.crawlDelay && crawlResults.length > 0) {
+                this.log(`Applying crawl delay: ${robotRules.crawlDelay}ms`, Level.LOG);
+                await new Promise(resolve => setTimeout(resolve, robotRules.crawlDelay!));
               }
-
-              if (crawlConfig.includePaths && crawlConfig.includePaths.length > 0) {
-                const matches = crawlConfig.includePaths.some(pattern => {
-                  const regex = new RegExp(pattern);
-                  return regex.test(url);
-                });
-                if (!matches) return false;
-              }
-
-              if (crawlConfig.excludePaths && crawlConfig.excludePaths.length > 0) {
-                const matches = crawlConfig.excludePaths.some(pattern => {
-                  const regex = new RegExp(pattern);
-                  return regex.test(url);
-                });
-                if (matches) return false;
-              }
-
-              return true;
-            } catch (error) {
-              return false;
-            }
-          });
-
-          const uniqueUrls = Array.from(new Set(filteredUrls.map(url => {
-            return url.replace(/#.*$/, '').replace(/\/$/, '');
-          })));
-
-          const basePathname = parsedBase.pathname;
-          const prioritizedUrls = uniqueUrls.sort((a, b) => {
-            try {
-              const aUrl = new URL(a);
-              const bUrl = new URL(b);
-              const aMatchesBase = aUrl.pathname.startsWith(basePathname);
-              const bMatchesBase = bUrl.pathname.startsWith(basePathname);
-
-              if (aMatchesBase && !bMatchesBase) return -1;
-              if (!aMatchesBase && bMatchesBase) return 1;
-
-              return 0;
-            } catch (error) {
-              return 0;
-            }
-          });
-
-          const finalUrls = prioritizedUrls.slice(0, crawlConfig.limit);
-
-          this.log(`Crawl discovered ${finalUrls.length} URLs (from ${discoveredUrls.length} total)`, Level.LOG);
-
-          this.log(`Starting to scrape content from ${finalUrls.length} discovered URLs...`, Level.LOG);
-          const crawlResults = [];
-
-          for (let i = 0; i < finalUrls.length; i++) {
-            const url = finalUrls[i];
-            try {
-              this.log(`[${i + 1}/${finalUrls.length}] Scraping: ${url}`, Level.LOG);
 
               await page.goto(url, {
                 waitUntil: 'domcontentloaded',
                 timeout: 30000
-              }).catch(() => {
-                this.log(`Failed to navigate to ${url}, skipping...`, Level.WARN);
+              }).catch((err) => {
+                throw new Error(`Navigation failed: ${err.message}`);
               });
 
               await page.waitForLoadState('load', { timeout: 10000 }).catch(() => {});
 
-              const pageData = await page.evaluate(() => {
-                const getMeta = (name: string) => {
-                  const meta = document.querySelector(`meta[name="${name}"], meta[property="${name}"]`);
-                  return meta?.getAttribute('content') || '';
-                };
+              const pageResult = await scrapePageContent(url);
+              pageResult.metadata.depth = depth;
+              crawlResults.push(pageResult);
 
-                const getAllMeta = () => {
-                  const metadata: Record<string, string> = {};
-                  const metaTags = document.querySelectorAll('meta');
-                  metaTags.forEach(tag => {
-                    const name = tag.getAttribute('name') || tag.getAttribute('property');
-                    const content = tag.getAttribute('content');
-                    if (name && content) {
-                      metadata[name] = content;
-                    }
-                  });
-                  return metadata;
-                };
+              this.log(`✓ Scraped ${url} (${pageResult.wordCount} words, depth ${depth})`, Level.LOG);
 
-                const title = document.title || '';
-                const bodyText = document.body?.innerText || '';
+              if (crawlConfig.followLinks && depth < crawlConfig.maxDepth) {
+                const newLinks = await extractLinksFromPage();
+                let addedCount = 0;
 
-                const elementsWithMxId = document.querySelectorAll('[data-mx-id]');
-                elementsWithMxId.forEach(el => el.removeAttribute('data-mx-id'));
+                for (const link of newLinks) {
+                  const normalized = normalizeUrl(link);
 
-                const html = document.documentElement.outerHTML;
-                const links = Array.from(document.querySelectorAll('a')).map(a => a.href);
-                const allMetadata = getAllMeta();
-
-                return {
-                  title,
-                  description: getMeta('description'),
-                  text: bodyText,
-                  html: html,
-                  links: links,
-                  wordCount: bodyText.split(/\s+/).filter(w => w.length > 0).length,
-                  metadata: {
-                    ...allMetadata,
-                    title,
-                    language: document.documentElement.lang || '',
-                    favicon: (document.querySelector('link[rel="icon"], link[rel="shortcut icon"]') as HTMLLinkElement)?.href || '',
-                    statusCode: 200
+                  if (!visitedUrls.has(normalized) &&
+                      isUrlAllowedByConfig(link) &&
+                      isUrlAllowedByRobots(link)) {
+                    visitedUrls.add(normalized);
+                    crawlQueue.push({ url: link, depth: depth + 1 });
+                    addedCount++;
                   }
-                };
-              });
+                }
 
-              crawlResults.push({
-                metadata: {
-                  ...pageData.metadata,
-                  url: url,
-                  sourceURL: url
-                },
-                html: pageData.html,
-                text: pageData.text,
-                links: pageData.links,
-                wordCount: pageData.wordCount,
-                scrapedAt: new Date().toISOString()
-              });
-
-              this.log(`✓ Scraped ${url} (${pageData.wordCount} words)`, Level.LOG);
+                if (addedCount > 0) {
+                  this.log(`Added ${addedCount} new URLs to queue at depth ${depth + 1}`, Level.LOG);
+                }
+              }
 
             } catch (error) {
-              this.log(`Failed to scrape ${url}: ${error.message}`, Level.WARN);
+              this.log(`Failed to crawl ${url}: ${error.message}`, Level.WARN);
               crawlResults.push({
-                url: url,
+                metadata: {
+                  url: url,
+                  sourceURL: url,
+                  depth: depth
+                },
                 error: error.message,
                 scrapedAt: new Date().toISOString()
               });
             }
           }
 
-          this.log(`Successfully scraped ${crawlResults.length} pages`, Level.LOG);
+          this.log(`Crawl completed: ${crawlResults.length} pages scraped (${processedCount} URLs processed, ${visitedUrls.size} URLs discovered)`, Level.LOG);
 
           const actionType = "crawl";
           const actionName = "Crawl Results";
@@ -1031,8 +1206,6 @@ export default class Interpreter extends EventEmitter {
         provider?: 'duckduckgo';
         filters?: {
           timeRange?: 'day' | 'week' | 'month' | 'year';
-          location?: string;
-          lang?: string;
         };
         mode: 'discover' | 'scrape';
       }) => {
