@@ -2,14 +2,26 @@ import swaggerJSDoc from 'swagger-jsdoc';
 import path from 'path';
 import fs from 'fs';
 
-// Dynamically determine API file paths
-const jsFiles = [path.join(__dirname, '../api/*.js')]
-const tsFiles = [path.join(__dirname, '../api/*.ts')]
+const apiDir = path.join(__dirname, '../api');
+const jsGlobPattern = path.join(__dirname, '../api/*.js');
+const tsGlobPattern = path.join(__dirname, '../api/*.ts');
 
-let apis = fs.existsSync(jsFiles[0]) ? jsFiles : tsFiles;
+let apis: string[];
 
-if (!apis) {
-  throw new Error('No valid API files found! Ensure either .js or .ts files exist in the ../api/ directory.');
+if (fs.existsSync(apiDir)) {
+  const files = fs.readdirSync(apiDir);
+  const hasJsFiles = files.some(file => file.endsWith('.js'));
+  const hasTsFiles = files.some(file => file.endsWith('.ts'));
+  
+  if (hasJsFiles) {
+    apis = [jsGlobPattern];
+  } else if (hasTsFiles) {
+    apis = [tsGlobPattern];
+  } else {
+    throw new Error('No valid API files found! Ensure either .js or .ts files exist in the ../api/ directory.');
+  }
+} else {
+  throw new Error('API directory not found! Ensure the ../api/ directory exists.');
 }
 
 const options = {
