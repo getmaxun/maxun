@@ -442,33 +442,51 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
 
 /**
  * POST endpoint for creating an LLM-powered extraction robot
+ * URL is optional - if not provided, the system will search for the target website based on the prompt
  */
 router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     const { url, prompt, llmProvider, llmModel, llmApiKey, llmBaseUrl, robotName } = req.body;
 
-    if (!url || !prompt) {
-      return res.status(400).json({ error: 'Both "url" and "prompt" fields are required.' });
+    if (!prompt) {
+      return res.status(400).json({ error: 'The "prompt" field is required.' });
     }
 
     if (!req.user) {
       return res.status(401).send({ error: 'Unauthorized' });
     }
 
-    try {
-      new URL(url);
-    } catch (err) {
-      return res.status(400).json({ error: 'Invalid URL format' });
+    // Validate URL format if provided
+    if (url) {
+      try {
+        new URL(url);
+      } catch (err) {
+        return res.status(400).json({ error: 'Invalid URL format' });
+      }
     }
 
-    logger.log('info', `Starting LLM workflow generation for URL: ${url}`);
+    let workflowResult: any;
+    let finalUrl: string;
 
-    const workflowResult = await WorkflowEnricher.generateWorkflowFromPrompt(url, prompt, req.user.id, {
+    const llmConfig = {
       provider: llmProvider || 'ollama',
       model: llmModel,
       apiKey: llmApiKey,
       baseUrl: llmBaseUrl
-    });
+    };
+
+    if (url) {
+      logger.log('info', `Starting LLM workflow generation for provided URL: ${url}`);
+      workflowResult = await WorkflowEnricher.generateWorkflowFromPrompt(url, prompt, req.user.id, llmConfig);
+      finalUrl = workflowResult.url || url;
+    } else {
+      logger.log('info', `Starting LLM workflow generation with automatic URL detection for prompt: "${prompt}"`);
+      workflowResult = await WorkflowEnricher.generateWorkflowFromPromptWithSearch(prompt, req.user.id, llmConfig);
+      finalUrl = workflowResult.url || '';
+      if (finalUrl) {
+        logger.log('info', `Auto-detected URL: ${finalUrl}`);
+      }
+    }
 
     if (!workflowResult.success || !workflowResult.workflow) {
       logger.log('error', `Failed to generate workflow: ${JSON.stringify(workflowResult.errors)}`);
@@ -493,7 +511,7 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
         pairs: workflowResult.workflow.length,
         params: [],
         type: 'extract',
-        url: workflowResult.url || url,
+        url: finalUrl,
         isLLM: true,
       },
       recording: { workflow: workflowResult.workflow },
@@ -511,6 +529,7 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
       recording: newRobot.recording,
       llm_provider: llmProvider || 'ollama',
       prompt: prompt,
+      urlAutoDetected: !url,
     });
 
     return res.status(201).json({
