@@ -1,3 +1,5 @@
+import crypto from 'crypto';
+
 export const genAPIKey = (): string => {
-    return [...Array(30)].map(() => ((Math.random() * 36) | 0).toString(36)).join('');
+    return crypto.randomBytes(24).toString('base64url');
 };
