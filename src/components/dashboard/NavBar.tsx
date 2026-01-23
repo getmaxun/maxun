@@ -181,6 +181,7 @@ export const NavBar: React.FC<NavBarProps> = ({
               <Button
                 color="primary"
                 size="small"
+                href="https://docs.maxun.dev/installation/upgrade"
                 style={{
                   backgroundColor: '#ff00c3',
                   color: 'white',
