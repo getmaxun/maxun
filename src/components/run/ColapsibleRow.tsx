@@ -12,17 +12,58 @@ import { GenericModal } from "../ui/GenericModal";
 import { getUserById } from "../../api/auth";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@mui/material/styles";
+import { io, Socket } from "socket.io-client";
+import { apiUrl } from "../../apiConfig";
+
+const socketCache = new Map<string, Socket>();
+const progressCallbacks = new Map<string, Set<(data: any) => void>>();
+
+function getOrCreateSocket(browserId: string): Socket {
+  if (socketCache.has(browserId)) {
+    return socketCache.get(browserId)!;
+  }
+
+  const socket = io(`${apiUrl}/${browserId}`, {
+    transports: ["websocket"],
+    rejectUnauthorized: false
+  });
+
+  socket.on('workflowProgress', (data: any) => {
+    const callbacks = progressCallbacks.get(browserId);
+    if (callbacks) {
+      callbacks.forEach(cb => cb(data));
+    }
+  });
+
+  socketCache.set(browserId, socket);
+  return socket;
+}
+
+function cleanupSocketIfUnused(browserId: string) {
+  const callbacks = progressCallbacks.get(browserId);
+
+  if (!callbacks || callbacks.size === 0) {
+    const socket = socketCache.get(browserId);
+    if (socket) {
+      socket.disconnect();
+      socketCache.delete(browserId);
+      progressCallbacks.delete(browserId);
+    }
+  }
+}
 
 interface RunTypeChipProps {
   runByUserId?: string;
   runByScheduledId?: string;
   runByAPI: boolean;
+  runBySDK?: boolean;
 }
 
-const RunTypeChip: React.FC<RunTypeChipProps> = ({ runByUserId, runByScheduledId, runByAPI }) => {
+const RunTypeChip: React.FC<RunTypeChipProps> = ({ runByUserId, runByScheduledId, runByAPI, runBySDK }) => {
   const { t } = useTranslation();
 
   if (runByScheduledId) return <Chip label={t('runs_table.run_type_chips.scheduled_run')} color="primary" variant="outlined" />;
+  if (runBySDK) return <Chip label={t('runs_table.run_type_chips.sdk')} color="primary" variant="outlined" />;
   if (runByAPI) return <Chip label={t('runs_table.run_type_chips.api')} color="primary" variant="outlined" />;
   if (runByUserId) return <Chip label={t('runs_table.run_type_chips.manual_run')} color="primary" variant="outlined" />;
   return <Chip label={t('runs_table.run_type_chips.unknown_run_type')} color="primary" variant="outlined" />;
@@ -45,20 +86,63 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
   const [openSettingsModal, setOpenSettingsModal] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const runByLabel = row.runByScheduleId
-    ?  `${row.runByScheduleId}` 
-    : row.runByUserId
-      ? `${userEmail}`
-      : row.runByAPI
-        ? 'API'
-        : 'Unknown';
+    ?  `${row.runByScheduleId}`
+      : row.runByUserId
+        ? `${userEmail}`
+        : row.runBySDK
+          ? 'SDK'
+          : row.runByAPI
+            ? 'API'
+            : 'Unknown';
   
   const logEndRef = useRef<HTMLDivElement | null>(null);
 
-  const scrollToLogBottom = () => {
-    if (logEndRef.current) {
-      logEndRef.current.scrollIntoView({ behavior: "smooth" });
+  const [workflowProgress, setWorkflowProgress] = useState<{
+    current: number;
+    total: number;
+    percentage: number;
+  } | null>(null);
+
+  // Subscribe to progress updates using module-level socket cache
+  useEffect(() => {
+    if (!row.browserId) return;
+
+    // Get or create socket (from module cache)
+    getOrCreateSocket(row.browserId);
+
+    // Register callback
+    if (!progressCallbacks.has(row.browserId)) {
+      progressCallbacks.set(row.browserId, new Set());
     }
-  }
+
+    const callback = (data: any) => {
+      setWorkflowProgress(data);
+    };
+
+    progressCallbacks.get(row.browserId)!.add(callback);
+
+    // Cleanup: remove callback and cleanup socket if no callbacks remain
+    return () => {
+      const callbacks = progressCallbacks.get(row.browserId);
+      if (callbacks) {
+        callbacks.delete(callback);
+        // Cleanup socket if this was the last callback
+        cleanupSocketIfUnused(row.browserId);
+      }
+    };
+  }, [row.browserId]);
+
+  // Clear progress UI when run completes and trigger socket cleanup
+  useEffect(() => {
+    if (row.status !== 'running' && row.status !== 'queued') {
+      setWorkflowProgress(null);
+      // Attempt to cleanup socket when run completes
+      // (will only cleanup if no other callbacks exist)
+      if (row.browserId) {
+        cleanupSocketIfUnused(row.browserId);
+      }
+    }
+  }, [row.status, row.browserId]);
 
   const handleAbort = () => {
     abortRunHandler(row.runId, row.name, row.browserId);
@@ -67,12 +151,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
   const handleRowExpand = () => {
     const newOpen = !isOpen;
     onToggleExpanded(newOpen);
-    //scrollToLogBottom();
   };
-  
-  // useEffect(() => {
-  //   scrollToLogBottom();
-  // }, [currentLog])
 
   useEffect(() => {
     const fetchUserEmail = async () => {
@@ -179,6 +258,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                               runByUserId={row.runByUserId}
                               runByScheduledId={row.runByScheduleId}
                               runByAPI={row.runByAPI ?? false}
+                              runBySDK={row.runBySDK}
                             />
                           </Box>
                         </Box>
@@ -196,7 +276,8 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
         <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
           <Collapse in={isOpen} timeout="auto" unmountOnExit>
             <RunContent row={row} abortRunHandler={handleAbort} currentLog={currentLog}
-              logEndRef={logEndRef} interpretationInProgress={runningRecordingName === row.name} />
+              logEndRef={logEndRef} interpretationInProgress={runningRecordingName === row.name}
+              workflowProgress={workflowProgress} />
           </Collapse>
         </TableCell>
       </TableRow>

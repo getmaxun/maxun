@@ -11,9 +11,6 @@
 
 <p align="center">
 ✨ Turn any website into clean, contextualized data pipelines for your AI applications ✨
-<br />
-Maxun is the easiest way to extract web data with no code. The <b>modern</b> open-source alternative to BrowseAI, Octoparse and similar tools.
-</p>
 
 <p align="center">
     <a href="https://app.maxun.dev/?ref=ghread"><b>Go To App</b></a> •
@@ -32,60 +29,48 @@ Maxun helps you transform websites into structured APIs, clean markdown for AI w
 
 ### Ecosystem
 
-1. **[Extract](https://docs.maxun.dev/category/extract)** – Emulate real user behavior and collect structured data from any website. No code required.
+1. **[Extract](https://docs.maxun.dev/category/extract)** – Emulate real user behavior and collect structured data from any website.
    * **[Recorder Mode](https://docs.maxun.dev/robot/extract/robot-actions)** - Record your actions as you browse; Maxun turns them into a reusable extraction robot.
    * **[AI Mode](https://docs.maxun.dev/robot/extract/llm-extraction)** - Describe what you want in natural language and let LLM-powered extraction do the rest.
 
-2. **[Scrape](https://docs.maxun.dev/robot/scrape/scrape-robots)** – Convert full webpages into clean Markdown or HTML and capture screenshots. Ideal for AI workflows, agents, and document processing. No code required.
-
-3. **[SDK](https://docs.maxun.dev/sdk/sdk-overview)** – A complete developer toolkit for scraping, extraction, scheduling, and end-to-end data automation.
-
-Whether you prefer browsing through a website or integrating automation into your codebase, Maxun adapts to your workflow.
-
+2. **[Scrape](https://docs.maxun.dev/robot/scrape/scrape-robots)** – Convert full webpages into clean Markdown or HTML and capture screenshots.
+3. **[Crawl](https://docs.maxun.dev/robot/crawl/crawl-introduction)** - Crawl entire websites and extract content from every relevant page, with full control over scope and discovery.
+4. **[Search](https://docs.maxun.dev/robot/search/search-introduction)** - Run automated web searches to discover or scrape results, with support for time-based filters.
+5. **[SDK](https://docs.maxun.dev/sdk/sdk-overview)** – A complete developer toolkit for scraping, extraction, scheduling, and end-to-end data automation.
 
 ## How Does It Work?
 
-Maxun uses web robots to power everything you can do on the platform. There are two types of robots, each designed for a different job.
+Maxun robots are automated tools that help you collect data from websites without writing any code. Think of them as your personal web assistants that can navigate websites, extract information, and organize data just like you would manually - but faster and more efficiently.
 
-### 1. Extract Robots
-**Extract robots emulate real user behavior and capture structured data.**
+There are four types of robots, each designed for a different job.
 
-Choose how to build them
-### a. Recorder Mode: Record your actions as you browse
-- Build robots visually by browsing like a human.
-- Perfect for structured, deterministic data extraction.
-
+### 1. Extract
+Extract emulates real user behavior and captures structured data.
+- <a href="/robot/extract/robot-actions">Recorder Mode</a> - Record your actions as you browse; Maxun turns them into a reusable extraction robot.
 ### Example: Extract 10 Property Listings from Airbnb
 
 [https://github.com/user-attachments/assets/recorder-mode-demo-video](https://github.com/user-attachments/assets/c6baa75f-b950-482c-8d26-8a8b6c5382c3)
-
-### b. LLM Extraction (Beta): Describe what you want in plain language
-- Use natural language to define extraction patterns.
-- Works with closed source & open source LLMs.
-
-Get Started with LLM Extraction: https://docs.maxun.dev/robot/extract/llm-extraction
-
+- <a href="/robot/extract/llm-extraction">AI Mode</a> - Describe what you want in natural language and let LLM-powered extraction do the rest.
 ### Example: Extract Names, Rating & Duration of Top 50 Movies from IMDb
 
 https://github.com/user-attachments/assets/f714e860-58d6-44ed-bbcd-c9374b629384
 
-### Core capabilities
-- Extract from any website, including behind logins
-- Convert sites into APIs, spreadsheets, and workflows
-- Scale extractions and run on schedules or via API
-- Handle infinite scrolling and pagination
-- Auto-adapt to website layout & structural changes
+Learn more <a href="/category/extract">here</a>.
 
-### 2. Scrape Robots
-**Built for clean content and AI workflows.**
-- Get clean HTML and LLM-ready Markdown from any website
-- Remove scripts, styling, ads, and clutter automatically
-- Perfect for RAG systems, AI summarization, embeddings, and content pipelines
-- Ideal for feeding clean data to LLMs
+### 2. Scrape
+Scrape converts full webpages into clean Markdown, HTML and can capture screenshots. Ideal for AI workflows, agents, and document processing. 
 
-### Example: Scrape GitHub Trending Repositories in clean Markdown format 
+Learn more <a href="https://docs.maxun.dev/robot/scrape/scrape-robots">here</a>.
 
-https://github.com/user-attachments/assets/c774cbd4-5a85-45b7-b41f-128ee570eae6
+### 3. Crawl
+Crawl entire websites and extract content from every relevant page, with full control over scope and discovery.
+
+Learn more <a href="/robot/crawl/crawl-introduction">here</a>.
+
+### 4. Search
+Run automated web searches to discover or scrape results, with support for time-based filters.
+
+Learn more <a href="https://docs.maxun.dev/robot/search/search-introduction">here</a>.
 
 ## Quick Start
 
@@ -105,17 +90,17 @@ Maxun can run locally with or without Docker
 3. [Upgrade Maxun Without Docker Compose Setup](https://docs.maxun.dev/installation/upgrade#upgrading-with-local-setup)
 
 ## Sponsors
-
 <table>
   <tr>
   <td width="229">
       <br/>
-      <a href="https://www.lambdatest.com/?utm_source=maxun&utm_medium=sponsor" target="_blank">
-        <img src="https://github.com/user-attachments/assets/904dd40e-0498-47dd-98f1-7fa6d318adb9" /><br/><br/>
-        <b>LambdaTest</b>
+      <a href="https://www.testmu.ai/?utm_source=maxun&utm_medium=sponsor" target="_blank">
+        <img src="https://github.com/user-attachments/assets/6c96005b-85df-43e0-9b63-96aaca676c11" /><br/><br/>
+        <b>TestMu AI</b>
       </a>
       <br/>
-      <sub>GenAI-powered Quality Engineering Platform that empowers teams to test intelligently, smarter, and ship faster.</sub>
+      <sub>The Native AI-Agentic Cloud Platform to Supercharge Quality Engineering. Test Intelligently and Ship Faster.
+      </sub>
     </td>
   </tr>
 </table>
@@ -137,9 +122,9 @@ Maxun can run locally with or without Docker
 - ✨ **Self-Hostable** – Full control over your infrastructure
 - ✨ **Open Source** – Transparent and community-driven
 
-## Use Cases
+## Demos
 Maxun can be used for various use-cases, including lead generation, market research, content aggregation and more.
-View use-cases in detail here: https://www.maxun.dev/#usecases
+View demos here: https://www.maxun.dev/usecases
 
 ## Note
 This project is in early stages of development. Your feedback is very important for us - we're actively working on improvements. </a>

@@ -31,10 +31,6 @@ export const initializeRemoteBrowserForRecording = (userId: string, mode: string
       if (activeId) {
         const remoteBrowser = browserPool.getRemoteBrowser(activeId);
         remoteBrowser?.updateSocket(socket);
-
-        if (remoteBrowser?.isDOMStreamingActive) {
-          remoteBrowser?.makeAndEmitDOMSnapshot();
-        }
       } else {
         const browserSession = new RemoteBrowser(socket, userId, id);
         browserSession.interpreter.subscribeToPausing();
@@ -43,7 +39,6 @@ export const initializeRemoteBrowserForRecording = (userId: string, mode: string
           await browserSession.initialize(userId);
           await browserSession.registerEditorEvents();
 
-          await browserSession.subscribeToDOM();
           logger.info('DOM streaming started for remote browser in recording mode');
 
           browserPool.addRemoteBrowser(id, browserSession, userId, false, "recording");

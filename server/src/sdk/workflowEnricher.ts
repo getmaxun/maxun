@@ -1241,6 +1241,168 @@ Rules:
   }
 
   /**
+   * Generate semantic list name using LLM based on user prompt and field context
+   */
+  private static async generateListName(
+    prompt: string,
+    url: string,
+    fieldNames: string[],
+    llmConfig?: {
+      provider?: 'anthropic' | 'openai' | 'ollama';
+      model?: string;
+      apiKey?: string;
+      baseUrl?: string;
+    }
+  ): Promise<string> {
+    try {
+      const provider = llmConfig?.provider || 'ollama';
+      const axios = require('axios');
+
+      const fieldContext = fieldNames.length > 0
+        ? `\n\nDetected fields in the list:\n${fieldNames.slice(0, 10).map((name, idx) => `${idx + 1}. ${name}`).join('\n')}`
+        : '';
+
+      const systemPrompt = `You are a list naming assistant. Your job is to generate a clear, concise name for a data list based on the user's extraction request and the fields being extracted.
+
+RULES FOR LIST NAMING:
+1. Use 1-3 words maximum (prefer 2 words)
+2. Use Title Case (e.g., "Product Listings", "Job Postings")
+3. Be specific and descriptive
+4. Match the user's terminology when possible
+5. Adapt to the domain: e-commerce (Products, Listings), jobs (Jobs, Postings), articles (Articles, News), etc.
+6. Avoid generic terms like "List", "Data", "Items" unless absolutely necessary
+7. Focus on WHAT is being extracted, not HOW
+
+Examples:
+- User wants "product listings" → "Product Listings" or "Products"
+- User wants "job postings" → "Job Postings" or "Jobs"
+- User wants "article titles" → "Articles"
+- User wants "company information" → "Companies"
+- User wants "quotes from page" → "Quotes"
+
+You must return ONLY the list name, nothing else. No JSON, no explanation, just the name.`;
+
+      const userPrompt = `URL: ${url}
+
+User's extraction request: "${prompt}"
+${fieldContext}
+
+TASK: Generate a concise, descriptive name for this list (1-3 words in Title Case).
+
+Return ONLY the list name, nothing else:`;
+
+      let llmResponse: string;
+
+      if (provider === 'ollama') {
+        const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+        const ollamaModel = llmConfig?.model || 'llama3.2-vision';
+
+        try {
+          const response = await axios.post(`${ollamaBaseUrl}/api/chat`, {
+            model: ollamaModel,
+            messages: [
+              {
+                role: 'system',
+                content: systemPrompt
+              },
+              {
+                role: 'user',
+                content: userPrompt
+              }
+            ],
+            stream: false,
+            options: {
+              temperature: 0.1,
+              top_p: 0.9,
+              num_predict: 20
+            }
+          });
+
+          llmResponse = response.data.message.content;
+        } catch (ollamaError: any) {
+          logger.error(`Ollama request failed for list naming: ${ollamaError.message}`);
+          logger.info('Using fallback list name: "List 1"');
+          return 'List 1';
+        }
+      } else if (provider === 'anthropic') {
+        const anthropic = new Anthropic({
+          apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
+        });
+        const anthropicModel = llmConfig?.model || 'claude-3-5-sonnet-20241022';
+
+        const response = await anthropic.messages.create({
+          model: anthropicModel,
+          max_tokens: 20,
+          temperature: 0.1,
+          messages: [{
+            role: 'user',
+            content: userPrompt
+          }],
+          system: systemPrompt
+        });
+
+        const textContent = response.content.find((c: any) => c.type === 'text');
+        llmResponse = textContent?.type === 'text' ? textContent.text : '';
+
+      } else if (provider === 'openai') {
+        const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
+        const openaiModel = llmConfig?.model || 'gpt-4o-mini';
+
+        const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
+          model: openaiModel,
+          messages: [
+            {
+              role: 'system',
+              content: systemPrompt
+            },
+            {
+              role: 'user',
+              content: userPrompt
+            }
+          ],
+          max_tokens: 20,
+          temperature: 0.1
+        }, {
+          headers: {
+            'Authorization': `Bearer ${llmConfig?.apiKey || process.env.OPENAI_API_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        llmResponse = response.data.choices[0].message.content;
+      } else {
+        throw new Error(`Unsupported LLM provider: ${provider}`);
+      }
+
+      let listName = (llmResponse || '').trim();
+      logger.info(`LLM List Naming Response: "${listName}"`);
+
+      listName = listName.replace(/^["']|["']$/g, '');
+      listName = listName.split('\n')[0];
+      listName = listName.trim();
+
+      if (!listName || listName.length === 0) {
+        throw new Error('LLM returned empty list name');
+      }
+
+      if (listName.length > 50) {
+        throw new Error('LLM returned list name that is too long');
+      }
+
+      listName = listName.split(' ')
+        .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+
+      logger.info(`✓ Generated list name: "${listName}"`);
+      return listName;
+    } catch (error: any) {
+      logger.error(`Error in generateListName: ${error.message}`);
+      logger.info('Using fallback list name: "List 1"');
+      return 'List 1';
+    }
+  }
+
+  /**
    * Build workflow from LLM decision
    */
   private static async buildWorkflowFromLLMDecision(
@@ -1333,10 +1495,19 @@ Rules:
       const limit = llmDecision.limit || 100;
       logger.info(`Using limit: ${limit}`);
 
+      logger.info('Generating semantic list name with LLM...');
+      const listName = await this.generateListName(
+        prompt || 'Extract list data',
+        url,
+        Object.keys(finalFields),
+        llmConfig
+      );
+      logger.info(`Using list name: "${listName}"`);
+
       workflow[0].what.push({
         action: 'scrapeList',
         actionId: `list-${uuid()}`,
-        name: 'List 1',
+        name: listName,
         args: [{
           fields: finalFields,
           listSelector: autoDetectResult.listSelector,
@@ -1357,5 +1528,522 @@ Rules:
     }
 
     return workflow;
+  }
+
+  /**
+   * Generate workflow from prompt with automatic URL detection via search
+   * This method searches for the target website based on the user's prompt,
+   * then generates a workflow for the best matching URL
+   */
+  static async generateWorkflowFromPromptWithSearch(
+    userPrompt: string,
+    userId: string,
+    llmConfig?: {
+      provider?: 'anthropic' | 'openai' | 'ollama';
+      model?: string;
+      apiKey?: string;
+      baseUrl?: string;
+    }
+  ): Promise<{
+    success: boolean;
+    workflow?: any[];
+    url?: string;
+    errors?: string[];
+  }> {
+    let browserId: string | null = null;
+
+    try {
+      const { browserId: id, page } = await createRemoteBrowserForValidation(userId);
+      browserId = id;
+
+      const intent = await this.parseSearchIntent(userPrompt, llmConfig);
+
+      const searchResults = await this.performDuckDuckGoSearch(intent.searchQuery, page);
+      if (searchResults.length === 0) {
+        if (browserId) {
+          await destroyRemoteBrowser(browserId, userId);
+        }
+        return {
+          success: false,
+          errors: [`No search results found for query: "${intent.searchQuery}". Please provide a URL manually or refine your prompt.`]
+        };
+      }
+
+      const selection = await this.selectBestUrlFromResults(searchResults, userPrompt, llmConfig);
+      
+      await page.goto(selection.url, { waitUntil: 'networkidle', timeout: 30000 });
+      await page.waitForTimeout(2000);
+
+      const validator = new SelectorValidator();
+      await validator.initialize(page, selection.url);
+
+      const validatorPage = (validator as any).page;
+      const screenshotBuffer = await validatorPage.screenshot({ 
+        fullPage: true, 
+        type: 'jpeg',
+        quality: 85
+      });
+      const screenshotBase64 = screenshotBuffer.toString('base64');
+
+      const elementGroups = await this.analyzePageGroups(validator);
+      const pageHTML = await validatorPage.content();
+
+      const llmDecision = await this.getLLMDecisionWithVision(
+        userPrompt,
+        screenshotBase64,
+        elementGroups,
+        pageHTML,
+        llmConfig
+      );
+
+      if (intent.limit !== undefined && intent.limit !== null) {
+        llmDecision.limit = intent.limit;
+      }
+
+      const workflow = await this.buildWorkflowFromLLMDecision(llmDecision, selection.url, validator, userPrompt, llmConfig);
+
+      await validator.close();
+
+      if (browserId) {
+        await destroyRemoteBrowser(browserId, userId);
+      }
+
+      return {
+        success: true,
+        workflow,
+        url: selection.url
+      };
+
+    } catch (error: any) {
+      if (browserId) {
+        try {
+          await destroyRemoteBrowser(browserId, userId);
+        } catch (cleanupError) {
+          logger.warn('Failed to cleanup RemoteBrowser:', cleanupError);
+        }
+      }
+
+      logger.error('Error in generateWorkflowFromPromptWithSearch:', error);
+      return {
+        success: false,
+        errors: [error.message]
+      };
+    }
+  }
+
+  /**
+   * Parse user prompt to extract search intent
+   */
+  private static async parseSearchIntent(
+    userPrompt: string,
+    llmConfig?: {
+      provider?: 'anthropic' | 'openai' | 'ollama';
+      model?: string;
+      apiKey?: string;
+      baseUrl?: string;
+    }
+  ): Promise<{
+    searchQuery: string;
+    extractionGoal: string;
+    limit?: number | null;
+  }> {
+    const systemPrompt = `You are a search query extractor. Analyze the user's extraction request and identify:
+1. The website or page they want to extract from (for searching)
+2. What data they want to extract
+3. Any limit/quantity specified
+
+Examples:
+- "Extract top 10 company data from YCombinator Companies site" → searchQuery: "YCombinator Companies", goal: "company data", limit: 10
+- "Get first 20 laptop names and prices from Amazon" → searchQuery: "Amazon laptops", goal: "laptop names and prices", limit: 20
+- "Scrape articles from TechCrunch AI section" → searchQuery: "TechCrunch AI section", goal: "articles", limit: null
+
+Return ONLY valid JSON: {"searchQuery": "...", "extractionGoal": "...", "limit": NUMBER_OR_NULL}`;
+
+    const userMessage = `User request: "${userPrompt}"
+
+Extract the search query, extraction goal, and limit. Return JSON only.`;
+
+    try {
+      const provider = llmConfig?.provider || 'ollama';
+      const axios = require('axios');
+
+      let llmResponse: string;
+
+      if (provider === 'ollama') {
+        const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+        const ollamaModel = llmConfig?.model || 'llama3.2-vision';
+
+        const jsonSchema = {
+          type: 'object',
+          required: ['searchQuery', 'extractionGoal'],
+          properties: {
+            searchQuery: { type: 'string' },
+            extractionGoal: { type: 'string' },
+            limit: { type: ['integer', 'null'] }
+          }
+        };
+
+        const response = await axios.post(`${ollamaBaseUrl}/api/chat`, {
+          model: ollamaModel,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMessage }
+          ],
+          stream: false,
+          format: jsonSchema,
+          options: { temperature: 0.1 }
+        });
+
+        llmResponse = response.data.message.content;
+
+      } else if (provider === 'anthropic') {
+        const anthropic = new Anthropic({
+          apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
+        });
+        const anthropicModel = llmConfig?.model || 'claude-3-5-sonnet-20241022';
+
+        const response = await anthropic.messages.create({
+          model: anthropicModel,
+          max_tokens: 256,
+          temperature: 0.1,
+          messages: [{ role: 'user', content: userMessage }],
+          system: systemPrompt
+        });
+
+        const textContent = response.content.find((c: any) => c.type === 'text');
+        llmResponse = textContent?.type === 'text' ? textContent.text : '';
+
+      } else if (provider === 'openai') {
+        const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
+        const openaiModel = llmConfig?.model || 'gpt-4o-mini';
+
+        const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
+          model: openaiModel,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMessage }
+          ],
+          max_tokens: 256,
+          temperature: 0.1,
+          response_format: { type: 'json_object' }
+        }, {
+          headers: {
+            'Authorization': `Bearer ${llmConfig?.apiKey || process.env.OPENAI_API_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        llmResponse = response.data.choices[0].message.content;
+
+      } else {
+        throw new Error(`Unsupported LLM provider: ${provider}`);
+      }
+
+      logger.info(`[WorkflowEnricher] Intent parsing response: ${llmResponse}`);
+
+      let jsonStr = llmResponse.trim();
+      const jsonMatch = jsonStr.match(/```json\s*([\s\S]*?)\s*```/) || jsonStr.match(/```\s*([\s\S]*?)\s*```/);
+      if (jsonMatch) {
+        jsonStr = jsonMatch[1].trim();
+      }
+
+      const objectMatch = jsonStr.match(/\{[\s\S]*"searchQuery"[\s\S]*\}/);
+      if (objectMatch) {
+        jsonStr = objectMatch[0];
+      }
+
+      const intent = JSON.parse(jsonStr);
+
+      if (!intent.searchQuery || !intent.extractionGoal) {
+        throw new Error('Invalid intent parsing response - missing required fields');
+      }
+
+      return {
+        searchQuery: intent.searchQuery,
+        extractionGoal: intent.extractionGoal,
+        limit: intent.limit || null
+      };
+
+    } catch (error: any) {
+      logger.warn(`Failed to parse intent with LLM: ${error.message}`);
+      logger.info('Using fallback heuristic intent parsing');
+
+      const fromMatch = userPrompt.match(/from\s+([^,\.]+)/i);
+      const searchQuery = fromMatch ? fromMatch[1].trim() : userPrompt.slice(0, 50);
+
+      const numberMatch = userPrompt.match(/(\d+)/);
+      const limit = numberMatch ? parseInt(numberMatch[1], 10) : null;
+
+      return {
+        searchQuery,
+        extractionGoal: userPrompt,
+        limit
+      };
+    }
+  }
+
+  /**
+   * Perform DuckDuckGo search and return FIRST URL only
+   * Simplified version - just returns the first valid URL from search results
+   */
+  private static async performDuckDuckGoSearch(
+    query: string,
+    page: any
+  ): Promise<Array<{ url: string; title: string; description: string; position: number }>> {
+    logger.info(`[WorkflowEnricher] Searching DuckDuckGo for: "${query}"`);
+
+    try {
+      const searchUrl = `https://duckduckgo.com/?q=${encodeURIComponent(query)}`;
+      const initialDelay = 500 + Math.random() * 1000;
+      await new Promise(resolve => setTimeout(resolve, initialDelay));
+
+      await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.waitForLoadState('load', { timeout: 10000 }).catch(() => {
+        logger.warn('[WorkflowEnricher] Load state timeout, continuing anyway');
+      });
+
+      const pageLoadDelay = 2000 + Math.random() * 1500;
+      await new Promise(resolve => setTimeout(resolve, pageLoadDelay));
+
+      await page.waitForSelector('[data-testid="result"], .result', { timeout: 5000 }).catch(() => {
+        logger.warn('[WorkflowEnricher] DuckDuckGo results not found on initial wait');
+      });
+
+      const firstUrl = await page.evaluate(() => {
+        const selectors = [
+          '[data-testid="result"]',
+          'article[data-testid="result"]',
+          'li[data-layout="organic"]',
+          '.result',
+          'article[data-testid]'
+        ];
+
+        let allElements: Element[] = [];
+        for (const selector of selectors) {
+          const elements = Array.from(document.querySelectorAll(selector));
+          if (elements.length > 0) {
+            console.log(`Found ${elements.length} DDG elements with: ${selector}`);
+            allElements = elements;
+            break;
+          }
+        }
+
+        if (allElements.length === 0) {
+          console.error('No search result elements found');
+          return null;
+        }
+
+        const element = allElements[0];
+        const titleEl = element.querySelector('h2, [data-testid="result-title-a"], h3, [data-testid="result-title"]');
+
+        let linkEl = titleEl?.querySelector('a[href]') as HTMLAnchorElement;
+        if (!linkEl) {
+          linkEl = element.querySelector('a[href]') as HTMLAnchorElement;
+        }
+
+        if (!linkEl || !linkEl.href) return null;
+
+        let actualUrl = linkEl.href;
+
+        if (actualUrl.includes('uddg=')) {
+          try {
+            const urlParams = new URLSearchParams(actualUrl.split('?')[1]);
+            const uddgUrl = urlParams.get('uddg');
+            if (uddgUrl) {
+              actualUrl = decodeURIComponent(uddgUrl);
+            }
+          } catch (e) {
+            console.log('Failed to parse uddg parameter:', e);
+          }
+        }
+
+        if (actualUrl.includes('duckduckgo.com')) {
+          console.log(`Skipping DDG internal URL: ${actualUrl}`);
+          return null;
+        }
+
+        return actualUrl;
+      });
+
+      if (!firstUrl) {
+        logger.error('[WorkflowEnricher] No valid URL found in search results');
+        return [];
+      }
+
+      logger.info(`[WorkflowEnricher] Successfully extracted first URL: ${firstUrl}`);
+
+      return [{
+        url: firstUrl,
+        title: '',
+        description: '',
+        position: 1
+      }];
+
+    } catch (error: any) {
+      logger.error(`[WorkflowEnricher] Search failed: ${error.message}`);
+      throw new Error(`DuckDuckGo search failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Use LLM to select the best URL from search results
+   */
+  private static async selectBestUrlFromResults(
+    searchResults: any[],
+    userPrompt: string,
+    llmConfig?: {
+      provider?: 'anthropic' | 'openai' | 'ollama';
+      model?: string;
+      apiKey?: string;
+      baseUrl?: string;
+    }
+  ): Promise<{
+    url: string;
+    confidence: number;
+    reasoning: string;
+  }> {
+    if (searchResults.length === 1) {
+      return {
+        url: searchResults[0].url,
+        confidence: 0.8,
+        reasoning: 'Selected first search result from DuckDuckGo'
+      };
+    }
+
+    const systemPrompt = `You are a URL selector. Given a list of search results and a user's extraction request, select the BEST URL that is most likely to contain the data the user wants.
+
+Consider:
+1. Title and description relevance to the user's request
+2. Official/authoritative sources are usually better than aggregators
+3. List/directory pages are better than individual item pages
+4. The URL path often gives hints about the page content
+
+Return ONLY valid JSON: {"selectedIndex": NUMBER, "confidence": NUMBER_0_TO_1, "reasoning": "brief explanation"}`;
+
+    const resultsDescription = searchResults.map((r, i) =>
+      `Result ${i}:
+- Title: ${r.title}
+- URL: ${r.url}
+- Description: ${r.description}`
+    ).join('\n\n');
+
+    const userMessage = `User wants to: "${userPrompt}"
+
+Available search results:
+${resultsDescription}
+
+Select the BEST result index (0-${searchResults.length - 1}). Return JSON only.`;
+
+    try {
+      const provider = llmConfig?.provider || 'ollama';
+      const axios = require('axios');
+
+      let llmResponse: string;
+
+      if (provider === 'ollama') {
+        const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+        const ollamaModel = llmConfig?.model || 'llama3.2-vision';
+
+        const jsonSchema = {
+          type: 'object',
+          required: ['selectedIndex', 'confidence', 'reasoning'],
+          properties: {
+            selectedIndex: { type: 'integer' },
+            confidence: { type: 'number' },
+            reasoning: { type: 'string' }
+          }
+        };
+
+        const response = await axios.post(`${ollamaBaseUrl}/api/chat`, {
+          model: ollamaModel,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMessage }
+          ],
+          stream: false,
+          format: jsonSchema,
+          options: { temperature: 0.1 }
+        });
+
+        llmResponse = response.data.message.content;
+
+      } else if (provider === 'anthropic') {
+        const anthropic = new Anthropic({
+          apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
+        });
+        const anthropicModel = llmConfig?.model || 'claude-3-5-sonnet-20241022';
+
+        const response = await anthropic.messages.create({
+          model: anthropicModel,
+          max_tokens: 256,
+          temperature: 0.1,
+          messages: [{ role: 'user', content: userMessage }],
+          system: systemPrompt
+        });
+
+        const textContent = response.content.find((c: any) => c.type === 'text');
+        llmResponse = textContent?.type === 'text' ? textContent.text : '';
+
+      } else if (provider === 'openai') {
+        const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
+        const openaiModel = llmConfig?.model || 'gpt-4o-mini';
+
+        const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
+          model: openaiModel,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMessage }
+          ],
+          max_tokens: 256,
+          temperature: 0.1,
+          response_format: { type: 'json_object' }
+        }, {
+          headers: {
+            'Authorization': `Bearer ${llmConfig?.apiKey || process.env.OPENAI_API_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        llmResponse = response.data.choices[0].message.content;
+
+      } else {
+        throw new Error(`Unsupported LLM provider: ${provider}`);
+      }
+
+      logger.info(`[WorkflowEnricher] URL selection response: ${llmResponse}`);
+
+      let jsonStr = llmResponse.trim();
+      const jsonMatch = jsonStr.match(/```json\s*([\s\S]*?)\s*```/) || jsonStr.match(/```\s*([\s\S]*?)\s*```/);
+      if (jsonMatch) {
+        jsonStr = jsonMatch[1].trim();
+      }
+
+      const objectMatch = jsonStr.match(/\{[\s\S]*"selectedIndex"[\s\S]*\}/);
+      if (objectMatch) {
+        jsonStr = objectMatch[0];
+      }
+
+      const decision = JSON.parse(jsonStr);
+
+      if (decision.selectedIndex === undefined || decision.selectedIndex < 0 || decision.selectedIndex >= searchResults.length) {
+        throw new Error(`Invalid selectedIndex: ${decision.selectedIndex}`);
+      }
+
+      return {
+        url: searchResults[decision.selectedIndex].url,
+        confidence: decision.confidence || 0.5,
+        reasoning: decision.reasoning || 'No reasoning provided'
+      };
+
+    } catch (error: any) {
+      logger.warn(`[WorkflowEnricher] Failed to select URL with LLM: ${error.message}`);
+      logger.info('[WorkflowEnricher] Using fallback: selecting first search result');
+
+      return {
+        url: searchResults[0].url,
+        confidence: 0.6,
+        reasoning: 'Selected first search result (LLM selection failed)'
+      };
+    }
   }
 }

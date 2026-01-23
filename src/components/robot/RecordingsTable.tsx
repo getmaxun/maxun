@@ -5,7 +5,6 @@ import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
-import TableHead from '@mui/material/TableHead';
 import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
 import { memo, useCallback, useEffect, useMemo } from "react";
@@ -78,7 +77,6 @@ interface RecordingsTableProps {
   handleIntegrateRecording: (id: string, fileName: string, params: string[]) => void;
   handleSettingsRecording: (id: string, fileName: string, params: string[]) => void;
   handleEditRobot: (id: string, name: string, params: string[]) => void;
-  handleDuplicateRobot: (id: string, name: string, params: string[]) => void;
 }
 
 const LoadingRobotRow = memo(({ row, columns }: any) => {
@@ -99,7 +97,7 @@ const LoadingRobotRow = memo(({ row, columns }: any) => {
         } else if (column.id === 'interpret') {
           return (
             <MemoizedTableCell key={column.id} align={column.align}>
-              <CircularProgress size={20} />
+               <Box sx={{ opacity: 0.3 }}>-</Box>
             </MemoizedTableCell>
           );
         } else {
@@ -116,7 +114,6 @@ const LoadingRobotRow = memo(({ row, columns }: any) => {
 
 // Virtualized row component for efficient rendering
 const TableRowMemoized = memo(({ row, columns, handlers }: any) => {
-  // If robot is loading, show loading row
   if (row.isLoading) {
     return <LoadingRobotRow row={row} columns={columns} />;
   }
@@ -157,7 +154,6 @@ const TableRowMemoized = memo(({ row, columns, handlers }: any) => {
                   <MemoizedOptionsButton
                     handleRetrain={() =>handlers.handleRetrainRobot(row.id, row.name)}
                     handleEdit={() => handlers.handleEditRobot(row.id, row.name, row.params || [])}
-                    handleDuplicate={() => handlers.handleDuplicateRobot(row.id, row.name, row.params || [])}
                     handleDelete={() => handlers.handleDelete(row.id)}
                     robotType={row.type}
                   />
@@ -186,7 +182,7 @@ export const RecordingsTable = ({
   handleIntegrateRecording,
   handleSettingsRecording,
   handleEditRobot,
-  handleDuplicateRobot }: RecordingsTableProps) => {
+  }: RecordingsTableProps) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const [page, setPage] = React.useState(0);
@@ -508,10 +504,9 @@ export const RecordingsTable = ({
     handleIntegrateRecording,
     handleSettingsRecording,
     handleEditRobot,
-    handleDuplicateRobot,
     handleRetrainRobot,
     handleDelete: async (id: string) => openDeleteConfirm(id)
-  }), [handleRunRecording, handleScheduleRecording, handleIntegrateRecording, handleSettingsRecording, handleEditRobot, handleDuplicateRobot, handleRetrainRobot, notify, t, refetch]);
+  }), [handleRunRecording, handleScheduleRecording, handleIntegrateRecording, handleSettingsRecording, handleEditRobot, handleRetrainRobot, notify, t, refetch]);
 
   return (
     <React.Fragment>
@@ -592,7 +587,6 @@ export const RecordingsTable = ({
         <>
           <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden', marginTop: '15px' }}>
             <Table stickyHeader aria-label="sticky table">
-              <TableHead>
                 <TableRow>
                   {columns.map((column) => (
                     <MemoizedTableCell
@@ -603,7 +597,6 @@ export const RecordingsTable = ({
                     </MemoizedTableCell>
                   ))}
                 </TableRow>
-              </TableHead>
               <TableBody>
                 {visibleRows.map((row) => (
                   <TableRowMemoized
@@ -618,13 +611,12 @@ export const RecordingsTable = ({
           </TableContainer>
 
           <TablePagination
-            rowsPerPageOptions={[10, 25, 50, 100]}
             component="div"
             count={filteredRows.length}
-            rowsPerPage={rowsPerPage}
             page={page}
+            rowsPerPage={rowsPerPage}
             onPageChange={handleChangePage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[]}
           />
         </>
       )}
@@ -782,11 +774,10 @@ interface OptionsButtonProps {
   handleRetrain: () => void;
   handleEdit: () => void;
   handleDelete: () => void;
-  handleDuplicate: () => void;
   robotType: string;
 }
 
-const OptionsButton = ({ handleRetrain, handleEdit, handleDelete, handleDuplicate, robotType }: OptionsButtonProps) => {
+const OptionsButton = ({ handleRetrain, handleEdit, handleDelete, robotType }: OptionsButtonProps) => {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -831,13 +822,6 @@ const OptionsButton = ({ handleRetrain, handleEdit, handleDelete, handleDuplicat
           <ListItemIcon><DeleteForever fontSize="small" /></ListItemIcon>
           <ListItemText>Delete</ListItemText>
         </MenuItem>
-
-        {robotType !== 'scrape' && (
-          <MenuItem onClick={() => { handleDuplicate(); handleClose(); }}>
-            <ListItemIcon><ContentCopy fontSize="small" /></ListItemIcon>
-            <ListItemText>Duplicate</ListItemText>
-          </MenuItem>
-        )}
       </Menu>
 
     </>

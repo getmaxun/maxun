@@ -132,7 +132,6 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
   logger.log('info', `Processing run execution job for runId: ${data.runId}, browserId: ${data.browserId}`);
   
   try { 
-    // Find the run
     const run = await Run.findOne({ where: { runId: data.runId } });
     if (!run) {
       logger.log('error', `Run ${data.runId} not found in database`);
@@ -193,7 +192,6 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
     logger.log('info', `Browser ${browserId} found and ready for execution`);
 
     try {
-      // Find the recording
       const recording = await Robot.findOne({ where: { 'recording_meta.id': plainRun.robotMetaId }, raw: true });
 
       if (!recording) {
@@ -351,12 +349,13 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
             logger.log('warn', `Failed to send webhooks for markdown robot run ${data.runId}: ${webhookError.message}`);
           }
 
-          capture("maxun-oss-run-created-manual", {
+          capture("maxun-oss-run-created", {
             runId: data.runId,
             user_id: data.userId,
             status: "success",
             robot_type: "scrape",
             formats,
+            source: "manual"
           });
 
           await destroyRemoteBrowser(browserId, data.userId);
@@ -387,12 +386,13 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
             logger.log('warn', `Failed to send run-failed notification for markdown robot run ${data.runId}: ${socketError.message}`);
           }
 
-          capture("maxun-oss-run-created-manual", {
+          capture("maxun-oss-run-created", {
             runId: data.runId,
             user_id: data.userId,
             status: "failed",
             robot_type: "scrape",
             formats,
+            source: "manual"
           });
 
           await destroyRemoteBrowser(browserId, data.userId);
@@ -473,11 +473,12 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
         interpretationInfo.binaryOutput
       );
 
-      // Get the already persisted and credit-validated data from the run record
       const finalRun = await Run.findByPk(run.id);
       const categorizedOutput = {
         scrapeSchema: finalRun?.serializableOutput?.scrapeSchema || {},
-        scrapeList: finalRun?.serializableOutput?.scrapeList || {}
+        scrapeList: finalRun?.serializableOutput?.scrapeList || {},
+        crawl: finalRun?.serializableOutput?.crawl || {},
+        search: finalRun?.serializableOutput?.search || {}
       };
       
       if (await isRunAborted()) {
@@ -489,10 +490,6 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
         status: 'success',
         finishedAt: new Date().toLocaleString(),
         log: interpretationInfo.log.join('\n'),
-        serializableOutput: JSON.parse(JSON.stringify({
-          scrapeSchema: categorizedOutput.scrapeSchema || {},
-          scrapeList: categorizedOutput.scrapeList || {},
-        })),
         binaryOutput: uploadedBinaryOutput,
       });
 
@@ -528,7 +525,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
 
       // Capture metrics
       capture(
-        'maxun-oss-run-created-manual',
+        'maxun-oss-run-created',
         {
           runId: data.runId,
           user_id: data.userId,
@@ -539,6 +536,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
           listItemsExtracted: totalListItemsExtracted,
           extractedScreenshotsCount,
           is_llm: (recording.recording_meta as any).isLLM,
+          source: 'manual'
         }
       );
 
@@ -572,6 +570,8 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
               }, {} as Record<string, any[]>)
             : {},
           captured_lists: categorizedOutput.scrapeList,
+          crawl_data: categorizedOutput.crawl,
+          search_data: categorizedOutput.search,
           captured_texts_count: totalSchemaItemsExtracted,
           captured_lists_count: totalListItemsExtracted,
           screenshots_count: extractedScreenshotsCount
@@ -696,7 +696,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
         logger.log('warn', `Failed to emit failure event in main catch: ${socketError.message}`);
       }
 
-      capture('maxun-oss-run-created-manual', {
+      capture('maxun-oss-run-created', {
         runId: data.runId,
         user_id: data.userId,
         created_at: new Date().toISOString(),
@@ -705,6 +705,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
         partial_data_extracted: partialDataExtracted,
         totalRowsExtracted: partialData?.totalSchemaItemsExtracted + partialData?.totalListItemsExtracted + partialData?.extractedScreenshotsCount || 0,
         is_llm: (recording?.recording_meta as any)?.isLLM,
+        source: 'manual'
       });
 
       try {

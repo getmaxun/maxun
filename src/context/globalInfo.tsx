@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState } from "react";
 import { AlertSnackbarProps } from "../components/ui/AlertSnackbar";
 import { WhereWhatPair } from "maxun-core";
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -27,7 +27,7 @@ interface RobotMeta {
     pairs: number;
     updatedAt: string;
     params: any[];
-    type?: 'extract' | 'scrape';
+    type?: 'extract' | 'scrape' | 'crawl' | 'search';
     url?: string;
     formats?: ('markdown' | 'html' | 'screenshot-visible' | 'screenshot-fullpage')[];
     isLLM?: boolean;
@@ -47,41 +47,6 @@ interface ScheduleConfig {
     lastRunAt?: Date;
     nextRunAt?: Date;
     cronExpression?: string;
-}
-
-interface ProcessedSnapshot {
-  snapshot: any;
-  resources: {
-    stylesheets: Array<{
-      href: string;
-      content: string;
-      media?: string;
-    }>;
-    images: Array<{
-      src: string;
-      dataUrl: string;
-      alt?: string;
-    }>;
-    fonts: Array<{
-      url: string;
-      dataUrl: string;
-      format?: string;
-    }>;
-    scripts: Array<{
-      src: string;
-      content: string;
-      type?: string;
-    }>;
-    media: Array<{
-      src: string;
-      dataUrl: string;
-      type: string;
-    }>;
-  };
-  baseUrl: string;
-  viewport: { width: number; height: number };
-  timestamp: number;
-  processingStats: any;
 }
 
 export interface RobotSettings {
@@ -147,9 +112,7 @@ interface GlobalInfo {
   setCurrentTextGroupName: (name: string) => void;
   isDOMMode: boolean;
   setIsDOMMode: (isDOMMode: boolean) => void;
-  currentSnapshot: ProcessedSnapshot | null;
-  setCurrentSnapshot: (snapshot: ProcessedSnapshot | null) => void;
-  updateDOMMode: (isDOMMode: boolean, snapshot?: ProcessedSnapshot | null) => void;
+  updateDOMMode: (isDOMMode: boolean) => void;
 };
 
 class GlobalInfoStore implements Partial<GlobalInfo> {
@@ -181,7 +144,6 @@ class GlobalInfoStore implements Partial<GlobalInfo> {
   currentScreenshotActionId = '';
   currentTextGroupName = 'Text Data';
   isDOMMode = false;
-  currentSnapshot = null;
 };
 
 const globalInfoStore = new GlobalInfoStore();
@@ -272,8 +234,7 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
   const [rerenderRuns, setRerenderRuns] = useState<boolean>(globalInfoStore.rerenderRuns);
   const [rerenderRobots, setRerenderRobots] = useState<boolean>(globalInfoStore.rerenderRobots);
   const [recordingLength, setRecordingLength] = useState<number>(globalInfoStore.recordingLength);
-  // const [recordingId, setRecordingId] = useState<string | null>(globalInfoStore.recordingId);
-   const [recordingId, setRecordingId] = useState<string | null>(() => {
+  const [recordingId, setRecordingId] = useState<string | null>(() => {
     try {
       const stored = sessionStorage.getItem('recordingId');
       return stored ? JSON.parse(stored) : globalInfoStore.recordingId;
@@ -282,7 +243,6 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
     }
   });
 
-  // Create a wrapped setter that persists to sessionStorage
   const setPersistedRecordingId = (newRecordingId: string | null) => {
     setRecordingId(newRecordingId);
     try {
@@ -307,7 +267,6 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
   const [currentScreenshotActionId, setCurrentScreenshotActionId] = useState<string>('');
   const [currentTextGroupName, setCurrentTextGroupName] = useState<string>('Text Data');
   const [isDOMMode, setIsDOMMode] = useState<boolean>(globalInfoStore.isDOMMode);
-  const [currentSnapshot, setCurrentSnapshot] = useState<ProcessedSnapshot | null>(globalInfoStore.currentSnapshot);
 
   const notify = (severity: 'error' | 'warning' | 'info' | 'success', message: string) => {
     setNotification({ severity, message, isOpen: true });
@@ -326,22 +285,13 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
 
   const resetInterpretationLog = () => {
     setShouldResetInterpretationLog(true);
-    // Reset the flag after a short delay to allow components to respond
     setTimeout(() => {
       setShouldResetInterpretationLog(false);
     }, 100);
   }
 
-  const updateDOMMode = (mode: boolean, snapshot?: ProcessedSnapshot | null) => {
+  const updateDOMMode = (mode: boolean) => {
     setIsDOMMode(mode);
-    
-    if (snapshot !== undefined) {
-      setCurrentSnapshot(snapshot);
-    }
-    
-    if (!mode) {
-      setCurrentSnapshot(null);
-    }
   }
 
   const [dataCacheClient] = useState(() => createDataCacheClient());
@@ -391,8 +341,6 @@ export const GlobalInfoProvider = ({ children }: { children: JSX.Element }) => {
         setCurrentTextGroupName,
         isDOMMode,
         setIsDOMMode,
-        currentSnapshot,
-        setCurrentSnapshot,
         updateDOMMode,
         }}
       >

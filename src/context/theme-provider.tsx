@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 
+
 const lightTheme = createTheme({
   palette: {
     primary: {
@@ -10,6 +11,29 @@ const lightTheme = createTheme({
     },
   },
   components: {
+    MuiTableContainer: {
+      styleOverrides: {
+        root: {
+          overflow: 'auto',
+          /* Firefox */
+          scrollbarWidth: 'thin',
+          scrollbarColor: 'gray transparent',
+
+          /* WebKit (Chrome, Edge, Safari) */
+          '&::-webkit-scrollbar': {
+            width: '5px',
+            height: '5px',
+          },
+          '&::-webkit-scrollbar-track': {
+            background: 'transparent',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: 'gray',
+            borderRadius: '8px',
+          },
+        },
+      },
+    },
     MuiButton: {
       styleOverrides: {
         root: {
@@ -52,26 +76,25 @@ const lightTheme = createTheme({
     MuiTab: {
       styleOverrides: {
         root: {
-          textTransform: "none",
+         minHeight: 60, 
+         textTransform: "none",
         },
       },
     },
     MuiAlert: {
       styleOverrides: {
+        outlinedInfo: {
+          color: 'rgb(0, 0, 0)',
+          border: 'none',
+          "& .MuiAlert-icon": {
+            color: "#000000",
+          },
+        },
         standardInfo: {
           backgroundColor: "#fce1f4",
           color: "#ff00c3",
           "& .MuiAlert-icon": {
             color: "#ff00c3",
-          },
-        },
-      },
-    },
-    MuiAlertTitle: {
-      styleOverrides: {
-        root: {
-          "& .MuiAlert-icon": {
-            color: "#ffffff",
           },
         },
       },
@@ -102,6 +125,29 @@ const darkTheme = createTheme({
     },
   },
   components: {
+    MuiTableContainer: {
+      styleOverrides: {
+        root: {
+          overflow: 'auto',
+          /* Firefox */
+          scrollbarWidth: 'thin',
+          scrollbarColor: 'currentColor transparent',
+
+          /* WebKit (Chrome, Edge, Safari) */
+          '&::-webkit-scrollbar': {
+            width: '5px',
+            height: '5px',
+          },
+          '&::-webkit-scrollbar-track': {
+            background: 'transparent',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: 'currentColor',
+            borderRadius: '8px',
+          },
+        },
+      },
+    },
     MuiButton: {
       styleOverrides: {
         root: {
@@ -168,6 +214,7 @@ const darkTheme = createTheme({
     MuiTab: {
       styleOverrides: {
         root: {
+          minHeight: 60, 
           textTransform: "none",
           color: '#ffffff',
           "&.Mui-selected": {
@@ -178,20 +225,18 @@ const darkTheme = createTheme({
     },
     MuiAlert: {
       styleOverrides: {
-        standardInfo: {
-          backgroundColor: "rgba(255, 0, 195, 0.15)",
-          color: "#ff66d9",
+        outlinedInfo: {
+          color: '#ffffff',
+          border: 'none',
           "& .MuiAlert-icon": {
-            color: "#ff66d9",
+            color: "#ffffff",
           },
         },
-      },
-    },
-    MuiAlertTitle: {
-      styleOverrides: {
-        root: {
+        standardInfo: {
+          backgroundColor: "#080808ff",
+          color: "#ff00c3",
           "& .MuiAlert-icon": {
-            color: "#ff66d9",
+            color: "#ff00c3",
           },
         },
       },

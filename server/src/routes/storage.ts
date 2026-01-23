@@ -251,21 +251,18 @@ function handleWorkflowActions(workflow: any[], credentials: Credentials) {
 router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
-  const { name, limits, credentials, targetUrl, workflow: incomingWorkflow } = req.body;
+    const { name, limits, credentials, targetUrl, workflow: incomingWorkflow } = req.body;
 
-    // Validate input
-    if (!name && !limits && !credentials && !targetUrl) {
+    if (!name && !limits && !credentials && !targetUrl && !incomingWorkflow) {
       return res.status(400).json({ error: 'Either "name", "limits", "credentials" or "target_url" must be provided.' });
     }
 
-    // Fetch the robot by ID
     const robot = await Robot.findOne({ where: { 'recording_meta.id': id } });
-
     if (!robot) {
       return res.status(404).json({ error: 'Robot not found.' });
     }
 
-    // Update fields if provided
+
     if (name) {
       robot.set('recording_meta', { ...robot.recording_meta, name });
     }
@@ -274,7 +271,6 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       robot.set('recording_meta', { ...robot.recording_meta, url: targetUrl });
 
       const updatedWorkflow = [...robot.recording.workflow];
-      let foundGoto = false;
 
       for (let i = updatedWorkflow.length - 1; i >= 0; i--) {
         const step = updatedWorkflow[i];
@@ -289,7 +285,6 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
 
             robot.set('recording', { ...robot.recording, workflow: updatedWorkflow });
             robot.changed('recording', true);
-            foundGoto = true;
             i = -1;
             break;
           }
@@ -299,10 +294,9 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
 
     await robot.save();
 
-    // Start with existing workflow or allow client to supply a full workflow replacement
     let workflow = incomingWorkflow && Array.isArray(incomingWorkflow)
       ? JSON.parse(JSON.stringify(incomingWorkflow))
-      : [...robot.recording.workflow]; // Create a copy of the workflow
+      : [...robot.recording.workflow];
 
     if (credentials) {
       workflow = handleWorkflowActions(workflow, credentials);
@@ -344,7 +338,7 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       where: { 'recording_meta.id': id }
     });
 
-    const updatedRobot = await Robot.findOne({ where: { 'recording_meta.id': id } });
+    await Robot.findOne({ where: { 'recording_meta.id': id } });
 
     logger.log('info', `Robot with ID ${id} was updated successfully.`);
 
@@ -356,79 +350,6 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       return res.status(500).json({ error: error.message });
     } else {
       logger.log('error', `Unknown error updating robot with ID ${req.params.id}`);
-      return res.status(500).json({ error: 'An unknown error occurred.' });
-    }
-  }
-});
-
-
-/**
- * POST endpoint to duplicate a robot and update its target URL.
- */
-router.post('/recordings/:id/duplicate', requireSignIn, async (req: AuthenticatedRequest, res) => {
-  try {
-    const { id } = req.params;
-    const { targetUrl } = req.body;
-
-    if (!targetUrl) {
-      return res.status(400).json({ error: 'The "targetUrl" field is required.' });
-    }
-
-    const originalRobot = await Robot.findOne({ where: { 'recording_meta.id': id } });
-
-    if (!originalRobot) {
-      return res.status(404).json({ error: 'Original robot not found.' });
-    }
-
-    const lastWord = targetUrl.split('/').filter(Boolean).pop() || 'Unnamed';
-
-    const workflow = originalRobot.recording.workflow.map((step) => {
-      if (step.where?.url && step.where.url !== "about:blank") {
-        step.where.url = targetUrl;
-      }
-
-      step.what.forEach((action) => {
-        if (action.action === "goto" && action.args?.length) {
-          action.args[0] = targetUrl;
-        }
-      });
-
-      return step;
-    });
-
-    const currentTimestamp = new Date().toLocaleString();
-
-    const newRobot = await Robot.create({
-      id: uuid(),
-      userId: originalRobot.userId,
-      recording_meta: {
-        ...originalRobot.recording_meta,
-        id: uuid(),
-        name: `${originalRobot.recording_meta.name} (${lastWord})`,
-        createdAt: currentTimestamp,
-        updatedAt: currentTimestamp,
-      },
-      recording: { ...originalRobot.recording, workflow },
-      google_sheet_email: null,
-      google_sheet_name: null,
-      google_sheet_id: null,
-      google_access_token: null,
-      google_refresh_token: null,
-      schedule: null,
-    });
-
-    logger.log('info', `Robot with ID ${id} duplicated successfully as ${newRobot.id}.`);
-
-    return res.status(201).json({
-      message: 'Robot duplicated and target URL updated successfully.',
-      robot: newRobot,
-    });
-  } catch (error) {
-    if (error instanceof Error) {
-      logger.log('error', `Error duplicating robot with ID ${req.params.id}: ${error.message}`);
-      return res.status(500).json({ error: error.message });
-    } else {
-      logger.log('error', `Unknown error duplicating robot with ID ${req.params.id}`);
       return res.status(500).json({ error: 'An unknown error occurred.' });
     }
   }
@@ -521,33 +442,51 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
 
 /**
  * POST endpoint for creating an LLM-powered extraction robot
+ * URL is optional - if not provided, the system will search for the target website based on the prompt
  */
 router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     const { url, prompt, llmProvider, llmModel, llmApiKey, llmBaseUrl, robotName } = req.body;
 
-    if (!url || !prompt) {
-      return res.status(400).json({ error: 'Both "url" and "prompt" fields are required.' });
+    if (!prompt) {
+      return res.status(400).json({ error: 'The "prompt" field is required.' });
     }
 
     if (!req.user) {
       return res.status(401).send({ error: 'Unauthorized' });
     }
 
-    try {
-      new URL(url);
-    } catch (err) {
-      return res.status(400).json({ error: 'Invalid URL format' });
+    // Validate URL format if provided
+    if (url) {
+      try {
+        new URL(url);
+      } catch (err) {
+        return res.status(400).json({ error: 'Invalid URL format' });
+      }
     }
 
-    logger.log('info', `Starting LLM workflow generation for URL: ${url}`);
+    let workflowResult: any;
+    let finalUrl: string;
 
-    const workflowResult = await WorkflowEnricher.generateWorkflowFromPrompt(url, prompt, req.user.id, {
+    const llmConfig = {
       provider: llmProvider || 'ollama',
       model: llmModel,
       apiKey: llmApiKey,
       baseUrl: llmBaseUrl
-    });
+    };
+
+    if (url) {
+      logger.log('info', `Starting LLM workflow generation for provided URL: ${url}`);
+      workflowResult = await WorkflowEnricher.generateWorkflowFromPrompt(url, prompt, req.user.id, llmConfig);
+      finalUrl = workflowResult.url || url;
+    } else {
+      logger.log('info', `Starting LLM workflow generation with automatic URL detection for prompt: "${prompt}"`);
+      workflowResult = await WorkflowEnricher.generateWorkflowFromPromptWithSearch(prompt, req.user.id, llmConfig);
+      finalUrl = workflowResult.url || '';
+      if (finalUrl) {
+        logger.log('info', `Auto-detected URL: ${finalUrl}`);
+      }
+    }
 
     if (!workflowResult.success || !workflowResult.workflow) {
       logger.log('error', `Failed to generate workflow: ${JSON.stringify(workflowResult.errors)}`);
@@ -572,7 +511,7 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
         pairs: workflowResult.workflow.length,
         params: [],
         type: 'extract',
-        url: workflowResult.url || url,
+        url: finalUrl,
         isLLM: true,
       },
       recording: { workflow: workflowResult.workflow },
@@ -589,6 +528,8 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
       robot_meta: newRobot.recording_meta,
       recording: newRobot.recording,
       llm_provider: llmProvider || 'ollama',
+      prompt: prompt,
+      urlAutoDetected: !url,
     });
 
     return res.status(201).json({
@@ -891,13 +832,14 @@ router.post('/runs/run/:id', requireSignIn, async (req: AuthenticatedRequest, re
     }
     logger.log('info', `Error while running a robot with id: ${req.params.id} - ${message}`);
     capture(
-      'maxun-oss-run-created-manual',
+      'maxun-oss-run-created',
       {
         runId: req.params.id,
         user_id: req.user?.id,
         created_at: new Date().toISOString(),
         status: 'failed',
         error_message: message,
+        source: 'manual'
       }
     );
     return res.send(false);
@@ -1321,5 +1263,203 @@ export async function recoverOrphanedRuns() {
     logger.log('error', `Failed to recover orphaned runs: ${error.message}`);
   }
 }
+
+/**
+ * POST endpoint for creating a crawl robot
+ * @route POST /recordings/crawl
+ * @auth requireSignIn - JWT authentication required
+ */
+router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { url, name, crawlConfig } = req.body;
+
+    if (!url || !crawlConfig) {
+      return res.status(400).json({ error: 'URL and crawl configuration are required.' });
+    }
+
+    if (!req.user) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+
+    try {
+      new URL(url);
+    } catch (err) {
+      return res.status(400).json({ error: 'Invalid URL format' });
+    }
+
+    const robotName = name || `Crawl Robot - ${new URL(url).hostname}`;
+    const currentTimestamp = new Date().toLocaleString('en-US');
+    const robotId = uuid();
+
+    const newRobot = await Robot.create({
+      id: uuid(),
+      userId: req.user.id,
+      recording_meta: {
+        name: robotName,
+        id: robotId,
+        createdAt: currentTimestamp,
+        updatedAt: currentTimestamp,
+        pairs: 1,
+        params: [],
+        type: 'crawl',
+        url: url,
+      },
+      recording: {
+        workflow: [
+          {
+            where: { url },
+            what: [
+              { action: 'flag', args: ['generated'] },
+              {
+                action: 'crawl',
+                args: [crawlConfig],
+                name: 'Crawl'
+              }
+            ]
+          },
+          {
+            where: { url: 'about:blank' },
+            what: [
+              {
+                action: 'goto',
+                args: [url]
+              },
+              {
+                action: 'waitForLoadState',
+                args: ['networkidle']
+              }
+            ]
+          }
+        ]
+      },
+      google_sheet_email: null,
+      google_sheet_name: null,
+      google_sheet_id: null,
+      google_access_token: null,
+      google_refresh_token: null,
+      airtable_base_id: null,
+      airtable_base_name: null,
+      airtable_table_name: null,
+      airtable_table_id: null,
+      airtable_access_token: null,
+      airtable_refresh_token: null,
+      schedule: null,
+      webhooks: null
+    });
+
+    logger.log('info', `Crawl robot created with id: ${newRobot.id}`);
+    capture('maxun-oss-robot-created', {
+      userId: req.user.id.toString(),
+      robotId: robotId,
+      robotName: robotName,
+      url: url,
+      robotType: 'crawl',
+      crawlConfig: crawlConfig,
+      robot_meta: newRobot.recording_meta,
+      recording: newRobot.recording,
+    });
+
+    return res.status(201).json({
+      message: 'Crawl robot created successfully.',
+      robot: newRobot,
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      logger.log('error', `Error creating crawl robot: ${error.message}`);
+      return res.status(500).json({ error: error.message });
+    } else {
+      logger.log('error', 'Unknown error creating crawl robot');
+      return res.status(500).json({ error: 'An unknown error occurred.' });
+    }
+  }
+});
+
+/**
+ * POST endpoint for creating a search robot
+ * @route POST /recordings/search
+ * @auth requireSignIn - JWT authentication required
+ */
+router.post('/recordings/search', requireSignIn, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { searchConfig, name } = req.body;
+
+    if (!searchConfig || !searchConfig.query) {
+      return res.status(400).json({ error: 'Search configuration with query is required.' });
+    }
+
+    if (!req.user) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+
+    const robotName = name || `Search Robot - ${searchConfig.query.substring(0, 50)}`;
+    const currentTimestamp = new Date().toLocaleString('en-US');
+    const robotId = uuid();
+
+    const newRobot = await Robot.create({
+      id: uuid(),
+      userId: req.user.id,
+      recording_meta: {
+        name: robotName,
+        id: robotId,
+        createdAt: currentTimestamp,
+        updatedAt: currentTimestamp,
+        pairs: 1,
+        params: [],
+        type: 'search',
+      },
+      recording: {
+        workflow: [
+          {
+            where: { url: 'about:blank' },
+            what: [{
+              action: 'search',
+              args: [searchConfig],
+              name: 'Search'
+            }]
+          }
+        ]
+      },
+      google_sheet_email: null,
+      google_sheet_name: null,
+      google_sheet_id: null,
+      google_access_token: null,
+      google_refresh_token: null,
+      airtable_base_id: null,
+      airtable_base_name: null,
+      airtable_table_name: null,
+      airtable_table_id: null,
+      airtable_access_token: null,
+      airtable_refresh_token: null,
+      schedule: null,
+      webhooks: null
+    });
+
+    logger.log('info', `Search robot created with id: ${newRobot.id}`);
+    capture('maxun-oss-robot-created', {
+      userId: req.user.id.toString(),
+      robotId: robotId,
+      robotName: robotName,
+      robotType: 'search',
+      searchQuery: searchConfig.query,
+      searchProvider: searchConfig.provider || 'duckduckgo',
+      searchLimit: searchConfig.limit || 10,
+      robot_meta: newRobot.recording_meta,
+      recording: newRobot.recording,
+    });
+
+    return res.status(201).json({
+      message: 'Search robot created successfully.',
+      robot: newRobot,
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      logger.log('error', `Error creating search robot: ${error.message}`);
+      return res.status(500).json({ error: error.message });
+    } else {
+      logger.log('error', 'Unknown error creating search robot');
+      return res.status(500).json({ error: 'An unknown error occurred.' });
+    }
+  }
+});
 
 export { processQueuedRuns };

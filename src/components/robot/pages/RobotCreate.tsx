@@ -17,12 +17,14 @@ import {
   FormControl,
   Select,
   MenuItem,
-  InputLabel
+  InputLabel,
+  Collapse,
+  FormControlLabel
 } from '@mui/material';
 import { ArrowBack, AutoAwesome, HighlightAlt } from '@mui/icons-material';
 import { useGlobalInfoStore, useCacheInvalidation } from '../../../context/globalInfo';
 import { canCreateBrowserInState, getActiveBrowserId, stopRecording } from '../../../api/recording';
-import { createScrapeRobot, createLLMRobot, createAndRunRecording } from "../../../api/storage";
+import { createScrapeRobot, createLLMRobot, createAndRunRecording, createCrawlRobot, createSearchRobot } from "../../../api/storage";
 import { AuthContext } from '../../../context/auth';
 import { GenericModal } from '../../ui/GenericModal';
 
@@ -63,7 +65,7 @@ const RobotCreate: React.FC = () => {
   const [isWarningModalOpen, setWarningModalOpen] = useState(false);
   const [activeBrowserId, setActiveBrowserId] = useState('');
   const [outputFormats, setOutputFormats] = useState<string[]>([]);
-  const [generationMode, setGenerationMode] = useState<'agent' | 'recorder' | null>(null);
+  const [generationMode, setGenerationMode] = useState<'agent' | 'recorder' | null>('recorder');
 
   const [aiPrompt, setAiPrompt] = useState('');
   const [llmProvider, setLlmProvider] = useState<'anthropic' | 'openai' | 'ollama'>('ollama');
@@ -71,6 +73,25 @@ const RobotCreate: React.FC = () => {
   const [llmApiKey, setLlmApiKey] = useState('');
   const [llmBaseUrl, setLlmBaseUrl] = useState('');
   const [aiRobotName, setAiRobotName] = useState('');
+
+  const [crawlRobotName, setCrawlRobotName] = useState('');
+  const [crawlUrl, setCrawlUrl] = useState('');
+  const [crawlMode, setCrawlMode] = useState<'domain' | 'subdomain' | 'path'>('domain');
+  const [crawlLimit, setCrawlLimit] = useState(50);
+  const [crawlMaxDepth, setCrawlMaxDepth] = useState(3);
+  const [crawlIncludePaths, setCrawlIncludePaths] = useState<string>('');
+  const [crawlExcludePaths, setCrawlExcludePaths] = useState<string>('');
+  const [crawlUseSitemap, setCrawlUseSitemap] = useState(true);
+  const [crawlFollowLinks, setCrawlFollowLinks] = useState(true);
+  const [crawlRespectRobots, setCrawlRespectRobots] = useState(true);
+  const [showCrawlAdvanced, setShowCrawlAdvanced] = useState(false);
+
+  const [searchRobotName, setSearchRobotName] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchLimit, setSearchLimit] = useState(10);
+  const [searchProvider] = useState<'duckduckgo'>('duckduckgo');
+  const [searchMode, setSearchMode] = useState<'discover' | 'scrape'>('discover');
+  const [searchTimeRange, setSearchTimeRange] = useState<'day' | 'week' | 'month' | 'year' | ''>('');
 
   const { state } = React.useContext(AuthContext);
   const { user } = state;
@@ -155,6 +176,76 @@ const RobotCreate: React.FC = () => {
     navigate('/robots');
   };
 
+  const handleCreateCrawlRobot = async () => {
+    if (!crawlUrl.trim()) {
+      notify('error', 'Please enter a valid URL');
+      return;
+    }
+    if (!crawlRobotName.trim()) {
+      notify('error', 'Please enter a robot name');
+      return;
+    }
+
+    setIsLoading(true);
+    const result = await createCrawlRobot(
+      crawlUrl,
+      crawlRobotName,
+      {
+        mode: crawlMode,
+        limit: crawlLimit,
+        maxDepth: crawlMaxDepth,
+        includePaths: crawlIncludePaths ? crawlIncludePaths.split(',').map(p => p.trim()) : [],
+        excludePaths: crawlExcludePaths ? crawlExcludePaths.split(',').map(p => p.trim()) : [],
+        useSitemap: crawlUseSitemap,
+        followLinks: crawlFollowLinks,
+        respectRobots: crawlRespectRobots
+      }
+    );
+    setIsLoading(false);
+
+    if (result) {
+      invalidateRecordings();
+      notify('success', `${crawlRobotName} created successfully!`);
+      navigate('/robots');
+    } else {
+      notify('error', 'Failed to create crawl robot');
+    }
+  };
+
+  const handleCreateSearchRobot = async () => {
+    if (!searchQuery.trim()) {
+      notify('error', 'Please enter a search query');
+      return;
+    }
+    if (!searchRobotName.trim()) {
+      notify('error', 'Please enter a robot name');
+      return;
+    }
+
+    setIsLoading(true);
+    const result = await createSearchRobot(
+      searchRobotName,
+      {
+        query: searchQuery,
+        limit: searchLimit,
+        provider: searchProvider,
+        filters: {
+          timeRange: searchTimeRange ? searchTimeRange as 'day' | 'week' | 'month' | 'year' : undefined
+        },
+        mode: searchMode
+      }
+    );
+    setIsLoading(false);
+
+    if (result) {
+      invalidateRecordings();
+      notify('success', `${searchRobotName} created successfully!`);
+      navigate('/robots');
+    } else {
+      notify('error', 'Failed to create search robot');
+    }
+  };
+
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
       <Box>
@@ -210,6 +301,8 @@ const RobotCreate: React.FC = () => {
           >
             <Tab label="Extract" id="extract-robot" aria-controls="extract-robot" />
             <Tab label="Scrape" id="scrape-robot" aria-controls="scrape-robot" />
+            <Tab label="Crawl" id="crawl-robot" aria-controls="crawl-robot" />
+            <Tab label="Search" id="search-robot" aria-controls="search-robot" />
           </Tabs>
         </Box>
 
@@ -230,17 +323,6 @@ const RobotCreate: React.FC = () => {
               <Typography variant="body2" color="text.secondary" mb={3}>
                 Extract structured data from websites using AI or record your own extraction workflow.
               </Typography>
-              <Box sx={{ width: '100%', maxWidth: 700, mb: 3 }}>
-                <TextField
-                  placeholder="Example: https://www.ycombinator.com/companies/"
-                  variant="outlined"
-                  fullWidth
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  label="Website URL"
-                />
-              </Box>
-
               <Box sx={{ width: '100%', maxWidth: 700, mb: 3 }}>
                 <Typography variant="subtitle1" gutterBottom sx={{ mb: 2 }} color="text.secondary">
                   Choose How to Build
@@ -317,12 +399,12 @@ const RobotCreate: React.FC = () => {
                   <Box sx={{ width: '100%', maxWidth: 700 }}>
                     <Box sx={{ mb: 3 }}>
                       <TextField
-                        placeholder="Robot Name"
+                        placeholder="Name"
                         variant="outlined"
                         fullWidth
                         value={extractRobotName}
                         onChange={(e) => setExtractRobotName(e.target.value)}
-                        label="Robot Name"
+                        label="Name"
                       />
                     </Box>
 
@@ -336,6 +418,17 @@ const RobotCreate: React.FC = () => {
                         value={aiPrompt}
                         onChange={(e) => setAiPrompt(e.target.value)}
                         label="Extraction Prompt"
+                      />
+                    </Box>
+
+                    <Box sx={{ mb: 3 }}>
+                      <TextField
+                        placeholder="Example: https://www.ycombinator.com/companies/"
+                        variant="outlined"
+                        fullWidth
+                        value={url}
+                        onChange={(e) => setUrl(e.target.value)}
+                        label="Website URL (Optional)"
                       />
                     </Box>
 
@@ -424,10 +517,7 @@ const RobotCreate: React.FC = () => {
                       variant="contained"
                       fullWidth
                       onClick={async () => {
-                        if (!url.trim()) {
-                          notify('error', 'Please enter a valid URL');
-                          return;
-                        }
+                        // URL is optional for AI mode - it will auto-search if not provided
                         if (!extractRobotName.trim()) {
                           notify('error', 'Please enter a robot name');
                           return;
@@ -450,7 +540,7 @@ const RobotCreate: React.FC = () => {
                             pairs: 0,
                             params: [],
                             type: 'extract',
-                            url: url,
+                            url: url || '(auto-detecting...)',
                           },
                           recording: { workflow: [] },
                           isLoading: true,
@@ -459,12 +549,14 @@ const RobotCreate: React.FC = () => {
 
                         addOptimisticRobot(optimisticRobot);
 
-                        notify('info', `Robot ${robotDisplayName} creation started`);
+                        notify('info', url.trim() 
+                          ? `Robot ${robotDisplayName} creation started` 
+                          : `Robot ${robotDisplayName} creation started (searching for website...)`);
                         navigate('/robots');
 
                         try {
                           const result = await createLLMRobot(
-                            url,
+                            url.trim() || undefined,
                             aiPrompt,
                             llmProvider,
                             llmModel === 'default' ? undefined : llmModel,
@@ -524,7 +616,7 @@ const RobotCreate: React.FC = () => {
                           notify('error', error?.message || 'Failed to create and run AI robot');
                         }
                       }}
-                      disabled={!url.trim() || !extractRobotName.trim() || !aiPrompt.trim() || isLoading}
+                      disabled={!extractRobotName.trim() || !aiPrompt.trim() || isLoading}
                       sx={{
                         bgcolor: '#ff00c3',
                         py: 1.4,
@@ -540,6 +632,17 @@ const RobotCreate: React.FC = () => {
                 )}
 
                 {generationMode === 'recorder' && (
+                <>
+                  <Box sx={{ width: '100%', maxWidth: 700, mb: 3 }}>
+                    <TextField
+                      placeholder="Example: https://www.ycombinator.com/companies/"
+                      variant="outlined"
+                      fullWidth
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      label="Website URL"
+                    />
+                  </Box>
                   <Box sx={{ width: '100%', maxWidth: 700 }}>
                     <Button
                       variant="contained"
@@ -558,6 +661,7 @@ const RobotCreate: React.FC = () => {
                       {isLoading ? 'Starting...' : 'Start Recording'}
                     </Button>
                   </Box>
+                </>
                 )}
               </Box>
           </Card>
@@ -589,7 +693,7 @@ const RobotCreate: React.FC = () => {
                   value={scrapeRobotName}
                   onChange={(e) => setScrapeRobotName(e.target.value)}
                   sx={{ mb: 2 }}
-                  label="Robot Name"
+                  label="Name"
                 />
                 <TextField
                   placeholder="Example: https://www.ycombinator.com/companies/"
@@ -611,14 +715,46 @@ const RobotCreate: React.FC = () => {
                       value={outputFormats}
                       label="Output Formats *"
                       onChange={(e) => {
-                        const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
+                        const value =
+                          typeof e.target.value === 'string'
+                            ? e.target.value.split(',')
+                            : e.target.value;
                         setOutputFormats(value);
                       }}
                       renderValue={(selected) => {
                         if (selected.length === 0) {
                           return <em style={{ color: '#999' }}>Select formats</em>;
                         }
-                        return `${selected.length} format${selected.length > 1 ? 's' : ''} selected`;
+
+                        const OUTPUT_FORMAT_LABELS: Record<string, string> = {
+                          markdown: 'Markdown',
+                          html: 'HTML',
+                          'screenshot-visible': 'Screenshot (Visible)',
+                          'screenshot-fullpage': 'Screenshot (Full Page)',
+                        };
+
+                        const labels = selected.map(
+                          (value) => OUTPUT_FORMAT_LABELS[value] ?? value
+                        );
+
+                        const MAX_ITEMS = 2; // Show only first 2, then ellipsis
+
+                        const display =
+                          labels.length > MAX_ITEMS
+                            ? `${labels.slice(0, MAX_ITEMS).join(', ')}…`
+                            : labels.join(', ');
+
+                        return (
+                          <Box
+                            sx={{
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
+                            {display}
+                          </Box>
+                        );
                       }}
                       MenuProps={{
                         PaperProps: {
@@ -693,6 +829,262 @@ const RobotCreate: React.FC = () => {
                   ? "Creating..."
                   : `Create Robot`
                 }
+              </Button>
+            </Box>
+          </Card>
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={2}>
+          <Card sx={{ mb: 4, p: 4, textAlign: 'center' }}>
+            <Box display="flex" flexDirection="column" alignItems="center">
+              <img
+                src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
+                width={73}
+                height={65}
+                style={{
+                  borderRadius: '5px',
+                  marginBottom: '30px'
+                }}
+                alt="Maxun Logo"
+              />
+
+              <Typography variant="body2" color="text.secondary" mb={3}>
+                Crawl entire websites and gather data from multiple pages automatically.
+              </Typography>
+
+              <Box sx={{ width: '100%', maxWidth: 700, mb: 2 }}>
+                <TextField
+                  label="Name"
+                  placeholder="Example: YC Companies Crawler"
+                  fullWidth
+                  value={crawlRobotName}
+                  onChange={(e) => setCrawlRobotName(e.target.value)}
+                  sx={{ mb: 2 }}
+                />
+                <TextField
+                  label="Starting URL"
+                  placeholder="https://www.ycombinator.com/companies"
+                  fullWidth
+                  value={crawlUrl}
+                  onChange={(e) => setCrawlUrl(e.target.value)}
+                  sx={{ mb: 2 }}
+                />
+
+                <TextField
+                  label="Max Pages to Crawl"
+                  type="number"
+                  fullWidth
+                  value={crawlLimit}
+                  onChange={(e) => setCrawlLimit(parseInt(e.target.value) || 10)}
+                  sx={{ mb: 2 }}
+                />
+
+                <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start', mb: 2 }}>
+                  <Button
+                  onClick={() => setShowCrawlAdvanced(!showCrawlAdvanced)}
+                  sx={{
+                    textTransform: 'none',
+                    color: '#ff00c3',
+                  }}
+                  >
+                  {showCrawlAdvanced ? 'Hide Advanced Options' : 'Advanced Options'}
+                  </Button>
+                </Box>
+
+                <Collapse in={showCrawlAdvanced}>
+                  <Box sx={{ mb: 2 }}>
+                    <FormControl fullWidth sx={{ mb: 2 }}>
+                      <InputLabel>Crawl Scope</InputLabel>
+                      <Select
+                        value={crawlMode}
+                        label="Crawl Scope"
+                        onChange={(e) => setCrawlMode(e.target.value as any)}
+                      >
+                        <MenuItem value="domain">Same Domain Only</MenuItem>
+                        <MenuItem value="subdomain">Include Subdomains</MenuItem>
+                        <MenuItem value="path">Specific Path Only</MenuItem>
+                      </Select>
+                    </FormControl>
+
+                    <TextField
+                      label="Max Depth"
+                      type="number"
+                      fullWidth
+                      value={crawlMaxDepth}
+                      onChange={(e) => setCrawlMaxDepth(parseInt(e.target.value) || 3)}
+                      sx={{ mb: 2 }}
+                      helperText="How many links deep to follow (default: 3)"
+                      FormHelperTextProps={{ sx: { ml: 0 } }}
+                    />
+
+                    <TextField
+                      label="Include Paths"
+                      placeholder="Example: /products, /blog"
+                      fullWidth
+                      value={crawlIncludePaths}
+                      onChange={(e) => setCrawlIncludePaths(e.target.value)}
+                      sx={{ mb: 2 }}
+                      helperText="Only crawl URLs matching these paths (comma-separated)"
+                      FormHelperTextProps={{ sx: { ml: 0 } }}
+                    />
+
+                    <TextField
+                      label="Exclude Paths"
+                      placeholder="Example: /admin, /login"
+                      fullWidth
+                      value={crawlExcludePaths}
+                      onChange={(e) => setCrawlExcludePaths(e.target.value)}
+                      sx={{ mb: 2 }}
+                      helperText="Skip URLs matching these paths (comma-separated)"
+                      FormHelperTextProps={{ sx: { ml: 0 } }}
+                    />
+
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={crawlUseSitemap}
+                            onChange={(e) => setCrawlUseSitemap(e.target.checked)}
+                          />
+                        }
+                        label="Use sitemap.xml for URL discovery"
+                      />
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={crawlFollowLinks}
+                            onChange={(e) => setCrawlFollowLinks(e.target.checked)}
+                          />
+                        }
+                        label="Follow links on pages"
+                      />
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={crawlRespectRobots}
+                            onChange={(e) => setCrawlRespectRobots(e.target.checked)}
+                          />
+                        }
+                        label="Respect robots.txt"
+                      />
+                    </Box>
+                  </Box>
+                </Collapse>
+              </Box>
+
+              <Button
+                variant="contained"
+                fullWidth
+                onClick={handleCreateCrawlRobot}
+                disabled={!crawlUrl.trim() || !crawlRobotName.trim() || isLoading}
+                sx={{
+                  bgcolor: '#ff00c3',
+                  py: 1.4,
+                  fontSize: '1rem',
+                  textTransform: 'none',
+                  maxWidth: 700,
+                  borderRadius: 2
+                }}
+                startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
+              >
+                {isLoading ? 'Creating...' : 'Create Robot'}
+              </Button>
+            </Box>
+          </Card>
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={3}>
+          <Card sx={{ mb: 4, p: 4, textAlign: 'center' }}>
+            <Box display="flex" flexDirection="column" alignItems="center">
+              <img
+                src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
+                width={73}
+                height={65}
+                style={{
+                  borderRadius: '5px',
+                  marginBottom: '30px'
+                }}
+                alt="Maxun Logo"
+              />
+
+              <Typography variant="body2" color="text.secondary" mb={3}>
+                Search the web and gather data from relevant results.
+              </Typography>
+
+              <Box sx={{ width: '100%', maxWidth: 700, mb: 2 }}>
+                <TextField
+                  label="Name"
+                  placeholder="Example: AI News Monitor"
+                  fullWidth
+                  value={searchRobotName}
+                  onChange={(e) => setSearchRobotName(e.target.value)}
+                  sx={{ mb: 2 }}
+                />
+
+                <TextField
+                  label="Search Query"
+                  placeholder="Example: latest AI breakthroughs 2025"
+                  fullWidth
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  sx={{ mb: 2 }}
+                />
+
+                <TextField
+                  label="Number of Results"
+                  type="number"
+                  fullWidth
+                  value={searchLimit}
+                  onChange={(e) => setSearchLimit(parseInt(e.target.value) || 10)}
+                  sx={{ mb: 2 }}
+                />
+
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <FormControl fullWidth sx={{ mb: 2 }}>
+                  <InputLabel>Mode</InputLabel>
+                  <Select
+                    value={searchMode}
+                    label="Mode"
+                    onChange={(e) => setSearchMode(e.target.value as any)}
+                  >
+                    <MenuItem value="discover">Discover URLs Only</MenuItem>
+                    <MenuItem value="scrape">Extract Data from Results</MenuItem>
+                  </Select>
+                  </FormControl>
+
+                  <FormControl fullWidth sx={{ mb: 2 }}>
+                  <InputLabel>Time Range</InputLabel>
+                  <Select
+                    value={searchTimeRange}
+                    label="Time Range"
+                    onChange={(e) => setSearchTimeRange(e.target.value as 'day' | 'week' | 'month' | 'year' | '')}
+                  >
+                    <MenuItem value="">No Filter</MenuItem>
+                    <MenuItem value="day">Past 24 Hours</MenuItem>
+                    <MenuItem value="week">Past Week</MenuItem>
+                    <MenuItem value="month">Past Month</MenuItem>
+                    <MenuItem value="year">Past Year</MenuItem>
+                  </Select>
+                  </FormControl>
+                </Box>
+              </Box>
+
+              <Button
+                variant="contained"
+                fullWidth
+                onClick={handleCreateSearchRobot}
+                disabled={!searchQuery.trim() || !searchRobotName.trim() || isLoading}
+                sx={{
+                  bgcolor: '#ff00c3',
+                  py: 1.4,
+                  fontSize: '1rem',
+                  textTransform: 'none',
+                  maxWidth: 700,
+                  borderRadius: 2
+                }}
+                startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
+              >
+                {isLoading ? 'Creating...' : 'Create Robot'}
               </Button>
             </Box>
           </Card>

@@ -255,8 +255,9 @@ router.post(
         return res.status(400).json({ message: "API key already exists" });
       }
       const apiKey = genAPIKey();
+      const createdAt = new Date();
 
-      await user.update({ api_key: apiKey });
+      await user.update({ api_key: apiKey, api_key_created_at: createdAt })
 
       capture("maxun-oss-api-key-created", {
         user_id: user.id,
@@ -266,6 +267,7 @@ router.post(
       return res.status(200).json({
         message: "API key generated successfully",
         api_key: apiKey,
+        api_key_created_at: createdAt,
       });
     } catch (error) {
       return res
@@ -290,7 +292,7 @@ router.get(
 
       const user = await User.findByPk(req.user.id, {
         raw: true,
-        attributes: ["api_key"],
+        attributes: ["api_key", "api_key_created_at"]
       });
 
       if (!user) {
@@ -305,6 +307,7 @@ router.get(
         ok: true,
         message: "API key fetched successfully",
         api_key: user.api_key || null,
+        api_key_created_at: user.api_key_created_at || null,
       });
     } catch (error) {
       console.error('API Key fetch error:', error);
@@ -336,7 +339,7 @@ router.delete(
         return res.status(404).json({ message: "API Key not found" });
       }
 
-      await User.update({ api_key: null }, { where: { id: req.user.id } });
+      await User.update({ api_key: null, api_key_created_at: null }, { where: { id: req.user.id } });
 
       capture("maxun-oss-api-key-deleted", {
         user_id: user.id,

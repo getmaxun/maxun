@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { TextField, Typography, Box, Card, CardContent } from "@mui/material";
-import { Settings, Info } from "@mui/icons-material";
+import { TextField, Box } from "@mui/material";
 import { useGlobalInfoStore } from "../../../context/globalInfo";
 import { getStoredRecording } from "../../../api/storage";
 import { WhereWhatPair } from "maxun-core";
@@ -16,7 +15,7 @@ interface RobotMeta {
   pairs: number;
   updatedAt: string;
   params: any[];
-  type?: 'extract' | 'scrape';
+  type?: 'extract' | 'scrape' | 'crawl' | 'search';
   url?: string;
   formats?: ('markdown' | 'html' | 'screenshot-visible' | 'screenshot-fullpage')[];
   isLLM?: boolean;
@@ -116,19 +115,11 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
     fetchUserEmail();
   }, [robot?.userId]);
 
-  const handleCancel = () => {
-    const basePath = location.pathname.includes("/prebuilt-robots")
-      ? "/prebuilt-robots"
-      : "/robots";
-    navigate(basePath);
-  };
-
   const targetUrl = getTargetUrl();
 
   return (
     <RobotConfigPage
       title={t("robot_settings.title")}
-      onCancel={handleCancel}
       cancelButtonText={t("robot_settings.buttons.close")}
       showSaveButton={false}
       showCancelButton={false}
@@ -137,15 +128,17 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
         <Box style={{ display: "flex", flexDirection: "column" }}>
           {robot && (
             <>
-              <TextField
-                label={t("robot_settings.target_url")}
-                key="Robot Target URL"
-                value={targetUrl}
-                InputProps={{
-                  readOnly: true,
-                }}
-                style={{ marginBottom: "20px" }}
-              />
+              {robot.recording_meta.type !== 'search' && (
+                <TextField
+                  label={t("robot_settings.target_url")}
+                  key="Target URL"
+                  value={targetUrl}
+                  InputProps={{
+                    readOnly: true,
+                  }}
+                  style={{ marginBottom: "20px" }}
+                />
+              )}
               <TextField
                 label={t("robot_settings.robot_id")}
                 key="Robot ID"

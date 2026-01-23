@@ -103,188 +103,6 @@ const handleGenerateAction =
   }
 
 /**
- * A wrapper function for handling mousedown event.
- * @param socket The socket connection
- * @param coordinates - coordinates of the mouse click
- * @category HelperFunctions
- */
-const onMousedown = async (coordinates: Coordinates, userId: string) => {
-    logger.log('debug', 'Handling mousedown event emitted from client');
-    await handleWrapper(handleMousedown, userId, coordinates);
-}
-
-/**
- * A mousedown event handler.
- * Reproduces the click on the remote browser instance
- * and generates pair data for the recorded workflow.
- * @param activeBrowser - the active remote browser {@link RemoteBrowser}
- * @param page - the active page of the remote browser
- * @param x - the x coordinate of the mousedown event
- * @param y - the y coordinate of the mousedown event
- * @category BrowserManagement
- */
-const handleMousedown = async (activeBrowser: RemoteBrowser, page: Page, { x, y }: Coordinates) => {
-    try {
-    if (page.isClosed()) {
-      logger.log("debug", `Ignoring mousedown event: page is closed`);
-      return;
-    }
-
-    const generator = activeBrowser.generator;
-    await generator.onClick({ x, y }, page);
-    const previousUrl = page.url();
-    const tabsBeforeClick = page.context().pages().length;
-    await page.mouse.click(x, y);
-    // try if the click caused a navigation to a new url
-    try {
-      await page.waitForNavigation({ timeout: 2000 });
-      const currentUrl = page.url();
-      if (currentUrl !== previousUrl) {
-        generator.notifyUrlChange(currentUrl);
-      }
-    } catch (e) {
-      const { message } = e as Error;
-    } //ignore possible timeouts
-
-    // check if any new page was opened by the click
-    const tabsAfterClick = page.context().pages().length;
-    const numOfNewPages = tabsAfterClick - tabsBeforeClick;
-    if (numOfNewPages > 0) {
-      for (let i = 1; i <= numOfNewPages; i++) {
-        const newPage = page.context().pages()[tabsAfterClick - i];
-        if (newPage) {
-          generator.notifyOnNewTab(newPage, tabsAfterClick - i);
-        }
-      }
-    }
-    logger.log("debug", `Clicked on position x:${x}, y:${y}`);
-  } catch (e) {
-    const { message } = e as Error;
-    logger.log("warn", `Error handling mousedown event: ${message}`);
-  }
-};
-
-/**
- * A wrapper function for handling the wheel event.
- * @param socket The socket connection 
- * @param scrollDeltas - the scroll deltas of the wheel event
- * @category HelperFunctions
- */
-const onWheel = async (scrollDeltas: ScrollDeltas, userId: string) => {
-    logger.log('debug', 'Handling scroll event emitted from client');
-    await handleWrapper(handleWheel, userId, scrollDeltas);
-};
-
-/**
- * A wheel event handler.
- * Reproduces the wheel event on the remote browser instance.
- * Scroll is not generated for the workflow pair. This is because
- * Playwright scrolls elements into focus on any action.
- * @param activeBrowser - the active remote browser {@link RemoteBrowser}
- * @param page - the active page of the remote browser
- * @param deltaX - the delta x of the wheel event
- * @param deltaY - the delta y of the wheel event
- * @category BrowserManagement
- */
-const handleWheel = async (activeBrowser: RemoteBrowser, page: Page, { deltaX, deltaY }: ScrollDeltas) => {
-    try {
-        if (page.isClosed()) {
-            logger.log("debug", `Ignoring wheel event: page is closed`);
-            return;
-        }
-        
-        await page.mouse.wheel(deltaX, deltaY).catch(error => {
-            logger.log('warn', `Wheel event failed: ${error.message}`);
-        });    
-        logger.log('debug', `Scrolled horizontally ${deltaX} pixels and vertically ${deltaY} pixels`);    
-    } catch (e) {
-        const { message } = e as Error;
-        logger.log('warn', `Error handling wheel event: ${message}`);
-    }
-};
-
-/**
- * A wrapper function for handling the mousemove event.
- * @param socket The socket connection
- * @param coordinates - the coordinates of the mousemove event
- * @category HelperFunctions
- */
-const onMousemove = async (coordinates: Coordinates, userId: string) => {
-    logger.log('debug', 'Handling mousemove event emitted from client');
-    await handleWrapper(handleMousemove, userId, coordinates);
-}
-
-/**
- * A mousemove event handler.
- * Reproduces the mousemove event on the remote browser instance
- * and generates data for the client's highlighter.
- * Mousemove is also not reflected in the workflow.
- * @param activeBrowser - the active remote browser {@link RemoteBrowser}
- * @param page - the active page of the remote browser
- * @param x - the x coordinate of the mousemove event
- * @param y - the y coordinate of the mousemove event
- * @category BrowserManagement
- */
-const handleMousemove = async (activeBrowser: RemoteBrowser, page: Page, { x, y }: Coordinates) => {
-    try {
-        if (page.isClosed()) {
-            logger.log("debug", `Ignoring mousemove event: page is closed`);
-            return;
-        }
-
-        const generator = activeBrowser.generator;
-        await page.mouse.move(x, y);
-        // throttle(async () => {
-        //     if (!page.isClosed()) {
-        //         await generator.generateDataForHighlighter(page, { x, y });
-        //     }
-        // }, 100)();
-        logger.log("debug", `Moved over position x:${x}, y:${y}`);
-    } catch (e) {
-        const { message } = e as Error;
-        logger.log("error", message);
-    }
-}
-
-/**
- * A wrapper function for handling the keydown event.
- * @param socket The socket connection
- * @param keyboardInput - the keyboard input of the keydown event
- * @category HelperFunctions
- */
-const onKeydown = async (keyboardInput: KeyboardInput, userId: string) => {
-    logger.log('debug', 'Handling keydown event emitted from client');
-    await handleWrapper(handleKeydown, userId, keyboardInput);
-}
-
-/**
- * A keydown event handler.
- * Reproduces the keydown event on the remote browser instance
- * and generates the workflow pair data.
- * @param activeBrowser - the active remote browser {@link RemoteBrowser}
- * @param page - the active page of the remote browser
- * @param key - the pressed key
- * @param coordinates - the coordinates, where the keydown event happened
- * @category BrowserManagement
- */
-const handleKeydown = async (activeBrowser: RemoteBrowser, page: Page, { key, coordinates }: KeyboardInput) => {
-    try {
-        if (page.isClosed()) {
-            logger.log("debug", `Ignoring keydown event: page is closed`);
-            return;
-        }
-
-        const generator = activeBrowser.generator;
-        await page.keyboard.down(key);
-        await generator.onKeyboardInput(key, coordinates, page);
-        logger.log("debug", `Key ${key} pressed`);
-    } catch (e) {
-        const { message } = e as Error;
-        logger.log("warn", `Error handling keydown event: ${message}`);
-    }
-};
-
-/**
  * Handles the date selection event.
  * @param activeBrowser - the active remote browser {@link RemoteBrowser}
  * @param page - the active page of the remote browser
@@ -493,7 +311,7 @@ const handleChangeUrl = async (activeBrowser: RemoteBrowser, page: Page, url: st
 
             try {
                 await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
-                await page.waitForTimeout(2000); 
+                await page.waitForTimeout(500); 
                 logger.log("debug", `Went to ${url}`);
             } catch (e) {
                 const { message } = e as Error;
@@ -689,8 +507,7 @@ const handleClickAction = async (
       }
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    await activeBrowser.makeAndEmitDOMSnapshot();
+    await new Promise((resolve) => setTimeout(resolve, 300));
   } catch (e) {
     const { message } = e as Error;
     logger.log(
@@ -776,47 +593,6 @@ const onDOMKeyboardAction = async (
 ) => {
   logger.log("debug", "Handling keyboard action event emitted from client");
   await handleWrapper(handleKeyboardAction, userId, data);
-};
-
-/**
- * Handles the workflow pair event.
- * @param activeBrowser - the active remote browser {@link RemoteBrowser}
- * @param page - the active page of the remote browser
- * @param data - the data of the workflow pair event
- * @category BrowserManagement
- */
-const handleWorkflowPair = async (
-  activeBrowser: RemoteBrowser,
-  page: Page,
-  data: { pair: WhereWhatPair; userId: string }
-) => {
-  try {
-    if (page.isClosed()) {
-      logger.log("debug", `Ignoring workflow pair event: page is closed`);
-      return;
-    }
-
-    const generator = activeBrowser.generator;
-    await generator.onDOMWorkflowPair(page, data);
-    logger.log("debug", `Workflow pair processed from frontend`);
-  } catch (e) {
-    const { message } = e as Error;
-    logger.log("warn", `Error handling workflow pair event: ${message}`);
-  }
-};
-
-/**
- * A wrapper function for handling the workflow pair event.
- * @param socket The socket connection
- * @param data - the data of the workflow pair event
- * @category HelperFunctions
- */
-const onDOMWorkflowPair = async (
-  data: { pair: WhereWhatPair; userId: string },
-  userId: string
-) => {
-  logger.log("debug", "Handling workflow pair event emitted from client");
-  await handleWrapper(handleWorkflowPair, userId, data);
 };
 
 /**
@@ -1026,11 +802,6 @@ const onTestPaginationScroll = async (
  * @category BrowserManagement
  */
 const registerInputHandlers = (socket: Socket, userId: string) => {
-    // Register handlers with the socket
-    socket.on("input:mousedown", (data) => onMousedown(data, userId));
-    socket.on("input:wheel", (data) => onWheel(data, userId));
-    socket.on("input:mousemove", (data) => onMousemove(data, userId));
-    socket.on("input:keydown", (data) => onKeydown(data, userId));
     socket.on("input:keyup", (data) => onKeyup(data, userId));
     socket.on("input:url", (data) => onChangeUrl(data, userId));
     socket.on("input:refresh", () => onRefresh(userId));
@@ -1045,7 +816,6 @@ const registerInputHandlers = (socket: Socket, userId: string) => {
 
     socket.on("dom:click", (data) => onDOMClickAction(data, userId));
     socket.on("dom:keypress", (data) => onDOMKeyboardAction(data, userId));
-    socket.on("dom:addpair", (data) => onDOMWorkflowPair(data, userId));
     socket.on("testPaginationScroll", (data) => onTestPaginationScroll(data, userId, socket));
 };
 
@@ -1058,10 +828,6 @@ const registerInputHandlers = (socket: Socket, userId: string) => {
  */
 const removeInputHandlers = (socket: Socket) => {
   try {
-    socket.removeAllListeners("input:mousedown");
-    socket.removeAllListeners("input:wheel");
-    socket.removeAllListeners("input:mousemove");
-    socket.removeAllListeners("input:keydown");
     socket.removeAllListeners("input:keyup");
     socket.removeAllListeners("input:url");
     socket.removeAllListeners("input:refresh");
@@ -1075,7 +841,6 @@ const removeInputHandlers = (socket: Socket) => {
     socket.removeAllListeners("dom:input");
     socket.removeAllListeners("dom:click");
     socket.removeAllListeners("dom:keypress");
-    socket.removeAllListeners("dom:addpair");
     socket.removeAllListeners("removeAction");
     socket.removeAllListeners("testPaginationScroll");
   } catch (error: any) {

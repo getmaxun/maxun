@@ -11,10 +11,6 @@ import {
   Typography,
   Chip,
   Button,
-  Modal,
-  Tabs,
-  Tab,
-  Box,
   Snackbar,
   Tooltip
 } from "@mui/material";
@@ -25,9 +21,7 @@ import {
   YouTube,
   X,
   GitHub,
-  Update,
   Close,
-  Description,
   LightMode,
   DarkMode,
   Translate
@@ -63,9 +57,7 @@ export const NavBar: React.FC<NavBarProps> = ({
 
   const currentVersion = packageJson.version;
 
-  const [open, setOpen] = useState(false);
   const [latestVersion, setLatestVersion] = useState<string | null>(null);
-  const [tab, setTab] = useState(0);
   const [isUpdateAvailable, setIsUpdateAvailable] = useState(false);
 
   const fetchLatestVersion = async (): Promise<string | null> => {
@@ -78,20 +70,6 @@ export const NavBar: React.FC<NavBarProps> = ({
       console.error("Failed to fetch latest version:", error);
       return null;
     }
-  };
-
-  const handleUpdateOpen = () => {
-    setOpen(true);
-    fetchLatestVersion();
-  };
-
-  const handleUpdateClose = () => {
-    setOpen(false);
-    setTab(0); // Reset tab to the first tab
-  };
-
-  const handleUpdateTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTab(newValue);
   };
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -113,7 +91,7 @@ export const NavBar: React.FC<NavBarProps> = ({
       if (data.ok) {
         dispatch({ type: "LOGOUT" });
         window.localStorage.removeItem("user");
-        notify('success', t('navbar.notifications.success.logout'));
+        // notify('success', t('navbar.notifications.success.logout'));
         navigate("/login");
       }
     } catch (error: any) {
@@ -191,14 +169,14 @@ export const NavBar: React.FC<NavBarProps> = ({
           open={isUpdateAvailable}
           onClose={() => setIsUpdateAvailable(false)}
           message={
-            `${t('navbar.upgrade.modal.new_version_available', { version: latestVersion })} ${t('navbar.upgrade.modal.view_updates')}`
+            `${t('navbar.upgrade.modal.new_version_available', { version: latestVersion })}`
           }
           action={
             <>
               <Button
                 color="primary"
                 size="small"
-                onClick={handleUpdateOpen}
+                href="https://docs.maxun.dev/installation/upgrade"
                 style={{
                   backgroundColor: '#ff00c3',
                   color: 'white',
@@ -250,114 +228,19 @@ export const NavBar: React.FC<NavBarProps> = ({
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
               {!isRecording ? (
                 <>
-                  <IconButton onClick={handleUpdateOpen} sx={{
+                <IconButton href="https://maxun.dev/autorobots" target="_blank" sx={{
                     display: 'flex',
                     alignItems: 'center',
                     borderRadius: '5px',
                     padding: '8px',
                     marginRight: '20px',
                     '&:hover': {
-                      background: 'inherit'
+                      background: 'none',
+                      color: 'inherit'
                     }
                   }}>
-                    <Update sx={{ marginRight: '5px' }} />
-                    <Typography variant="body1">{t('navbar.upgrade.button')}</Typography>
+                    <Typography variant="body1">Browse Auto Robots</Typography>
                   </IconButton>
-                  <Modal open={open} onClose={handleUpdateClose}>
-                    <Box
-                      sx={{
-                        position: "absolute",
-                        top: "50%",
-                        left: "50%",
-                        transform: "translate(-50%, -50%)",
-                        width: 700,
-                        bgcolor: "background.paper",
-                        boxShadow: 24,
-                        p: 4,
-                        borderRadius: 2,
-                      }}
-                    >
-                      {latestVersion === null ? (
-                        <Typography>Checking for updates...</Typography>
-                      ) : currentVersion === latestVersion ? (
-                        <Typography variant="h6" textAlign="center">
-                          {t('navbar.upgrade.modal.up_to_date')}
-                        </Typography>
-                      ) : (
-                        <>
-                          <Typography variant="body1" textAlign="left" sx={{ marginLeft: '30px' }}>
-                            {t('navbar.upgrade.modal.new_version_available', { version: latestVersion })}
-                            <br />
-                            {t('navbar.upgrade.modal.view_updates')}
-                            <a href="https://github.com/getmaxun/maxun/releases/" target="_blank" style={{ textDecoration: 'none' }}>{' '}here.</a>
-                          </Typography>
-                          <Tabs
-                            value={tab}
-                            onChange={handleUpdateTabChange}
-                            sx={{ marginTop: 2, marginBottom: 2, marginLeft: '30px' }}
-                          >
-                            <Tab label={t('navbar.upgrade.modal.tabs.manual_setup')} />
-                            <Tab label={t('navbar.upgrade.modal.tabs.docker_setup')} />
-                          </Tabs>
-                          {tab === 0 && (
-                            <Box sx={{ marginLeft: '30px', background: '#cfd0d1', padding: 1, borderRadius: 3 }}>
-                              <code style={{ color: 'black' }}>
-                                <p>Run the commands below</p>
-                                # cd to project directory (eg: maxun)
-                                <br />
-                                cd maxun
-                                <br />
-                                <br />
-                                # pull latest changes
-                                <br />
-                                git pull origin master
-                                <br />
-                                <br />
-                                # install dependencies
-                                <br />
-                                npm install
-                                <br />
-                                <br />
-                                # start maxun
-                                <br />
-                                npm run start
-                              </code>
-                            </Box>
-                          )}
-                          {tab === 1 && (
-                            <Box sx={{ marginLeft: '30px', background: '#cfd0d1', padding: 1, borderRadius: 3 }}>
-                              <code style={{ color: 'black' }}>
-                                <p>Run the commands below</p>
-                                # cd to project directory (eg: maxun)
-                                <br />
-                                cd maxun
-                                <br />
-                                <br />
-                                # stop the working containers
-                                <br />
-                                docker-compose down
-                                <br />
-                                <br />
-                                # Remove existing backend and frontend images
-                                <br />
-                                docker rmi getmaxun/maxun-frontend:latest getmaxun/maxun-backend:latest
-                                <br />
-                                <br />
-                                # pull latest docker images
-                                <br />
-                                docker-compose pull backend frontend
-                                <br />
-                                <br />
-                                # start maxun
-                                <br />
-                                docker-compose up -d
-                              </code>
-                            </Box>
-                          )}
-                        </>
-                      )}
-                    </Box>
-                  </Modal>
                   {/* <iframe 
                   src="https://ghbtns.com/github-btn.html?user=getmaxun&repo=maxun&type=star&count=true&size=large" 
                   // frameBorder="0" 

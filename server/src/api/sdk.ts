@@ -88,6 +88,7 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
             type,
             url: extractedUrl,
             formats: (workflowFile.meta as any).formats || [],
+            isLLM: (workflowFile.meta as any).isLLM,
         };
 
         const robot = await Robot.create({
@@ -102,10 +103,14 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
         const eventName = robotMeta.isLLM
             ? "maxun-oss-llm-robot-created"
             : "maxun-oss-robot-created";
-        capture(eventName, {
+        const telemetryData: any = {
             robot_meta: robot.recording_meta,
             recording: robot.recording,
-        });
+        };
+        if (robotMeta.isLLM && (workflowFile.meta as any).prompt) {
+            telemetryData.prompt = (workflowFile.meta as any).prompt;
+        }
+        capture(eventName, telemetryData);
 
         return res.status(201).json({
             data: robot,
@@ -425,7 +430,7 @@ router.post("/sdk/robots/:id/execute", requireAPIKey, async (req: AuthenticatedR
 
         logger.info(`[SDK] Starting execution for robot ${robotId}`);
 
-        const runId = await handleRunRecording(robotId, user.id.toString());
+        const runId = await handleRunRecording(robotId, user.id.toString(), true);
         if (!runId) {
             throw new Error('Failed to start robot execution');
         }
@@ -450,13 +455,35 @@ router.post("/sdk/robots/:id/execute", requireAPIKey, async (req: AuthenticatedR
             }
         }
 
+        let crawlData: any[] = [];
+        if (run.serializableOutput?.crawl) {
+            const crawl: any = run.serializableOutput.crawl;
+
+            if (Array.isArray(crawl)) {
+                crawlData = crawl;
+            }
+            else if (typeof crawl === 'object') {
+                const crawlValues = Object.values(crawl);
+                if (crawlValues.length > 0 && Array.isArray(crawlValues[0])) {
+                    crawlData = crawlValues[0] as any[];
+                }
+            }
+        }
+
+        let searchData: any = {};
+        if (run.serializableOutput?.search) {
+            searchData = run.serializableOutput.search;
+        }
+
         return res.status(200).json({
             data: {
                 runId: run.runId,
                 status: run.status,
                 data: {
                     textData: run.serializableOutput?.scrapeSchema || {},
-                    listData: listData
+                    listData: listData,
+                    crawlData: crawlData,
+                    searchData: searchData
                 },
                 screenshots: Object.values(run.binaryOutput || {})
             }
@@ -641,26 +668,248 @@ router.post("/sdk/robots/:id/runs/:runId/abort", requireAPIKey, async (req: Auth
 });
 
 /**
+ * Create a crawl robot programmatically
+ * POST /api/sdk/crawl
+ */
+router.post("/sdk/crawl", requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const user = req.user;
+        const { url, name, crawlConfig } = req.body;
+
+        if (!url || !crawlConfig) {
+            return res.status(400).json({
+                error: "URL and crawl configuration are required"
+            });
+        }
+
+        try {
+            new URL(url);
+        } catch (err) {
+            return res.status(400).json({
+                error: "Invalid URL format"
+            });
+        }
+
+        if (typeof crawlConfig !== 'object') {
+            return res.status(400).json({
+                error: "crawlConfig must be an object"
+            });
+        }
+
+        const robotName = name || `Crawl Robot - ${new URL(url).hostname}`;
+        const robotId = uuid();
+        const metaId = uuid();
+
+        const robot = await Robot.create({
+            id: robotId,
+            userId: user.id,
+            recording_meta: {
+                name: robotName,
+                id: metaId,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                pairs: 1,
+                params: [],
+                type: 'crawl',
+                url: url,
+            },
+            recording: {
+                workflow: [
+                    {
+                        where: { url },
+                        what: [
+                            { action: 'flag', args: ['generated'] },
+                            {
+                                action: 'crawl',
+                                args: [crawlConfig],
+                                name: 'Crawl'
+                            }
+                        ]
+                    },
+                    {
+                        where: { url: 'about:blank' },
+                        what: [
+                            {
+                                action: 'goto',
+                                args: [url]
+                            },
+                            {
+                                action: 'waitForLoadState',
+                                args: ['networkidle']
+                            }
+                        ]
+                    }
+                ]
+            }
+        });
+
+        logger.info(`[SDK] Crawl robot created: ${metaId} (db: ${robotId}) by user ${user.id}`);
+
+        capture("maxun-oss-robot-created", {
+            userId: user.id.toString(),
+            robotId: metaId,
+            robotName: robotName,
+            url: url,
+            robotType: 'crawl',
+            crawlConfig: crawlConfig,
+            source: 'sdk',
+            robot_meta: robot.recording_meta,
+            recording: robot.recording,
+        });
+
+        return res.status(201).json({
+            data: robot,
+            message: "Crawl robot created successfully"
+        });
+
+    } catch (error: any) {
+        logger.error("[SDK] Error creating crawl robot:", error);
+        return res.status(500).json({
+            error: "Failed to create crawl robot",
+            message: error.message
+        });
+    }
+});
+
+/**
+ * Create a search robot programmatically
+ * POST /api/sdk/search
+ */
+router.post("/sdk/search", requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const user = req.user;
+        const { name, searchConfig } = req.body;
+
+        if (!searchConfig) {
+            return res.status(400).json({
+                error: "Search configuration is required"
+            });
+        }
+
+        if (!searchConfig.query) {
+            return res.status(400).json({
+                error: "searchConfig must include a query"
+            });
+        }
+
+        if (typeof searchConfig !== 'object') {
+            return res.status(400).json({
+                error: "searchConfig must be an object"
+            });
+        }
+
+        if (searchConfig.mode && !['discover', 'scrape'].includes(searchConfig.mode)) {
+            return res.status(400).json({
+                error: "searchConfig.mode must be either 'discover' or 'scrape'"
+            });
+        }
+
+        searchConfig.provider = 'duckduckgo';
+
+        const robotName = name || `Search Robot - ${searchConfig.query}`;
+        const robotId = uuid();
+        const metaId = uuid();
+
+        const robot = await Robot.create({
+            id: robotId,
+            userId: user.id,
+            recording_meta: {
+                name: robotName,
+                id: metaId,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                pairs: 1,
+                params: [],
+                type: 'search',
+            },
+            recording: {
+                workflow: [
+                    {
+                        where: { url: 'about:blank' },
+                        what: [
+                            {
+                                action: 'search',
+                                args: [searchConfig],
+                                name: 'Search'
+                            }
+                        ]
+                    }
+                ]
+            }
+        });
+
+        logger.info(`[SDK] Search robot created: ${metaId} (db: ${robotId}) by user ${user.id}`);
+
+        capture("maxun-oss-robot-created", {
+            userId: user.id.toString(),
+            robotId: metaId,
+            robotName: robotName,
+            robotType: 'search',
+            searchQuery: searchConfig.query,
+            searchProvider: searchConfig.provider || 'duckduckgo',
+            searchLimit: searchConfig.limit || 10,
+            source: 'sdk',
+            robot_meta: robot.recording_meta,
+            recording: robot.recording,
+        });
+
+        return res.status(201).json({
+            data: robot,
+            message: "Search robot created successfully"
+        });
+
+    } catch (error: any) {
+        logger.error("[SDK] Error creating search robot:", error);
+        return res.status(500).json({
+            error: "Failed to create search robot",
+            message: error.message
+        });
+    }
+});
+
+/**
  * LLM-based extraction - generate workflow from natural language prompt
  * POST /api/sdk/extract/llm
+ * URL is optional - if not provided, the system will search for the target website based on the prompt
  */
 router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
     try {
         const user = req.user
         const { url, prompt, llmProvider, llmModel, llmApiKey, llmBaseUrl, robotName } = req.body;
 
-        if (!url || !prompt) {
+        if (!prompt) {
             return res.status(400).json({
-                error: "URL and prompt are required"
+                error: "Prompt is required"
             });
         }
 
-        const workflowResult = await WorkflowEnricher.generateWorkflowFromPrompt(url, prompt, user.id, {
+        if (url) {
+            try {
+                new URL(url);
+            } catch (err) {
+                return res.status(400).json({
+                    error: "Invalid URL format"
+                });
+            }
+        }
+
+        const llmConfig = {
             provider: llmProvider,
             model: llmModel,
             apiKey: llmApiKey,
             baseUrl: llmBaseUrl
-        });
+        };
+
+        let workflowResult: any;
+        let finalUrl: string;
+
+        if (url) {
+            workflowResult = await WorkflowEnricher.generateWorkflowFromPrompt(url, prompt, user.id, llmConfig);
+            finalUrl = workflowResult.url || url;
+        } else {
+            workflowResult = await WorkflowEnricher.generateWorkflowFromPromptWithSearch(prompt, user.id, llmConfig);
+            finalUrl = workflowResult.url || '';
+        }
 
         if (!workflowResult.success || !workflowResult.workflow) {
             return res.status(400).json({
@@ -680,8 +929,8 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
             pairs: workflowResult.workflow.length,
             params: [],
             type: 'extract',
-            url: workflowResult.url,
-            isLLM: true,
+            url: finalUrl,
+            isLLM: true
         };
 
         const robot = await Robot.create({
@@ -698,6 +947,7 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
         capture("maxun-oss-llm-robot-created", {
             robot_meta: robot.recording_meta,
             recording: robot.recording,
+            prompt: prompt
         });
 
         return res.status(200).json({
@@ -706,7 +956,7 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
                 robotId: metaId,
                 name: robotMeta.name,
                 description: prompt,
-                url: workflowResult.url,
+                url: finalUrl,
                 workflow: workflowResult.workflow
             }
         });

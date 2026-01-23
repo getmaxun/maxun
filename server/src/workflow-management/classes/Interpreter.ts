@@ -16,7 +16,6 @@ function processWorkflow(workflow: WorkflowFile, checkLimit: boolean = false): W
 
   processedWorkflow.workflow.forEach((pair) => {
     pair.what.forEach((action) => {
-      // Handle limit validation for scrapeList action
       if (action.action === 'scrapeList' && checkLimit && Array.isArray(action.args) && action.args.length > 0) {
         const scrapeConfig = action.args[0];
         if (scrapeConfig && typeof scrapeConfig === 'object' && 'limit' in scrapeConfig) {
@@ -26,7 +25,6 @@ function processWorkflow(workflow: WorkflowFile, checkLimit: boolean = false): W
         }
       }
 
-      // Handle decryption for type and press actions
       if ((action.action === 'type' || action.action === 'press') && Array.isArray(action.args) && action.args.length > 1) {
         try {
           const encryptedValue = action.args[1];
@@ -93,10 +91,14 @@ export class WorkflowInterpreter {
   public serializableDataByType: {
     scrapeSchema: Record<string, any>;
     scrapeList: Record<string, any>;
+    crawl: Record<string, any>;
+    search: Record<string, any>;
     [key: string]: any;
   } = {
     scrapeSchema: {},
     scrapeList: {},
+    crawl: {},
+    search: {},
   };
 
   private currentActionName: string | null = null;
@@ -282,7 +284,6 @@ export class WorkflowInterpreter {
           }
         } else if (this.currentActionType === 'scrapeList') {
           if (data && Array.isArray(data) && data.length > 0) {
-            // Use the current index for persistence
             await this.persistDataToDatabase('scrapeList', data, this.currentScrapeListIndex);
           }
 
@@ -293,7 +294,6 @@ export class WorkflowInterpreter {
         } 
       },
       binaryCallback: async (data: string, mimetype: string) => {
-        // For editor mode, we don't have the name yet, so use a timestamp-based name
         const binaryItem = {
           name: `Screenshot ${Date.now()}`,
           mimeType: mimetype,
@@ -301,7 +301,6 @@ export class WorkflowInterpreter {
         };
         this.binaryData.push(binaryItem);
 
-        // Persist binary data to database
         await this.persistBinaryDataToDatabase(binaryItem);
 
         this.socket.emit('binaryCallback', {
@@ -340,7 +339,6 @@ export class WorkflowInterpreter {
   
     logger.log('debug', `Interpretation finished`);
 
-    // Flush any remaining data in persistence buffer before completing
     await this.flushPersistenceBuffer();
 
     this.interpreter = null;
@@ -419,6 +417,8 @@ export class WorkflowInterpreter {
     this.serializableDataByType = {
       scrapeSchema: {},
       scrapeList: {},
+      crawl: {},
+      search: {},
     };
     this.binaryData = [];
     this.currentScrapeListIndex = 0;
@@ -580,6 +580,13 @@ export class WorkflowInterpreter {
         setActionName: (name: string) => {
           this.currentActionName = name;
         },
+        progressUpdate: (current: number, total: number, percentage: number) => {
+          this.socket.nsp.emit('workflowProgress', {
+            current,
+            total,
+            percentage
+          });
+        },
       },
       serializableCallback: async (data: any) => {
         try {
@@ -591,16 +598,42 @@ export class WorkflowInterpreter {
             typeKey = "scrapeList";
           } else if (this.currentActionType === "scrapeSchema") {
             typeKey = "scrapeSchema";
+          } else if (this.currentActionType === "crawl") {
+            typeKey = "crawl";
+          } else if (this.currentActionType === "search") {
+            typeKey = "search";
           }
 
           if (typeKey === "scrapeList" && data.scrapeList) {
             data = data.scrapeList;
           } else if (typeKey === "scrapeSchema" && data.scrapeSchema) {
             data = data.scrapeSchema;
+          } else if (typeKey === "crawl" && data.crawl) {
+            data = data.crawl;
+          } else if (typeKey === "search" && data.search) {
+            data = data.search;
           }
 
           let actionName = "";
           if (typeKey === "scrapeList" && data && typeof data === "object" && !Array.isArray(data)) {
+            const keys = Object.keys(data);
+            if (keys.length === 1) {
+              actionName = keys[0];
+              data = data[actionName];
+            } else if (keys.length > 1) {
+              actionName = keys[keys.length - 1];
+              data = data[actionName];
+            }
+          } else if (typeKey === "crawl" && data && typeof data === "object" && !Array.isArray(data)) {
+            const keys = Object.keys(data);
+            if (keys.length === 1) {
+              actionName = keys[0];
+              data = data[actionName];
+            } else if (keys.length > 1) {
+              actionName = keys[keys.length - 1];
+              data = data[actionName];
+            }
+          } else if (typeKey === "search" && data && typeof data === "object" && !Array.isArray(data)) {
             const keys = Object.keys(data);
             if (keys.length === 1) {
               actionName = keys[0];
@@ -615,32 +648,41 @@ export class WorkflowInterpreter {
             actionName = this.currentActionName || "";
             if (typeKey === "scrapeList" && !actionName) {
               actionName = this.getUniqueActionName(typeKey, "");
+            } else if (typeKey === "crawl" && !actionName) {
+              actionName = this.getUniqueActionName(typeKey, "Crawl Results");
+            } else if (typeKey === "search" && !actionName) {
+              actionName = this.getUniqueActionName(typeKey, "Search Results");
             }
           }
 
-          const flattened = Array.isArray(data)
-            ? data
-            : (
-              data?.List ??
-              (data && typeof data === "object"
-                ? Object.values(data).flat?.() ?? data
-                : [])
-            );
+          let processedData;
+          if (typeKey === "search") {
+            processedData = data;
+          } else {
+            processedData = Array.isArray(data)
+              ? data
+              : (
+                data?.List ??
+                (data && typeof data === "object"
+                  ? Object.values(data).flat?.() ?? data
+                  : [])
+              );
+          }
 
           if (!this.serializableDataByType[typeKey]) {
             this.serializableDataByType[typeKey] = {};
           }
 
-          this.serializableDataByType[typeKey][actionName] = flattened;
+          this.serializableDataByType[typeKey][actionName] = processedData;
 
           await this.persistDataToDatabase(typeKey, {
-            [actionName]: flattened,
+            [actionName]: processedData,
           });
 
           this.socket.emit("serializableCallback", {
             type: typeKey,
             name: actionName,
-            data: flattened,
+            data: processedData,
           });
         } catch (err: any) {
           logger.log('error', `serializableCallback handler failed: ${err.message}`);
@@ -698,7 +740,6 @@ export class WorkflowInterpreter {
 
     await this.flushPersistenceBuffer();
 
-    // Structure the output to maintain separate data for each action type
     const result = {
       log: this.debugMessages,
       result: status,
@@ -794,13 +835,16 @@ export class WorkflowInterpreter {
 
         const currentSerializableOutput = run.serializableOutput ?
           JSON.parse(JSON.stringify(run.serializableOutput)) :
-          { scrapeSchema: [], scrapeList: [] };
+          { scrapeSchema: {}, scrapeList: {}, crawl: {}, search: {} };
         
         if (Array.isArray(currentSerializableOutput.scrapeList)) {
           currentSerializableOutput.scrapeList = {};
         }
         if (Array.isArray(currentSerializableOutput.scrapeSchema)) {
           currentSerializableOutput.scrapeSchema = {};
+        }
+        if (!currentSerializableOutput.search) {
+          currentSerializableOutput.search = {};
         }
 
         let hasUpdates = false;
@@ -826,6 +870,18 @@ export class WorkflowInterpreter {
               currentSerializableOutput.scrapeList = {};
             }
             mergeLists(currentSerializableOutput.scrapeList, item.data);
+            hasUpdates = true;
+          } else if (item.actionType === 'crawl') {
+            currentSerializableOutput.crawl = { 
+              ...(currentSerializableOutput.crawl || {}), 
+              ...item.data 
+            };
+            hasUpdates = true;
+          } else if (item.actionType === 'search') {
+            currentSerializableOutput.search = { 
+              ...(currentSerializableOutput.search || {}), 
+              ...item.data 
+            };
             hasUpdates = true;
           }
         }

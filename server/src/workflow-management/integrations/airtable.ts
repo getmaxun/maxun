@@ -13,7 +13,11 @@ interface AirtableUpdateTask {
 
 interface SerializableOutput {
   scrapeSchema?: Record<string, any[]>; 
-  scrapeList?: Record<string, any[]>;  
+  scrapeList?: Record<string, any[]>;
+  markdown?: Array<{ content: string }>;
+  html?: Array<{ content: string }>;
+  crawl?: Record<string, any[]>;
+  search?: any;
 }
 
 const MAX_RETRIES = 3;
@@ -67,6 +71,10 @@ function mergeRelatedData(serializableOutput: SerializableOutput, binaryOutput: 
   const schemaData: Array<{ Group: string; Field: string; Value: any }> = [];
   const listData: any[] = [];
   const screenshotData: Array<{ key: string; url: string }> = [];
+  const markdownData: any[] = [];
+  const htmlData: any[] = [];
+  const crawlData: any[] = [];
+  const searchData: any[] = [];
 
   if (serializableOutput.scrapeSchema) {
     if (Array.isArray(serializableOutput.scrapeSchema)) {
@@ -122,6 +130,66 @@ function mergeRelatedData(serializableOutput: SerializableOutput, binaryOutput: 
     }
   }
 
+  if (serializableOutput.markdown && Array.isArray(serializableOutput.markdown)) {
+    serializableOutput.markdown.forEach((item, index) => {
+      if (item.content) {
+        markdownData.push({
+          "Index": index + 1,
+          "Type": "Markdown",
+          "Content": item.content
+        });
+      }
+    });
+  }
+
+  if (serializableOutput.html && Array.isArray(serializableOutput.html)) {
+    serializableOutput.html.forEach((item, index) => {
+      if (item.content) {
+        htmlData.push({
+          "Index": index + 1,
+          "Type": "HTML",
+          "Content": item.content
+        });
+      }
+    });
+  }
+
+  if (serializableOutput.crawl && typeof serializableOutput.crawl === "object") {
+    for (const [crawlName, crawlArray] of Object.entries(serializableOutput.crawl)) {
+      if (Array.isArray(crawlArray)) {
+        crawlArray.forEach((crawlItem) => {
+          const hasContent = Object.values(crawlItem || {}).some(
+            (value) => value !== null && value !== undefined && value !== ""
+          );
+          if (hasContent) {
+            crawlData.push({ "Crawl Type": crawlName, ...crawlItem });
+          }
+        });
+      }
+    }
+  }
+
+  if (serializableOutput.search) {
+    let results: any[] = [];
+
+    if (serializableOutput.search.results && Array.isArray(serializableOutput.search.results)) {
+      results = serializableOutput.search.results;
+    } else if (Array.isArray(serializableOutput.search)) {
+      results = serializableOutput.search;
+    } else {
+      results = [serializableOutput.search];
+    }
+
+    results.forEach((result) => {
+      const hasContent = Object.values(result || {}).some(
+        (value) => value !== null && value !== undefined && value !== ""
+      );
+      if (hasContent) {
+        searchData.push(result);
+      }
+    });
+  }
+
   // Collect screenshot data (handles both string and object forms safely)
   // if (binaryOutput && Object.keys(binaryOutput).length > 0) {
   //   Object.entries(binaryOutput).forEach(([key, rawValue]: [string, any]) => {
@@ -152,7 +220,15 @@ function mergeRelatedData(serializableOutput: SerializableOutput, binaryOutput: 
   // }
 
   // --- Merge all types into Airtable rows ---
-  const maxLength = Math.max(schemaData.length, listData.length, screenshotData.length);
+  const maxLength = Math.max(
+    schemaData.length,
+    listData.length,
+    screenshotData.length,
+    markdownData.length,
+    htmlData.length,
+    crawlData.length,
+    searchData.length
+  );
 
   for (let i = 0; i < maxLength; i++) {
     const record: Record<string, any> = {};
@@ -176,6 +252,38 @@ function mergeRelatedData(serializableOutput: SerializableOutput, binaryOutput: 
       record.Screenshot = screenshotData[i].url;
     }
 
+    if (i < markdownData.length) {
+      Object.entries(markdownData[i] || {}).forEach(([key, value]) => {
+        if (value !== null && value !== undefined && value !== "") {
+          record[key] = value;
+        }
+      });
+    }
+
+    if (i < htmlData.length) {
+      Object.entries(htmlData[i] || {}).forEach(([key, value]) => {
+        if (value !== null && value !== undefined && value !== "") {
+          record[key] = value;
+        }
+      });
+    }
+
+    if (i < crawlData.length) {
+      Object.entries(crawlData[i] || {}).forEach(([key, value]) => {
+        if (value !== null && value !== undefined && value !== "") {
+          record[key] = value;
+        }
+      });
+    }
+
+    if (i < searchData.length) {
+      Object.entries(searchData[i] || {}).forEach(([key, value]) => {
+        if (value !== null && value !== undefined && value !== "") {
+          record[key] = value;
+        }
+      });
+    }
+
     if (Object.keys(record).length > 0) {
       allRecords.push(record);
     }
@@ -193,6 +301,18 @@ function mergeRelatedData(serializableOutput: SerializableOutput, binaryOutput: 
       Key: screenshotData[i].key,
       Screenshot: screenshotData[i].url,
     });
+  }
+  for (let i = maxLength; i < markdownData.length; i++) {
+    allRecords.push(markdownData[i]);
+  }
+  for (let i = maxLength; i < htmlData.length; i++) {
+    allRecords.push(htmlData[i]);
+  }
+  for (let i = maxLength; i < crawlData.length; i++) {
+    allRecords.push(crawlData[i]);
+  }
+  for (let i = maxLength; i < searchData.length; i++) {
+    allRecords.push(searchData[i]);
   }
 
   return allRecords;

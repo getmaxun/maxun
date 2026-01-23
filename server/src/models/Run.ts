@@ -23,6 +23,7 @@ interface RunAttributes {
   runByUserId?: string;
   runByScheduleId?: string;
   runByAPI?: boolean;
+  runBySDK?: boolean;
   serializableOutput: Record<string, any>;
   binaryOutput: Record<string, string>;
   retryCount?: number;
@@ -45,6 +46,7 @@ class Run extends Model<RunAttributes, RunCreationAttributes> implements RunAttr
   public runByUserId!: string;
   public runByScheduleId!: string;
   public runByAPI!: boolean;
+  public runBySDK!: boolean;
   public serializableOutput!: Record<string, any>;
   public binaryOutput!: Record<string, any>;
   public retryCount!: number;
@@ -110,6 +112,10 @@ Run.init(
       allowNull: true,
     },
     runByAPI: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+    },
+    runBySDK: {
       type: DataTypes.BOOLEAN,
       allowNull: true,
     },

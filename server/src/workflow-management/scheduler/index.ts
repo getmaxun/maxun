@@ -390,12 +390,13 @@ async function executeRun(id: string, userId: string) {
           );
         }
 
-        capture("maxun-oss-run-created-scheduled", {
+        capture("maxun-oss-run-created", {
           runId: plainRun.runId,
           user_id: userId,
           status: "success",
           robot_type: "scrape",
-          formats
+          formats,
+          source: "scheduled"
         });
 
         await destroyRemoteBrowser(plainRun.browserId, userId);
@@ -429,12 +430,13 @@ async function executeRun(id: string, userId: string) {
           );
         }
 
-        capture("maxun-oss-run-created-scheduled", {
+        capture("maxun-oss-run-created", {
           runId: plainRun.runId,
           user_id: userId,
           status: "failed",
           robot_type: "scrape",
-          formats
+          formats,
+          source: "scheduled"
         });
 
         await destroyRemoteBrowser(plainRun.browserId, userId);
@@ -484,6 +486,8 @@ async function executeRun(id: string, userId: string) {
     const categorizedOutput = {
       scrapeSchema: finalRun?.serializableOutput?.scrapeSchema || {},
       scrapeList: finalRun?.serializableOutput?.scrapeList || {},
+      crawl: finalRun?.serializableOutput?.crawl || {},
+      search: finalRun?.serializableOutput?.search || {}
     };
 
     await destroyRemoteBrowser(plainRun.browserId, userId);
@@ -527,7 +531,7 @@ async function executeRun(id: string, userId: string) {
     const totalRowsExtracted = totalSchemaItemsExtracted + totalListItemsExtracted;
 
     capture(
-      'maxun-oss-run-created-scheduled',
+      'maxun-oss-run-created',
       {
         runId: id,
         created_at: new Date().toISOString(),
@@ -537,6 +541,7 @@ async function executeRun(id: string, userId: string) {
         listItemsExtracted: totalListItemsExtracted,
         extractedScreenshotsCount,
         is_llm: (recording.recording_meta as any).isLLM,
+        source: 'scheduled'
       }
     );
 
@@ -570,6 +575,8 @@ async function executeRun(id: string, userId: string) {
             }, {} as Record<string, any[]>)
           : {},
         captured_lists: categorizedOutput.scrapeList,
+        crawl_data: categorizedOutput.crawl,
+        search_data: categorizedOutput.search,
         captured_texts_count: totalSchemaItemsExtracted,
         captured_lists_count: totalListItemsExtracted,
         screenshots_count: extractedScreenshotsCount
@@ -652,12 +659,13 @@ async function executeRun(id: string, userId: string) {
         logger.log('warn', `Failed to emit failure event in main catch: ${socketError.message}`);
       }
       capture(
-        'maxun-oss-run-created-scheduled',
+        'maxun-oss-run-created',
         {
           runId: id,
           created_at: new Date().toISOString(),
           status: 'failed',
           is_llm: (recording?.recording_meta as any)?.isLLM,
+          source: 'scheduled'
         }
       );
     }

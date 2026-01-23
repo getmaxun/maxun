@@ -9,7 +9,6 @@ import {
 import { RobotIntegrationPage } from "./pages/RobotIntegrationPage";
 import { RobotSettingsPage } from "./pages/RobotSettingsPage";
 import { RobotEditPage } from "./pages/RobotEditPage";
-import { RobotDuplicatePage } from "./pages/RobotDuplicatePage";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { useTranslation } from "react-i18next";
@@ -106,8 +105,6 @@ export const Recordings = ({
       return <RobotSettingsPage handleStart={() => {}} />;
     } else if (currentPath.endsWith("/edit")) {
       return <RobotEditPage handleStart={() => {}} />;
-    } else if (currentPath.endsWith("/duplicate")) {
-      return <RobotDuplicatePage handleStart={() => {}} />;
     }
     return null;
   };
@@ -118,7 +115,6 @@ export const Recordings = ({
     currentPath.includes("/integrate") ||
     currentPath.includes("/settings") ||
     currentPath.includes("/edit") ||
-    currentPath.includes("/duplicate") ||
     currentPath.includes("/run");
 
   if (isConfigPage) {
@@ -145,9 +141,6 @@ export const Recordings = ({
             }
             handleEditRobot={(id, name, params) =>
               handleNavigate(`/robots/${id}/edit`, id, name, params)
-            }
-            handleDuplicateRobot={(id, name, params) =>
-              handleNavigate(`/robots/${id}/duplicate`, id, name, params)
             }
           />
         </Grid>

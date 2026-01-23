@@ -59,7 +59,7 @@ export const createScrapeRobot = async (
 };
 
 export const createLLMRobot = async (
-  url: string,
+  url: string | undefined,
   prompt: string,
   llmProvider?: 'anthropic' | 'openai' | 'ollama',
   llmModel?: string,
@@ -71,7 +71,7 @@ export const createLLMRobot = async (
     const response = await axios.post(
       `${apiUrl}/storage/recordings/llm`,
       {
-        url,
+        url: url || undefined,
         prompt,
         llmProvider,
         llmModel,
@@ -114,22 +114,6 @@ export const updateRecording = async (id: string, data: {
   } catch (error: any) {
     console.error(`Error updating recording: ${error.message}`);
     return false;
-  }
-};
-
-export const duplicateRecording = async (id: string, targetUrl: string): Promise<any> => {
-  try {
-    const response = await axios.post(`${apiUrl}/storage/recordings/${id}/duplicate`, {
-      targetUrl,
-    });
-    if (response.status === 201) {
-      return response.data; // Returns the duplicated robot details
-    } else {
-      throw new Error(`Couldn't duplicate recording with id ${id}`);
-    }
-  } catch (error: any) {
-    console.error(`Error duplicating recording: ${error.message}`);
-    return null;
   }
 };
 
@@ -336,3 +320,80 @@ export const deleteSchedule = async (id: string): Promise<boolean> => {
     return false;
   }
 }
+
+export const createCrawlRobot = async (
+  url: string,
+  name: string,
+  crawlConfig: {
+    mode: 'domain' | 'subdomain' | 'path';
+    limit: number;
+    maxDepth: number;
+    includePaths: string[];
+    excludePaths: string[];
+    useSitemap: boolean;
+    followLinks: boolean;
+    respectRobots: boolean;
+  }
+): Promise<any> => {
+  try {
+    const response = await axios.post(
+      `${apiUrl}/storage/recordings/crawl`,
+      {
+        url,
+        name,
+        crawlConfig,
+      },
+      {
+        headers: { 'Content-Type': 'application/json' },
+        withCredentials: true,
+      }
+    );
+
+    if (response.status === 201) {
+      return response.data;
+    } else {
+      throw new Error('Failed to create crawl robot');
+    }
+  } catch (error: any) {
+    console.error('Error creating crawl robot:', error);
+    return null;
+  }
+};
+
+export const createSearchRobot = async (
+  name: string,
+  searchConfig: {
+    query: string;
+    limit: number;
+    provider: 'google' | 'bing' | 'duckduckgo';
+    filters?: {
+      timeRange?: 'day' | 'week' | 'month' | 'year';
+      location?: string;
+      lang?: string;
+    };
+    mode: 'discover' | 'scrape';
+  }
+): Promise<any> => {
+  try {
+    const response = await axios.post(
+      `${apiUrl}/storage/recordings/search`,
+      {
+        name,
+        searchConfig,
+      },
+      {
+        headers: { 'Content-Type': 'application/json' },
+        withCredentials: true,
+      }
+    );
+
+    if (response.status === 201) {
+      return response.data;
+    } else {
+      throw new Error('Failed to create search robot');
+    }
+  } catch (error: any) {
+    console.error('Error creating search robot:', error);
+    return null;
+  }
+};

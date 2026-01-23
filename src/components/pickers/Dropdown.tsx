@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { useSocketStore } from '../../context/socket';
-import { Coordinates } from '../recorder/Canvas';
+
+interface Coordinates {
+  x: number;
+  y: number;
+};
 
 interface DropdownProps {
     coordinates: Coordinates;
