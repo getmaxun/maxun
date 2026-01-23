@@ -228,6 +228,19 @@ export const NavBar: React.FC<NavBarProps> = ({
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
               {!isRecording ? (
                 <>
+                <IconButton href="https://maxun.dev/autorobots" target="_blank" sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    borderRadius: '5px',
+                    padding: '8px',
+                    marginRight: '20px',
+                    '&:hover': {
+                      background: 'none',
+                      color: 'inherit'
+                    }
+                  }}>
+                    <Typography variant="body1">Browse Auto Robots</Typography>
+                  </IconButton>
                   {/* <iframe 
                   src="https://ghbtns.com/github-btn.html?user=getmaxun&repo=maxun&type=star&count=true&size=large" 
                   // frameBorder="0" 
