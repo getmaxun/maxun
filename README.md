@@ -131,7 +131,7 @@ This project is in early stages of development. Your feedback is very important 
 
 ## License
 <p>
-Maxun is [fair-code](https://faircode.io/) distributed under the <a href="./LICENSE">Sustainable Use License.</a>
+Maxun is <a href="https://faircode.io/">fair code</a> distributed under the <a href="./LICENSE">Sustainable Use License.</a>
 </p>
 
 ## Support Us
