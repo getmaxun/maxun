@@ -235,7 +235,8 @@ export const NavBar: React.FC<NavBarProps> = ({
                     padding: '8px',
                     marginRight: '20px',
                     '&:hover': {
-                      background: 'inherit'
+                      background: 'none',
+                      color: 'inherit'
                     }
                   }}>
                     <Typography variant="body1">Browse Auto Robots</Typography>
