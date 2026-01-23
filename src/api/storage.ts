@@ -59,7 +59,7 @@ export const createScrapeRobot = async (
 };
 
 export const createLLMRobot = async (
-  url: string,
+  url: string | undefined,
   prompt: string,
   llmProvider?: 'anthropic' | 'openai' | 'ollama',
   llmModel?: string,
@@ -71,7 +71,7 @@ export const createLLMRobot = async (
     const response = await axios.post(
       `${apiUrl}/storage/recordings/llm`,
       {
-        url,
+        url: url || undefined,
         prompt,
         llmProvider,
         llmModel,
