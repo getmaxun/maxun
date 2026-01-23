@@ -131,7 +131,7 @@ This project is in early stages of development. Your feedback is very important 
 
 ## License
 <p>
-This project is licensed under <a href="./LICENSE">AGPLv3</a>.
+Maxun is [fair-code](https://faircode.io/) distributed under the <a href="./LICENSE">Sustainable Use License.</a>
 </p>
 
 ## Support Us
