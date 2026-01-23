@@ -11,10 +11,6 @@ import {
   Typography,
   Chip,
   Button,
-  Modal,
-  Tabs,
-  Tab,
-  Box,
   Snackbar,
   Tooltip
 } from "@mui/material";
@@ -25,7 +21,6 @@ import {
   YouTube,
   X,
   GitHub,
-  Update,
   Close,
   LightMode,
   DarkMode,
