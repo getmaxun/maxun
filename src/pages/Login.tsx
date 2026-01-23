@@ -56,7 +56,6 @@ const Login = () => {
         { withCredentials: true }
       );
       dispatch({ type: "LOGIN", payload: data });
-      notify("success", t('login.welcome_notification'));
       window.localStorage.setItem("user", JSON.stringify(data));
       navigate("/");
     } catch (err: any) {
