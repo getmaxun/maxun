@@ -228,7 +228,7 @@ export const NavBar: React.FC<NavBarProps> = ({
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
               {!isRecording ? (
                 <>
-                <IconButton href="https://maxun.dev/autorobots" sx={{
+                <IconButton href="https://maxun.dev/autorobots" target="_blank" sx={{
                     display: 'flex',
                     alignItems: 'center',
                     borderRadius: '5px',
