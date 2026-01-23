@@ -169,7 +169,7 @@ export const NavBar: React.FC<NavBarProps> = ({
           open={isUpdateAvailable}
           onClose={() => setIsUpdateAvailable(false)}
           message={
-            `${t('navbar.upgrade.modal.new_version_available', { version: latestVersion })} ${t('navbar.upgrade.modal.view_updates')}`
+            `${t('navbar.upgrade.modal.new_version_available', { version: latestVersion })}`
           }
           action={
             <>
