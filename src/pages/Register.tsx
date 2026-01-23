@@ -49,7 +49,6 @@ const Register = () => {
     try {
       const { data } = await axios.post(`${apiUrl}/auth/register`, { email, password });
       dispatch({ type: "LOGIN", payload: data });
-      notify("success", t('register.welcome_notification'));
       window.localStorage.setItem("user", JSON.stringify(data));
       navigate("/");
     } catch (error: any) {
