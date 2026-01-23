@@ -65,7 +65,7 @@ const RobotCreate: React.FC = () => {
   const [isWarningModalOpen, setWarningModalOpen] = useState(false);
   const [activeBrowserId, setActiveBrowserId] = useState('');
   const [outputFormats, setOutputFormats] = useState<string[]>([]);
-  const [generationMode, setGenerationMode] = useState<'agent' | 'recorder' | null>('recorder');
+  const [generationMode, setGenerationMode] = useState<'agent' | 'recorder' | null>(null);
 
   const [aiPrompt, setAiPrompt] = useState('');
   const [llmProvider, setLlmProvider] = useState<'anthropic' | 'openai' | 'ollama'>('ollama');
@@ -324,6 +324,17 @@ const RobotCreate: React.FC = () => {
                 Extract structured data from websites using AI or record your own extraction workflow.
               </Typography>
               <Box sx={{ width: '100%', maxWidth: 700, mb: 3 }}>
+                <TextField
+                  placeholder="Example: https://www.ycombinator.com/companies/"
+                  variant="outlined"
+                  fullWidth
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  label="Website URL"
+                />
+              </Box>
+
+              <Box sx={{ width: '100%', maxWidth: 700, mb: 3 }}>
                 <Typography variant="subtitle1" gutterBottom sx={{ mb: 2 }} color="text.secondary">
                   Choose How to Build
                 </Typography>
@@ -421,17 +432,6 @@ const RobotCreate: React.FC = () => {
                       />
                     </Box>
 
-                    <Box sx={{ mb: 3 }}>
-                      <TextField
-                        placeholder="Example: https://www.ycombinator.com/companies/"
-                        variant="outlined"
-                        fullWidth
-                        value={url}
-                        onChange={(e) => setUrl(e.target.value)}
-                        label="Website URL (Optional)"
-                      />
-                    </Box>
-
                     <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
                       <FormControl sx={{ flex: 1 }}>
                         <InputLabel>LLM Provider</InputLabel>
@@ -517,7 +517,10 @@ const RobotCreate: React.FC = () => {
                       variant="contained"
                       fullWidth
                       onClick={async () => {
-                        // URL is optional for AI mode - it will auto-search if not provided
+                        if (!url.trim()) {
+                          notify('error', 'Please enter a valid URL');
+                          return;
+                        }
                         if (!extractRobotName.trim()) {
                           notify('error', 'Please enter a robot name');
                           return;
@@ -540,7 +543,7 @@ const RobotCreate: React.FC = () => {
                             pairs: 0,
                             params: [],
                             type: 'extract',
-                            url: url || '(auto-detecting...)',
+                            url: url,
                           },
                           recording: { workflow: [] },
                           isLoading: true,
@@ -549,14 +552,12 @@ const RobotCreate: React.FC = () => {
 
                         addOptimisticRobot(optimisticRobot);
 
-                        notify('info', url.trim() 
-                          ? `Robot ${robotDisplayName} creation started` 
-                          : `Robot ${robotDisplayName} creation started (searching for website...)`);
+                        notify('info', `Robot ${robotDisplayName} creation started`);
                         navigate('/robots');
 
                         try {
                           const result = await createLLMRobot(
-                            url.trim() || undefined,
+                            url,
                             aiPrompt,
                             llmProvider,
                             llmModel === 'default' ? undefined : llmModel,
@@ -616,7 +617,7 @@ const RobotCreate: React.FC = () => {
                           notify('error', error?.message || 'Failed to create and run AI robot');
                         }
                       }}
-                      disabled={!extractRobotName.trim() || !aiPrompt.trim() || isLoading}
+                      disabled={!url.trim() || !extractRobotName.trim() || !aiPrompt.trim() || isLoading}
                       sx={{
                         bgcolor: '#ff00c3',
                         py: 1.4,
@@ -632,17 +633,6 @@ const RobotCreate: React.FC = () => {
                 )}
 
                 {generationMode === 'recorder' && (
-                <>
-                  <Box sx={{ width: '100%', maxWidth: 700, mb: 3 }}>
-                    <TextField
-                      placeholder="Example: https://www.ycombinator.com/companies/"
-                      variant="outlined"
-                      fullWidth
-                      value={url}
-                      onChange={(e) => setUrl(e.target.value)}
-                      label="Website URL"
-                    />
-                  </Box>
                   <Box sx={{ width: '100%', maxWidth: 700 }}>
                     <Button
                       variant="contained"
@@ -661,7 +651,6 @@ const RobotCreate: React.FC = () => {
                       {isLoading ? 'Starting...' : 'Start Recording'}
                     </Button>
                   </Box>
-                </>
                 )}
               </Box>
           </Card>

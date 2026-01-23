@@ -870,46 +870,24 @@ router.post("/sdk/search", requireAPIKey, async (req: AuthenticatedRequest, res:
 /**
  * LLM-based extraction - generate workflow from natural language prompt
  * POST /api/sdk/extract/llm
- * URL is optional - if not provided, the system will search for the target website based on the prompt
  */
 router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
     try {
         const user = req.user
         const { url, prompt, llmProvider, llmModel, llmApiKey, llmBaseUrl, robotName } = req.body;
 
-        if (!prompt) {
+        if (!url || !prompt) {
             return res.status(400).json({
-                error: "Prompt is required"
+                error: "URL and prompt are required"
             });
         }
 
-        if (url) {
-            try {
-                new URL(url);
-            } catch (err) {
-                return res.status(400).json({
-                    error: "Invalid URL format"
-                });
-            }
-        }
-
-        const llmConfig = {
+        const workflowResult = await WorkflowEnricher.generateWorkflowFromPrompt(url, prompt, user.id, {
             provider: llmProvider,
             model: llmModel,
             apiKey: llmApiKey,
             baseUrl: llmBaseUrl
-        };
-
-        let workflowResult: any;
-        let finalUrl: string;
-
-        if (url) {
-            workflowResult = await WorkflowEnricher.generateWorkflowFromPrompt(url, prompt, user.id, llmConfig);
-            finalUrl = workflowResult.url || url;
-        } else {
-            workflowResult = await WorkflowEnricher.generateWorkflowFromPromptWithSearch(prompt, user.id, llmConfig);
-            finalUrl = workflowResult.url || '';
-        }
+        });
 
         if (!workflowResult.success || !workflowResult.workflow) {
             return res.status(400).json({
@@ -929,8 +907,8 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
             pairs: workflowResult.workflow.length,
             params: [],
             type: 'extract',
-            url: finalUrl,
-            isLLM: true
+            url: workflowResult.url,
+            isLLM: true,
         };
 
         const robot = await Robot.create({
@@ -947,7 +925,7 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
         capture("maxun-oss-llm-robot-created", {
             robot_meta: robot.recording_meta,
             recording: robot.recording,
-            prompt: prompt
+            prompt: prompt,
         });
 
         return res.status(200).json({
@@ -956,7 +934,7 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
                 robotId: metaId,
                 name: robotMeta.name,
                 description: prompt,
-                url: finalUrl,
+                url: workflowResult.url,
                 workflow: workflowResult.workflow
             }
         });
