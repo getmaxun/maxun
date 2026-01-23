@@ -249,19 +249,6 @@ export const NavBar: React.FC<NavBarProps> = ({
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
               {!isRecording ? (
                 <>
-                  <IconButton onClick={handleUpdateOpen} sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    borderRadius: '5px',
-                    padding: '8px',
-                    marginRight: '20px',
-                    '&:hover': {
-                      background: 'inherit'
-                    }
-                  }}>
-                    <Update sx={{ marginRight: '5px' }} />
-                    <Typography variant="body1">{t('navbar.upgrade.button')}</Typography>
-                  </IconButton>
                   <Modal open={open} onClose={handleUpdateClose}>
                     <Box
                       sx={{
