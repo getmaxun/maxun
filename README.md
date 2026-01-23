@@ -120,7 +120,7 @@ Maxun can run locally with or without Docker
 - ✨ **MCP Support** – Model Context Protocol integration
 - ✨ **LLM-Ready Data** – Clean Markdown for AI applications
 - ✨ **Self-Hostable** – Full control over your infrastructure
-- ✨ **Open Source** – Transparent and community-driven
+- ✨ **Source Code Available** – Transparent and community-driven
 
 ## Demos
 Maxun can be used for various use-cases, including lead generation, market research, content aggregation and more.
