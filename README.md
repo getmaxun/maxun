@@ -65,7 +65,7 @@ Learn more <a href="https://docs.maxun.dev/robot/scrape/scrape-robots">here</a>.
 ### 3. Crawl
 Crawl entire websites and extract content from every relevant page, with full control over scope and discovery.
 
-Learn more <a href="/robot/crawl/crawl-introduction">here</a>.
+Learn more <a href="https://docs.maxun.dev/robot/crawl/crawl-introduction">here</a>.
 
 ### 4. Search
 Run automated web searches to discover or scrape results, with support for time-based filters.
