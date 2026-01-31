@@ -131,8 +131,14 @@ This project is in early stages of development. Your feedback is very important 
 
 ## License
 <p>
-Maxun is <a href="https://faircode.io/">fair code</a> distributed under the <a href="./LICENSE">Sustainable Use License.</a>
+This project is licensed under <a href="./LICENSE">AGPLv3</a>. 
 </p>
+
+## Project Values
+
+We believe in fair and responsible use of open source.
+If you rely on this project commercially, please consider contributing back
+or supporting its development.
 
 ## Support Us
 Star the repository, contribute if you love what we’re building, or [sponsor us](https://github.com/sponsors/amhsirak). 
