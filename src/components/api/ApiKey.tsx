@@ -13,6 +13,11 @@ import {
   TableRow,
   Tooltip,
   Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from '@mui/material';
 import { ContentCopy, Visibility, VisibilityOff, Delete } from '@mui/icons-material';
 import styled from 'styled-components';
@@ -38,6 +43,9 @@ const ApiKeyManager = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [showKey, setShowKey] = useState<boolean>(false);
   const [copySuccess, setCopySuccess] = useState<boolean>(false);
+
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<boolean>(false);
+
   const { notify } = useGlobalInfoStore();
 
   useEffect(() => {
@@ -54,7 +62,6 @@ const ApiKeyManager = () => {
     };
 
     fetchApiKey();
-
   }, []);
 
   const generateApiKey = async () => {
@@ -82,6 +89,7 @@ const ApiKeyManager = () => {
       notify('error', t('apikey.notifications.delete_error', { error: error.message }));
     } finally {
       setLoading(false);
+      setConfirmDeleteOpen(false);
     }
   };
 
@@ -92,6 +100,18 @@ const ApiKeyManager = () => {
       setTimeout(() => setCopySuccess(false), 2000);
       notify('info', t('apikey.notifications.copy_success'));
     }
+  };
+
+  const handleDeleteClick = () => {
+    setConfirmDeleteOpen(true);
+  };
+
+  const handleDeleteCancel = () => {
+    setConfirmDeleteOpen(false);
+  };
+
+  const handleDeleteConfirm = () => {
+    deleteApiKey();
   };
 
   if (loading) {
@@ -114,13 +134,26 @@ const ApiKeyManager = () => {
     <Container sx={{ alignSelf: 'flex-start' }}>
       <Typography variant="body1" sx={{ marginBottom: '40px' }}>
         Start by creating an API key below. Then,
-        <a href={`${apiUrl}/api-docs/`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', marginLeft: '5px', marginRight: '5px' }}>
+        <a
+          href={`${apiUrl}/api-docs/`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ textDecoration: 'none', marginLeft: '5px', marginRight: '5px' }}
+        >
           test your API
         </a>
-        or read the <a href="https://docs.maxun.dev/category/api-docs" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+        or read the{' '}
+        <a
+          href="https://docs.maxun.dev/category/api-docs"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ textDecoration: 'none' }}
+        >
           API documentation
-        </a> for setup instructions.
+        </a>{' '}
+        for setup instructions.
       </Typography>
+
       <Typography
         variant="h6"
         gutterBottom
@@ -129,6 +162,7 @@ const ApiKeyManager = () => {
       >
         {t('apikey.title')}
       </Typography>
+
       {apiKey ? (
         <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden' }}>
           <Table sx={{ tableLayout: 'fixed', width: '100%' }}>
@@ -137,7 +171,9 @@ const ApiKeyManager = () => {
                 <TableCell>{t('apikey.table.name')}</TableCell>
                 <TableCell>{t('apikey.table.key')}</TableCell>
                 {apiKeyCreatedAt && <TableCell>Created On</TableCell>}
-                <TableCell align="center" sx={{ width: 160 }}>{t('apikey.table.actions')}</TableCell>
+                <TableCell align="center" sx={{ width: 160 }}>
+                  {t('apikey.table.actions')}
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -163,13 +199,15 @@ const ApiKeyManager = () => {
                       <ContentCopy />
                     </IconButton>
                   </Tooltip>
+
                   <Tooltip title={showKey ? t('apikey.actions.hide') : t('apikey.actions.show')}>
                     <IconButton onClick={() => setShowKey(!showKey)}>
                       {showKey ? <VisibilityOff /> : <Visibility />}
                     </IconButton>
                   </Tooltip>
+
                   <Tooltip title={t('apikey.actions.delete')}>
-                    <IconButton onClick={deleteApiKey} color="error">
+                    <IconButton onClick={handleDeleteClick} color="error">
                       <Delete />
                     </IconButton>
                   </Tooltip>
@@ -181,12 +219,37 @@ const ApiKeyManager = () => {
       ) : (
         <>
           <Typography>{t('apikey.no_key_message')}</Typography>
-          <Button onClick={generateApiKey} variant="contained" color="primary" sx={{ marginTop: '20px' }}>
+          <Button
+            onClick={generateApiKey}
+            variant="contained"
+            color="primary"
+            sx={{ marginTop: '20px' }}
+          >
             {t('apikey.generate_button')}
           </Button>
         </>
       )}
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={confirmDeleteOpen} onClose={handleDeleteCancel}>
+        <DialogTitle>Delete API Key</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete this API key? This action cannot be undone and
+            will immediately invalidate the key.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel}>
+            Cancel
+          </Button>
+          <Button onClick={handleDeleteConfirm} color="error" variant="contained">
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
-}
+};
+
 export default ApiKeyManager;
