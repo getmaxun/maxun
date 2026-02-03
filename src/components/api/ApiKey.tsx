@@ -230,7 +230,6 @@ const ApiKeyManager = () => {
         </>
       )}
 
-      {/* Delete confirmation dialog */}
       <Dialog open={confirmDeleteOpen} onClose={handleDeleteCancel}>
         <DialogTitle>Delete API Key</DialogTitle>
         <DialogContent>
@@ -240,7 +239,7 @@ const ApiKeyManager = () => {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleDeleteCancel}>
+          <Button color='inherit' onClick={handleDeleteCancel}>
             Cancel
           </Button>
           <Button onClick={handleDeleteConfirm} color="error" variant="contained">
