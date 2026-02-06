@@ -6,11 +6,12 @@
             Maxun
         </a>
     </div>
-    Transform the Web into Structured Intelligence<br>
+    Turn Any Website Into A Structured API
+<br>
 </h2>
 
 <p align="center">
-✨ Turn any website into clean, contextualized data pipelines for your AI applications ✨
+✨ The unified open-source no-code platform for real-time web scraping, crawling, search and AI data extraction ✨
 
 <p align="center">
     <a href="https://app.maxun.dev/?ref=ghread"><b>Go To App</b></a> •
@@ -25,7 +26,8 @@
 
 ## What is Maxun?
 
-Maxun helps you transform websites into structured APIs, clean markdown for AI workflows, and production-ready data pipelines — all in minutes.
+Maxun is an open-source no-code web data platform for turning the web into structured, reliable data.
+It supports extraction, crawling, scraping, and search — designed to scale from simple use cases to complex, automated workflows.
 
 ### Ecosystem
 
@@ -120,7 +122,7 @@ Maxun can run locally with or without Docker
 - ✨ **MCP Support** – Model Context Protocol integration
 - ✨ **LLM-Ready Data** – Clean Markdown for AI applications
 - ✨ **Self-Hostable** – Full control over your infrastructure
-- ✨ **Source Code Available** – Transparent and community-driven
+- ✨ **Open Source** – Transparent and community-driven
 
 ## Demos
 Maxun can be used for various use-cases, including lead generation, market research, content aggregation and more.
