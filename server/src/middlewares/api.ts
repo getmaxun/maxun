@@ -7,7 +7,7 @@ export const requireAPIKey = async (req: AuthenticatedRequest, res: Response, ne
     if (!apiKey) {
         return res.status(401).json({ error: "API key is missing" });
     }
-    const user = await User.findOne({ where: { api_key: apiKey } });
+    const user = await User.findOne({ where: { api_key: apiKey }, attributes: ['id', 'email', 'isDeleted', 'api_key'] });
     if (!user) {
         return res.status(403).json({ error: "Invalid API key" });
     }
