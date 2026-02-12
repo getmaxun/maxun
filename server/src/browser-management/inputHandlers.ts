@@ -452,9 +452,42 @@ const handleClickAction = async (
     }
 
     const { selector, url, elementInfo, coordinates, isSPA = false } = data;
+
+    if (page.isClosed()) {
+      logger.log("debug", "Page is closed, cannot remove target attribute");
+      return;
+    }
+
+    const anchorInfo = await page.evaluate(({ sel }) => {
+      try {
+        const element = document.querySelector(sel);
+        if (element) {
+          if (element.getAttribute('target') === '_blank') {
+            element.removeAttribute('target');
+          }
+
+          const parentAnchor = element.closest('a[target="_blank"]') as HTMLAnchorElement;
+          if (parentAnchor) {
+            parentAnchor.removeAttribute('target');
+          }
+
+          const anchor = element.tagName === 'A' ? element as HTMLAnchorElement : element.closest('a') as HTMLAnchorElement;
+          if (anchor && anchor.href) {
+            return { hasAnchor: true, href: anchor.href };
+          }
+        }
+        return { hasAnchor: false, href: null };
+      } catch (e) {
+        console.error('Error removing target attribute:', e);
+        return { hasAnchor: false, href: null };
+      }
+    }, { sel: selector });
+
     const currentUrl = page.url();
 
-    if (elementInfo && coordinates && (elementInfo.tagName === 'INPUT' || elementInfo.tagName === 'TEXTAREA')) {
+    const isInputElement = elementInfo && (elementInfo.tagName === 'INPUT' || elementInfo.tagName === 'TEXTAREA');
+
+    if (isInputElement && coordinates) {
       try {
         const elementHandle = await page.$(selector);
         if (elementHandle) {
@@ -483,7 +516,7 @@ const handleClickAction = async (
 
     logger.log("debug", `Click action processed: ${selector}`);
 
-    if (elementInfo && (elementInfo.tagName === 'INPUT' || elementInfo.tagName === 'TEXTAREA')) {
+    if (isInputElement) {
       logger.log("debug", `Input field click - skipping DOM snapshot for smooth typing`);
       return;
     }
@@ -493,10 +526,35 @@ const handleClickAction = async (
 
       await new Promise((resolve) => setTimeout(resolve, 1500));
     } else {
-      const newUrl = page.url();
-      const hasNavigated = newUrl !== currentUrl && !newUrl.endsWith("/#");
+      try {
+        await page.waitForNavigation({ timeout: 1500 });
+      } catch (e) {
+      }
 
-      if (hasNavigated) {
+      let newUrl = page.url();
+
+      if (anchorInfo.hasAnchor && anchorInfo.href) {
+        try {
+          const expectedUrl = new URL(anchorInfo.href);
+          const actualUrl = new URL(newUrl);
+
+          const navigatedToExpectedPage =
+            expectedUrl.origin === actualUrl.origin &&
+            expectedUrl.pathname === actualUrl.pathname;
+
+          if (!navigatedToExpectedPage) {
+            logger.log("debug", `Click did not navigate to expected URL, using page.goto as fallback`);
+            await page.goto(anchorInfo.href, { waitUntil: "domcontentloaded", timeout: 30000 });
+            newUrl = page.url();
+          }
+        } catch (urlError: any) {
+          logger.log("debug", `Error comparing URLs: ${urlError.message}`);
+        }
+      }
+
+      const finalNavigated = newUrl !== currentUrl && !newUrl.endsWith("/#");
+
+      if (finalNavigated) {
         logger.log("debug", `Navigation detected: ${currentUrl} -> ${newUrl}`);
 
         await generator.onDOMNavigation(page, {
