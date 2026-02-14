@@ -920,6 +920,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                       p: 2,
                       mb: 1,
                       borderRadius: '8px',
+                      color: '#1E2124',
                       backgroundColor: isDarkMode ? '#f4f6f4' : '#f4f6f4',
                       border: `1px solid ${isDarkMode ? '#f4f6f4' : '#f4f6f4'}`,
                     }}
