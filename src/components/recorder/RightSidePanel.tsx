@@ -927,7 +927,6 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                     <Typography
                       variant="body2"
                       sx={{
-                        color: isDarkMode ? '#81c784' : '#2e7d32',
                         fontWeight: 'bold',
                         mb: 0.5
                       }}
@@ -943,7 +942,6 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                     <Typography
                       variant="caption"
                       sx={{
-                        color: isDarkMode ? '#a5d6a7' : '#388e3c',
                         display: 'block',
                         mb: 1
                       }}
