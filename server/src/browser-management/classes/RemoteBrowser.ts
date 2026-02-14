@@ -101,6 +101,13 @@ export class RemoteBrowser {
     private lastScrollPosition = { x: 0, y: 0 };
     private scrollThreshold = 200;
 
+    /**
+     * Flag to indicate if this is a recording session (requires rrweb for real-time DOM streaming)
+     * When false (robot run mode), rrweb is skipped to improve performance
+     * @private
+     */
+    private isRecordingMode: boolean = false;
+
     // private memoryCleanupInterval: NodeJS.Timeout | null = null;
     // private memoryManagementInterval: NodeJS.Timeout | null = null;
 
@@ -110,11 +117,12 @@ export class RemoteBrowser {
      * @param socket socket.io socket instance used to communicate with the client side
      * @constructor
      */
-    public constructor(socket: Socket, userId: string, poolId: string) {
+    public constructor(socket: Socket, userId: string, poolId: string, isRecordingMode: boolean = false) {
         this.socket = socket;
         this.userId = userId;
         this.interpreter = new WorkflowInterpreter(socket);
         this.generator = new WorkflowGenerator(socket, poolId);
+        this.isRecordingMode = isRecordingMode;
     }
 
     // private initializeMemoryManagement(): void {
@@ -264,11 +272,13 @@ export class RemoteBrowser {
               }
             });
 
-            await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {
-              logger.warn('[rrweb] Network idle timeout on navigation, proceeding with rrweb initialization');
-            });
+            if (this.isRecordingMode) {
+              await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {
+                logger.warn('[rrweb] Network idle timeout on navigation, proceeding with rrweb initialization');
+              });
 
-            await this.initializeRRWebRecording(page);
+              await this.initializeRRWebRecording(page);
+            }
           }
         });
 
@@ -298,8 +308,14 @@ export class RemoteBrowser {
     /**
    * Initialize rrweb recording for real-time DOM streaming
    * This replaces the snapshot-based approach with live event streaming
+   * Only runs in recording mode - skipped for robot runs to improve performance
    */
     private async initializeRRWebRecording(page: Page): Promise<void> {
+      if (!this.isRecordingMode) {
+        logger.debug('[rrweb] Skipping initialization - not in recording mode (robot run)');
+        return;
+      }
+
       try {
         const rrwebJsPath = require.resolve('rrweb/dist/rrweb.min.js');
         const rrwebScriptContent = readFileSync(rrwebJsPath, 'utf8');
@@ -529,11 +545,13 @@ export class RemoteBrowser {
 
               await this.setupPageEventListeners(this.currentPage);
 
-              await this.currentPage.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {
-                logger.warn('[rrweb] Network idle timeout, proceeding with rrweb initialization');
-              });
+              if (this.isRecordingMode) {
+                await this.currentPage.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {
+                  logger.warn('[rrweb] Network idle timeout, proceeding with rrweb initialization');
+                });
 
-              await this.initializeRRWebRecording(this.currentPage);
+                await this.initializeRRWebRecording(this.currentPage);
+              }
 
               try {
                 const blocker = await PlaywrightBlocker.fromLists(fetch, ['https://easylist.to/easylist/easylist.txt']);

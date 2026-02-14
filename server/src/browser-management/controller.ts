@@ -32,7 +32,7 @@ export const initializeRemoteBrowserForRecording = (userId: string, mode: string
         const remoteBrowser = browserPool.getRemoteBrowser(activeId);
         remoteBrowser?.updateSocket(socket);
       } else {
-        const browserSession = new RemoteBrowser(socket, userId, id);
+        const browserSession = new RemoteBrowser(socket, userId, id, true);
         browserSession.interpreter.subscribeToPausing();
         
         try {
