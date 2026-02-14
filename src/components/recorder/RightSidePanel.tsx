@@ -1005,14 +1005,6 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                             notify('info', 'Please select a different pagination element');
                           }
                         }}
-                        sx={{
-                          color: isDarkMode ? '#81c784' : '#2e7d32',
-                          borderColor: isDarkMode ? '#81c784' : '#2e7d32',
-                          '&:hover': {
-                            borderColor: isDarkMode ? '#a5d6a7' : '#4caf50',
-                            backgroundColor: isDarkMode ? '#1a3a1a' : '#f1f8f4',
-                          }
-                        }}
                       >
                         Choose Different Element
                       </Button>
