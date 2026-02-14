@@ -483,31 +483,51 @@ class ClientSelectorGenerator {
         let grouped = false;
 
         for (let level = 1; level <= this.groupingConfig.maxParentLevels && !grouped; level++) {
-          let ancestor: HTMLElement | null = currentGroup[0];
-          for (let i = 0; i < level && ancestor; i++) {
-            ancestor = ancestor.parentElement;
-          }
+          const ancestorBuckets = new Map<HTMLElement, HTMLElement[]>();
 
-          if (!ancestor) break;
-
-          const allShareAncestor = currentGroup.every(el => {
+          for (const el of currentGroup) {
             let elAncestor: HTMLElement | null = el;
             for (let i = 0; i < level && elAncestor; i++) {
               elAncestor = elAncestor.parentElement;
             }
-            return elAncestor === ancestor;
-          });
+            if (elAncestor) {
+              const bucket = ancestorBuckets.get(elAncestor) || [];
+              bucket.push(el);
+              ancestorBuckets.set(elAncestor, bucket);
+            }
+          }
 
-          if (allShareAncestor) {
+          let bestBucket: HTMLElement[] | null = null;
+          for (const bucket of ancestorBuckets.values()) {
+            if (bucket.length >= this.groupingConfig.minGroupSize) {
+              const containsPivot = bucket.includes(element);
+              const bestContainsPivot = bestBucket ? bestBucket.includes(element) : false;
+
+              if (!bestBucket) {
+                bestBucket = bucket;
+              } else if (containsPivot && !bestContainsPivot) {
+                bestBucket = bucket;
+              } else if (containsPivot === bestContainsPivot && bucket.length > bestBucket.length) {
+                bestBucket = bucket;
+              }
+            }
+          }
+
+          if (bestBucket) {
             const group: ElementGroup = {
-              elements: currentGroup,
+              elements: bestBucket,
               fingerprint,
               representative: element,
             };
-            currentGroup.forEach((el) => {
+            bestBucket.forEach((el) => {
               this.elementGroups.set(el, group);
               this.groupedElements.add(el);
             });
+            for (const el of currentGroup) {
+              if (!bestBucket.includes(el)) {
+                processedElements.delete(el);
+              }
+            }
             grouped = true;
           }
         }
@@ -1008,11 +1028,11 @@ class ClientSelectorGenerator {
     const result: HTMLElement[] = [];
 
     for (const element of groupedElements) {
-      const hasGroupedChild = groupedElements.some(
+      const containsGroupedChild = groupedElements.some(
         (other) => other !== element && element.contains(other)
       );
 
-      if (hasGroupedChild) {
+      if (!containsGroupedChild) {
         result.push(element);
       }
     }
