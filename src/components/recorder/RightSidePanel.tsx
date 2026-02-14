@@ -28,7 +28,7 @@ const fetchWorkflow = (id: string, callback: (response: WorkflowFile) => void) =
         throw new Error("No workflow found");
       }
     }
-  ).catch((error) => { console.log(`Failed to fetch workflow:`,error.message) })
+  ).catch((error) => { console.log(`Failed to fetch workflow:`, error.message) })
 };
 
 interface RightSidePanelProps {
@@ -48,22 +48,22 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   } | null>(null);
   const autoDetectionRunRef = useRef<string | null>(null);
 
-  const { notify, currentWorkflowActionsState, setCurrentWorkflowActionsState, resetInterpretationLog, currentListActionId, setCurrentListActionId, currentTextActionId, setCurrentTextActionId, currentScreenshotActionId, setCurrentScreenshotActionId, isDOMMode, updateDOMMode, currentTextGroupName } = useGlobalInfoStore();  
-  const { 
-    getText, startGetText, stopGetText, 
-    getList, startGetList, stopGetList, 
-    getScreenshot, startGetScreenshot, stopGetScreenshot, 
-    startPaginationMode, stopPaginationMode, 
-    paginationType, updatePaginationType, 
-    limitType, customLimit, updateLimitType, updateCustomLimit, 
-    stopLimitMode, startLimitMode, 
-    captureStage, setCaptureStage, 
-    showPaginationOptions, setShowPaginationOptions, 
-    showLimitOptions, setShowLimitOptions, 
-    workflow, setWorkflow, 
-    activeAction, setActiveAction, finishAction 
+  const { notify, currentWorkflowActionsState, setCurrentWorkflowActionsState, resetInterpretationLog, currentListActionId, setCurrentListActionId, currentTextActionId, setCurrentTextActionId, currentScreenshotActionId, setCurrentScreenshotActionId, isDOMMode, updateDOMMode, currentTextGroupName } = useGlobalInfoStore();
+  const {
+    getText, startGetText, stopGetText,
+    getList, startGetList, stopGetList,
+    getScreenshot, startGetScreenshot, stopGetScreenshot,
+    startPaginationMode, stopPaginationMode,
+    paginationType, updatePaginationType,
+    limitType, customLimit, updateLimitType, updateCustomLimit,
+    stopLimitMode, startLimitMode,
+    captureStage, setCaptureStage,
+    showPaginationOptions, setShowPaginationOptions,
+    showLimitOptions, setShowLimitOptions,
+    workflow, setWorkflow,
+    activeAction, setActiveAction, finishAction
   } = useActionContext();
-  
+
   const { browserSteps, addScreenshotStep, updateListStepLimit, updateListStepPagination, deleteStepsByActionId, updateListStepData, updateScreenshotStepData, emitActionForStep } = useBrowserSteps();
   const { id, socket } = useSocketStore();
   const { t } = useTranslation();
@@ -214,7 +214,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         }
       });
     }
-    
+
     return () => {
       socket?.off('listDataExtracted');
     };
@@ -223,16 +223,16 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   useEffect(() => {
     if (socket) {
       const handleDirectScreenshot = (data: any) => {
-        const screenshotSteps = browserSteps.filter(step => 
+        const screenshotSteps = browserSteps.filter(step =>
           step.type === 'screenshot' && step.actionId === currentScreenshotActionId
         );
-        
+
         if (screenshotSteps.length > 0) {
-          const latestStep = screenshotSteps[screenshotSteps.length - 1];          
+          const latestStep = screenshotSteps[screenshotSteps.length - 1];
           updateScreenshotStepData(latestStep.id, data.screenshot);
           emitActionForStep(latestStep);
         }
-        
+
         setCurrentScreenshotActionId('');
       };
 
@@ -288,11 +288,11 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
             iframeDoc,
             listSelector,
             fields,
-            5 
+            5
           );
 
           updateListStepData(currentListId, extractedData);
-          
+
           if (extractedData.length === 0) {
             console.warn("⚠️ No data extracted - this might indicate selector issues");
             notify("warning", "No data was extracted. Please verify your selections.");
@@ -355,14 +355,14 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
       notify('error', t('right_panel.errors.no_text_captured'));
       return;
     }
-    
+
     stopGetText();
     if (currentTextActionStep) {
       emitActionForStep(currentTextActionStep);
     }
     setCurrentTextActionId('');
     resetInterpretationLog();
-    finishAction('text'); 
+    finishAction('text');
     onFinishCapture();
     clientSelectorGenerator.cleanup();
   }, [stopGetText, socket, browserSteps, resetInterpretationLog, finishAction, notify, onFinishCapture, t, currentTextActionId, currentTextGroupName, emitActionForStep]);
@@ -453,7 +453,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const getLatestListStep = (steps: BrowserStep[]) => {
     const listSteps = steps.filter(step => step.type === 'list');
     if (listSteps.length === 0) return null;
-    
+
     return listSteps.sort((a, b) => b.id - a.id)[0];
   };
 
@@ -466,12 +466,12 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
           step.listSelector &&
           Object.keys(step.fields).length > 0
         );
-        
+
         if (!hasValidListSelectorForCurrentAction) {
           notify('error', t('right_panel.errors.capture_list_first'));
           return;
         }
-        
+
         const currentListStepForAutoDetect = browserSteps.find(
           step => step.type === 'list' && step.actionId === currentListActionId
         ) as (BrowserStep & { type: 'list'; listSelector?: string }) | undefined;
@@ -657,7 +657,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
           notify('error', t('right_panel.errors.select_pagination'));
           return;
         }
-        
+
         const currentListStepForPagination = browserSteps.find(
           step => step.type === 'list' && step.actionId === currentListActionId
         ) as (BrowserStep & { type: 'list' }) | undefined;
@@ -728,15 +728,15 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
 
   const discardGetText = useCallback(() => {
     stopGetText();
-    
-    if (currentTextActionId) {     
+
+    if (currentTextActionId) {
       deleteStepsByActionId(currentTextActionId);
-      
+
       if (socket) {
         socket.emit('removeAction', { actionId: currentTextActionId });
       }
     }
-    
+
     setCurrentTextActionId('');
     clientSelectorGenerator.cleanup();
     notify('error', t('right_panel.errors.capture_text_discarded'));
@@ -744,10 +744,10 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
 
   const discardGetList = useCallback(() => {
     stopGetList();
-    
+
     if (currentListActionId) {
       deleteStepsByActionId(currentListActionId);
-      
+
       if (socket) {
         socket.emit('removeAction', { actionId: currentListActionId });
       }
@@ -792,7 +792,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         }
       }
     }
-    
+
     resetListState();
     stopPaginationMode();
     stopLimitMode();
@@ -808,7 +808,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   const captureScreenshot = (fullPage: boolean) => {
     const screenshotCount = browserSteps.filter(s => s.type === 'screenshot').length + 1;
     const screenshotName = `Screenshot ${screenshotCount}`;
-    
+
     const screenshotSettings = {
       fullPage,
       type: 'png' as const,
@@ -819,7 +819,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
       name: screenshotName,
       actionId: currentScreenshotActionId
     };
-    socket?.emit('captureDirectScreenshot', screenshotSettings);   
+    socket?.emit('captureDirectScreenshot', screenshotSettings);
     addScreenshotStep(fullPage, currentScreenshotActionId);
     stopGetScreenshot();
     resetInterpretationLog();
@@ -838,8 +838,8 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         {!isAnyActionActive && (
           <>
             {showCaptureList && (
-              <Button 
-                variant="contained" 
+              <Button
+                variant="contained"
                 onClick={handleStartGetList}
               >
                 {t('right_panel.buttons.capture_list')}
@@ -847,8 +847,8 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
             )}
 
             {showCaptureText && (
-              <Button 
-                variant="contained" 
+              <Button
+                variant="contained"
                 onClick={handleStartGetText}
               >
                 {t('right_panel.buttons.capture_text')}
@@ -856,8 +856,8 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
             )}
 
             {showCaptureScreenshot && (
-              <Button 
-                variant="contained" 
+              <Button
+                variant="contained"
                 onClick={handleStartGetScreenshot}
               >
                 {t('right_panel.buttons.capture_screenshot')}
@@ -909,11 +909,11 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                 {t('right_panel.buttons.discard')}
               </Button>
             </Box>
-          
+
             {showPaginationOptions && (
               <Box display="flex" flexDirection="column" gap={2} style={{ margin: '13px' }}>
                 <Typography>{t('right_panel.pagination.title')}</Typography>
-                
+
                 {autoDetectedPagination && autoDetectedPagination.type !== '' && (
                   <Box
                     sx={{
@@ -1006,6 +1006,14 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                             notify('info', 'Please select a different pagination element');
                           }
                         }}
+                        sx={{
+                          color: '#ff00c3 !important',
+                          borderColor: '#ff00c3 !important',
+                          '&:hover': {
+                            borderColor: '#ff00c3 !important',
+                            backgroundColor: '#f4f6f4 !important',
+                          }
+                        }}
                       >
                         Choose Different Element
                       </Button>
@@ -1063,15 +1071,15 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                   {t('right_panel.pagination.none')}</Button>
               </Box>
             )}
-          
+
             {showLimitOptions && (
               <FormControl>
-                <Typography variant="h6" sx={{ 
-                  fontSize: '16px', 
+                <Typography variant="h6" sx={{
+                  fontSize: '16px',
                   fontWeight: 'bold',
                   mb: 1,
-                  whiteSpace: 'normal', 
-                  wordBreak: 'break-word' 
+                  whiteSpace: 'normal',
+                  wordBreak: 'break-word'
                 }}>
                   {t('right_panel.limit.title')}
                 </Typography>
@@ -1125,7 +1133,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
             )}
           </Box>
         )}
-        
+
         {getText && (
           <Box>
             <Box display="flex" justifyContent="space-between" gap={2} style={{ margin: '15px' }}>
@@ -1155,7 +1163,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
             </Box>
           </Box>
         )}
-        
+
         {getScreenshot && (
           <Box display="flex" flexDirection="column" gap={2}>
             <Button variant="contained" onClick={() => captureScreenshot(true)}>
