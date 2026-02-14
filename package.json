@@ -2,7 +2,7 @@
   "name": "maxun",
   "version": "0.0.32",
   "author": "Maxun",
-  "license": "Sustainable Use License",
+  "license": "AGPL-3.0-or-later",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
     "@cliqz/adblocker-playwright": "^1.30.0",
