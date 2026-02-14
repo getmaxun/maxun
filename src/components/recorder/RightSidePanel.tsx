@@ -920,8 +920,8 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                       p: 2,
                       mb: 1,
                       borderRadius: '8px',
-                      backgroundColor: isDarkMode ? '#1a3a1a' : '#e8f5e9',
-                      border: `1px solid ${isDarkMode ? '#2e7d32' : '#4caf50'}`,
+                      backgroundColor: isDarkMode ? '#f4f6f4' : '#f4f6f4',
+                      border: `1px solid ${isDarkMode ? '#f4f6f4' : '#f4f6f4'}`,
                     }}
                   >
                     <Typography
