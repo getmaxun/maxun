@@ -36,34 +36,41 @@ class ClientPaginationDetector {
 
       const listContainer = listElements[0];
 
-      const nextButtonPatterns = [
-        /next/i,
+      const MAX_BUTTON_TEXT_LENGTH = 50;
+
+      const nextButtonTextPatterns = [
+        /^\s*next\s*$/i,
         /\bnext\s+page\b/i,
-        /page\s+suivante/i,
-        /siguiente/i,
-        /weiter/i,
-        />>|›|→|»|⟩/,
-        /\bforward\b/i,
-        /\bnewer\b/i,
-        /\bolder\b/i
+        /\bpage\s+suivante\b/i,
+        /\bsiguiente\b/i,
+        /\bweiter\b/i,
+      ];
+
+      const nextButtonArrowPatterns = [
+        /^[>\s›→»⟩]+$/,
+        /^>>$/,
       ];
 
       const loadMorePatterns = [
-        /load\s+more/i,
-        /show\s+more/i,
-        /view\s+more/i,
-        /see\s+more/i,
-        /more\s+results/i,
-        /plus\s+de\s+résultats/i,
-        /más\s+resultados/i,
-        /weitere\s+ergebnisse/i
+        /^\s*load\s+more\s*$/i,
+        /^\s*show\s+more\s*$/i,
+        /^\s*view\s+more\s*$/i,
+        /^\s*see\s+more\s*$/i,
+        /^\s*more\s+results\s*$/i,
+        /^\s*plus\s+de\s+résultats\s*$/i,
+        /^\s*más\s+resultados\s*$/i,
+        /^\s*weitere\s+ergebnisse\s*$/i,
       ];
 
-      const prevButtonPatterns = [
-        /prev/i,
-        /previous/i,
-        /<<|‹|←|«/,
-        /\bback\b/i
+      const prevButtonTextPatterns = [
+        /^\s*prev(ious)?\s*$/i,
+        /\bprevious\s+page\b/i,
+        /\bpage\s+précédente\b/i,
+      ];
+
+      const prevButtonArrowPatterns = [
+        /^[<\s‹←«]+$/,
+        /^<<$/,
       ];
 
       const clickableElements = this.getClickableElements(doc);
@@ -74,21 +81,30 @@ class ClientPaginationDetector {
 
       for (const element of clickableElements) {
         if (!this.isVisible(element)) continue;
+        if (this.shouldSkipElement(element, listContainer)) continue;
 
         const text = (element.textContent || '').trim();
         const ariaLabel = element.getAttribute('aria-label') || '';
         const title = element.getAttribute('title') || '';
-        const combinedText = `${text} ${ariaLabel} ${title}`;
+
+        if (text.length > MAX_BUTTON_TEXT_LENGTH) continue;
 
         let score = 0;
         const reasons: string[] = [];
 
-        if (this.matchesAnyPattern(combinedText, nextButtonPatterns)) {
+        const combinedText = `${text} ${ariaLabel} ${title}`;
+        if (this.matchesAnyPattern(combinedText, nextButtonTextPatterns)) {
           score += 10;
           reasons.push('text match (+10)');
+        } else if (text.length <= 3 && this.matchesAnyPattern(text, nextButtonArrowPatterns)) {
+          score += 8;
+          reasons.push('arrow match (+8)');
         }
 
-        if (this.isNearList(element, listContainer)) {
+        if (score === 0) continue;
+
+        const nearList = this.isNearList(element, listContainer);
+        if (nearList) {
           score += 5;
           reasons.push('near list (+5)');
         }
@@ -99,22 +115,20 @@ class ClientPaginationDetector {
         }
 
         const className = element.className || '';
-        if (/pagination|next|forward/i.test(className)) {
+        if (/\bpaginat(ion|e)\b/i.test(className)) {
           score += 3;
           reasons.push('pagination class (+3)');
         }
 
-        if (score > 0) {
-          nextButtonCandidates.push({
-            element: element,
-            score: score,
-            text: text.substring(0, 50),
-            ariaLabel: ariaLabel,
-            tag: element.tagName,
-            className: className,
-            reasons: reasons
-          });
-        }
+        nextButtonCandidates.push({
+          element: element,
+          score: score,
+          text: text.substring(0, 50),
+          ariaLabel: ariaLabel,
+          tag: element.tagName,
+          className: className,
+          reasons: reasons
+        });
 
         if (score > nextButtonScore) {
           nextButtonScore = score;
@@ -127,17 +141,22 @@ class ClientPaginationDetector {
 
       for (const element of clickableElements) {
         if (!this.isVisible(element)) continue;
+        if (this.shouldSkipElement(element, listContainer)) continue;
 
         const text = (element.textContent || '').trim();
         const ariaLabel = element.getAttribute('aria-label') || '';
         const title = element.getAttribute('title') || '';
-        const combinedText = `${text} ${ariaLabel} ${title}`;
+
+        if (text.length > MAX_BUTTON_TEXT_LENGTH) continue;
 
         let score = 0;
 
+        const combinedText = `${text} ${ariaLabel} ${title}`;
         if (this.matchesAnyPattern(combinedText, loadMorePatterns)) {
           score += 10;
         }
+
+        if (score === 0) continue;
 
         if (this.isNearList(element, listContainer)) {
           score += 5;
@@ -153,42 +172,15 @@ class ClientPaginationDetector {
         }
       }
 
-      let prevButton: HTMLElement | null = null;
-      let prevButtonScore = 0;
-
-      for (const element of clickableElements) {
-        if (!this.isVisible(element)) continue;
-
-        const text = (element.textContent || '').trim();
-        const ariaLabel = element.getAttribute('aria-label') || '';
-        const title = element.getAttribute('title') || '';
-        const combinedText = `${text} ${ariaLabel} ${title}`;
-
-        let score = 0;
-
-        if (this.matchesAnyPattern(combinedText, prevButtonPatterns)) {
-          score += 10;
-        }
-
-        if (this.isNearList(element, listContainer)) {
-          score += 5;
-        }
-
-        if (score > prevButtonScore) {
-          prevButtonScore = score;
-          prevButton = element;
-        }
-      }
-
       const infiniteScrollScore = options?.disableScrollDetection
         ? 0
         : this.detectInfiniteScrollIndicators(doc, listElements, listContainer);
 
-      const hasStrongInfiniteScrollSignals = infiniteScrollScore >= 8;
-      const hasMediumInfiniteScrollSignals = infiniteScrollScore >= 5 && infiniteScrollScore < 8;
+      const hasStrongInfiniteScrollSignals = infiniteScrollScore >= 12;
+      const hasMediumInfiniteScrollSignals = infiniteScrollScore >= 8 && infiniteScrollScore < 12;
 
       if (hasStrongInfiniteScrollSignals) {
-        const confidence = infiniteScrollScore >= 12 ? 'high' : infiniteScrollScore >= 10 ? 'medium' : 'low';
+        const confidence = infiniteScrollScore >= 15 ? 'high' : 'medium';
         return {
           type: 'scrollDown',
           selector: null,
@@ -196,7 +188,7 @@ class ClientPaginationDetector {
         };
       }
 
-      if (loadMoreButton && loadMoreScore >= 15) {
+      if (loadMoreButton && loadMoreScore >= 18) {
         const selector = this.generateSelectorsForElement(loadMoreButton, doc, selectorGenerator);
         return {
           type: 'clickLoadMore',
@@ -205,7 +197,7 @@ class ClientPaginationDetector {
         };
       }
 
-      if (nextButton && nextButtonScore >= 15 && !hasMediumInfiniteScrollSignals) {
+      if (nextButton && nextButtonScore >= 18 && !hasMediumInfiniteScrollSignals) {
         const selector = this.generateSelectorsForElement(nextButton, doc, selectorGenerator);
         return {
           type: 'clickNext',
@@ -215,17 +207,16 @@ class ClientPaginationDetector {
       }
 
       if (hasMediumInfiniteScrollSignals) {
-        const confidence = infiniteScrollScore >= 7 ? 'medium' : 'low';
         return {
           type: 'scrollDown',
           selector: null,
-          confidence: confidence
+          confidence: 'low'
         };
       }
 
-      if (loadMoreButton && loadMoreScore >= 8) {
+      if (loadMoreButton && loadMoreScore >= 13) {
         const selector = this.generateSelectorsForElement(loadMoreButton, doc, selectorGenerator);
-        const confidence = loadMoreScore >= 10 ? 'medium' : 'low';
+        const confidence = loadMoreScore >= 15 ? 'medium' : 'low';
         return {
           type: 'clickLoadMore',
           selector: selector,
@@ -233,21 +224,12 @@ class ClientPaginationDetector {
         };
       }
 
-      if (nextButton && nextButtonScore >= 8) {
+      if (nextButton && nextButtonScore >= 13) {
         const selector = this.generateSelectorsForElement(nextButton, doc, selectorGenerator);
-        const confidence = nextButtonScore >= 10 ? 'medium' : 'low';
+        const confidence = nextButtonScore >= 15 ? 'medium' : 'low';
         return {
           type: 'clickNext',
           selector: selector,
-          confidence: confidence
-        };
-      }
-
-      if (prevButton && prevButtonScore >= 8) {
-        const confidence = prevButtonScore >= 15 ? 'high' : prevButtonScore >= 10 ? 'medium' : 'low';
-        return {
-          type: 'scrollUp',
-          selector: null,
           confidence: confidence
         };
       }
@@ -268,7 +250,6 @@ class ClientPaginationDetector {
           finalScores: {
             loadMore: loadMoreScore,
             next: nextButtonScore,
-            prev: prevButtonScore,
             infiniteScroll: infiniteScrollScore
           }
         }
@@ -356,6 +337,26 @@ class ClientPaginationDetector {
   }
 
   /**
+   * Check if element should be skipped (inside list, disabled, etc.)
+   */
+  private shouldSkipElement(element: HTMLElement, listContainer: HTMLElement): boolean {
+    if (listContainer.contains(element)) {
+      return true;
+    }
+
+    if (element.hasAttribute('disabled') || element.getAttribute('aria-disabled') === 'true') {
+      return true;
+    }
+
+    const nav = element.closest('nav');
+    if (nav && !(/\bpaginat(ion|e)\b/i.test(nav.className || '') || /pagination/i.test(nav.getAttribute('aria-label') || ''))) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Check if element is near the list container
    */
   private isNearList(element: HTMLElement, listContainer: HTMLElement): boolean {
@@ -363,11 +364,11 @@ class ClientPaginationDetector {
       const listRect = listContainer.getBoundingClientRect();
       const elementRect = element.getBoundingClientRect();
 
-      if (elementRect.top >= listRect.bottom && elementRect.top <= listRect.bottom + 500) {
+      if (elementRect.top >= listRect.bottom && elementRect.top <= listRect.bottom + 200) {
         return true;
       }
 
-      if (elementRect.bottom <= listRect.top && elementRect.bottom >= listRect.top - 500) {
+      if (elementRect.bottom <= listRect.top && elementRect.bottom >= listRect.top - 150) {
         return true;
       }
 
@@ -377,7 +378,7 @@ class ClientPaginationDetector {
           Math.abs(elementRect.left - listRect.right),
           Math.abs(elementRect.right - listRect.left)
         );
-        if (horizontalDistance < 200) {
+        if (horizontalDistance < 100) {
           return true;
         }
       }
@@ -394,9 +395,7 @@ class ClientPaginationDetector {
   private detectInfiniteScrollIndicators(doc: Document, listElements: HTMLElement[], listContainer: HTMLElement): number {
     try {
       let score = 0;
-      const indicators: string[] = [];
 
-      const initialItemCount = listElements.length;
       const initialHeight = doc.documentElement.scrollHeight;
       const viewportHeight = window.innerHeight;
 
@@ -404,135 +403,58 @@ class ClientPaginationDetector {
         return 0;
       }
 
-      const loadingIndicators = [
-        '[class*="loading"]',
-        '[class*="spinner"]',
-        '[class*="skeleton"]',
-        '[aria-busy="true"]',
-        '[data-loading="true"]',
-        '.loader',
-        '.load-more-spinner',
-        '[class*="load"]',
-        '[id*="loading"]',
-        '[id*="spinner"]'
-      ];
-
-      for (const selector of loadingIndicators) {
-        if (doc.querySelector(selector)) {
-          score += 3;
-          indicators.push(`Loading indicator: ${selector} (+3)`);
-          break;
-        }
-      }
-
       const sentinelPatterns = [
-        '[class*="sentinel"]',
-        '[class*="trigger"]',
         '[data-infinite]',
         '[data-scroll-trigger]',
         '#infinite-scroll-trigger',
-        '[class*="infinite"]',
-        '[id*="infinite"]'
+        '[class*="infinite-scroll"]',
+        '[id*="infinite-scroll"]',
       ];
 
       for (const selector of sentinelPatterns) {
         if (doc.querySelector(selector)) {
-          score += 4;
-          indicators.push(`Sentinel element: ${selector} (+4)`);
+          score += 6;
           break;
         }
-      }
-
-      const scrollToTopPatterns = [
-        '[class*="scroll"][class*="top"]',
-        '[aria-label*="scroll to top"]',
-        '[title*="back to top"]',
-        '.back-to-top',
-        '#back-to-top',
-        '[class*="scrolltop"]',
-        '[class*="backtotop"]',
-        'button[class*="top"]',
-        'a[href="#top"]',
-        'a[href="#"]'
-      ];
-
-      for (const selector of scrollToTopPatterns) {
-        const element = doc.querySelector(selector);
-        if (element && this.isVisible(element as HTMLElement)) {
-          score += 2;
-          indicators.push(`Scroll-to-top button (+2)`);
-          break;
-        }
-      }
-
-      if (initialHeight > viewportHeight * 3) {
-        score += 3;
-        indicators.push(`Very tall page (${(initialHeight / viewportHeight).toFixed(1)}x viewport) (+3)`);
-      } else if (initialHeight > viewportHeight * 2) {
-        score += 2;
-        indicators.push(`Tall page (${(initialHeight / viewportHeight).toFixed(1)}x viewport) (+2)`);
-      }
-
-      if (initialItemCount >= 20) {
-        score += 2;
-        indicators.push(`Many list items (${initialItemCount}) (+2)`);
-      } else if (initialItemCount >= 10) {
-        score += 1;
-        indicators.push(`Good number of list items (${initialItemCount}) (+1)`);
       }
 
       const infiniteScrollLibraries = [
         '.infinite-scroll',
         '[data-infinite-scroll]',
-        '[data-flickity]',
-        '[data-slick]',
-        '.masonry',
-        '[data-masonry]',
         '[class*="infinite-scroll"]',
-        '[class*="lazy-load"]',
-        '[data-lazy]'
       ];
 
       for (const selector of infiniteScrollLibraries) {
         if (doc.querySelector(selector)) {
-          score += 4;
-          indicators.push(`Infinite scroll library: ${selector} (+4)`);
+          score += 6;
           break;
         }
       }
 
-      const lastListItem = listElements[listElements.length - 1];
-      if (lastListItem) {
-        const lastItemRect = lastListItem.getBoundingClientRect();
-        const lastItemY = lastItemRect.bottom + window.scrollY;
-        const viewportBottom = window.scrollY + viewportHeight;
+      const scrollToTopPatterns = [
+        '[aria-label*="scroll to top" i]',
+        '[title*="back to top" i]',
+        '.back-to-top',
+        '#back-to-top',
+        '[class*="scrolltop"]',
+        '[class*="backtotop"]',
+      ];
 
-        if (lastItemY > viewportBottom + viewportHeight) {
-          score += 3;
-          indicators.push(`List extends far below viewport (+3)`);
-        } else if (lastItemY > viewportBottom) {
-          score += 2;
-          indicators.push(`List extends below viewport (+2)`);
+      for (const selector of scrollToTopPatterns) {
+        try {
+          const element = doc.querySelector(selector);
+          if (element && this.isVisible(element as HTMLElement)) {
+            score += 2;
+            break;
+          }
+        } catch {
+          continue;
         }
       }
 
-      const hiddenLoadMore = doc.querySelectorAll('[class*="load"], [class*="more"]');
-      for (let i = 0; i < hiddenLoadMore.length; i++) {
-        const el = hiddenLoadMore[i] as HTMLElement;
-        const style = window.getComputedStyle(el);
-        if (style.opacity === '0' || style.visibility === 'hidden') {
-          score += 2;
-          indicators.push(`Hidden load trigger element (+2)`);
-          break;
-        }
+      if (initialHeight > viewportHeight * 5) {
+        score += 2;
       }
-
-      const paginationControls = doc.querySelectorAll('[class*="pagination"], [class*="pager"]');
-      if (paginationControls.length === 0) {
-        score += 1;
-        indicators.push(`No pagination controls found (+1)`);
-      }
-
 
       return score;
     } catch (error) {
