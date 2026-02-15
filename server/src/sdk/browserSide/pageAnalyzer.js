@@ -1089,6 +1089,9 @@
           var elements = root.querySelectorAll(selectors[i]);
           clickables.push.apply(clickables, Array.from(elements));
         }
+        if (root !== document && (root.tagName === 'BUTTON' || root.tagName === 'A' || root.getAttribute('role') === 'button')) {
+          clickables.push(root);
+        }
         return Array.from(new Set(clickables));
       }
 
@@ -2032,7 +2035,7 @@
             var cn = element.className || '';
             if (paginationContainerPattern.test(cn)) nScore += 3;
             try {
-              var pagAnc = element.closest('[class*="paginat"], [class*="pager"]');
+              var pagAnc = element.closest('[class*="paginat"], [class*="pager"], [aria-label*="paginat" i]');
               if (pagAnc) nScore += 5;
             } catch (e) { }
             if (nScore > nextScore) {
@@ -2079,6 +2082,7 @@
           }
 
           var scrollToTopPatterns = [
+            '[aria-label*="scroll to top" i]', '[title*="back to top" i]',
             '.back-to-top', '#back-to-top', '[class*="scrolltop"]', '[class*="backtotop"]',
           ];
           for (var k = 0; k < scrollToTopPatterns.length; k++) {
