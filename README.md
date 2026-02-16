@@ -96,7 +96,7 @@ Maxun can run locally with or without Docker
   <tr>
   <td width="229">
       <br/>
-      <a href="https://www.testmu.ai/?utm_source=maxun&utm_medium=sponsor" target="_blank">
+      <a href="https://www.testmuai.com/?utm_medium=sponsor&utm_source=maxun" target="_blank">
         <img src="https://github.com/user-attachments/assets/6c96005b-85df-43e0-9b63-96aaca676c11" /><br/><br/>
         <b>TestMu AI</b>
       </a>
