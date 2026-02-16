@@ -489,6 +489,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
 
               const handleScrollTestResult = (result: any) => {
                 if (result.success && result.contentLoaded) {
+                  notify("success", "Scroll Down pagination has been auto-detected.");
                   setAutoDetectedPagination({
                     type: 'scrollDown',
                     selector: null,
@@ -519,6 +520,11 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                     );
 
                     if (detectionResult.type) {
+                      if (detectionResult.type === 'scrollDown') {
+                        notify("success", "Scroll Down pagination has been auto-detected.");
+                      } else if (detectionResult.type === 'scrollUp') {
+                        notify("success", "Scroll Up pagination has been auto-detected.");
+                      }
                       setAutoDetectedPagination({
                         type: detectionResult.type,
                         selector: detectionResult.selector,
@@ -606,7 +612,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                             }
 
                             const paginationTypeLabel = detectionResult.type === 'clickNext' ? 'Next Button' : 'Load More Button';
-                            notify('info', `${paginationTypeLabel} has been auto-detected and highlighted on the page`);
+                            notify('success', `${paginationTypeLabel} has been auto-detected and highlighted on the page`);
                           } else {
                             console.warn(' No elements found for selector:', detectionResult.selector);
                           }
@@ -615,6 +621,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                         }
                       }
                     } else {
+                      notify("warning", "No pagination detected. If present, please manually select.");
                       setAutoDetectedPagination(null);
                     }
                   }

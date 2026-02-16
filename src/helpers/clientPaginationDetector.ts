@@ -13,14 +13,42 @@ export type PaginationDetectionResult = {
   debug?: any;
 };
 
+const MAX_BUTTON_TEXT_LENGTH = 50;
+
+const nextButtonTextPatterns = [
+  /^\s*next\s*$/i,
+  /\bnext\s+page\b/i,
+  /\bpage\s+suivante\b/i,
+  /\bsiguiente\b/i,
+  /\bweiter\b/i,
+  /\bnächste\b/i,
+  /\bvolgende\b/i,
+  /\bpróximo\b/i,
+  /\bavanti\b/i,
+];
+
+const nextButtonArrowPatterns = [
+  /^[>\s›→»⟩]+$/,
+  /^>>$/,
+];
+
+const loadMorePatterns = [
+  /^\s*load\s+more\s*$/i,
+  /^\s*show\s+more\s*$/i,
+  /^\s*view\s+more\s*$/i,
+  /^\s*see\s+more\s*$/i,
+  /^\s*more\s+results\s*$/i,
+  /^\s*plus\s+de\s+résultats\s*$/i,
+  /^\s*más\s+resultados\s*$/i,
+  /^\s*weitere\s+ergebnisse\s*$/i,
+  /^\s*meer\s+laden\s*$/i,
+  /^\s*carica\s+altri\s*$/i,
+  /^\s*carregar\s+mais\s*$/i,
+];
+
+const paginationContainerPatterns = /paginat|page-nav|pager|page-numbers|page-list/i;
+
 class ClientPaginationDetector {
-  /**
-   * Auto-detect pagination on a page
-   * @param doc - The document object to analyze (can be iframe document)
-   * @param listSelector - The selector for the list container
-   * @param options - Optional detection options
-   * @returns Pagination detection result
-   */
   autoDetectPagination(
     doc: Document,
     listSelector: string,
@@ -34,222 +62,34 @@ class ClientPaginationDetector {
         return { type: '', selector: null, confidence: 'low', debug: 'No list elements found' };
       }
 
-      const listContainer = listElements[0];
+      const listContainer = this.getListContainer(listElements);
 
-      const nextButtonPatterns = [
-        /next/i,
-        /\bnext\s+page\b/i,
-        /page\s+suivante/i,
-        /siguiente/i,
-        /weiter/i,
-        />>|›|→|»|⟩/,
-        /\bforward\b/i,
-        /\bnewer\b/i,
-        /\bolder\b/i
-      ];
+      const paginationWrapper = this.findPaginationContainer(listContainer, doc);
 
-      const loadMorePatterns = [
-        /load\s+more/i,
-        /show\s+more/i,
-        /view\s+more/i,
-        /see\s+more/i,
-        /more\s+results/i,
-        /plus\s+de\s+résultats/i,
-        /más\s+resultados/i,
-        /weitere\s+ergebnisse/i
-      ];
-
-      const prevButtonPatterns = [
-        /prev/i,
-        /previous/i,
-        /<<|‹|←|«/,
-        /\bback\b/i
-      ];
-
-      const clickableElements = this.getClickableElements(doc);
-
-      let nextButton: HTMLElement | null = null;
-      let nextButtonScore = 0;
-      const nextButtonCandidates: any[] = [];
-
-      for (const element of clickableElements) {
-        if (!this.isVisible(element)) continue;
-
-        const text = (element.textContent || '').trim();
-        const ariaLabel = element.getAttribute('aria-label') || '';
-        const title = element.getAttribute('title') || '';
-        const combinedText = `${text} ${ariaLabel} ${title}`;
-
-        let score = 0;
-        const reasons: string[] = [];
-
-        if (this.matchesAnyPattern(combinedText, nextButtonPatterns)) {
-          score += 10;
-          reasons.push('text match (+10)');
-        }
-
-        if (this.isNearList(element, listContainer)) {
-          score += 5;
-          reasons.push('near list (+5)');
-        }
-
-        if (element.tagName === 'BUTTON') {
-          score += 2;
-          reasons.push('button tag (+2)');
-        }
-
-        const className = element.className || '';
-        if (/pagination|next|forward/i.test(className)) {
-          score += 3;
-          reasons.push('pagination class (+3)');
-        }
-
-        if (score > 0) {
-          nextButtonCandidates.push({
-            element: element,
-            score: score,
-            text: text.substring(0, 50),
-            ariaLabel: ariaLabel,
-            tag: element.tagName,
-            className: className,
-            reasons: reasons
-          });
-        }
-
-        if (score > nextButtonScore) {
-          nextButtonScore = score;
-          nextButton = element;
+      if (paginationWrapper) {
+        const scopedResult = this.detectFromPaginationWrapper(paginationWrapper, listContainer, doc, selectorGenerator);
+        if (scopedResult) {
+          return scopedResult;
         }
       }
 
-      let loadMoreButton: HTMLElement | null = null;
-      let loadMoreScore = 0;
-
-      for (const element of clickableElements) {
-        if (!this.isVisible(element)) continue;
-
-        const text = (element.textContent || '').trim();
-        const ariaLabel = element.getAttribute('aria-label') || '';
-        const title = element.getAttribute('title') || '';
-        const combinedText = `${text} ${ariaLabel} ${title}`;
-
-        let score = 0;
-
-        if (this.matchesAnyPattern(combinedText, loadMorePatterns)) {
-          score += 10;
-        }
-
-        if (this.isNearList(element, listContainer)) {
-          score += 5;
-        }
-
-        if (element.tagName === 'BUTTON') {
-          score += 2;
-        }
-
-        if (score > loadMoreScore) {
-          loadMoreScore = score;
-          loadMoreButton = element;
-        }
-      }
-
-      let prevButton: HTMLElement | null = null;
-      let prevButtonScore = 0;
-
-      for (const element of clickableElements) {
-        if (!this.isVisible(element)) continue;
-
-        const text = (element.textContent || '').trim();
-        const ariaLabel = element.getAttribute('aria-label') || '';
-        const title = element.getAttribute('title') || '';
-        const combinedText = `${text} ${ariaLabel} ${title}`;
-
-        let score = 0;
-
-        if (this.matchesAnyPattern(combinedText, prevButtonPatterns)) {
-          score += 10;
-        }
-
-        if (this.isNearList(element, listContainer)) {
-          score += 5;
-        }
-
-        if (score > prevButtonScore) {
-          prevButtonScore = score;
-          prevButton = element;
-        }
+      const nearbyResult = this.detectFromNearbyElements(listContainer, doc, selectorGenerator);
+      if (nearbyResult) {
+        return nearbyResult;
       }
 
       const infiniteScrollScore = options?.disableScrollDetection
         ? 0
-        : this.detectInfiniteScrollIndicators(doc, listElements, listContainer);
+        : this.detectInfiniteScrollIndicators(doc, listContainer);
 
-      const hasStrongInfiniteScrollSignals = infiniteScrollScore >= 8;
-      const hasMediumInfiniteScrollSignals = infiniteScrollScore >= 5 && infiniteScrollScore < 8;
-
-      if (hasStrongInfiniteScrollSignals) {
-        const confidence = infiniteScrollScore >= 12 ? 'high' : infiniteScrollScore >= 10 ? 'medium' : 'low';
-        return {
-          type: 'scrollDown',
-          selector: null,
-          confidence: confidence
-        };
+      if (infiniteScrollScore >= 8) {
+        const confidence = infiniteScrollScore >= 15 ? 'high' : infiniteScrollScore >= 12 ? 'medium' : 'low';
+        return { type: 'scrollDown', selector: null, confidence };
       }
 
-      if (loadMoreButton && loadMoreScore >= 15) {
-        const selector = this.generateSelectorsForElement(loadMoreButton, doc, selectorGenerator);
-        return {
-          type: 'clickLoadMore',
-          selector: selector,
-          confidence: 'high'
-        };
-      }
-
-      if (nextButton && nextButtonScore >= 15 && !hasMediumInfiniteScrollSignals) {
-        const selector = this.generateSelectorsForElement(nextButton, doc, selectorGenerator);
-        return {
-          type: 'clickNext',
-          selector: selector,
-          confidence: 'high'
-        };
-      }
-
-      if (hasMediumInfiniteScrollSignals) {
-        const confidence = infiniteScrollScore >= 7 ? 'medium' : 'low';
-        return {
-          type: 'scrollDown',
-          selector: null,
-          confidence: confidence
-        };
-      }
-
-      if (loadMoreButton && loadMoreScore >= 8) {
-        const selector = this.generateSelectorsForElement(loadMoreButton, doc, selectorGenerator);
-        const confidence = loadMoreScore >= 10 ? 'medium' : 'low';
-        return {
-          type: 'clickLoadMore',
-          selector: selector,
-          confidence: confidence
-        };
-      }
-
-      if (nextButton && nextButtonScore >= 8) {
-        const selector = this.generateSelectorsForElement(nextButton, doc, selectorGenerator);
-        const confidence = nextButtonScore >= 10 ? 'medium' : 'low';
-        return {
-          type: 'clickNext',
-          selector: selector,
-          confidence: confidence
-        };
-      }
-
-      if (prevButton && prevButtonScore >= 8) {
-        const confidence = prevButtonScore >= 15 ? 'high' : prevButtonScore >= 10 ? 'medium' : 'low';
-        return {
-          type: 'scrollUp',
-          selector: null,
-          confidence: confidence
-        };
+      const fallbackResult = this.detectFromFullDocument(listContainer, doc, selectorGenerator);
+      if (fallbackResult) {
+        return fallbackResult;
       }
 
       return {
@@ -257,49 +97,393 @@ class ClientPaginationDetector {
         selector: null,
         confidence: 'low',
         debug: {
-          clickableElementsCount: clickableElements.length,
-          nextCandidatesCount: nextButtonCandidates.length,
-          topNextCandidates: nextButtonCandidates.slice(0, 3).map(c => ({
-            score: c.score,
-            text: c.text,
-            tag: c.tag,
-            reasons: c.reasons
-          })),
-          finalScores: {
-            loadMore: loadMoreScore,
-            next: nextButtonScore,
-            prev: prevButtonScore,
-            infiniteScroll: infiniteScrollScore
-          }
+          listElementsCount: listElements.length,
+          paginationWrapperFound: !!paginationWrapper,
+          infiniteScrollScore,
         }
       };
     } catch (error: any) {
-      console.error('Error:', error);
-      return {
-        type: '',
-        selector: null,
-        confidence: 'low',
-        debug: 'Exception: ' + error.message
-      };
+      console.error('Pagination detection error:', error);
+      return { type: '', selector: null, confidence: 'low', debug: 'Exception: ' + error.message };
     }
   }
 
   /**
-   * Evaluate selector (supports both CSS and XPath)
+   * Derive the common parent container from the list elements.
+   * If all elements share the same parent, use that parent.
+   * Otherwise use the first element's parent as a best guess.
    */
+  private getListContainer(listElements: HTMLElement[]): HTMLElement {
+    if (listElements.length === 0) return listElements[0];
+
+    const firstParent = listElements[0].parentElement;
+    if (!firstParent) return listElements[0];
+
+    const allShareParent = listElements.every(el => el.parentElement === firstParent);
+    if (allShareParent) return firstParent;
+
+    let ancestor: HTMLElement | null = firstParent;
+    while (ancestor) {
+      if (listElements.every(el => ancestor!.contains(el))) {
+        return ancestor;
+      }
+      ancestor = ancestor.parentElement;
+    }
+
+    return firstParent;
+  }
+
+  /**
+   * Find pagination container structurally near the list.
+   * Walks up from the list container checking siblings at each level.
+   */
+  private findPaginationContainer(listContainer: HTMLElement, _doc: Document): HTMLElement | null {
+    let scope = listContainer.parentElement;
+    const MAX_LEVELS = 4;
+
+    for (let level = 0; level < MAX_LEVELS && scope; level++) {
+      const children = Array.from(scope.children) as HTMLElement[];
+
+      for (const child of children) {
+        if (child === listContainer || child.contains(listContainer) || listContainer.contains(child)) continue;
+        if (!this.isVisible(child)) continue;
+
+        const classAndLabel = `${child.className || ''} ${child.getAttribute('aria-label') || ''} ${child.getAttribute('role') || ''}`;
+        if (paginationContainerPatterns.test(classAndLabel)) {
+          return child;
+        }
+
+        if (child.tagName === 'NAV') {
+          if (this.containsPaginationLinks(child)) {
+            return child;
+          }
+        }
+
+        if (this.containsNumericPageLinks(child)) {
+          return child;
+        }
+      }
+
+      scope = scope.parentElement;
+    }
+
+    return null;
+  }
+
+  /**
+   * Check if a container has pagination-like links (numbered or next/prev)
+   */
+  private containsPaginationLinks(container: HTMLElement): boolean {
+    const links = container.querySelectorAll('a, button, [role="button"]');
+    let numericCount = 0;
+    let hasNextPrev = false;
+
+    for (const link of Array.from(links)) {
+      const text = (link.textContent || '').trim();
+      if (/^\d+$/.test(text)) numericCount++;
+      if (this.matchesAnyPattern(text, nextButtonTextPatterns)) hasNextPrev = true;
+      if (this.matchesAnyPattern(text, loadMorePatterns)) hasNextPrev = true;
+    }
+
+    return numericCount >= 2 || hasNextPrev;
+  }
+
+  /**
+   * Check if a container has 2+ sequential numeric links (strong page-number signal)
+   */
+  private containsNumericPageLinks(container: HTMLElement): boolean {
+    const links = container.querySelectorAll('a, button, [role="button"]');
+    const numbers: number[] = [];
+
+    for (const link of Array.from(links)) {
+      const text = (link.textContent || '').trim();
+      if (/^\d+$/.test(text)) {
+        numbers.push(parseInt(text, 10));
+      }
+    }
+
+    if (numbers.length < 2) return false;
+
+    numbers.sort((a, b) => a - b);
+    for (let i = 0; i < numbers.length - 1; i++) {
+      if (numbers[i + 1] - numbers[i] === 1) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Detect pagination from a known pagination wrapper element.
+   * Since we've already identified the wrapper structurally, we search only within it.
+   */
+  private detectFromPaginationWrapper(
+    wrapper: HTMLElement,
+    _listContainer: HTMLElement,
+    doc: Document,
+    selectorGenerator: ClientSelectorGenerator
+  ): PaginationDetectionResult | null {
+    const clickables = this.getClickableElementsIn(wrapper);
+
+    let nextButton: HTMLElement | null = null;
+    let nextScore = 0;
+    let loadMoreButton: HTMLElement | null = null;
+    let loadMoreScore = 0;
+
+    for (const element of clickables) {
+      if (!this.isVisible(element)) continue;
+      if (element.hasAttribute('disabled') || element.getAttribute('aria-disabled') === 'true') continue;
+
+      const text = (element.textContent || '').trim();
+      const ariaLabel = element.getAttribute('aria-label') || '';
+      const title = element.getAttribute('title') || '';
+      if (text.length > MAX_BUTTON_TEXT_LENGTH) continue;
+
+      const combinedText = `${text} ${ariaLabel} ${title}`;
+
+      if (this.matchesAnyPattern(combinedText, loadMorePatterns)) {
+        const score = 20;
+        if (score > loadMoreScore) {
+          loadMoreScore = score;
+          loadMoreButton = element;
+        }
+      }
+
+      let isNext = false;
+      if (this.matchesAnyPattern(combinedText, nextButtonTextPatterns)) {
+        isNext = true;
+      } else if (text.length <= 3 && this.matchesAnyPattern(text, nextButtonArrowPatterns)) {
+        isNext = true;
+      }
+      if (!isNext && !text.trim() && this.matchesAnyPattern(ariaLabel, nextButtonTextPatterns)) {
+        isNext = true;
+      }
+
+      if (isNext) {
+        const score = 20;
+        if (score > nextScore) {
+          nextScore = score;
+          nextButton = element;
+        }
+      }
+    }
+
+    const hasNumberedPages = this.containsNumericPageLinks(wrapper);
+
+    if (loadMoreButton) {
+      const selector = this.generateSelectorsForElement(loadMoreButton, doc, selectorGenerator);
+      return { type: 'clickLoadMore', selector, confidence: 'high' };
+    }
+
+    if (nextButton) {
+      const selector = this.generateSelectorsForElement(nextButton, doc, selectorGenerator);
+      const confidence = hasNumberedPages ? 'high' : 'high';
+      return { type: 'clickNext', selector, confidence };
+    }
+
+    if (hasNumberedPages) {
+      const lastLink = this.findLastPageLink(wrapper);
+      if (lastLink) {
+        const selector = this.generateSelectorsForElement(lastLink, doc, selectorGenerator);
+        return { type: 'clickNext', selector, confidence: 'medium' };
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Find the "next" link in a numbered pagination bar.
+   * Look for the link after the current/active page number.
+   */
+  private findLastPageLink(container: HTMLElement): HTMLElement | null {
+    const links = Array.from(container.querySelectorAll('a, button, [role="button"]')) as HTMLElement[];
+
+    for (let i = 0; i < links.length; i++) {
+      const link = links[i];
+      const isActive = link.getAttribute('aria-current') === 'page' ||
+        link.classList.contains('active') ||
+        link.classList.contains('current') ||
+        link.classList.contains('selected') ||
+        (link.closest('[aria-current="page"]') !== null);
+
+      if (isActive && i + 1 < links.length) {
+        return links[i + 1];
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Detect pagination from clickable elements near the list container.
+   * No aggressive nav filtering. Uses proximity + text matching.
+   */
+  private detectFromNearbyElements(
+    listContainer: HTMLElement,
+    doc: Document,
+    selectorGenerator: ClientSelectorGenerator
+  ): PaginationDetectionResult | null {
+    const clickableElements = this.getClickableElements(doc);
+
+    let nextButton: HTMLElement | null = null;
+    let nextButtonScore = 0;
+    let loadMoreButton: HTMLElement | null = null;
+    let loadMoreScore = 0;
+
+    for (const element of clickableElements) {
+      if (!this.isVisible(element)) continue;
+      if (listContainer.contains(element)) continue;
+      if (element.hasAttribute('disabled') || element.getAttribute('aria-disabled') === 'true') continue;
+
+      const text = (element.textContent || '').trim();
+      const ariaLabel = element.getAttribute('aria-label') || '';
+      const title = element.getAttribute('title') || '';
+      if (text.length > MAX_BUTTON_TEXT_LENGTH) continue;
+
+      const combinedText = `${text} ${ariaLabel} ${title}`;
+      const nearList = this.isNearList(element, listContainer);
+
+      if (!nearList) continue;
+
+      if (this.matchesAnyPattern(combinedText, loadMorePatterns)) {
+        let score = 10 + 5;
+        if (element.tagName === 'BUTTON') score += 2;
+        const className = element.className || '';
+        if (paginationContainerPatterns.test(className)) score += 3;
+
+        if (score > loadMoreScore) {
+          loadMoreScore = score;
+          loadMoreButton = element;
+        }
+      }
+
+      let isNext = false;
+      if (this.matchesAnyPattern(combinedText, nextButtonTextPatterns)) {
+        isNext = true;
+      } else if (text.length <= 3 && this.matchesAnyPattern(text, nextButtonArrowPatterns)) {
+        isNext = true;
+      }
+      if (!isNext && !text.trim() && this.matchesAnyPattern(ariaLabel, nextButtonTextPatterns)) {
+        isNext = true;
+      }
+
+      if (isNext) {
+        let score = 10 + 5;
+        if (element.tagName === 'BUTTON') score += 2;
+        const className = element.className || '';
+        if (paginationContainerPatterns.test(className)) score += 3;
+        const paginationAncestor = element.closest('[class*="paginat"], [class*="pager"], [aria-label*="paginat" i]');
+        if (paginationAncestor) score += 5;
+
+        if (score > nextButtonScore) {
+          nextButtonScore = score;
+          nextButton = element;
+        }
+      }
+    }
+
+    if (loadMoreButton && loadMoreScore >= 15) {
+      const selector = this.generateSelectorsForElement(loadMoreButton, doc, selectorGenerator);
+      const confidence = loadMoreScore >= 18 ? 'high' : 'medium';
+      return { type: 'clickLoadMore', selector, confidence };
+    }
+
+    if (nextButton && nextButtonScore >= 15) {
+      const selector = this.generateSelectorsForElement(nextButton, doc, selectorGenerator);
+      const confidence = nextButtonScore >= 18 ? 'high' : 'medium';
+      return { type: 'clickNext', selector, confidence };
+    }
+
+    return null;
+  }
+
+  /**
+   * Full-document fallback with relaxed filters.
+   * No nav skipping. Scores elements across the whole page but requires both
+   * text match AND proximity for a positive result.
+   */
+  private detectFromFullDocument(
+    listContainer: HTMLElement,
+    doc: Document,
+    selectorGenerator: ClientSelectorGenerator
+  ): PaginationDetectionResult | null {
+    const clickableElements = this.getClickableElements(doc);
+
+    let nextButton: HTMLElement | null = null;
+    let nextButtonScore = 0;
+    let loadMoreButton: HTMLElement | null = null;
+    let loadMoreScore = 0;
+
+    for (const element of clickableElements) {
+      if (!this.isVisible(element)) continue;
+      if (listContainer.contains(element)) continue;
+      if (element.hasAttribute('disabled') || element.getAttribute('aria-disabled') === 'true') continue;
+
+      const text = (element.textContent || '').trim();
+      const ariaLabel = element.getAttribute('aria-label') || '';
+      const title = element.getAttribute('title') || '';
+      if (text.length > MAX_BUTTON_TEXT_LENGTH) continue;
+
+      const combinedText = `${text} ${ariaLabel} ${title}`;
+      const nearList = this.isNearList(element, listContainer);
+
+      if (this.matchesAnyPattern(combinedText, loadMorePatterns)) {
+        let score = 10;
+        if (nearList) score += 5;
+        if (element.tagName === 'BUTTON') score += 2;
+
+        if (score > loadMoreScore) {
+          loadMoreScore = score;
+          loadMoreButton = element;
+        }
+      }
+
+      let isNext = false;
+      if (this.matchesAnyPattern(combinedText, nextButtonTextPatterns)) {
+        isNext = true;
+      } else if (text.length <= 3 && this.matchesAnyPattern(text, nextButtonArrowPatterns)) {
+        isNext = true;
+      }
+      if (!isNext && !text.trim() && this.matchesAnyPattern(ariaLabel, nextButtonTextPatterns)) {
+        isNext = true;
+      }
+
+      if (isNext) {
+        let score = 10;
+        if (nearList) score += 5;
+        if (element.tagName === 'BUTTON') score += 2;
+
+        if (score > nextButtonScore) {
+          nextButtonScore = score;
+          nextButton = element;
+        }
+      }
+    }
+
+    if (loadMoreButton && loadMoreScore >= 10) {
+      const selector = this.generateSelectorsForElement(loadMoreButton, doc, selectorGenerator);
+      const confidence = loadMoreScore >= 15 ? 'medium' : 'low';
+      return { type: 'clickLoadMore', selector, confidence };
+    }
+
+    if (nextButton && nextButtonScore >= 10) {
+      const selector = this.generateSelectorsForElement(nextButton, doc, selectorGenerator);
+      const confidence = nextButtonScore >= 15 ? 'medium' : 'low';
+      return { type: 'clickNext', selector, confidence };
+    }
+
+    return null;
+  }
+
+  // ---------- Utility methods ----------
+
   private evaluateSelector(selector: string, doc: Document): HTMLElement[] {
     try {
       const isXPath = selector.startsWith('//') || selector.startsWith('(//');
 
       if (isXPath) {
         const result = doc.evaluate(
-          selector,
-          doc,
-          null,
-          XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
-          null
+          selector, doc, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null
         );
-
         const elements: HTMLElement[] = [];
         for (let i = 0; i < result.snapshotLength; i++) {
           const node = result.snapshotItem(i);
@@ -317,24 +501,27 @@ class ClientPaginationDetector {
     }
   }
 
-  /**
-   * Get all clickable elements in document
-   */
   private getClickableElements(doc: Document): HTMLElement[] {
     const clickables: HTMLElement[] = [];
     const selectors = ['button', 'a', '[role="button"]', '[onclick]', '.btn', '.button'];
-
-    for (const selector of selectors) {
-      const elements = doc.querySelectorAll(selector);
-      clickables.push(...Array.from(elements) as HTMLElement[]);
+    for (const sel of selectors) {
+      clickables.push(...Array.from(doc.querySelectorAll(sel)) as HTMLElement[]);
     }
-
     return Array.from(new Set(clickables));
   }
 
-  /**
-   * Check if element is visible
-   */
+  private getClickableElementsIn(container: HTMLElement): HTMLElement[] {
+    const clickables: HTMLElement[] = [];
+    const selectors = ['button', 'a', '[role="button"]', '[onclick]', '.btn', '.button'];
+    for (const sel of selectors) {
+      clickables.push(...Array.from(container.querySelectorAll(sel)) as HTMLElement[]);
+    }
+    if (container.tagName === 'BUTTON' || container.tagName === 'A' || container.getAttribute('role') === 'button') {
+      clickables.push(container);
+    }
+    return Array.from(new Set(clickables));
+  }
+
   private isVisible(element: HTMLElement): boolean {
     try {
       const style = window.getComputedStyle(element);
@@ -348,26 +535,20 @@ class ClientPaginationDetector {
     }
   }
 
-  /**
-   * Check if text matches any pattern
-   */
   private matchesAnyPattern(text: string, patterns: RegExp[]): boolean {
     return patterns.some(pattern => pattern.test(text));
   }
 
-  /**
-   * Check if element is near the list container
-   */
   private isNearList(element: HTMLElement, listContainer: HTMLElement): boolean {
     try {
       const listRect = listContainer.getBoundingClientRect();
       const elementRect = element.getBoundingClientRect();
 
-      if (elementRect.top >= listRect.bottom && elementRect.top <= listRect.bottom + 500) {
+      if (elementRect.top >= listRect.bottom && elementRect.top <= listRect.bottom + 300) {
         return true;
       }
 
-      if (elementRect.bottom <= listRect.top && elementRect.bottom >= listRect.top - 500) {
+      if (elementRect.bottom <= listRect.top && elementRect.bottom >= listRect.top - 200) {
         return true;
       }
 
@@ -377,173 +558,72 @@ class ClientPaginationDetector {
           Math.abs(elementRect.left - listRect.right),
           Math.abs(elementRect.right - listRect.left)
         );
-        if (horizontalDistance < 200) {
+        if (horizontalDistance < 150) {
           return true;
         }
       }
 
       return false;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
 
-  /**
-   * Detect infinite scroll indicators
-   */
-  private detectInfiniteScrollIndicators(doc: Document, listElements: HTMLElement[], listContainer: HTMLElement): number {
+  private detectInfiniteScrollIndicators(doc: Document, _listContainer: HTMLElement): number {
     try {
       let score = 0;
-      const indicators: string[] = [];
 
-      const initialItemCount = listElements.length;
       const initialHeight = doc.documentElement.scrollHeight;
       const viewportHeight = window.innerHeight;
 
-      if (initialHeight <= viewportHeight) {
-        return 0;
-      }
-
-      const loadingIndicators = [
-        '[class*="loading"]',
-        '[class*="spinner"]',
-        '[class*="skeleton"]',
-        '[aria-busy="true"]',
-        '[data-loading="true"]',
-        '.loader',
-        '.load-more-spinner',
-        '[class*="load"]',
-        '[id*="loading"]',
-        '[id*="spinner"]'
-      ];
-
-      for (const selector of loadingIndicators) {
-        if (doc.querySelector(selector)) {
-          score += 3;
-          indicators.push(`Loading indicator: ${selector} (+3)`);
-          break;
-        }
-      }
+      if (initialHeight <= viewportHeight) return 0;
 
       const sentinelPatterns = [
-        '[class*="sentinel"]',
-        '[class*="trigger"]',
         '[data-infinite]',
         '[data-scroll-trigger]',
         '#infinite-scroll-trigger',
-        '[class*="infinite"]',
-        '[id*="infinite"]'
+        '[class*="infinite-scroll"]',
+        '[id*="infinite-scroll"]',
       ];
 
-      for (const selector of sentinelPatterns) {
-        if (doc.querySelector(selector)) {
-          score += 4;
-          indicators.push(`Sentinel element: ${selector} (+4)`);
-          break;
-        }
-      }
-
-      const scrollToTopPatterns = [
-        '[class*="scroll"][class*="top"]',
-        '[aria-label*="scroll to top"]',
-        '[title*="back to top"]',
-        '.back-to-top',
-        '#back-to-top',
-        '[class*="scrolltop"]',
-        '[class*="backtotop"]',
-        'button[class*="top"]',
-        'a[href="#top"]',
-        'a[href="#"]'
-      ];
-
-      for (const selector of scrollToTopPatterns) {
-        const element = doc.querySelector(selector);
-        if (element && this.isVisible(element as HTMLElement)) {
-          score += 2;
-          indicators.push(`Scroll-to-top button (+2)`);
-          break;
-        }
-      }
-
-      if (initialHeight > viewportHeight * 3) {
-        score += 3;
-        indicators.push(`Very tall page (${(initialHeight / viewportHeight).toFixed(1)}x viewport) (+3)`);
-      } else if (initialHeight > viewportHeight * 2) {
-        score += 2;
-        indicators.push(`Tall page (${(initialHeight / viewportHeight).toFixed(1)}x viewport) (+2)`);
-      }
-
-      if (initialItemCount >= 20) {
-        score += 2;
-        indicators.push(`Many list items (${initialItemCount}) (+2)`);
-      } else if (initialItemCount >= 10) {
-        score += 1;
-        indicators.push(`Good number of list items (${initialItemCount}) (+1)`);
+      for (const sel of sentinelPatterns) {
+        if (doc.querySelector(sel)) { score += 6; break; }
       }
 
       const infiniteScrollLibraries = [
         '.infinite-scroll',
         '[data-infinite-scroll]',
-        '[data-flickity]',
-        '[data-slick]',
-        '.masonry',
-        '[data-masonry]',
         '[class*="infinite-scroll"]',
-        '[class*="lazy-load"]',
-        '[data-lazy]'
       ];
 
-      for (const selector of infiniteScrollLibraries) {
-        if (doc.querySelector(selector)) {
-          score += 4;
-          indicators.push(`Infinite scroll library: ${selector} (+4)`);
-          break;
-        }
+      for (const sel of infiniteScrollLibraries) {
+        if (doc.querySelector(sel)) { score += 6; break; }
       }
 
-      const lastListItem = listElements[listElements.length - 1];
-      if (lastListItem) {
-        const lastItemRect = lastListItem.getBoundingClientRect();
-        const lastItemY = lastItemRect.bottom + window.scrollY;
-        const viewportBottom = window.scrollY + viewportHeight;
+      const scrollToTopPatterns = [
+        '[aria-label*="scroll to top" i]',
+        '[title*="back to top" i]',
+        '.back-to-top',
+        '#back-to-top',
+        '[class*="scrolltop"]',
+        '[class*="backtotop"]',
+      ];
 
-        if (lastItemY > viewportBottom + viewportHeight) {
-          score += 3;
-          indicators.push(`List extends far below viewport (+3)`);
-        } else if (lastItemY > viewportBottom) {
-          score += 2;
-          indicators.push(`List extends below viewport (+2)`);
-        }
+      for (const sel of scrollToTopPatterns) {
+        try {
+          const element = doc.querySelector(sel);
+          if (element && this.isVisible(element as HTMLElement)) { score += 2; break; }
+        } catch { continue; }
       }
 
-      const hiddenLoadMore = doc.querySelectorAll('[class*="load"], [class*="more"]');
-      for (let i = 0; i < hiddenLoadMore.length; i++) {
-        const el = hiddenLoadMore[i] as HTMLElement;
-        const style = window.getComputedStyle(el);
-        if (style.opacity === '0' || style.visibility === 'hidden') {
-          score += 2;
-          indicators.push(`Hidden load trigger element (+2)`);
-          break;
-        }
-      }
-
-      const paginationControls = doc.querySelectorAll('[class*="pagination"], [class*="pager"]');
-      if (paginationControls.length === 0) {
-        score += 1;
-        indicators.push(`No pagination controls found (+1)`);
-      }
-
+      if (initialHeight > viewportHeight * 5) score += 2;
 
       return score;
-    } catch (error) {
-      console.error('Infinite scroll detection error:', error);
+    } catch {
       return 0;
     }
   }
-  /**
-   * Generate selectors for element using ClientSelectorGenerator approach
-   * Returns the primary selector chain
-   */
+
   private generateSelectorsForElement(
     element: HTMLElement,
     doc: Document,
@@ -559,11 +639,9 @@ class ClientPaginationDetector {
 
       const selectorChain = [
         primary && 'iframeSelector' in primary && primary.iframeSelector?.full
-          ? primary.iframeSelector.full
-          : null,
+          ? primary.iframeSelector.full : null,
         primary && 'shadowSelector' in primary && primary.shadowSelector?.full
-          ? primary.shadowSelector.full
-          : null,
+          ? primary.shadowSelector.full : null,
         primary && 'testIdSelector' in primary ? primary.testIdSelector : null,
         primary && 'id' in primary ? primary.id : null,
         primary && 'hrefSelector' in primary ? primary.hrefSelector : null,
@@ -572,7 +650,7 @@ class ClientPaginationDetector {
         primary && 'attrSelector' in primary ? primary.attrSelector : null,
         primary && 'generalSelector' in primary ? primary.generalSelector : null,
       ]
-        .filter(selector => selector !== null && selector !== undefined && selector !== '')
+        .filter(s => s !== null && s !== undefined && s !== '')
         .join(',');
 
       return selectorChain || null;
