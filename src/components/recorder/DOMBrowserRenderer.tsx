@@ -648,20 +648,18 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           return;
         }
 
-        if (!isInCaptureMode) {
-          const wheelEvent = e as WheelEvent;
-          const deltaX = Math.round(wheelEvent.deltaX / 10) * 10;
-          const deltaY = Math.round(wheelEvent.deltaY / 10) * 10;
+        const wheelEvent = e as WheelEvent;
+        const deltaX = Math.round(wheelEvent.deltaX / 10) * 10;
+        const deltaY = Math.round(wheelEvent.deltaY / 10) * 10;
 
-          if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
-            if (socket) {
-              socket.emit("dom:scroll", {
-                deltaX,
-                deltaY,
-              });
-            }
-            notifyLastAction("scroll");
+        if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+          if (socket) {
+            socket.emit("dom:scroll", {
+              deltaX,
+              deltaY,
+            });
           }
+          notifyLastAction("scroll");
         }
       };
 

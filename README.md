@@ -6,11 +6,12 @@
             Maxun
         </a>
     </div>
-    Transform the Web into Structured Intelligence<br>
+    Turn Any Website Into A Structured API
+<br>
 </h2>
 
 <p align="center">
-✨ Turn any website into clean, contextualized data pipelines for your AI applications ✨
+✨ The unified open-source no-code platform for real-time web scraping, crawling, search and AI data extraction ✨
 
 <p align="center">
     <a href="https://app.maxun.dev/?ref=ghread"><b>Go To App</b></a> •
@@ -25,7 +26,8 @@
 
 ## What is Maxun?
 
-Maxun helps you transform websites into structured APIs, clean markdown for AI workflows, and production-ready data pipelines — all in minutes.
+Maxun is an open-source no-code web data platform for turning the web into structured, reliable data.
+It supports extraction, crawling, scraping, and search — designed to scale from simple use cases to complex, automated workflows.
 
 ### Ecosystem
 
@@ -65,7 +67,7 @@ Learn more <a href="https://docs.maxun.dev/robot/scrape/scrape-robots">here</a>.
 ### 3. Crawl
 Crawl entire websites and extract content from every relevant page, with full control over scope and discovery.
 
-Learn more <a href="/robot/crawl/crawl-introduction">here</a>.
+Learn more <a href="https://docs.maxun.dev/robot/crawl/crawl-introduction">here</a>.
 
 ### 4. Search
 Run automated web searches to discover or scrape results, with support for time-based filters.
@@ -94,7 +96,7 @@ Maxun can run locally with or without Docker
   <tr>
   <td width="229">
       <br/>
-      <a href="https://www.testmu.ai/?utm_source=maxun&utm_medium=sponsor" target="_blank">
+      <a href="https://www.testmuai.com/?utm_medium=sponsor&utm_source=maxun" target="_blank">
         <img src="https://github.com/user-attachments/assets/6c96005b-85df-43e0-9b63-96aaca676c11" /><br/><br/>
         <b>TestMu AI</b>
       </a>
@@ -131,8 +133,14 @@ This project is in early stages of development. Your feedback is very important 
 
 ## License
 <p>
-This project is licensed under <a href="./LICENSE">AGPLv3</a>.
+This project is licensed under <a href="./LICENSE">AGPLv3</a>. 
 </p>
+
+## Project Values
+
+We believe in fair and responsible use of open source.
+If you rely on this project commercially, please consider contributing back
+or supporting its development.
 
 ## Support Us
 Star the repository, contribute if you love what we’re building, or [sponsor us](https://github.com/sponsors/amhsirak). 

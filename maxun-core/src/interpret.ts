@@ -1784,8 +1784,17 @@ export default class Interpreter extends EventEmitter {
             scrapedItems.add(uniqueKey);
             return true;
         });
-        allResults = allResults.concat(newResults);
-        debugLog("Results collected:", allResults.length);
+        
+        let itemsToAdd = newResults;
+        if (config.limit) {
+          const remainingCapacity = config.limit - allResults.length;
+          if (remainingCapacity <= 0) {
+            itemsToAdd = [];
+          } else if (newResults.length > remainingCapacity) {
+            itemsToAdd = newResults.slice(0, remainingCapacity);
+          }
+        }
+        allResults = allResults.concat(itemsToAdd);
 
         this.serializableDataByType[actionType][actionName] = [...allResults];
         await this.options.serializableCallback({
@@ -1938,15 +1947,40 @@ export default class Interpreter extends EventEmitter {
               return allResults;
             }
 
-            await page.evaluate(() => {
-              const scrollHeight = Math.max(
-                document.body.scrollHeight,
-                document.documentElement.scrollHeight
-              );
+            const scrollIterations = 3;
+            for (let i = 0; i < scrollIterations; i++) {
+              await page.evaluate(() => {
+                window.scrollBy(0, window.innerHeight * 0.8);
+              });
+              await page.waitForTimeout(500);
+            }
 
-              window.scrollTo(0, scrollHeight);
-            });
             await page.waitForTimeout(2000);
+
+            try {
+              await page.evaluate((listSelector) => {
+                const isXPath = listSelector.startsWith('//') || listSelector.startsWith('/');
+                let lastElement: Element | null = null;
+
+                if (isXPath) {
+                  const result = document.evaluate(listSelector, document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+                  if (result.snapshotLength > 0) {
+                    lastElement = result.snapshotItem(result.snapshotLength - 1) as Element;
+                  }
+                } else {
+                  const elements = document.querySelectorAll(listSelector);
+                  if (elements.length > 0) {
+                    lastElement = elements[elements.length - 1] as Element;
+                  }
+                }
+
+                if (lastElement) {
+                  lastElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                }
+              }, config.listSelector);
+              await page.waitForTimeout(1500);
+            } catch (e) {
+            }
 
             const currentHeight = await page.evaluate(() => {
               return Math.max(

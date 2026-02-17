@@ -52,7 +52,7 @@ services:
     security_opt:
     - seccomp=unconfined  # This might help with browser sandbox issues
     shm_size: '2gb' # Increase shared memory size for Chromium
-    mem_limit: 2g   # Set a 2GB memory limit
+    mem_limit: 6g   # Set 6GB memory limit
     depends_on:
       - postgres
       - minio

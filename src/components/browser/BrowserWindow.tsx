@@ -998,7 +998,7 @@ export const BrowserWindow = () => {
 
             const iframeRect = iframeElement.getBoundingClientRect();
             const IFRAME_X_PADDING = 16;
-            const IFRAME_Y_PADDING = 136;
+            const IFRAME_Y_PADDING = 126;
 
             let mappedSimilarElements;
             if (data.similarElements) {

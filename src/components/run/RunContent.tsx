@@ -68,6 +68,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   const [screenshotKeys, setScreenshotKeys] = useState<string[]>([]);
   const [screenshotKeyMap, setScreenshotKeyMap] = useState<Record<string, string>>({});
   const [currentScreenshotIndex, setCurrentScreenshotIndex] = useState<number>(0);
+  const [currentSearchScreenshotTab, setCurrentSearchScreenshotTab] = useState<number>(0);
   const [currentSchemaIndex, setCurrentSchemaIndex] = useState<number>(0);
 
   const [legacyData, setLegacyData] = useState<any[]>([]);
@@ -517,18 +518,88 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     }, 100);
   };
 
+  const downloadText = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 100);
+  };
+
+  const downloadHTML = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/html;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 100);
+  };
+
   const downloadAllCrawlsAsZip = async (crawlDataArray: any[], zipFilename: string) => {
     const zip = new JSZip();
 
-    crawlDataArray.forEach((item, index) => {
+    for (let index = 0; index < crawlDataArray.length; index++) {
+      const item = crawlDataArray[index];
       const url = item?.metadata?.url || item?.url || '';
-      const filename = url
-        ? url.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') + '.json'
-        : `crawl_url_${index + 1}.json`;
+      const folderName = url
+        ? url.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_')
+        : `page_${index + 1}`;
+      
+      const pageFolder = zip.folder(folderName);
+      if (!pageFolder) continue;
 
-      const jsonContent = JSON.stringify(item, null, 2);
-      zip.file(filename, jsonContent);
-    });
+      pageFolder.file('metadata.json', JSON.stringify(item, null, 2));
+
+      if (item.text) {
+        const textContent = typeof item.text === 'object' ? JSON.stringify(item.text, null, 2) : String(item.text);
+        pageFolder.file('content.txt', textContent);
+      }
+
+      if (item.html) {
+        const htmlContent = typeof item.html === 'object' ? JSON.stringify(item.html, null, 2) : String(item.html);
+        pageFolder.file('content.html', htmlContent);
+      }
+
+      if (item.markdown) {
+        const mdContent = typeof item.markdown === 'object' ? JSON.stringify(item.markdown, null, 2) : String(item.markdown);
+        pageFolder.file('content.md', mdContent);
+      }
+
+      if (item.links && Array.isArray(item.links)) {
+        const uniqueLinks = Array.from(new Set(item.links));
+        pageFolder.file('links.txt', uniqueLinks.join('\n'));
+      }
+
+      const screenshots = [
+        { id: item.screenshotVisible, name: 'screenshot_visible.png' },
+        { id: item.screenshotFullpage, name: 'screenshot_full_page.png' }
+      ];
+
+      for (const screenshot of screenshots) {
+        if (screenshot.id && row.binaryOutput && row.binaryOutput[screenshot.id]) {
+          const binaryData = row.binaryOutput[screenshot.id].data;
+          if (binaryData && !binaryData.startsWith('http')) {
+            const base64Data = binaryData.replace(/^data:image\/\w+;base64,/, "");
+            pageFolder.file(screenshot.name, base64Data, { base64: true });
+          }
+        }
+      }
+    }
 
     const blob = await zip.generateAsync({ type: 'blob' });
     const url = URL.createObjectURL(blob);
@@ -831,7 +902,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                         onClick={() => downloadMarkdown(markdownContent, 'output.md')}
                         sx={{ color: '#FF00C3', textTransform: 'none' }}
                       >
-                        Download
+                        Download Markdown
                       </Button>
                     </Box>
                   </AccordionDetails>
@@ -866,7 +937,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                         }}
                         sx={{ color: '#FF00C3', textTransform: 'none' }}
                       >
-                        Download
+                        Download HTML
                       </Button>
                     </Box>
                   </AccordionDetails>
@@ -929,6 +1000,39 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                           }}
                         />
                       )}
+                    </Box>
+                    <Box sx={{ mt: 2 }}>
+                      <Button
+                        onClick={() => {
+                          const key = screenshotKeys[currentScreenshotIndex];
+                          const orig = screenshotKeyMap[key];
+                          const src = row.binaryOutput[orig];
+                          // Use fetch/blob for URL-based screenshots
+                          if (src && typeof src === 'string' && src.startsWith('http')) {
+                            fetch(src)
+                              .then(res => res.blob())
+                              .then(blob => {
+                                const url = window.URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `${key}.png`;
+                                a.click();
+                                window.URL.revokeObjectURL(url);
+                              });
+                          } else {
+                            // Fallback for data URIs
+                            const link = document.createElement('a');
+                            link.href = src;
+                            link.download = `${key}.png`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                          }
+                        }}
+                        sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
+                      >
+                        Download Screenshot
+                      </Button>
                     </Box>
                   </AccordionDetails>
                 </Accordion>
@@ -1267,6 +1371,18 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                 </TableBody>
                               </Table>
                             </TableContainer>
+                            <Box sx={{ mt: 1 }}>
+                              <Button
+                                onClick={() => {
+                                  const pageUrl = crawlData[0][currentCrawlIndex]?.metadata?.url || crawlData[0][currentCrawlIndex]?.url || '';
+                                  const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `page_${currentCrawlIndex + 1}`;
+                                  downloadJSON(crawlData[0][currentCrawlIndex].metadata, `${baseFilename}_metadata.json`);
+                                }}
+                                sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
+                              >
+                                Download Metadata
+                              </Button>
+                            </Box>
                           </AccordionDetails>
                         </Accordion>
 
@@ -1303,6 +1419,19 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                     : crawlData[0][currentCrawlIndex].text}
                                 </Typography>
                               </Paper>
+                              <Box sx={{ mt: 1 }}>
+                                <Button
+                                  onClick={() => {
+                                    const pageUrl = crawlData[0][currentCrawlIndex]?.metadata?.url || crawlData[0][currentCrawlIndex]?.url || '';
+                                    const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `page_${currentCrawlIndex + 1}`;
+                                    const content = typeof crawlData[0][currentCrawlIndex].text === 'object' ? JSON.stringify(crawlData[0][currentCrawlIndex].text, null, 2) : crawlData[0][currentCrawlIndex].text;
+                                    downloadText(content, `${baseFilename}_text.txt`);
+                                  }}
+                                  sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
+                                >
+                                  Download Text Content
+                                </Button>
+                              </Box>
                             </AccordionDetails>
                           </Accordion>
                         )}
@@ -1340,6 +1469,69 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                     : crawlData[0][currentCrawlIndex].html}
                                 </Typography>
                               </Paper>
+                              <Box sx={{ mt: 1 }}>
+                                <Button
+                                  onClick={() => {
+                                    const pageUrl = crawlData[0][currentCrawlIndex]?.metadata?.url || crawlData[0][currentCrawlIndex]?.url || '';
+                                    const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `page_${currentCrawlIndex + 1}`;
+                                    const content = typeof crawlData[0][currentCrawlIndex].html === 'object' ? JSON.stringify(crawlData[0][currentCrawlIndex].html, null, 2) : crawlData[0][currentCrawlIndex].html;
+                                    downloadHTML(content, `${baseFilename}.html`);
+                                  }}
+                                  sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
+                                >
+                                  Download HTML
+                                </Button>
+                              </Box>
+                            </AccordionDetails>
+                          </Accordion>
+                        )}
+
+                        {crawlData[0][currentCrawlIndex].markdown && (
+                          <Accordion sx={{ mb: 2 }}>
+                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <Typography variant='h6'>
+                                  Markdown
+                                </Typography>
+                              </Box>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                              <Paper
+                                sx={{
+                                  p: 2,
+                                  maxHeight: '300px',
+                                  overflow: 'auto',
+                                  backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
+                                }}
+                              >
+                                <Typography
+                                  component="pre"
+                                  sx={{
+                                    whiteSpace: 'pre-wrap',
+                                    wordBreak: 'break-word',
+                                    fontFamily: 'monospace',
+                                    fontSize: '0.875rem',
+                                    m: 0
+                                  }}
+                                >
+                                  {typeof crawlData[0][currentCrawlIndex].markdown === 'object'
+                                    ? JSON.stringify(crawlData[0][currentCrawlIndex].markdown, null, 2)
+                                    : crawlData[0][currentCrawlIndex].markdown}
+                                </Typography>
+                              </Paper>
+                              <Box sx={{ mt: 1 }}>
+                                <Button
+                                  onClick={() => {
+                                    const pageUrl = crawlData[0][currentCrawlIndex]?.metadata?.url || crawlData[0][currentCrawlIndex]?.url || '';
+                                    const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `page_${currentCrawlIndex + 1}`;
+                                    const content = typeof crawlData[0][currentCrawlIndex].markdown === 'object' ? JSON.stringify(crawlData[0][currentCrawlIndex].markdown, null, 2) : crawlData[0][currentCrawlIndex].markdown;
+                                    downloadMarkdown(content, `${baseFilename}.md`);
+                                  }}
+                                  sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
+                                >
+                                  Download Markdown
+                                </Button>
+                              </Box>
                             </AccordionDetails>
                           </Accordion>
                         )}
@@ -1350,7 +1542,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                           ) || [];
 
                           return validLinks.length > 0 && (
-                            <Accordion defaultExpanded sx={{ mb: 2 }}>
+                            <Accordion sx={{ mb: 2 }}>
                               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                   <Typography variant='h6'>
@@ -1359,13 +1551,29 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                 </Box>
                               </AccordionSummary>
                               <AccordionDetails>
-                                <Paper sx={{ maxHeight: 200, overflow: 'auto', p: 1 }}>
-                                  {validLinks.map((link: string, idx: number) => (
-                                    <Typography key={idx} sx={{ fontSize: '0.75rem', mb: 0.5 }}>
-                                      {link}
-                                    </Typography>
-                                  ))}
+                                <Paper sx={{ maxHeight: 200, overflow: 'auto', p: 2, backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
+                                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                    {(Array.from(new Set(validLinks)) as string[]).map((link: string, idx: number) => (
+                                      <Link key={idx} href={link} target="_blank" rel="noopener" sx={{ color: '#FF00C3', wordBreak: 'break-all', fontSize: '0.875rem' }}>
+                                        {link}
+                                      </Link>
+                                    ))}
+                                  </Box>
                                 </Paper>
+                                <Box sx={{ mt: 1 }}>
+                                  <Button
+                                    onClick={() => {
+                                      const pageUrl = crawlData[0][currentCrawlIndex]?.metadata?.url || crawlData[0][currentCrawlIndex]?.url || '';
+                                      const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `page_${currentCrawlIndex + 1}`;
+                                      const uniqueLinks = Array.from(new Set(validLinks));
+                                      const content = uniqueLinks.join('\n');
+                                      downloadText(content, `${baseFilename}_links.txt`);
+                                    }}
+                                    sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
+                                  >
+                                    Download Links
+                                  </Button>
+                                </Box>
                               </AccordionDetails>
                             </Accordion>
                           );
@@ -1374,28 +1582,20 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                         <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
                           <Button
                             onClick={() => {
-                              const currentUrl = crawlData[0][currentCrawlIndex]?.metadata?.url || crawlData[0][currentCrawlIndex]?.url || '';
-                              const filename = currentUrl
-                                ? currentUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') + '.json'
-                                : `crawl_url_${currentCrawlIndex + 1}.json`;
-                              downloadJSON(
-                                [crawlData[0][currentCrawlIndex]],
-                                filename
+                              const item = crawlData[0][currentCrawlIndex];
+                              const pageUrl = item?.metadata?.url || item?.url || '';
+                              const baseFilename = pageUrl
+                                ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_')
+                                : `page_${currentCrawlIndex + 1}`;
+                              
+                              downloadAllCrawlsAsZip(
+                                [item],
+                                `${baseFilename}_bundle.zip`
                               );
                             }}
-                            sx={{
-                              color: '#FF00C3',
-                              textTransform: 'none',
-                              p: 0,
-                              minWidth: 'auto',
-                              backgroundColor: 'transparent',
-                              '&:hover': {
-                                backgroundColor: 'transparent',
-                                textDecoration: 'underline',
-                              },
-                            }}
+                            sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
                           >
-                            Download This Page as JSON
+                            Download This Page
                           </Button>
 
                           <Button
@@ -1409,19 +1609,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                 `${baseFilename}_all_urls.zip`
                               );
                             }}
-                            sx={{
-                              color: '#FF00C3',
-                              textTransform: 'none',
-                              p: 0,
-                              minWidth: 'auto',
-                              backgroundColor: 'transparent',
-                              '&:hover': {
-                                backgroundColor: 'transparent',
-                                textDecoration: 'underline',
-                              },
-                            }}
+                            sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
                           >
-                            Download All Pages as JSON
+                            Download All Pages
                           </Button>
                         </Box>
                       </>
@@ -1525,6 +1715,19 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                     </TableBody>
                                   </Table>
                                 </TableContainer>
+                                <Box sx={{ mt: 1 }}>
+                                  <Button
+                                    onClick={() => {
+                                      const res = searchData[currentSearchIndex];
+                                      const pageUrl = res.metadata?.url || res.url || '';
+                                      const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `search_result_${currentSearchIndex + 1}`;
+                                      downloadJSON(res.metadata, `${baseFilename}_metadata.json`);
+                                    }}
+                                    sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
+                                  >
+                                    Download Metadata
+                                  </Button>
+                                </Box>
                               </AccordionDetails>
                             </Accordion>
 
@@ -1559,6 +1762,20 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                       {searchData[currentSearchIndex].text}
                                     </Typography>
                                   </Paper>
+                                  <Box sx={{ mt: 1 }}>
+                                    <Button
+                                      onClick={() => {
+                                        const res = searchData[currentSearchIndex];
+                                        const pageUrl = res.metadata?.url || res.url || '';
+                                        const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `search_result_${currentSearchIndex + 1}`;
+                                        const content = typeof res.text === 'object' ? JSON.stringify(res.text, null, 2) : res.text;
+                                        downloadText(content, `${baseFilename}_text.txt`);
+                                      }}
+                                      sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
+                                    >
+                                      Download Text Content
+                                    </Button>
+                                  </Box>
                                 </AccordionDetails>
                               </Accordion>
                             )}
@@ -1596,12 +1813,26 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                         : searchData[currentSearchIndex].html}
                                     </Typography>
                                   </Paper>
+                                  <Box sx={{ mt: 1 }}>
+                                    <Button
+                                      onClick={() => {
+                                        const res = searchData[currentSearchIndex];
+                                        const pageUrl = res.metadata?.url || res.url || '';
+                                        const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `search_result_${currentSearchIndex + 1}`;
+                                        const content = typeof res.html === 'object' ? JSON.stringify(res.html, null, 2) : res.html;
+                                        downloadHTML(content, `${baseFilename}.html`);
+                                      }}
+                                      sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
+                                    >
+                                      Download HTML
+                                    </Button>
+                                  </Box>
                                 </AccordionDetails>
                               </Accordion>
                             )}
 
                             {searchData[currentSearchIndex].markdown && (
-                              <Accordion defaultExpanded sx={{ mb: 2 }}>
+                              <Accordion sx={{ mb: 2 }}>
                                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                     <Typography variant='h6'>
@@ -1624,7 +1855,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                         whiteSpace: 'pre-wrap',
                                         wordBreak: 'break-word',
                                         fontFamily: 'monospace',
-                                        fontSize: '0.75rem',
+                                        fontSize: '0.875rem',
                                         m: 0
                                       }}
                                     >
@@ -1633,6 +1864,20 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                         : searchData[currentSearchIndex].markdown}
                                     </Typography>
                                   </Paper>
+                                  <Box sx={{ mt: 1 }}>
+                                    <Button
+                                      onClick={() => {
+                                        const res = searchData[currentSearchIndex];
+                                        const pageUrl = res.metadata?.url || res.url || '';
+                                        const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `search_result_${currentSearchIndex + 1}`;
+                                        const content = typeof res.markdown === 'object' ? JSON.stringify(res.markdown, null, 2) : res.markdown;
+                                        downloadMarkdown(content, `${baseFilename}.md`);
+                                      }}
+                                      sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
+                                    >
+                                      Download Markdown
+                                    </Button>
+                                  </Box>
                                 </AccordionDetails>
                               </Accordion>
                             )}
@@ -1652,61 +1897,153 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                     </Box>
                                   </AccordionSummary>
                                   <AccordionDetails>
-                                    <Paper
-                                      sx={{
-                                        p: 2,
-                                        maxHeight: '300px',
-                                        overflow: 'auto',
-                                        backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
-                                      }}
-                                    >
-                                      {validLinks.map((link: string, linkIdx: number) => {
-                                        return (
-                                          <Box key={linkIdx} sx={{ mb: 0.5 }}>
-                                            <Link
-                                              href={link}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              sx={{
-                                                color: '#FF00C3',
-                                                textDecoration: 'none',
-                                                fontSize: '0.75rem',
-                                                '&:hover': { textDecoration: 'underline' },
-                                                wordBreak: 'break-all'
-                                              }}
-                                            >
-                                              {link}
-                                            </Link>
-                                          </Box>
-                                        );
-                                      })}
-                                  </Paper>
-                                </AccordionDetails>
-                              </Accordion>
+                                    <Paper sx={{ maxHeight: 200, overflow: 'auto', p: 2, backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
+                                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                        {(Array.from(new Set(validLinks)) as string[]).map((link: string, idx: number) => (
+                                          <Link key={idx} href={link} target="_blank" rel="noopener" sx={{ color: '#FF00C3', wordBreak: 'break-all', fontSize: '0.875rem' }}>
+                                            {link}
+                                          </Link>
+                                        ))}
+                                      </Box>
+                                    </Paper>
+                                    <Box sx={{ mt: 1 }}>
+                                      <Button
+                                        onClick={() => {
+                                          const res = searchData[currentSearchIndex];
+                                          const pageUrl = res.metadata?.url || res.url || '';
+                                          const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `search_result_${currentSearchIndex + 1}`;
+                                          const uniqueLinks = Array.from(new Set(validLinks)) as string[];
+                                          const content = uniqueLinks.join('\n');
+                                          downloadText(content, `${baseFilename}_links.txt`);
+                                        }}
+                                        sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
+                                      >
+                                        Download Links
+                                      </Button>
+                                    </Box>
+                                  </AccordionDetails>
+                                </Accordion>
                               );
                             })()}
 
-                            <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
+                            {(searchData[currentSearchIndex].screenshotVisible || searchData[currentSearchIndex].screenshotFullpage) && (
+                              <Accordion sx={{ mb: 2 }}>
+                                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <Typography variant='h6'>
+                                      Screenshots
+                                    </Typography>
+                                  </Box>
+                                </AccordionSummary>
+                                <AccordionDetails>
+                                  {(() => {
+                                    const tabs: { key: string; label: string; value: string }[] = [];
+                                    if (searchData[currentSearchIndex].screenshotVisible) 
+                                      tabs.push({ key: 'visible', label: 'Screenshot (Visible)', value: searchData[currentSearchIndex].screenshotVisible });
+                                    if (searchData[currentSearchIndex].screenshotFullpage) 
+                                      tabs.push({ key: 'fullpage', label: 'Screenshot (Full Page)', value: searchData[currentSearchIndex].screenshotFullpage });
+                                    
+                                    // Ensure activeTab is valid for current tabs array
+                                    const activeTab = Math.min(currentSearchScreenshotTab, tabs.length - 1);
+                                    
+                                    const getImageSrc = (val: string) => {
+                                      if (val.startsWith('http')) return val;
+                                      if (row.binaryOutput && row.binaryOutput[val]) {
+                                        const binaryData = row.binaryOutput[val].data || row.binaryOutput[val];
+                                        return typeof binaryData === 'string' && binaryData.startsWith('http') 
+                                          ? binaryData 
+                                          : typeof binaryData === 'string' && binaryData.startsWith('data:')
+                                            ? binaryData
+                                            : `data:image/png;base64,${binaryData}`;
+                                      }
+                                      return `data:image/png;base64,${val}`;
+                                    };
+                                    
+                                    return (
+                                      <>
+                                        {tabs.length > 1 && (
+                                          <Box sx={{ display: 'flex', borderBottom: '1px solid', borderColor: darkMode ? '#2a3441' : '#dee2e6', mb: 2 }}>
+                                            {tabs.map((tab, idx) => (
+                                              <Box 
+                                                key={tab.key} 
+                                                onClick={() => setCurrentSearchScreenshotTab(idx)}
+                                                sx={{
+                                                  px: 3, py: 1, 
+                                                  cursor: 'pointer',
+                                                  backgroundColor: activeTab === idx ? (darkMode ? '#121111ff' : '#e9ecef') : 'transparent',
+                                                  borderBottom: activeTab === idx ? '3px solid #FF00C3' : 'none',
+                                                  color: darkMode ? '#fff' : '#000',
+                                                }}
+                                              >
+                                                {tab.label}
+                                              </Box>
+                                            ))}
+                                          </Box>
+                                        )}
+                                        {tabs.length > 0 && (
+                                          <>
+                                            <img 
+                                              src={getImageSrc(tabs[activeTab >= 0 ? activeTab : 0].value)} 
+                                              alt={tabs[activeTab >= 0 ? activeTab : 0].label}
+                                              style={{ maxWidth: '100%', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)' }} 
+                                            />
+                                            <Box sx={{ mt: 1 }}>
+                                              <Button 
+                                                onClick={() => {
+                                                  const src = getImageSrc(tabs[activeTab >= 0 ? activeTab : 0].value);
+                                                  const link = document.createElement('a');
+                                                  link.href = src;
+                                                  link.download = `${tabs[activeTab >= 0 ? activeTab : 0].label}.png`;
+                                                  document.body.appendChild(link);
+                                                  link.click();
+                                                  document.body.removeChild(link);
+                                                }}
+                                                sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
+                                              >
+                                                Download Screenshot
+                                              </Button>
+                                            </Box>
+                                          </>
+                                        )}
+                                      </>
+                                    );
+                                  })()}
+                                </AccordionDetails>
+                              </Accordion>
+                            )}
+
+                            <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
                               <Button
                                 onClick={() => {
-                                  const result = searchData[currentSearchIndex];
-                                  const filename = `search_result_${currentSearchIndex + 1}.json`;
-                                  downloadJSON(result, filename);
+                                  const item = searchData[currentSearchIndex];
+                                  const pageUrl = item?.metadata?.url || item?.url || '';
+                                  const baseFilename = pageUrl
+                                    ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_')
+                                    : `search_result_${currentSearchIndex + 1}`;
+                                  downloadAllCrawlsAsZip(
+                                    [item],
+                                    `${baseFilename}_bundle.zip`
+                                  );
                                 }}
-                                sx={{
-                                  color: '#FF00C3',
-                                  textTransform: 'none',
-                                  mr: 2,
-                                  p: 0,
-                                  minWidth: 'auto',
-                                  backgroundColor: 'transparent',
-                                  '&:hover': {
-                                    backgroundColor: 'transparent',
-                                    textDecoration: 'underline',
-                                  },
-                                }}
+                                sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
                               >
-                                Download as JSON
+                                Download This Page
+                              </Button>
+
+                              <Button
+                                onClick={() => {
+                                  const firstUrl = searchData[0]?.metadata?.url || searchData[0]?.url || '';
+                                  const baseFilename = firstUrl
+                                    ? firstUrl.replace(/^https?:\/\//, '').split('/')[0].replace(/[^a-zA-Z0-9_.-]/g, '_')
+                                    : 'search_results';
+                                  downloadAllCrawlsAsZip(
+                                    searchData,
+                                    `${baseFilename}_all_results.zip`
+                                  );
+                                }}
+                                sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
+                              >
+                                Download All Results
                               </Button>
                             </Box>
                           </>
@@ -1779,25 +2116,22 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                           </Table>
                         </TableContainer>
 
-                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
+                        <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
                           <Button
                             onClick={() => {
                               downloadJSON(searchData, 'search_results.json');
                             }}
-                            sx={{
-                              color: '#FF00C3',
-                              textTransform: 'none',
-                              mr: 2,
-                              p: 0,
-                              minWidth: 'auto',
-                              backgroundColor: 'transparent',
-                              '&:hover': {
-                                backgroundColor: 'transparent',
-                                textDecoration: 'underline',
-                              },
-                            }}
+                            sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
                           >
                             Download as JSON
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              downloadCSV(searchData, ['title', 'url', 'description'], 'search_results.csv');
+                            }}
+                            sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
+                          >
+                            Download as CSV
                           </Button>
                         </Box>
                       </>
@@ -1873,6 +2207,26 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                       }}
                     />
                   )}
+                </Box>
+                <Box sx={{ mt: 2 }}>
+                  <Button onClick={() => {
+                    const key = screenshotKeys[currentScreenshotIndex];
+                    const orig = screenshotKeyMap[key];
+                    const src = row.binaryOutput[orig];
+                    if (src && src.startsWith && src.startsWith('http')) {
+                      fetch(src).then(res => res.blob()).then(blob => {
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a'); a.href = url; a.download = key + '.png'; a.click();
+                      });
+                    } else {
+                      const link = document.createElement('a');
+                      link.href = src;
+                      link.download = key + '.png';
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }
+                  }} sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}>Download Screenshot</Button>
                 </Box>
               </AccordionDetails>
             </Accordion>
