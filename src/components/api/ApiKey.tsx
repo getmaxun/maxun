@@ -111,6 +111,7 @@ const ApiKeyManager = () => {
   };
 
   const handleDeleteConfirm = () => {
+    setConfirmDeleteOpen(false);
     deleteApiKey();
   };
 
