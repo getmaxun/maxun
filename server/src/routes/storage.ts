@@ -286,7 +286,7 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
           return { ...step, where: updatedWhere, what: updatedWhat };
         });
       } else {
-        const entryStep = workflow.findLast((s: any) => s.where?.url === 'about:blank');
+        const entryStep = [...workflow].reverse().find((s: any) => s.where?.url === 'about:blank');
         const originalEntryUrl: string | null = entryStep?.what?.find(
           (action: any) => action.action === 'goto' && action.args?.length
         )?.args?.[0] ?? null;
@@ -304,7 +304,7 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
             }
           }
 
-          const updatedWhat = step.what.map((action: any) => {
+          const updatedWhat = (step.what || []).map((action: any) => {
             if (!gotoUpdated && action.action === 'goto' && action.args?.[0] === originalEntryUrl) {
               gotoUpdated = true;
               return { ...action, args: [targetUrl, ...action.args.slice(1)] };
