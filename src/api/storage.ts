@@ -131,6 +131,22 @@ export const getStoredRuns = async (): Promise<string[] | null> => {
   }
 };
 
+export const duplicateRecording = async (id: string, targetUrl: string): Promise<any> => {
+  try {
+    const response = await axios.post(`${apiUrl}/storage/recordings/${id}/duplicate`, {
+      targetUrl,
+    }, { withCredentials: true });
+    if (response.status === 201) {
+      return response.data;
+    } else {
+      throw new Error(`Couldn't duplicate recording with id ${id}`);
+    }
+  } catch (error: any) {
+    console.error(`Error duplicating recording: ${error.message}`);
+    return null;
+  }
+};
+
 export const getStoredRecording = async (id: string) => {
   try {
     const response = await axios.get(`${apiUrl}/storage/recordings/${id}`);
