@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { TextField, Typography, Box } from "@mui/material";
+import { TextField, Box } from "@mui/material";
 import { useGlobalInfoStore } from "../../../context/globalInfo";
 import { duplicateRecording, getStoredRecording } from "../../../api/storage";
-import { useTranslation } from "react-i18next";
+import { useTranslation, Trans } from "react-i18next";
 import { RobotConfigPage } from "./RobotConfigPage";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 interface RobotDuplicatePageProps {
   handleStart: (settings: any) => void;
@@ -13,10 +13,13 @@ interface RobotDuplicatePageProps {
 export const RobotDuplicatePage = ({ handleStart }: RobotDuplicatePageProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const [targetUrl, setTargetUrl] = useState<string>("");
   const [robot, setRobot] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { recordingId, notify, setRerenderRobots } = useGlobalInfoStore();
+  const robotIdFromUrl = location.pathname.split('/').filter(Boolean)[1] ?? null;
+  const effectiveId = recordingId || robotIdFromUrl;
 
   useEffect(() => {
     getRobot();
@@ -36,16 +39,16 @@ export const RobotDuplicatePage = ({ handleStart }: RobotDuplicatePageProps) => 
   }, [robot]);
 
   const getRobot = async () => {
-    if (recordingId) {
-      try {
-        const data = await getStoredRecording(recordingId);
-        setRobot(data);
-      } catch (error) {
-        notify("error", t("robot_duplication.notifications.robot_not_found"));
-      }
-    } else {
+    if (!effectiveId) {
       notify("error", t("robot_duplication.notifications.robot_not_found"));
+      return;
     }
+    const data = await getStoredRecording(effectiveId);
+    if (!data) {
+      notify("error", t("robot_duplication.notifications.robot_not_found"));
+      return;
+    }
+    setRobot(data);
   };
 
   const handleSave = async () => {
@@ -88,14 +91,13 @@ export const RobotDuplicatePage = ({ handleStart }: RobotDuplicatePageProps) => 
             <>
               <span>{t("robot_duplication.descriptions.purpose")}</span>
               <br />
-              <span
-                dangerouslySetInnerHTML={{
-                  __html: t("robot_duplication.descriptions.example", {
-                    url1: "<code>producthunt.com/topics/api</code>",
-                    url2: "<code>producthunt.com/topics/database</code>",
-                  }),
-                }}
-              />
+              <span>
+                <Trans
+                  i18nKey="robot_duplication.descriptions.example"
+                  values={{ url1: "producthunt.com/topics/api", url2: "producthunt.com/topics/database" }}
+                  components={[<code key="0" />, <code key="1" />]}
+                />
+              </span>
               <br />
               <span>
                 <b>{t("robot_duplication.descriptions.warning")}</b>

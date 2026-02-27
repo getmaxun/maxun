@@ -586,6 +586,15 @@ router.post('/recordings/:id/duplicate', requireSignIn, async (req: Authenticate
       return res.status(400).json({ error: 'The "targetUrl" field is required.' });
     }
 
+    try {
+      const parsed = new URL(targetUrl);
+      if (!['http:', 'https:'].includes(parsed.protocol)) {
+        return res.status(400).json({ error: 'The "targetUrl" must use http or https protocol.' });
+      }
+    } catch {
+      return res.status(400).json({ error: 'The "targetUrl" must be a valid URL.' });
+    }
+
     const originalRobot = await Robot.findOne({
       where: { 'recording_meta.id': id },
     });
