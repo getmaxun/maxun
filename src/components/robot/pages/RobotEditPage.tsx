@@ -509,23 +509,9 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
   const handleTargetUrlChange = (newUrl: string) => {
     setRobot((prev) => {
       if (!prev) return prev;
-
-      const updatedWorkflow = [...prev.recording.workflow];
-      const lastPairIndex = updatedWorkflow.length - 1;
-
-      if (lastPairIndex >= 0) {
-        const gotoAction = updatedWorkflow[lastPairIndex]?.what?.find(
-          (action) => action.action === "goto"
-        );
-        if (gotoAction && gotoAction.args && gotoAction.args.length > 0) {
-          gotoAction.args[0] = newUrl;
-        }
-      }
-
       return {
         ...prev,
         recording_meta: { ...prev.recording_meta, url: newUrl },
-        recording: { ...prev.recording, workflow: updatedWorkflow },
       };
     });
   };
@@ -1116,6 +1102,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
 
               {renderScrapeListLimitFields()}
               {renderActionNameFields()}
+              {renderAllCredentialFields()}
             </>
           )}
         </Box>

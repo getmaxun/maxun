@@ -262,41 +262,60 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       return res.status(404).json({ error: 'Robot not found.' });
     }
 
-
-    if (name) {
-      robot.set('recording_meta', { ...robot.recording_meta, name });
-    }
+    let workflow: any[] = Array.isArray(incomingWorkflow)
+      ? JSON.parse(JSON.stringify(incomingWorkflow))
+      : (Array.isArray(robot.recording?.workflow) ? [...robot.recording.workflow] : []);
 
     if (targetUrl) {
-      robot.set('recording_meta', { ...robot.recording_meta, url: targetUrl });
+      if (robot.recording_meta?.type === 'scrape') {
+        workflow = workflow.map((step: any) => {
+          const updatedWhere = step.where?.url && step.where.url !== 'about:blank'
+            ? { ...step.where, url: targetUrl }
+            : step.where;
 
-      const updatedWorkflow = [...robot.recording.workflow];
-
-      for (let i = updatedWorkflow.length - 1; i >= 0; i--) {
-        const step = updatedWorkflow[i];
-        for (let j = 0; j < step.what.length; j++) {
-          const action = step.what[j];
-          if (action.action === "goto" && action.args?.length) {
-
-            action.args[0] = targetUrl;
-            if (step.where?.url && step.where.url !== "about:blank") {
-              step.where.url = targetUrl;
+          const updatedWhat = (step.what || []).map((action: any) => {
+            if (action.action === 'goto' && action.args?.length) {
+              return { ...action, args: [targetUrl, ...action.args.slice(1)] };
             }
+            if (action.action === 'scrape' && action.args?.[0] && typeof action.args[0] === 'object') {
+              return { ...action, args: [{ ...action.args[0], url: targetUrl }, ...action.args.slice(1)] };
+            }
+            return action;
+          });
 
-            robot.set('recording', { ...robot.recording, workflow: updatedWorkflow });
-            robot.changed('recording', true);
-            i = -1;
-            break;
+          return { ...step, where: updatedWhere, what: updatedWhat };
+        });
+      } else {
+        const entryStep = workflow.findLast((s: any) => s.where?.url === 'about:blank');
+        const originalEntryUrl: string | null = entryStep?.what?.find(
+          (action: any) => action.action === 'goto' && action.args?.length
+        )?.args?.[0] ?? null;
+
+        let gotoUpdated = false;
+        let whereUpdateStopped = false;
+
+        workflow = [...workflow].reverse().map((step: any) => {
+          let updatedWhere = step.where;
+          if (originalEntryUrl && step.where?.url !== 'about:blank' && !whereUpdateStopped) {
+            if (step.where?.url === originalEntryUrl) {
+              updatedWhere = { ...step.where, url: targetUrl };
+            } else {
+              whereUpdateStopped = true;
+            }
           }
-        }
+
+          const updatedWhat = step.what.map((action: any) => {
+            if (!gotoUpdated && action.action === 'goto' && action.args?.[0] === originalEntryUrl) {
+              gotoUpdated = true;
+              return { ...action, args: [targetUrl, ...action.args.slice(1)] };
+            }
+            return action;
+          });
+
+          return { ...step, where: updatedWhere, what: updatedWhat };
+        }).reverse();
       }
     }
-
-    await robot.save();
-
-    let workflow = incomingWorkflow && Array.isArray(incomingWorkflow)
-      ? JSON.parse(JSON.stringify(incomingWorkflow))
-      : [...robot.recording.workflow];
 
     if (credentials) {
       workflow = handleWorkflowActions(workflow, credentials);
@@ -319,26 +338,18 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       }
     }
 
-    const updates: any = {
-      recording: {
-        ...robot.recording,
-        workflow
-      }
-    };
+    let updatedMeta = { ...robot.recording_meta };
+    if (name) updatedMeta.name = name;
+    if (targetUrl) updatedMeta.url = targetUrl;
 
-    if (name || targetUrl) {
-      updates.recording_meta = {
-        ...robot.recording_meta,
-        ...(name && { name }),
-        ...(targetUrl && { url: targetUrl })
-      };
-    }
+    const updates: any = {
+      recording: { ...robot.recording, workflow },
+      recording_meta: updatedMeta,
+    };
 
     await Robot.update(updates, {
       where: { 'recording_meta.id': id }
     });
-
-    await Robot.findOne({ where: { 'recording_meta.id': id } });
 
     logger.log('info', `Robot with ID ${id} was updated successfully.`);
 
