@@ -436,7 +436,7 @@
       "title": "Duplicate Robot",
       "descriptions": {
         "purpose": "Robot duplication is useful to extract data from pages with the same structure.",
-        "example": "Example: If you've created a robot for {{url1}}, you can duplicate it to scrape similar pages like {{url2}} without training a robot from scratch.",
+        "example": "Example: If you've created a robot for <0>{{url1}}</0>, you can duplicate it to scrape similar pages like <1>{{url2}}</1> without training a robot from scratch.",
         "warning": "⚠️ Ensure the new page has the same structure as the original page."
       },
       "fields": {
