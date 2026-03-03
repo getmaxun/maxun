@@ -1,15 +1,34 @@
 /* ============================================================
-   RUNS API (OPTIMIZED - LAZY LOAD OUTPUT)
+   RUNS API (OPTIMIZED - LAZY LOAD OUTPUT - SECURE VERSION)
    ============================================================ */
 
+import { Router } from 'express';
+import { Run } from '../models/Run';
+import { requireSignIn } from '../middleware/auth';
+import { AuthenticatedRequest } from '../types';
+import logger from '../utils/logger';
+import { capture } from '../utils/analytics';
 
-/**
- * GET endpoint for getting an array of runs (LIGHTWEIGHT).
- * This excludes heavy fields like serializableOutput & binaryOutput.
- */
-router.get('/runs', requireSignIn, async (req, res) => {
+const router = Router();
+
+/* ============================================================
+   GET /runs
+   Lightweight list (EXCLUDES heavy output fields)
+   ============================================================ */
+router.get('/runs', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
-    const runs = await Run.findAll({
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 20;
+    const offset = (page - 1) * limit;
+
+    const { count, rows } = await Run.findAndCountAll({
+      where: {
+        runByUserId: req.user.id   // 🔐 Ownership enforcement
+      },
       attributes: [
         'id',
         'status',
@@ -22,15 +41,19 @@ router.get('/runs', requireSignIn, async (req, res) => {
         'runByScheduleId',
         'runByAPI'
       ],
-      order: [['startedAt', 'DESC']]
+      order: [['startedAt', 'DESC']],
+      limit,
+      offset
     });
 
     return res.status(200).json({
       statusCode: 200,
       messageCode: "success",
       runs: {
-        totalCount: runs.length,
-        items: runs
+        totalCount: count,
+        page,
+        pageSize: limit,
+        items: rows
       }
     });
 
@@ -45,14 +68,21 @@ router.get('/runs', requireSignIn, async (req, res) => {
 });
 
 
-/**
- * GET endpoint for fetching HEAVY run output ON DEMAND.
- * Called only when user expands a run in UI.
- */
-router.get('/runs/:runId/output', requireSignIn, async (req, res) => {
+/* ============================================================
+   GET /runs/:runId/output
+   Lazy-load heavy output fields ONLY
+   ============================================================ */
+router.get('/runs/:runId/output', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
     const run = await Run.findOne({
-      where: { runId: req.params.runId },
+      where: {
+        runId: req.params.runId,
+        runByUserId: req.user.id   // 🔐 Ownership enforcement
+      },
       attributes: ['serializableOutput', 'binaryOutput'],
       raw: true
     });
@@ -85,14 +115,22 @@ router.get('/runs/:runId/output', requireSignIn, async (req, res) => {
 });
 
 
-/**
- * GET endpoint for retrieving FULL run data (includes heavy fields).
- * Use only if absolutely necessary.
- */
-router.get('/runs/run/:id', requireSignIn, async (req, res) => {
+/* ============================================================
+   GET /runs/run/:id
+   Full run data (includes heavy fields)
+   Use only if absolutely necessary
+   ============================================================ */
+router.get('/runs/run/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
     const run = await Run.findOne({
-      where: { runId: req.params.id },   // ✅ Corrected param
+      where: {
+        runId: req.params.id,
+        runByUserId: req.user.id   // 🔐 Ownership enforcement
+      },
       raw: true
     });
 
@@ -104,7 +142,11 @@ router.get('/runs/run/:id', requireSignIn, async (req, res) => {
       });
     }
 
-    return res.status(200).json(run);
+    return res.status(200).json({
+      statusCode: 200,
+      messageCode: "success",
+      run
+    });
 
   } catch (error) {
     logger.log('error', `Error reading run ${req.params.id}: ${error}`);
@@ -117,18 +159,29 @@ router.get('/runs/run/:id', requireSignIn, async (req, res) => {
 });
 
 
-/**
- * DELETE endpoint for deleting a run from storage.
- */
+/* ============================================================
+   DELETE /runs/:id
+   Secure deletion with ownership verification
+   ============================================================ */
 router.delete('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     if (!req.user) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    await Run.destroy({
-      where: { runId: req.params.id }
+    const deletedCount = await Run.destroy({
+      where: {
+        runId: req.params.id,
+        runByUserId: req.user.id   // 🔐 Ownership enforcement
+      }
     });
+
+    if (!deletedCount) {
+      return res.status(404).json({
+        success: false,
+        message: "Run not found"
+      });
+    }
 
     capture(
       'maxun-oss-run-deleted',
@@ -152,3 +205,5 @@ router.delete('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res)
     });
   }
 });
+
+export default router;
