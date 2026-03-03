@@ -981,8 +981,9 @@ export class WorkflowGenerator {
    * @returns {Promise<void>}
    */
   public saveNewWorkflow = async (fileName: string, userId: number, isLogin: boolean, robotId?: string) => {
+    fileName = fileName.trim();
     const recording = this.optimizeWorkflow(this.workflowRecord);
-    let actionType = 'saved'; 
+    let actionType = 'saved';
     
     try {
       if (robotId) {

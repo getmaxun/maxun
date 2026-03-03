@@ -38,7 +38,7 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
 
   const handleSaveRecording = async (event: React.SyntheticEvent) => {
     event.preventDefault();
-    if (recordings.includes(saveRecordingName)) {
+    if (recordings.map(r => r.trim()).includes(saveRecordingName.trim())) {
       notify('error', t('save_recording.errors.exists_warning'));
       return;
     }
@@ -113,8 +113,8 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
         return;
       }
 
-      const payload = { 
-        fileName: saveRecordingName || recordingName, 
+      const payload = {
+        fileName: (saveRecordingName || recordingName).trim(),
         userId: user.id, 
         isLogin: isLogin,
         robotId: retrainRobotId,
