@@ -1003,6 +1003,11 @@ export class WorkflowGenerator {
           logger.log('info', `Robot retrained with id: ${robot.id}`);
         }
       } else {
+        const existingRobot = await Robot.findOne({ where: { userId, 'recording_meta.name': fileName } });
+        if (existingRobot) {
+          this.socket.emit('fileSaved', { actionType: 'error' });
+          return;
+        }
         this.recordingMeta = {
           name: fileName,
           id: uuid(),
