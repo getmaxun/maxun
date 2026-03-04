@@ -20,8 +20,19 @@ router.get('/runs', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
 
-    const page = Math.max(1, Number(req.query.page) || 1);
-    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
+    const pageParam = parseInt(req.query.page as string, 10);
+    const limitParam = parseInt(req.query.limit as string, 10);
+
+    const page =
+       Number.isFinite(pageParam) && pageParam > 0
+         ? pageParam
+         : 1;
+
+    const limit =
+      Number.isFinite(limitParam) && limitParam > 0
+      ? Math.min(limitParam, 100)
+      : 20;
+
     const offset = (page - 1) * limit;
 
     const { count, rows } = await Run.findAndCountAll({
