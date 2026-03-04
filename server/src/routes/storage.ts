@@ -9,7 +9,7 @@ import { AuthenticatedRequest } from '../types';
 import logger from '../utils/logger';
 import { capture } from '../utils/analytics';
 
-const router = Router();
+export const router = Router();
 
 /* ============================================================
    GET /runs
@@ -21,13 +21,13 @@ router.get('/runs', requireSignIn, async (req: AuthenticatedRequest, res) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const page = Number(req.query.page) || 1;
-    const limit = Number(req.query.limit) || 20;
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
     const offset = (page - 1) * limit;
 
     const { count, rows } = await Run.findAndCountAll({
       where: {
-        runByUserId: req.user.id   // 🔐 Ownership enforcement
+        runByUserId: req.user.id // 🔐 Ownership enforcement
       },
       attributes: [
         'id',
@@ -58,7 +58,7 @@ router.get('/runs', requireSignIn, async (req: AuthenticatedRequest, res) => {
     });
 
   } catch (error) {
-    logger.log('error', `Error while reading runs: ${error}`);
+    logger.error(`Error fetching runs`, error);
     return res.status(500).json({
       statusCode: 500,
       messageCode: "error",
@@ -81,7 +81,7 @@ router.get('/runs/:runId/output', requireSignIn, async (req: AuthenticatedReques
     const run = await Run.findOne({
       where: {
         runId: req.params.runId,
-        runByUserId: req.user.id   // 🔐 Ownership enforcement
+        runByUserId: req.user.id // 🔐 Ownership enforcement
       },
       attributes: ['serializableOutput', 'binaryOutput'],
       raw: true
@@ -99,13 +99,13 @@ router.get('/runs/:runId/output', requireSignIn, async (req: AuthenticatedReques
       statusCode: 200,
       messageCode: "success",
       output: {
-        serializableOutput: run.serializableOutput || {},
-        binaryOutput: run.binaryOutput || {}
+        serializableOutput: run.serializableOutput ?? {},
+        binaryOutput: run.binaryOutput ?? {}
       }
     });
 
   } catch (error) {
-    logger.log('error', `Error fetching run output: ${error}`);
+    logger.error(`Error fetching run output`, error);
     return res.status(500).json({
       statusCode: 500,
       messageCode: "error",
@@ -129,7 +129,7 @@ router.get('/runs/run/:id', requireSignIn, async (req: AuthenticatedRequest, res
     const run = await Run.findOne({
       where: {
         runId: req.params.id,
-        runByUserId: req.user.id   // 🔐 Ownership enforcement
+        runByUserId: req.user.id // 🔐 Ownership enforcement
       },
       raw: true
     });
@@ -149,7 +149,7 @@ router.get('/runs/run/:id', requireSignIn, async (req: AuthenticatedRequest, res
     });
 
   } catch (error) {
-    logger.log('error', `Error reading run ${req.params.id}: ${error}`);
+    logger.error(`Error retrieving run ${req.params.id}`, error);
     return res.status(500).json({
       statusCode: 500,
       messageCode: "error",
@@ -172,7 +172,7 @@ router.delete('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res)
     const deletedCount = await Run.destroy({
       where: {
         runId: req.params.id,
-        runByUserId: req.user.id   // 🔐 Ownership enforcement
+        runByUserId: req.user.id // 🔐 Ownership enforcement
       }
     });
 
@@ -183,14 +183,11 @@ router.delete('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res)
       });
     }
 
-    capture(
-      'maxun-oss-run-deleted',
-      {
-        runId: req.params.id,
-        user_id: req.user.id,
-        deleted_at: new Date().toISOString(),
-      }
-    );
+    capture('maxun-oss-run-deleted', {
+      runId: req.params.id,
+      user_id: req.user.id,
+      deleted_at: new Date().toISOString(),
+    });
 
     return res.status(200).json({
       success: true,
@@ -198,7 +195,7 @@ router.delete('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res)
     });
 
   } catch (error) {
-    logger.log('error', `Error deleting run ${req.params.id}: ${error}`);
+    logger.error(`Error deleting run ${req.params.id}`, error);
     return res.status(500).json({
       success: false,
       message: "Failed to delete run"
