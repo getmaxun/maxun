@@ -294,7 +294,8 @@
         "notifications": {
             "terminated": "Aktuelle Aufnahme wurde beendet",
             "environment_reset": "Browser-Umgebung wurde zurückgesetzt",
-            "reset_successful": "Alle Aufnahmen erfolgreich zurückgesetzt und zum Ausgangszustand zurückgekehrt"
+            "reset_successful": "Alle Aufnahmen erfolgreich zurückgesetzt und zum Ausgangszustand zurückgekehrt",
+            "timeout_discarded": "Die Aufnahmesitzung ist nach 10 Minuten abgelaufen und wurde automatisch verworfen."
         }
     },
     "interpretation_log": {
