@@ -155,7 +155,7 @@ export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
     return () => {
       socket?.off('recording-timeout', handleRecordingTimeout);
     };
-  }, [socket, notify, navigate]);
+  }, [socket, notify, navigate, t]);
 
 
   return (
