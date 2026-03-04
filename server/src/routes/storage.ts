@@ -8,6 +8,7 @@ import { requireSignIn } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types';
 import logger from '../utils/logger';
 import { capture } from '../utils/analytics';
+import { Op } from 'sequelize';
 
 const router = Router();
 
@@ -192,17 +193,72 @@ router.delete('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res)
   }
 });
 
-
 /* ============================================================
-   Background workers
+   Background worker helpers
    ============================================================ */
 
-export async function processQueuedRuns() {
-  // TODO: implement queue processing logic
+export async function processQueuedRuns(): Promise<void> {
+  try {
+    logger.info("Checking for queued runs...");
+
+    const queuedRuns = await Run.findAll({
+      where: { status: "queued" },
+      attributes: ["runId"],
+      raw: true
+    });
+
+    if (!queuedRuns.length) {
+      logger.info("No queued runs found");
+      return;
+    }
+
+    logger.info(`Found ${queuedRuns.length} queued runs`);
+
+    for (const run of queuedRuns) {
+      logger.info(`Queued run waiting for processing: ${run.runId}`);
+    }
+
+  } catch (error) {
+    logger.error("processQueuedRuns failed", error);
+  }
 }
 
-export async function recoverOrphanedRuns() {
-  // TODO: implement orphan recovery logic
+
+export async function recoverOrphanedRuns(): Promise<void> {
+  try {
+    logger.info("Checking for orphaned runs...");
+
+    const timeoutMinutes = 30;
+    const cutoff = new Date(Date.now() - timeoutMinutes * 60 * 1000);
+
+    const orphanedRuns = await Run.findAll({
+      where: {
+        status: "running",
+        startedAt: { [Op.lt]: cutoff }
+      },
+      attributes: ["runId"],
+      raw: true
+    });
+
+    if (!orphanedRuns.length) {
+      logger.info("No orphaned runs detected");
+      return;
+    }
+
+    logger.warn(`Recovering ${orphanedRuns.length} orphaned runs`);
+
+    const runIds = orphanedRuns.map(r => r.runId);
+
+    await Run.update(
+       { status: "failed" },
+       { where: { runId: { [Op.in]: runIds } } }
+    );
+
+    logger.warn(`Marked ${runIds.length} orphaned runs as failed`);
+
+  } catch (error) {
+    logger.error("recoverOrphanedRuns failed", error);
+  }
 }
 
 export default router;
