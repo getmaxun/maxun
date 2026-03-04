@@ -11,6 +11,9 @@ import { RemoteBrowser } from "./classes/RemoteBrowser";
 import { RemoteBrowserOptions } from "../types";
 import logger from "../logger";
 
+const RECORDING_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+const recordingTimeouts = new Map<string, NodeJS.Timeout>();
+
 /**
  * Starts and initializes a {@link RemoteBrowser} instance.
  * Creates a new socket connection over a dedicated namespace
@@ -42,6 +45,16 @@ export const initializeRemoteBrowserForRecording = (userId: string, mode: string
           logger.info('DOM streaming started for remote browser in recording mode');
 
           browserPool.addRemoteBrowser(id, browserSession, userId, false, "recording");
+
+          const timeoutHandle = setTimeout(async () => {
+            recordingTimeouts.delete(id);
+            logger.warn(`Recording session ${id} timed out after 10 minutes, auto-discarding`);
+            try {
+              io.of(id).emit('recording-timeout');
+            } catch (e) {}
+            await destroyRemoteBrowser(id, userId);
+          }, RECORDING_TIMEOUT_MS);
+          recordingTimeouts.set(id, timeoutHandle);
         } catch (initError: any) {
           logger.error(`Failed to initialize browser for recording: ${initError.message}`);
           logger.info('Sending browser failure notification to frontend');
@@ -117,6 +130,12 @@ export const createRemoteBrowserForRun = (userId: string): string => {
  * @category BrowserManagement-Controller
  */
 export const destroyRemoteBrowser = async (id: string, userId: string): Promise<boolean> => {
+  const existingTimeout = recordingTimeouts.get(id);
+  if (existingTimeout) {
+    clearTimeout(existingTimeout);
+    recordingTimeouts.delete(id);
+  }
+
   const DESTROY_TIMEOUT = 30000;
 
   const destroyPromise = (async () => {

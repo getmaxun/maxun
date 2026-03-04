@@ -16,6 +16,7 @@ import styled from "styled-components";
 import BrowserRecordingSave from '../components/browser/BrowserRecordingSave';
 import { useThemeMode } from '../context/theme-provider';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 
 interface RecordingPageProps {
   recordingName?: string;
@@ -29,6 +30,7 @@ export interface PairForEdit {
 export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
   const { darkMode } = useThemeMode();
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [isLoaded, setIsLoaded] = React.useState(false);
   const [hasScrollbar, setHasScrollbar] = React.useState(false);
   const [pairForEdit, setPairForEdit] = useState<PairForEdit>({
@@ -43,7 +45,7 @@ export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
 
   const { setId, socket } = useSocketStore();
   const { setWidth } = useBrowserDimensionsStore();
-  const { browserId, setBrowserId, recordingId, recordingUrl, setRecordingUrl, setRecordingName, setRetrainRobotId, setIsDOMMode } = useGlobalInfoStore();
+  const { browserId, setBrowserId, recordingId, recordingUrl, setRecordingUrl, setRecordingName, setRetrainRobotId, setIsDOMMode, notify } = useGlobalInfoStore();
 
   const handleShowOutputData = useCallback(() => {
     setShowOutputData(true);
@@ -136,6 +138,17 @@ export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
       socket?.off('loaded', handleLoaded)
     }
   }, [socket, handleLoaded]);
+
+  useEffect(() => {
+    const handleRecordingTimeout = () => {
+      notify('warning', 'Recording session timed out after 10 minutes and was automatically discarded.');
+      navigate('/');
+    };
+    socket?.on('recording-timeout', handleRecordingTimeout);
+    return () => {
+      socket?.off('recording-timeout', handleRecordingTimeout);
+    };
+  }, [socket, notify, navigate]);
 
 
   return (
