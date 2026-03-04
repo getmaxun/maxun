@@ -140,12 +140,17 @@ export const createRemoteBrowserForRun = (userId: string): string => {
  * @returns {Promise<boolean>}
  * @category BrowserManagement-Controller
  */
-export const destroyRemoteBrowser = async (id: string, userId: string): Promise<boolean> => {
+export const clearRecordingTimeout = (id: string): void => {
   const existingTimeout = recordingTimeouts.get(id);
   if (existingTimeout) {
     clearTimeout(existingTimeout);
     recordingTimeouts.delete(id);
+    logger.log('debug', `Recording timeout cancelled for session ${id}`);
   }
+};
+
+export const destroyRemoteBrowser = async (id: string, userId: string): Promise<boolean> => {
+  clearRecordingTimeout(id);
 
   const DESTROY_TIMEOUT = 30000;
 
