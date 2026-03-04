@@ -294,7 +294,8 @@
     "notifications": {
       "terminated": "La grabación actual fue terminada",
       "environment_reset": "El entorno del navegador ha sido reiniciado",
-      "reset_successful": "Se reiniciaron correctamente todas las capturas y se volvió al estado inicial"
+      "reset_successful": "Se reiniciaron correctamente todas las capturas y se volvió al estado inicial",
+      "timeout_discarded": "La sesión de grabación expiró después de 10 minutos y fue descartada automáticamente."
     }
   },
   "interpretation_buttons": {

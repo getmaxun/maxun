@@ -44,14 +44,25 @@ export const initializeRemoteBrowserForRecording = (userId: string, mode: string
 
           logger.info('DOM streaming started for remote browser in recording mode');
 
-          browserPool.addRemoteBrowser(id, browserSession, userId, false, "recording");
+          const added = browserPool.addRemoteBrowser(id, browserSession, userId, false, "recording");
+          if (!added) {
+            logger.error(`Failed to add recording browser ${id} to pool; cleaning up session`);
+            socket.emit('dom-mode-error', {
+              userId,
+              error: 'Failed to start the browser, please try again in some time.'
+            });
+            await browserSession.switchOff();
+            return id;
+          }
 
           const timeoutHandle = setTimeout(async () => {
             recordingTimeouts.delete(id);
             logger.warn(`Recording session ${id} timed out after 10 minutes, auto-discarding`);
             try {
               io.of(id).emit('recording-timeout');
-            } catch (e) {}
+            } catch (e) {
+              logger.warn(`Failed to emit recording-timeout event for session ${id}: ${e}`);
+            }
             await destroyRemoteBrowser(id, userId);
           }, RECORDING_TIMEOUT_MS);
           recordingTimeouts.set(id, timeoutHandle);

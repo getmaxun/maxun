@@ -294,7 +294,8 @@
       "notifications": {
           "terminated": "Current Recording was terminated",
           "environment_reset": "Browser environment has been reset",
-          "reset_successful": "Successfully reset all captures and returned to initial state"
+          "reset_successful": "Successfully reset all captures and returned to initial state",
+          "timeout_discarded": "Recording session timed out after 10 minutes and was automatically discarded."
       }
     },
     "interpretation_log": {

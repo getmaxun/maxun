@@ -45,7 +45,7 @@ export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
 
   const { setId, socket } = useSocketStore();
   const { setWidth } = useBrowserDimensionsStore();
-  const { browserId, setBrowserId, recordingId, recordingUrl, setRecordingUrl, setRecordingName, setRetrainRobotId, setIsDOMMode, notify } = useGlobalInfoStore();
+  const { browserId, setBrowserId, recordingId, setRecordingId, recordingUrl, setRecordingUrl, setRecordingName, setRetrainRobotId, setCurrentWorkflowActionsState, setIsDOMMode, notify } = useGlobalInfoStore();
 
   const handleShowOutputData = useCallback(() => {
     setShowOutputData(true);
@@ -141,7 +141,14 @@ export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
 
   useEffect(() => {
     const handleRecordingTimeout = () => {
-      notify('warning', 'Recording session timed out after 10 minutes and was automatically discarded.');
+      setBrowserId(null);
+      setRecordingId(null);
+      setRecordingName('');
+      setRecordingUrl('');
+      setRetrainRobotId(null);
+      setCurrentWorkflowActionsState({ hasScrapeListAction: false, hasScreenshotAction: false, hasScrapeSchemaAction: false });
+      setIsDOMMode(false);
+      notify('warning', t('browser_recording.notifications.timeout_discarded'));
       navigate('/');
     };
     socket?.on('recording-timeout', handleRecordingTimeout);
