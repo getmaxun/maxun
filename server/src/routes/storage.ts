@@ -3,11 +3,11 @@
    ============================================================ */
 
 import { Router } from 'express';
-import { Run } from '../models/Run';
-import { requireSignIn } from '../middleware/auth';
-import { AuthenticatedRequest } from '../types';
-import logger from '../utils/logger';
-import { capture } from '../utils/analytics';
+import { Run } from '../models/Run.js';
+import { requireSignIn } from '../middleware/auth.js';
+import { AuthenticatedRequest } from '../types/index.js';
+import logger from '../utils/logger.js';
+import { capture } from '../utils/analytics.js';
 import { Op } from 'sequelize';
 
 const router = Router();
@@ -20,8 +20,8 @@ router.get('/runs', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
 
-    const pageParam = parseInt(req.query.page as string, 10);
-    const limitParam = parseInt(req.query.limit as string, 10);
+    const pageParam = parseInt(String(req.query.page ?? ''), 10);
+    const limitParam = parseInt(String(req.query.limit ?? ''), 10);
 
     const page =
        Number.isFinite(pageParam) && pageParam > 0
@@ -65,8 +65,8 @@ router.get('/runs', requireSignIn, async (req: AuthenticatedRequest, res) => {
       }
     });
 
-  } catch (error: unknown) {
-    logger.error('Error fetching runs', error);
+  } catch (error) {
+    logger.error('Error fetching runs', error instanceof Error ? error.message : error);
     return res.status(500).json({
       statusCode: 500,
       messageCode: 'error',
@@ -91,7 +91,7 @@ router.get('/runs/:runId/output', requireSignIn, async (req: AuthenticatedReques
       },
       attributes: ['serializableOutput', 'binaryOutput'],
       raw: true
-    });
+    }) as { serializableOutput?: any; binaryOutput?: any };
 
     if (!run) {
       return res.status(404).json({
@@ -110,8 +110,8 @@ router.get('/runs/:runId/output', requireSignIn, async (req: AuthenticatedReques
       }
     });
 
-  } catch (error: unknown) {
-    logger.error('Error fetching run output', error);
+  } catch (error) {
+    logger.error('Error fetching run output', error instanceof Error ? error.message : error);
     return res.status(500).json({
       statusCode: 500,
       messageCode: 'error',
@@ -151,8 +151,8 @@ router.get('/runs/run/:id', requireSignIn, async (req: AuthenticatedRequest, res
       run
     });
 
-  } catch (error: unknown) {
-    logger.error(`Error retrieving run ${req.params.id}`, error);
+  } catch (error) {
+    logger.error(`Error retrieving run ${req.params.id}`, error instanceof Error ? error.message : error);
     return res.status(500).json({
       statusCode: 500,
       messageCode: 'error',
@@ -195,8 +195,8 @@ router.delete('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res)
       message: 'Run deleted successfully'
     });
 
-  } catch (error: unknown) {
-    logger.error(`Error deleting run ${req.params.id}`, error);
+  } catch (error) {
+    logger.error(`Error deleting run ${req.params.id}`, error instanceof Error ? error.message : error);
     return res.status(500).json({
       success: false,
       message: 'Failed to delete run'
@@ -258,7 +258,7 @@ export async function recoverOrphanedRuns(): Promise<void> {
 
     logger.warn(`Recovering ${orphanedRuns.length} orphaned runs`);
 
-    const runIds = orphanedRuns.map(r => r.runId);
+    const runIds = orphanedRuns.map((r: any) => r.runId);
 
     await Run.update(
        { status: "failed" },
