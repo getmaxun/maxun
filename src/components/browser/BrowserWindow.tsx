@@ -1,4 +1,5 @@
 import React, { useCallback, useContext, useEffect, useState } from 'react';
+import { generateUUID } from '../../helpers/uuid';
 import { useSocketStore } from '../../context/socket';
 import { Button } from '@mui/material';
 import { GenericModal } from '../ui/GenericModal';
@@ -746,7 +747,7 @@ export const BrowserWindow = () => {
                     listSelector,
                     autoFields,
                     currentListId || Date.now(),
-                    currentListActionId || `list-${crypto.randomUUID()}`,
+                    currentListActionId || `list-${generateUUID()}`,
                     { type: "", selector: paginationSelector },
                     undefined,
                     false
@@ -1167,7 +1168,7 @@ export const BrowserWindow = () => {
                 listSelector!,
                 targetFields,
                 targetListId || 0,
-                currentListActionId || `list-${crypto.randomUUID()}`,
+                currentListActionId || `list-${generateUUID()}`,
                 { 
                     type: paginationType, 
                     selector: highlighterData.selector,
@@ -1261,7 +1262,7 @@ export const BrowserWindow = () => {
                 listSelector,
                 updatedFields,
                 currentListId,
-                currentListActionId || `list-${crypto.randomUUID()}`,
+                currentListActionId || `list-${generateUUID()}`,
                 { type: "", selector: paginationSelector },
                 undefined,
                 highlighterData.isShadow
@@ -1302,7 +1303,7 @@ export const BrowserWindow = () => {
                 isShadow: highlighterData.isShadow || highlighterData.elementInfo?.isShadowRoot,
                 attribute,
               },
-              currentTextActionId || `text-${crypto.randomUUID()}`
+              currentTextActionId || `text-${generateUUID()}`
             );
           } else {
             setAttributeOptions(options);
@@ -1365,7 +1366,7 @@ export const BrowserWindow = () => {
                   isShadow: highlighterData.isShadow || highlighterData.elementInfo?.isShadowRoot,
                   attribute,
                 },
-                currentTextActionId || `text-${crypto.randomUUID()}`
+                currentTextActionId || `text-${generateUUID()}`
               );
             } else {
               setAttributeOptions(options);
@@ -1411,7 +1412,7 @@ export const BrowserWindow = () => {
                 listSelector!,
                 targetFields,
                 targetListId || 0,
-                currentListActionId || `list-${crypto.randomUUID()}`,
+                currentListActionId || `list-${generateUUID()}`,
                 { type: paginationType, selector: highlighterData.selector, isShadow: highlighterData.isShadow },
                 undefined,
                 highlighterData.isShadow
@@ -1490,7 +1491,7 @@ export const BrowserWindow = () => {
                   listSelector,
                   updatedFields,
                   currentListId,
-                  currentListActionId || `list-${crypto.randomUUID()}`,
+                  currentListActionId || `list-${generateUUID()}`,
                   { type: "", selector: paginationSelector, isShadow: highlighterData.isShadow },
                   undefined,
                   highlighterData.isShadow
@@ -1529,7 +1530,7 @@ export const BrowserWindow = () => {
                     tag: selectedElement.info?.tagName,
                     isShadow: highlighterData?.isShadow || selectedElement.info?.isShadowRoot,
                     attribute: attribute
-                }, currentTextActionId || `text-${crypto.randomUUID()}`);
+                }, currentTextActionId || `text-${generateUUID()}`);
             }
 
             if (getList === true && listSelector && currentListId) {
@@ -1558,7 +1559,7 @@ export const BrowserWindow = () => {
                         listSelector, 
                         updatedFields, 
                         currentListId, 
-                        currentListActionId || `list-${crypto.randomUUID()}`,
+                        currentListActionId || `list-${generateUUID()}`,
                         { type: "", selector: paginationSelector, isShadow: highlighterData?.isShadow },
                         undefined,
                         highlighterData?.isShadow
