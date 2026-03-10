@@ -35,7 +35,6 @@ const ProxyForm: React.FC = () => {
         username: '',
         password: '',
     });
-    const [tabIndex, setTabIndex] = useState(0);
     const [isProxyConfigured, setIsProxyConfigured] = useState(false);
     const [proxy, setProxy] = useState({ proxy_url: '', auth: false });
 
@@ -98,10 +97,6 @@ const ProxyForm: React.FC = () => {
         } catch (error: any) {
             notify('error', `${error} : ${t('proxy.notifications.config_error')}`);
         }
-    };
-
-    const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-        setTabIndex(newValue);
     };
 
     const testProxy = async () => {
