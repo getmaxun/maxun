@@ -155,7 +155,7 @@ const ProxyForm: React.FC = () => {
                 </Typography>
                 {
                     isProxyConfigured ? (
-                        <Box sx={{ width: '100%', mt: 1 }}>
+                        <Box sx={{ width: '100%', mt: 3 }}>
                             <TableContainer component={Paper} sx={{ mb: 2 }}>
                                 <Table>
                                     <TableHead>
