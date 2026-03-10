@@ -251,7 +251,7 @@ const ProxyForm: React.FC = () => {
                 maxWidth: 600,
                 mt: 4
             }}>
-                <Alert severity="info" sx={{ height: 'auto', minHeight: 250 }}>
+                <Alert severity="info" sx={{ height: 'auto', minHeight: 255 }}>
                     <AlertTitle>{t('proxy.alert.title')}</AlertTitle>
                     <br />
                     <b>{t('proxy.alert.right_way')}</b>
