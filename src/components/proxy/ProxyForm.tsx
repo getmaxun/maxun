@@ -8,8 +8,6 @@ import {
     FormControlLabel,
     Box,
     Typography,
-    Tabs,
-    Tab,
     Table,
     TableContainer,
     TableHead,
