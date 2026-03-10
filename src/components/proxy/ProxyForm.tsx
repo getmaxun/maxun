@@ -180,7 +180,7 @@ const ProxyForm: React.FC = () => {
                             </Button>
                         </Box>
                     ) : (
-                        <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
+                        <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%', mt: 3 }}>
                             <Box sx={{ mb: 2 }}>
                                 <TextField
                                     label={t('proxy.server_url')}
