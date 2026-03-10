@@ -160,6 +160,7 @@ const ProxyForm: React.FC = () => {
                 <Typography variant="h6" gutterBottom component="div">
                     {t('proxy.title')}
                 </Typography>
+                {
                     isProxyConfigured ? (
                         <Box sx={{ width: '100%', mt: 1 }}>
                             <TableContainer component={Paper} sx={{ mb: 2 }}>
@@ -248,7 +249,7 @@ const ProxyForm: React.FC = () => {
                                 {t('proxy.add_proxy')}
                             </Button>
                         </Box>
-                    )
+                   )}
             </Box>
          
             <Box sx={{
