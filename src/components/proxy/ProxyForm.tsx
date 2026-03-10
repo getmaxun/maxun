@@ -160,10 +160,6 @@ const ProxyForm: React.FC = () => {
                 <Typography variant="h6" gutterBottom component="div">
                     {t('proxy.title')}
                 </Typography>
-                <Tabs value={tabIndex} onChange={handleTabChange} sx={{ mb: 2 }}>
-                    <Tab label={t('proxy.tab_standard')} />
-                </Tabs>
-
                 {tabIndex === 0 && (
                     isProxyConfigured ? (
                         <Box sx={{ width: '100%', mt: 1 }}>
