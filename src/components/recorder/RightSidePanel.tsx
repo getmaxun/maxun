@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { generateUUID } from '../../helpers/uuid';
 import { Button, Paper, Box, TextField, IconButton, Tooltip } from "@mui/material";
 import { WorkflowFile } from "maxun-core";
 import Typography from "@mui/material/Typography";
@@ -332,19 +333,19 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
   }, [browserSteps, currentListActionId, getList, extractDataClientSide, setCurrentWorkflowActionsState, currentWorkflowActionsState]);
 
   const handleStartGetText = () => {
-    const newActionId = `text-${crypto.randomUUID()}`;
+    const newActionId = `text-${generateUUID()}`;
     setCurrentTextActionId(newActionId);
     startGetText();
   }
 
   const handleStartGetList = () => {
-    const newActionId = `list-${crypto.randomUUID()}`;
+    const newActionId = `list-${generateUUID()}`;
     setCurrentListActionId(newActionId);
     startGetList();
   }
 
   const handleStartGetScreenshot = () => {
-    const newActionId = `screenshot-${crypto.randomUUID()}`;
+    const newActionId = `screenshot-${generateUUID()}`;
     setCurrentScreenshotActionId(newActionId);
     startGetScreenshot();
   };
