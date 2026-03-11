@@ -510,7 +510,12 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
 
     const robotId = uuid();
     const currentTimestamp = new Date().toISOString();
-    const finalRobotName = robotName || `LLM Extract: ${prompt.substring(0, 50)}`;
+    const finalRobotName = (robotName || `LLM Extract: ${prompt.substring(0, 50)}`).trim();
+
+    const existingRobot = await Robot.findOne({ where: { userId: req.user.id, 'recording_meta.name': finalRobotName } });
+    if (existingRobot) {
+      return res.status(409).json({ error: 'DUPLICATE_NAME', message: 'A robot with this name already exists. Please choose another name.' });
+    }
 
     const newRobot = await Robot.create({
       id: uuid(),

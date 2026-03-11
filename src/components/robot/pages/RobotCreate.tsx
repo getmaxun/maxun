@@ -571,6 +571,12 @@ const RobotCreate: React.FC = () => {
 
                           removeOptimisticRobot(tempRobotId);
 
+                          if (result?.isDuplicateName) {
+                            notify('warning', 'A robot with this name already exists. Please choose another name.');
+                            invalidateRecordings();
+                            return;
+                          }
+
                           if (!result || !result.robot) {
                             notify('error', 'Failed to create AI robot. Please check your LLM configuration.');
                             invalidateRecordings();

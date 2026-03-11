@@ -69,7 +69,7 @@ export const createLLMRobot = async (
   llmApiKey?: string,
   llmBaseUrl?: string,
   robotName?: string
-): Promise<any> => {
+): Promise<{ robot?: any; isDuplicateName?: boolean } | null> => {
   try {
     const response = await axios.post(
       `${apiUrl}/storage/recordings/llm`,
@@ -96,6 +96,9 @@ export const createLLMRobot = async (
     }
   } catch (error: any) {
     console.error('Error creating LLM robot:', error);
+    if (error.response?.data?.error === 'DUPLICATE_NAME') {
+      return { isDuplicateName: true };
+    }
     return null;
   }
 };
