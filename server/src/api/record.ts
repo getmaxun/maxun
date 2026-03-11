@@ -23,7 +23,7 @@ const router = Router();
 const formatRecording = (recordingData: any) => {
     const recordingMeta = recordingData.recording_meta;
     const workflow = recordingData.recording.workflow || [];
-    const firstWorkflowStep = workflow[0]?.where?.url || '';
+    const firstWorkflowStep = recordingMeta.url || workflow[workflow.length - 1]?.where?.url || '';
 
     const inputParameters = [
         {
@@ -128,7 +128,7 @@ router.get("/robots", requireAPIKey, async (req: Request, res: Response) => {
 const formatRecordingById = (recordingData: any) => {
     const recordingMeta = recordingData.recording_meta;
     const workflow = recordingData.recording.workflow || [];
-    const firstWorkflowStep = workflow[0]?.where?.url || '';
+    const firstWorkflowStep = recordingMeta.url || workflow[workflow.length - 1]?.where?.url || '';
 
     const inputParameters = [
         {
@@ -1396,6 +1396,165 @@ router.post("/robots/:id/runs", requireAPIKey, async (req: AuthenticatedRequest,
             statusCode: 500,
             messageCode: "error",
             message: "Failed to run robot",
+        });
+    }
+});
+
+/**
+ * @swagger
+ * /api/robots/{id}/duplicate:
+ *   post:
+ *     summary: Duplicate a robot with a new target URL
+ *     description: Duplicate an existing robot to run it on a different URL with the same structure.
+ *     security:
+ *       - api_key: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the robot to duplicate.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - targetUrl
+ *             properties:
+ *               targetUrl:
+ *                 type: string
+ *                 example: "https://www.ycombinator.com/companies/airbnb"
+ *                 description: The new URL to target in the duplicated robot.
+ *     responses:
+ *       201:
+ *         description: Robot duplicated successfully.
+ *       400:
+ *         description: Missing required field.
+ *       404:
+ *         description: Robot not found.
+ *       500:
+ *         description: Internal server error.
+ */
+router.post("/robots/:id/duplicate", requireAPIKey, async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { targetUrl } = req.body;
+
+        if (!targetUrl) {
+            return res.status(400).json({
+                statusCode: 400,
+                messageCode: "bad_request",
+                message: 'The "targetUrl" field is required.',
+            });
+        }
+
+        try {
+            const parsed = new URL(targetUrl);
+            if (!['http:', 'https:'].includes(parsed.protocol)) {
+                return res.status(400).json({
+                    statusCode: 400,
+                    messageCode: "bad_request",
+                    message: 'The "targetUrl" must use http or https protocol.',
+                });
+            }
+        } catch {
+            return res.status(400).json({
+                statusCode: 400,
+                messageCode: "bad_request",
+                message: 'The "targetUrl" must be a valid URL.',
+            });
+        }
+
+        const originalRobot = await Robot.findOne({
+            where: { 'recording_meta.id': id },
+        });
+
+        if (!originalRobot) {
+            return res.status(404).json({
+                statusCode: 404,
+                messageCode: "not_found",
+                message: `Robot with ID "${id}" not found.`,
+            });
+        }
+
+        const lastWord = targetUrl.split('/').filter(Boolean).pop() || 'Unnamed';
+
+        const steps: any[] = originalRobot.recording.workflow;
+        const entryStep = steps.findLast((step: any) => step.where?.url === 'about:blank');
+        const originalEntryUrl: string | null = entryStep?.what?.find(
+            (action: any) => action.action === 'goto' && action.args?.length
+        )?.args?.[0] ?? null;
+
+        let gotoUpdated = false;
+        let whereUpdateStopped = false;
+
+        const workflow = [...steps].reverse().map((step: any) => {
+            let updatedWhere = step.where;
+
+            if (originalEntryUrl && step.where?.url !== 'about:blank' && !whereUpdateStopped) {
+                if (step.where?.url === originalEntryUrl) {
+                    updatedWhere = { ...step.where, url: targetUrl };
+                } else {
+                    whereUpdateStopped = true;
+                }
+            }
+
+            const updatedWhat = step.what.map((action: any) => {
+                if (!gotoUpdated && action.action === 'goto' && action.args?.[0] === originalEntryUrl) {
+                    gotoUpdated = true;
+                    return { ...action, args: [targetUrl, ...action.args.slice(1)] };
+                }
+                return action;
+            });
+
+            return { ...step, where: updatedWhere, what: updatedWhat };
+        }).reverse();
+
+        const currentTimestamp = new Date().toLocaleString();
+
+        const newRobot = await Robot.create({
+            id: uuid(),
+            userId: originalRobot.userId,
+            recording_meta: {
+                ...originalRobot.recording_meta,
+                id: uuid(),
+                name: `${originalRobot.recording_meta.name} (${lastWord})`,
+                url: targetUrl,
+                createdAt: currentTimestamp,
+                updatedAt: currentTimestamp,
+            },
+            recording: { ...originalRobot.recording, workflow },
+            google_sheet_email: null,
+            google_sheet_name: null,
+            google_sheet_id: null,
+            google_access_token: null,
+            google_refresh_token: null,
+            airtable_base_id: null,
+            airtable_base_name: null,
+            airtable_table_name: null,
+            airtable_table_id: null,
+            airtable_access_token: null,
+            airtable_refresh_token: null,
+            webhooks: null,
+            schedule: null,
+        });
+
+        logger.log('info', `Robot with ID ${id} duplicated successfully as ${newRobot.id}.`);
+
+        return res.status(201).json({
+            statusCode: 201,
+            messageCode: "success",
+            robot: formatRecordingById(newRobot.toJSON()),
+        });
+    } catch (error) {
+        logger.log('error', `Error duplicating robot with ID ${req.params.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        return res.status(500).json({
+            statusCode: 500,
+            messageCode: "error",
+            message: error instanceof Error ? error.message : 'An unknown error occurred.',
         });
     }
 });
