@@ -279,6 +279,7 @@
       "errors": {
         "user_not_logged": "User not logged in. Cannot save recording.",
         "exists_warning": "Robot with this name already exists, please confirm the Robot's overwrite.",
+        "name_already_exists": "A robot with this name already exists. Please choose another name.",
         "no_actions_performed": "Cannot save robot. Please perform at least one capture action before saving."
       },
       "tooltips": {

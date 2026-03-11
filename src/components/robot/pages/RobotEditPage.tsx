@@ -1054,9 +1054,11 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         workflow: updatedWorkflow,
       };
 
-      const success = await updateRecording(robot.recording_meta.id, payload);
+      const result = await updateRecording(robot.recording_meta.id, payload);
 
-      if (success) {
+      if (result.isDuplicateName) {
+        notify("warning", "A robot with this name already exists. Please choose another name.");
+      } else if (result.success) {
         setRerenderRobots(true);
         notify("success", t("robot_edit.notifications.update_success"));
         handleStart(robot);

@@ -279,6 +279,7 @@
     "errors": {
       "user_not_logged": "用户未登录。无法保存录制。",
       "exists_warning": "已存在同名机器人，请确认是否覆盖机器人。",
+      "name_already_exists": "已存在同名机器人。请选择其他名称。",
       "no_actions_performed": "无法保存机器人。请在保存之前至少执行一次捕获操作。"
     },
     "tooltips": {

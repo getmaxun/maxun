@@ -264,7 +264,14 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
 
 
     if (name) {
-      robot.set('recording_meta', { ...robot.recording_meta, name });
+      const trimmedName = name.trim();
+      const duplicate = await Robot.findOne({
+        where: { userId: req.user!.id, 'recording_meta.name': trimmedName }
+      });
+      if (duplicate && duplicate.get('recording_meta').id !== id) {
+        return res.status(409).json({ error: 'DUPLICATE_NAME', message: 'A robot with this name already exists. Please choose another name.' });
+      }
+      robot.set('recording_meta', { ...robot.recording_meta, name: trimmedName });
     }
 
     if (targetUrl) {
@@ -389,9 +396,14 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
       return res.status(400).json({ error: `Invalid formats: ${invalid.join(', ')}` });
     }
 
-    const robotName = name || `Markdown Robot - ${new URL(url).hostname}`;
+    const robotName = (name || `Markdown Robot - ${new URL(url).hostname}`).trim();
     const currentTimestamp = new Date().toLocaleString();
     const robotId = uuid();
+
+    const existingRobot = await Robot.findOne({ where: { userId: req.user.id, 'recording_meta.name': robotName } });
+    if (existingRobot) {
+      return res.status(409).json({ error: 'DUPLICATE_NAME', message: 'A robot with this name already exists. Please choose another name.' });
+    }
 
     const newRobot = await Robot.create({
       id: uuid(),
@@ -1287,9 +1299,14 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
       return res.status(400).json({ error: 'Invalid URL format' });
     }
 
-    const robotName = name || `Crawl Robot - ${new URL(url).hostname}`;
+    const robotName = (name || `Crawl Robot - ${new URL(url).hostname}`).trim();
     const currentTimestamp = new Date().toLocaleString('en-US');
     const robotId = uuid();
+
+    const existingRobot = await Robot.findOne({ where: { userId: req.user.id, 'recording_meta.name': robotName } });
+    if (existingRobot) {
+      return res.status(409).json({ error: 'DUPLICATE_NAME', message: 'A robot with this name already exists. Please choose another name.' });
+    }
 
     const newRobot = await Robot.create({
       id: uuid(),
@@ -1391,7 +1408,13 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
       return res.status(401).send({ error: 'Unauthorized' });
     }
 
-    const robotName = name || `Search Robot - ${searchConfig.query.substring(0, 50)}`;
+    const robotName = (name || `Search Robot - ${searchConfig.query.substring(0, 50)}`).trim();
+
+    const existingRobot = await Robot.findOne({ where: { userId: req.user.id, 'recording_meta.name': robotName } });
+    if (existingRobot) {
+      return res.status(409).json({ error: 'DUPLICATE_NAME', message: 'A robot with this name already exists. Please choose another name.' });
+    }
+
     const currentTimestamp = new Date().toLocaleString('en-US');
     const robotId = uuid();
 

@@ -981,8 +981,9 @@ export class WorkflowGenerator {
    * @returns {Promise<void>}
    */
   public saveNewWorkflow = async (fileName: string, userId: number, isLogin: boolean, robotId?: string) => {
+    fileName = fileName.trim();
     const recording = this.optimizeWorkflow(this.workflowRecord);
-    let actionType = 'saved'; 
+    let actionType = 'saved';
     
     try {
       if (robotId) {
@@ -1003,8 +1004,14 @@ export class WorkflowGenerator {
           logger.log('info', `Robot retrained with id: ${robot.id}`);
         }
       } else {
+        const trimmedFileName = fileName.trim();
+        const existingRobot = await Robot.findOne({ where: { userId, 'recording_meta.name': trimmedFileName } });
+        if (existingRobot) {
+          this.socket.emit('fileSaved', { actionType: 'duplicate_name' });
+          return;
+        }
         this.recordingMeta = {
-          name: fileName,
+          name: trimmedFileName,
           id: uuid(),
           createdAt: this.recordingMeta.createdAt || new Date().toLocaleString(),
           pairs: recording.workflow.length,

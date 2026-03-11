@@ -203,7 +203,9 @@ const RobotCreate: React.FC = () => {
     );
     setIsLoading(false);
 
-    if (result) {
+    if (result?.isDuplicateName) {
+      notify('error', 'A robot with this name already exists. Please choose another name.');
+    } else if (result) {
       invalidateRecordings();
       notify('success', `${crawlRobotName} created successfully!`);
       navigate('/robots');
@@ -237,7 +239,9 @@ const RobotCreate: React.FC = () => {
     );
     setIsLoading(false);
 
-    if (result) {
+    if (result?.isDuplicateName) {
+      notify('warning', 'A robot with this name already exists. Please choose another name.');
+    } else if (result) {
       invalidateRecordings();
       notify('success', `${searchRobotName} created successfully!`);
       navigate('/robots');
@@ -806,7 +810,9 @@ const RobotCreate: React.FC = () => {
                   const result = await createScrapeRobot(url, scrapeRobotName, outputFormats);
                   setIsLoading(false);
 
-                  if (result) {
+                  if (result?.isDuplicateName) {
+                    notify('error', 'A robot with this name already exists. Please choose another name.');
+                  } else if (result) {
                     setRerenderRobots(true);
                     notify('success', `${scrapeRobotName} created successfully!`);
                     navigate('/robots');
