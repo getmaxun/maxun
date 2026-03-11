@@ -1004,13 +1004,14 @@ export class WorkflowGenerator {
           logger.log('info', `Robot retrained with id: ${robot.id}`);
         }
       } else {
-        const existingRobot = await Robot.findOne({ where: { userId, 'recording_meta.name': fileName } });
+        const trimmedFileName = fileName.trim();
+        const existingRobot = await Robot.findOne({ where: { userId, 'recording_meta.name': trimmedFileName } });
         if (existingRobot) {
-          this.socket.emit('fileSaved', { actionType: 'error' });
+          this.socket.emit('fileSaved', { actionType: 'duplicate_name' });
           return;
         }
         this.recordingMeta = {
-          name: fileName,
+          name: trimmedFileName,
           id: uuid(),
           createdAt: this.recordingMeta.createdAt || new Date().toLocaleString(),
           pairs: recording.workflow.length,

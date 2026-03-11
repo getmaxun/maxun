@@ -21,9 +21,8 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
 
   const { browserId, setBrowserId, notify, recordings, isLogin, recordingName, retrainRobotId, currentWorkflowActionsState } = useGlobalInfoStore();
   const { socket } = useSocketStore();
-  const { state, dispatch } = useContext(AuthContext);
+  const { state } = useContext(AuthContext);
   const { user } = state;
-  const navigate = useNavigate();
 
   useEffect(() => {
     if (recordingName) {
@@ -32,14 +31,13 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
   }, [recordingName]);
 
   const handleChangeOfTitle = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const { value } = event.target;
-    setSaveRecordingName(value);
+    setSaveRecordingName(event.target.value);
   }
 
   const handleSaveRecording = async (event: React.SyntheticEvent) => {
     event.preventDefault();
     if (recordings.map(r => r.trim()).includes(saveRecordingName.trim())) {
-      notify('error', t('save_recording.errors.exists_warning'));
+      notify('error', t('save_recording.errors.name_already_exists'));
       return;
     }
     await saveRecording();
@@ -48,13 +46,13 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
   const handleFinishClick = () => {
     const { hasScrapeListAction, hasScreenshotAction, hasScrapeSchemaAction } = currentWorkflowActionsState;
     const hasAnyAction = hasScrapeListAction || hasScreenshotAction || hasScrapeSchemaAction;
-    
+
     if (!hasAnyAction) {
       notify('warning', t('save_recording.errors.no_actions_performed'));
       return;
     }
 
-    if (recordingName && !recordings.includes(recordingName)) {
+    if (recordingName && !recordings.map(r => r.trim()).includes(recordingName.trim())) {
       saveRecording();
     } else {
       setOpenModal(true);
@@ -62,8 +60,14 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
   };
 
   const exitRecording = useCallback(async (data?: { actionType: string }) => {
+    if (data?.actionType === 'duplicate_name') {
+      notify('error', t('save_recording.errors.name_already_exists'));
+      setWaitingForSave(false);
+      return;
+    }
+
     let successMessage = t('save_recording.notifications.save_success');
-    
+
     if (data && data.actionType) {
       if (data.actionType === 'retrained') {
         successMessage = t('save_recording.notifications.retrain_success');
@@ -73,41 +77,41 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
         successMessage = t('save_recording.notifications.save_error');
       }
     }
-    
+
     const notificationData = {
       type: data?.actionType === 'error' ? 'error' : 'success',
       message: successMessage,
       timestamp: Date.now()
     };
     window.sessionStorage.setItem('pendingNotification', JSON.stringify(notificationData));
-    
+
     if (window.opener) {
       window.opener.postMessage({
         type: 'recording-notification',
         notification: notificationData
       }, '*');
-      
+
       window.opener.postMessage({
         type: 'session-data-clear',
         timestamp: Date.now()
       }, '*');
     }
-    
+
     if (browserId) {
       await stopRecording(browserId);
     }
     setBrowserId(null);
-    
-    window.close();
-  }, [setBrowserId, browserId, t]);
 
-  // notifies backed to save the recording in progress,
+    window.close();
+  }, [setBrowserId, browserId, notify, t]);
+
+  // notifies backend to save the recording in progress,
   // releases resources and changes the view for main page by clearing the global browserId
   const saveRecording = async () => {
     if (user) {
       const { hasScrapeListAction, hasScreenshotAction, hasScrapeSchemaAction } = currentWorkflowActionsState;
       const hasAnyAction = hasScrapeListAction || hasScreenshotAction || hasScrapeSchemaAction;
-      
+
       if (!hasAnyAction) {
         notify('warning', t('save_recording.errors.no_actions_performed'));
         return;
@@ -115,7 +119,7 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
 
       const payload = {
         fileName: (saveRecordingName || recordingName).trim(),
-        userId: user.id, 
+        userId: user.id,
         isLogin: isLogin,
         robotId: retrainRobotId,
       };

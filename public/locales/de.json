@@ -279,6 +279,7 @@
         "errors": {
             "user_not_logged": "Benutzer nicht angemeldet. Aufnahme kann nicht gespeichert werden.",
             "exists_warning": "Ein Roboter mit diesem Namen existiert bereits, bitte bestätigen Sie das Überschreiben des Roboters.",
+            "name_already_exists": "Ein Roboter mit diesem Namen existiert bereits. Bitte wähle einen anderen Namen.",
             "no_actions_performed": "Roboter kann nicht gespeichert werden. Bitte führen Sie mindestens eine Erfassungsaktion durch, bevor Sie speichern."
         },
         "tooltips": {

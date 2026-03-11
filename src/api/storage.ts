@@ -53,6 +53,9 @@ export const createScrapeRobot = async (
       throw new Error('Failed to create markdown robot');
     }
   } catch (error: any) {
+    if (error.response?.data?.error === 'DUPLICATE_NAME') {
+      return { isDuplicateName: true };
+    }
     console.error('Error creating markdown robot:', error);
     return null;
   }
@@ -97,23 +100,26 @@ export const createLLMRobot = async (
   }
 };
 
-export const updateRecording = async (id: string, data: { 
-  name?: string; 
+export const updateRecording = async (id: string, data: {
+  name?: string;
   limits?: Array<{pairIndex: number, actionIndex: number, argIndex: number, limit: number}>;
-  credentials?: Credentials; 
+  credentials?: Credentials;
   targetUrl?: string;
   workflow?: any[];
-}): Promise<boolean> => {
+}): Promise<{ success: boolean; isDuplicateName?: boolean }> => {
   try {
     const response = await axios.put(`${apiUrl}/storage/recordings/${id}`, data);
     if (response.status === 200) {
-      return true;
+      return { success: true };
     } else {
       throw new Error(`Couldn't update recording with id ${id}`);
     }
   } catch (error: any) {
+    if (error.response?.data?.error === 'DUPLICATE_NAME') {
+      return { success: false, isDuplicateName: true };
+    }
     console.error(`Error updating recording: ${error.message}`);
-    return false;
+    return { success: false };
   }
 };
 
@@ -355,6 +361,9 @@ export const createCrawlRobot = async (
       throw new Error('Failed to create crawl robot');
     }
   } catch (error: any) {
+    if (error.response?.data?.error === 'DUPLICATE_NAME') {
+      return { isDuplicateName: true };
+    }
     console.error('Error creating crawl robot:', error);
     return null;
   }
@@ -393,6 +402,9 @@ export const createSearchRobot = async (
       throw new Error('Failed to create search robot');
     }
   } catch (error: any) {
+    if (error.response?.data?.error === 'DUPLICATE_NAME') {
+      return { isDuplicateName: true };
+    }
     console.error('Error creating search robot:', error);
     return null;
   }

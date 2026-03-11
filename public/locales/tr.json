@@ -278,6 +278,7 @@
     "errors": {
       "user_not_logged": "Kullanıcı girişi yok. Kaydedilemedi.",
       "exists_warning": "Bu isimde robot zaten var; üzerine yazmayı onaylayın.",
+      "name_already_exists": "Bu isimde bir robot zaten mevcut. Lütfen başka bir isim seçin.",
       "no_actions_performed": "Robot kaydedilemez. Lütfen kaydetmeden önce en az bir yakalama eylemi gerçekleştirin."
     },
     "tooltips": {
