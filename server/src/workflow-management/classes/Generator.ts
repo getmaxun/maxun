@@ -14,6 +14,7 @@ import {
 } from "../selector";
 import { CustomActions } from "../../../../src/shared/types";
 import Robot from "../../models/Robot";
+import { UniqueConstraintError } from "sequelize";
 import { getBestSelectorForAction } from "../utils";
 import { v4 as uuid } from "uuid";
 import { capture } from "../../utils/analytics"
@@ -1037,6 +1038,10 @@ export class WorkflowGenerator {
       }  
     }
     catch (e) {
+      if (e instanceof UniqueConstraintError) {
+        this.socket.emit('fileSaved', { actionType: 'duplicate_name' });
+        return;
+      }
       const { message } = e as Error;
       logger.log('warn', `Cannot save the file to the local file system ${e}`)
       actionType = 'error';
