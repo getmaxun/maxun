@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { UniqueConstraintError } from 'sequelize';
 import logger from "../logger";
 import { createRemoteBrowserForRun, destroyRemoteBrowser, getActiveBrowserIdByState } from "../browser-management/controller";
 import { browserPool } from "../server";
@@ -271,12 +272,6 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       if (!trimmedName) {
         return res.status(400).json({ error: 'INVALID_NAME', message: 'Name must be a non-empty string.' });
       }
-      const duplicate = await Robot.findOne({
-        where: { userId: req.user!.id, 'recording_meta.name': trimmedName }
-      });
-      if (duplicate && duplicate.get('recording_meta').id !== id) {
-        return res.status(409).json({ error: 'DUPLICATE_NAME', message: 'A robot with this name already exists. Please choose another name.' });
-      }
       robot.set('recording_meta', { ...robot.recording_meta, name: trimmedName });
     }
 
@@ -357,7 +352,9 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
 
     return res.status(200).json({ message: 'Robot updated successfully', robot });
   } catch (error) {
-    // Safely handle the error type
+    if (error instanceof UniqueConstraintError) {
+      return res.status(409).json({ error: 'DUPLICATE_NAME', message: 'A robot with this name already exists. Please choose another name.' });
+    }
     if (error instanceof Error) {
       logger.log('error', `Error updating robot with ID ${req.params.id}: ${error.message}`);
       return res.status(500).json({ error: error.message });
@@ -407,11 +404,6 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
     const currentTimestamp = new Date().toLocaleString();
     const robotId = uuid();
 
-    const existingRobot = await Robot.findOne({ where: { userId: req.user.id, 'recording_meta.name': robotName } });
-    if (existingRobot) {
-      return res.status(409).json({ error: 'DUPLICATE_NAME', message: 'A robot with this name already exists. Please choose another name.' });
-    }
-
     const newRobot = await Robot.create({
       id: uuid(),
       userId: req.user.id,
@@ -449,6 +441,9 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
       robot: newRobot,
     });
   } catch (error) {
+    if (error instanceof UniqueConstraintError) {
+      return res.status(409).json({ error: 'DUPLICATE_NAME', message: 'A robot with this name already exists. Please choose another name.' });
+    }
     if (error instanceof Error) {
       logger.log('error', `Error creating markdown robot: ${error.message}`);
       return res.status(500).json({ error: error.message });
@@ -520,11 +515,6 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
     const rawRobotName = typeof robotName === 'string' ? robotName.trim() : '';
     const finalRobotName = rawRobotName || `LLM Extract: ${prompt.substring(0, 50)}`;
 
-    const existingRobot = await Robot.findOne({ where: { userId: req.user.id, 'recording_meta.name': finalRobotName } });
-    if (existingRobot) {
-      return res.status(409).json({ error: 'DUPLICATE_NAME', message: 'A robot with this name already exists. Please choose another name.' });
-    }
-
     const newRobot = await Robot.create({
       id: uuid(),
       userId: req.user.id,
@@ -562,6 +552,9 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
       robot: newRobot,
     });
   } catch (error) {
+    if (error instanceof UniqueConstraintError) {
+      return res.status(409).json({ error: 'DUPLICATE_NAME', message: 'A robot with this name already exists. Please choose another name.' });
+    }
     if (error instanceof Error) {
       logger.log('error', `Error creating LLM robot: ${error.message}`);
       return res.status(500).json({ error: error.message });
@@ -1317,11 +1310,6 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
     const currentTimestamp = new Date().toLocaleString('en-US');
     const robotId = uuid();
 
-    const existingRobot = await Robot.findOne({ where: { userId: req.user.id, 'recording_meta.name': robotName } });
-    if (existingRobot) {
-      return res.status(409).json({ error: 'DUPLICATE_NAME', message: 'A robot with this name already exists. Please choose another name.' });
-    }
-
     const newRobot = await Robot.create({
       id: uuid(),
       userId: req.user.id,
@@ -1395,6 +1383,9 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
       robot: newRobot,
     });
   } catch (error) {
+    if (error instanceof UniqueConstraintError) {
+      return res.status(409).json({ error: 'DUPLICATE_NAME', message: 'A robot with this name already exists. Please choose another name.' });
+    }
     if (error instanceof Error) {
       logger.log('error', `Error creating crawl robot: ${error.message}`);
       return res.status(500).json({ error: error.message });
@@ -1424,11 +1415,6 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
 
     const rawName = typeof name === 'string' ? name.trim() : '';
     const robotName = rawName || `Search Robot - ${searchConfig.query.substring(0, 50)}`;
-
-    const existingRobot = await Robot.findOne({ where: { userId: req.user.id, 'recording_meta.name': robotName } });
-    if (existingRobot) {
-      return res.status(409).json({ error: 'DUPLICATE_NAME', message: 'A robot with this name already exists. Please choose another name.' });
-    }
 
     const currentTimestamp = new Date().toLocaleString('en-US');
     const robotId = uuid();
@@ -1490,6 +1476,9 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
       robot: newRobot,
     });
   } catch (error) {
+    if (error instanceof UniqueConstraintError) {
+      return res.status(409).json({ error: 'DUPLICATE_NAME', message: 'A robot with this name already exists. Please choose another name.' });
+    }
     if (error instanceof Error) {
       logger.log('error', `Error creating search robot: ${error.message}`);
       return res.status(500).json({ error: error.message });
