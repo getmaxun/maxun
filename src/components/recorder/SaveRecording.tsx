@@ -36,7 +36,8 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
 
   const handleSaveRecording = async (event: React.SyntheticEvent) => {
     event.preventDefault();
-    if (recordings.map(r => r.trim()).includes(saveRecordingName.trim())) {
+    const normalizedName = saveRecordingName.trim();
+    if (!retrainRobotId && recordings.some(r => r.trim() === normalizedName)) {
       notify('error', t('save_recording.errors.name_already_exists'));
       return;
     }
@@ -44,6 +45,11 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
   };
 
   const handleFinishClick = () => {
+    if (retrainRobotId) {
+      saveRecording();
+      return;
+    }
+
     const { hasScrapeListAction, hasScreenshotAction, hasScrapeSchemaAction } = currentWorkflowActionsState;
     const hasAnyAction = hasScrapeListAction || hasScreenshotAction || hasScrapeSchemaAction;
 
@@ -52,7 +58,7 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
       return;
     }
 
-    if (recordingName && !recordings.map(r => r.trim()).includes(recordingName.trim())) {
+    if (recordingName && !recordings.some(r => r.trim() === recordingName.trim())) {
       saveRecording();
     } else {
       setOpenModal(true);

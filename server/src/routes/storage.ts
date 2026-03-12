@@ -263,8 +263,14 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
     }
 
 
-    if (name) {
+    if (name !== undefined) {
+      if (typeof name !== 'string') {
+        return res.status(400).json({ error: 'INVALID_NAME', message: 'Name must be a non-empty string.' });
+      }
       const trimmedName = name.trim();
+      if (!trimmedName) {
+        return res.status(400).json({ error: 'INVALID_NAME', message: 'Name must be a non-empty string.' });
+      }
       const duplicate = await Robot.findOne({
         where: { userId: req.user!.id, 'recording_meta.name': trimmedName }
       });
@@ -336,7 +342,7 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
     if (name || targetUrl) {
       updates.recording_meta = {
         ...robot.recording_meta,
-        ...(name && { name }),
+        ...(name && { name: name.trim() }),
         ...(targetUrl && { url: targetUrl })
       };
     }
@@ -396,7 +402,8 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
       return res.status(400).json({ error: `Invalid formats: ${invalid.join(', ')}` });
     }
 
-    const robotName = (name || `Markdown Robot - ${new URL(url).hostname}`).trim();
+    const rawName = typeof name === 'string' ? name.trim() : '';
+    const robotName = rawName || `Markdown Robot - ${new URL(url).hostname}`;
     const currentTimestamp = new Date().toLocaleString();
     const robotId = uuid();
 
@@ -510,7 +517,8 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
 
     const robotId = uuid();
     const currentTimestamp = new Date().toISOString();
-    const finalRobotName = (robotName || `LLM Extract: ${prompt.substring(0, 50)}`).trim();
+    const rawRobotName = typeof robotName === 'string' ? robotName.trim() : '';
+    const finalRobotName = rawRobotName || `LLM Extract: ${prompt.substring(0, 50)}`;
 
     const existingRobot = await Robot.findOne({ where: { userId: req.user.id, 'recording_meta.name': finalRobotName } });
     if (existingRobot) {
@@ -1304,7 +1312,8 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
       return res.status(400).json({ error: 'Invalid URL format' });
     }
 
-    const robotName = (name || `Crawl Robot - ${new URL(url).hostname}`).trim();
+    const rawName = typeof name === 'string' ? name.trim() : '';
+    const robotName = rawName || `Crawl Robot - ${new URL(url).hostname}`;
     const currentTimestamp = new Date().toLocaleString('en-US');
     const robotId = uuid();
 
@@ -1413,7 +1422,8 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
       return res.status(401).send({ error: 'Unauthorized' });
     }
 
-    const robotName = (name || `Search Robot - ${searchConfig.query.substring(0, 50)}`).trim();
+    const rawName = typeof name === 'string' ? name.trim() : '';
+    const robotName = rawName || `Search Robot - ${searchConfig.query.substring(0, 50)}`;
 
     const existingRobot = await Robot.findOne({ where: { userId: req.user.id, 'recording_meta.name': robotName } });
     if (existingRobot) {

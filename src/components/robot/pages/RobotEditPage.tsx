@@ -1057,7 +1057,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
       const result = await updateRecording(robot.recording_meta.id, payload);
 
       if (result.isDuplicateName) {
-        notify("warning", "A robot with this name already exists. Please choose another name.");
+        notify("warning", t("save_recording.errors.name_already_exists"));
       } else if (result.success) {
         setRerenderRobots(true);
         notify("success", t("robot_edit.notifications.update_success"));

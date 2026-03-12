@@ -498,11 +498,12 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                 targetUrl: targetUrl,
             };
 
-            const success = await updateRecording(robot.recording_meta.id, payload);
+            const result = await updateRecording(robot.recording_meta.id, payload);
 
-            if (success) {
+            if (result?.isDuplicateName) {
+                notify('warning', t('save_recording.errors.name_already_exists'));
+            } else if (result?.success) {
                 setRerenderRobots(true);
-
                 notify('success', t('robot_edit.notifications.update_success'));
                 handleStart(robot);
                 handleClose();
