@@ -34,6 +34,7 @@ interface MetaData {
   pairs: number;
   updatedAt: string;
   params: string[],
+  type?: 'extract' | 'scrape' | 'crawl' | 'search';
   isLogin?: boolean;
 }
 
@@ -1010,6 +1011,7 @@ export class WorkflowGenerator {
           pairs: recording.workflow.length,
           updatedAt: new Date().toLocaleString(),
           params: this.getParams() || [],
+          type: this.recordingMeta.type || 'extract',
           isLogin: isLogin,
         }
         const robot = await Robot.create({

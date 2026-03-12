@@ -81,6 +81,35 @@ interface RRWebDOMBrowserRendererProps {
   }) => void;
 }
 
+/**
+ * Walks up the DOM from `element` looking for the first ancestor (up to but
+ * not including `root`) that has a scrollable overflow axis.  Used for the
+ * optimistic-scroll path so we scroll the right container immediately rather
+ * than always scrolling the viewport.
+ */
+function findScrollableAncestor(element: Element, root: Element): Element | null {
+  let el: Element | null = element;
+  while (el && el !== root) {
+    try {
+      const win = el.ownerDocument?.defaultView;
+      if (!win) break;
+      const style = win.getComputedStyle(el);
+      const oy = style.overflowY;
+      const ox = style.overflowX;
+      if (
+        ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight) ||
+        ((ox === 'auto' || ox === 'scroll') && el.scrollWidth > el.clientWidth)
+      ) {
+        return el;
+      }
+    } catch {
+      break;
+    }
+    el = el.parentElement;
+  }
+  return null;
+}
+
 export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
   width,
   height,
@@ -122,6 +151,11 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
 
   const MOUSE_MOVE_THROTTLE = 16;
   const lastMouseMoveTime = useRef(0);
+  const lastScrollEmitTime = useRef(0);
+  const pendingScrollDelta = useRef({ deltaX: 0, deltaY: 0 });
+  const isUserScrollingRef = useRef(false);
+  const userScrollDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastDroppedScrollEventRef = useRef<any>(null);
 
   const notifyLastAction = (action: string) => {
     if (lastAction !== action) {
@@ -642,22 +676,52 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           return;
         }
 
+        e.preventDefault();
+        e.stopPropagation();
+
         if (isCachingChildSelectors) {
-          e.preventDefault();
-          e.stopPropagation();
           return;
         }
 
         const wheelEvent = e as WheelEvent;
-        const deltaX = Math.round(wheelEvent.deltaX / 10) * 10;
-        const deltaY = Math.round(wheelEvent.deltaY / 10) * 10;
+        const deltaX = wheelEvent.deltaX;
+        const deltaY = wheelEvent.deltaY;
 
-        if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+        if (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1) {
+          const target = wheelEvent.target as Element;
+          const scrollable = findScrollableAncestor(target, iframeDoc.documentElement);
+          if (scrollable) {
+            scrollable.scrollBy(deltaX, deltaY);
+          } else {
+            iframeDoc.defaultView?.scrollBy(deltaX, deltaY);
+          }
+
+          isUserScrollingRef.current = true;
+          if (userScrollDebounceRef.current) clearTimeout(userScrollDebounceRef.current);
+          userScrollDebounceRef.current = setTimeout(() => {
+            isUserScrollingRef.current = false;
+            const lastScroll = lastDroppedScrollEventRef.current;
+            if (lastScroll && replayerRef.current) {
+              try {
+                replayerRef.current.addEvent(lastScroll);
+              } catch (_) {}
+              lastDroppedScrollEventRef.current = null;
+            }
+          }, 500);
+
+          pendingScrollDelta.current.deltaX += deltaX;
+          pendingScrollDelta.current.deltaY += deltaY;
+
+          const now = performance.now();
+          if (now - lastScrollEmitTime.current < 50) return;
+          lastScrollEmitTime.current = now;
+
+          const accX = pendingScrollDelta.current.deltaX;
+          const accY = pendingScrollDelta.current.deltaY;
+          pendingScrollDelta.current = { deltaX: 0, deltaY: 0 };
+
           if (socket) {
-            socket.emit("dom:scroll", {
-              deltaX,
-              deltaY,
-            });
+            socket.emit("dom:scroll", { deltaX: accX, deltaY: accY });
           }
           notifyLastAction("scroll");
         }
