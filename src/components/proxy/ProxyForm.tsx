@@ -8,8 +8,6 @@ import {
     FormControlLabel,
     Box,
     Typography,
-    Tabs,
-    Tab,
     Table,
     TableContainer,
     TableHead,
@@ -35,7 +33,6 @@ const ProxyForm: React.FC = () => {
         username: '',
         password: '',
     });
-    const [tabIndex, setTabIndex] = useState(0);
     const [isProxyConfigured, setIsProxyConfigured] = useState(false);
     const [proxy, setProxy] = useState({ proxy_url: '', auth: false });
 
@@ -100,10 +97,6 @@ const ProxyForm: React.FC = () => {
         }
     };
 
-    const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-        setTabIndex(newValue);
-    };
-
     const testProxy = async () => {
         await testProxyConfig().then((response) => {
             if (response.success) {
@@ -160,13 +153,9 @@ const ProxyForm: React.FC = () => {
                 <Typography variant="h6" gutterBottom component="div">
                     {t('proxy.title')}
                 </Typography>
-                <Tabs value={tabIndex} onChange={handleTabChange} sx={{ mb: 2 }}>
-                    <Tab label={t('proxy.tab_standard')} />
-                </Tabs>
-
-                {tabIndex === 0 && (
+                {
                     isProxyConfigured ? (
-                        <Box sx={{ width: '100%', mt: 1 }}>
+                        <Box sx={{ width: '100%', mt: 3 }}>
                             <TableContainer component={Paper} sx={{ mb: 2 }}>
                                 <Table>
                                     <TableHead>
@@ -191,7 +180,7 @@ const ProxyForm: React.FC = () => {
                             </Button>
                         </Box>
                     ) : (
-                        <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
+                        <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%', mt: 3 }}>
                             <Box sx={{ mb: 2 }}>
                                 <TextField
                                     label={t('proxy.server_url')}
@@ -253,15 +242,16 @@ const ProxyForm: React.FC = () => {
                                 {t('proxy.add_proxy')}
                             </Button>
                         </Box>
-                    ))}
+                   )}
             </Box>
          
             <Box sx={{
                 flex: 1,
                 minWidth: 0,
-                maxWidth: 600
+                maxWidth: 600,
+                mt: 4
             }}>
-                <Alert severity="info" sx={{ height: 'auto', minHeight: 250 }}>
+                <Alert severity="info" sx={{ height: 'auto', minHeight: 255 }}>
                     <AlertTitle>{t('proxy.alert.title')}</AlertTitle>
                     <br />
                     <b>{t('proxy.alert.right_way')}</b>
