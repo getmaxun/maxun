@@ -493,20 +493,27 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string, isSDK:
             };
         }
 
-        const proxyConfig = await getDecryptedProxyConfig(userId);
         let proxyOptions: any = {};
 
-        if (proxyConfig.proxy_url) {
+        if ((recording as any).proxy) {
             proxyOptions = {
-                server: proxyConfig.proxy_url,
-                ...(proxyConfig.proxy_username && proxyConfig.proxy_password && {
-                    username: proxyConfig.proxy_username,
-                    password: proxyConfig.proxy_password,
-                }),
+                server: (recording as any).proxy,
             };
+        } else {
+            const proxyConfig = await getDecryptedProxyConfig(userId);
+
+            if (proxyConfig.proxy_url) {
+                proxyOptions = {
+                    server: proxyConfig.proxy_url,
+                    ...(proxyConfig.proxy_username && proxyConfig.proxy_password && {
+                        username: proxyConfig.proxy_username,
+                        password: proxyConfig.proxy_password,
+                    }),
+                };
+            }
         }
 
-        const browserId = createRemoteBrowserForRun(userId);
+        const browserId = createRemoteBrowserForRun(userId, proxyOptions);
 
         const runId = uuid();
 
@@ -543,7 +550,7 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string, isSDK:
                 runByAPI: plainRun.runByAPI || false,
                 browserId: plainRun.browserId
             };
-            
+
             serverIo.of('/queued-run').to(`user-${userId}`).emit('run-started', runStartedData);
             logger.log('info', `API run started notification sent for run: ${plainRun.runId} to user-${userId}`);
         } catch (socketError: any) {
