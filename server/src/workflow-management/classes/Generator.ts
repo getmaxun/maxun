@@ -1006,6 +1006,10 @@ export class WorkflowGenerator {
         }
       } else {
         const trimmedFileName = fileName.trim();
+        if (!trimmedFileName) {
+          this.socket.emit('fileSaved', { actionType: 'error' });
+          return;
+        }
         const existingRobot = await Robot.findOne({ where: { userId, 'recording_meta.name': trimmedFileName } });
         if (existingRobot) {
           this.socket.emit('fileSaved', { actionType: 'duplicate_name' });
