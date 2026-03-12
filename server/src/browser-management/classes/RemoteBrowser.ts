@@ -369,22 +369,18 @@ export class RemoteBrowser {
      * Apply modern fingerprint-suite injection
      */
     private async applyEnhancedFingerprinting(context: BrowserContext): Promise<void> {
-      try {
-        try {
-          const fingerprintGenerator = new FingerprintGenerator();
-          const fingerprint = fingerprintGenerator.getFingerprint();
-          const fingerprintInjector = new FingerprintInjector();
+  try {
+    const fingerprintGenerator = new FingerprintGenerator();
+    const fingerprint = fingerprintGenerator.getFingerprint();
+    const fingerprintInjector = new FingerprintInjector();
 
-          await fingerprintInjector.attachFingerprintToPlaywright(context as any, fingerprint);
+    await fingerprintInjector.attachFingerprintToPlaywright(context as any, fingerprint);
 
-          logger.info("Enhanced fingerprinting applied successfully");
-        } catch (fingerprintError: any) {
-          logger.warn(`Modern fingerprint injection failed: ${fingerprintError.message}. Using existing protection.`);
-        }
-      } catch (error: any) {
-        logger.error(`Enhanced fingerprinting failed: ${error.message}`);
-      }
-    }
+    logger.info("Enhanced fingerprinting applied successfully");
+  } catch (fingerprintError: any) {
+    logger.warn(`Modern fingerprint injection failed: ${fingerprintError.message}. Using existing protection.`);
+  }
+}
 
     /**
      * An asynchronous constructor for asynchronously initialized properties.
