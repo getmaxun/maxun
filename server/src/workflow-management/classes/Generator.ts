@@ -81,9 +81,10 @@ export class WorkflowGenerator {
    * @param socket The socket used to communicate with the client.
    * @constructor
    */
-  public constructor(socket: Socket, poolId: string) {
+  constructor(socket: Socket, poolId: string, userId: string) {
     this.socket = socket;
     this.poolId = poolId;
+    this.userId = userId;
     this.registerEventHandlers(socket);
     this.initializeSocketListeners();
     this.initializeDOMListeners();

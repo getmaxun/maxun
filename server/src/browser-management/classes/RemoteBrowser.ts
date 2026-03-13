@@ -120,7 +120,7 @@ export class RemoteBrowser {
         this.socket = socket;
         this.userId = userId;
         this.interpreter = new WorkflowInterpreter(socket);
-        this.generator = new WorkflowGenerator(socket, poolId);
+        this.generator = new WorkflowGenerator(socket, poolId, userId);
         this.isRecordingMode = isRecordingMode;
     }
 
