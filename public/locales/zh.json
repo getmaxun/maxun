@@ -294,7 +294,8 @@
     "notifications": {
       "terminated": "当前录制已终止",
       "environment_reset": "浏览器环境已重置",
-      "reset_successful": "已成功重置所有捕获并返回初始状态"
+      "reset_successful": "已成功重置所有捕获并返回初始状态",
+      "timeout_discarded": "录制会话在10分钟后超时并自动丢弃。"
     }
   },
   "interpretation_log": {

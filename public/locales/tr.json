@@ -293,7 +293,8 @@
     "notifications": {
       "terminated": "Kayıt sonlandırıldı",
       "environment_reset": "Tarayıcı ortamı sıfırlandı",
-      "reset_successful": "Yakalamalar sıfırlandı ve başlangıç durumuna dönüldü"
+      "reset_successful": "Yakalamalar sıfırlandı ve başlangıç durumuna dönüldü",
+      "timeout_discarded": "Kayıt oturumu 10 dakika sonra zaman aşımına uğradı ve otomatik olarak atıldı."
     }
   },
   "interpretation_log": {
