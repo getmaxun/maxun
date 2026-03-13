@@ -1523,31 +1523,32 @@ router.post("/robots/:id/duplicate", requireAPIKey, async (req: Request, res: Re
         const currentTimestamp = new Date().toLocaleString();
 
         const newRobot = await Robot.create({
-            id: uuid(),
-            userId: originalRobot.userId,
-            recording_meta: {
-                ...originalRobot.recording_meta,
-                id: uuid(),
-                name: `${originalRobot.recording_meta.name} (${lastWord})`,
-                url: targetUrl,
-                createdAt: currentTimestamp,
-                updatedAt: currentTimestamp,
-            },
-            recording: { ...originalRobot.recording, workflow },
-            google_sheet_email: null,
-            google_sheet_name: null,
-            google_sheet_id: null,
-            google_access_token: null,
-            google_refresh_token: null,
-            airtable_base_id: null,
-            airtable_base_name: null,
-            airtable_table_name: null,
-            airtable_table_id: null,
-            airtable_access_token: null,
-            airtable_refresh_token: null,
-            webhooks: null,
-            schedule: null,
-        });
+    id: uuid(),
+    userId: originalRobot.userId,
+    recording_meta: {
+        ...originalRobot.recording_meta,
+        id: uuid(),
+        name: `${originalRobot.recording_meta.name} (${lastWord})`,
+        url: targetUrl,
+        createdAt: currentTimestamp,
+        updatedAt: currentTimestamp,
+    },
+    recording: { ...originalRobot.recording, workflow },
+    proxy: originalRobot.proxy,
+    google_sheet_email: null,
+    google_sheet_name: null,
+    google_sheet_id: null,
+    google_access_token: null,
+    google_refresh_token: null,
+    airtable_base_id: null,
+    airtable_base_name: null,
+    airtable_table_name: null,
+    airtable_table_id: null,
+    airtable_access_token: null,
+    airtable_refresh_token: null,
+    webhooks: null,
+    schedule: null,
+});
 
         logger.log('info', `Robot with ID ${id} duplicated successfully as ${newRobot.id}.`);
 

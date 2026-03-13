@@ -419,6 +419,7 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
         formats: formats,
       },
       recording: { workflow: [] },
+      proxy: null,
       google_sheet_email: null,
       google_sheet_name: null,
       google_sheet_id: null,
@@ -531,6 +532,7 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
       google_sheet_id: null,
       google_access_token: null,
       google_refresh_token: null,
+      proxy: null,
       schedule: null,
     });
 
@@ -674,6 +676,7 @@ router.post('/recordings/:id/duplicate', requireSignIn, async (req: Authenticate
       airtable_refresh_token: null,
       webhooks: null,
       schedule: null,
+      proxy: null,
     });
 
     logger.log('info', `Robot with ID ${id} duplicated successfully as ${newRobot.id}.`);
@@ -1463,7 +1466,9 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
       airtable_access_token: null,
       airtable_refresh_token: null,
       schedule: null,
-      webhooks: null
+      webhooks: null,
+      proxy: null,
+
     });
 
     logger.log('info', `Crawl robot created with id: ${newRobot.id}`);
@@ -1550,7 +1555,8 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
       airtable_access_token: null,
       airtable_refresh_token: null,
       schedule: null,
-      webhooks: null
+      webhooks: null,
+      proxy: null,
     });
 
     logger.log('info', `Search robot created with id: ${newRobot.id}`);

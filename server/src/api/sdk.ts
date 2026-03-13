@@ -947,6 +947,7 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
         capture("maxun-oss-llm-robot-created", {
             robot_meta: robot.recording_meta,
             recording: robot.recording,
+            proxy: null,
             prompt: prompt
         });
 

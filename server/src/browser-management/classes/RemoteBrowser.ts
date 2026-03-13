@@ -427,8 +427,8 @@ export class RemoteBrowser {
               if (proxyOptions?.server) {
                 contextOptions.proxy = {
                   server: proxyOptions.server,
-                  username: proxyOptions.username ? proxyOptions.username : undefined,
-                  password: proxyOptions.password ? proxyOptions.password : undefined,
+                  username: proxyOptions.username,
+                  password: proxyOptions.password,
                 };
               }
 

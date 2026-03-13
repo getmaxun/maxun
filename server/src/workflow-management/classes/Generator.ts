@@ -71,6 +71,8 @@ export class WorkflowGenerator {
 
   private poolId: string | null = null;
 
+  private userId: string = '';
+
   private pageCloseListeners: Map<Page, () => void> = new Map();
 
   /**
@@ -1016,6 +1018,7 @@ export class WorkflowGenerator {
           userId,
           recording_meta: this.recordingMeta,
           recording: recording,
+          proxy: null,
         });
         capture(
           'maxun-oss-robot-created',
@@ -1132,7 +1135,7 @@ export class WorkflowGenerator {
    */
   public notifyUrlChange = (url: string) => {
     if (this.socket) {
-      this.socket.emit('urlChanged', url);
+      this.socket.emit('urlChanged', { url, userId: this.userId })   
     }
   }
 
