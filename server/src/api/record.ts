@@ -493,20 +493,27 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string, isSDK:
             };
         }
 
-        const proxyConfig = await getDecryptedProxyConfig(userId);
         let proxyOptions: any = {};
 
-        if (proxyConfig.proxy_url) {
+        if ((recording as any).proxy) {
             proxyOptions = {
-                server: proxyConfig.proxy_url,
-                ...(proxyConfig.proxy_username && proxyConfig.proxy_password && {
-                    username: proxyConfig.proxy_username,
-                    password: proxyConfig.proxy_password,
-                }),
+                server: (recording as any).proxy,
             };
+        } else {
+            const proxyConfig = await getDecryptedProxyConfig(userId);
+
+            if (proxyConfig.proxy_url) {
+                proxyOptions = {
+                    server: proxyConfig.proxy_url,
+                    ...(proxyConfig.proxy_username && proxyConfig.proxy_password && {
+                        username: proxyConfig.proxy_username,
+                        password: proxyConfig.proxy_password,
+                    }),
+                };
+            }
         }
 
-        const browserId = createRemoteBrowserForRun(userId);
+        const browserId = createRemoteBrowserForRun(userId, proxyOptions);
 
         const runId = uuid();
 
@@ -543,7 +550,7 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string, isSDK:
                 runByAPI: plainRun.runByAPI || false,
                 browserId: plainRun.browserId
             };
-            
+
             serverIo.of('/queued-run').to(`user-${userId}`).emit('run-started', runStartedData);
             logger.log('info', `API run started notification sent for run: ${plainRun.runId} to user-${userId}`);
         } catch (socketError: any) {
@@ -1516,31 +1523,32 @@ router.post("/robots/:id/duplicate", requireAPIKey, async (req: Request, res: Re
         const currentTimestamp = new Date().toLocaleString();
 
         const newRobot = await Robot.create({
-            id: uuid(),
-            userId: originalRobot.userId,
-            recording_meta: {
-                ...originalRobot.recording_meta,
-                id: uuid(),
-                name: `${originalRobot.recording_meta.name} (${lastWord})`,
-                url: targetUrl,
-                createdAt: currentTimestamp,
-                updatedAt: currentTimestamp,
-            },
-            recording: { ...originalRobot.recording, workflow },
-            google_sheet_email: null,
-            google_sheet_name: null,
-            google_sheet_id: null,
-            google_access_token: null,
-            google_refresh_token: null,
-            airtable_base_id: null,
-            airtable_base_name: null,
-            airtable_table_name: null,
-            airtable_table_id: null,
-            airtable_access_token: null,
-            airtable_refresh_token: null,
-            webhooks: null,
-            schedule: null,
-        });
+    id: uuid(),
+    userId: originalRobot.userId,
+    recording_meta: {
+        ...originalRobot.recording_meta,
+        id: uuid(),
+        name: `${originalRobot.recording_meta.name} (${lastWord})`,
+        url: targetUrl,
+        createdAt: currentTimestamp,
+        updatedAt: currentTimestamp,
+    },
+    recording: { ...originalRobot.recording, workflow },
+    proxy: originalRobot.proxy,
+    google_sheet_email: null,
+    google_sheet_name: null,
+    google_sheet_id: null,
+    google_access_token: null,
+    google_refresh_token: null,
+    airtable_base_id: null,
+    airtable_base_name: null,
+    airtable_table_name: null,
+    airtable_table_id: null,
+    airtable_access_token: null,
+    airtable_refresh_token: null,
+    webhooks: null,
+    schedule: null,
+});
 
         logger.log('info', `Robot with ID ${id} duplicated successfully as ${newRobot.id}.`);
 

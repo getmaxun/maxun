@@ -103,6 +103,7 @@ export const updateRecording = async (id: string, data: {
   credentials?: Credentials; 
   targetUrl?: string;
   workflow?: any[];
+  proxy?: string | null;
 }): Promise<boolean> => {
   try {
     const response = await axios.put(`${apiUrl}/storage/recordings/${id}`, data);

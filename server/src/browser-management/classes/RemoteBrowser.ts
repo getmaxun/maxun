@@ -12,7 +12,6 @@ import { readFileSync } from "fs";
 import { InterpreterSettings } from "../../types";
 import { WorkflowGenerator } from "../../workflow-management/classes/Generator";
 import { WorkflowInterpreter } from "../../workflow-management/classes/Interpreter";
-import { getDecryptedProxyConfig } from '../../routes/proxy';
 import { getInjectableScript } from 'idcac-playwright';
 import { FingerprintInjector } from "fingerprint-injector";
 import { FingerprintGenerator } from "fingerprint-generator";
@@ -119,57 +118,9 @@ export class RemoteBrowser {
         this.socket = socket;
         this.userId = userId;
         this.interpreter = new WorkflowInterpreter(socket);
-        this.generator = new WorkflowGenerator(socket, poolId);
+        this.generator = new WorkflowGenerator(socket, poolId, userId);
         this.isRecordingMode = isRecordingMode;
     }
-
-    // private initializeMemoryManagement(): void {
-    //   this.memoryManagementInterval = setInterval(() => {
-    //     const memoryUsage = process.memoryUsage();
-    //     const heapUsageRatio = memoryUsage.heapUsed / MEMORY_CONFIG.maxHeapSize;
-
-    //     if (heapUsageRatio > MEMORY_CONFIG.heapUsageThreshold * 1.2) {
-    //       logger.warn(
-    //         "Critical memory pressure detected, triggering emergency cleanup"
-    //       );
-    //       this.performMemoryCleanup();
-    //     } else if (heapUsageRatio > MEMORY_CONFIG.heapUsageThreshold) {
-    //       logger.warn("High memory usage detected, triggering cleanup");
-
-    //       if (
-    //         global.gc &&
-    //         heapUsageRatio > MEMORY_CONFIG.heapUsageThreshold * 1.1
-    //       ) {
-    //         global.gc();
-    //       }
-    //     }
-    //   }, MEMORY_CONFIG.gcInterval);
-    // }
-
-    // private async performMemoryCleanup(): Promise<void> {
-    //   if (global.gc) {
-    //     try {
-    //       global.gc();
-    //       logger.info("Garbage collection requested");
-    //     } catch (error) {
-    //       logger.error("Error during garbage collection:", error);
-    //     }
-    //   }
-
-    //   if (this.currentPage) {
-    //     try {
-    //       await new Promise((resolve) => setTimeout(resolve, 500));
-    //       logger.info("CDP session reset completed");
-    //     } catch (error) {
-    //       logger.error("Error resetting CDP session:", error);
-    //     }
-    //   }
-
-    //   this.socket.emit("memory-cleanup", {
-    //     userId: this.userId,
-    //     timestamp: Date.now(),
-    //   });
-    // }
 
     /**
      * Normalizes URLs to prevent navigation loops while maintaining consistent format
@@ -398,26 +349,22 @@ export class RemoteBrowser {
         return userAgents[Math.floor(Math.random() * userAgents.length)];
     }
 
-  /**
- * Apply modern fingerprint-suite injection
- */
-  private async applyEnhancedFingerprinting(context: BrowserContext): Promise<void> {
-    try {
-      try {
-        const fingerprintGenerator = new FingerprintGenerator();
-        const fingerprint = fingerprintGenerator.getFingerprint();
-        const fingerprintInjector = new FingerprintInjector();
+    /**
+     * Apply modern fingerprint-suite injection
+     */
+    private async applyEnhancedFingerprinting(context: BrowserContext): Promise<void> {
+  try {
+    const fingerprintGenerator = new FingerprintGenerator();
+    const fingerprint = fingerprintGenerator.getFingerprint();
+    const fingerprintInjector = new FingerprintInjector();
 
-        await fingerprintInjector.attachFingerprintToPlaywright(context as any, fingerprint);
+    await fingerprintInjector.attachFingerprintToPlaywright(context as any, fingerprint);
 
-        logger.info("Enhanced fingerprinting applied successfully");
-      } catch (fingerprintError: any) {
-        logger.warn(`Modern fingerprint injection failed: ${fingerprintError.message}. Using existing protection.`);
-      }
-    } catch (error: any) {
-      logger.error(`Enhanced fingerprinting failed: ${error.message}`);
-    }
+    logger.info("Enhanced fingerprinting applied successfully");
+  } catch (fingerprintError: any) {
+    logger.warn(`Modern fingerprint injection failed: ${fingerprintError.message}. Using existing protection.`);
   }
+}
 
     /**
      * An asynchronous constructor for asynchronously initialized properties.
@@ -425,7 +372,10 @@ export class RemoteBrowser {
      * @param options remote browser options to be used when launching the browser
      * @returns {Promise<void>}
      */
-    public initialize = async (userId: string): Promise<void> => {
+    public initialize = async (
+        userId: string,
+        proxyOptions?: { server: string; username?: string; password?: string }
+    ): Promise<void> => {
         const MAX_RETRIES = 3;
         const OVERALL_INIT_TIMEOUT = 120000;
         let retryCount = 0;
@@ -448,40 +398,21 @@ export class RemoteBrowser {
 
               this.emitLoadingProgress(20, 0);
 
-              const proxyConfig = await getDecryptedProxyConfig(userId);
-              let proxyOptions: { server: string, username?: string, password?: string } = { server: '' };
-
-              if (proxyConfig.proxy_url) {
-                proxyOptions = {
-                  server: proxyConfig.proxy_url,
-                  ...(proxyConfig.proxy_username && proxyConfig.proxy_password && {
-                    username: proxyConfig.proxy_username,
-                    password: proxyConfig.proxy_password,
-                  }),
-                };
-              }
-
               const contextOptions: any = {
-                // viewport: { height: 400, width: 900 },
-                // recordVideo: { dir: 'videos/' }
-                // Force reduced motion to prevent animation issues
                 reducedMotion: 'reduce',
-                // Force JavaScript to be enabled
                 javaScriptEnabled: true,
-                // Set a reasonable timeout
                 timeout: 50000,
-                // Disable hardware acceleration
                 forcedColors: 'none',
                 isMobile: false,
                 hasTouch: false,
                 userAgent: this.getUserAgent(),
               };
 
-              if (proxyOptions.server) {
+              if (proxyOptions?.server) {
                 contextOptions.proxy = {
                   server: proxyOptions.server,
-                  username: proxyOptions.username ? proxyOptions.username : undefined,
-                  password: proxyOptions.password ? proxyOptions.password : undefined,
+                  username: proxyOptions.username,
+                  password: proxyOptions.password,
                 };
               }
 
@@ -704,16 +635,6 @@ export class RemoteBrowser {
     public async switchOff(): Promise<void> {
       this.isDOMStreamingActive = false;
 
-      // if (this.memoryCleanupInterval) {
-      //   clearInterval(this.memoryCleanupInterval);
-      //   this.memoryCleanupInterval = null;
-      // }
-
-      // if (this.memoryManagementInterval) {
-      //   clearInterval(this.memoryManagementInterval);
-      //   this.memoryManagementInterval = null;
-      // }
-
       this.removeAllSocketListeners();
 
       try {
@@ -834,7 +755,6 @@ export class RemoteBrowser {
             const workflow = this.generator.AddGeneratedFlags(this.generator.getWorkflowFile());
             await this.initializeNewPage();
             if (this.currentPage) {
-                // this.currentPage.setViewportSize({ height: 400, width: 900 });
                 const params = this.generator.getParams();
                 if (params) {
                     this.interpreterSettings.params = params.reduce((acc, param) => {
@@ -851,7 +771,6 @@ export class RemoteBrowser {
                     (newPage: Page) => this.currentPage = newPage,
                     this.interpreterSettings
                 );
-                // clear the active index from generator
                 this.generator.clearLastIndex();
             } else {
                 logger.log('error', 'Could not get a new page, returned undefined');
@@ -883,10 +802,8 @@ export class RemoteBrowser {
 
             await this.setupPageEventListeners(this.currentPage);
 
-            //await this.currentPage.setViewportSize({ height: 400, width: 900 })
             this.client = await this.currentPage.context().newCDPSession(this.currentPage);
-           // Include userId in the URL change event
-            this.socket.emit('urlChanged', { 
+            this.socket.emit('urlChanged', {
                 url: this.currentPage.url(),
                 userId: this.userId
             });
