@@ -350,14 +350,23 @@ const handleRefresh = async (activeBrowser: RemoteBrowser, page: Page) => {
             return;
         }
 
-        await page.reload();
-        logger.log("debug", `Page refreshed.`);
+        logger.log("debug", "Refreshing page...");
+
+        await page.reload({
+            waitUntil: "domcontentloaded",
+            timeout: 30000,
+        });
+
+        // small stabilization delay like changeUrl
+        await page.waitForTimeout(500);
+
+        logger.log("debug", `Page refreshed successfully.`);
+
     } catch (e) {
         const { message } = e as Error;
         logger.log("warn", `Error handling refresh event: ${message}`);
     }
 };
-
 /**
  * A wrapper function for handling the go back event.
  * @param socket The socket connection

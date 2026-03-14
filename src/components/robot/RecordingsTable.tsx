@@ -32,7 +32,8 @@ import {
   Settings,
   Power,
   MoreHoriz,
-  Refresh
+  Refresh,
+  ContentCopy,
 } from "@mui/icons-material";
 import { useGlobalInfoStore, useCachedRecordings } from "../../context/globalInfo";
 import { checkRunsForRecording, deleteRecordingFromStorage } from "../../api/storage";
@@ -72,6 +73,7 @@ interface RecordingsTableProps {
   handleIntegrateRecording: (id: string, fileName: string, params: string[]) => void;
   handleSettingsRecording: (id: string, fileName: string, params: string[]) => void;
   handleEditRobot: (id: string, name: string, params: string[]) => void;
+  handleDuplicateRobot: (id: string, name: string, params: string[]) => void;
 }
 
 const LoadingRobotRow = memo(({ row, columns }: any) => {
@@ -147,8 +149,9 @@ const TableRowMemoized = memo(({ row, columns, handlers }: any) => {
               return (
                 <MemoizedTableCell key={column.id} align={column.align}>
                   <MemoizedOptionsButton
-                    handleRetrain={() =>handlers.handleRetrainRobot(row.id, row.name)}
+                    handleRetrain={() => handlers.handleRetrainRobot(row.id, row.name)}
                     handleEdit={() => handlers.handleEditRobot(row.id, row.name, row.params || [])}
+                    handleDuplicate={() => handlers.handleDuplicateRobot(row.id, row.name, row.params || [])}
                     handleDelete={() => handlers.handleDelete(row.id)}
                     robotType={row.type}
                   />
@@ -177,6 +180,7 @@ export const RecordingsTable = ({
   handleIntegrateRecording,
   handleSettingsRecording,
   handleEditRobot,
+  handleDuplicateRobot,
   }: RecordingsTableProps) => {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -499,9 +503,10 @@ export const RecordingsTable = ({
     handleIntegrateRecording,
     handleSettingsRecording,
     handleEditRobot,
+    handleDuplicateRobot,
     handleRetrainRobot,
     handleDelete: async (id: string) => openDeleteConfirm(id)
-  }), [handleRunRecording, handleScheduleRecording, handleIntegrateRecording, handleSettingsRecording, handleEditRobot, handleRetrainRobot, notify, t, refetch]);
+  }), [handleRunRecording, handleScheduleRecording, handleIntegrateRecording, handleSettingsRecording, handleEditRobot, handleDuplicateRobot, handleRetrainRobot, notify, t, refetch]);
 
   return (
     <React.Fragment>
@@ -768,11 +773,12 @@ const SettingsButton = ({ handleSettings }: SettingsButtonProps) => {
 interface OptionsButtonProps {
   handleRetrain: () => void;
   handleEdit: () => void;
+  handleDuplicate: () => void;
   handleDelete: () => void;
   robotType: string;
 }
 
-const OptionsButton = ({ handleRetrain, handleEdit, handleDelete, robotType }: OptionsButtonProps) => {
+const OptionsButton = ({ handleRetrain, handleEdit, handleDuplicate, handleDelete, robotType }: OptionsButtonProps) => {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -812,6 +818,13 @@ const OptionsButton = ({ handleRetrain, handleEdit, handleDelete, robotType }: O
           <ListItemIcon><Edit fontSize="small" /></ListItemIcon>
           <ListItemText>Edit</ListItemText>
         </MenuItem>
+
+        {robotType === 'extract' && (
+          <MenuItem onClick={() => { handleDuplicate(); handleClose(); }}>
+            <ListItemIcon><ContentCopy fontSize="small" /></ListItemIcon>
+            <ListItemText>Duplicate</ListItemText>
+          </MenuItem>
+        )}
 
         <MenuItem onClick={() => { handleDelete(); handleClose(); }}>
           <ListItemIcon><DeleteForever fontSize="small" /></ListItemIcon>
