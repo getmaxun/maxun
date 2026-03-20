@@ -17,7 +17,7 @@ import {
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { useGlobalInfoStore } from "../../../context/globalInfo";
-import { getStoredRecording, updateRecording } from "../../../api/storage";
+import { getStoredRecording,  getStoredRecordings, updateRecording } from "../../../api/storage";
 import { WhereWhatPair } from "maxun-core";
 import { RobotConfigPage } from "./RobotConfigPage";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -967,6 +967,21 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
 
   const handleSave = async () => {
     if (!robot) return;
+
+    if (robot.recording_meta.robotType === 'scrape' && scrapeFormats.length === 0) {
+      notify("error", "Please select at least one output format for the scrape robot.");
+      return;
+    }
+
+    if (robot.recording_meta.robotType === 'crawl' && (crawlConfig.outputFormats || []).length === 0) {
+      notify("error", "Please select at least one output format for the crawl robot.");
+      return;
+    }
+
+    if (robot.recording_meta.robotType === 'search' && searchConfig.mode === 'scrape' && (searchConfig.outputFormats || []).length === 0) {
+      notify("error", "Please select at least one output format for the search robot.");
+      return;
+    }
 
     setIsLoading(true);
     try {
