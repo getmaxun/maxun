@@ -144,6 +144,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
   const [crawlConfig, setCrawlConfig] = useState<CrawlConfig>({});
   const [searchConfig, setSearchConfig] = useState<SearchConfig>({});
   const [showCrawlAdvanced, setShowCrawlAdvanced] = useState(false);
+  const [scrapeFormats, setScrapeFormats] = useState<string[]>([]);
 
   const isEmailPattern = (value: string): boolean => {
     return value.includes("@");
