@@ -113,6 +113,7 @@ interface CrawlConfig {
   excludePaths?: string[];
   includePaths?: string[];
   respectRobots?: boolean;
+  outputFormats?: string[];
 }
 
 interface SearchConfig {
@@ -121,6 +122,7 @@ interface SearchConfig {
   query?: string;
   filters?: Record<string, any>;
   provider?: string;
+  outputFormats?: string[];
 }
 
 export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
