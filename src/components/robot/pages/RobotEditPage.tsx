@@ -34,6 +34,7 @@ interface RobotMeta {
   url?: string;
   formats?: ('markdown' | 'html' | 'screenshot-visible' | 'screenshot-fullpage')[];
   isLLM?: boolean;
+  robotType?: 'extract' | 'scrape' | 'crawl' | 'search';
 }
 
 interface RobotWorkflow {
