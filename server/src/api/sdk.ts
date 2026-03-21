@@ -17,6 +17,12 @@ import { WorkflowEnricher } from "../sdk/workflowEnricher";
 import { cancelScheduledWorkflow, scheduleWorkflow } from '../storage/schedule';
 import { computeNextRun } from "../utils/schedule";
 import moment from 'moment-timezone';
+import {
+    DEFAULT_OUTPUT_FORMATS,
+    parseOutputFormats,
+    OutputFormat,
+    SCRAPE_OUTPUT_FORMAT_OPTIONS,
+} from '../constants/output-formats';
 
 const router = Router();
 
@@ -66,12 +72,12 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
             });
         }
 
-        const robotType = (workflowFile.meta as any).type || (workflowFile.meta as any).robotType || 'extract';
+        const type = (workflowFile.meta as any).type || (workflowFile.meta as any).robotType || 'extract';
 
         let enrichedWorkflow: any[] = [];
         let extractedUrl: string | undefined;
 
-        if (robotType === 'scrape') {
+        if (type === 'scrape') {
             enrichedWorkflow = [];
             extractedUrl = (workflowFile.meta as any).url;
 
@@ -96,6 +102,39 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
             extractedUrl = enrichResult.url;
         }
 
+        const rawFormats = (workflowFile.meta as any).formats;
+        const { validFormats, invalidFormats } = parseOutputFormats(
+            rawFormats,
+            type === 'scrape' ? SCRAPE_OUTPUT_FORMAT_OPTIONS : undefined
+        );
+
+        if (invalidFormats.length > 0) {
+            return res.status(400).json({
+                error: `Invalid formats: ${invalidFormats.map(String).join(', ')}`
+            });
+        }
+
+        let normalizedFormats: OutputFormat[] = validFormats;
+
+        if (type === 'search') {
+            const searchAction = enrichedWorkflow
+                .flatMap((pair: any) => pair.what || [])
+                .find((action: any) => action?.action === 'search');
+            const searchMode = searchAction?.args?.[0]?.mode;
+
+            if (searchMode === 'discover') {
+                normalizedFormats = [];
+            } else {
+                normalizedFormats = validFormats.length > 0
+                    ? validFormats
+                    : [...DEFAULT_OUTPUT_FORMATS];
+            }
+        } else if (type === 'crawl' || type === 'scrape') {
+            normalizedFormats = validFormats.length > 0
+                ? validFormats
+                : [...DEFAULT_OUTPUT_FORMATS];
+        }
+
         const robotId = uuid();
         const metaId = uuid();
 
@@ -106,9 +145,9 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
             updatedAt: new Date().toISOString(),
             pairs: enrichedWorkflow.length,
             params: [],
-            type: robotType,
+            type,
             url: extractedUrl,
-            formats: (workflowFile.meta as any).formats || [],
+            formats: normalizedFormats,
             isLLM: (workflowFile.meta as any).isLLM,
         };
 
@@ -838,7 +877,7 @@ router.post("/sdk/robots/:id/duplicate", requireAPIKey, async (req: Authenticate
 router.post("/sdk/crawl", requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
     try {
         const user = req.user;
-        const { url, name, crawlConfig } = req.body;
+        const { url, name, crawlConfig, formats } = req.body;
 
         if (!url || !crawlConfig) {
             return res.status(400).json({
@@ -860,6 +899,17 @@ router.post("/sdk/crawl", requireAPIKey, async (req: AuthenticatedRequest, res: 
             });
         }
 
+        const { validFormats: requestedFormats, invalidFormats } = parseOutputFormats(formats);
+        if (invalidFormats.length > 0) {
+            return res.status(400).json({
+                error: `Invalid formats: ${invalidFormats.map(String).join(', ')}`
+            });
+        }
+
+        const crawlFormats: OutputFormat[] = requestedFormats.length > 0
+            ? requestedFormats
+            : [...DEFAULT_OUTPUT_FORMATS];
+
         const robotName = name || `Crawl Robot - ${new URL(url).hostname}`;
         const robotId = uuid();
         const metaId = uuid();
@@ -876,7 +926,7 @@ router.post("/sdk/crawl", requireAPIKey, async (req: AuthenticatedRequest, res: 
                 params: [],
                 type: 'crawl',
                 url: url,
-                formats: crawlConfig.outputFormats || [],
+                formats: crawlFormats,
             },
             recording: {
                 workflow: [
@@ -942,7 +992,7 @@ router.post("/sdk/crawl", requireAPIKey, async (req: AuthenticatedRequest, res: 
 router.post("/sdk/search", requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
     try {
         const user = req.user;
-        const { name, searchConfig } = req.body;
+        const { name, searchConfig, formats } = req.body;
 
         if (!searchConfig) {
             return res.status(400).json({
@@ -968,6 +1018,17 @@ router.post("/sdk/search", requireAPIKey, async (req: AuthenticatedRequest, res:
             });
         }
 
+        const { validFormats: requestedFormats, invalidFormats } = parseOutputFormats(formats);
+        if (invalidFormats.length > 0) {
+            return res.status(400).json({
+                error: `Invalid formats: ${invalidFormats.map(String).join(', ')}`
+            });
+        }
+
+        const searchFormats: OutputFormat[] = searchConfig.mode === 'discover'
+            ? []
+            : (requestedFormats.length > 0 ? requestedFormats : [...DEFAULT_OUTPUT_FORMATS]);
+
         searchConfig.provider = 'duckduckgo';
 
         if (searchConfig.outputFormats && Array.isArray(searchConfig.outputFormats) && searchConfig.outputFormats.length > 0) {
@@ -989,7 +1050,7 @@ router.post("/sdk/search", requireAPIKey, async (req: AuthenticatedRequest, res:
                 pairs: 1,
                 params: [],
                 type: 'search',
-                formats: searchConfig.outputFormats || [],
+                formats: searchFormats,
             },
             recording: {
                 workflow: [

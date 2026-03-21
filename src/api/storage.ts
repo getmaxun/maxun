@@ -363,7 +363,8 @@ export const createCrawlRobot = async (
     useSitemap: boolean;
     followLinks: boolean;
     respectRobots: boolean;
-  }
+  },
+  formats: string[] = ['markdown']
 ): Promise<any> => {
   try {
     const response = await axios.post(
@@ -372,6 +373,7 @@ export const createCrawlRobot = async (
         url,
         name,
         crawlConfig,
+        formats,
       },
       {
         headers: { 'Content-Type': 'application/json' },
@@ -404,7 +406,8 @@ export const createSearchRobot = async (
       lang?: string;
     };
     mode: 'discover' | 'scrape';
-  }
+  },
+  formats?: string[]
 ): Promise<any> => {
   try {
     const response = await axios.post(
@@ -412,6 +415,7 @@ export const createSearchRobot = async (
       {
         name,
         searchConfig,
+        formats: formats || [],
       },
       {
         headers: { 'Content-Type': 'application/json' },

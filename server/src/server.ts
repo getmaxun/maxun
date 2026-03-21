@@ -90,7 +90,12 @@ export let io = new Server(server, {
   pingInterval: 25000,
   maxHttpBufferSize: 1e8,
   transports: ['websocket', 'polling'],
-  allowEIO3: true
+  allowEIO3: true,
+  cors: {
+    origin: process.env.PUBLIC_URL ? process.env.PUBLIC_URL : 'http://localhost:5173',
+    credentials: true,
+    methods: ['GET', 'POST']
+  }
 });
 
 /**

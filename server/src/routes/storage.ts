@@ -18,6 +18,12 @@ import { pgBossClient } from '../storage/pgboss';
 import { WorkflowEnricher } from '../sdk/workflowEnricher';
 import sequelizeInstance from '../storage/db';
 import { Op } from 'sequelize';
+import {
+  DEFAULT_OUTPUT_FORMATS,
+  parseOutputFormats,
+  SCRAPE_OUTPUT_FORMAT_OPTIONS,
+  OutputFormat,
+} from '../constants/output-formats';
 
 export const router = Router();
 
@@ -428,16 +434,19 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
       return res.status(400).json({ error: 'Invalid URL format' });
     }
 
-    // Validate format
-    const validFormats = ['markdown', 'html', 'screenshot-visible', 'screenshot-fullpage'];
-
     if (!Array.isArray(formats) || formats.length === 0) {
       return res.status(400).json({ error: 'At least one output format must be selected.' });
     }
 
-    const invalid = formats.filter(f => !validFormats.includes(f));
-    if (invalid.length > 0) {
-      return res.status(400).json({ error: `Invalid formats: ${invalid.join(', ')}` });
+    const { validFormats: scrapeFormats, invalidFormats } = parseOutputFormats(
+      formats,
+      SCRAPE_OUTPUT_FORMAT_OPTIONS
+    );
+
+    if (invalidFormats.length > 0) {
+      return res.status(400).json({
+        error: `Invalid formats: ${invalidFormats.map(String).join(', ')}`,
+      });
     }
 
     const robotName = (typeof name === 'string' ? name.trim() : '') || `Markdown Robot - ${new URL(url).hostname}`;
@@ -464,7 +473,7 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
         params: [],
         type: 'scrape',
         url: url,
-        formats: formats,
+        formats: scrapeFormats,
       },
       recording: { workflow: [] },
       google_sheet_email: null,
@@ -1457,7 +1466,7 @@ export async function recoverOrphanedRuns() {
  */
 router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
-    const { url, name, crawlConfig } = req.body;
+    const { url, name, crawlConfig, formats } = req.body;
 
     if (!url || !crawlConfig) {
       return res.status(400).json({ error: 'URL and crawl configuration are required.' });
@@ -1482,6 +1491,17 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
       return res.status(409).json({ error: `A robot with the name "${robotName}" already exists.` });
     }
 
+    const { validFormats: requestedFormats, invalidFormats } = parseOutputFormats(formats);
+    if (invalidFormats.length > 0) {
+      return res.status(400).json({
+        error: `Invalid formats: ${invalidFormats.map(String).join(', ')}`,
+      });
+    }
+
+    const crawlFormats: OutputFormat[] = requestedFormats.length > 0
+      ? requestedFormats
+      : [...DEFAULT_OUTPUT_FORMATS];
+
     const currentTimestamp = new Date().toLocaleString('en-US');
     const robotId = uuid();
 
@@ -1497,6 +1517,7 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
         params: [],
         type: 'crawl',
         url: url,
+        formats: crawlFormats,
       },
       recording: {
         workflow: [
@@ -1578,7 +1599,7 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
  */
 router.post('/recordings/search', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
-    const { searchConfig, name } = req.body;
+    const { searchConfig, name, formats } = req.body;
 
     if (!searchConfig || !searchConfig.query) {
       return res.status(400).json({ error: 'Search configuration with query is required.' });
@@ -1597,6 +1618,22 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
       return res.status(409).json({ error: `A robot with the name "${robotName}" already exists.` });
     }
 
+    const { validFormats: requestedFormats, invalidFormats } = parseOutputFormats(formats);
+    if (invalidFormats.length > 0) {
+      return res.status(400).json({
+        error: `Invalid formats: ${invalidFormats.map(String).join(', ')}`,
+      });
+    }
+
+    let searchFormats: OutputFormat[];
+    if (searchConfig.mode === 'discover') {
+      searchFormats = [];
+    } else {
+      searchFormats = requestedFormats.length > 0
+        ? requestedFormats
+        : [...DEFAULT_OUTPUT_FORMATS];
+    }
+
     const currentTimestamp = new Date().toLocaleString('en-US');
     const robotId = uuid();
 
@@ -1611,6 +1648,7 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
         pairs: 1,
         params: [],
         type: 'search',
+        formats: searchFormats,
       },
       recording: {
         workflow: [

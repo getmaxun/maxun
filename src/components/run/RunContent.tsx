@@ -68,6 +68,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   const [screenshotKeys, setScreenshotKeys] = useState<string[]>([]);
   const [screenshotKeyMap, setScreenshotKeyMap] = useState<Record<string, string>>({});
   const [currentScreenshotIndex, setCurrentScreenshotIndex] = useState<number>(0);
+  const [currentCrawlScreenshotTab, setCurrentCrawlScreenshotTab] = useState<number>(0);
   const [currentSearchScreenshotTab, setCurrentSearchScreenshotTab] = useState<number>(0);
   const [currentSchemaIndex, setCurrentSchemaIndex] = useState<number>(0);
 
@@ -179,9 +180,16 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
         normalizedScreenshotKeys = rawKeys.map((_, index) => `Screenshot ${index + 1}`);
       } else {
         normalizedScreenshotKeys = rawKeys.map((key, index) => {
-          if (key === 'screenshot-visible') {
+          const crawlMatch = key.match(/^crawl-(\d+)-screenshot-(visible|fullpage)$/);
+          if (crawlMatch) {
+            const pageNo = crawlMatch[1];
+            const type = crawlMatch[2] === 'visible' ? 'Visible' : 'Full Page';
+            return `Page ${pageNo} (${type})`;
+          }
+
+          if (key === 'screenshot-visible' || key.includes('screenshot-visible')) {
             return 'Screenshot (Visible)';
-          } else if (key === 'screenshot-fullpage') {
+          } else if (key === 'screenshot-fullpage' || key.includes('screenshot-fullpage')) {
             return 'Screenshot (Full Page)';
           } else if (!key || key.toLowerCase().includes("screenshot")) {
             return `Screenshot ${index + 1}`;
@@ -550,6 +558,30 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     }, 100);
   };
 
+  const resolveScreenshotSrc = (value?: string): string | null => {
+    if (!value || typeof value !== 'string') return null;
+
+    if (value.startsWith('http') || value.startsWith('data:')) {
+      return value;
+    }
+
+    if (row.binaryOutput && row.binaryOutput[value]) {
+      const binaryEntry = row.binaryOutput[value];
+      const binaryData = typeof binaryEntry === 'object' && binaryEntry !== null
+        ? (binaryEntry.data || binaryEntry)
+        : binaryEntry;
+
+      if (typeof binaryData === 'string') {
+        if (binaryData.startsWith('http') || binaryData.startsWith('data:')) {
+          return binaryData;
+        }
+        return `data:image/png;base64,${binaryData}`;
+      }
+    }
+
+    return `data:image/png;base64,${value}`;
+  };
+
   const downloadAllCrawlsAsZip = async (crawlDataArray: any[], zipFilename: string) => {
     const zip = new JSZip();
 
@@ -591,12 +623,22 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
       ];
 
       for (const screenshot of screenshots) {
-        if (screenshot.id && row.binaryOutput && row.binaryOutput[screenshot.id]) {
-          const binaryData = row.binaryOutput[screenshot.id].data;
-          if (binaryData && !binaryData.startsWith('http')) {
-            const base64Data = binaryData.replace(/^data:image\/\w+;base64,/, "");
-            pageFolder.file(screenshot.name, base64Data, { base64: true });
+        const src = resolveScreenshotSrc(screenshot.id);
+        if (!src) continue;
+
+        if (src.startsWith('http')) {
+          try {
+            const response = await fetch(src);
+            if (response.ok) {
+              const blob = await response.blob();
+              pageFolder.file(screenshot.name, blob);
+            }
+          } catch {
+            // Skip screenshot download errors while building ZIP
           }
+        } else if (src.startsWith('data:')) {
+          const base64Data = src.replace(/^data:image\/\w+;base64,/, '');
+          pageFolder.file(screenshot.name, base64Data, { base64: true });
         }
       }
     }
@@ -614,6 +656,113 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     setTimeout(() => {
       URL.revokeObjectURL(url);
     }, 100);
+  };
+
+  const downloadScreenshot = async (label: string, value: string) => {
+    const src = resolveScreenshotSrc(value);
+    if (!src) return;
+    if (typeof src === 'string' && src.startsWith('http')) {
+      const blob = await fetch(src).then(res => res.blob());
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${label}.png`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } else {
+      const link = document.createElement('a');
+      link.href = src as string;
+      link.download = `${label}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  const renderCapturedScreenshotsAccordion = (
+    title: string,
+    tabs: { key: string; label: string; value: string }[],
+    currentIndex: number,
+    setIndex: (idx: number) => void,
+    defaultExpanded: boolean = true
+  ) => {
+    if (tabs.length === 0) return null;
+    const activeIdx = Math.min(currentIndex, tabs.length - 1);
+    const activeTab = tabs[activeIdx >= 0 ? activeIdx : 0];
+    const activeSrc = resolveScreenshotSrc(activeTab?.value);
+    return (
+      <Accordion defaultExpanded={defaultExpanded} sx={{ mb: 2 }}>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Typography variant='h6'>{title}</Typography>
+          </Box>
+        </AccordionSummary>
+        <AccordionDetails>
+          {tabs.length > 1 && (
+            <Box
+              sx={{
+                display: 'flex',
+                overflowX: 'auto',
+                maxWidth: '100%',
+                borderBottom: '1px solid',
+                borderColor: 'divider',
+                mb: 2,
+                '&::-webkit-scrollbar': { height: '8px' },
+                '&::-webkit-scrollbar-thumb': {
+                  backgroundColor: darkMode ? '#555' : '#888',
+                  borderRadius: '4px',
+                },
+              }}
+            >
+              {tabs.map((tab, idx) => (
+                <Box
+                  key={tab.key}
+                  onClick={() => setIndex(idx)}
+                  sx={{
+                    px: 3,
+                    py: 1,
+                    cursor: 'pointer',
+                    backgroundColor:
+                      activeIdx === idx
+                        ? (theme) => theme.palette.mode === 'dark'
+                          ? '#121111ff'
+                          : '#e9ecef'
+                        : 'transparent',
+                    borderBottom: activeIdx === idx ? '3px solid #FF00C3' : 'none',
+                    color: (theme) => theme.palette.mode === 'dark' ? '#fff' : '#000',
+                    flexShrink: 0,
+                  }}
+                >
+                  {tab.label}
+                </Box>
+              ))}
+            </Box>
+          )}
+          <Box sx={{ mt: 1 }}>
+            {activeSrc && (
+              <img
+                src={activeSrc as string}
+                alt={activeTab?.label}
+                style={{
+                  maxWidth: '100%',
+                  height: 'auto',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '4px',
+                }}
+              />
+            )}
+          </Box>
+          <Box sx={{ mt: 2 }}>
+            <Button
+              onClick={() => activeTab && downloadScreenshot(activeTab.label, activeTab.value)}
+              sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
+            >
+              Download Screenshot
+            </Button>
+          </Box>
+        </AccordionDetails>
+      </Accordion>
+    );
   };
 
   const renderDataTable = (
@@ -878,6 +1027,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   const hasScreenshots = row.binaryOutput && Object.keys(row.binaryOutput).length > 0;
   const hasMarkdown = markdownContent.length > 0;
   const hasHTML = htmlContent.length > 0;
+  const hasCrawlPageScreenshots = crawlData.some(group => Array.isArray(group) && group.some((item: any) => item?.screenshotVisible || item?.screenshotFullpage));
+  const hasSearchResultScreenshots = searchData.some((item: any) => item?.screenshotVisible || item?.screenshotFullpage);
+  const showCapturedScreenshotSection = hasScreenshots && !hasCrawlPageScreenshots && !hasSearchResultScreenshots;
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -944,98 +1096,11 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 </Accordion>
               )}
 
-              {hasScreenshots && (
-                <Accordion defaultExpanded sx={{ mb: 2 }}>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Typography variant='h6'>
-                        {t('run_content.captured_screenshot.title', 'Captured Screenshots')}
-                      </Typography>
-                    </Box>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    {screenshotKeys.length > 1 && (
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          borderBottom: '1px solid',
-                          borderColor: 'divider',
-                          mb: 2,
-                        }}
-                      >
-                        {screenshotKeys.map((key, idx) => (
-                          <Box
-                            key={key}
-                            onClick={() => setCurrentScreenshotIndex(idx)}
-                            sx={{
-                              px: 3,
-                              py: 1,
-                              cursor: 'pointer',
-                              backgroundColor:
-                                currentScreenshotIndex === idx
-                                  ? (theme) => theme.palette.mode === 'dark'
-                                    ? '#121111ff'
-                                    : '#e9ecef'
-                                  : 'transparent',
-                              borderBottom: currentScreenshotIndex === idx ? '3px solid #FF00C3' : 'none',
-                              color: (theme) => theme.palette.mode === 'dark' ? '#fff' : '#000',
-                            }}
-                          >
-                            {key}
-                          </Box>
-                        ))}
-                      </Box>
-                    )}
-
-                    <Box sx={{ mt: 1 }}>
-                      {screenshotKeys.length > 0 && (
-                        <img
-                          src={row.binaryOutput[screenshotKeyMap[screenshotKeys[currentScreenshotIndex]]]}
-                          alt={`Screenshot ${screenshotKeys[currentScreenshotIndex]}`}
-                          style={{
-                            maxWidth: '100%',
-                            height: 'auto',
-                            border: '1px solid #e0e0e0',
-                            borderRadius: '4px'
-                          }}
-                        />
-                      )}
-                    </Box>
-                    <Box sx={{ mt: 2 }}>
-                      <Button
-                        onClick={() => {
-                          const key = screenshotKeys[currentScreenshotIndex];
-                          const orig = screenshotKeyMap[key];
-                          const src = row.binaryOutput[orig];
-                          // Use fetch/blob for URL-based screenshots
-                          if (src && typeof src === 'string' && src.startsWith('http')) {
-                            fetch(src)
-                              .then(res => res.blob())
-                              .then(blob => {
-                                const url = window.URL.createObjectURL(blob);
-                                const a = document.createElement('a');
-                                a.href = url;
-                                a.download = `${key}.png`;
-                                a.click();
-                                window.URL.revokeObjectURL(url);
-                              });
-                          } else {
-                            // Fallback for data URIs
-                            const link = document.createElement('a');
-                            link.href = src;
-                            link.download = `${key}.png`;
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                          }
-                        }}
-                        sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
-                      >
-                        Download Screenshot
-                      </Button>
-                    </Box>
-                  </AccordionDetails>
-                </Accordion>
+              {showCapturedScreenshotSection && renderCapturedScreenshotsAccordion(
+                t('run_content.captured_screenshot.title', 'Captured Screenshots'),
+                screenshotKeys.map(key => ({ key, label: key, value: screenshotKeyMap[key] })).filter(tab => tab.value),
+                currentScreenshotIndex,
+                setCurrentScreenshotIndex
               )}
             </>
           ) : (
@@ -1063,7 +1128,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               </Button>
             </>
           ) : (!hasData && !hasScreenshots
-            ? <Typography>{t('run_content.empty_output')}</Typography>
+            ? (row.status === 'failed'
+              ? <Typography color='error'>{t('run_content.failed_no_output', 'Run failed before generating output. Check run logs for details.')}</Typography>
+              : <Typography>{t('run_content.empty_output')}</Typography>)
             : null)}
 
           {hasData && (
@@ -1316,7 +1383,10 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                         return (
                           <Box
                             key={idx}
-                            onClick={() => setCurrentCrawlIndex(idx)}
+                            onClick={() => {
+                              setCurrentCrawlIndex(idx);
+                              setCurrentCrawlScreenshotTab(0);
+                            }}
                             sx={{
                               px: 2,
                               py: 1,
@@ -1534,6 +1604,17 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               </Box>
                             </AccordionDetails>
                           </Accordion>
+                        )}
+
+                        {renderCapturedScreenshotsAccordion(
+                          t('run_content.captured_screenshot.title', 'Captured Screenshots'),
+                          [
+                            ...(crawlData[0][currentCrawlIndex].screenshotVisible ? [{ key: 'visible', label: 'Screenshot (Visible)', value: crawlData[0][currentCrawlIndex].screenshotVisible }] : []),
+                            ...(crawlData[0][currentCrawlIndex].screenshotFullpage ? [{ key: 'fullpage', label: 'Screenshot (Full Page)', value: crawlData[0][currentCrawlIndex].screenshotFullpage }] : []),
+                          ],
+                          currentCrawlScreenshotTab,
+                          setCurrentCrawlScreenshotTab,
+                          false
                         )}
 
                         {(() => {
@@ -1926,90 +2007,15 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               );
                             })()}
 
-                            {(searchData[currentSearchIndex].screenshotVisible || searchData[currentSearchIndex].screenshotFullpage) && (
-                              <Accordion sx={{ mb: 2 }}>
-                                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    <Typography variant='h6'>
-                                      Screenshots
-                                    </Typography>
-                                  </Box>
-                                </AccordionSummary>
-                                <AccordionDetails>
-                                  {(() => {
-                                    const tabs: { key: string; label: string; value: string }[] = [];
-                                    if (searchData[currentSearchIndex].screenshotVisible) 
-                                      tabs.push({ key: 'visible', label: 'Screenshot (Visible)', value: searchData[currentSearchIndex].screenshotVisible });
-                                    if (searchData[currentSearchIndex].screenshotFullpage) 
-                                      tabs.push({ key: 'fullpage', label: 'Screenshot (Full Page)', value: searchData[currentSearchIndex].screenshotFullpage });
-                                    
-                                    // Ensure activeTab is valid for current tabs array
-                                    const activeTab = Math.min(currentSearchScreenshotTab, tabs.length - 1);
-                                    
-                                    const getImageSrc = (val: string) => {
-                                      if (val.startsWith('http')) return val;
-                                      if (row.binaryOutput && row.binaryOutput[val]) {
-                                        const binaryData = row.binaryOutput[val].data || row.binaryOutput[val];
-                                        return typeof binaryData === 'string' && binaryData.startsWith('http') 
-                                          ? binaryData 
-                                          : typeof binaryData === 'string' && binaryData.startsWith('data:')
-                                            ? binaryData
-                                            : `data:image/png;base64,${binaryData}`;
-                                      }
-                                      return `data:image/png;base64,${val}`;
-                                    };
-                                    
-                                    return (
-                                      <>
-                                        {tabs.length > 1 && (
-                                          <Box sx={{ display: 'flex', borderBottom: '1px solid', borderColor: darkMode ? '#2a3441' : '#dee2e6', mb: 2 }}>
-                                            {tabs.map((tab, idx) => (
-                                              <Box 
-                                                key={tab.key} 
-                                                onClick={() => setCurrentSearchScreenshotTab(idx)}
-                                                sx={{
-                                                  px: 3, py: 1, 
-                                                  cursor: 'pointer',
-                                                  backgroundColor: activeTab === idx ? (darkMode ? '#121111ff' : '#e9ecef') : 'transparent',
-                                                  borderBottom: activeTab === idx ? '3px solid #FF00C3' : 'none',
-                                                  color: darkMode ? '#fff' : '#000',
-                                                }}
-                                              >
-                                                {tab.label}
-                                              </Box>
-                                            ))}
-                                          </Box>
-                                        )}
-                                        {tabs.length > 0 && (
-                                          <>
-                                            <img 
-                                              src={getImageSrc(tabs[activeTab >= 0 ? activeTab : 0].value)} 
-                                              alt={tabs[activeTab >= 0 ? activeTab : 0].label}
-                                              style={{ maxWidth: '100%', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)' }} 
-                                            />
-                                            <Box sx={{ mt: 1 }}>
-                                              <Button 
-                                                onClick={() => {
-                                                  const src = getImageSrc(tabs[activeTab >= 0 ? activeTab : 0].value);
-                                                  const link = document.createElement('a');
-                                                  link.href = src;
-                                                  link.download = `${tabs[activeTab >= 0 ? activeTab : 0].label}.png`;
-                                                  document.body.appendChild(link);
-                                                  link.click();
-                                                  document.body.removeChild(link);
-                                                }}
-                                                sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
-                                              >
-                                                Download Screenshot
-                                              </Button>
-                                            </Box>
-                                          </>
-                                        )}
-                                      </>
-                                    );
-                                  })()}
-                                </AccordionDetails>
-                              </Accordion>
+                            {renderCapturedScreenshotsAccordion(
+                              t('run_content.captured_screenshot.title', 'Captured Screenshots'),
+                              [
+                                ...(searchData[currentSearchIndex].screenshotVisible ? [{ key: 'visible', label: 'Screenshot (Visible)', value: searchData[currentSearchIndex].screenshotVisible }] : []),
+                                ...(searchData[currentSearchIndex].screenshotFullpage ? [{ key: 'fullpage', label: 'Screenshot (Full Page)', value: searchData[currentSearchIndex].screenshotFullpage }] : []),
+                              ],
+                              currentSearchScreenshotTab,
+                              setCurrentSearchScreenshotTab,
+                              false
                             )}
 
                             <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
@@ -2142,94 +2148,11 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
             </Box>
           )}
 
-          {hasScreenshots && (
-            <Accordion defaultExpanded sx={{ mb: 2 }}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Typography variant='h6'>
-                    {t('run_content.captured_screenshot.title', 'Captured Screenshots')}
-                  </Typography>
-                </Box>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    mb: 2,
-                  }}
-                >
-                  {screenshotKeys.length > 0 && (
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        borderBottom: '1px solid',
-                        borderColor: 'divider',
-                        mb: 2,
-                      }}
-                    >
-                      {screenshotKeys.map((key, idx) => (
-                        <Box
-                          key={key}
-                          onClick={() => setCurrentScreenshotIndex(idx)}
-                          sx={{
-                            px: 3,
-                            py: 1,
-                            cursor: 'pointer',
-                            backgroundColor:
-                              currentScreenshotIndex === idx
-                                ? (theme) => theme.palette.mode === 'dark'
-                                  ? '#121111ff'
-                                  : '#e9ecef'
-                                : 'transparent',
-                            borderBottom: currentScreenshotIndex === idx ? '3px solid #FF00C3' : 'none',
-                            color: (theme) => theme.palette.mode === 'dark' ? '#fff' : '#000',
-                          }}
-                        >
-                          {key}
-                        </Box>
-                      ))}
-                    </Box>
-                  )}
-                </Box>
-
-                <Box sx={{ mt: 1 }}>
-                  {screenshotKeys.length > 0 && (
-                    <img
-                      src={row.binaryOutput[screenshotKeyMap[screenshotKeys[currentScreenshotIndex]]]}
-                      alt={`Screenshot ${screenshotKeys[currentScreenshotIndex]}`}
-                      style={{
-                        maxWidth: '100%',
-                        height: 'auto',
-                        border: '1px solid #e0e0e0',
-                        borderRadius: '4px'
-                      }}
-                    />
-                  )}
-                </Box>
-                <Box sx={{ mt: 2 }}>
-                  <Button onClick={() => {
-                    const key = screenshotKeys[currentScreenshotIndex];
-                    const orig = screenshotKeyMap[key];
-                    const src = row.binaryOutput[orig];
-                    if (src && src.startsWith && src.startsWith('http')) {
-                      fetch(src).then(res => res.blob()).then(blob => {
-                        const url = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a'); a.href = url; a.download = key + '.png'; a.click();
-                      });
-                    } else {
-                      const link = document.createElement('a');
-                      link.href = src;
-                      link.download = key + '.png';
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                    }
-                  }} sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}>Download Screenshot</Button>
-                </Box>
-              </AccordionDetails>
-            </Accordion>
+          {showCapturedScreenshotSection && renderCapturedScreenshotsAccordion(
+            t('run_content.captured_screenshot.title', 'Captured Screenshots'),
+            screenshotKeys.map(key => ({ key, label: key, value: screenshotKeyMap[key] })).filter(tab => tab.value),
+            currentScreenshotIndex,
+            setCurrentScreenshotIndex
           )}
           </>
           )}
