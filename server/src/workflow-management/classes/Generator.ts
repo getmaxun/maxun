@@ -1004,8 +1004,18 @@ export class WorkflowGenerator {
           logger.log('info', `Robot retrained with id: ${robot.id}`);
         }
       } else {
+        const trimmedFileName = fileName.trim();
+        const allUserRobots = await Robot.findAll({ where: { userId } as any });
+        const nameConflict = allUserRobots.some(
+          (r: any) => r.recording_meta.name.trim().toLowerCase() === trimmedFileName.toLowerCase()
+        );
+        if (nameConflict) {
+          this.socket.emit('fileSaved', { actionType: 'nameExists' });
+          return;
+        }
+
         this.recordingMeta = {
-          name: fileName,
+          name: trimmedFileName,
           id: uuid(),
           createdAt: this.recordingMeta.createdAt || new Date().toLocaleString(),
           pairs: recording.workflow.length,

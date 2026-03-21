@@ -15,6 +15,7 @@ export const RobotDuplicatePage = ({ handleStart }: RobotDuplicatePageProps) => 
   const navigate = useNavigate();
   const location = useLocation();
   const [targetUrl, setTargetUrl] = useState<string>("");
+  const [newName, setNewName] = useState<string>("");
   const [robot, setRobot] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { recordingId, notify, setRerenderRobots } = useGlobalInfoStore();
@@ -34,7 +35,11 @@ export const RobotDuplicatePage = ({ handleStart }: RobotDuplicatePageProps) => 
         url = lastPair?.what?.find((action: any) => action.action === "goto")?.args?.[0];
       }
 
-      if (url) setTargetUrl(url);
+      if (url) {
+        setTargetUrl(url);
+        const lastWord = url.split('/').filter(Boolean).pop() || 'Unnamed';
+        setNewName(`${robot.recording_meta.name} (${lastWord})`);
+      }
     }
   }, [robot]);
 
@@ -57,9 +62,14 @@ export const RobotDuplicatePage = ({ handleStart }: RobotDuplicatePageProps) => 
       return;
     }
 
+    if (!newName.trim()) {
+      notify("error", t("robot_duplication.notifications.name_required"));
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const result = await duplicateRecording(robot.recording_meta.id, targetUrl);
+      const result = await duplicateRecording(robot.recording_meta.id, targetUrl, newName.trim());
 
       if (result) {
         setRerenderRobots(true);
@@ -69,8 +79,8 @@ export const RobotDuplicatePage = ({ handleStart }: RobotDuplicatePageProps) => 
       } else {
         notify("error", t("robot_duplication.notifications.duplicate_error"));
       }
-    } catch (error) {
-      notify("error", t("robot_duplication.notifications.unknown_error"));
+    } catch (error: any) {
+      notify("error", error.message || t("robot_duplication.notifications.unknown_error"));
       console.error("Error duplicating robot:", error);
     } finally {
       setIsLoading(false);
@@ -103,10 +113,24 @@ export const RobotDuplicatePage = ({ handleStart }: RobotDuplicatePageProps) => 
                 <b>{t("robot_duplication.descriptions.warning")}</b>
               </span>
               <TextField
+                label={t("robot_duplication.fields.new_name")}
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                style={{ marginBottom: "20px", marginTop: "30px" }}
+                fullWidth
+              />
+              <TextField
                 label={t("robot_duplication.fields.target_url")}
                 value={targetUrl}
-                onChange={(e) => setTargetUrl(e.target.value)}
-                style={{ marginBottom: "20px", marginTop: "30px" }}
+                onChange={(e) => {
+                  setTargetUrl(e.target.value);
+                  if (robot) {
+                    const lastWord = e.target.value.split('/').filter(Boolean).pop() || 'Unnamed';
+                    setNewName(`${robot.recording_meta.name} (${lastWord})`);
+                  }
+                }}
+                style={{ marginBottom: "20px" }}
+                fullWidth
               />
             </>
           )}

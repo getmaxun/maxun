@@ -53,6 +53,8 @@ export const createScrapeRobot = async (
       throw new Error('Failed to create markdown robot');
     }
   } catch (error: any) {
+    const message = error.response?.data?.error;
+    if (message) throw new Error(message);
     console.error('Error creating markdown robot:', error);
     return null;
   }
@@ -92,6 +94,8 @@ export const createLLMRobot = async (
       throw new Error('Failed to create LLM robot');
     }
   } catch (error: any) {
+    const message = error.response?.data?.error;
+    if (message) throw new Error(message);
     console.error('Error creating LLM robot:', error);
     return null;
   }
@@ -112,6 +116,8 @@ export const updateRecording = async (id: string, data: {
       throw new Error(`Couldn't update recording with id ${id}`);
     }
   } catch (error: any) {
+    const message = error.response?.data?.error;
+    if (message) throw new Error(message);
     console.error(`Error updating recording: ${error.message}`);
     return false;
   }
@@ -131,10 +137,11 @@ export const getStoredRuns = async (): Promise<string[] | null> => {
   }
 };
 
-export const duplicateRecording = async (id: string, targetUrl: string): Promise<any> => {
+export const duplicateRecording = async (id: string, targetUrl: string, newName?: string): Promise<any> => {
   try {
     const response = await axios.post(`${apiUrl}/storage/recordings/${id}/duplicate`, {
       targetUrl,
+      newName,
     }, { withCredentials: true });
     if (response.status === 201) {
       return response.data;
@@ -142,6 +149,8 @@ export const duplicateRecording = async (id: string, targetUrl: string): Promise
       throw new Error(`Couldn't duplicate recording with id ${id}`);
     }
   } catch (error: any) {
+    const message = error.response?.data?.error;
+    if (message) throw new Error(message);
     console.error(`Error duplicating recording: ${error.message}`);
     return null;
   }
@@ -371,6 +380,8 @@ export const createCrawlRobot = async (
       throw new Error('Failed to create crawl robot');
     }
   } catch (error: any) {
+    const message = error.response?.data?.error;
+    if (message) throw new Error(message);
     console.error('Error creating crawl robot:', error);
     return null;
   }
@@ -409,6 +420,8 @@ export const createSearchRobot = async (
       throw new Error('Failed to create search robot');
     }
   } catch (error: any) {
+    const message = error.response?.data?.error;
+    if (message) throw new Error(message);
     console.error('Error creating search robot:', error);
     return null;
   }

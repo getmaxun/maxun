@@ -1051,8 +1051,8 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
       } else {
         notify("error", t("robot_edit.notifications.update_failed"));
       }
-    } catch (error) {
-      notify("error", t("robot_edit.notifications.update_error"));
+    } catch (error: any) {
+      notify("error", error.message || t("robot_edit.notifications.update_error"));
       console.error("Error updating robot:", error);
     } finally {
       setIsLoading(false);

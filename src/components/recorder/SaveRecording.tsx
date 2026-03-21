@@ -6,8 +6,6 @@ import { useGlobalInfoStore } from "../../context/globalInfo";
 import { AuthContext } from '../../context/auth';
 import { useSocketStore } from "../../context/socket";
 import { TextField, Typography } from "@mui/material";
-import { WarningText } from "../ui/texts";
-import NotificationImportantIcon from "@mui/icons-material/NotificationImportant";
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
@@ -18,7 +16,6 @@ interface SaveRecordingProps {
 export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
   const { t } = useTranslation();
   const [openModal, setOpenModal] = useState<boolean>(false);
-  const [needConfirm, setNeedConfirm] = useState<boolean>(false);
   const [saveRecordingName, setSaveRecordingName] = useState<string>(fileName);
   const [waitingForSave, setWaitingForSave] = useState<boolean>(false);
 
@@ -35,21 +32,17 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
   }, [recordingName]);
 
   const handleChangeOfTitle = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const { value } = event.target;
-    if (needConfirm) {
-      setNeedConfirm(false);
-    }
-    setSaveRecordingName(value);
+    setSaveRecordingName(event.target.value);
   }
 
   const handleSaveRecording = async (event: React.SyntheticEvent) => {
     event.preventDefault();
-    if (recordings.includes(saveRecordingName)) {
-      if (needConfirm) { return; }
-      setNeedConfirm(true);
-    } else {
-      await saveRecording();
+    const trimmedName = saveRecordingName.trim();
+    if (!retrainRobotId && recordings.some(r => r.trim().toLowerCase() === trimmedName.toLowerCase())) {
+      notify('error', t('save_recording.errors.name_exists'));
+      return;
     }
+    await saveRecording();
   };
 
   const handleFinishClick = () => {
@@ -120,9 +113,9 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
         return;
       }
 
-      const payload = { 
-        fileName: saveRecordingName || recordingName, 
-        userId: user.id, 
+      const payload = {
+        fileName: (saveRecordingName || recordingName).trim(),
+        userId: user.id,
         isLogin: isLogin,
         robotId: retrainRobotId,
       };
@@ -134,12 +127,21 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
     }
   };
 
-  useEffect(() => {
-    socket?.on('fileSaved', exitRecording);
-    return () => {
-      socket?.off('fileSaved', exitRecording);
+  const handleFileSaved = useCallback(async (data?: { actionType: string }) => {
+    if (data?.actionType === 'nameExists') {
+      setWaitingForSave(false);
+      notify('error', t('save_recording.errors.name_exists'));
+      return;
     }
-  }, [socket, exitRecording]);
+    await exitRecording(data);
+  }, [exitRecording, notify, t]);
+
+  useEffect(() => {
+    socket?.on('fileSaved', handleFileSaved);
+    return () => {
+      socket?.off('fileSaved', handleFileSaved);
+    }
+  }, [socket, handleFileSaved]);
 
   return (
     <div>
@@ -170,21 +172,9 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
             variant="outlined"
             value={saveRecordingName}
           />
-          {needConfirm
-            ?
-            (<React.Fragment>
-              <Button color="error" variant="contained" onClick={saveRecording} sx={{ marginTop: '10px' }}>
-                {t('save_recording.buttons.confirm')}
-              </Button>
-              <WarningText>
-                <NotificationImportantIcon color="warning" />
-                {t('save_recording.errors.exists_warning')}
-              </WarningText>
-            </React.Fragment>)
-            : <Button type="submit" variant="contained" sx={{ marginTop: '10px' }}>
-              {t('save_recording.buttons.save')}
-            </Button>
-          }
+          <Button type="submit" variant="contained" sx={{ marginTop: '10px' }}>
+            {t('save_recording.buttons.save')}
+          </Button>
           {waitingForSave &&
             <Tooltip title={t('save_recording.tooltips.optimizing')} placement={"bottom"}>
               <Box sx={{ width: '100%', marginTop: '10px' }}>

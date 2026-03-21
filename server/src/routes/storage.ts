@@ -16,8 +16,28 @@ import { WorkflowFile } from 'maxun-core';
 import { cancelScheduledWorkflow, scheduleWorkflow } from '../storage/schedule';
 import { pgBossClient } from '../storage/pgboss';
 import { WorkflowEnricher } from '../sdk/workflowEnricher';
+import sequelizeInstance from '../storage/db';
+import { Op } from 'sequelize';
 
 export const router = Router();
+
+async function isRobotNameTaken(name: string, userId: number, excludeId?: string): Promise<boolean> {
+  const normalised = name.trim().toLowerCase();
+  const robots = await Robot.findAll({
+    where: {
+      userId,
+      [Op.and]: sequelizeInstance.where(
+        sequelizeInstance.fn('lower', sequelizeInstance.fn('trim', sequelizeInstance.literal("recording_meta->>'name'"))),
+        normalised
+      ),
+    } as any,
+  });
+  if (robots.length === 0) return false;
+  if (excludeId) {
+    return robots.some((r: any) => r.recording_meta.id !== excludeId);
+  }
+  return true;
+}
 
 export const processWorkflowActions = async (workflow: any[], checkLimit: boolean = false): Promise<any[]> => {
   const processedWorkflow = JSON.parse(JSON.stringify(workflow));
@@ -338,8 +358,16 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       }
     }
 
+    const trimmedName = name?.trim();
+    if (trimmedName && trimmedName.toLowerCase() !== robot.recording_meta.name.trim().toLowerCase()) {
+      const nameTaken = await isRobotNameTaken(trimmedName, robot.userId as number, id);
+      if (nameTaken) {
+        return res.status(409).json({ error: `A robot with the name "${trimmedName}" already exists.` });
+      }
+    }
+
     let updatedMeta = { ...robot.recording_meta };
-    if (name) updatedMeta.name = name;
+    if (trimmedName) updatedMeta.name = trimmedName;
     if (targetUrl) updatedMeta.url = targetUrl;
 
     const updates: any = {
@@ -400,7 +428,12 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
       return res.status(400).json({ error: `Invalid formats: ${invalid.join(', ')}` });
     }
 
-    const robotName = name || `Markdown Robot - ${new URL(url).hostname}`;
+    const robotName = (name || `Markdown Robot - ${new URL(url).hostname}`).trim();
+
+    if (await isRobotNameTaken(robotName, req.user.id)) {
+      return res.status(409).json({ error: `A robot with the name "${robotName}" already exists.` });
+    }
+
     const currentTimestamp = new Date().toLocaleString();
     const robotId = uuid();
 
@@ -509,7 +542,11 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
 
     const robotId = uuid();
     const currentTimestamp = new Date().toISOString();
-    const finalRobotName = robotName || `LLM Extract: ${prompt.substring(0, 50)}`;
+    const finalRobotName = (robotName || `LLM Extract: ${prompt.substring(0, 50)}`).trim();
+
+    if (await isRobotNameTaken(finalRobotName, req.user.id)) {
+      return res.status(409).json({ error: `A robot with the name "${finalRobotName}" already exists.` });
+    }
 
     const newRobot = await Robot.create({
       id: uuid(),
@@ -591,7 +628,7 @@ router.delete('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest
 router.post('/recordings/:id/duplicate', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
-    const { targetUrl } = req.body;
+    const { targetUrl, newName } = req.body;
 
     if (!targetUrl) {
       return res.status(400).json({ error: 'The "targetUrl" field is required.' });
@@ -615,6 +652,11 @@ router.post('/recordings/:id/duplicate', requireSignIn, async (req: Authenticate
     }
 
     const lastWord = targetUrl.split('/').filter(Boolean).pop() || 'Unnamed';
+    const duplicateName = (newName?.trim() || `${originalRobot.recording_meta.name} (${lastWord})`).trim();
+
+    if (await isRobotNameTaken(duplicateName, originalRobot.userId as number)) {
+      return res.status(409).json({ error: `A robot with the name "${duplicateName}" already exists.` });
+    }
 
     const steps: any[] = originalRobot.recording.workflow;
     const entryStep = steps.findLast((step: any) => step.where?.url === 'about:blank');
@@ -655,7 +697,7 @@ router.post('/recordings/:id/duplicate', requireSignIn, async (req: Authenticate
       recording_meta: {
         ...originalRobot.recording_meta,
         id: uuid(),
-        name: `${originalRobot.recording_meta.name} (${lastWord})`,
+        name: duplicateName,
         url: targetUrl,
         createdAt: currentTimestamp,
         updatedAt: currentTimestamp,
@@ -1406,7 +1448,12 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
       return res.status(400).json({ error: 'Invalid URL format' });
     }
 
-    const robotName = name || `Crawl Robot - ${new URL(url).hostname}`;
+    const robotName = (name || `Crawl Robot - ${new URL(url).hostname}`).trim();
+
+    if (await isRobotNameTaken(robotName, req.user.id)) {
+      return res.status(409).json({ error: `A robot with the name "${robotName}" already exists.` });
+    }
+
     const currentTimestamp = new Date().toLocaleString('en-US');
     const robotId = uuid();
 
@@ -1510,7 +1557,12 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
       return res.status(401).send({ error: 'Unauthorized' });
     }
 
-    const robotName = name || `Search Robot - ${searchConfig.query.substring(0, 50)}`;
+    const robotName = (name || `Search Robot - ${searchConfig.query.substring(0, 50)}`).trim();
+
+    if (await isRobotNameTaken(robotName, req.user.id)) {
+      return res.status(409).json({ error: `A robot with the name "${robotName}" already exists.` });
+    }
+
     const currentTimestamp = new Date().toLocaleString('en-US');
     const robotId = uuid();
 
