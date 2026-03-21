@@ -714,6 +714,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     tabs: { key: string; label: string; value: string }[],
     currentIndex: number,
     setIndex: (idx: number) => void,
+    idPrefix: string,
     defaultExpanded: boolean = true
   ) => {
     if (tabs.length === 0) return null;
@@ -764,13 +765,18 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 <Tab
                   key={tab.key}
                   label={tab.label}
-                  id={`screenshot-tab-${tab.key}`}
-                  aria-controls={`screenshot-tabpanel-${tab.key}`}
+                  id={`screenshot-tab-${idPrefix}-${tab.key}`}
+                  aria-controls={`screenshot-tabpanel-${idPrefix}-${tab.key}`}
                 />
               ))}
             </Tabs>
           )}
-          <Box sx={{ mt: 1 }}>
+          <Box
+            role="tabpanel"
+            id={`screenshot-tabpanel-${idPrefix}-${activeTab?.key || 'active'}`}
+            aria-labelledby={`screenshot-tab-${idPrefix}-${activeTab?.key || 'active'}`}
+            sx={{ mt: 1 }}
+          >
             {activeSrc && (
               <img
                 src={activeSrc as string}
@@ -927,12 +933,14 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
       );
     }
 
+    const accordionIdBase = `${title.toLowerCase().replace(/\s+/g, '-')}-${csvFilename.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+
     return (
       <Accordion defaultExpanded sx={{ mb: 2 }}>
         <AccordionSummary
           expandIcon={<ExpandMoreIcon />}
-          aria-controls={`${title.toLowerCase()}-content`}
-          id={`${title.toLowerCase()}-header`}
+          aria-controls={`${accordionIdBase}-content`}
+          id={`${accordionIdBase}-header`}
         >
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Typography variant='h6'>
@@ -1132,7 +1140,8 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 t('run_content.captured_screenshot.title', 'Captured Screenshots'),
                 screenshotKeys.map(key => ({ key, label: key, value: screenshotKeyMap[key] })).filter(tab => tab.value),
                 currentScreenshotIndex,
-                setCurrentScreenshotIndex
+                setCurrentScreenshotIndex,
+                'global-screenshots-primary'
               )}
             </>
           ) : (
@@ -1160,7 +1169,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               </Button>
             </>
           ) : (!hasData && !hasScreenshots
-            ? (row.status === 'failed'
+            ? (['failed', 'aborted', 'aborting'].includes(row.status)
               ? <Typography color='error'>{t('run_content.failed_no_output', 'Run failed before generating output. Check run logs for details.')}</Typography>
               : <Typography>{t('run_content.empty_output')}</Typography>)
             : null)}
@@ -1646,6 +1655,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                           ],
                           currentCrawlScreenshotTab,
                           setCurrentCrawlScreenshotTab,
+                          `crawl-${currentCrawlIndex}`,
                           false
                         )}
 
@@ -2047,6 +2057,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               ],
                               currentSearchScreenshotTab,
                               setCurrentSearchScreenshotTab,
+                              `search-${currentSearchIndex}`,
                               false
                             )}
 
@@ -2184,7 +2195,8 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
             t('run_content.captured_screenshot.title', 'Captured Screenshots'),
             screenshotKeys.map(key => ({ key, label: key, value: screenshotKeyMap[key] })).filter(tab => tab.value),
             currentScreenshotIndex,
-            setCurrentScreenshotIndex
+            setCurrentScreenshotIndex,
+            'global-screenshots-secondary'
           )}
           </>
           )}
