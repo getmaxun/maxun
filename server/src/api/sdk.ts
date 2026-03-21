@@ -103,7 +103,7 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
         }
 
         const rawFormats = (workflowFile.meta as any).formats;
-        const { validFormats, invalidFormats } = parseOutputFormats(
+        const { validFormats, invalidFormats, wasProvided } = parseOutputFormats(
             rawFormats,
             type === 'scrape' ? SCRAPE_OUTPUT_FORMAT_OPTIONS : undefined
         );
@@ -123,16 +123,15 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
             const searchMode = searchAction?.args?.[0]?.mode;
 
             if (searchMode === 'discover') {
-                normalizedFormats = [];
+                
+                normalizedFormats = validFormats.length > 0 ? validFormats : [];
             } else {
-                normalizedFormats = validFormats.length > 0
-                    ? validFormats
-                    : [...DEFAULT_OUTPUT_FORMATS];
+                
+                normalizedFormats = validFormats.length > 0 ? validFormats : [...DEFAULT_OUTPUT_FORMATS];
             }
         } else if (type === 'crawl' || type === 'scrape') {
-            normalizedFormats = validFormats.length > 0
-                ? validFormats
-                : [...DEFAULT_OUTPUT_FORMATS];
+            
+            normalizedFormats = validFormats.length > 0 ? validFormats : [...DEFAULT_OUTPUT_FORMATS];
         }
 
         const robotId = uuid();
@@ -899,15 +898,16 @@ router.post("/sdk/crawl", requireAPIKey, async (req: AuthenticatedRequest, res: 
             });
         }
 
-        const { validFormats: requestedFormats, invalidFormats } = parseOutputFormats(formats);
+        const { validFormats: requestedFormats, invalidFormats, wasProvided } = parseOutputFormats(formats);
         if (invalidFormats.length > 0) {
             return res.status(400).json({
                 error: `Invalid formats: ${invalidFormats.map(String).join(', ')}`
             });
         }
 
-        const crawlFormats: OutputFormat[] = requestedFormats.length > 0
-            ? requestedFormats
+        // Crawl always needs formats; use defaults even if explicit empty array is provided
+        const crawlFormats: OutputFormat[] = requestedFormats.length > 0 
+            ? requestedFormats 
             : [...DEFAULT_OUTPUT_FORMATS];
 
         const robotName = name || `Crawl Robot - ${new URL(url).hostname}`;
@@ -1018,7 +1018,7 @@ router.post("/sdk/search", requireAPIKey, async (req: AuthenticatedRequest, res:
             });
         }
 
-        const { validFormats: requestedFormats, invalidFormats } = parseOutputFormats(formats);
+        const { validFormats: requestedFormats, invalidFormats, wasProvided } = parseOutputFormats(formats);
         if (invalidFormats.length > 0) {
             return res.status(400).json({
                 error: `Invalid formats: ${invalidFormats.map(String).join(', ')}`
@@ -1026,7 +1026,7 @@ router.post("/sdk/search", requireAPIKey, async (req: AuthenticatedRequest, res:
         }
 
         const searchFormats: OutputFormat[] = searchConfig.mode === 'discover'
-            ? []
+            ? (requestedFormats.length > 0 ? requestedFormats : [])
             : (requestedFormats.length > 0 ? requestedFormats : [...DEFAULT_OUTPUT_FORMATS]);
 
         searchConfig.provider = 'duckduckgo';

@@ -37,8 +37,12 @@ export async function processRobotOutputFormats(
     ...(initialBinaryOutput || {}),
   };
 
-  const effectiveFormats = outputFormats && outputFormats.length > 0
-    ? outputFormats
+  const effectiveFormats = Array.isArray(outputFormats)
+    ? (outputFormats.length > 0
+      ? outputFormats
+      : robotType === 'crawl'
+        ? DEFAULT_OUTPUT_FORMATS
+        : outputFormats) 
     : DEFAULT_OUTPUT_FORMATS;
 
   if (robotType !== 'crawl' && robotType !== 'search') {

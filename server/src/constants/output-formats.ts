@@ -29,7 +29,9 @@ export function parseOutputFormats(
 ): {
   validFormats: OutputFormat[];
   invalidFormats: unknown[];
+  wasProvided: boolean;
 } {
+  const wasProvided = formats !== undefined;
   const requestedFormats = Array.isArray(formats) ? formats : [];
   const validFormats: OutputFormat[] = [];
   const invalidFormats: unknown[] = [];
@@ -43,5 +45,5 @@ export function parseOutputFormats(
     }
   });
 
-  return { validFormats, invalidFormats };
+  return { validFormats, invalidFormats, wasProvided };
 }

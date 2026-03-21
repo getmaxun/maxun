@@ -7,7 +7,9 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  Link
+  Link,
+  Tabs,
+  Tab
 } from "@mui/material";
 import * as React from "react";
 import { Data } from "./RunsTable";
@@ -659,23 +661,51 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   };
 
   const downloadScreenshot = async (label: string, value: string) => {
-    const src = resolveScreenshotSrc(value);
-    if (!src) return;
-    if (typeof src === 'string' && src.startsWith('http')) {
-      const blob = await fetch(src).then(res => res.blob());
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${label}.png`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-    } else {
-      const link = document.createElement('a');
-      link.href = src as string;
-      link.download = `${label}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    try {
+      const src = resolveScreenshotSrc(value);
+      if (!src) {
+        console.warn(`[downloadScreenshot] No valid source for label: ${label}`);
+        return;
+      }
+
+      if (typeof src === 'string' && src.startsWith('http')) {
+        // Handles HTTP-based screenshots with error handling
+        const response = await fetch(src);
+        
+        if (!response.ok) {
+          const errorMsg = `Failed to download screenshot: ${response.status} ${response.statusText}`;
+          console.error(errorMsg);
+          alert(`Error: ${errorMsg}`);
+          return;
+        }
+
+        try {
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${label}.png`;
+          a.click();
+          window.URL.revokeObjectURL(url);
+        } catch (blobError) {
+          const errorMsg = 'Failed to process downloaded image. Please try again.';
+          console.error(`[downloadScreenshot] Blob processing error:`, blobError);
+          alert(errorMsg);
+          return;
+        }
+      } else {
+        // Handles URL based screenshots
+        const link = document.createElement('a');
+        link.href = src as string;
+        link.download = `${label}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error downloading screenshot';
+      console.error(`[downloadScreenshot] Error:`, error);
+      alert(`Failed to download screenshot: ${errorMsg}`);
     }
   };
 
@@ -690,6 +720,11 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     const activeIdx = Math.min(currentIndex, tabs.length - 1);
     const activeTab = tabs[activeIdx >= 0 ? activeIdx : 0];
     const activeSrc = resolveScreenshotSrc(activeTab?.value);
+
+    const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+      setIndex(newValue);
+    };
+
     return (
       <Accordion defaultExpanded={defaultExpanded} sx={{ mb: 2 }}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -699,44 +734,41 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
         </AccordionSummary>
         <AccordionDetails>
           {tabs.length > 1 && (
-            <Box
+            <Tabs
+              value={activeIdx}
+              onChange={handleTabChange}
+              variant="scrollable"
+              scrollButtons="auto"
               sx={{
-                display: 'flex',
-                overflowX: 'auto',
-                maxWidth: '100%',
-                borderBottom: '1px solid',
-                borderColor: 'divider',
                 mb: 2,
-                '&::-webkit-scrollbar': { height: '8px' },
-                '&::-webkit-scrollbar-thumb': {
-                  backgroundColor: darkMode ? '#555' : '#888',
-                  borderRadius: '4px',
+                '& .MuiTabs-indicator': {
+                  backgroundColor: '#FF00C3',
+                  height: '3px',
+                },
+                '& .MuiTab-root': {
+                  textTransform: 'none',
+                  minWidth: 'auto',
+                  px: 3,
+                  color: darkMode ? '#fff' : '#000',
+                  '&.Mui-selected': {
+                    backgroundColor: darkMode ? '#121111ff' : '#e9ecef',
+                  },
+                  '&:hover': {
+                    backgroundColor: darkMode ? 'rgba(255, 0, 195, 0.1)' : 'rgba(255, 0, 195, 0.05)',
+                  },
                 },
               }}
+              aria-label={`${title} tabs`}
             >
-              {tabs.map((tab, idx) => (
-                <Box
+              {tabs.map((tab) => (
+                <Tab
                   key={tab.key}
-                  onClick={() => setIndex(idx)}
-                  sx={{
-                    px: 3,
-                    py: 1,
-                    cursor: 'pointer',
-                    backgroundColor:
-                      activeIdx === idx
-                        ? (theme) => theme.palette.mode === 'dark'
-                          ? '#121111ff'
-                          : '#e9ecef'
-                        : 'transparent',
-                    borderBottom: activeIdx === idx ? '3px solid #FF00C3' : 'none',
-                    color: (theme) => theme.palette.mode === 'dark' ? '#fff' : '#000',
-                    flexShrink: 0,
-                  }}
-                >
-                  {tab.label}
-                </Box>
+                  label={tab.label}
+                  id={`screenshot-tab-${tab.key}`}
+                  aria-controls={`screenshot-tabpanel-${tab.key}`}
+                />
               ))}
-            </Box>
+            </Tabs>
           )}
           <Box sx={{ mt: 1 }}>
             {activeSrc && (

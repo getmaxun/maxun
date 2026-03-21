@@ -24,11 +24,15 @@ import { startWorkers } from './pgboss-worker';
 import { stopPgBossClient, startPgBossClient } from './storage/pgboss'
 import Run from './models/Run';
 
-const app = express();
-app.use(cors({
-  origin: process.env.PUBLIC_URL ? process.env.PUBLIC_URL : 'http://localhost:5173',
+const CORS_CONFIG = {
+  origin: process.env.PUBLIC_URL || 'http://localhost:5173',
   credentials: true,
-}));
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+const app = express();
+app.use(cors(CORS_CONFIG));
 app.use(express.json());
 
 const { Pool } = pg;
@@ -91,11 +95,7 @@ export let io = new Server(server, {
   maxHttpBufferSize: 1e8,
   transports: ['websocket', 'polling'],
   allowEIO3: true,
-  cors: {
-    origin: process.env.PUBLIC_URL ? process.env.PUBLIC_URL : 'http://localhost:5173',
-    credentials: true,
-    methods: ['GET', 'POST']
-  }
+  cors: CORS_CONFIG
 });
 
 /**
@@ -139,17 +139,6 @@ app.get('/', function (req, res) {
   }
   );
   return res.send('Maxun server started 🚀');
-});
-
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', process.env.PUBLIC_URL || 'http://localhost:5173');
-  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
-  next();
 });
 
 if (require.main === module) {

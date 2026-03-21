@@ -277,10 +277,10 @@ function handleWorkflowActions(workflow: any[], credentials: Credentials) {
 router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
-    const { name, limits, credentials, targetUrl, workflow: incomingWorkflow } = req.body;
+    const { name, limits, credentials, targetUrl, workflow: incomingWorkflow, formats } = req.body;
 
-    if (!name && !limits && !credentials && !targetUrl && !incomingWorkflow) {
-      return res.status(400).json({ error: 'Either "name", "limits", "credentials" or "target_url" must be provided.' });
+    if (!name && !limits && !credentials && !targetUrl && !incomingWorkflow && formats === undefined) {
+      return res.status(400).json({ error: 'Either "name", "limits", "credentials", "target_url", "workflow" or "formats" must be provided.' });
     }
 
     const robot = await Robot.findOne({ where: { 'recording_meta.id': id } });
@@ -364,6 +364,35 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       }
     }
 
+    let normalizedFormats: OutputFormat[] | undefined;
+    if (formats !== undefined) {
+      const allowedFormats = robot.recording_meta?.type === 'scrape' ? SCRAPE_OUTPUT_FORMAT_OPTIONS : undefined;
+      const { validFormats, invalidFormats } = parseOutputFormats(formats, allowedFormats);
+
+      if (invalidFormats.length > 0) {
+        return res.status(400).json({
+          error: `Invalid formats: ${invalidFormats.map(String).join(', ')}`,
+        });
+      }
+
+      if (robot.recording_meta?.type === 'crawl' || robot.recording_meta?.type === 'scrape') {
+        normalizedFormats = validFormats.length > 0 ? validFormats : [...DEFAULT_OUTPUT_FORMATS];
+      } else if (robot.recording_meta?.type === 'search') {
+        const searchAction = workflow
+          .flatMap((pair: any) => pair.what || [])
+          .find((action: any) => action?.action === 'search');
+        const searchMode = searchAction?.args?.[0]?.mode;
+
+        if (searchMode === 'discover') {
+          normalizedFormats = validFormats.length > 0 ? validFormats : [];
+        } else {
+          normalizedFormats = validFormats.length > 0 ? validFormats : [...DEFAULT_OUTPUT_FORMATS];
+        }
+      } else {
+        normalizedFormats = validFormats;
+      }
+    }
+
     let trimmedName: string | undefined;
     if (name !== undefined) {
       if (typeof name !== 'string') {
@@ -384,6 +413,7 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
     let updatedMeta = { ...robot.recording_meta };
     if (trimmedName) updatedMeta.name = trimmedName;
     if (targetUrl) updatedMeta.url = targetUrl;
+    if (normalizedFormats !== undefined) updatedMeta.formats = normalizedFormats;
 
     const updates: any = {
       recording: { ...robot.recording, workflow },
@@ -434,10 +464,6 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
       return res.status(400).json({ error: 'Invalid URL format' });
     }
 
-    if (!Array.isArray(formats) || formats.length === 0) {
-      return res.status(400).json({ error: 'At least one output format must be selected.' });
-    }
-
     const { validFormats: scrapeFormats, invalidFormats } = parseOutputFormats(
       formats,
       SCRAPE_OUTPUT_FORMAT_OPTIONS
@@ -456,6 +482,10 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
 
     if (await isRobotNameTaken(robotName, req.user.id)) {
       return res.status(409).json({ error: `A robot with the name "${robotName}" already exists.` });
+    }
+
+    if (scrapeFormats.length === 0 && formats !== undefined) {
+      return res.status(400).json({ error: 'At least one output format must be selected.' });
     }
 
     const currentTimestamp = new Date().toLocaleString();
@@ -1498,6 +1528,7 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
       });
     }
 
+    // Crawl always needs formats; use defaults even if explicit empty array is provided
     const crawlFormats: OutputFormat[] = requestedFormats.length > 0
       ? requestedFormats
       : [...DEFAULT_OUTPUT_FORMATS];
@@ -1627,11 +1658,11 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
 
     let searchFormats: OutputFormat[];
     if (searchConfig.mode === 'discover') {
-      searchFormats = [];
+      // Discover-mode: preserve empty array if explicitly provided
+      searchFormats = requestedFormats.length > 0 ? requestedFormats : [];
     } else {
-      searchFormats = requestedFormats.length > 0
-        ? requestedFormats
-        : [...DEFAULT_OUTPUT_FORMATS];
+      // Scrape-mode: apply defaults if empty
+      searchFormats = requestedFormats.length > 0 ? requestedFormats : [...DEFAULT_OUTPUT_FORMATS];
     }
 
     const currentTimestamp = new Date().toLocaleString('en-US');
