@@ -1052,7 +1052,11 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         notify("error", t("robot_edit.notifications.update_failed"));
       }
     } catch (error: any) {
-      notify("error", error.message || t("robot_edit.notifications.update_error"));
+      if (error.isDuplicate) {
+        notify("error", t("save_recording.errors.name_exists"));
+      } else {
+        notify("error", error.message || t("robot_edit.notifications.update_error"));
+      }
       console.error("Error updating robot:", error);
     } finally {
       setIsLoading(false);

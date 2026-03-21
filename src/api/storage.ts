@@ -117,7 +117,12 @@ export const updateRecording = async (id: string, data: {
     }
   } catch (error: any) {
     const message = error.response?.data?.error;
-    if (message) throw new Error(message);
+    const status = error.response?.status;
+    if (message) {
+      const err = new Error(message) as any;
+      err.isDuplicate = status === 409;
+      throw err;
+    }
     console.error(`Error updating recording: ${error.message}`);
     return false;
   }

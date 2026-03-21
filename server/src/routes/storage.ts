@@ -358,13 +358,22 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       }
     }
 
-    const trimmedName = name?.trim();
-    if (trimmedName && trimmedName.toLowerCase() !== robot.recording_meta.name.trim().toLowerCase()) {
-      const nameTaken = await isRobotNameTaken(trimmedName, robot.userId as number, id);
-      if (nameTaken) {
-        return res.status(409).json({ error: `A robot with the name "${trimmedName}" already exists.` });
+    if (name !== undefined) {
+      if (typeof name !== 'string') {
+        return res.status(400).json({ error: 'Robot name must be a string.' });
+      }
+      const trimmedName = name.trim();
+      if (!trimmedName) {
+        return res.status(400).json({ error: 'Robot name cannot be empty.' });
+      }
+      if (trimmedName.toLowerCase() !== robot.recording_meta.name.trim().toLowerCase()) {
+        const nameTaken = await isRobotNameTaken(trimmedName, robot.userId as number, id);
+        if (nameTaken) {
+          return res.status(409).json({ error: `A robot with the name "${trimmedName}" already exists.` });
+        }
       }
     }
+    const trimmedName = typeof name === 'string' ? name.trim() : undefined;
 
     let updatedMeta = { ...robot.recording_meta };
     if (trimmedName) updatedMeta.name = trimmedName;
@@ -382,7 +391,10 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
     logger.log('info', `Robot with ID ${id} was updated successfully.`);
 
     return res.status(200).json({ message: 'Robot updated successfully', robot });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.name === 'SequelizeUniqueConstraintError' || error.parent?.code === '23505') {
+      return res.status(409).json({ error: 'A robot with this name already exists.' });
+    }
     // Safely handle the error type
     if (error instanceof Error) {
       logger.log('error', `Error updating robot with ID ${req.params.id}: ${error.message}`);
@@ -428,7 +440,10 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
       return res.status(400).json({ error: `Invalid formats: ${invalid.join(', ')}` });
     }
 
-    const robotName = (name || `Markdown Robot - ${new URL(url).hostname}`).trim();
+    const robotName = (typeof name === 'string' ? name.trim() : '') || `Markdown Robot - ${new URL(url).hostname}`;
+    if (!robotName) {
+      return res.status(400).json({ error: 'Robot name cannot be empty.' });
+    }
 
     if (await isRobotNameTaken(robotName, req.user.id)) {
       return res.status(409).json({ error: `A robot with the name "${robotName}" already exists.` });
@@ -473,7 +488,10 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
       message: 'Markdown robot created successfully.',
       robot: newRobot,
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.name === 'SequelizeUniqueConstraintError' || error.parent?.code === '23505') {
+      return res.status(409).json({ error: 'A robot with this name already exists.' });
+    }
     if (error instanceof Error) {
       logger.log('error', `Error creating markdown robot: ${error.message}`);
       return res.status(500).json({ error: error.message });
@@ -542,7 +560,10 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
 
     const robotId = uuid();
     const currentTimestamp = new Date().toISOString();
-    const finalRobotName = (robotName || `LLM Extract: ${prompt.substring(0, 50)}`).trim();
+    const finalRobotName = (typeof robotName === 'string' ? robotName.trim() : '') || `LLM Extract: ${prompt.substring(0, 50)}`;
+    if (!finalRobotName) {
+      return res.status(400).json({ error: 'Robot name cannot be empty.' });
+    }
 
     if (await isRobotNameTaken(finalRobotName, req.user.id)) {
       return res.status(409).json({ error: `A robot with the name "${finalRobotName}" already exists.` });
@@ -584,7 +605,10 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
       message: 'LLM robot created successfully.',
       robot: newRobot,
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.name === 'SequelizeUniqueConstraintError' || error.parent?.code === '23505') {
+      return res.status(409).json({ error: 'A robot with this name already exists.' });
+    }
     if (error instanceof Error) {
       logger.log('error', `Error creating LLM robot: ${error.message}`);
       return res.status(500).json({ error: error.message });
@@ -1448,7 +1472,10 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
       return res.status(400).json({ error: 'Invalid URL format' });
     }
 
-    const robotName = (name || `Crawl Robot - ${new URL(url).hostname}`).trim();
+    const robotName = (typeof name === 'string' ? name.trim() : '') || `Crawl Robot - ${new URL(url).hostname}`;
+    if (!robotName) {
+      return res.status(400).json({ error: 'Robot name cannot be empty.' });
+    }
 
     if (await isRobotNameTaken(robotName, req.user.id)) {
       return res.status(409).json({ error: `A robot with the name "${robotName}" already exists.` });
@@ -1529,7 +1556,10 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
       message: 'Crawl robot created successfully.',
       robot: newRobot,
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.name === 'SequelizeUniqueConstraintError' || error.parent?.code === '23505') {
+      return res.status(409).json({ error: 'A robot with this name already exists.' });
+    }
     if (error instanceof Error) {
       logger.log('error', `Error creating crawl robot: ${error.message}`);
       return res.status(500).json({ error: error.message });
@@ -1557,7 +1587,10 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
       return res.status(401).send({ error: 'Unauthorized' });
     }
 
-    const robotName = (name || `Search Robot - ${searchConfig.query.substring(0, 50)}`).trim();
+    const robotName = (typeof name === 'string' ? name.trim() : '') || `Search Robot - ${searchConfig.query.substring(0, 50)}`;
+    if (!robotName) {
+      return res.status(400).json({ error: 'Robot name cannot be empty.' });
+    }
 
     if (await isRobotNameTaken(robotName, req.user.id)) {
       return res.status(409).json({ error: `A robot with the name "${robotName}" already exists.` });
@@ -1622,7 +1655,10 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
       message: 'Search robot created successfully.',
       robot: newRobot,
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.name === 'SequelizeUniqueConstraintError' || error.parent?.code === '23505') {
+      return res.status(409).json({ error: 'A robot with this name already exists.' });
+    }
     if (error instanceof Error) {
       logger.log('error', `Error creating search robot: ${error.message}`);
       return res.status(500).json({ error: error.message });
