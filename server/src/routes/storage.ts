@@ -358,11 +358,12 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       }
     }
 
+    let trimmedName: string | undefined;
     if (name !== undefined) {
       if (typeof name !== 'string') {
         return res.status(400).json({ error: 'Robot name must be a string.' });
       }
-      const trimmedName = name.trim();
+      trimmedName = name.trim();
       if (!trimmedName) {
         return res.status(400).json({ error: 'Robot name cannot be empty.' });
       }
@@ -373,7 +374,6 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
         }
       }
     }
-    const trimmedName = typeof name === 'string' ? name.trim() : undefined;
 
     let updatedMeta = { ...robot.recording_meta };
     if (trimmedName) updatedMeta.name = trimmedName;
@@ -527,6 +527,15 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
       }
     }
 
+    const finalRobotName = (typeof robotName === 'string' ? robotName.trim() : '') || `LLM Extract: ${prompt.substring(0, 50)}`;
+    if (!finalRobotName) {
+      return res.status(400).json({ error: 'Robot name cannot be empty.' });
+    }
+
+    if (await isRobotNameTaken(finalRobotName, req.user.id)) {
+      return res.status(409).json({ error: `A robot with the name "${finalRobotName}" already exists.` });
+    }
+
     let workflowResult: any;
     let finalUrl: string;
 
@@ -560,14 +569,6 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
 
     const robotId = uuid();
     const currentTimestamp = new Date().toISOString();
-    const finalRobotName = (typeof robotName === 'string' ? robotName.trim() : '') || `LLM Extract: ${prompt.substring(0, 50)}`;
-    if (!finalRobotName) {
-      return res.status(400).json({ error: 'Robot name cannot be empty.' });
-    }
-
-    if (await isRobotNameTaken(finalRobotName, req.user.id)) {
-      return res.status(409).json({ error: `A robot with the name "${finalRobotName}" already exists.` });
-    }
 
     const newRobot = await Robot.create({
       id: uuid(),

@@ -1010,8 +1010,10 @@ export class WorkflowGenerator {
           return;
         }
         const allUserRobots = await Robot.findAll({ where: { userId } as any });
+        const normalised = trimmedFileName.toLowerCase();
         const nameConflict = allUserRobots.some(
-          (r: any) => r.recording_meta.name.trim().toLowerCase() === trimmedFileName.toLowerCase()
+          (r: any) => typeof r.recording_meta?.name === 'string' &&
+            r.recording_meta.name.trim().toLowerCase() === normalised
         );
         if (nameConflict) {
           this.socket.emit('fileSaved', { actionType: 'nameExists' });
