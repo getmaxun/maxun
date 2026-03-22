@@ -45,10 +45,17 @@ export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
 
   const { setId, socket } = useSocketStore();
   const { setWidth } = useBrowserDimensionsStore();
-  const { browserId, setBrowserId, recordingId, recordingUrl, setRecordingUrl, setRecordingName, setRetrainRobotId, setIsDOMMode } = useGlobalInfoStore();
+  const { browserId, setBrowserId, recordingId, setRecordingId, recordingUrl, setRecordingUrl, setRecordingName, setRetrainRobotId, setCurrentWorkflowActionsState, setIsDOMMode } = useGlobalInfoStore();
 
   useEffect(() => {
     const handleRecordingTimeout = () => {
+      setBrowserId(null);
+      setRecordingId(null);
+      setRecordingName('');
+      setRecordingUrl('');
+      setRetrainRobotId(null);
+      setCurrentWorkflowActionsState({ hasScrapeListAction: false, hasScreenshotAction: false, hasScrapeSchemaAction: false });
+      setIsDOMMode(false);
       const channel = new BroadcastChannel('maxun-recording');
       channel.postMessage({ type: 'recording-timeout' });
       channel.close();
@@ -60,7 +67,7 @@ export const RecordingPage = ({ recordingName }: RecordingPageProps) => {
     return () => {
       socket?.off('recording-timeout', handleRecordingTimeout);
     };
-  }, [socket, navigate]);
+  }, [socket, navigate, setBrowserId, setRecordingId, setRecordingName, setRecordingUrl, setRetrainRobotId, setCurrentWorkflowActionsState, setIsDOMMode]);
 
   const handleShowOutputData = useCallback(() => {
     setShowOutputData(true);
