@@ -135,6 +135,7 @@ const RobotCreate: React.FC = () => {
 
       const sessionId = Date.now().toString();
       window.sessionStorage.setItem('recordingSessionId', sessionId);
+      window.sessionStorage.setItem('recordingOriginPage', window.location.pathname + window.location.search);
 
       window.open(`/recording-setup?session=${sessionId}`, '_blank');
       window.sessionStorage.setItem('nextTabIsRecording', 'true');
@@ -169,6 +170,7 @@ const RobotCreate: React.FC = () => {
 
     const sessionId = Date.now().toString();
     window.sessionStorage.setItem('recordingSessionId', sessionId);
+    window.sessionStorage.setItem('recordingOriginPage', window.location.pathname + window.location.search);
 
     window.open(`/recording-setup?session=${sessionId}`, '_blank');
     window.sessionStorage.setItem('nextTabIsRecording', 'true');

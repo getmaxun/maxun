@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { NavBar } from "../components/dashboard/NavBar";
 import { SocketProvider } from "../context/socket";
 import { BrowserDimensionsProvider } from "../context/browserDimensions";
@@ -18,10 +19,11 @@ import { Box } from '@mui/material';
 export const PageWrapper = () => {
   const [open, setOpen] = useState(false);
   const [isRecordingMode, setIsRecordingMode] = useState(false);
+  const { t } = useTranslation();
 
   const navigate = useNavigate();
 
-  const { browserId, setBrowserId, notification, recordingName, setRecordingName, recordingId, setRecordingId, setRecordingUrl } = useGlobalInfoStore();
+  const { browserId, setBrowserId, notification, notify, recordingName, setRecordingName, recordingId, setRecordingId, setRecordingUrl } = useGlobalInfoStore();
 
   const handleEditRecording = (recordingId: string, fileName: string) => {
     setRecordingName(fileName);
@@ -85,6 +87,21 @@ export const PageWrapper = () => {
       }
     }
   }, [location.pathname, navigate, setBrowserId, setRecordingId, setRecordingName, setRecordingUrl]);
+
+  useEffect(() => {
+    const channel = new BroadcastChannel('maxun-recording');
+    channel.onmessage = (event) => {
+      if (event.data?.type === 'recording-timeout') {
+        notify('warning', t('browser_recording.notifications.timeout_discarded'));
+        const originPage = window.sessionStorage.getItem('recordingOriginPage');
+        window.sessionStorage.removeItem('recordingOriginPage');
+        navigate(originPage || '/robots');
+      }
+    };
+    return () => {
+      channel.close();
+    };
+  }, [notify, t, navigate]);
 
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
   const isRecordingPage = location.pathname === '/recording';
