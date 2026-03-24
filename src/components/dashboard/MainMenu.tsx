@@ -166,7 +166,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
           <Divider sx={{ borderColor: theme.palette.mode === 'dark' ? "#080808ff" : "" }} />
           <Box sx={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
             <Button
-              href='https://docs.maxun.dev/sdk/sdk-overview'
+              href='https://docs.maxun.dev/category/sdk'
               target="_blank"
               rel="noopener noreferrer"
               sx={buttonStyles} startIcon={<ArrowForwardIos sx={{ fontSize: 20 }} />}>
