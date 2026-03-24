@@ -2,6 +2,7 @@
 import { ElementHandle, Page, PageScreenshotOptions } from 'playwright-core';
 import fetch from 'cross-fetch';
 import path from 'path';
+import { tavily } from '@tavily/core';
 
 import { EventEmitter } from 'events';
 import {
@@ -1212,7 +1213,7 @@ export default class Interpreter extends EventEmitter {
       search: async (searchConfig: {
         query: string;
         limit: number;
-        provider?: 'duckduckgo';
+        provider?: 'duckduckgo' | 'tavily';
         filters?: {
           timeRange?: 'day' | 'week' | 'month' | 'year';
         };
@@ -1227,7 +1228,200 @@ export default class Interpreter extends EventEmitter {
           this.options.debugChannel.setActionType('search');
         }
 
-        searchConfig.provider = 'duckduckgo';
+        if (searchConfig.provider === 'tavily') {
+          this.log(`Performing Tavily search for: ${searchConfig.query}`, Level.LOG);
+
+          try {
+            const tavilyApiKey = process.env.TAVILY_API_KEY;
+            if (!tavilyApiKey) {
+              throw new Error('TAVILY_API_KEY environment variable is not set. Required when using Tavily as search provider.');
+            }
+
+            const tavilyClient = tavily({ apiKey: tavilyApiKey });
+
+            const tavilyOptions: Record<string, any> = {
+              maxResults: searchConfig.limit,
+              searchDepth: 'basic' as const,
+            };
+
+            if (searchConfig.filters?.timeRange) {
+              tavilyOptions.timeRange = searchConfig.filters.timeRange;
+            }
+
+            if (searchConfig.mode === 'scrape') {
+              tavilyOptions.includeRawContent = 'text';
+            }
+
+            const tavilyResponse = await tavilyClient.search(searchConfig.query, tavilyOptions);
+
+            const searchResults = (tavilyResponse.results || []).map((result: any, index: number) => ({
+              url: result.url,
+              title: result.title,
+              description: result.content || '',
+              position: index + 1,
+            }));
+
+            this.log(`Tavily search found ${searchResults.length} results`, Level.LOG);
+
+            if (searchConfig.mode === 'discover') {
+              const actionType = "search";
+              const actionName = "Search Results";
+
+              if (!this.serializableDataByType[actionType]) {
+                this.serializableDataByType[actionType] = {};
+              }
+              if (!this.serializableDataByType[actionType][actionName]) {
+                this.serializableDataByType[actionType][actionName] = {};
+              }
+
+              const searchData = {
+                query: searchConfig.query,
+                provider: searchConfig.provider,
+                filters: searchConfig.filters || {},
+                resultsCount: searchResults.length,
+                results: searchResults,
+                searchedAt: new Date().toISOString()
+              };
+
+              this.serializableDataByType[actionType][actionName] = searchData;
+
+              await this.options.serializableCallback({
+                scrapeList: this.serializableDataByType.scrapeList || {},
+                scrapeSchema: this.serializableDataByType.scrapeSchema || {},
+                crawl: this.serializableDataByType.crawl || {},
+                search: this.serializableDataByType.search || {}
+              });
+
+              this.log(`Search completed in discover mode with ${searchResults.length} results`, Level.LOG);
+              return;
+            }
+
+            // Scrape mode: use raw content from Tavily when available, fall back to browser scraping
+            const scrapedResults = [];
+            for (let i = 0; i < searchResults.length; i++) {
+              const result = searchResults[i];
+              const tavilyResult = tavilyResponse.results[i];
+
+              if (tavilyResult && tavilyResult.rawContent) {
+                scrapedResults.push({
+                  searchResult: {
+                    query: searchConfig.query,
+                    position: result.position,
+                    searchTitle: result.title,
+                    searchDescription: result.description,
+                  },
+                  metadata: {
+                    url: result.url,
+                    sourceURL: result.url,
+                    title: result.title,
+                    statusCode: 200
+                  },
+                  html: '',
+                  text: tavilyResult.rawContent,
+                  links: [],
+                  wordCount: tavilyResult.rawContent.split(/\s+/).filter((w: string) => w.length > 0).length,
+                  scrapedAt: new Date().toISOString()
+                });
+                this.log(`✓ Got Tavily content for ${result.url}`, Level.LOG);
+              } else {
+                try {
+                  this.log(`[${i + 1}/${searchResults.length}] Scraping via browser: ${result.url}`, Level.LOG);
+
+                  await page.goto(result.url, {
+                    waitUntil: 'domcontentloaded',
+                    timeout: 30000
+                  }).catch(() => {
+                    this.log(`Failed to navigate to ${result.url}, skipping...`, Level.WARN);
+                  });
+
+                  await page.waitForLoadState('load', { timeout: 10000 }).catch(() => {});
+
+                  const pageData = await page.evaluate(() => {
+                    const title = document.title || '';
+                    const bodyText = document.body?.innerText || '';
+                    const html = document.documentElement.outerHTML;
+                    const links = Array.from(document.querySelectorAll('a')).map(a => a.href);
+
+                    return { title, text: bodyText, html, links, wordCount: bodyText.split(/\s+/).filter(w => w.length > 0).length };
+                  });
+
+                  scrapedResults.push({
+                    searchResult: {
+                      query: searchConfig.query,
+                      position: result.position,
+                      searchTitle: result.title,
+                      searchDescription: result.description,
+                    },
+                    metadata: {
+                      url: result.url,
+                      sourceURL: result.url,
+                      title: pageData.title,
+                      statusCode: 200
+                    },
+                    html: pageData.html,
+                    text: pageData.text,
+                    links: pageData.links,
+                    wordCount: pageData.wordCount,
+                    scrapedAt: new Date().toISOString()
+                  });
+                  this.log(`✓ Scraped ${result.url} (${pageData.wordCount} words)`, Level.LOG);
+                } catch (error) {
+                  this.log(`Failed to scrape ${result.url}: ${error.message}`, Level.WARN);
+                  scrapedResults.push({
+                    searchResult: {
+                      query: searchConfig.query,
+                      position: result.position,
+                      searchTitle: result.title,
+                      searchDescription: result.description,
+                    },
+                    url: result.url,
+                    error: error.message,
+                    scrapedAt: new Date().toISOString()
+                  });
+                }
+              }
+            }
+
+            this.log(`Successfully processed ${scrapedResults.length} search results via Tavily`, Level.LOG);
+
+            const actionType = "search";
+            const actionName = "Search Results";
+
+            if (!this.serializableDataByType[actionType]) {
+              this.serializableDataByType[actionType] = {};
+            }
+            if (!this.serializableDataByType[actionType][actionName]) {
+              this.serializableDataByType[actionType][actionName] = {};
+            }
+
+            const searchData = {
+              query: searchConfig.query,
+              provider: searchConfig.provider,
+              filters: searchConfig.filters || {},
+              mode: searchConfig.mode,
+              resultsCount: scrapedResults.length,
+              results: scrapedResults,
+              searchedAt: new Date().toISOString()
+            };
+
+            this.serializableDataByType[actionType][actionName] = searchData;
+
+            await this.options.serializableCallback({
+              scrapeList: this.serializableDataByType.scrapeList || {},
+              scrapeSchema: this.serializableDataByType.scrapeSchema || {},
+              crawl: this.serializableDataByType.crawl || {},
+              search: this.serializableDataByType.search || {}
+            });
+
+          } catch (error) {
+            this.log(`Tavily search action failed: ${error.message}`, Level.ERROR);
+            throw new Error(`Tavily search execution error: ${error.message}`);
+          }
+          return;
+        }
+
+        // Default: DuckDuckGo provider
+        searchConfig.provider = searchConfig.provider || 'duckduckgo';
 
         this.log(`Performing DuckDuckGo search for: ${searchConfig.query}`, Level.LOG);
 
