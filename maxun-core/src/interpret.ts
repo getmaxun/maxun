@@ -2,12 +2,28 @@
 import { ElementHandle, Page, PageScreenshotOptions } from 'playwright-core';
 import fetch from 'cross-fetch';
 import path from 'path';
-import { tavily } from '@tavily/core';
+import { tavily, TavilySearchOptions, TavilyClient } from '@tavily/core';
+
+/**
+ * Lazily-initialized Tavily client, reused across search calls.
+ */
+let tavilyClientInstance: TavilyClient | null = null;
+
+function getTavilyClient(): TavilyClient {
+  if (!tavilyClientInstance) {
+    const apiKey = process.env.TAVILY_API_KEY;
+    if (!apiKey) {
+      throw new Error('TAVILY_API_KEY environment variable is not set. Required when using Tavily as search provider.');
+    }
+    tavilyClientInstance = tavily({ apiKey });
+  }
+  return tavilyClientInstance;
+}
 
 import { EventEmitter } from 'events';
 import {
   Where, What, PageState, Workflow, WorkflowFile,
-  ParamType, SelectorArray, CustomFunctions,
+  ParamType, SelectorArray, CustomFunctions, SearchProvider,
 } from './types/workflow';
 
 import { operators, meta } from './types/logic';
@@ -1213,7 +1229,7 @@ export default class Interpreter extends EventEmitter {
       search: async (searchConfig: {
         query: string;
         limit: number;
-        provider?: 'duckduckgo' | 'tavily';
+        provider?: SearchProvider;
         filters?: {
           timeRange?: 'day' | 'week' | 'month' | 'year';
         };
@@ -1232,16 +1248,11 @@ export default class Interpreter extends EventEmitter {
           this.log(`Performing Tavily search for: ${searchConfig.query}`, Level.LOG);
 
           try {
-            const tavilyApiKey = process.env.TAVILY_API_KEY;
-            if (!tavilyApiKey) {
-              throw new Error('TAVILY_API_KEY environment variable is not set. Required when using Tavily as search provider.');
-            }
+            const tavilyClient = getTavilyClient();
 
-            const tavilyClient = tavily({ apiKey: tavilyApiKey });
-
-            const tavilyOptions: Record<string, any> = {
+            const tavilyOptions: TavilySearchOptions = {
               maxResults: searchConfig.limit,
-              searchDepth: 'basic' as const,
+              searchDepth: 'advanced',
             };
 
             if (searchConfig.filters?.timeRange) {
