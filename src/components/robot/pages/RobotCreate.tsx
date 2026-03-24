@@ -54,7 +54,7 @@ function TabPanel(props: TabPanelProps) {
 const RobotCreate: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { setBrowserId, setRecordingUrl, notify, setRecordingId, setRerenderRobots } = useGlobalInfoStore();
+  const { setBrowserId, setRecordingUrl, notify, setRecordingId, setRerenderRobots, recordings } = useGlobalInfoStore();
 
   const [tabValue, setTabValue] = useState(0);
   const [url, setUrl] = useState('');
@@ -189,28 +189,32 @@ const RobotCreate: React.FC = () => {
     }
 
     setIsLoading(true);
-    const result = await createCrawlRobot(
-      crawlUrl,
-      crawlRobotName,
-      {
-        mode: crawlMode,
-        limit: crawlLimit,
-        maxDepth: crawlMaxDepth,
-        includePaths: crawlIncludePaths ? crawlIncludePaths.split(',').map(p => p.trim()) : [],
-        excludePaths: crawlExcludePaths ? crawlExcludePaths.split(',').map(p => p.trim()) : [],
-        useSitemap: crawlUseSitemap,
-        followLinks: crawlFollowLinks,
-        respectRobots: crawlRespectRobots
+    try {
+      const result = await createCrawlRobot(
+        crawlUrl,
+        crawlRobotName,
+        {
+          mode: crawlMode,
+          limit: crawlLimit,
+          maxDepth: crawlMaxDepth,
+          includePaths: crawlIncludePaths ? crawlIncludePaths.split(',').map(p => p.trim()) : [],
+          excludePaths: crawlExcludePaths ? crawlExcludePaths.split(',').map(p => p.trim()) : [],
+          useSitemap: crawlUseSitemap,
+          followLinks: crawlFollowLinks,
+          respectRobots: crawlRespectRobots
+        }
+      );
+      setIsLoading(false);
+      if (result) {
+        invalidateRecordings();
+        notify('success', `${crawlRobotName} created successfully!`);
+        navigate('/robots');
+      } else {
+        notify('error', 'Failed to create crawl robot');
       }
-    );
-    setIsLoading(false);
-
-    if (result) {
-      invalidateRecordings();
-      notify('success', `${crawlRobotName} created successfully!`);
-      navigate('/robots');
-    } else {
-      notify('error', 'Failed to create crawl robot');
+    } catch (error: any) {
+      setIsLoading(false);
+      notify('error', error.message || 'Failed to create crawl robot');
     }
   };
 
@@ -225,26 +229,30 @@ const RobotCreate: React.FC = () => {
     }
 
     setIsLoading(true);
-    const result = await createSearchRobot(
-      searchRobotName,
-      {
-        query: searchQuery,
-        limit: searchLimit,
-        provider: searchProvider,
-        filters: {
-          timeRange: searchTimeRange ? searchTimeRange as 'day' | 'week' | 'month' | 'year' : undefined
-        },
-        mode: searchMode
+    try {
+      const result = await createSearchRobot(
+        searchRobotName,
+        {
+          query: searchQuery,
+          limit: searchLimit,
+          provider: searchProvider,
+          filters: {
+            timeRange: searchTimeRange ? searchTimeRange as 'day' | 'week' | 'month' | 'year' : undefined
+          },
+          mode: searchMode
+        }
+      );
+      setIsLoading(false);
+      if (result) {
+        invalidateRecordings();
+        notify('success', `${searchRobotName} created successfully!`);
+        navigate('/robots');
+      } else {
+        notify('error', 'Failed to create search robot');
       }
-    );
-    setIsLoading(false);
-
-    if (result) {
-      invalidateRecordings();
-      notify('success', `${searchRobotName} created successfully!`);
-      navigate('/robots');
-    } else {
-      notify('error', 'Failed to create search robot');
+    } catch (error: any) {
+      setIsLoading(false);
+      notify('error', error.message || 'Failed to create search robot');
     }
   };
 
@@ -528,6 +536,10 @@ const RobotCreate: React.FC = () => {
                           notify('error', 'Please enter an extraction prompt');
                           return;
                         }
+                        if (recordings.some(r => r.trim().toLowerCase() === extractRobotName.trim().toLowerCase())) {
+                          notify('error', `A robot with the name "${extractRobotName.trim()}" already exists.`);
+                          return;
+                        }
 
                         const tempRobotId = `temp-${Date.now()}`;
                         const robotDisplayName = extractRobotName;
@@ -805,15 +817,19 @@ const RobotCreate: React.FC = () => {
                   }
 
                   setIsLoading(true);
-                  const result = await createScrapeRobot(url, scrapeRobotName, outputFormats);
-                  setIsLoading(false);
-
-                  if (result) {
-                    setRerenderRobots(true);
-                    notify('success', `${scrapeRobotName} created successfully!`);
-                    navigate('/robots');
-                  } else {
-                    notify('error', 'Failed to create scrape robot');
+                  try {
+                    const result = await createScrapeRobot(url, scrapeRobotName, outputFormats);
+                    setIsLoading(false);
+                    if (result) {
+                      setRerenderRobots(true);
+                      notify('success', `${scrapeRobotName} created successfully!`);
+                      navigate('/robots');
+                    } else {
+                      notify('error', 'Failed to create scrape robot');
+                    }
+                  } catch (error: any) {
+                    setIsLoading(false);
+                    notify('error', error.message || 'Failed to create scrape robot');
                   }
                 }}
                 disabled={!url.trim() || !scrapeRobotName.trim() || outputFormats.length === 0 || isLoading}

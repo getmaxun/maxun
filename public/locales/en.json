@@ -279,6 +279,7 @@
       "errors": {
         "user_not_logged": "User not logged in. Cannot save recording.",
         "exists_warning": "Robot with this name already exists, please confirm the Robot's overwrite.",
+        "name_exists": "A robot with this name already exists. Please choose a different name.",
         "no_actions_performed": "Cannot save robot. Please perform at least one capture action before saving."
       },
       "tooltips": {
@@ -441,7 +442,8 @@
         "warning": "⚠️ Ensure the new page has the same structure as the original page."
       },
       "fields": {
-        "target_url": "Target URL"
+        "target_url": "Target URL",
+        "new_name": "Robot Name"
       },
       "buttons": {
         "duplicate": "Duplicate Robot",
@@ -450,6 +452,7 @@
       "notifications": {
         "robot_not_found": "Could not find robot details. Please try again.",
         "url_required": "Target URL is required.",
+        "name_required": "Robot name is required.",
         "duplicate_success": "Robot duplicated successfully.",
         "duplicate_error": "Failed to update the Target URL. Please try again.",
         "unknown_error": "An error occurred while updating the Target URL."

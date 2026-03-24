@@ -278,6 +278,7 @@
     "errors": {
       "user_not_logged": "Kullanıcı girişi yok. Kaydedilemedi.",
       "exists_warning": "Bu isimde robot zaten var; üzerine yazmayı onaylayın.",
+      "name_exists": "Bu isimde bir robot zaten mevcut. Lütfen farklı bir isim seçin.",
       "no_actions_performed": "Robot kaydedilemez. Lütfen kaydetmeden önce en az bir yakalama eylemi gerçekleştirin."
     },
     "tooltips": {
@@ -440,7 +441,8 @@
       "warning": "⚠️ Yeni sayfanın yapısının aynı olduğundan emin olun."
     },
     "fields": {
-      "target_url": "Robot Hedef URL"
+      "target_url": "Robot Hedef URL",
+      "new_name": "Robot Adı"
     },
     "buttons": {
       "duplicate": "Robotu Çoğalt",
@@ -449,6 +451,7 @@
     "notifications": {
       "robot_not_found": "Robot bulunamadı. Tekrar deneyin.",
       "url_required": "Hedef URL gerekli.",
+      "name_required": "Robot adı gereklidir.",
       "duplicate_success": "Robot çoğaltıldı",
       "duplicate_error": "Hedef URL güncellenemedi. Tekrar deneyin.",
       "unknown_error": "Hedef URL güncellenirken hata oluştu"
@@ -457,6 +460,7 @@
   "robot_settings": {
     "title": "Robot Ayarları",
     "target_url": "Robot Hedef URL",
+      "new_name": "Robot Adı",
     "robot_id": "Robot ID",
     "robot_limit": "Robot Limiti",
     "created_by_user": "Oluşturan",

@@ -279,6 +279,7 @@
         "errors": {
             "user_not_logged": "Benutzer nicht angemeldet. Aufnahme kann nicht gespeichert werden.",
             "exists_warning": "Ein Roboter mit diesem Namen existiert bereits, bitte bestätigen Sie das Überschreiben des Roboters.",
+            "name_exists": "Ein Roboter mit diesem Namen existiert bereits. Bitte wählen Sie einen anderen Namen.",
             "no_actions_performed": "Roboter kann nicht gespeichert werden. Bitte führen Sie mindestens eine Erfassungsaktion durch, bevor Sie speichern."
         },
         "tooltips": {
@@ -441,7 +442,8 @@
             "warning": "⚠️ Stellen Sie sicher, dass die neue Seite die gleiche Struktur wie die Originalseite hat."
         },
         "fields": {
-            "target_url": "Roboter Ziel-URL"
+            "target_url": "Roboter Ziel-URL",
+            "new_name": "Roboter-Name"
         },
         "buttons": {
             "duplicate": "Roboter duplizieren",
@@ -450,6 +452,7 @@
         "notifications": {
             "robot_not_found": "Roboterdetails konnten nicht gefunden werden. Bitte versuchen Sie es erneut.",
             "url_required": "Ziel-URL ist erforderlich.",
+            "name_required": "Roboter-Name ist erforderlich.",
             "duplicate_success": "Roboter erfolgreich dupliziert.",
             "duplicate_error": "Fehler beim Aktualisieren der Ziel-URL. Bitte versuchen Sie es erneut.",
             "unknown_error": "Beim Aktualisieren der Ziel-URL ist ein Fehler aufgetreten."
