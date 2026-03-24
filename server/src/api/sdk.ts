@@ -761,13 +761,13 @@ router.post("/sdk/crawl", requireAPIKey, async (req: AuthenticatedRequest, res: 
                 params: [],
                 type: 'crawl',
                 url: url,
+                formats: crawlConfig.outputFormats || [],
             },
             recording: {
                 workflow: [
                     {
                         where: { url },
                         what: [
-                            { action: 'flag', args: ['generated'] },
                             {
                                 action: 'crawl',
                                 args: [crawlConfig],
@@ -855,6 +855,10 @@ router.post("/sdk/search", requireAPIKey, async (req: AuthenticatedRequest, res:
 
         searchConfig.provider = 'duckduckgo';
 
+        if (searchConfig.outputFormats && Array.isArray(searchConfig.outputFormats) && searchConfig.outputFormats.length > 0) {
+            searchConfig.mode = 'scrape';
+        }
+
         const robotName = name || `Search Robot - ${searchConfig.query}`;
         const robotId = uuid();
         const metaId = uuid();
@@ -870,6 +874,7 @@ router.post("/sdk/search", requireAPIKey, async (req: AuthenticatedRequest, res:
                 pairs: 1,
                 params: [],
                 type: 'search',
+                formats: searchConfig.outputFormats || [],
             },
             recording: {
                 workflow: [
