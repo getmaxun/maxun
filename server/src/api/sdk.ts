@@ -717,6 +717,121 @@ router.post("/sdk/robots/:id/runs/:runId/abort", requireAPIKey, async (req: Auth
 });
 
 /**
+ * Duplicate a robot with a new target URL
+ * POST /api/sdk/robots/:id/duplicate
+ */
+router.post("/sdk/robots/:id/duplicate", requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const robotId = req.params.id;
+        const { targetUrl } = req.body;
+
+        if (!targetUrl) {
+            return res.status(400).json({
+                error: "The \"targetUrl\" field is required."
+            });
+        }
+
+        try {
+            const parsed = new URL(targetUrl);
+            if (!['http:', 'https:'].includes(parsed.protocol)) {
+                return res.status(400).json({
+                    error: "The \"targetUrl\" must use http or https protocol."
+                });
+            }
+        } catch {
+            return res.status(400).json({
+                error: "The \"targetUrl\" must be a valid URL."
+            });
+        }
+
+        const originalRobot = await Robot.findOne({
+            where: { 'recording_meta.id': robotId }
+        });
+
+        if (!originalRobot) {
+            return res.status(404).json({
+                error: `Robot with ID "${robotId}" not found.`
+            });
+        }
+
+        const lastWord = targetUrl.split('/').filter(Boolean).pop() || 'Unnamed';
+
+        const steps: any[] = originalRobot.recording.workflow;
+        const entryStep = steps.findLast((step: any) => step.where?.url === 'about:blank');
+        const originalEntryUrl: string | null = entryStep?.what?.find(
+            (action: any) => action.action === 'goto' && action.args?.length
+        )?.args?.[0] ?? null;
+
+        let gotoUpdated = false;
+        let whereUpdateStopped = false;
+
+        const workflow = [...steps].reverse().map((step: any) => {
+            let updatedWhere = step.where;
+
+            if (originalEntryUrl && step.where?.url !== 'about:blank' && !whereUpdateStopped) {
+                if (step.where?.url === originalEntryUrl) {
+                    updatedWhere = { ...step.where, url: targetUrl };
+                } else {
+                    whereUpdateStopped = true;
+                }
+            }
+
+            const updatedWhat = step.what.map((action: any) => {
+                if (!gotoUpdated && action.action === 'goto' && action.args?.[0] === originalEntryUrl) {
+                    gotoUpdated = true;
+                    return { ...action, args: [targetUrl, ...action.args.slice(1)] };
+                }
+                return action;
+            });
+
+            return { ...step, where: updatedWhere, what: updatedWhat };
+        }).reverse();
+
+        const currentTimestamp = new Date().toISOString();
+
+        const newRobot = await Robot.create({
+            id: uuid(),
+            userId: originalRobot.userId,
+            recording_meta: {
+                ...originalRobot.recording_meta,
+                id: uuid(),
+                name: `${originalRobot.recording_meta.name} (${lastWord})`,
+                url: targetUrl,
+                createdAt: currentTimestamp,
+                updatedAt: currentTimestamp,
+            },
+            recording: { ...originalRobot.recording, workflow },
+            google_sheet_email: null,
+            google_sheet_name: null,
+            google_sheet_id: null,
+            google_access_token: null,
+            google_refresh_token: null,
+            airtable_base_id: null,
+            airtable_base_name: null,
+            airtable_table_name: null,
+            airtable_table_id: null,
+            airtable_access_token: null,
+            airtable_refresh_token: null,
+            webhooks: null,
+            schedule: null,
+        });
+
+        logger.info(`[SDK] Robot ${robotId} duplicated as ${newRobot.recording_meta.id}`);
+
+        return res.status(201).json({
+            data: newRobot,
+            message: "Robot duplicated successfully"
+        });
+    } catch (error: any) {
+        logger.error("[SDK] Error duplicating robot:", error);
+        return res.status(500).json({
+            error: "Failed to duplicate robot",
+            message: error.message
+        });
+    }
+});
+
+/**
  * Create a crawl robot programmatically
  * POST /api/sdk/crawl
  */
