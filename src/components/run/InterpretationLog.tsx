@@ -95,6 +95,17 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
       const listStep = browserSteps.find(step => step.id === editingField.listId);
       const actionId = listStep?.actionId;
 
+      if (listStep && listStep.type === 'list') {
+        const newLabel = editingValue.trim();
+        const duplicate = Object.entries(listStep.fields).some(
+          ([key, field]: [string, any]) => key !== editingField.fieldKey && field.label === newLabel
+        );
+        if (duplicate) {
+          notify('error', `A field with the name "${newLabel}" already exists. Please choose a different name.`);
+          return;
+        }
+      }
+
       updateListTextFieldLabel(editingField.listId, editingField.fieldKey, editingValue.trim());
 
       // Emit updated action to backend after state update completes
@@ -241,6 +252,13 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
       const duplicate = screenshotSteps.find(step => step.name === trimmedName);
       if (duplicate) {
         notify('error', `A screenshot with the name "${trimmedName}" already exists. Please choose a different name.`);
+        return true;
+      }
+    } else if (type === 'text') {
+      const textSteps = browserSteps.filter(step => step.type === 'text' && step.id !== stepId);
+      const duplicate = textSteps.find((step: any) => step.label === trimmedName);
+      if (duplicate) {
+        notify('error', `A field with the name "${trimmedName}" already exists. Please choose a different name.`);
         return true;
       }
     }
