@@ -43,3 +43,6 @@ MAXUN_TELEMETRY=true
 BROWSER_WS_PORT=3001
 BROWSER_HEALTH_PORT=3002
 BROWSER_WS_HOST=browser
+
+# Optional Tavily API Key (required only when using Tavily as search provider)
+TAVILY_API_KEY=your_tavily_api_key
