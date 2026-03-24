@@ -25,6 +25,27 @@ interface AuthenticatedRequest extends Request {
 }
 
 /**
+ * Get the status of the authenticated user
+ * GET /api/sdk/status
+ */
+router.get("/sdk/status", requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const user = req.user;
+        return res.status(200).json({
+            email: user.email,
+            plan: 'OSS',
+            credits: 999999
+        });
+    } catch (error: any) {
+        logger.error("Error getting status:", error);
+        return res.status(500).json({
+            error: "Failed to get status",
+            message: error.message
+        });
+    }
+});
+
+/**
  * Create a new robot programmatically
  * POST /api/sdk/robots
  */
