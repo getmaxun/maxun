@@ -66,12 +66,12 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
             });
         }
 
-        const type = (workflowFile.meta as any).type || 'extract';
+        const robotType = (workflowFile.meta as any).type || (workflowFile.meta as any).robotType || 'extract';
 
         let enrichedWorkflow: any[] = [];
         let extractedUrl: string | undefined;
 
-        if (type === 'scrape') {
+        if (robotType === 'scrape') {
             enrichedWorkflow = [];
             extractedUrl = (workflowFile.meta as any).url;
 
@@ -106,7 +106,7 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
             updatedAt: new Date().toISOString(),
             pairs: enrichedWorkflow.length,
             params: [],
-            type,
+            type: robotType,
             url: extractedUrl,
             formats: (workflowFile.meta as any).formats || [],
             isLLM: (workflowFile.meta as any).isLLM,
@@ -496,6 +496,31 @@ router.post("/sdk/robots/:id/execute", requireAPIKey, async (req: AuthenticatedR
             searchData = run.serializableOutput.search;
         }
 
+        let text: string | undefined = undefined;
+        if (run.serializableOutput?.text && Array.isArray(run.serializableOutput.text)) {
+            text = run.serializableOutput.text[0]?.content || undefined;
+        }
+
+        const scrapeOutput = run.serializableOutput?.scrape as Record<string, any> | undefined;
+        if (!text && scrapeOutput?.text && Array.isArray(scrapeOutput.text)) {
+            text = scrapeOutput.text[0]?.content || undefined;
+        }
+
+        let markdown: string | undefined = undefined;
+        let html: string | undefined = undefined;
+        if (run.serializableOutput?.markdown && Array.isArray(run.serializableOutput.markdown)) {
+            markdown = run.serializableOutput.markdown[0]?.content || undefined;
+        }
+        if (!markdown && scrapeOutput?.markdown && Array.isArray(scrapeOutput.markdown)) {
+            markdown = scrapeOutput.markdown[0]?.content || undefined;
+        }
+        if (run.serializableOutput?.html && Array.isArray(run.serializableOutput.html)) {
+            html = run.serializableOutput.html[0]?.content || undefined;
+        }
+        if (!html && scrapeOutput?.html && Array.isArray(scrapeOutput.html)) {
+            html = scrapeOutput.html[0]?.content || undefined;
+        }
+
         return res.status(200).json({
             data: {
                 runId: run.runId,
@@ -504,7 +529,10 @@ router.post("/sdk/robots/:id/execute", requireAPIKey, async (req: AuthenticatedR
                     textData: run.serializableOutput?.scrapeSchema || {},
                     listData: listData,
                     crawlData: crawlData,
-                    searchData: searchData
+                    searchData: searchData,
+                    text: text,
+                    markdown: markdown,
+                    html: html
                 },
                 screenshots: Object.values(run.binaryOutput || {})
             }
