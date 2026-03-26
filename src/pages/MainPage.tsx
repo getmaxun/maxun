@@ -26,6 +26,7 @@ export interface CreateRunResponse {
   browserId: string | null;
   runId: string;
   robotMetaId: string;
+  httpExecution?: boolean;
 }
 
 export interface ScheduleRunResponse {
