@@ -23,7 +23,7 @@ interface MainPageProps {
 }
 
 export interface CreateRunResponse {
-  browserId: string;
+  browserId: string | null;
   runId: string;
   robotMetaId: string;
 }
