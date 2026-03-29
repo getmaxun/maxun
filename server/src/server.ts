@@ -24,8 +24,18 @@ import { startWorkers } from './pgboss-worker';
 import { stopPgBossClient, startPgBossClient } from './storage/pgboss'
 import Run from './models/Run';
 
+const normalizeOrigin = (urlString?: string): string => {
+  if (!urlString) return 'http://localhost:5173';
+  try {
+    const url = new URL(urlString);
+    return `${url.protocol}//${url.host}`;
+  } catch {
+    return 'http://localhost:5173';
+  }
+};
+
 const CORS_CONFIG = {
-  origin: process.env.PUBLIC_URL || 'http://localhost:5173',
+  origin: normalizeOrigin(process.env.PUBLIC_URL),
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -94,7 +104,6 @@ export let io = new Server(server, {
   pingInterval: 25000,
   maxHttpBufferSize: 1e8,
   transports: ['websocket', 'polling'],
-  allowEIO3: true,
   cors: CORS_CONFIG
 });
 

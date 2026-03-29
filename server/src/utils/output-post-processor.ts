@@ -57,15 +57,19 @@ export async function processRobotOutputFormats(
     for (let pageIndex = 0; pageIndex < crawlResults.length; pageIndex++) {
       const pageResult = crawlResults[pageIndex];
       if (!pageResult.error) {
+        let markdownConversionSucceeded = false;
         if (effectiveFormats.includes('markdown') && pageResult.html) {
           try {
             pageResult.markdown = await parseMarkdown(pageResult.html, pageResult.metadata?.url);
+            markdownConversionSucceeded = true;
           } catch (e: any) {
             logger.log('warn', `Failed to convert crawl page to markdown: ${e.message}`);
           }
         }
 
-        if (!effectiveFormats.includes('html')) delete pageResult.html;
+        if (!effectiveFormats.includes('html') && markdownConversionSucceeded) {
+          delete pageResult.html;
+        }
         if (!effectiveFormats.includes('text')) delete pageResult.text;
 
         const pageUrl = pageResult.metadata?.url || pageResult.url;
@@ -116,22 +120,26 @@ export async function processRobotOutputFormats(
 
   if (robotType === 'search') {
     const searchResultGroup = (categorizedOutput.search as any)?.['Search Results'];
-    if ((searchResultGroup?.mode === 'scrape' || !searchResultGroup?.mode) && Array.isArray(searchResultGroup?.results)) {
+    if (searchResultGroup?.mode === 'scrape' && Array.isArray(searchResultGroup?.results)) {
       const includeVisibleScreenshot = effectiveFormats.includes('screenshot-visible');
       const includeFullpageScreenshot = effectiveFormats.includes('screenshot-fullpage');
 
       for (let resultIndex = 0; resultIndex < searchResultGroup.results.length; resultIndex++) {
         const result = searchResultGroup.results[resultIndex];
         if (!result.error) {
+          let markdownConversionSucceeded = false;
           if (effectiveFormats.includes('markdown') && result.html) {
             try {
               result.markdown = await parseMarkdown(result.html, result.metadata?.url);
+              markdownConversionSucceeded = true;
             } catch (e: any) {
               logger.log('warn', `Failed to convert search result to markdown: ${e.message}`);
             }
           }
 
-          if (!effectiveFormats.includes('html')) delete result.html;
+          if (!effectiveFormats.includes('html') && markdownConversionSucceeded) {
+            delete result.html;
+          }
           if (!effectiveFormats.includes('text')) delete result.text;
 
           const resultUrl = result.metadata?.url || result.url;

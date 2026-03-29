@@ -243,6 +243,8 @@ const RobotCreate: React.FC = () => {
 
     setIsLoading(true);
     try {
+      const formatsForRequest = searchMode === 'discover' ? [] : searchOutputFormats;
+      
       const result = await createSearchRobot(
         searchRobotName,
         {
@@ -254,7 +256,7 @@ const RobotCreate: React.FC = () => {
           },
           mode: searchMode
         },
-        searchOutputFormats
+        formatsForRequest
       );
       setIsLoading(false);
       if (result) {

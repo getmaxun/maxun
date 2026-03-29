@@ -500,18 +500,10 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
         categorizedOutput.search = processedOutput.categorizedOutput.search;
         binaryOutput = processedOutput.binaryOutput;
 
-        await run.update({
-          serializableOutput: {
-            ...(finalRun?.serializableOutput || {}),
-            crawl: categorizedOutput.crawl,
-            search: categorizedOutput.search,
-          }
-        });
-
         const hasOutput = hasExpectedRobotOutput(robotType, {
           crawl: categorizedOutput.crawl as Record<string, any>,
           search: categorizedOutput.search as Record<string, any>
-        });
+        }, outputFormats, binaryOutput);
 
         if (!hasOutput) {
           const humanRobotType = robotType.charAt(0).toUpperCase() + robotType.slice(1);
@@ -535,6 +527,11 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
         finishedAt: new Date().toLocaleString(),
         log: interpretationInfo.log.join('\n'),
         binaryOutput: uploadedBinaryOutput,
+        serializableOutput: {
+          ...(finalRun?.serializableOutput || {}),
+          crawl: categorizedOutput.crawl,
+          search: categorizedOutput.search,
+        }
       });
 
       let totalSchemaItemsExtracted = 0;
@@ -650,7 +647,9 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
       try {
         const hasData = (run.serializableOutput && 
           ((run.serializableOutput.scrapeSchema && run.serializableOutput.scrapeSchema.length > 0) ||
-           (run.serializableOutput.scrapeList && run.serializableOutput.scrapeList.length > 0))) ||
+           (run.serializableOutput.scrapeList && run.serializableOutput.scrapeList.length > 0) ||
+           (run.serializableOutput.crawl && Object.keys(run.serializableOutput.crawl).length > 0) ||
+           (run.serializableOutput.search && Object.keys(run.serializableOutput.search).length > 0))) ||
           (run.binaryOutput && Object.keys(run.binaryOutput).length > 0);
 
         if (hasData) {

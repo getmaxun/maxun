@@ -38,7 +38,7 @@ interface RobotMeta {
   params: any[];
   type?: 'extract' | 'scrape' | 'crawl' | 'search';
   url?: string;
-  formats?: ('markdown' | 'html' | 'screenshot-visible' | 'screenshot-fullpage')[];
+  formats?: OutputFormat[];
   isLLM?: boolean;
 }
 

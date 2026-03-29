@@ -68,7 +68,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   const [currentSearchIndex, setCurrentSearchIndex] = useState<number>(0);
 
   const [screenshotKeys, setScreenshotKeys] = useState<string[]>([]);
-  const [screenshotKeyMap, setScreenshotKeyMap] = useState<Record<string, string>>({});
+  const [rawScreenshotKeys, setRawScreenshotKeys] = useState<string[]>([]);
   const [currentScreenshotIndex, setCurrentScreenshotIndex] = useState<number>(0);
   const [currentCrawlScreenshotTab, setCurrentCrawlScreenshotTab] = useState<number>(0);
   const [currentSearchScreenshotTab, setCurrentSearchScreenshotTab] = useState<number>(0);
@@ -166,7 +166,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   useEffect(() => {
     if (row.status === 'running' || row.status === 'queued' || row.status === 'scheduled') {
       setScreenshotKeys([]);
-      setScreenshotKeyMap({});
+      setRawScreenshotKeys([]);
       setCurrentScreenshotIndex(0);
       return;
     }
@@ -200,17 +200,18 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
         });
       }
 
-      const keyMap: Record<string, string> = {};
+      const keyMap: Record<string, { id: string; label: string }> = {};
       normalizedScreenshotKeys.forEach((displayName, index) => {
-        keyMap[displayName] = rawKeys[index];
+        const rawKey = rawKeys[index];
+        keyMap[rawKey] = { id: rawKey, label: displayName };
       });
 
       setScreenshotKeys(normalizedScreenshotKeys);
-      setScreenshotKeyMap(keyMap);
+      setRawScreenshotKeys(rawKeys);
       setCurrentScreenshotIndex(0);
     } else {
       setScreenshotKeys([]);
-      setScreenshotKeyMap({});
+      setRawScreenshotKeys([]);
       setCurrentScreenshotIndex(0);
     }
   }, [row.binaryOutput, row.status]);
@@ -577,11 +578,13 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
         if (binaryData.startsWith('http') || binaryData.startsWith('data:')) {
           return binaryData;
         }
-        return `data:image/png;base64,${binaryData}`;
+        if (/^[A-Za-z0-9+/=]+$/.test(binaryData)) {
+          return `data:image/png;base64,${binaryData}`;
+        }
       }
     }
 
-    return `data:image/png;base64,${value}`;
+    return null;
   };
 
   const downloadAllCrawlsAsZip = async (crawlDataArray: any[], zipFilename: string) => {
@@ -1138,7 +1141,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
               {showCapturedScreenshotSection && renderCapturedScreenshotsAccordion(
                 t('run_content.captured_screenshot.title', 'Captured Screenshots'),
-                screenshotKeys.map(key => ({ key, label: key, value: screenshotKeyMap[key] })).filter(tab => tab.value),
+                screenshotKeys.map((label, index) => ({ key: label, label, value: rawScreenshotKeys[index] })).filter(tab => tab.value),
                 currentScreenshotIndex,
                 setCurrentScreenshotIndex,
                 'global-screenshots-primary'
@@ -2193,7 +2196,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
           {showCapturedScreenshotSection && renderCapturedScreenshotsAccordion(
             t('run_content.captured_screenshot.title', 'Captured Screenshots'),
-            screenshotKeys.map(key => ({ key, label: key, value: screenshotKeyMap[key] })).filter(tab => tab.value),
+            screenshotKeys.map((label, index) => ({ key: label, label, value: rawScreenshotKeys[index] })).filter(tab => tab.value),
             currentScreenshotIndex,
             setCurrentScreenshotIndex,
             'global-screenshots-secondary'

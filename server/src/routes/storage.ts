@@ -365,8 +365,23 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
     }
 
     let normalizedFormats: OutputFormat[] | undefined;
-    if (formats !== undefined) {
-      const allowedFormats = robot.recording_meta?.type === 'scrape' ? SCRAPE_OUTPUT_FORMAT_OPTIONS : undefined;
+    
+    let searchMode: string | undefined;
+    if (robot.recording_meta?.type === 'search') {
+      const searchAction = workflow
+        .flatMap((pair: any) => pair.what || [])
+        .find((action: any) => action?.action === 'search');
+      searchMode = searchAction?.args?.[0]?.mode;
+    }
+
+    if (formats !== undefined || (robot.recording_meta?.type === 'search' && searchMode === 'discover')) {
+      let allowedFormats: readonly OutputFormat[] | undefined;
+      if (robot.recording_meta?.type === 'scrape') {
+        allowedFormats = SCRAPE_OUTPUT_FORMAT_OPTIONS;
+      } else if (robot.recording_meta?.type === 'search' && searchMode === 'scrape') {
+        allowedFormats = SCRAPE_OUTPUT_FORMAT_OPTIONS;
+      }
+
       const { validFormats, invalidFormats } = parseOutputFormats(formats, allowedFormats);
 
       if (invalidFormats.length > 0) {
@@ -375,16 +390,13 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
         });
       }
 
-      if (robot.recording_meta?.type === 'crawl' || robot.recording_meta?.type === 'scrape') {
+      if (robot.recording_meta?.type === 'crawl') {
+        normalizedFormats = validFormats.length > 0 ? validFormats : [...DEFAULT_OUTPUT_FORMATS];
+      } else if (robot.recording_meta?.type === 'scrape') {
         normalizedFormats = validFormats.length > 0 ? validFormats : [...DEFAULT_OUTPUT_FORMATS];
       } else if (robot.recording_meta?.type === 'search') {
-        const searchAction = workflow
-          .flatMap((pair: any) => pair.what || [])
-          .find((action: any) => action?.action === 'search');
-        const searchMode = searchAction?.args?.[0]?.mode;
-
         if (searchMode === 'discover') {
-          normalizedFormats = validFormats.length > 0 ? validFormats : [];
+          normalizedFormats = [];
         } else {
           normalizedFormats = validFormats.length > 0 ? validFormats : [...DEFAULT_OUTPUT_FORMATS];
         }
@@ -475,6 +487,8 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
       });
     }
 
+    const finalFormats = scrapeFormats.length > 0 ? scrapeFormats : DEFAULT_OUTPUT_FORMATS;
+
     const robotName = (typeof name === 'string' ? name.trim() : '') || `Markdown Robot - ${new URL(url).hostname}`;
     if (!robotName) {
       return res.status(400).json({ error: 'Robot name cannot be empty.' });
@@ -503,7 +517,7 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
         params: [],
         type: 'scrape',
         url: url,
-        formats: scrapeFormats,
+        formats: finalFormats,
       },
       recording: { workflow: [] },
       google_sheet_email: null,
@@ -1649,7 +1663,10 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
       return res.status(409).json({ error: `A robot with the name "${robotName}" already exists.` });
     }
 
-    const { validFormats: requestedFormats, invalidFormats } = parseOutputFormats(formats);
+    const { validFormats: requestedFormats, invalidFormats } = parseOutputFormats(
+      formats,
+      searchConfig.mode === 'scrape' ? SCRAPE_OUTPUT_FORMAT_OPTIONS : undefined
+    );
     if (invalidFormats.length > 0) {
       return res.status(400).json({
         error: `Invalid formats: ${invalidFormats.map(String).join(', ')}`,
@@ -1658,8 +1675,8 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
 
     let searchFormats: OutputFormat[];
     if (searchConfig.mode === 'discover') {
-      // Discover-mode: preserve empty array if explicitly provided
-      searchFormats = requestedFormats.length > 0 ? requestedFormats : [];
+      // Discover-mode: always empty, ignore caller input
+      searchFormats = [];
     } else {
       // Scrape-mode: apply defaults if empty
       searchFormats = requestedFormats.length > 0 ? requestedFormats : [...DEFAULT_OUTPUT_FORMATS];
