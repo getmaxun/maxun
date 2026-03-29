@@ -15,6 +15,14 @@ export const SCRAPE_OUTPUT_FORMAT_OPTIONS: OutputFormat[] = [
   'screenshot-fullpage',
 ];
 
+export const SEARCH_SCRAPE_OUTPUT_FORMAT_OPTIONS: OutputFormat[] = [
+  'markdown',
+  'html',
+  'text',
+  'screenshot-visible',
+  'screenshot-fullpage',
+];
+
 const OUTPUT_FORMAT_SET = new Set<string>(OUTPUT_FORMAT_OPTIONS as readonly string[]);
 
 export const DEFAULT_OUTPUT_FORMATS: OutputFormat[] = ['markdown'];

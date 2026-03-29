@@ -21,6 +21,7 @@ import { Op } from 'sequelize';
 import {
   DEFAULT_OUTPUT_FORMATS,
   parseOutputFormats,
+  SEARCH_SCRAPE_OUTPUT_FORMAT_OPTIONS,
   SCRAPE_OUTPUT_FORMAT_OPTIONS,
   OutputFormat,
 } from '../constants/output-formats';
@@ -379,7 +380,7 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       if (robot.recording_meta?.type === 'scrape') {
         allowedFormats = SCRAPE_OUTPUT_FORMAT_OPTIONS;
       } else if (robot.recording_meta?.type === 'search' && searchMode === 'scrape') {
-        allowedFormats = SCRAPE_OUTPUT_FORMAT_OPTIONS;
+        allowedFormats = SEARCH_SCRAPE_OUTPUT_FORMAT_OPTIONS;
       }
 
       const { validFormats, invalidFormats } = parseOutputFormats(formats, allowedFormats);
@@ -1665,7 +1666,7 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
 
     const { validFormats: requestedFormats, invalidFormats } = parseOutputFormats(
       formats,
-      searchConfig.mode === 'scrape' ? SCRAPE_OUTPUT_FORMAT_OPTIONS : undefined
+      searchConfig.mode === 'scrape' ? SEARCH_SCRAPE_OUTPUT_FORMAT_OPTIONS : undefined
     );
     if (invalidFormats.length > 0) {
       return res.status(400).json({
