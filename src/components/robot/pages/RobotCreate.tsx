@@ -27,6 +27,7 @@ import { canCreateBrowserInState, getActiveBrowserId, stopRecording } from '../.
 import { createScrapeRobot, createLLMRobot, createAndRunRecording, createCrawlRobot, createSearchRobot } from "../../../api/storage";
 import { AuthContext } from '../../../context/auth';
 import { GenericModal } from '../../ui/GenericModal';
+import { DEFAULT_OUTPUT_FORMATS, OUTPUT_FORMAT_LABELS, OUTPUT_FORMAT_OPTIONS, OutputFormat } from '../../../constants/outputFormats';
 
 
 interface TabPanelProps {
@@ -92,6 +93,9 @@ const RobotCreate: React.FC = () => {
   const [searchProvider] = useState<'duckduckgo'>('duckduckgo');
   const [searchMode, setSearchMode] = useState<'discover' | 'scrape'>('discover');
   const [searchTimeRange, setSearchTimeRange] = useState<'day' | 'week' | 'month' | 'year' | ''>('');
+
+  const [crawlOutputFormats, setCrawlOutputFormats] = useState<OutputFormat[]>(DEFAULT_OUTPUT_FORMATS);
+  const [searchOutputFormats, setSearchOutputFormats] = useState<OutputFormat[]>(DEFAULT_OUTPUT_FORMATS);
 
   const { state } = React.useContext(AuthContext);
   const { user } = state;
@@ -187,6 +191,10 @@ const RobotCreate: React.FC = () => {
       notify('error', 'Please enter a robot name');
       return;
     }
+    if (crawlOutputFormats.length === 0) {
+      notify('error', 'Please select at least one output format');
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -202,7 +210,8 @@ const RobotCreate: React.FC = () => {
           useSitemap: crawlUseSitemap,
           followLinks: crawlFollowLinks,
           respectRobots: crawlRespectRobots
-        }
+        },
+        crawlOutputFormats
       );
       setIsLoading(false);
       if (result) {
@@ -227,9 +236,15 @@ const RobotCreate: React.FC = () => {
       notify('error', 'Please enter a robot name');
       return;
     }
+    if (searchMode === 'scrape' && searchOutputFormats.length === 0) {
+      notify('error', 'Please select at least one output format');
+      return;
+    }
 
     setIsLoading(true);
     try {
+      const formatsForRequest = searchMode === 'discover' ? [] : searchOutputFormats;
+      
       const result = await createSearchRobot(
         searchRobotName,
         {
@@ -240,7 +255,8 @@ const RobotCreate: React.FC = () => {
             timeRange: searchTimeRange ? searchTimeRange as 'day' | 'week' | 'month' | 'year' : undefined
           },
           mode: searchMode
-        }
+        },
+        formatsForRequest
       );
       setIsLoading(false);
       if (result) {
@@ -898,6 +914,33 @@ const RobotCreate: React.FC = () => {
                 />
 
                 <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start', mb: 2 }}>
+                  <FormControl sx={{ width: '300px' }}>
+                    <InputLabel id="crawl-output-formats-label">Output Formats *</InputLabel>
+                    <Select
+                      labelId="crawl-output-formats-label"
+                      multiple
+                      value={crawlOutputFormats}
+                      label="Output Formats *"
+                      onChange={(e) => {
+                        const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
+                        setCrawlOutputFormats(value as OutputFormat[]);
+                      }}
+                      renderValue={(selected) => {
+                        const labels = selected.map(v => OUTPUT_FORMAT_LABELS[v] ?? v);
+                        return labels.length > 2 ? `${labels.slice(0, 2).join(', ')}…` : labels.join(', ');
+                      }}
+                    >
+                      {OUTPUT_FORMAT_OPTIONS.map((format) => (
+                        <MenuItem key={format} value={format}>
+                          <Checkbox checked={crawlOutputFormats.includes(format)} />
+                          {OUTPUT_FORMAT_LABELS[format]}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Box>
+
+                <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start', mb: 2 }}>
                   <Button
                   onClick={() => setShowCrawlAdvanced(!showCrawlAdvanced)}
                   sx={{
@@ -994,7 +1037,7 @@ const RobotCreate: React.FC = () => {
                 variant="contained"
                 fullWidth
                 onClick={handleCreateCrawlRobot}
-                disabled={!crawlUrl.trim() || !crawlRobotName.trim() || isLoading}
+                disabled={!crawlUrl.trim() || !crawlRobotName.trim() || crawlOutputFormats.length === 0 || isLoading}
                 sx={{
                   bgcolor: '#ff00c3',
                   py: 1.4,
@@ -1063,7 +1106,15 @@ const RobotCreate: React.FC = () => {
                   <Select
                     value={searchMode}
                     label="Mode"
-                    onChange={(e) => setSearchMode(e.target.value as any)}
+                    onChange={(e) => {
+                      const newMode = e.target.value as 'discover' | 'scrape';
+                      setSearchMode(newMode);
+                      if (newMode === 'discover') {
+                        setSearchOutputFormats([]);
+                      } else if (searchOutputFormats.length === 0) {
+                        setSearchOutputFormats(DEFAULT_OUTPUT_FORMATS);
+                      }
+                    }}
                   >
                     <MenuItem value="discover">Discover URLs Only</MenuItem>
                     <MenuItem value="scrape">Extract Data from Results</MenuItem>
@@ -1085,13 +1136,48 @@ const RobotCreate: React.FC = () => {
                   </Select>
                   </FormControl>
                 </Box>
+
+                {searchMode === 'scrape' ? (
+                  <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start', mb: 2 }}>
+                    <FormControl sx={{ width: '300px' }}>
+                      <InputLabel id="search-output-formats-label">Output Formats *</InputLabel>
+                      <Select
+                        labelId="search-output-formats-label"
+                        multiple
+                        value={searchOutputFormats}
+                        label="Output Formats *"
+                        onChange={(e) => {
+                          const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
+                          setSearchOutputFormats(value as OutputFormat[]);
+                        }}
+                        renderValue={(selected) => {
+                          const labels = selected.map(v => OUTPUT_FORMAT_LABELS[v] ?? v);
+                          return labels.length > 2 ? `${labels.slice(0, 2).join(', ')}…` : labels.join(', ');
+                        }}
+                      >
+                        {OUTPUT_FORMAT_OPTIONS.map((format) => (
+                          <MenuItem key={format} value={format}>
+                            <Checkbox checked={searchOutputFormats.includes(format)} />
+                            {OUTPUT_FORMAT_LABELS[format]}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Box>
+                ) : (
+                  <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start', mb: 2, alignItems: 'center' }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Output formats are only available in "Extract Data from Results" mode
+                    </Typography>
+                  </Box>
+                )}
               </Box>
 
               <Button
                 variant="contained"
                 fullWidth
                 onClick={handleCreateSearchRobot}
-                disabled={!searchQuery.trim() || !searchRobotName.trim() || isLoading}
+                disabled={!searchQuery.trim() || !searchRobotName.trim() || (searchMode === 'scrape' && searchOutputFormats.length === 0) || isLoading}
                 sx={{
                   bgcolor: '#ff00c3',
                   py: 1.4,

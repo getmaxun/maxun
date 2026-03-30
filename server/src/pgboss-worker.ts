@@ -21,6 +21,8 @@ import { io as serverIo } from "./server";
 import { sendWebhook } from './routes/webhook';
 import { BinaryOutputService } from './storage/mino';
 import { convertPageToMarkdown, convertPageToHTML, convertPageToScreenshot } from './markdownify/scrape';
+import { processRobotOutputFormats } from './utils/output-post-processor';
+import { getInterpretationFailureReason, hasExpectedRobotOutput } from './utils/output-validation';
 
 if (!process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_HOST || !process.env.DB_PORT || !process.env.DB_NAME) {
     throw new Error('Failed to start pgboss worker: one or more required environment variables are missing.');
@@ -125,7 +127,7 @@ async function triggerIntegrationUpdates(runId: string, robotMetaId: string): Pr
  * Modified processRunExecution function - only add browser reset
  */
 async function processRunExecution(job: Job<ExecuteRunData>) {
-  const BROWSER_INIT_TIMEOUT = 30000;
+  const BROWSER_INIT_TIMEOUT = 60000;
   const BROWSER_PAGE_TIMEOUT = 15000;
 
   const data = job.data;
@@ -161,7 +163,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
     const browserWaitStart = Date.now();
     let lastLogTime = 0;
     let pollAttempts = 0;
-    const MAX_POLL_ATTEMPTS = 15;
+    const MAX_POLL_ATTEMPTS = Math.ceil(BROWSER_INIT_TIMEOUT / 2000);
     
     while (!browser && (Date.now() - browserWaitStart) < BROWSER_INIT_TIMEOUT && pollAttempts < MAX_POLL_ATTEMPTS) {
       const currentTime = Date.now();
@@ -467,12 +469,6 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
 
       logger.log('info', `Workflow execution completed for run ${data.runId}`);
 
-      const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
-      const uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(
-        run, 
-        interpretationInfo.binaryOutput
-      );
-
       const finalRun = await Run.findByPk(run.id);
       const categorizedOutput = {
         scrapeSchema: finalRun?.serializableOutput?.scrapeSchema || {},
@@ -480,6 +476,46 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
         crawl: finalRun?.serializableOutput?.crawl || {},
         search: finalRun?.serializableOutput?.search || {}
       };
+
+      let binaryOutput: Record<string, any> = {
+        ...(interpretationInfo.binaryOutput || {})
+      };
+
+      // Post-process crawl/search output according to selected output formats
+      const robotType = recording.recording_meta.type;
+      const outputFormats = (recording.recording_meta as any).formats as string[] | undefined;
+      if (robotType === 'crawl' || robotType === 'search') {
+        const processedOutput = await processRobotOutputFormats({
+          robotType,
+          outputFormats,
+          categorizedOutput: {
+            crawl: categorizedOutput.crawl as Record<string, any>,
+            search: categorizedOutput.search as Record<string, any>,
+          },
+          currentPage,
+          initialBinaryOutput: binaryOutput,
+        });
+
+        categorizedOutput.crawl = processedOutput.categorizedOutput.crawl;
+        categorizedOutput.search = processedOutput.categorizedOutput.search;
+        binaryOutput = processedOutput.binaryOutput;
+
+        const hasOutput = hasExpectedRobotOutput(robotType, {
+          crawl: categorizedOutput.crawl as Record<string, any>,
+          search: categorizedOutput.search as Record<string, any>
+        }, outputFormats, binaryOutput);
+
+        if (!hasOutput) {
+          const humanRobotType = robotType.charAt(0).toUpperCase() + robotType.slice(1);
+          const fallbackReason = `${humanRobotType} run completed without producing output data`;
+          throw new Error(getInterpretationFailureReason(interpretationInfo.log, fallbackReason));
+        }
+      }
+
+      const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
+      const uploadedBinaryOutput = Object.keys(binaryOutput).length > 0
+        ? await binaryOutputService.uploadAndStoreBinaryOutput(run, binaryOutput)
+        : {};
       
       if (await isRunAborted()) {
         logger.log('info', `Run ${data.runId} was aborted while processing results, not updating status`);
@@ -491,11 +527,16 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
         finishedAt: new Date().toLocaleString(),
         log: interpretationInfo.log.join('\n'),
         binaryOutput: uploadedBinaryOutput,
+        serializableOutput: {
+          ...(finalRun?.serializableOutput || {}),
+          crawl: categorizedOutput.crawl,
+          search: categorizedOutput.search,
+        }
       });
 
       let totalSchemaItemsExtracted = 0;
       let totalListItemsExtracted = 0;
-      let extractedScreenshotsCount = 0;
+      let extractedScreenshotsCount = Object.keys(uploadedBinaryOutput).length;
       
       if (categorizedOutput) {
         if (categorizedOutput.scrapeSchema) {
@@ -516,9 +557,6 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
           });
         }
         
-        if (run.binaryOutput) {
-          extractedScreenshotsCount = Object.keys(run.binaryOutput).length;
-        }
       }
       
       const totalRowsExtracted = totalSchemaItemsExtracted + totalListItemsExtracted;
@@ -609,7 +647,9 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
       try {
         const hasData = (run.serializableOutput && 
           ((run.serializableOutput.scrapeSchema && run.serializableOutput.scrapeSchema.length > 0) ||
-           (run.serializableOutput.scrapeList && run.serializableOutput.scrapeList.length > 0))) ||
+           (run.serializableOutput.scrapeList && run.serializableOutput.scrapeList.length > 0) ||
+           (run.serializableOutput.crawl && Object.keys(run.serializableOutput.crawl).length > 0) ||
+           (run.serializableOutput.search && Object.keys(run.serializableOutput.search).length > 0))) ||
           (run.binaryOutput && Object.keys(run.binaryOutput).length > 0);
 
         if (hasData) {

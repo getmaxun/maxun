@@ -91,7 +91,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
       }
       
       const abortSocket = io(`${apiUrl}/${browserId}`, {
-        transports: ["websocket"],
+        transports: ["websocket", "polling"],
         rejectUnauthorized: false
       });
       
@@ -171,7 +171,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
         notify('info', `Run queued: ${runningRecordingName}`);
       } else {
         const socket = io(`${apiUrl}/${browserId}`, {
-          transports: ["websocket"],
+          transports: ["websocket", "polling"],
           rejectUnauthorized: false
         });
         
