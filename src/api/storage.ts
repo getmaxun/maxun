@@ -53,6 +53,8 @@ export const createScrapeRobot = async (
       throw new Error('Failed to create markdown robot');
     }
   } catch (error: any) {
+    const message = error.response?.data?.error;
+    if (message) throw new Error(message);
     console.error('Error creating markdown robot:', error);
     return null;
   }
@@ -92,6 +94,8 @@ export const createLLMRobot = async (
       throw new Error('Failed to create LLM robot');
     }
   } catch (error: any) {
+    const message = error.response?.data?.error;
+    if (message) throw new Error(message);
     console.error('Error creating LLM robot:', error);
     return null;
   }
@@ -104,6 +108,7 @@ export const updateRecording = async (id: string, data: {
   targetUrl?: string;
   workflow?: any[];
   proxy?: string | null;
+  formats?: string[];
 }): Promise<boolean> => {
   try {
     const response = await axios.put(`${apiUrl}/storage/recordings/${id}`, data);
@@ -113,6 +118,13 @@ export const updateRecording = async (id: string, data: {
       throw new Error(`Couldn't update recording with id ${id}`);
     }
   } catch (error: any) {
+    const message = error.response?.data?.error;
+    const status = error.response?.status;
+    if (message) {
+      const err = new Error(message) as any;
+      err.isDuplicate = status === 409;
+      throw err;
+    }
     console.error(`Error updating recording: ${error.message}`);
     return false;
   }
@@ -132,10 +144,11 @@ export const getStoredRuns = async (): Promise<string[] | null> => {
   }
 };
 
-export const duplicateRecording = async (id: string, targetUrl: string): Promise<any> => {
+export const duplicateRecording = async (id: string, targetUrl: string, newName?: string): Promise<any> => {
   try {
     const response = await axios.post(`${apiUrl}/storage/recordings/${id}/duplicate`, {
       targetUrl,
+      newName,
     }, { withCredentials: true });
     if (response.status === 201) {
       return response.data;
@@ -143,6 +156,8 @@ export const duplicateRecording = async (id: string, targetUrl: string): Promise
       throw new Error(`Couldn't duplicate recording with id ${id}`);
     }
   } catch (error: any) {
+    const message = error.response?.data?.error;
+    if (message) throw new Error(message);
     console.error(`Error duplicating recording: ${error.message}`);
     return null;
   }
@@ -350,7 +365,8 @@ export const createCrawlRobot = async (
     useSitemap: boolean;
     followLinks: boolean;
     respectRobots: boolean;
-  }
+  },
+  formats: string[] = ['markdown']
 ): Promise<any> => {
   try {
     const response = await axios.post(
@@ -359,6 +375,7 @@ export const createCrawlRobot = async (
         url,
         name,
         crawlConfig,
+        formats,
       },
       {
         headers: { 'Content-Type': 'application/json' },
@@ -372,6 +389,8 @@ export const createCrawlRobot = async (
       throw new Error('Failed to create crawl robot');
     }
   } catch (error: any) {
+    const message = error.response?.data?.error;
+    if (message) throw new Error(message);
     console.error('Error creating crawl robot:', error);
     return null;
   }
@@ -389,7 +408,8 @@ export const createSearchRobot = async (
       lang?: string;
     };
     mode: 'discover' | 'scrape';
-  }
+  },
+  formats?: string[]
 ): Promise<any> => {
   try {
     const response = await axios.post(
@@ -397,6 +417,7 @@ export const createSearchRobot = async (
       {
         name,
         searchConfig,
+        formats: formats || [],
       },
       {
         headers: { 'Content-Type': 'application/json' },
@@ -410,6 +431,8 @@ export const createSearchRobot = async (
       throw new Error('Failed to create search robot');
     }
   } catch (error: any) {
+    const message = error.response?.data?.error;
+    if (message) throw new Error(message);
     console.error('Error creating search robot:', error);
     return null;
   }

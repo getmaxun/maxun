@@ -12,6 +12,7 @@ import {
     getActiveBrowserIdByState,
     destroyRemoteBrowser,
     canCreateBrowserInState,
+    clearRecordingTimeout,
 } from '../browser-management/controller';
 import logger from "../logger";
 import { requireSignIn } from '../middlewares/auth';
@@ -134,6 +135,10 @@ router.get('/stop/:browserId', requireSignIn, async (req: AuthenticatedRequest, 
     if (!req.user) {
         return res.status(401).send('User not authenticated');
     }
+
+    // Cancel the recording timeout synchronously before any async work
+    // to prevent the timer firing during the pgBoss job queue window.
+    clearRecordingTimeout(req.params.browserId);
 
     try {
         await pgBossClient.createQueue('destroy-browser');

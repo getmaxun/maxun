@@ -17,12 +17,39 @@ import { WorkflowEnricher } from "../sdk/workflowEnricher";
 import { cancelScheduledWorkflow, scheduleWorkflow } from '../storage/schedule';
 import { computeNextRun } from "../utils/schedule";
 import moment from 'moment-timezone';
+import {
+    DEFAULT_OUTPUT_FORMATS,
+    parseOutputFormats,
+    OutputFormat,
+    SCRAPE_OUTPUT_FORMAT_OPTIONS,
+} from '../constants/output-formats';
 
 const router = Router();
 
 interface AuthenticatedRequest extends Request {
     user?: any;
 }
+
+/**
+ * Get the status of the authenticated user
+ * GET /api/sdk/status
+ */
+router.get("/sdk/status", requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const user = req.user;
+        return res.status(200).json({
+            email: user.email,
+            plan: 'OSS',
+            credits: 999999
+        });
+    } catch (error: any) {
+        logger.error("Error getting status:", error);
+        return res.status(500).json({
+            error: "Failed to get status",
+            message: error.message
+        });
+    }
+});
 
 /**
  * Create a new robot programmatically
@@ -45,7 +72,7 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
             });
         }
 
-        const type = (workflowFile.meta as any).type || 'extract';
+        const type = (workflowFile.meta as any).type || (workflowFile.meta as any).robotType || 'extract';
 
         let enrichedWorkflow: any[] = [];
         let extractedUrl: string | undefined;
@@ -75,6 +102,38 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
             extractedUrl = enrichResult.url;
         }
 
+        const rawFormats = (workflowFile.meta as any).formats;
+        const { validFormats, invalidFormats, wasProvided } = parseOutputFormats(
+            rawFormats,
+            type === 'scrape' ? SCRAPE_OUTPUT_FORMAT_OPTIONS : undefined
+        );
+
+        if (invalidFormats.length > 0) {
+            return res.status(400).json({
+                error: `Invalid formats: ${invalidFormats.map(String).join(', ')}`
+            });
+        }
+
+        let normalizedFormats: OutputFormat[] = validFormats;
+
+        if (type === 'search') {
+            const searchAction = enrichedWorkflow
+                .flatMap((pair: any) => pair.what || [])
+                .find((action: any) => action?.action === 'search');
+            const searchMode = searchAction?.args?.[0]?.mode;
+
+            if (searchMode === 'discover') {
+                
+                normalizedFormats = validFormats.length > 0 ? validFormats : [];
+            } else {
+                
+                normalizedFormats = validFormats.length > 0 ? validFormats : [...DEFAULT_OUTPUT_FORMATS];
+            }
+        } else if (type === 'crawl' || type === 'scrape') {
+            
+            normalizedFormats = validFormats.length > 0 ? validFormats : [...DEFAULT_OUTPUT_FORMATS];
+        }
+
         const robotId = uuid();
         const metaId = uuid();
 
@@ -87,7 +146,7 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
             params: [],
             type,
             url: extractedUrl,
-            formats: (workflowFile.meta as any).formats || [],
+            formats: normalizedFormats,
             isLLM: (workflowFile.meta as any).isLLM,
         };
 
@@ -475,6 +534,31 @@ router.post("/sdk/robots/:id/execute", requireAPIKey, async (req: AuthenticatedR
             searchData = run.serializableOutput.search;
         }
 
+        let text: string | undefined = undefined;
+        if (run.serializableOutput?.text && Array.isArray(run.serializableOutput.text)) {
+            text = run.serializableOutput.text[0]?.content || undefined;
+        }
+
+        const scrapeOutput = run.serializableOutput?.scrape as Record<string, any> | undefined;
+        if (!text && scrapeOutput?.text && Array.isArray(scrapeOutput.text)) {
+            text = scrapeOutput.text[0]?.content || undefined;
+        }
+
+        let markdown: string | undefined = undefined;
+        let html: string | undefined = undefined;
+        if (run.serializableOutput?.markdown && Array.isArray(run.serializableOutput.markdown)) {
+            markdown = run.serializableOutput.markdown[0]?.content || undefined;
+        }
+        if (!markdown && scrapeOutput?.markdown && Array.isArray(scrapeOutput.markdown)) {
+            markdown = scrapeOutput.markdown[0]?.content || undefined;
+        }
+        if (run.serializableOutput?.html && Array.isArray(run.serializableOutput.html)) {
+            html = run.serializableOutput.html[0]?.content || undefined;
+        }
+        if (!html && scrapeOutput?.html && Array.isArray(scrapeOutput.html)) {
+            html = scrapeOutput.html[0]?.content || undefined;
+        }
+
         return res.status(200).json({
             data: {
                 runId: run.runId,
@@ -483,7 +567,10 @@ router.post("/sdk/robots/:id/execute", requireAPIKey, async (req: AuthenticatedR
                     textData: run.serializableOutput?.scrapeSchema || {},
                     listData: listData,
                     crawlData: crawlData,
-                    searchData: searchData
+                    searchData: searchData,
+                    text: text,
+                    markdown: markdown,
+                    html: html
                 },
                 screenshots: Object.values(run.binaryOutput || {})
             }
@@ -668,13 +755,128 @@ router.post("/sdk/robots/:id/runs/:runId/abort", requireAPIKey, async (req: Auth
 });
 
 /**
+ * Duplicate a robot with a new target URL
+ * POST /api/sdk/robots/:id/duplicate
+ */
+router.post("/sdk/robots/:id/duplicate", requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const robotId = req.params.id;
+        const { targetUrl } = req.body;
+
+        if (!targetUrl) {
+            return res.status(400).json({
+                error: "The \"targetUrl\" field is required."
+            });
+        }
+
+        try {
+            const parsed = new URL(targetUrl);
+            if (!['http:', 'https:'].includes(parsed.protocol)) {
+                return res.status(400).json({
+                    error: "The \"targetUrl\" must use http or https protocol."
+                });
+            }
+        } catch {
+            return res.status(400).json({
+                error: "The \"targetUrl\" must be a valid URL."
+            });
+        }
+
+        const originalRobot = await Robot.findOne({
+            where: { 'recording_meta.id': robotId }
+        });
+
+        if (!originalRobot) {
+            return res.status(404).json({
+                error: `Robot with ID "${robotId}" not found.`
+            });
+        }
+
+        const lastWord = targetUrl.split('/').filter(Boolean).pop() || 'Unnamed';
+
+        const steps: any[] = originalRobot.recording.workflow;
+        const entryStep = steps.findLast((step: any) => step.where?.url === 'about:blank');
+        const originalEntryUrl: string | null = entryStep?.what?.find(
+            (action: any) => action.action === 'goto' && action.args?.length
+        )?.args?.[0] ?? null;
+
+        let gotoUpdated = false;
+        let whereUpdateStopped = false;
+
+        const workflow = [...steps].reverse().map((step: any) => {
+            let updatedWhere = step.where;
+
+            if (originalEntryUrl && step.where?.url !== 'about:blank' && !whereUpdateStopped) {
+                if (step.where?.url === originalEntryUrl) {
+                    updatedWhere = { ...step.where, url: targetUrl };
+                } else {
+                    whereUpdateStopped = true;
+                }
+            }
+
+            const updatedWhat = step.what.map((action: any) => {
+                if (!gotoUpdated && action.action === 'goto' && action.args?.[0] === originalEntryUrl) {
+                    gotoUpdated = true;
+                    return { ...action, args: [targetUrl, ...action.args.slice(1)] };
+                }
+                return action;
+            });
+
+            return { ...step, where: updatedWhere, what: updatedWhat };
+        }).reverse();
+
+        const currentTimestamp = new Date().toISOString();
+
+        const newRobot = await Robot.create({
+            id: uuid(),
+            userId: originalRobot.userId,
+            recording_meta: {
+                ...originalRobot.recording_meta,
+                id: uuid(),
+                name: `${originalRobot.recording_meta.name} (${lastWord})`,
+                url: targetUrl,
+                createdAt: currentTimestamp,
+                updatedAt: currentTimestamp,
+            },
+            recording: { ...originalRobot.recording, workflow },
+            google_sheet_email: null,
+            google_sheet_name: null,
+            google_sheet_id: null,
+            google_access_token: null,
+            google_refresh_token: null,
+            airtable_base_id: null,
+            airtable_base_name: null,
+            airtable_table_name: null,
+            airtable_table_id: null,
+            airtable_access_token: null,
+            airtable_refresh_token: null,
+            webhooks: null,
+            schedule: null,
+        });
+
+        logger.info(`[SDK] Robot ${robotId} duplicated as ${newRobot.recording_meta.id}`);
+
+        return res.status(201).json({
+            data: newRobot,
+            message: "Robot duplicated successfully"
+        });
+    } catch (error: any) {
+        logger.error("[SDK] Error duplicating robot:", error);
+        return res.status(500).json({
+            error: "Failed to duplicate robot",
+            message: error.message
+        });
+    }
+});
+
+/**
  * Create a crawl robot programmatically
  * POST /api/sdk/crawl
  */
 router.post("/sdk/crawl", requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
     try {
         const user = req.user;
-        const { url, name, crawlConfig } = req.body;
+        const { url, name, crawlConfig, formats } = req.body;
 
         if (!url || !crawlConfig) {
             return res.status(400).json({
@@ -696,6 +898,18 @@ router.post("/sdk/crawl", requireAPIKey, async (req: AuthenticatedRequest, res: 
             });
         }
 
+        const { validFormats: requestedFormats, invalidFormats, wasProvided } = parseOutputFormats(formats);
+        if (invalidFormats.length > 0) {
+            return res.status(400).json({
+                error: `Invalid formats: ${invalidFormats.map(String).join(', ')}`
+            });
+        }
+
+        // Crawl always needs formats; use defaults even if explicit empty array is provided
+        const crawlFormats: OutputFormat[] = requestedFormats.length > 0 
+            ? requestedFormats 
+            : [...DEFAULT_OUTPUT_FORMATS];
+
         const robotName = name || `Crawl Robot - ${new URL(url).hostname}`;
         const robotId = uuid();
         const metaId = uuid();
@@ -712,13 +926,13 @@ router.post("/sdk/crawl", requireAPIKey, async (req: AuthenticatedRequest, res: 
                 params: [],
                 type: 'crawl',
                 url: url,
+                formats: crawlFormats,
             },
             recording: {
                 workflow: [
                     {
                         where: { url },
                         what: [
-                            { action: 'flag', args: ['generated'] },
                             {
                                 action: 'crawl',
                                 args: [crawlConfig],
@@ -778,7 +992,7 @@ router.post("/sdk/crawl", requireAPIKey, async (req: AuthenticatedRequest, res: 
 router.post("/sdk/search", requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
     try {
         const user = req.user;
-        const { name, searchConfig } = req.body;
+        const { name, searchConfig, formats } = req.body;
 
         if (!searchConfig) {
             return res.status(400).json({
@@ -804,7 +1018,22 @@ router.post("/sdk/search", requireAPIKey, async (req: AuthenticatedRequest, res:
             });
         }
 
+        const { validFormats: requestedFormats, invalidFormats, wasProvided } = parseOutputFormats(formats);
+        if (invalidFormats.length > 0) {
+            return res.status(400).json({
+                error: `Invalid formats: ${invalidFormats.map(String).join(', ')}`
+            });
+        }
+
+        const searchFormats: OutputFormat[] = searchConfig.mode === 'discover'
+            ? (requestedFormats.length > 0 ? requestedFormats : [])
+            : (requestedFormats.length > 0 ? requestedFormats : [...DEFAULT_OUTPUT_FORMATS]);
+
         searchConfig.provider = 'duckduckgo';
+
+        if (searchConfig.outputFormats && Array.isArray(searchConfig.outputFormats) && searchConfig.outputFormats.length > 0) {
+            searchConfig.mode = 'scrape';
+        }
 
         const robotName = name || `Search Robot - ${searchConfig.query}`;
         const robotId = uuid();
@@ -821,6 +1050,7 @@ router.post("/sdk/search", requireAPIKey, async (req: AuthenticatedRequest, res:
                 pairs: 1,
                 params: [],
                 type: 'search',
+                formats: searchFormats,
             },
             recording: {
                 workflow: [

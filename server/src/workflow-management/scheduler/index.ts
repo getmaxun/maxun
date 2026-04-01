@@ -14,6 +14,8 @@ import { Page } from "playwright-core";
 import { sendWebhook } from "../../routes/webhook";
 import { addAirtableUpdateTask, airtableUpdateTasks, processAirtableUpdates } from "../integrations/airtable";
 import { convertPageToMarkdown, convertPageToHTML, convertPageToScreenshot } from "../../markdownify/scrape";
+import { processRobotOutputFormats } from "../../utils/output-post-processor";
+import { getInterpretationFailureReason, hasExpectedRobotOutput } from "../../utils/output-validation";
 
 async function createWorkflowAndStoreMetadata(id: string, userId: string) {
   try {
@@ -479,9 +481,6 @@ async function executeRun(id: string, userId: string) {
 
     const interpretationInfo = await Promise.race([interpretationPromise, timeoutPromise]);
 
-    const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
-    const uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, interpretationInfo.binaryOutput);
-
     const finalRun = await Run.findByPk(run.id);
     const categorizedOutput = {
       scrapeSchema: finalRun?.serializableOutput?.scrapeSchema || {},
@@ -489,6 +488,54 @@ async function executeRun(id: string, userId: string) {
       crawl: finalRun?.serializableOutput?.crawl || {},
       search: finalRun?.serializableOutput?.search || {}
     };
+
+    let binaryOutput: Record<string, any> = {
+      ...(interpretationInfo.binaryOutput || {})
+    };
+
+    const robotType = recording.recording_meta.type;
+    const outputFormats = (recording.recording_meta as any).formats as string[] | undefined;
+
+    if (robotType === 'crawl' || robotType === 'search') {
+      const processedOutput = await processRobotOutputFormats({
+        robotType,
+        outputFormats,
+        categorizedOutput: {
+          crawl: categorizedOutput.crawl as Record<string, any>,
+          search: categorizedOutput.search as Record<string, any>,
+        },
+        currentPage,
+        initialBinaryOutput: binaryOutput,
+      });
+
+      categorizedOutput.crawl = processedOutput.categorizedOutput.crawl;
+      categorizedOutput.search = processedOutput.categorizedOutput.search;
+      binaryOutput = processedOutput.binaryOutput;
+
+      await run.update({
+        serializableOutput: {
+          ...(finalRun?.serializableOutput || {}),
+          crawl: categorizedOutput.crawl,
+          search: categorizedOutput.search,
+        }
+      });
+
+      const hasOutput = hasExpectedRobotOutput(robotType, {
+        crawl: categorizedOutput.crawl as Record<string, any>,
+        search: categorizedOutput.search as Record<string, any>
+      });
+
+      if (!hasOutput) {
+        const humanRobotType = robotType.charAt(0).toUpperCase() + robotType.slice(1);
+        const fallbackReason = `${humanRobotType} run completed without producing output data`;
+        throw new Error(getInterpretationFailureReason(interpretationInfo.log, fallbackReason));
+      }
+    }
+
+    const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
+    const uploadedBinaryOutput = Object.keys(binaryOutput).length > 0
+      ? await binaryOutputService.uploadAndStoreBinaryOutput(run, binaryOutput)
+      : {};
 
     await destroyRemoteBrowser(plainRun.browserId, userId);
 
@@ -502,7 +549,7 @@ async function executeRun(id: string, userId: string) {
     // Get metrics from persisted data for analytics and webhooks
     let totalSchemaItemsExtracted = 0;
     let totalListItemsExtracted = 0;
-    let extractedScreenshotsCount = 0;
+    let extractedScreenshotsCount = Object.keys(uploadedBinaryOutput).length;
     
     if (categorizedOutput) {
       if (categorizedOutput.scrapeSchema) {
@@ -524,10 +571,6 @@ async function executeRun(id: string, userId: string) {
       }
     }
 
-    if (run.binaryOutput) {
-      extractedScreenshotsCount = Object.keys(run.binaryOutput).length;
-    }
-    
     const totalRowsExtracted = totalSchemaItemsExtracted + totalListItemsExtracted;
 
     capture(

@@ -2524,7 +2524,12 @@ export default class Interpreter extends EventEmitter {
         
         console.log("REPEAT COUNT", repeatCount);
         if (this.options.maxRepeats && repeatCount > this.options.maxRepeats) {
-          return;
+
+          const failedAction = (action?.what?.find((w: any) => w?.action !== 'flag')?.action) || 'unknown';
+          const maxRepeats = this.options.maxRepeats;
+          this.log(`Action ${String(failedAction)} exceeded max retries (${maxRepeats})`, Level.ERROR);
+          cleanup();
+          throw new Error(`Action ${String(failedAction)} exceeded max retries (${maxRepeats})`);
         }
         lastAction = action;
         

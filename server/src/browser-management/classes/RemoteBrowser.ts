@@ -97,8 +97,6 @@ export class RemoteBrowser {
     public interpreter: WorkflowInterpreter;
 
     public isDOMStreamingActive: boolean = false;
-    private lastScrollPosition = { x: 0, y: 0 };
-    private scrollThreshold = 200;
 
     /**
      * Flag to indicate if this is a recording session (requires rrweb for real-time DOM streaming)
@@ -162,31 +160,9 @@ export class RemoteBrowser {
 
       this.socket.on(
         "dom:scroll",
-        async (data: { deltaX: number; deltaY: number }) => {
+        (data: { deltaX: number; deltaY: number }) => {
           if (!this.isDOMStreamingActive || !this.currentPage) return;
-
-          try {
-            await this.currentPage.mouse.wheel(data.deltaX, data.deltaY);
-
-            const scrollInfo = await this.currentPage.evaluate(() => ({
-              x: window.scrollX,
-              y: window.scrollY,
-              maxX: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
-              maxY: Math.max(0, document.documentElement.scrollHeight - window.innerHeight),
-              documentHeight: document.documentElement.scrollHeight,
-              viewportHeight: window.innerHeight,
-            }));
-
-            const scrollDelta =
-              Math.abs(scrollInfo.y - this.lastScrollPosition.y) +
-              Math.abs(scrollInfo.x - this.lastScrollPosition.x);
-
-            if (scrollDelta > this.scrollThreshold) {
-              this.lastScrollPosition = { x: scrollInfo.x, y: scrollInfo.y };
-            }
-          } catch (error) {
-            logger.error("Error handling scroll event:", error);
-          }
+          this.currentPage.mouse.wheel(data.deltaX, data.deltaY).catch(() => {});
         }
       );
     }
@@ -327,8 +303,16 @@ export class RemoteBrowser {
                 }
               },
               maskAllInputs: false,
-              recordCanvas: true,
-              input: true
+              recordCanvas: false,
+              sampling: {
+                mousemove: false,
+                mouseInteraction: true,
+                scroll: 75,
+                media: 800,
+                input: 'last',
+              },
+              input: true,
+              checkoutEveryNms: 120000,
             });
 
             (window as any).rrwebRecordHandle = recordHandle;

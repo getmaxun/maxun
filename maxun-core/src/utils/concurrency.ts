@@ -18,9 +18,14 @@ export default class Concurrency {
   private jobQueue: Function[] = [];
 
   /**
-  * "Resolve" callbacks of the waitForCompletion() promises.
+  * Resolve/reject callbacks of the waitForCompletion() promises.
   */
-  private waiting: Function[] = [];
+  private waiting: Array<{ resolve: () => void; reject: (error: Error) => void }> = [];
+
+  /**
+  * First worker error captured during current execution wave.
+  */
+  private firstError: Error | null = null;
 
   /**
   * Constructs a new instance of concurrency manager.
@@ -42,7 +47,11 @@ export default class Concurrency {
         // console.debug("Job finished, running the next waiting job...");
         this.runNextJob();
       }).catch((error) => {
-        console.error(`Job failed with error: ${error.message}`);
+        const normalizedError = error instanceof Error ? error : new Error(String(error));
+        console.error(`Job failed with error: ${normalizedError.message}`);
+        if (!this.firstError) {
+          this.firstError = normalizedError;
+        }
         // Continue processing other jobs even if one fails
         this.runNextJob();
       });
@@ -51,7 +60,18 @@ export default class Concurrency {
       this.activeWorkers -= 1;
       if (this.activeWorkers === 0) {
         // console.debug("This concurrency manager is idle!");
-        this.waiting.forEach((x) => x());
+        const pending = [...this.waiting];
+        this.waiting = [];
+        const pendingError = this.firstError;
+        this.firstError = null;
+
+        pending.forEach(({ resolve, reject }) => {
+          if (pendingError) {
+            reject(pendingError);
+          } else {
+            resolve();
+          }
+        });
       }
     }
   }
@@ -82,8 +102,8 @@ export default class Concurrency {
   * @returns Promise, resolved after there is no running/waiting worker.
   */
   waitForCompletion(): Promise<void> {
-    return new Promise((res) => {
-      this.waiting.push(res);
+    return new Promise((resolve, reject) => {
+      this.waiting.push({ resolve, reject });
     });
   }
 }

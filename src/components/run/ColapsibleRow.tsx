@@ -24,7 +24,7 @@ function getOrCreateSocket(browserId: string): Socket {
   }
 
   const socket = io(`${apiUrl}/${browserId}`, {
-    transports: ["websocket"],
+    transports: ["websocket", "polling"],
     rejectUnauthorized: false
   });
 
@@ -105,7 +105,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
 
   // Subscribe to progress updates using module-level socket cache
   useEffect(() => {
-    if (!row.browserId) return;
+    if (!row.browserId || row.status !== 'running') return;
 
     // Get or create socket (from module cache)
     getOrCreateSocket(row.browserId);
@@ -130,7 +130,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
         cleanupSocketIfUnused(row.browserId);
       }
     };
-  }, [row.browserId]);
+  }, [row.browserId, row.status]);
 
   // Clear progress UI when run completes and trigger socket cleanup
   useEffect(() => {

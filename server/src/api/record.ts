@@ -702,7 +702,9 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
             throw new Error('Could not create a new page');
         }
 
-        if (recording.recording_meta.type === 'scrape') {
+        const robotType = (recording.recording_meta as any)?.type || (recording.recording_meta as any)?.robotType || 'extract';
+
+        if (robotType === 'scrape') {
             logger.log('info', `Executing scrape robot for API run ${id}`);
 
             let formats = recording.recording_meta.formats || ['markdown'];

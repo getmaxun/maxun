@@ -135,7 +135,10 @@ export async function convertPageToScreenshot(url: string, page: Page, fullPage:
     const screenshotType = fullPage ? 'full page' : 'visible viewport';
     logger.log('info', `[Scrape] Taking ${screenshotType} screenshot of ${url}`);
 
-    await gotoWithFallback(page, url);
+    const currentUrl = page.url();
+    if (currentUrl !== url) {
+      await gotoWithFallback(page, url);
+    }
 
     const screenshot = await page.screenshot({
       type: 'png',

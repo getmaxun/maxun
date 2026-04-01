@@ -21,6 +21,12 @@ import { getStoredRecording, updateRecording } from "../../../api/storage";
 import { WhereWhatPair } from "maxun-core";
 import { RobotConfigPage } from "./RobotConfigPage";
 import { useNavigate, useLocation } from "react-router-dom";
+import {
+  DEFAULT_OUTPUT_FORMATS,
+  OUTPUT_FORMAT_LABELS,
+  OUTPUT_FORMAT_OPTIONS,
+  OutputFormat,
+} from "../../../constants/outputFormats";
 
 interface RobotMeta {
   name: string;
@@ -32,7 +38,7 @@ interface RobotMeta {
   params: any[];
   type?: 'extract' | 'scrape' | 'crawl' | 'search';
   url?: string;
-  formats?: ('markdown' | 'html' | 'screenshot-visible' | 'screenshot-fullpage')[];
+  formats?: OutputFormat[];
   isLLM?: boolean;
 }
 
@@ -142,6 +148,8 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [crawlConfig, setCrawlConfig] = useState<CrawlConfig>({});
   const [searchConfig, setSearchConfig] = useState<SearchConfig>({});
+  const [crawlOutputFormats, setCrawlOutputFormats] = useState<OutputFormat[]>(DEFAULT_OUTPUT_FORMATS);
+  const [searchOutputFormats, setSearchOutputFormats] = useState<OutputFormat[]>(DEFAULT_OUTPUT_FORMATS);
   const [showCrawlAdvanced, setShowCrawlAdvanced] = useState(false);
 
   const isEmailPattern = (value: string): boolean => {
@@ -193,6 +201,38 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
       findScrapeListLimits(robot.recording.workflow);
       extractCrawlConfig(robot.recording.workflow);
       extractSearchConfig(robot.recording.workflow);
+
+      const rawFormats = Array.isArray(robot.recording_meta?.formats)
+        ? robot.recording_meta.formats
+        : [];
+
+      const filteredFormats = rawFormats.filter((format): format is OutputFormat =>
+        OUTPUT_FORMAT_OPTIONS.includes(format as OutputFormat)
+      );
+
+      if (robot.recording_meta?.type === 'crawl') {
+        setCrawlOutputFormats(
+          filteredFormats.length > 0 ? filteredFormats : DEFAULT_OUTPUT_FORMATS
+        );
+      }
+
+      if (robot.recording_meta?.type === 'search') {
+        const isDiscoverMode = robot.recording?.workflow?.some((pair: any) =>
+          (pair.what || []).some(
+            (action: any) =>
+              action.action === 'search' &&
+              action.args?.[0]?.mode === 'discover'
+          )
+        );
+
+        if (isDiscoverMode) {
+          setSearchOutputFormats(filteredFormats);
+        } else {
+          setSearchOutputFormats(
+            filteredFormats.length > 0 ? filteredFormats : DEFAULT_OUTPUT_FORMATS
+          );
+        }
+      }
     }
   }, [robot]);
 
@@ -783,6 +823,31 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
 
     return (
       <>
+        <FormControl fullWidth sx={{ mb: 2 }}>
+          <InputLabel id="crawl-edit-output-formats-label">Output Formats *</InputLabel>
+          <Select
+            labelId="crawl-edit-output-formats-label"
+            multiple
+            value={crawlOutputFormats}
+            label="Output Formats *"
+            onChange={(e) => {
+              const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
+              setCrawlOutputFormats(value as OutputFormat[]);
+            }}
+            renderValue={(selected) => {
+              const labels = (selected as OutputFormat[]).map(v => OUTPUT_FORMAT_LABELS[v] ?? v);
+              return labels.length > 2 ? `${labels.slice(0, 2).join(', ')}...` : labels.join(', ');
+            }}
+          >
+            {OUTPUT_FORMAT_OPTIONS.map((format) => (
+              <MenuItem key={format} value={format}>
+                <Checkbox checked={crawlOutputFormats.includes(format)} />
+                {OUTPUT_FORMAT_LABELS[format]}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
         <TextField
           label="Max Pages to Crawl"
           type="number"
@@ -904,6 +969,8 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
   const renderSearchConfigFields = () => {
     if (robot?.recording_meta.type !== 'search') return null;
 
+    const currentSearchMode = searchConfig.mode || 'discover';
+
     return (
       <>
         <TextField
@@ -937,12 +1004,51 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
           <Select
             value={searchConfig.mode || 'discover'}
             label="Mode"
-            onChange={(e) => setSearchConfig((prev) => ({ ...prev, mode: e.target.value as 'discover' | 'scrape' }))}
+            onChange={(e) => {
+              const newMode = e.target.value as 'discover' | 'scrape';
+              setSearchConfig((prev) => ({ ...prev, mode: newMode }));
+              if (newMode === 'discover') {
+                setSearchOutputFormats([]);
+              } else if (searchOutputFormats.length === 0) {
+                setSearchOutputFormats(DEFAULT_OUTPUT_FORMATS);
+              }
+            }}
           >
             <MenuItem value="discover">Discover URLs Only</MenuItem>
             <MenuItem value="scrape">Extract Data from Results</MenuItem>
           </Select>
         </FormControl>
+
+        {currentSearchMode === 'scrape' ? (
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel id="search-edit-output-formats-label">Output Formats *</InputLabel>
+            <Select
+              labelId="search-edit-output-formats-label"
+              multiple
+              value={searchOutputFormats}
+              label="Output Formats *"
+              onChange={(e) => {
+                const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
+                setSearchOutputFormats(value as OutputFormat[]);
+              }}
+              renderValue={(selected) => {
+                const labels = (selected as OutputFormat[]).map(v => OUTPUT_FORMAT_LABELS[v] ?? v);
+                return labels.length > 2 ? `${labels.slice(0, 2).join(', ')}...` : labels.join(', ');
+              }}
+            >
+              {OUTPUT_FORMAT_OPTIONS.map((format) => (
+                <MenuItem key={format} value={format}>
+                  <Checkbox checked={searchOutputFormats.includes(format)} />
+                  {OUTPUT_FORMAT_LABELS[format]}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        ) : (
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Output formats are only available in "Extract Data from Results" mode
+          </Typography>
+        )}
 
         <FormControl fullWidth sx={{ mb: 2 }}>
           <InputLabel>Time Range</InputLabel>
@@ -967,6 +1073,20 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
 
   const handleSave = async () => {
     if (!robot) return;
+
+    if (robot.recording_meta.type === 'crawl' && crawlOutputFormats.length === 0) {
+      notify("error", "Please select at least one output format");
+      return;
+    }
+
+    if (
+      robot.recording_meta.type === 'search' &&
+      (searchConfig.mode || 'discover') === 'scrape' &&
+      searchOutputFormats.length === 0
+    ) {
+      notify("error", "Please select at least one output format");
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -1038,6 +1158,11 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         credentials: credentialsForPayload,
         targetUrl: targetUrl,
         workflow: updatedWorkflow,
+        formats: robot.recording_meta.type === 'crawl'
+          ? crawlOutputFormats
+          : robot.recording_meta.type === 'search'
+            ? ((searchConfig.mode || 'discover') === 'discover' ? [] : searchOutputFormats)
+            : undefined,
       };
 
       const success = await updateRecording(robot.recording_meta.id, payload);
@@ -1051,8 +1176,12 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
       } else {
         notify("error", t("robot_edit.notifications.update_failed"));
       }
-    } catch (error) {
-      notify("error", t("robot_edit.notifications.update_error"));
+    } catch (error: any) {
+      if (error.isDuplicate) {
+        notify("error", t("save_recording.errors.name_exists"));
+      } else {
+        notify("error", error.message || t("robot_edit.notifications.update_error"));
+      }
       console.error("Error updating robot:", error);
     } finally {
       setIsLoading(false);

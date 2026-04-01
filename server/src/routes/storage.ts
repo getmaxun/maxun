@@ -16,8 +16,35 @@ import { WorkflowFile } from 'maxun-core';
 import { cancelScheduledWorkflow, scheduleWorkflow } from '../storage/schedule';
 import { pgBossClient } from '../storage/pgboss';
 import { WorkflowEnricher } from '../sdk/workflowEnricher';
+import sequelizeInstance from '../storage/db';
+import { Op } from 'sequelize';
+import {
+  DEFAULT_OUTPUT_FORMATS,
+  parseOutputFormats,
+  SEARCH_SCRAPE_OUTPUT_FORMAT_OPTIONS,
+  SCRAPE_OUTPUT_FORMAT_OPTIONS,
+  OutputFormat,
+} from '../constants/output-formats';
 
 export const router = Router();
+
+async function isRobotNameTaken(name: string, userId: number, excludeId?: string): Promise<boolean> {
+  const normalised = name.trim().toLowerCase();
+  const robots = await Robot.findAll({
+    where: {
+      userId,
+      [Op.and]: sequelizeInstance.where(
+        sequelizeInstance.fn('lower', sequelizeInstance.fn('trim', sequelizeInstance.literal("recording_meta->>'name'"))),
+        normalised
+      ),
+    } as any,
+  });
+  if (robots.length === 0) return false;
+  if (excludeId) {
+    return robots.some((r: any) => r.recording_meta.id !== excludeId);
+  }
+  return true;
+}
 
 export const processWorkflowActions = async (workflow: any[], checkLimit: boolean = false): Promise<any[]> => {
   const processedWorkflow = JSON.parse(JSON.stringify(workflow));
@@ -251,10 +278,10 @@ function handleWorkflowActions(workflow: any[], credentials: Credentials) {
 router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
-    const { name, limits, credentials, targetUrl, workflow: incomingWorkflow } = req.body;
+    const { name, limits, credentials, targetUrl, workflow: incomingWorkflow, formats } = req.body;
 
-    if (!name && !limits && !credentials && !targetUrl && !incomingWorkflow) {
-      return res.status(400).json({ error: 'Either "name", "limits", "credentials" or "target_url" must be provided.' });
+    if (!name && !limits && !credentials && !targetUrl && !incomingWorkflow && formats === undefined) {
+      return res.status(400).json({ error: 'Either "name", "limits", "credentials", "target_url", "workflow" or "formats" must be provided.' });
     }
 
     const robot = await Robot.findOne({ where: { 'recording_meta.id': id } });
@@ -338,9 +365,68 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       }
     }
 
+    let normalizedFormats: OutputFormat[] | undefined;
+    
+    let searchMode: string | undefined;
+    if (robot.recording_meta?.type === 'search') {
+      const searchAction = workflow
+        .flatMap((pair: any) => pair.what || [])
+        .find((action: any) => action?.action === 'search');
+      searchMode = searchAction?.args?.[0]?.mode;
+    }
+
+    if (formats !== undefined || (robot.recording_meta?.type === 'search' && searchMode === 'discover')) {
+      let allowedFormats: readonly OutputFormat[] | undefined;
+      if (robot.recording_meta?.type === 'scrape') {
+        allowedFormats = SCRAPE_OUTPUT_FORMAT_OPTIONS;
+      } else if (robot.recording_meta?.type === 'search' && searchMode === 'scrape') {
+        allowedFormats = SEARCH_SCRAPE_OUTPUT_FORMAT_OPTIONS;
+      }
+
+      const { validFormats, invalidFormats } = parseOutputFormats(formats, allowedFormats);
+
+      if (invalidFormats.length > 0) {
+        return res.status(400).json({
+          error: `Invalid formats: ${invalidFormats.map(String).join(', ')}`,
+        });
+      }
+
+      if (robot.recording_meta?.type === 'crawl') {
+        normalizedFormats = validFormats.length > 0 ? validFormats : [...DEFAULT_OUTPUT_FORMATS];
+      } else if (robot.recording_meta?.type === 'scrape') {
+        normalizedFormats = validFormats.length > 0 ? validFormats : [...DEFAULT_OUTPUT_FORMATS];
+      } else if (robot.recording_meta?.type === 'search') {
+        if (searchMode === 'discover') {
+          normalizedFormats = [];
+        } else {
+          normalizedFormats = validFormats.length > 0 ? validFormats : [...DEFAULT_OUTPUT_FORMATS];
+        }
+      } else {
+        normalizedFormats = validFormats;
+      }
+    }
+
+    let trimmedName: string | undefined;
+    if (name !== undefined) {
+      if (typeof name !== 'string') {
+        return res.status(400).json({ error: 'Robot name must be a string.' });
+      }
+      trimmedName = name.trim();
+      if (!trimmedName) {
+        return res.status(400).json({ error: 'Robot name cannot be empty.' });
+      }
+      if (trimmedName.toLowerCase() !== robot.recording_meta.name.trim().toLowerCase()) {
+        const nameTaken = await isRobotNameTaken(trimmedName, robot.userId as number, id);
+        if (nameTaken) {
+          return res.status(409).json({ error: `A robot with the name "${trimmedName}" already exists.` });
+        }
+      }
+    }
+
     let updatedMeta = { ...robot.recording_meta };
-    if (name) updatedMeta.name = name;
+    if (trimmedName) updatedMeta.name = trimmedName;
     if (targetUrl) updatedMeta.url = targetUrl;
+    if (normalizedFormats !== undefined) updatedMeta.formats = normalizedFormats;
 
     const updates: any = {
       recording: { ...robot.recording, workflow },
@@ -354,7 +440,10 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
     logger.log('info', `Robot with ID ${id} was updated successfully.`);
 
     return res.status(200).json({ message: 'Robot updated successfully', robot });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.name === 'SequelizeUniqueConstraintError' || error.parent?.code === '23505') {
+      return res.status(409).json({ error: 'A robot with this name already exists.' });
+    }
     // Safely handle the error type
     if (error instanceof Error) {
       logger.log('error', `Error updating robot with ID ${req.params.id}: ${error.message}`);
@@ -388,19 +477,32 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
       return res.status(400).json({ error: 'Invalid URL format' });
     }
 
-    // Validate format
-    const validFormats = ['markdown', 'html', 'screenshot-visible', 'screenshot-fullpage'];
+    const { validFormats: scrapeFormats, invalidFormats } = parseOutputFormats(
+      formats,
+      SCRAPE_OUTPUT_FORMAT_OPTIONS
+    );
 
-    if (!Array.isArray(formats) || formats.length === 0) {
+    if (invalidFormats.length > 0) {
+      return res.status(400).json({
+        error: `Invalid formats: ${invalidFormats.map(String).join(', ')}`,
+      });
+    }
+
+    const finalFormats = scrapeFormats.length > 0 ? scrapeFormats : DEFAULT_OUTPUT_FORMATS;
+
+    const robotName = (typeof name === 'string' ? name.trim() : '') || `Markdown Robot - ${new URL(url).hostname}`;
+    if (!robotName) {
+      return res.status(400).json({ error: 'Robot name cannot be empty.' });
+    }
+
+    if (await isRobotNameTaken(robotName, req.user.id)) {
+      return res.status(409).json({ error: `A robot with the name "${robotName}" already exists.` });
+    }
+
+    if (scrapeFormats.length === 0 && formats !== undefined) {
       return res.status(400).json({ error: 'At least one output format must be selected.' });
     }
 
-    const invalid = formats.filter(f => !validFormats.includes(f));
-    if (invalid.length > 0) {
-      return res.status(400).json({ error: `Invalid formats: ${invalid.join(', ')}` });
-    }
-
-    const robotName = name || `Markdown Robot - ${new URL(url).hostname}`;
     const currentTimestamp = new Date().toLocaleString();
     const robotId = uuid();
 
@@ -416,7 +518,7 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
         params: [],
         type: 'scrape',
         url: url,
-        formats: formats,
+        formats: finalFormats,
       },
       recording: { workflow: [] },
       proxy: null,
@@ -441,7 +543,10 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
       message: 'Markdown robot created successfully.',
       robot: newRobot,
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.name === 'SequelizeUniqueConstraintError' || error.parent?.code === '23505') {
+      return res.status(409).json({ error: 'A robot with this name already exists.' });
+    }
     if (error instanceof Error) {
       logger.log('error', `Error creating markdown robot: ${error.message}`);
       return res.status(500).json({ error: error.message });
@@ -477,6 +582,15 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
       }
     }
 
+    const finalRobotName = (typeof robotName === 'string' ? robotName.trim() : '') || `LLM Extract: ${prompt.substring(0, 50)}`;
+    if (!finalRobotName) {
+      return res.status(400).json({ error: 'Robot name cannot be empty.' });
+    }
+
+    if (await isRobotNameTaken(finalRobotName, req.user.id)) {
+      return res.status(409).json({ error: `A robot with the name "${finalRobotName}" already exists.` });
+    }
+
     let workflowResult: any;
     let finalUrl: string;
 
@@ -510,7 +624,6 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
 
     const robotId = uuid();
     const currentTimestamp = new Date().toISOString();
-    const finalRobotName = robotName || `LLM Extract: ${prompt.substring(0, 50)}`;
 
     const newRobot = await Robot.create({
       id: uuid(),
@@ -549,7 +662,10 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
       message: 'LLM robot created successfully.',
       robot: newRobot,
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.name === 'SequelizeUniqueConstraintError' || error.parent?.code === '23505') {
+      return res.status(409).json({ error: 'A robot with this name already exists.' });
+    }
     if (error instanceof Error) {
       logger.log('error', `Error creating LLM robot: ${error.message}`);
       return res.status(500).json({ error: error.message });
@@ -593,7 +709,7 @@ router.delete('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest
 router.post('/recordings/:id/duplicate', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
-    const { targetUrl } = req.body;
+    const { targetUrl, newName } = req.body;
 
     if (!targetUrl) {
       return res.status(400).json({ error: 'The "targetUrl" field is required.' });
@@ -617,6 +733,11 @@ router.post('/recordings/:id/duplicate', requireSignIn, async (req: Authenticate
     }
 
     const lastWord = targetUrl.split('/').filter(Boolean).pop() || 'Unnamed';
+    const duplicateName = (newName?.trim() || `${originalRobot.recording_meta.name} (${lastWord})`).trim();
+
+    if (await isRobotNameTaken(duplicateName, originalRobot.userId as number)) {
+      return res.status(409).json({ error: `A robot with the name "${duplicateName}" already exists.` });
+    }
 
     const steps: any[] = originalRobot.recording.workflow;
     const entryStep = steps.findLast((step: any) => step.where?.url === 'about:blank');
@@ -657,7 +778,7 @@ router.post('/recordings/:id/duplicate', requireSignIn, async (req: Authenticate
       recording_meta: {
         ...originalRobot.recording_meta,
         id: uuid(),
-        name: `${originalRobot.recording_meta.name} (${lastWord})`,
+        name: duplicateName,
         url: targetUrl,
         createdAt: currentTimestamp,
         updatedAt: currentTimestamp,
@@ -1393,7 +1514,7 @@ export async function recoverOrphanedRuns() {
  */
 router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
-    const { url, name, crawlConfig } = req.body;
+    const { url, name, crawlConfig, formats } = req.body;
 
     if (!url || !crawlConfig) {
       return res.status(400).json({ error: 'URL and crawl configuration are required.' });
@@ -1409,7 +1530,27 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
       return res.status(400).json({ error: 'Invalid URL format' });
     }
 
-    const robotName = name || `Crawl Robot - ${new URL(url).hostname}`;
+    const robotName = (typeof name === 'string' ? name.trim() : '') || `Crawl Robot - ${new URL(url).hostname}`;
+    if (!robotName) {
+      return res.status(400).json({ error: 'Robot name cannot be empty.' });
+    }
+
+    if (await isRobotNameTaken(robotName, req.user.id)) {
+      return res.status(409).json({ error: `A robot with the name "${robotName}" already exists.` });
+    }
+
+    const { validFormats: requestedFormats, invalidFormats } = parseOutputFormats(formats);
+    if (invalidFormats.length > 0) {
+      return res.status(400).json({
+        error: `Invalid formats: ${invalidFormats.map(String).join(', ')}`,
+      });
+    }
+
+    // Crawl always needs formats; use defaults even if explicit empty array is provided
+    const crawlFormats: OutputFormat[] = requestedFormats.length > 0
+      ? requestedFormats
+      : [...DEFAULT_OUTPUT_FORMATS];
+
     const currentTimestamp = new Date().toLocaleString('en-US');
     const robotId = uuid();
 
@@ -1425,6 +1566,7 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
         params: [],
         type: 'crawl',
         url: url,
+        formats: crawlFormats,
       },
       recording: {
         workflow: [
@@ -1487,7 +1629,10 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
       message: 'Crawl robot created successfully.',
       robot: newRobot,
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.name === 'SequelizeUniqueConstraintError' || error.parent?.code === '23505') {
+      return res.status(409).json({ error: 'A robot with this name already exists.' });
+    }
     if (error instanceof Error) {
       logger.log('error', `Error creating crawl robot: ${error.message}`);
       return res.status(500).json({ error: error.message });
@@ -1505,7 +1650,7 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
  */
 router.post('/recordings/search', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
-    const { searchConfig, name } = req.body;
+    const { searchConfig, name, formats } = req.body;
 
     if (!searchConfig || !searchConfig.query) {
       return res.status(400).json({ error: 'Search configuration with query is required.' });
@@ -1515,7 +1660,34 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
       return res.status(401).send({ error: 'Unauthorized' });
     }
 
-    const robotName = name || `Search Robot - ${searchConfig.query.substring(0, 50)}`;
+    const robotName = (typeof name === 'string' ? name.trim() : '') || `Search Robot - ${searchConfig.query.substring(0, 50)}`;
+    if (!robotName) {
+      return res.status(400).json({ error: 'Robot name cannot be empty.' });
+    }
+
+    if (await isRobotNameTaken(robotName, req.user.id)) {
+      return res.status(409).json({ error: `A robot with the name "${robotName}" already exists.` });
+    }
+
+    const { validFormats: requestedFormats, invalidFormats } = parseOutputFormats(
+      formats,
+      searchConfig.mode === 'scrape' ? SEARCH_SCRAPE_OUTPUT_FORMAT_OPTIONS : undefined
+    );
+    if (invalidFormats.length > 0) {
+      return res.status(400).json({
+        error: `Invalid formats: ${invalidFormats.map(String).join(', ')}`,
+      });
+    }
+
+    let searchFormats: OutputFormat[];
+    if (searchConfig.mode === 'discover') {
+      // Discover-mode: always empty, ignore caller input
+      searchFormats = [];
+    } else {
+      // Scrape-mode: apply defaults if empty
+      searchFormats = requestedFormats.length > 0 ? requestedFormats : [...DEFAULT_OUTPUT_FORMATS];
+    }
+
     const currentTimestamp = new Date().toLocaleString('en-US');
     const robotId = uuid();
 
@@ -1530,6 +1702,7 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
         pairs: 1,
         params: [],
         type: 'search',
+        formats: searchFormats,
       },
       recording: {
         workflow: [
@@ -1576,7 +1749,10 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
       message: 'Search robot created successfully.',
       robot: newRobot,
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.name === 'SequelizeUniqueConstraintError' || error.parent?.code === '23505') {
+      return res.status(409).json({ error: 'A robot with this name already exists.' });
+    }
     if (error instanceof Error) {
       logger.log('error', `Error creating search robot: ${error.message}`);
       return res.status(500).json({ error: error.message });

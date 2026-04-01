@@ -309,7 +309,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
 
       try {
         const socket = io(`${apiUrl}/${browserId}`, {
-          transports: ['websocket'],
+          transports: ['websocket', 'polling'],
           rejectUnauthorized: false
         });
 
@@ -372,8 +372,9 @@ export const RunsTable: React.FC<RunsTableProps> = ({
         activeSocketsRef.current.delete(browserId);
       }
     });
+  }, [rows, notify, t, invalidateRuns, setRerenderRuns]);
 
-    // Cleanup on unmount
+  useEffect(() => {
     return () => {
       console.log('[RunsTable] Cleaning up all socket connections');
       activeSocketsRef.current.forEach((socket) => {
@@ -381,7 +382,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
       });
       activeSocketsRef.current.clear();
     };
-  }, [rows, notify, t, invalidateRuns, setRerenderRuns]);
+  }, []);
 
   const handleDelete = useCallback(() => {
     notify('success', t('runstable.notifications.delete_success'));
