@@ -166,13 +166,6 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
           <Divider sx={{ borderColor: theme.palette.mode === 'dark' ? "#080808ff" : "" }} />
           <Box sx={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
             <Button
-              href='https://docs.maxun.dev/category/sdk'
-              target="_blank"
-              rel="noopener noreferrer"
-              sx={buttonStyles} startIcon={<ArrowForwardIos sx={{ fontSize: 20 }} />}>
-              SDK
-            </Button>
-            <Button
               onClick={() => setDocModalOpen(true)}
               sx={buttonStyles}
               startIcon={<Description sx={{ fontSize: 20 }} />}
@@ -211,6 +204,13 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               rel="noopener noreferrer"
               sx={buttonStyles} startIcon={<CloudQueue sx={{ fontSize: 16 }} />}>
               Join Maxun Cloud
+            </Button>
+            <Button
+              href='https://docs.maxun.dev/category/sdk'
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={buttonStyles} startIcon={<ArrowForwardIos sx={{ fontSize: 20 }} />}>
+              SDK
             </Button>
             <Button
               href='https://docs.maxun.dev/category/cli'
