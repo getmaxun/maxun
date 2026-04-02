@@ -201,18 +201,17 @@ const BrowserRecordingSave = () => {
 
             <DialogActions sx={{ px: 3, pb: 2 }}>
               <Button
+                onClick={() => setOpenDiscardModal(false)}
+                color="inherit"
+              >
+                {t('right_panel.buttons.cancel')}
+              </Button>
+              <Button
                 onClick={goToMainMenu}
                 variant="contained"
                 color="error"
               >
                 {t('right_panel.buttons.discard')}
-              </Button>
-
-              <Button
-                onClick={() => setOpenDiscardModal(false)}
-                color="inherit"
-              >
-                {t('right_panel.buttons.cancel')}
               </Button>
             </DialogActions>
           </Dialog>
