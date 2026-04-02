@@ -89,7 +89,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
   const starButtonStyles = {
     justifyContent: 'flex-start',
     textAlign: 'left',
-    fontSize: '15px',
+    fontSize: '14px',
     padding: '12px 20px 12px 22px',
     minHeight: '48px',
     minWidth: '100%',
