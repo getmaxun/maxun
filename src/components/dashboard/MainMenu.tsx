@@ -4,7 +4,7 @@ import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Paper, Button, useTheme, Modal, Typography, Stack, Divider } from "@mui/material";
-import { AutoAwesome, VpnKey, Usb, CloudQueue, Description, Favorite, SlowMotionVideo, PlayArrow, ArrowForwardIos, Star } from "@mui/icons-material";
+import { AutoAwesome, VpnKey, Usb, CloudQueue, Description, Favorite, SlowMotionVideo, PlayArrow, ArrowForwardIos, Star, Terminal } from "@mui/icons-material";
 import { useTranslation } from 'react-i18next';
 
 interface MainMenuProps {
@@ -216,7 +216,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               href='https://docs.maxun.dev/category/cli'
               target="_blank"
               rel="noopener noreferrer"
-              sx={buttonStyles} startIcon={<ArrowForwardIos sx={{ fontSize: 20 }} />}>
+              sx={buttonStyles} startIcon={<Terminal sx={{ fontSize: 20 }} />}>
               CLI
             </Button>
             <Button onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite sx={{ fontSize: 16 }} />}>
