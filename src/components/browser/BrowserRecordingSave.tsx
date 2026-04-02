@@ -191,7 +191,8 @@ const BrowserRecordingSave = () => {
             PaperProps={{
               sx: {
                 p: 0,
-                borderRadius: 2
+                borderRadius: 2,
+                border: "none"
               }
             }}
           >
