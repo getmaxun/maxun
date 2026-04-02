@@ -723,8 +723,7 @@ export const RecordingsTable = ({
 
           <Button
             onClick={confirmDeleteRecording}
-            color="primary"
-            variant="contained"
+            color="error" variant="contained"
           >
             {t('common.delete', { defaultValue: 'Delete' })}
           </Button>
