@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState, useContext } from 'react';
-import { Button, Box, LinearProgress, Tooltip } from "@mui/material";
+import { Button, Box, LinearProgress, Tooltip,  Dialog, DialogTitle, DialogContent } from "@mui/material";
 import { GenericModal } from "../ui/GenericModal";
 import { stopRecording } from "../../api/recording";
 import { useGlobalInfoStore } from "../../context/globalInfo";
@@ -160,30 +160,54 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
         {t('right_panel.buttons.finish')}
       </Button>
 
-      <GenericModal isOpen={openModal} onClose={() => setOpenModal(false)} modalStyle={modalStyle}>
-        <form onSubmit={handleSaveRecording} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-          <Typography variant="h6">{t('save_recording.title')}</Typography>
-          <TextField
-            required
-            sx={{ width: '300px', margin: '15px 0px' }}
-            onChange={handleChangeOfTitle}
-            id="title"
-            label={t('save_recording.robot_name')}
-            variant="outlined"
-            value={saveRecordingName}
-          />
-          <Button type="submit" variant="contained" sx={{ marginTop: '10px' }}>
-            {t('save_recording.buttons.save')}
-          </Button>
-          {waitingForSave &&
-            <Tooltip title={t('save_recording.tooltips.optimizing')} placement={"bottom"}>
-              <Box sx={{ width: '100%', marginTop: '10px' }}>
-                <LinearProgress />
-              </Box>
-            </Tooltip>
-          }
-        </form>
-      </GenericModal>
+     <Dialog
+  open={openModal}
+  onClose={() => setOpenModal(false)}
+  maxWidth="xs"
+  fullWidth
+  PaperProps={{
+    sx: {
+      p: 0,
+      borderRadius: 2
+    }
+  }}
+>
+  <DialogTitle>
+    {t('save_recording.title')}
+  </DialogTitle>
+
+  <DialogContent>
+    <form
+      onSubmit={handleSaveRecording}
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}
+    >
+      <TextField
+        required
+        sx={{ width: '300px', margin: '15px 0px' }}
+        onChange={handleChangeOfTitle}
+        id="title"
+        label={t('save_recording.robot_name')}
+        variant="outlined"
+        value={saveRecordingName}
+      />
+
+      <Button type="submit" variant="contained" sx={{ marginTop: '10px' }}>
+        {t('save_recording.buttons.save')}
+      </Button>
+
+      {waitingForSave && (
+        <Tooltip
+          title={t('save_recording.tooltips.optimizing')}
+          placement="bottom"
+        >
+          <Box sx={{ width: '100%', marginTop: '10px' }}>
+            <LinearProgress />
+          </Box>
+        </Tooltip>
+      )}
+    </form>
+  </DialogContent>
+</Dialog>
     </div>
   );
 }
