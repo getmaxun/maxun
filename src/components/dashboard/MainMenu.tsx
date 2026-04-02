@@ -212,6 +212,13 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               sx={buttonStyles} startIcon={<CloudQueue sx={{ fontSize: 16 }} />}>
               Join Maxun Cloud
             </Button>
+            <Button
+              href='https://docs.maxun.dev/category/cli'
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={buttonStyles} startIcon={<ArrowForwardIos sx={{ fontSize: 20 }} />}>
+              CLI
+            </Button>
             <Button onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite sx={{ fontSize: 16 }} />}>
               Sponsor Us
             </Button>
