@@ -693,7 +693,7 @@ export const RecordingsTable = ({
         maxWidth="xs"
         fullWidth
       >
-        <DialogTitle sx={{ fontWeight: 600 }}>
+        <DialogTitle>
           {t('recordingtable.delete_confirm.title', {
             name: pendingRow?.name,
             defaultValue: 'Delete {{name}}?'
