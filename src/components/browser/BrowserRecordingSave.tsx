@@ -20,9 +20,9 @@ const BrowserRecordingSave = () => {
 
   const { socket } = useSocketStore();
 
-  const { 
-    stopGetText, 
-    stopGetList, 
+  const {
+    stopGetText,
+    stopGetList,
     stopGetScreenshot,
     stopPaginationMode,
     stopLimitMode,
@@ -45,7 +45,7 @@ const BrowserRecordingSave = () => {
         timestamp: Date.now()
       };
       window.sessionStorage.setItem('pendingNotification', JSON.stringify(notificationData));
-      
+
       if (window.opener) {
         window.opener.postMessage({
           type: 'recording-notification',
@@ -57,9 +57,9 @@ const BrowserRecordingSave = () => {
           timestamp: Date.now()
         }, '*');
       }
-      
+
       setBrowserId(null);
-      
+
       window.close();
 
       stopRecording(browserId).catch((error) => {
@@ -74,7 +74,7 @@ const BrowserRecordingSave = () => {
     stopGetScreenshot();
     stopPaginationMode();
     stopLimitMode();
-    
+
     setShowLimitOptions(false);
     setShowPaginationOptions(false);
     setCaptureStage('initial');
@@ -97,7 +97,7 @@ const BrowserRecordingSave = () => {
     browserSteps.forEach(step => {
       deleteBrowserStep(step.id);
     });
-    
+
     if (socket) {
       socket?.emit('new-recording');
       socket.emit('input:url', initialUrl);
@@ -119,7 +119,7 @@ const BrowserRecordingSave = () => {
   };
 
   const handleClick = (event: any) => {
-      setAnchorEl(event.currentTarget);
+    setAnchorEl(event.currentTarget);
   };
 
   const handleClose = () => {
@@ -184,38 +184,38 @@ const BrowserRecordingSave = () => {
           <SaveRecording fileName={recordingName} />
 
           <Dialog
-  open={openDiscardModal}
-  onClose={() => setOpenDiscardModal(false)}
-  maxWidth="xs"
-  fullWidth
-  PaperProps={{
-    sx: {
-      p: 0,
-      borderRadius: 2
-    }
-  }}
->
-  <DialogTitle>
-    {t('browser_recording.modal.confirm_discard')}
-  </DialogTitle>
+            open={openDiscardModal}
+            onClose={() => setOpenDiscardModal(false)}
+            maxWidth="xs"
+            fullWidth
+            PaperProps={{
+              sx: {
+                p: 0,
+                borderRadius: 2
+              }
+            }}
+          >
+            <DialogTitle>
+              {t('browser_recording.modal.confirm_discard')}
+            </DialogTitle>
 
-  <DialogActions sx={{ px: 3, pb: 2 }}>
-    <Button
-      onClick={goToMainMenu}
-      variant="contained"
-      color="error"
-    >
-      {t('right_panel.buttons.discard')}
-    </Button>
+            <DialogActions sx={{ px: 3, pb: 2 }}>
+              <Button
+                onClick={goToMainMenu}
+                variant="contained"
+                color="error"
+              >
+                {t('right_panel.buttons.discard')}
+              </Button>
 
-    <Button
-      onClick={() => setOpenDiscardModal(false)}
-      color="inherit"
-    >
-      {t('right_panel.buttons.cancel')}
-    </Button>
-  </DialogActions>
-</Dialog>
+              <Button
+                onClick={() => setOpenDiscardModal(false)}
+                color="inherit"
+              >
+                {t('right_panel.buttons.cancel')}
+              </Button>
+            </DialogActions>
+          </Dialog>
 
           <GenericModal isOpen={openResetModal} onClose={() => setOpenResetModal(false)} modalStyle={modalStyle}>
             <Box p={2}>
@@ -224,9 +224,9 @@ const BrowserRecordingSave = () => {
                 {t('browser_recording.modal.reset_warning')}
               </Typography>
               <Box display="flex" justifyContent="space-between" mt={2}>
-                <Button 
-                  onClick={performReset} 
-                  variant="contained" 
+                <Button
+                  onClick={performReset}
+                  variant="contained"
                   color="primary"
                 >
                   {t('right_panel.buttons.confirm_reset')}
