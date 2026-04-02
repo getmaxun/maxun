@@ -625,30 +625,44 @@ export const RecordingsTable = ({
           />
         </>
       )}
-      <GenericModal isOpen={isWarningModalOpen} onClose={() => setWarningModalOpen(false)} modalStyle={modalStyle}>
-        <div style={{ padding: '10px' }}>
-          <Typography variant="h6" gutterBottom>{t('recordingtable.warning_modal.title')}</Typography>
-          <Typography variant="body1" style={{ marginBottom: '20px' }}>
+      <Dialog
+        open={isWarningModalOpen}
+        onClose={() => setWarningModalOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            p: 0,
+            borderRadius: 2
+          }
+        }}
+      >
+        <DialogTitle>
+          {t('recordingtable.warning_modal.title')}
+        </DialogTitle>
+
+        <DialogContent>
+          <Typography variant="body1" sx={{ mb: 2 }}>
             {t('recordingtable.warning_modal.message')}
           </Typography>
+        </DialogContent>
 
-          <Box display="flex" justifyContent="space-between" mt={2}>
-            <Button
-              onClick={handleDiscardAndCreate}
-              variant="contained"
-              color="error"
-            >
-              {t('recordingtable.warning_modal.discard_and_create')}
-            </Button>
-            <Button
-              onClick={() => setWarningModalOpen(false)}
-              variant="outlined"
-            >
-              {t('recordingtable.warning_modal.cancel')}
-            </Button>
-          </Box>
-        </div>
-      </GenericModal>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setWarningModalOpen(false)}
+            color='inherit'
+          >
+            {t('recordingtable.warning_modal.cancel')}
+          </Button>
+           <Button
+            onClick={handleDiscardAndCreate}
+            variant="contained"
+            color="error"
+          >
+            {t('recordingtable.warning_modal.discard_and_create')}
+          </Button>
+        </DialogActions>
+      </Dialog>
       <GenericModal isOpen={isModalOpen} onClose={() => setModalOpen(false)} modalStyle={modalStyle}>
         <div style={{ padding: '10px' }}>
           <Typography variant="h6" gutterBottom>{t('recordingtable.modal.title')}</Typography>
