@@ -23,6 +23,11 @@ import {
   CircularProgress,
   FormControlLabel,
   Checkbox,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from "@mui/material";
 import {
   Schedule,
@@ -679,33 +684,52 @@ export const RecordingsTable = ({
           </Button>
         </div>
       </GenericModal>
-      <GenericModal
-        isOpen={isDeleteConfirmOpen}
-        onClose={() => { setDeleteConfirmOpen(false); setPendingDeleteId(null); }}
-        modalStyle={{ ...modalStyle, padding: 0, backgroundColor: 'transparent', width: 'auto', maxWidth: '520px' }}
-      >
+    <Dialog
+  open={isDeleteConfirmOpen}
+  onClose={() => { 
+    setDeleteConfirmOpen(false); 
+    setPendingDeleteId(null); 
+  }}
+  maxWidth="xs"
+  fullWidth
+>
+  <DialogTitle sx={{ fontWeight: 600 }}>
+    {t('recordingtable.delete_confirm.title', { 
+      name: pendingRow?.name,
+      defaultValue: 'Delete {{name}}?' 
+    })}
+  </DialogTitle>
 
-        <Box sx={{ padding: theme.spacing(3), borderRadius: 2, backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[900] : theme.palette.background.paper, color: theme.palette.text.primary, width: { xs: '90vw', sm: '460px', md: '420px' }, maxWidth: '90vw', boxSizing: 'border-box', mx: 'auto' }}>
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-             {t('recordingtable.delete_confirm.title', { name: pendingRow?.name, defaultValue: 'Delete {{name}}?' })}
-          </Typography>
-          <Typography variant="body1" sx={{ mb: 2 }}>
-             {t('recordingtable.delete_confirm.message', {
-               name: pendingRow?.name, 
-               defaultValue: 'Are you sure you want to delete the robot "{{name}}"?'
-             })}
-           </Typography>
+  <DialogContent>
+    <DialogContentText>
+      {t('recordingtable.delete_confirm.message', {
+        name: pendingRow?.name,
+        defaultValue: 'Are you sure you want to delete the robot "{{name}}"?'
+      })}
+    </DialogContentText>
+  </DialogContent>
 
-          <Box display="flex" justifyContent="flex-end" mt={2} gap={1}>
-            <Button onClick={() => { setDeleteConfirmOpen(false); setPendingDeleteId(null); }} variant="outlined">
-              {t('common.cancel', { defaultValue: 'Cancel' })}
-            </Button>
-            <Button onClick={confirmDeleteRecording} variant="contained" color="primary">
-              {t('common.delete', { defaultValue: 'Delete' })}
-            </Button>
-          </Box>
-        </Box>
-      </GenericModal>
+  <DialogActions>
+    <Button
+      onClick={() => { 
+        setDeleteConfirmOpen(false); 
+        setPendingDeleteId(null); 
+      }}
+      color="inherit"
+      variant="outlined"
+    >
+      {t('common.cancel', { defaultValue: 'Cancel' })}
+    </Button>
+
+    <Button
+      onClick={confirmDeleteRecording}
+      color="primary"
+      variant="contained"
+    >
+      {t('common.delete', { defaultValue: 'Delete' })}
+    </Button>
+  </DialogActions>
+</Dialog>
     </React.Fragment>
   );
 }
