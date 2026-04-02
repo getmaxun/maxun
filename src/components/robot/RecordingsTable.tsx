@@ -716,7 +716,6 @@ export const RecordingsTable = ({
               setPendingDeleteId(null);
             }}
             color="inherit"
-            variant="outlined"
           >
             {t('common.cancel', { defaultValue: 'Cancel' })}
           </Button>
