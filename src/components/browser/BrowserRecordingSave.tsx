@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Grid, Button, Box, Typography, IconButton, Menu, MenuItem, ListItemText } from '@mui/material';
+import { Grid, Button, Box, Typography, IconButton, Menu, MenuItem, ListItemText, Dialog, DialogTitle, DialogActions, } from '@mui/material';
 import { SaveRecording } from "../recorder/SaveRecording";
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { useActionContext } from '../../context/browserActions';
@@ -183,19 +183,39 @@ const BrowserRecordingSave = () => {
 
           <SaveRecording fileName={recordingName} />
 
-          <GenericModal isOpen={openDiscardModal} onClose={() => setOpenDiscardModal(false)} modalStyle={modalStyle}>
-            <Box p={2}>
-              <Typography variant="h6">{t('browser_recording.modal.confirm_discard')}</Typography>
-              <Box display="flex" justifyContent="space-between" mt={2}>
-                <Button onClick={goToMainMenu} variant="contained" color="error">
-                  {t('right_panel.buttons.discard')}
-                </Button>
-                <Button onClick={() => setOpenDiscardModal(false)} variant="outlined">
-                  {t('right_panel.buttons.cancel')}
-                </Button>
-              </Box>
-            </Box>
-          </GenericModal>
+          <Dialog
+  open={openDiscardModal}
+  onClose={() => setOpenDiscardModal(false)}
+  maxWidth="xs"
+  fullWidth
+  PaperProps={{
+    sx: {
+      p: 0,
+      borderRadius: 2
+    }
+  }}
+>
+  <DialogTitle>
+    {t('browser_recording.modal.confirm_discard')}
+  </DialogTitle>
+
+  <DialogActions sx={{ px: 3, pb: 2 }}>
+    <Button
+      onClick={goToMainMenu}
+      variant="contained"
+      color="error"
+    >
+      {t('right_panel.buttons.discard')}
+    </Button>
+
+    <Button
+      onClick={() => setOpenDiscardModal(false)}
+      color="inherit"
+    >
+      {t('right_panel.buttons.cancel')}
+    </Button>
+  </DialogActions>
+</Dialog>
 
           <GenericModal isOpen={openResetModal} onClose={() => setOpenResetModal(false)} modalStyle={modalStyle}>
             <Box p={2}>
