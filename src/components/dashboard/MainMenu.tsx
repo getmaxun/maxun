@@ -142,26 +142,26 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               icon={<AutoAwesome sx={{ fontSize: 20 }} />}
               iconPosition="start"
               disableRipple={true}
-              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '16px' }}
+              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '15px' }}
               onClick={handleRobotsClick} />
             <Tab value="runs"
               label={t('mainmenu.runs')}
               icon={<PlayArrow sx={{ fontSize: 20 }} />}
               iconPosition="start"
               disableRipple={true}
-              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '16px' }} />
+              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '15px' }} />
             <Tab value="proxy"
               label={t('mainmenu.proxy')}
               icon={<Usb sx={{ fontSize: 20 }} />}
               iconPosition="start"
               disableRipple={true}
-              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '16px' }} />
+              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '15px' }} />
             <Tab value="apikey"
               label={t('mainmenu.apikey')}
               icon={<VpnKey sx={{ fontSize: 20 }}/>}
               iconPosition="start"
               disableRipple={true}
-              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '16px' }} />
+              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '15px' }} />
           </Tabs>
           <Divider sx={{ borderColor: theme.palette.mode === 'dark' ? "#080808ff" : "" }} />
           <Box sx={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
