@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import * as React from "react";
 import TableRow from "@mui/material/TableRow";
 import TableCell from "@mui/material/TableCell";
-import { Box, Collapse, IconButton, Typography, Chip, TextField, Dialog, DialogTitle,
+import {
+  Box, Collapse, IconButton, Typography, Chip, TextField, Dialog, DialogTitle,
   DialogContent,
   DialogContentText,
-  DialogActions, } from "@mui/material";
+  DialogActions,
+} from "@mui/material";
 import { Button } from "@mui/material";
 import { DeleteForever, KeyboardArrowDown, KeyboardArrowUp, Settings } from "@mui/icons-material";
 import { deleteRunFromStorage } from "../../api/storage";
@@ -89,15 +91,15 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
   const [openSettingsModal, setOpenSettingsModal] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const runByLabel = row.runByScheduleId
-    ?  `${row.runByScheduleId}`
-      : row.runByUserId
-        ? `${userEmail}`
-        : row.runBySDK
-          ? 'SDK'
-          : row.runByAPI
-            ? 'API'
-            : 'Unknown';
-  
+    ? `${row.runByScheduleId}`
+    : row.runByUserId
+      ? `${userEmail}`
+      : row.runBySDK
+        ? 'SDK'
+        : row.runByAPI
+          ? 'API'
+          : 'Unknown';
+
   const logEndRef = useRef<HTMLDivElement | null>(null);
 
   const [workflowProgress, setWorkflowProgress] = useState<{
@@ -245,7 +247,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                           <TextField
                             label={
                               row.runByScheduleId
-                                ? t('runs_table.run_settings_modal.labels.run_by_schedule') 
+                                ? t('runs_table.run_settings_modal.labels.run_by_schedule')
                                 : row.runByUserId
                                   ? t('runs_table.run_settings_modal.labels.run_by_user')
                                   : t('runs_table.run_settings_modal.labels.run_by_api')
@@ -286,55 +288,55 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
       </TableRow>
 
       <Dialog
-  open={isDeleteOpen}
-  onClose={() => setDeleteOpen(false)}
-  maxWidth="xs"
-  fullWidth
-  PaperProps={{
-    sx: {
-      p: 0,
-      backgroundColor: theme.palette.mode === 'dark'
-        ? theme.palette.grey[900]
-        : theme.palette.background.paper,
-      borderRadius: 2,
-      width: { xs: '90vw', sm: '460px', md: '420px' },
-      maxWidth: '90vw',
-      boxSizing: 'border-box'
-    }
-  }}
->
-  <DialogTitle>
-    {t('runs_table.delete_confirm.title', {
-      name: row.name,
-      defaultValue: 'Delete run "{{name}}"?'
-    })}
-  </DialogTitle>
+        open={isDeleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            p: 0,
+            backgroundColor: theme.palette.mode === 'dark'
+              ? theme.palette.grey[900]
+              : theme.palette.background.paper,
+            borderRadius: 2,
+            width: { xs: '90vw', sm: '460px', md: '420px' },
+            maxWidth: '90vw',
+            boxSizing: 'border-box'
+          }
+        }}
+      >
+        <DialogTitle>
+          {t('runs_table.delete_confirm.title', {
+            name: row.name,
+            defaultValue: 'Delete run "{{name}}"?'
+          })}
+        </DialogTitle>
 
-  <DialogContent>
-    <DialogContentText sx={{ mb: 1 }}>
-      {t('runs_table.delete_confirm.message', {
-        name: row.name,
-        defaultValue: 'Are you sure you want to delete the run "{{name}}"?'
-      })}
-    </DialogContentText>
-  </DialogContent>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 1 }}>
+            {t('runs_table.delete_confirm.message', {
+              name: row.name,
+              defaultValue: 'Are you sure you want to delete the run "{{name}}"?'
+            })}
+          </DialogContentText>
+        </DialogContent>
 
-  <DialogActions sx={{ px: 3, pb: 2 }}>
-    <Button
-      onClick={() => setDeleteOpen(false)}
-    >
-      {t('common.cancel', { defaultValue: 'Cancel' })}
-    </Button>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setDeleteOpen(false)}
+          >
+            {t('common.cancel', { defaultValue: 'Cancel' })}
+          </Button>
 
-    <Button
-      onClick={handleConfirmDelete}
-      variant="contained"
-      color="error"
-    >
-      {t('common.delete', { defaultValue: 'Delete' })}
-    </Button>
-  </DialogActions>
-</Dialog>
+          <Button
+            onClick={handleConfirmDelete}
+            variant="contained"
+            color="error"
+          >
+            {t('common.delete', { defaultValue: 'Delete' })}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </React.Fragment>
   );
 }
