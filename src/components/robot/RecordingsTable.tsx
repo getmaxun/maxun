@@ -99,7 +99,7 @@ const LoadingRobotRow = memo(({ row, columns }: any) => {
         } else if (column.id === 'interpret') {
           return (
             <MemoizedTableCell key={column.id} align={column.align}>
-               <Box sx={{ opacity: 0.3 }}>-</Box>
+              <Box sx={{ opacity: 0.3 }}>-</Box>
             </MemoizedTableCell>
           );
         } else {
@@ -186,7 +186,7 @@ export const RecordingsTable = ({
   handleSettingsRecording,
   handleEditRobot,
   handleDuplicateRobot,
-  }: RecordingsTableProps) => {
+}: RecordingsTableProps) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const [page, setPage] = React.useState(0);
@@ -232,11 +232,11 @@ export const RecordingsTable = ({
         const notificationData = event.data.notification;
         if (notificationData) {
           notify(notificationData.type, notificationData.message);
-          
-          if ((notificationData.type === 'success' && 
-               (notificationData.message.includes('saved') || notificationData.message.includes('retrained'))) ||
-              (notificationData.type === 'warning' && 
-               notificationData.message.includes('terminated'))) {
+
+          if ((notificationData.type === 'success' &&
+            (notificationData.message.includes('saved') || notificationData.message.includes('retrained'))) ||
+            (notificationData.type === 'warning' &&
+              notificationData.message.includes('terminated'))) {
             setRerenderRobots(true);
           }
         }
@@ -253,9 +253,9 @@ export const RecordingsTable = ({
         window.sessionStorage.removeItem('initialUrl');
       }
     };
-    
+
     window.addEventListener('message', handleMessage);
-    
+
     return () => {
       window.removeEventListener('message', handleMessage);
     };
@@ -330,7 +330,7 @@ export const RecordingsTable = ({
       timestamp: Date.now()
     };
     window.sessionStorage.setItem('recordingTabCloseMessage', JSON.stringify(closeMessage));
-    
+
     if (window.openedRecordingWindow && !window.openedRecordingWindow.closed) {
       try {
         window.openedRecordingWindow.close();
@@ -344,10 +344,10 @@ export const RecordingsTable = ({
     if (activeBrowserId) {
       await stopRecording(activeBrowserId);
       notify('warning', t('browser_recording.notifications.terminated'));
-      
+
       notifyRecordingTabsToClose(activeBrowserId);
     }
-    
+
     setWarningModalOpen(false);
     setModalOpen(true);
   };
@@ -355,31 +355,31 @@ export const RecordingsTable = ({
   const handleRetrainRobot = useCallback(async (id: string, name: string) => {
     const robot = rows.find(row => row.id === id);
     let targetUrl;
-    
+
     if (robot?.content?.workflow && robot.content.workflow.length > 0) {
       const lastPair = robot.content.workflow[robot.content.workflow.length - 1];
-      
+
       if (lastPair?.what) {
         if (Array.isArray(lastPair.what)) {
-          const gotoAction = lastPair.what.find((action: any) => 
+          const gotoAction = lastPair.what.find((action: any) =>
             action && typeof action === 'object' && 'action' in action && action.action === "goto"
           ) as any;
-          
+
           if (gotoAction?.args?.[0]) {
             targetUrl = gotoAction.args[0];
           }
         }
       }
     }
-    
+
     if (targetUrl) {
       setInitialUrl(targetUrl);
       setRecordingUrl(targetUrl);
       window.sessionStorage.setItem('initialUrl', targetUrl);
     }
-    
+
     const canCreateRecording = await canCreateBrowserInState("recording");
-    
+
     if (!canCreateRecording) {
       const activeBrowserId = await getActiveBrowserId();
       if (activeBrowserId) {
@@ -389,45 +389,45 @@ export const RecordingsTable = ({
         notify('warning', t('recordingtable.notifications.browser_limit_warning'));
       }
     } else {
-        startRetrainRecording(id, name, targetUrl);
+      startRetrainRecording(id, name, targetUrl);
     }
   }, [rows, setInitialUrl, setRecordingUrl]);
 
   const startRetrainRecording = (id: string, name: string, url?: string) => {
     setBrowserId('new-recording');
-    setRecordingName(name);  
-    setRecordingId(id);      
-    
+    setRecordingName(name);
+    setRecordingId(id);
+
     window.sessionStorage.setItem('browserId', 'new-recording');
     window.sessionStorage.setItem('robotToRetrain', id);
     window.sessionStorage.setItem('robotName', name);
-    
+
     window.sessionStorage.setItem('recordingUrl', url || recordingUrl);
-    
+
     const sessionId = Date.now().toString();
     window.sessionStorage.setItem('recordingSessionId', sessionId);
-    
+
     window.openedRecordingWindow = window.open(`/recording-setup?session=${sessionId}`, '_blank');
-    
+
     window.sessionStorage.setItem('nextTabIsRecording', 'true');
   };
 
   const startRecording = () => {
     setModalOpen(false);
-    
+
     // Set local state
     setBrowserId('new-recording');
     setRecordingName('');
     setRecordingId('');
-    
+
     window.sessionStorage.setItem('browserId', 'new-recording');
-    
+
     const sessionId = Date.now().toString();
     window.sessionStorage.setItem('recordingSessionId', sessionId);
     window.sessionStorage.setItem('recordingUrl', recordingUrl);
-    
+
     window.openedRecordingWindow = window.open(`/recording-setup?session=${sessionId}`, '_blank');
-    
+
     window.sessionStorage.setItem('nextTabIsRecording', 'true');
   };
 
@@ -447,17 +447,17 @@ export const RecordingsTable = ({
 
   function useDebounce<T>(value: T, delay: number): T {
     const [debouncedValue, setDebouncedValue] = React.useState<T>(value);
-  
+
     useEffect(() => {
       const handler = setTimeout(() => {
         setDebouncedValue(value);
       }, delay);
-  
+
       return () => {
         clearTimeout(handler);
       };
     }, [value, delay]);
-  
+
     return debouncedValue;
   }
 
@@ -477,9 +477,9 @@ export const RecordingsTable = ({
   }, [filteredRows, page, rowsPerPage]);
 
   const openDeleteConfirm = React.useCallback((id: string) => {
-     setPendingDeleteId(String(id));
-     setDeleteConfirmOpen(true);
-   }, []);
+    setPendingDeleteId(String(id));
+    setDeleteConfirmOpen(true);
+  }, []);
 
   const confirmDeleteRecording = React.useCallback(async () => {
     if (!pendingDeleteId) return;
@@ -553,13 +553,13 @@ export const RecordingsTable = ({
           </IconButton>
         </Box>
       </Box>
-      
+
       {isFetching ? (
         <Box
           display="flex"
           justifyContent="center"
           alignItems="center"
-          sx={{ 
+          sx={{
             minHeight: '60vh',
             width: '100%'
           }}
@@ -572,17 +572,17 @@ export const RecordingsTable = ({
           flexDirection="column"
           alignItems="center"
           justifyContent="center"
-          sx={{ 
-            minHeight: 300, 
+          sx={{
+            minHeight: 300,
             textAlign: 'center',
-            color: 'text.secondary' 
+            color: 'text.secondary'
           }}
         >
           <Typography variant="h6" gutterBottom>
             {debouncedSearchTerm ? t('recordingtable.placeholder.search') : t('recordingtable.placeholder.title')}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {debouncedSearchTerm 
+            {debouncedSearchTerm
               ? t('recordingtable.search_criteria')
               : t('recordingtable.placeholder.body')
             }
@@ -592,16 +592,16 @@ export const RecordingsTable = ({
         <>
           <TableContainer component={Paper} sx={{ width: '100%', overflow: 'hidden', marginTop: '15px' }}>
             <Table stickyHeader aria-label="sticky table">
-                <TableRow>
-                  {columns.map((column) => (
-                    <MemoizedTableCell
-                      key={column.id}
-                      style={{ minWidth: column.minWidth }}
-                    >
-                      {column.label}
-                    </MemoizedTableCell>
-                  ))}
-                </TableRow>
+              <TableRow>
+                {columns.map((column) => (
+                  <MemoizedTableCell
+                    key={column.id}
+                    style={{ minWidth: column.minWidth }}
+                  >
+                    {column.label}
+                  </MemoizedTableCell>
+                ))}
+              </TableRow>
               <TableBody>
                 {visibleRows.map((row) => (
                   <TableRowMemoized
@@ -631,7 +631,7 @@ export const RecordingsTable = ({
           <Typography variant="body1" style={{ marginBottom: '20px' }}>
             {t('recordingtable.warning_modal.message')}
           </Typography>
-          
+
           <Box display="flex" justifyContent="space-between" mt={2}>
             <Button
               onClick={handleDiscardAndCreate}
@@ -684,52 +684,52 @@ export const RecordingsTable = ({
           </Button>
         </div>
       </GenericModal>
-    <Dialog
-  open={isDeleteConfirmOpen}
-  onClose={() => { 
-    setDeleteConfirmOpen(false); 
-    setPendingDeleteId(null); 
-  }}
-  maxWidth="xs"
-  fullWidth
->
-  <DialogTitle sx={{ fontWeight: 600 }}>
-    {t('recordingtable.delete_confirm.title', { 
-      name: pendingRow?.name,
-      defaultValue: 'Delete {{name}}?' 
-    })}
-  </DialogTitle>
+      <Dialog
+        open={isDeleteConfirmOpen}
+        onClose={() => {
+          setDeleteConfirmOpen(false);
+          setPendingDeleteId(null);
+        }}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 600 }}>
+          {t('recordingtable.delete_confirm.title', {
+            name: pendingRow?.name,
+            defaultValue: 'Delete {{name}}?'
+          })}
+        </DialogTitle>
 
-  <DialogContent>
-    <DialogContentText>
-      {t('recordingtable.delete_confirm.message', {
-        name: pendingRow?.name,
-        defaultValue: 'Are you sure you want to delete the robot "{{name}}"?'
-      })}
-    </DialogContentText>
-  </DialogContent>
+        <DialogContent>
+          <DialogContentText>
+            {t('recordingtable.delete_confirm.message', {
+              name: pendingRow?.name,
+              defaultValue: 'Are you sure you want to delete the robot "{{name}}"?'
+            })}
+          </DialogContentText>
+        </DialogContent>
 
-  <DialogActions>
-    <Button
-      onClick={() => { 
-        setDeleteConfirmOpen(false); 
-        setPendingDeleteId(null); 
-      }}
-      color="inherit"
-      variant="outlined"
-    >
-      {t('common.cancel', { defaultValue: 'Cancel' })}
-    </Button>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setDeleteConfirmOpen(false);
+              setPendingDeleteId(null);
+            }}
+            color="inherit"
+            variant="outlined"
+          >
+            {t('common.cancel', { defaultValue: 'Cancel' })}
+          </Button>
 
-    <Button
-      onClick={confirmDeleteRecording}
-      color="primary"
-      variant="contained"
-    >
-      {t('common.delete', { defaultValue: 'Delete' })}
-    </Button>
-  </DialogActions>
-</Dialog>
+          <Button
+            onClick={confirmDeleteRecording}
+            color="primary"
+            variant="contained"
+          >
+            {t('common.delete', { defaultValue: 'Delete' })}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </React.Fragment>
   );
 }
