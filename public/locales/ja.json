@@ -556,6 +556,7 @@
             "manual_run": "手動実行",
             "scheduled_run": "スケジュール実行",
             "api": "API",
+            "sdk": "SDK",
             "unknown_run_type": "不明な実行タイプ"
         },
         "run_status_chips": {

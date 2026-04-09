@@ -556,6 +556,7 @@
       "manual_run": "手动运行",
       "scheduled_run": "计划运行",
       "api": "API",
+      "sdk": "SDK",
       "unknown_run_type": "未知运行类型"
     },
     "run_status_chips": {

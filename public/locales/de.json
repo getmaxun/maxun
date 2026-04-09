@@ -555,6 +555,7 @@
             "manual_run": "Manuelle Ausführung",
             "scheduled_run": "Geplante Ausführung",
             "api": "API",
+            "sdk": "SDK",
             "unknown_run_type": "Unbekannter Ausführungstyp"
         },
         "run_status_chips": {
