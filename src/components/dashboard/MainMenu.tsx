@@ -186,7 +186,6 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               fullWidth
               PaperProps={{
                 sx: {
-                  p: 4,
                   borderRadius: 2,
                   width: 400
                 }
