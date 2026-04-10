@@ -415,7 +415,7 @@ const RobotCreate: React.FC = () => {
                         AI Mode
                       </Typography>
                       <Typography variant="body2">
-                        Describe the task. It builds it for you.
+                        Describe the task. Maxun builds it for you.
                       </Typography>
                     </CardContent>
                   </Card>
