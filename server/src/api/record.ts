@@ -340,6 +340,8 @@ function formatRunResponse(run: any) {
         runByScheduleId: run.runByScheduleId,
         runByAPI: run.runByAPI,
         runBySDK: run.runBySDK,
+        runByMCP: run.runByMCP,
+        runByCLI: run.runByCLI,
         data: {
             textData: {},
             listData: {},
@@ -477,7 +479,7 @@ router.get("/robots/:id/runs/:runId", requireAPIKey, async (req: Request, res: R
     }
 });
 
-async function createWorkflowAndStoreMetadata(id: string, userId: string, isSDK: boolean) {
+async function createWorkflowAndStoreMetadata(id: string, userId: string, runSource: 'api' | 'sdk' | 'mcp' | 'cli') {
     try {
         const recording = await Robot.findOne({
             where: {
@@ -522,8 +524,10 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string, isSDK:
             log: '',
             runId,
             runByUserId: userId,
-            runByAPI: !isSDK,
-            runBySDK: isSDK,
+            runByAPI: runSource === 'api',
+            runBySDK: runSource === 'sdk',
+            runByMCP: runSource === 'mcp',
+            runByCLI: runSource === 'cli',
             serializableOutput: {},
             binaryOutput: {},
             retryCount: 0
@@ -1194,11 +1198,11 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
     }
 }
 
-export async function handleRunRecording(id: string, userId: string, isSDK: boolean = false, requestedFormats?: string[]) {
+export async function handleRunRecording(id: string, userId: string, runSource: 'api' | 'sdk' | 'mcp' | 'cli' = 'api', requestedFormats?: string[]) {
     let socket: Socket | null = null;
 
     try {
-        const result = await createWorkflowAndStoreMetadata(id, userId, isSDK);
+        const result = await createWorkflowAndStoreMetadata(id, userId, runSource);
         const { browserId, runId: newRunId } = result;
 
         if (!browserId || !newRunId || !userId) {
@@ -1378,7 +1382,8 @@ router.post("/robots/:id/runs", requireAPIKey, async (req: AuthenticatedRequest,
         }
 
         const requestedFormats = req.body?.formats;
-        const runId = await handleRunRecording(req.params.id, req.user.id, false, requestedFormats);
+        const runSource = req.headers['x-run-source'] === 'mcp' ? 'mcp' : 'api';
+        const runId = await handleRunRecording(req.params.id, req.user.id, runSource, requestedFormats);
 
         if (!runId) {
             throw new Error('Run ID is undefined');

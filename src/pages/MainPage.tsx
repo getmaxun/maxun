@@ -23,9 +23,10 @@ interface MainPageProps {
 }
 
 export interface CreateRunResponse {
-  browserId: string;
+  browserId: string | null;
   runId: string;
   robotMetaId: string;
+  httpExecution?: boolean;
 }
 
 export interface ScheduleRunResponse {
@@ -50,7 +51,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
   let aborted = false;
 
   const { notify, setRerenderRuns, setRecordingId } = useGlobalInfoStore();
-  const { invalidateRuns, addOptimisticRun } = useCacheInvalidation();
+  const { invalidateRuns, updateOptimisticRun } = useCacheInvalidation();
   const navigate  = useNavigate();
 
   React.useEffect(() => {
@@ -157,11 +158,28 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
       isOptimistic: true
     };
 
-    addOptimisticRun(optimisticRun);
+    updateOptimisticRun(optimisticRun);
+    setIds({ browserId: '', runId: optimisticRun.runId, robotMetaId: runningRecordingId });
+    navigate(`/runs/${runningRecordingId}/run/${optimisticRun.runId}`);
 
     createAndRunRecording(runningRecordingId, settings).then((response: CreateRunResponseWithQueue) => {
       invalidateRuns();
       const { browserId, runId, robotMetaId, queued } = response;
+
+      if (!runId && !queued) {
+        notify('error', t('main_page.notifications.run_start_failed', { name: runningRecordingName }));
+        setContent('robots');
+        return;
+      }
+
+      const realRun = {
+        ...optimisticRun,
+        runId,
+        status: browserId === null ? 'success' : (queued ? 'queued' : 'running'),
+        isOptimistic: true
+      };
+
+      updateOptimisticRun(realRun, optimisticRun.runId);
 
       setIds({ browserId, runId, robotMetaId });
       navigate(`/runs/${robotMetaId}/run/${runId}`);
@@ -169,7 +187,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
       if (queued) {
         setQueuedRuns(prev => new Set([...prev, runId]));
         notify('info', `Run queued: ${runningRecordingName}`);
-      } else {
+      } else if (browserId) {
         const socket = io(`${apiUrl}/${browserId}`, {
           transports: ["websocket", "polling"],
           rejectUnauthorized: false
@@ -205,6 +223,8 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
         } else {
           notify('error', t('main_page.notifications.run_start_failed', { name: runningRecordingName }));
         }
+      } else if (runId) {
+        notify('info', t('main_page.notifications.run_started', { name: runningRecordingName }));
       }
       
       setContent('runs');
@@ -218,7 +238,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
       socket.off('connect_error');
       socket.off('disconnect');
     }
-  }, [runningRecordingName, sockets, ids, debugMessageHandler, user?.id, t, notify, setRerenderRuns, setQueuedRuns, navigate, setContent, setIds, invalidateRuns, addOptimisticRun, runningRecordingId]);
+  }, [runningRecordingName, sockets, ids, debugMessageHandler, user?.id, t, notify, setRerenderRuns, setQueuedRuns, navigate, setContent, setIds, invalidateRuns, updateOptimisticRun, runningRecordingId]);
 
   useEffect(() => {
     return () => {

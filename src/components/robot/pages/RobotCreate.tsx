@@ -18,6 +18,10 @@ import {
   Select,
   MenuItem,
   InputLabel,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   Collapse,
   FormControlLabel
 } from '@mui/material';
@@ -99,7 +103,7 @@ const RobotCreate: React.FC = () => {
 
   const { state } = React.useContext(AuthContext);
   const { user } = state;
-  const { addOptimisticRobot, removeOptimisticRobot, invalidateRecordings, invalidateRuns, addOptimisticRun } = useCacheInvalidation();
+  const { addOptimisticRobot, removeOptimisticRobot, invalidateRecordings, invalidateRuns, updateOptimisticRun } = useCacheInvalidation();
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -244,7 +248,7 @@ const RobotCreate: React.FC = () => {
     setIsLoading(true);
     try {
       const formatsForRequest = searchMode === 'discover' ? [] : searchOutputFormats;
-      
+
       const result = await createSearchRobot(
         searchRobotName,
         {
@@ -368,7 +372,7 @@ const RobotCreate: React.FC = () => {
                       }
                     }}
                   >
-                    <CardContent sx={{ textAlign: 'center', py: 3, color:"text.secondary" }}>
+                    <CardContent sx={{ textAlign: 'center', py: 3, color: "text.secondary" }}>
                       <HighlightAlt sx={{ fontSize: 32, mb: 1 }} />
                       <Typography variant="h6" gutterBottom>
                         Recorder Mode
@@ -409,7 +413,7 @@ const RobotCreate: React.FC = () => {
                       Beta
                     </Box>
 
-                    <CardContent sx={{ textAlign: 'center', py: 3, color:"text.secondary" }}>
+                    <CardContent sx={{ textAlign: 'center', py: 3, color: "text.secondary" }}>
                       <AutoAwesome sx={{ fontSize: 32, mb: 1 }} />
                       <Typography variant="h6" gutterBottom>
                         AI Mode
@@ -421,190 +425,213 @@ const RobotCreate: React.FC = () => {
                   </Card>
                 </Box>
               </Box>
-                {generationMode === 'agent' && (
-                  <Box sx={{ width: '100%', maxWidth: 700 }}>
-                    <Box sx={{ mb: 3 }}>
-                      <TextField
-                        placeholder="Name"
-                        variant="outlined"
-                        fullWidth
-                        value={extractRobotName}
-                        onChange={(e) => setExtractRobotName(e.target.value)}
-                        label="Name"
-                      />
-                    </Box>
-
-                    <Box sx={{ mb: 3 }}>
-                      <TextField
-                        placeholder="Example: Extract first 15 company names, descriptions, and batch information"
-                        variant="outlined"
-                        fullWidth
-                        multiline
-                        rows={3}
-                        value={aiPrompt}
-                        onChange={(e) => setAiPrompt(e.target.value)}
-                        label="Extraction Prompt"
-                      />
-                    </Box>
-
-                    <Box sx={{ mb: 3 }}>
-                      <TextField
-                        placeholder="Example: https://www.ycombinator.com/companies/"
-                        variant="outlined"
-                        fullWidth
-                        value={url}
-                        onChange={(e) => setUrl(e.target.value)}
-                        label="Website URL (Optional)"
-                      />
-                    </Box>
-
-                    <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-                      <FormControl sx={{ flex: 1 }}>
-                        <InputLabel>LLM Provider</InputLabel>
-                        <Select
-                          value={llmProvider}
-                          label="LLM Provider"
-                          onChange={(e) => {
-                            const provider = e.target.value as 'anthropic' | 'openai' | 'ollama';
-                            setLlmProvider(provider);
-                            setLlmModel('default');
-                            if (provider === 'ollama') {
-                              setLlmBaseUrl('http://localhost:11434');
-                            } else {
-                              setLlmBaseUrl('');
-                            }
-                          }}
-                        >
-                          <MenuItem value="ollama">Ollama (Local)</MenuItem>
-                          <MenuItem value="anthropic">Anthropic (Claude)</MenuItem>
-                          <MenuItem value="openai">OpenAI (GPT-4)</MenuItem>
-                        </Select>
-                      </FormControl>
-
-                      <FormControl sx={{ flex: 1 }}>
-                        <InputLabel>Model</InputLabel>
-                        <Select
-                          value={llmModel}
-                          label="Model"
-                          onChange={(e) => setLlmModel(e.target.value)}
-                        >
-                          {llmProvider === 'ollama' ? (
-                            [
-                              <MenuItem key="default" value="default">Default (llama3.2-vision)</MenuItem>,
-                              <MenuItem key="llama3.2-vision" value="llama3.2-vision">llama3.2-vision</MenuItem>,
-                              <MenuItem key="llama3.2" value="llama3.2">llama3.2</MenuItem>
-                            ]
-                          ) : llmProvider === 'anthropic' ? (
-                            [
-                              <MenuItem key="default" value="default">Default (claude-3-5-sonnet)</MenuItem>,
-                              <MenuItem key="claude-3-5-sonnet-20241022" value="claude-3-5-sonnet-20241022">claude-3-5-sonnet-20241022</MenuItem>,
-                              <MenuItem key="claude-3-opus-20240229" value="claude-3-opus-20240229">claude-3-opus-20240229</MenuItem>
-                            ]
-                          ) : (
-                            [
-                              <MenuItem key="default" value="default">Default (gpt-4-vision-preview)</MenuItem>,
-                              <MenuItem key="gpt-4-vision-preview" value="gpt-4-vision-preview">gpt-4-vision-preview</MenuItem>,
-                              <MenuItem key="gpt-4o" value="gpt-4o">gpt-4o</MenuItem>
-                            ]
-                          )}
-                        </Select>
-                      </FormControl>
-                    </Box>
-
-                    {/* API Key for non-Ollama providers */}
-                    {llmProvider !== 'ollama' && (
-                      <Box sx={{ mb: 3 }}>
-                        <TextField
-                          placeholder={`${llmProvider === 'anthropic' ? 'Anthropic' : 'OpenAI'} API Key`}
-                          variant="outlined"
-                          fullWidth
-                          type="password"
-                          value={llmApiKey}
-                          onChange={(e) => setLlmApiKey(e.target.value)}
-                          label="API Key (Optional if set in .env)"
-                        />
-                      </Box>
-                    )}
-
-                    {llmProvider === 'ollama' && (
-                      <Box sx={{ mb: 3 }}>
-                        <TextField
-                          placeholder="http://localhost:11434"
-                          variant="outlined"
-                          fullWidth
-                          value={llmBaseUrl}
-                          onChange={(e) => setLlmBaseUrl(e.target.value)}
-                          label="Ollama Base URL (Optional)"
-                        />
-                      </Box>
-                    )}
-
-                    <Button
-                      variant="contained"
+              {generationMode === 'agent' && (
+                <Box sx={{ width: '100%', maxWidth: 700 }}>
+                  <Box sx={{ mb: 3 }}>
+                    <TextField
+                      placeholder="Name"
+                      variant="outlined"
                       fullWidth
-                      onClick={async () => {
-                        // URL is optional for AI mode - it will auto-search if not provided
-                        if (!extractRobotName.trim()) {
-                          notify('error', 'Please enter a robot name');
-                          return;
-                        }
-                        if (!aiPrompt.trim()) {
-                          notify('error', 'Please enter an extraction prompt');
-                          return;
-                        }
-                        if (recordings.some(r => r.trim().toLowerCase() === extractRobotName.trim().toLowerCase())) {
-                          notify('error', `A robot with the name "${extractRobotName.trim()}" already exists.`);
-                          return;
-                        }
+                      value={extractRobotName}
+                      onChange={(e) => setExtractRobotName(e.target.value)}
+                      label="Name"
+                    />
+                  </Box>
 
-                        const tempRobotId = `temp-${Date.now()}`;
-                        const robotDisplayName = extractRobotName;
+                  <Box sx={{ mb: 3 }}>
+                    <TextField
+                      placeholder="Example: Extract first 15 company names, descriptions, and batch information"
+                      variant="outlined"
+                      fullWidth
+                      multiline
+                      rows={3}
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      label="Extraction Prompt"
+                    />
+                  </Box>
 
-                        const optimisticRobot = {
+                  <Box sx={{ mb: 3 }}>
+                    <TextField
+                      placeholder="Example: https://www.ycombinator.com/companies/"
+                      variant="outlined"
+                      fullWidth
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      label="Website URL (Optional)"
+                    />
+                  </Box>
+
+                  <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                    <FormControl sx={{ flex: 1 }}>
+                      <InputLabel>LLM Provider</InputLabel>
+                      <Select
+                        value={llmProvider}
+                        label="LLM Provider"
+                        onChange={(e) => {
+                          const provider = e.target.value as 'anthropic' | 'openai' | 'ollama';
+                          setLlmProvider(provider);
+                          setLlmModel('default');
+                          if (provider === 'ollama') {
+                            setLlmBaseUrl('http://localhost:11434');
+                          } else {
+                            setLlmBaseUrl('');
+                          }
+                        }}
+                      >
+                        <MenuItem value="ollama">Ollama (Local)</MenuItem>
+                        <MenuItem value="anthropic">Anthropic (Claude)</MenuItem>
+                        <MenuItem value="openai">OpenAI (GPT-4)</MenuItem>
+                      </Select>
+                    </FormControl>
+
+                    <FormControl sx={{ flex: 1 }}>
+                      <InputLabel>Model</InputLabel>
+                      <Select
+                        value={llmModel}
+                        label="Model"
+                        onChange={(e) => setLlmModel(e.target.value)}
+                      >
+                        {llmProvider === 'ollama' ? (
+                          [
+                            <MenuItem key="default" value="default">Default (llama3.2-vision)</MenuItem>,
+                            <MenuItem key="llama3.2-vision" value="llama3.2-vision">llama3.2-vision</MenuItem>,
+                            <MenuItem key="llama3.2" value="llama3.2">llama3.2</MenuItem>
+                          ]
+                        ) : llmProvider === 'anthropic' ? (
+                          [
+                            <MenuItem key="default" value="default">Default (claude-3-5-sonnet)</MenuItem>,
+                            <MenuItem key="claude-3-5-sonnet-20241022" value="claude-3-5-sonnet-20241022">claude-3-5-sonnet-20241022</MenuItem>,
+                            <MenuItem key="claude-3-opus-20240229" value="claude-3-opus-20240229">claude-3-opus-20240229</MenuItem>
+                          ]
+                        ) : (
+                          [
+                            <MenuItem key="default" value="default">Default (gpt-4-vision-preview)</MenuItem>,
+                            <MenuItem key="gpt-4-vision-preview" value="gpt-4-vision-preview">gpt-4-vision-preview</MenuItem>,
+                            <MenuItem key="gpt-4o" value="gpt-4o">gpt-4o</MenuItem>
+                          ]
+                        )}
+                      </Select>
+                    </FormControl>
+                  </Box>
+
+                  {/* API Key for non-Ollama providers */}
+                  {llmProvider !== 'ollama' && (
+                    <Box sx={{ mb: 3 }}>
+                      <TextField
+                        placeholder={`${llmProvider === 'anthropic' ? 'Anthropic' : 'OpenAI'} API Key`}
+                        variant="outlined"
+                        fullWidth
+                        type="password"
+                        value={llmApiKey}
+                        onChange={(e) => setLlmApiKey(e.target.value)}
+                        label="API Key (Optional if set in .env)"
+                      />
+                    </Box>
+                  )}
+
+                  {llmProvider === 'ollama' && (
+                    <Box sx={{ mb: 3 }}>
+                      <TextField
+                        placeholder="http://localhost:11434"
+                        variant="outlined"
+                        fullWidth
+                        value={llmBaseUrl}
+                        onChange={(e) => setLlmBaseUrl(e.target.value)}
+                        label="Ollama Base URL (Optional)"
+                      />
+                    </Box>
+                  )}
+
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    onClick={async () => {
+                      // URL is optional for AI mode - it will auto-search if not provided
+                      if (!extractRobotName.trim()) {
+                        notify('error', 'Please enter a robot name');
+                        return;
+                      }
+                      if (!aiPrompt.trim()) {
+                        notify('error', 'Please enter an extraction prompt');
+                        return;
+                      }
+                      if (recordings.some(r => r.trim().toLowerCase() === extractRobotName.trim().toLowerCase())) {
+                        notify('error', `A robot with the name "${extractRobotName.trim()}" already exists.`);
+                        return;
+                      }
+
+                      const tempRobotId = `temp-${Date.now()}`;
+                      const robotDisplayName = extractRobotName;
+
+                      const optimisticRobot = {
+                        id: tempRobotId,
+                        recording_meta: {
                           id: tempRobotId,
-                          recording_meta: {
-                            id: tempRobotId,
-                            name: robotDisplayName,
-                            createdAt: new Date().toISOString(),
-                            updatedAt: new Date().toISOString(),
-                            pairs: 0,
-                            params: [],
-                            type: 'extract',
-                            url: url || '(auto-detecting...)',
-                          },
-                          recording: { workflow: [] },
-                          isLoading: true,
+                          name: robotDisplayName,
+                          createdAt: new Date().toISOString(),
+                          updatedAt: new Date().toISOString(),
+                          pairs: 0,
+                          params: [],
+                          type: 'extract',
+                          url: url || '(auto-detecting...)',
+                        },
+                        recording: { workflow: [] },
+                        isLoading: true,
+                        isOptimistic: true
+                      };
+
+                      addOptimisticRobot(optimisticRobot);
+
+                      notify('info', url.trim()
+                        ? `Robot ${robotDisplayName} creation started`
+                        : `Robot ${robotDisplayName} creation started (searching for website...)`);
+                      navigate('/robots');
+
+                      try {
+                        const result = await createLLMRobot(
+                          url.trim() || undefined,
+                          aiPrompt,
+                          llmProvider,
+                          llmModel === 'default' ? undefined : llmModel,
+                          llmApiKey || undefined,
+                          llmBaseUrl || undefined,
+                          extractRobotName
+                        );
+
+                        removeOptimisticRobot(tempRobotId);
+
+                        if (!result || !result.robot) {
+                          notify('error', 'Failed to create AI robot. Please check your LLM configuration.');
+                          invalidateRecordings();
+                          return;
+                        }
+
+                        const robotMetaId = result.robot.recording_meta.id;
+                        const robotName = result.robot.recording_meta.name;
+
+                        invalidateRecordings();
+                        notify('success', `${robotName} created successfully!`);
+
+                        const optimisticRun = {
+                          id: robotMetaId,
+                          runId: `temp-${Date.now()}`,
+                          status: 'running',
+                          name: robotName,
+                          startedAt: new Date().toISOString(),
+                          finishedAt: '',
+                          robotMetaId: robotMetaId,
+                          log: 'Starting...',
                           isOptimistic: true
                         };
 
-                        addOptimisticRobot(optimisticRobot);
+                        addOptimisticRun(optimisticRun);
 
-                        notify('info', url.trim() 
-                          ? `Robot ${robotDisplayName} creation started` 
-                          : `Robot ${robotDisplayName} creation started (searching for website...)`);
-                        navigate('/robots');
-
-                        try {
-                          const result = await createLLMRobot(
-                            url.trim() || undefined,
-                            aiPrompt,
-                            llmProvider,
-                            llmModel === 'default' ? undefined : llmModel,
-                            llmApiKey || undefined,
-                            llmBaseUrl || undefined,
-                            extractRobotName
-                          );
-
-                          removeOptimisticRobot(tempRobotId);
-
-                          if (!result || !result.robot) {
-                            notify('error', 'Failed to create AI robot. Please check your LLM configuration.');
-                            invalidateRecordings();
-                            return;
-                          }
-
-                          const robotMetaId = result.robot.recording_meta.id;
-                          const robotName = result.robot.recording_meta.name;
+                        const runResponse = await createAndRunRecording(robotMetaId, {
+                          maxConcurrency: 1,
+                          maxRepeats: 1,
+                          debug: false
+                        });
 
                           invalidateRecordings();
                           notify('success', `${robotName} created successfully!`);
@@ -621,7 +648,7 @@ const RobotCreate: React.FC = () => {
                             isOptimistic: true
                           };
 
-                          addOptimisticRun(optimisticRun);
+                          updateOptimisticRun(optimisticRun);
 
                           const runResponse = await createAndRunRecording(robotMetaId, {
                             maxConcurrency: 1,
@@ -645,23 +672,29 @@ const RobotCreate: React.FC = () => {
                           invalidateRecordings();
                           notify('error', error?.message || 'Failed to create and run AI robot');
                         }
-                      }}
-                      disabled={!extractRobotName.trim() || !aiPrompt.trim() || isLoading}
-                      sx={{
-                        bgcolor: '#ff00c3',
-                        py: 1.4,
-                        fontSize: '1rem',
-                        textTransform: 'none',
-                        borderRadius: 2
-                      }}
-                      startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
-                    >
-                      {isLoading ? 'Creating & Running...' : 'Create & Run Robot'}
-                    </Button>
-                  </Box>
-                )}
+                      } catch (error: any) {
+                        console.error('Error in AI robot creation:', error);
+                        removeOptimisticRobot(tempRobotId);
+                        invalidateRecordings();
+                        notify('error', error?.message || 'Failed to create and run AI robot');
+                      }
+                    }}
+                    disabled={!extractRobotName.trim() || !aiPrompt.trim() || isLoading}
+                    sx={{
+                      bgcolor: '#ff00c3',
+                      py: 1.4,
+                      fontSize: '1rem',
+                      textTransform: 'none',
+                      borderRadius: 2
+                    }}
+                    startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
+                  >
+                    {isLoading ? 'Creating & Running...' : 'Create & Run Robot'}
+                  </Button>
+                </Box>
+              )}
 
-                {generationMode === 'recorder' && (
+              {generationMode === 'recorder' && (
                 <>
                   <Box sx={{ width: '100%', maxWidth: 700, mb: 3 }}>
                     <TextField
@@ -692,8 +725,8 @@ const RobotCreate: React.FC = () => {
                     </Button>
                   </Box>
                 </>
-                )}
-              </Box>
+              )}
+            </Box>
           </Card>
         </TabPanel>
 
@@ -942,13 +975,13 @@ const RobotCreate: React.FC = () => {
 
                 <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start', mb: 2 }}>
                   <Button
-                  onClick={() => setShowCrawlAdvanced(!showCrawlAdvanced)}
-                  sx={{
-                    textTransform: 'none',
-                    color: '#ff00c3',
-                  }}
+                    onClick={() => setShowCrawlAdvanced(!showCrawlAdvanced)}
+                    sx={{
+                      textTransform: 'none',
+                      color: '#ff00c3',
+                    }}
                   >
-                  {showCrawlAdvanced ? 'Hide Advanced Options' : 'Advanced Options'}
+                    {showCrawlAdvanced ? 'Hide Advanced Options' : 'Advanced Options'}
                   </Button>
                 </Box>
 
@@ -1102,38 +1135,38 @@ const RobotCreate: React.FC = () => {
 
                 <Box sx={{ display: 'flex', gap: 2 }}>
                   <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>Mode</InputLabel>
-                  <Select
-                    value={searchMode}
-                    label="Mode"
-                    onChange={(e) => {
-                      const newMode = e.target.value as 'discover' | 'scrape';
-                      setSearchMode(newMode);
-                      if (newMode === 'discover') {
-                        setSearchOutputFormats([]);
-                      } else if (searchOutputFormats.length === 0) {
-                        setSearchOutputFormats(DEFAULT_OUTPUT_FORMATS);
-                      }
-                    }}
-                  >
-                    <MenuItem value="discover">Discover URLs Only</MenuItem>
-                    <MenuItem value="scrape">Extract Data from Results</MenuItem>
-                  </Select>
+                    <InputLabel>Mode</InputLabel>
+                    <Select
+                      value={searchMode}
+                      label="Mode"
+                      onChange={(e) => {
+                        const newMode = e.target.value as 'discover' | 'scrape';
+                        setSearchMode(newMode);
+                        if (newMode === 'discover') {
+                          setSearchOutputFormats([]);
+                        } else if (searchOutputFormats.length === 0) {
+                          setSearchOutputFormats(DEFAULT_OUTPUT_FORMATS);
+                        }
+                      }}
+                    >
+                      <MenuItem value="discover">Discover URLs Only</MenuItem>
+                      <MenuItem value="scrape">Extract Data from Results</MenuItem>
+                    </Select>
                   </FormControl>
 
                   <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>Time Range</InputLabel>
-                  <Select
-                    value={searchTimeRange}
-                    label="Time Range"
-                    onChange={(e) => setSearchTimeRange(e.target.value as 'day' | 'week' | 'month' | 'year' | '')}
-                  >
-                    <MenuItem value="">No Filter</MenuItem>
-                    <MenuItem value="day">Past 24 Hours</MenuItem>
-                    <MenuItem value="week">Past Week</MenuItem>
-                    <MenuItem value="month">Past Month</MenuItem>
-                    <MenuItem value="year">Past Year</MenuItem>
-                  </Select>
+                    <InputLabel>Time Range</InputLabel>
+                    <Select
+                      value={searchTimeRange}
+                      label="Time Range"
+                      onChange={(e) => setSearchTimeRange(e.target.value as 'day' | 'week' | 'month' | 'year' | '')}
+                    >
+                      <MenuItem value="">No Filter</MenuItem>
+                      <MenuItem value="day">Past 24 Hours</MenuItem>
+                      <MenuItem value="week">Past Week</MenuItem>
+                      <MenuItem value="month">Past Month</MenuItem>
+                      <MenuItem value="year">Past Year</MenuItem>
+                    </Select>
                   </FormControl>
                 </Box>
 
@@ -1195,38 +1228,50 @@ const RobotCreate: React.FC = () => {
         </TabPanel>
       </Box>
 
+      <Dialog
+        open={isWarningModalOpen}
+        onClose={() => {
+          setWarningModalOpen(false);
+          setIsLoading(false);
+        }}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            p: 0,
+            borderRadius: 2
+          }
+        }}
+      >
+        <DialogTitle>
+          {t('recordingtable.warning_modal.title')}
+        </DialogTitle>
 
-      <GenericModal isOpen={isWarningModalOpen} onClose={() => {
-        setWarningModalOpen(false);
-        setIsLoading(false);
-      }} modalStyle={modalStyle}>
-        <div style={{ padding: '10px' }}>
-          <Typography variant="h6" gutterBottom>{t('recordingtable.warning_modal.title')}</Typography>
-          <Typography variant="body1" style={{ marginBottom: '20px' }}>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mb: 2 }}>
             {t('recordingtable.warning_modal.message')}
           </Typography>
+        </DialogContent>
 
-          <Box display="flex" justifyContent="space-between" mt={2}>
-            <Button
-              onClick={handleDiscardAndCreate}
-              variant="contained"
-              color="error"
-            >
-              {t('recordingtable.warning_modal.discard_and_create')}
-            </Button>
-            <Button
-              onClick={() => {
-                setWarningModalOpen(false);
-                setIsLoading(false);
-              }}
-              variant="outlined"
-            >
-              {t('recordingtable.warning_modal.cancel')}
-            </Button>
-          </Box>
-        </div>
-      </GenericModal>
-
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => {
+              setWarningModalOpen(false);
+              setIsLoading(false);
+            }}
+            color="inherit"
+          >
+            {t('recordingtable.warning_modal.cancel')}
+          </Button>
+          <Button
+            onClick={handleDiscardAndCreate}
+            variant="contained"
+            color="error"
+          >
+            {t('recordingtable.warning_modal.discard_and_create')}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
     </Container>
   );

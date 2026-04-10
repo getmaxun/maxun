@@ -556,6 +556,8 @@
             "scheduled_run": "Geplante Ausführung",
             "api": "API",
             "sdk": "SDK",
+            "mcp": "MCP",
+            "cli": "CLI",
             "unknown_run_type": "Unbekannter Ausführungstyp"
         },
         "run_status_chips": {

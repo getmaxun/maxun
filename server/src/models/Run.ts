@@ -24,6 +24,8 @@ interface RunAttributes {
   runByScheduleId?: string;
   runByAPI?: boolean;
   runBySDK?: boolean;
+  runByMCP?: boolean;
+  runByCLI?: boolean;
   serializableOutput: Record<string, any>;
   binaryOutput: Record<string, string>;
   retryCount?: number;
@@ -47,6 +49,8 @@ class Run extends Model<RunAttributes, RunCreationAttributes> implements RunAttr
   public runByScheduleId!: string;
   public runByAPI!: boolean;
   public runBySDK!: boolean;
+  public runByMCP!: boolean;
+  public runByCLI!: boolean;
   public serializableOutput!: Record<string, any>;
   public binaryOutput!: Record<string, any>;
   public retryCount!: number;
@@ -116,6 +120,14 @@ Run.init(
       allowNull: true,
     },
     runBySDK: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+    },
+    runByMCP: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+    },
+    runByCLI: {
       type: DataTypes.BOOLEAN,
       allowNull: true,
     },

@@ -557,6 +557,8 @@
       "scheduled_run": "Zamanlanmış",
       "api": "API",
       "sdk": "SDK",
+      "mcp": "MCP",
+      "cli": "CLI",
       "unknown_run_type": "Bilinmeyen"
     },
     "run_status_chips": {

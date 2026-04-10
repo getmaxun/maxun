@@ -557,6 +557,8 @@
       "scheduled_run": "计划运行",
       "api": "API",
       "sdk": "SDK",
+      "mcp": "MCP",
+      "cli": "CLI",
       "unknown_run_type": "未知运行类型"
     },
     "run_status_chips": {
