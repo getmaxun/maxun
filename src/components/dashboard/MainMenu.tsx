@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'; 
+import React, { useState, useEffect } from 'react';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
@@ -32,7 +32,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             'Accept': 'application/vnd.github.v3+json'
           }
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           setStarCount(data.stargazers_count);
@@ -47,10 +47,10 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
     };
 
     fetchStarCount();
-    
+
     // Optional: Refresh star count every 5 minutes
     const intervalId = setInterval(fetchStarCount, 5 * 60 * 1000);
-    
+
     return () => clearInterval(intervalId);
   }, []);
 
@@ -118,24 +118,24 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
         variant="outlined"
         square
       >
-        <Box sx={{ 
-          width: '100%', 
+        <Box sx={{
+          width: '100%',
           paddingBottom: '1rem',
           flexGrow: 1,
           overflowY: 'auto'
         }}>
           <Tabs
-              value={value}
-              onChange={handleChange}
-              textColor="primary"
-              indicatorColor="primary"
-              orientation="vertical"
-              sx={{ 
-                alignItems: 'flex-start', 
-                '& .MuiTabs-indicator': { display: 'none' },
-                paddingTop: '0.5rem'
-              }}
-            >
+            value={value}
+            onChange={handleChange}
+            textColor="primary"
+            indicatorColor="primary"
+            orientation="vertical"
+            sx={{
+              alignItems: 'flex-start',
+              '& .MuiTabs-indicator': { display: 'none' },
+              paddingTop: '0.5rem'
+            }}
+          >
             <Tab
               value="robots"
               label={t('mainmenu.recordings')}
@@ -158,7 +158,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '16px' }} />
             <Tab value="apikey"
               label={t('mainmenu.apikey')}
-              icon={<VpnKey sx={{ fontSize: 20 }}/>}
+              icon={<VpnKey sx={{ fontSize: 20 }} />}
               iconPosition="start"
               disableRipple={true}
               sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '16px' }} />
@@ -224,20 +224,20 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
           rel="noopener noreferrer"
           sx={starButtonStyles}
           startIcon={
-            <Star 
-              sx={{ 
-                fontSize: 16, 
+            <Star
+              sx={{
+                fontSize: 16,
                 color: theme.palette.mode === 'light' ? '#ffb400' : '#ffd740'
-              }} 
+              }}
             />
           }
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <span style={{ fontSize: "0.85rem"}}>Star On GitHub</span>
+            <span style={{ fontSize: "0.85rem" }}>Star On GitHub</span>
             {isLoading ? (
-              <Typography 
-                variant="caption" 
-                sx={{ 
+              <Typography
+                variant="caption"
+                sx={{
                   color: theme.palette.mode === 'light' ? '#666' : '#aaa',
                   fontSize: '0.75rem'
                 }}
@@ -262,44 +262,44 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
         </Button>
       </Paper>
 
-     <Dialog
-  open={sponsorModalOpen}
-  onClose={() => setSponsorModalOpen(false)}
-  maxWidth="sm"
-  fullWidth
-  PaperProps={{
-    sx: {
-      p: 4,
-      borderRadius: 2,
-      width: 600
-    }
-  }}
->
-  <DialogTitle sx={{ pb: 0 }}>
-    Support Maxun Open Source
-  </DialogTitle>
-
-  <DialogContent sx={{ pt: 2 }}>
-    <Typography variant="body1" gutterBottom>
-      Maxun is built by a small, full-time team. Your donations directly
-      contribute to making it better.
-      <br />
-      Thank you for your support! 🩷
-    </Typography>
-
-    <Stack direction="row" spacing={2} mt={4}>
-      <Button
-        href="https://github.com/sponsors/amhsirak"
-        target="_blank"
-        rel="noopener noreferrer"
-        variant="outlined"
+      <Dialog
+        open={sponsorModalOpen}
+        onClose={() => setSponsorModalOpen(false)}
+        maxWidth="sm"
         fullWidth
+        PaperProps={{
+          sx: {
+            p: 4,
+            borderRadius: 2,
+            width: 600
+          }
+        }}
       >
-        Sponsor Maxun on GitHub Sponsors
-      </Button>
-    </Stack>
-  </DialogContent>
-</Dialog>
+        <DialogTitle sx={{ pb: 0 }}>
+          Support Maxun Open Source
+        </DialogTitle>
+
+        <DialogContent sx={{ pt: 2 }}>
+          <Typography variant="body1" gutterBottom>
+            Maxun is built by a small, full-time team. Your donations directly
+            contribute to making it better.
+            <br />
+            Thank you for your support! 🩷
+          </Typography>
+
+          <Stack direction="row" spacing={2} mt={4}>
+            <Button
+              href="https://github.com/sponsors/amhsirak"
+              target="_blank"
+              rel="noopener noreferrer"
+              variant="outlined"
+              fullWidth
+            >
+              Sponsor Maxun on GitHub Sponsors
+            </Button>
+          </Stack>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
