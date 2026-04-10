@@ -260,6 +260,7 @@
       "confirm_all_list_fields": "Lütfen devam etmeden önce tüm liste alanlarını onaylayın."
     },
     "tooltips": {
+      "capture_list_first": "Önce bir listenin üzerine gelin ve içindeki metin alanlarını seçin",
       "confirm_all_list_fields": "Lütfen bir sonraki adıma geçmeden önce tüm liste alanlarını onaylayın"
     }
   },
@@ -555,6 +556,9 @@
       "manual_run": "Manuel",
       "scheduled_run": "Zamanlanmış",
       "api": "API",
+      "sdk": "SDK",
+      "mcp": "MCP",
+      "cli": "CLI",
       "unknown_run_type": "Bilinmeyen"
     },
     "run_status_chips": {

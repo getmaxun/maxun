@@ -57,6 +57,8 @@ export interface Data {
   browserId: string;
   runByAPI?: boolean;
   runBySDK?: boolean;
+  runByMCP?: boolean;
+  runByCLI?: boolean;
   log: string;
   runId: string;
   robotId: string;

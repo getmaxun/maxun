@@ -94,11 +94,34 @@ const ApiKeyManager = () => {
   };
 
   const copyToClipboard = () => {
-    if (apiKey) {
-      navigator.clipboard.writeText(apiKey);
-      setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 2000);
-      notify('info', t('apikey.notifications.copy_success'));
+    if (!apiKey) return;
+
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(apiKey).then(() => {
+        setCopySuccess(true);
+        setTimeout(() => setCopySuccess(false), 2000);
+        notify('info', t('apikey.notifications.copy_success'));
+      }).catch(() => {
+        notify('error', t('apikey.notifications.copy_error'));
+      });
+    } else {
+      const textarea = document.createElement('textarea');
+      textarea.value = apiKey;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        setCopySuccess(true);
+        setTimeout(() => setCopySuccess(false), 2000);
+        notify('info', t('apikey.notifications.copy_success'));
+      } catch {
+        notify('error', t('apikey.notifications.copy_error'));
+      } finally {
+        document.body.removeChild(textarea);
+      }
     }
   };
 

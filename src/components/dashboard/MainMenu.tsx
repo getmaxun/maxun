@@ -4,7 +4,7 @@ import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Paper, Button, useTheme, Modal, Typography, Stack, Divider, Dialog, DialogContent, DialogTitle } from "@mui/material";
-import { AutoAwesome, VpnKey, Usb, CloudQueue, Description, Favorite, SlowMotionVideo, PlayArrow, ArrowForwardIos, Star } from "@mui/icons-material";
+import { AutoAwesome, VpnKey, Usb, CloudQueue, Description, Favorite, SlowMotionVideo, PlayArrow, ArrowForwardIos, Star, Terminal } from "@mui/icons-material";
 import { useTranslation } from 'react-i18next';
 
 interface MainMenuProps {
@@ -89,7 +89,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
   const starButtonStyles = {
     justifyContent: 'flex-start',
     textAlign: 'left',
-    fontSize: '15px',
+    fontSize: '14px',
     padding: '12px 20px 12px 22px',
     minHeight: '48px',
     minWidth: '100%',
@@ -142,36 +142,29 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               icon={<AutoAwesome sx={{ fontSize: 20 }} />}
               iconPosition="start"
               disableRipple={true}
-              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '16px' }}
+              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '15px' }}
               onClick={handleRobotsClick} />
             <Tab value="runs"
               label={t('mainmenu.runs')}
               icon={<PlayArrow sx={{ fontSize: 20 }} />}
               iconPosition="start"
               disableRipple={true}
-              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '16px' }} />
+              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '15px' }} />
             <Tab value="proxy"
               label={t('mainmenu.proxy')}
               icon={<Usb sx={{ fontSize: 20 }} />}
               iconPosition="start"
               disableRipple={true}
-              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '16px' }} />
+              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '15px' }} />
             <Tab value="apikey"
               label={t('mainmenu.apikey')}
               icon={<VpnKey sx={{ fontSize: 20 }} />}
               iconPosition="start"
               disableRipple={true}
-              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '16px' }} />
+              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '15px' }} />
           </Tabs>
           <Divider sx={{ borderColor: theme.palette.mode === 'dark' ? "#080808ff" : "" }} />
           <Box sx={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
-            <Button
-              href='https://docs.maxun.dev/category/sdk'
-              target="_blank"
-              rel="noopener noreferrer"
-              sx={buttonStyles} startIcon={<ArrowForwardIos sx={{ fontSize: 20 }} />}>
-              SDK
-            </Button>
             <Button
               onClick={() => setDocModalOpen(true)}
               sx={buttonStyles}
@@ -223,6 +216,20 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               rel="noopener noreferrer"
               sx={buttonStyles} startIcon={<CloudQueue sx={{ fontSize: 16 }} />}>
               Join Maxun Cloud
+            </Button>
+            <Button
+              href='https://docs.maxun.dev/category/sdk'
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={buttonStyles} startIcon={<ArrowForwardIos sx={{ fontSize: 20 }} />}>
+              SDK
+            </Button>
+            <Button
+              href='https://docs.maxun.dev/category/cli'
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={buttonStyles} startIcon={<Terminal sx={{ fontSize: 20 }} />}>
+              CLI
             </Button>
             <Button onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite sx={{ fontSize: 16 }} />}>
               Sponsor Us
