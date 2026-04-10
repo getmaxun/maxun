@@ -180,44 +180,44 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               Documentation
             </Button>
             <Dialog
-  open={docModalOpen ?? false}
-  onClose={() => setDocModalOpen(false)}
-  maxWidth="xs"
-  fullWidth
-  PaperProps={{
-    sx: {
-      p: 4,
-      borderRadius: 2,
-      width: 400
-    }
-  }}
->
-  <DialogContent>
-    <Stack spacing={2}>
-      <Button
-        href="https://docs.maxun.dev"
-        target="_blank"
-        rel="noopener noreferrer"
-        variant="outlined"
-        startIcon={<Description />}
-        fullWidth
-      >
-        Documentation
-      </Button>
+              open={docModalOpen ?? false}
+              onClose={() => setDocModalOpen(false)}
+              maxWidth="xs"
+              fullWidth
+              PaperProps={{
+                sx: {
+                  p: 4,
+                  borderRadius: 2,
+                  width: 400
+                }
+              }}
+            >
+              <DialogContent>
+                <Stack spacing={2}>
+                  <Button
+                    href="https://docs.maxun.dev"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="outlined"
+                    startIcon={<Description />}
+                    fullWidth
+                  >
+                    Documentation
+                  </Button>
 
-      <Button
-        href="https://www.youtube.com/@MaxunOSS/videos"
-        target="_blank"
-        rel="noopener noreferrer"
-        variant="outlined"
-        startIcon={<SlowMotionVideo />}
-        fullWidth
-      >
-        Video Tutorials
-      </Button>
-    </Stack>
-  </DialogContent>
-</Dialog>
+                  <Button
+                    href="https://www.youtube.com/@MaxunOSS/videos"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="outlined"
+                    startIcon={<SlowMotionVideo />}
+                    fullWidth
+                  >
+                    Video Tutorials
+                  </Button>
+                </Stack>
+              </DialogContent>
+            </Dialog>
             <Button
               href='https://app.maxun.dev/'
               target="_blank"
