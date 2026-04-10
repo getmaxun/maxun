@@ -824,6 +824,10 @@ export const RobotIntegrationPage = ({
                 <img src="/svg/llamaindex.svg" alt="LlamaIndex" style={{ margin: "6px" }} height={150} width={100} />
                 LlamaIndex
               </Button>
+              <Button variant="outlined" onClick={() => { window.open("https://docs.maxun.dev/integrations/claude-code", "_blank", "noopener,noreferrer"); }} style={{ display: "flex", flexDirection: "column", alignItems: "center", background: 'white', color: '#ff00c3' }}>
+                <img src="/svg/claude.svg" alt="Claude Code" style={{ margin: "6px" }} height={150} width={100} />
+                Claude Code
+              </Button>
             </div>
           </div>
         </div>
