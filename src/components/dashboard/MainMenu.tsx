@@ -3,7 +3,7 @@ import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Paper, Button, useTheme, Modal, Typography, Stack, Divider } from "@mui/material";
+import { Paper, Button, useTheme, Modal, Typography, Stack, Divider, Dialog, DialogContent, DialogTitle } from "@mui/material";
 import { AutoAwesome, VpnKey, Usb, CloudQueue, Description, Favorite, SlowMotionVideo, PlayArrow, ArrowForwardIos, Star } from "@mui/icons-material";
 import { useTranslation } from 'react-i18next';
 
@@ -262,23 +262,44 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
         </Button>
       </Paper>
 
-      <Modal open={sponsorModalOpen} onClose={() => setSponsorModalOpen(false)}>
-        <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', borderRadius: 2, p: 4, width: 600 }}>
-          <Typography variant="h6" marginBottom={4}>
-            Support Maxun Open Source
-          </Typography>
-          <Typography variant="body1" gutterBottom>
-            Maxun is built by a small, full-time team. Your donations directly contribute to making it better.
-            <br />
-            Thank you for your support! 🩷
-          </Typography>
-          <Stack direction="row" spacing={2} mt={4}>
-            <Button href="https://github.com/sponsors/amhsirak" target="_blank" rel="noopener noreferrer" variant="outlined" fullWidth>
-              Sponsor Maxun on GitHub Sponsors
-            </Button>
-          </Stack>
-        </Box>
-      </Modal>
+     <Dialog
+  open={sponsorModalOpen}
+  onClose={() => setSponsorModalOpen(false)}
+  maxWidth="sm"
+  fullWidth
+  PaperProps={{
+    sx: {
+      p: 4,
+      borderRadius: 2,
+      width: 600
+    }
+  }}
+>
+  <DialogTitle sx={{ pb: 0 }}>
+    Support Maxun Open Source
+  </DialogTitle>
+
+  <DialogContent sx={{ pt: 2 }}>
+    <Typography variant="body1" gutterBottom>
+      Maxun is built by a small, full-time team. Your donations directly
+      contribute to making it better.
+      <br />
+      Thank you for your support! 🩷
+    </Typography>
+
+    <Stack direction="row" spacing={2} mt={4}>
+      <Button
+        href="https://github.com/sponsors/amhsirak"
+        target="_blank"
+        rel="noopener noreferrer"
+        variant="outlined"
+        fullWidth
+      >
+        Sponsor Maxun on GitHub Sponsors
+      </Button>
+    </Stack>
+  </DialogContent>
+</Dialog>
     </>
   );
 };
