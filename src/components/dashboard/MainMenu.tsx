@@ -274,7 +274,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
           }
         }}
       >
-        <DialogTitle sx={{ pb: 0 }}>
+        <DialogTitle>
           Support Maxun Open Source
         </DialogTitle>
 
