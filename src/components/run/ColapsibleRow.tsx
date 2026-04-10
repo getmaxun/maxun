@@ -2,7 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import * as React from "react";
 import TableRow from "@mui/material/TableRow";
 import TableCell from "@mui/material/TableCell";
-import { Box, Collapse, IconButton, Typography, Chip, TextField } from "@mui/material";
+import {
+  Box, Collapse, IconButton, Typography, Chip, TextField, Dialog, DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+} from "@mui/material";
 import { Button } from "@mui/material";
 import { DeleteForever, KeyboardArrowDown, KeyboardArrowUp, Settings } from "@mui/icons-material";
 import { deleteRunFromStorage } from "../../api/storage";
@@ -250,7 +255,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                           <TextField
                             label={
                               row.runByScheduleId
-                                ? t('runs_table.run_settings_modal.labels.run_by_schedule') 
+                                ? t('runs_table.run_settings_modal.labels.run_by_schedule')
                                 : row.runByUserId
                                   ? t('runs_table.run_settings_modal.labels.run_by_user')
                                   : t('runs_table.run_settings_modal.labels.run_by_api')
@@ -292,31 +297,56 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
         </TableCell>
       </TableRow>
 
-      <GenericModal isOpen={isDeleteOpen} onClose={() => setDeleteOpen(false)} modalStyle={{ ...modalStyle, padding: 0, backgroundColor: 'transparent', width: 'auto', maxWidth: '520px' }}>
-        <Box sx={{ padding: theme.spacing(3), borderRadius: 2, backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[900] : theme.palette.background.paper, color: theme.palette.text.primary, width: { xs: '90vw', sm: '460px', md: '420px' }, maxWidth: '90vw', boxSizing: 'border-box', mx: 'auto' }}>
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            {t('runs_table.delete_confirm.title', {
-              name: row.name,
-              defaultValue: 'Delete run "{{name}}"?'
-            })}
-          </Typography>
-          <Typography variant="body1" sx={{ mb: 2 }}>
+      <Dialog
+        open={isDeleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            p: 0,
+            backgroundColor: theme.palette.mode === 'dark'
+              ? theme.palette.grey[900]
+              : theme.palette.background.paper,
+            borderRadius: 2,
+            width: { xs: '90vw', sm: '460px', md: '420px' },
+            maxWidth: '90vw',
+            boxSizing: 'border-box'
+          }
+        }}
+      >
+        <DialogTitle>
+          {t('runs_table.delete_confirm.title', {
+            name: row.name,
+            defaultValue: 'Delete run "{{name}}"?'
+          })}
+        </DialogTitle>
+
+        <DialogContent>
+          <DialogContentText sx={{ mb: 1 }}>
             {t('runs_table.delete_confirm.message', {
               name: row.name,
               defaultValue: 'Are you sure you want to delete the run "{{name}}"?'
             })}
-          </Typography>
-          <Box display="flex" justifyContent="flex-end" gap={1}>
-            <Button onClick={() => setDeleteOpen(false)} variant="outlined">
-              {t('common.cancel', { defaultValue: 'Cancel' })}
-            </Button>
-            <Button
-              onClick={handleConfirmDelete} variant="contained" color="primary" sx={{ '&:hover': { backgroundColor: theme.palette.primary.dark } }}>
-              {t('common.delete', { defaultValue: 'Delete' })}
-            </Button>
-          </Box>
-        </Box>
-      </GenericModal>
+          </DialogContentText>
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setDeleteOpen(false)}
+          >
+            {t('common.cancel', { defaultValue: 'Cancel' })}
+          </Button>
+
+          <Button
+            onClick={handleConfirmDelete}
+            variant="contained"
+            color="error"
+          >
+            {t('common.delete', { defaultValue: 'Delete' })}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </React.Fragment>
   );
 }
