@@ -99,7 +99,7 @@ const RobotCreate: React.FC = () => {
 
   const { state } = React.useContext(AuthContext);
   const { user } = state;
-  const { addOptimisticRobot, removeOptimisticRobot, invalidateRecordings, invalidateRuns, addOptimisticRun } = useCacheInvalidation();
+  const { addOptimisticRobot, removeOptimisticRobot, invalidateRecordings, invalidateRuns, updateOptimisticRun } = useCacheInvalidation();
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -621,7 +621,7 @@ const RobotCreate: React.FC = () => {
                             isOptimistic: true
                           };
 
-                          addOptimisticRun(optimisticRun);
+                          updateOptimisticRun(optimisticRun);
 
                           const runResponse = await createAndRunRecording(robotMetaId, {
                             maxConcurrency: 1,

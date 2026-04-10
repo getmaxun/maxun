@@ -176,9 +176,18 @@ export const useCacheInvalidation = () => {
     queryClient.invalidateQueries({ queryKey: dataCacheKeys.recordings });
   };
 
-  const addOptimisticRun = (newRun: any) => {
+  const updateOptimisticRun = (newRun: any, oldRunId?: string) => {
     queryClient.setQueryData(dataCacheKeys.runs, (oldData: any) => {
       if (!oldData) return [{ id: 0, ...newRun }];
+      const runToMatch = oldRunId || newRun.runId;
+      const existingIndex = oldData.findIndex((r: any) => r.runId === runToMatch);
+
+      if (existingIndex !== -1) {
+        const newData = [...oldData];
+        newData[existingIndex] = { ...newData[existingIndex], ...newRun };
+        return newData;
+      }
+
       return [{ id: oldData.length, ...newRun }, ...oldData];
     });
   };
@@ -205,7 +214,7 @@ export const useCacheInvalidation = () => {
   return {
     invalidateRuns,
     invalidateRecordings,
-    addOptimisticRun,
+    updateOptimisticRun,
     addOptimisticRobot,
     removeOptimisticRobot,
     invalidateAllCache
