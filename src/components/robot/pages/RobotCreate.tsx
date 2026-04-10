@@ -103,7 +103,7 @@ const RobotCreate: React.FC = () => {
 
   const { state } = React.useContext(AuthContext);
   const { user } = state;
-  const { addOptimisticRobot, removeOptimisticRobot, invalidateRecordings, invalidateRuns, addOptimisticRun } = useCacheInvalidation();
+  const { addOptimisticRobot, removeOptimisticRobot, invalidateRecordings, invalidateRuns, updateOptimisticRun } = useCacheInvalidation();
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -633,15 +633,44 @@ const RobotCreate: React.FC = () => {
                           debug: false
                         });
 
-                        invalidateRuns();
+                          invalidateRecordings();
+                          notify('success', `${robotName} created successfully!`);
 
-                        if (runResponse && runResponse.runId) {
-                          await new Promise(resolve => setTimeout(resolve, 300));
-                          navigate(`/runs/${robotMetaId}/run/${runResponse.runId}`);
-                          notify('info', `Run started: ${robotName}`);
-                        } else {
-                          notify('warning', 'Robot created but failed to start execution.');
-                          navigate('/robots');
+                          const optimisticRun = {
+                            id: robotMetaId,
+                            runId: `temp-${Date.now()}`,
+                            status: 'running',
+                            name: robotName,
+                            startedAt: new Date().toISOString(),
+                            finishedAt: '',
+                            robotMetaId: robotMetaId,
+                            log: 'Starting...',
+                            isOptimistic: true
+                          };
+
+                          updateOptimisticRun(optimisticRun);
+
+                          const runResponse = await createAndRunRecording(robotMetaId, {
+                            maxConcurrency: 1,
+                            maxRepeats: 1,
+                            debug: false
+                          });
+
+                          invalidateRuns();
+
+                          if (runResponse && runResponse.runId) {
+                            await new Promise(resolve => setTimeout(resolve, 300));
+                            navigate(`/runs/${robotMetaId}/run/${runResponse.runId}`);
+                            notify('info', `Run started: ${robotName}`);
+                          } else {
+                            notify('warning', 'Robot created but failed to start execution.');
+                            navigate('/robots');
+                          }
+                        } catch (error: any) {
+                          console.error('Error in AI robot creation:', error);
+                          removeOptimisticRobot(tempRobotId);
+                          invalidateRecordings();
+                          notify('error', error?.message || 'Failed to create and run AI robot');
                         }
                       } catch (error: any) {
                         console.error('Error in AI robot creation:', error);

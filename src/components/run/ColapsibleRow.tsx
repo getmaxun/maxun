@@ -62,12 +62,16 @@ interface RunTypeChipProps {
   runByScheduledId?: string;
   runByAPI: boolean;
   runBySDK?: boolean;
+  runByMCP?: boolean;
+  runByCLI?: boolean;
 }
 
-const RunTypeChip: React.FC<RunTypeChipProps> = ({ runByUserId, runByScheduledId, runByAPI, runBySDK }) => {
+const RunTypeChip: React.FC<RunTypeChipProps> = ({ runByUserId, runByScheduledId, runByAPI, runBySDK, runByMCP, runByCLI }) => {
   const { t } = useTranslation();
 
   if (runByScheduledId) return <Chip label={t('runs_table.run_type_chips.scheduled_run')} color="primary" variant="outlined" />;
+  if (runByCLI) return <Chip label={t('runs_table.run_type_chips.cli')} color="primary" variant="outlined" />;
+  if (runByMCP) return <Chip label={t('runs_table.run_type_chips.mcp')} color="primary" variant="outlined" />;
   if (runBySDK) return <Chip label={t('runs_table.run_type_chips.sdk')} color="primary" variant="outlined" />;
   if (runByAPI) return <Chip label={t('runs_table.run_type_chips.api')} color="primary" variant="outlined" />;
   if (runByUserId) return <Chip label={t('runs_table.run_type_chips.manual_run')} color="primary" variant="outlined" />;
@@ -94,12 +98,16 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
     ? `${row.runByScheduleId}`
     : row.runByUserId
       ? `${userEmail}`
-      : row.runBySDK
-        ? 'SDK'
-        : row.runByAPI
-          ? 'API'
-          : 'Unknown';
-
+      : row.runByCLI
+        ? 'CLI'
+        : row.runByMCP
+          ? 'MCP'
+          : row.runBySDK
+            ? 'SDK'
+            : row.runByAPI
+              ? 'API'
+              : 'Unknown';
+  
   const logEndRef = useRef<HTMLDivElement | null>(null);
 
   const [workflowProgress, setWorkflowProgress] = useState<{
@@ -264,6 +272,8 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                               runByScheduledId={row.runByScheduleId}
                               runByAPI={row.runByAPI ?? false}
                               runBySDK={row.runBySDK}
+                              runByMCP={row.runByMCP}
+                              runByCLI={row.runByCLI}
                             />
                           </Box>
                         </Box>

@@ -38,6 +38,7 @@ class MaxunMCPWorker {
     const headers = {
       'Content-Type': 'application/json',
       'x-api-key': this.apiKey,
+      'x-run-source': 'mcp',
       ...options.headers
     };
 
