@@ -95,6 +95,7 @@
     "finishedAt": "Bitiş",
     "delete": "Sil",
     "settings": "Ayarlar",
+    "rerun": "Yeniden Çalıştır",
     "search": "Çalıştırma Ara...",
     "sort_tooltip": "Sıralamak için tıkla",
     "placeholder": {
@@ -578,7 +579,8 @@
         "run_by_api": "API",
         "run_type": "Tür"
       }
-    }
+    },
+    "rerun": "Yeniden Çalıştır"
   },
   "run_content": {
     "tabs": {
