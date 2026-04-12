@@ -246,6 +246,62 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
     };
   }, []);
 
+  const handleReRunRecording = useCallback((robotMetaId: string, robotName: string, interpreterSettings: RunSettings) => {
+    createAndRunRecording(robotMetaId, interpreterSettings).then((response: CreateRunResponseWithQueue) => {
+      invalidateRuns();
+      const { browserId, runId, queued } = response;
+
+      if (!runId) {
+        notify('error', t('main_page.notifications.run_start_failed', { name: robotName }));
+        return;
+      }
+
+      navigate(`/runs/${robotMetaId}/run/${runId}`);
+
+      if (queued) {
+        setQueuedRuns(prev => new Set([...prev, runId]));
+        notify('info', `Run queued: ${robotName}`);
+      } else {
+        if (!browserId) {
+          notify('error', t('main_page.notifications.run_start_failed', { name: robotName }));
+          return;
+        }
+
+        const socket = io(`${apiUrl}/${browserId}`, {
+          transports: ["websocket", "polling"],
+          rejectUnauthorized: false
+        });
+
+        setSockets(sockets => [...sockets, socket]);
+
+        socket.on('run-completed', (data) => {
+          setRerenderRuns(true);
+          invalidateRuns();
+          if (data.status === 'success') {
+            notify('success', t('main_page.notifications.interpretation_success', { name: robotName }));
+          } else {
+            notify('error', t('main_page.notifications.interpretation_failed', { name: robotName }));
+          }
+        });
+
+        socket.on('connect_error', (error) => {
+          console.log('error', `Failed to connect to browser ${browserId}: ${error}`);
+        });
+
+        socket.on('disconnect', (reason) => {
+          console.log('warn', `Disconnected from browser ${browserId}: ${reason}`);
+        });
+
+        notify('info', t('main_page.notifications.run_started', { name: robotName }));
+      }
+
+      setContent('runs');
+    }).catch((error: any) => {
+      notify('error', t('main_page.notifications.run_start_failed', { name: robotName }));
+      console.error('Error in rerun:', error);
+    });
+  }, [navigate, notify, t, invalidateRuns, setRerenderRuns, setQueuedRuns, setSockets, setContent]);
+
   const handleScheduleRecording = async (settings: ScheduleSettings) => {
     const { message, runId }: ScheduleRunResponse = await scheduleStoredRecording(runningRecordingId, settings);
     if (message === 'success') {
@@ -330,6 +386,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
         return <Runs
           currentInterpretationLog={currentInterpretationLog}
           abortRunHandler={abortRunHandler}
+          rerunHandler={handleReRunRecording}
           runId={ids.runId}
           runningRecordingName={runningRecordingName}
         />;
