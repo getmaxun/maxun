@@ -3,13 +3,13 @@ import * as React from "react";
 import TableRow from "@mui/material/TableRow";
 import TableCell from "@mui/material/TableCell";
 import {
-  Box, Collapse, IconButton, Typography, Chip, TextField, Dialog, DialogTitle,
+  Box, Collapse, IconButton, Tooltip, Typography, Chip, TextField, Dialog, DialogTitle,
   DialogContent,
   DialogContentText,
   DialogActions,
 } from "@mui/material";
 import { Button } from "@mui/material";
-import { DeleteForever, KeyboardArrowDown, KeyboardArrowUp, Settings } from "@mui/icons-material";
+import { DeleteForever, KeyboardArrowDown, KeyboardArrowUp, Replay, Settings } from "@mui/icons-material";
 import { deleteRunFromStorage } from "../../api/storage";
 import { columns, Data } from "./RunsTable";
 import { RunContent } from "./RunContent";
@@ -85,10 +85,11 @@ interface CollapsibleRowProps {
   onToggleExpanded: (shouldExpand: boolean) => void;
   currentLog: string;
   abortRunHandler: (runId: string, robotName: string, browserId: string) => void;
+  rerunHandler: (robotMetaId: string, robotName: string, interpreterSettings: any) => void;
   runningRecordingName: string;
   urlRunId: string | null;
 }
-export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, currentLog, abortRunHandler, runningRecordingName, urlRunId }: CollapsibleRowProps) => {
+export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, currentLog, abortRunHandler, rerunHandler, runningRecordingName, urlRunId }: CollapsibleRowProps) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const [isDeleteOpen, setDeleteOpen] = useState(false);
@@ -223,6 +224,22 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                     {row.status === 'aborted' && <Chip label={t('runs_table.run_status_chips.aborted')} color="error" variant="outlined" />}
                   </TableCell>
                 )
+              case 'rerun':
+                return (
+                  <TableCell key={column.id} align={column.align}>
+                    {['success', 'failed', 'aborted'].includes(row.status) && (
+                      <Tooltip title={t('runs_table.rerun')}>
+                        <IconButton
+                          aria-label={t('runs_table.rerun')}
+                          size="small"
+                          onClick={() => rerunHandler(row.robotMetaId, row.name, row.interpreterSettings)}
+                        >
+                          <Replay />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </TableCell>
+                );
               case 'delete':
                 return (
                   <TableCell key={column.id} align={column.align}>
@@ -288,7 +305,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
         })}
       </TableRow>
       <TableRow>
-        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
+        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={columns.length}>
           <Collapse in={isOpen} timeout="auto" unmountOnExit>
             <RunContent row={row} abortRunHandler={handleAbort} currentLog={currentLog}
               logEndRef={logEndRef} interpretationInProgress={runningRecordingName === row.name}
