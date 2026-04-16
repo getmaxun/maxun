@@ -266,7 +266,9 @@ export const BrowserWindow = () => {
         };
 
         const isValidData = (text: string | null | undefined): boolean => {
-          return !!text && text.trim().length > 0;
+          if (!text) return false;
+          const trimmed = text.trim();
+          return trimmed.length > 0 && /[a-zA-Z0-9\u00C0-\u024F\u4E00-\u9FFF\u3040-\u30FF]/.test(trimmed);
         };
 
         const isElementVisible = (element: HTMLElement): boolean => {
