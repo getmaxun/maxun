@@ -279,6 +279,7 @@
     "errors": {
       "user_not_logged": "Usuario no conectado. No se puede guardar la grabación.",
       "exists_warning": "Ya existe un robot con este nombre, por favor confirme la sobrescritura del robot.",
+      "name_exists": "Ya existe un robot con este nombre. Por favor elige un nombre diferente.",
       "no_actions_performed": "No se puede guardar el robot. Por favor realice al menos una acción de captura antes de guardar."
     },
     "tooltips": {
@@ -294,7 +295,8 @@
     "notifications": {
       "terminated": "La grabación actual fue terminada",
       "environment_reset": "El entorno del navegador ha sido reiniciado",
-      "reset_successful": "Se reiniciaron correctamente todas las capturas y se volvió al estado inicial"
+      "reset_successful": "Se reiniciaron correctamente todas las capturas y se volvió al estado inicial",
+      "timeout_discarded": "La sesión de grabación expiró después de 10 minutos y fue descartada automáticamente."
     }
   },
   "interpretation_buttons": {
@@ -440,7 +442,8 @@
       "warning": "⚠️ Asegúrate de que la nueva página tenga la misma estructura que la página original."
     },
     "fields": {
-      "target_url": "URL Destino del Robot"
+      "target_url": "URL Destino del Robot",
+      "new_name": "Nombre del Robot"
     },
     "buttons": {
       "duplicate": "Duplicar Robot",
@@ -449,6 +452,7 @@
     "notifications": {
       "robot_not_found": "No se pudieron encontrar los detalles del robot. Por favor, inténtalo de nuevo.",
       "url_required": "Se requiere la URL de destino.",
+      "name_required": "El nombre del robot es obligatorio.",
       "duplicate_success": "Robot duplicado con éxito.",
       "duplicate_error": "Error al actualizar la URL de destino. Por favor, inténtalo de nuevo.",
       "unknown_error": "Ocurrió un error al actualizar la URL de destino."
@@ -551,6 +555,9 @@
       "manual_run": "Ejecución Manual",
       "scheduled_run": "Ejecución Programada",
       "api": "API",
+      "sdk": "SDK",
+      "mcp": "MCP",
+      "cli": "CLI",
       "unknown_run_type": "Tipo de Ejecución Desconocido"
     },
     "run_status_chips": {

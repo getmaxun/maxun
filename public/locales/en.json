@@ -279,6 +279,7 @@
       "errors": {
         "user_not_logged": "User not logged in. Cannot save recording.",
         "exists_warning": "Robot with this name already exists, please confirm the Robot's overwrite.",
+        "name_exists": "A robot with this name already exists. Please choose a different name.",
         "no_actions_performed": "Cannot save robot. Please perform at least one capture action before saving."
       },
       "tooltips": {
@@ -294,7 +295,8 @@
       "notifications": {
           "terminated": "Current Recording was terminated",
           "environment_reset": "Browser environment has been reset",
-          "reset_successful": "Successfully reset all captures and returned to initial state"
+          "reset_successful": "Successfully reset all captures and returned to initial state",
+          "timeout_discarded": "Recording session timed out after 10 minutes and was automatically discarded."
       }
     },
     "interpretation_log": {
@@ -440,7 +442,8 @@
         "warning": "⚠️ Ensure the new page has the same structure as the original page."
       },
       "fields": {
-        "target_url": "Target URL"
+        "target_url": "Target URL",
+        "new_name": "Robot Name"
       },
       "buttons": {
         "duplicate": "Duplicate Robot",
@@ -449,6 +452,7 @@
       "notifications": {
         "robot_not_found": "Could not find robot details. Please try again.",
         "url_required": "Target URL is required.",
+        "name_required": "Robot name is required.",
         "duplicate_success": "Robot duplicated successfully.",
         "duplicate_error": "Failed to update the Target URL. Please try again.",
         "unknown_error": "An error occurred while updating the Target URL."
@@ -552,6 +556,8 @@
         "scheduled_run": "Scheduled", 
         "api": "API",
         "sdk": "SDK",
+        "mcp": "MCP",
+        "cli": "CLI",
         "unknown_run_type": "Unknown Run Type"
       },
       "run_status_chips": {

@@ -279,6 +279,7 @@
         "errors": {
             "user_not_logged": "ユーザーがログインしていません。録画を保存できません。",
             "exists_warning": "この名前のロボットは既に存在します。ロボットの上書きを確認してください。",
+            "name_exists": "この名前のロボットは既に存在します。別の名前を選んでください。",
             "no_actions_performed": "ロボットを保存できません。保存する前に少なくとも1つのキャプチャアクションを実行してください。"
         },
         "tooltips": {
@@ -294,7 +295,8 @@
         "notifications": {
             "terminated": "現在の録画は終了しました",
             "environment_reset": "ブラウザー環境がリセットされました",
-            "reset_successful": "すべてのキャプチャーを正常にリセットし、初期状態に戻りました"
+            "reset_successful": "すべてのキャプチャーを正常にリセットし、初期状態に戻りました",
+            "timeout_discarded": "録画セッションが10分後にタイムアウトし、自動的に破棄されました。"
         }
     },
     "interpretation_log": {
@@ -440,7 +442,8 @@
             "warning": "⚠️ 新しいページが元のページと同じ構造であることを確認してください。"
         },
         "fields": {
-            "target_url": "ロボットのターゲットURL"
+            "target_url": "ロボットのターゲットURL",
+            "new_name": "ロボット名"
         },
         "buttons": {
             "duplicate": "ロボットを複製",
@@ -449,6 +452,7 @@
         "notifications": {
             "robot_not_found": "ロボットの詳細が見つかりません。もう一度お試しください。",
             "url_required": "ターゲットURLが必要です。",
+            "name_required": "ロボット名は必須です。",
             "duplicate_success": "ロボットが正常に複製されました。",
             "duplicate_error": "ターゲットURLの更新に失敗しました。もう一度お試しください。",
             "unknown_error": "ターゲットURLの更新中にエラーが発生しました。"
@@ -457,6 +461,7 @@
     "robot_settings": {
         "title": "ロボット設定",
         "target_url": "ロボットのターゲットURL",
+            "new_name": "ロボット名",
         "robot_id": "ロボットID",
         "robot_limit": "ロボットの制限",
         "created_by_user": "作成したユーザー",
@@ -551,6 +556,9 @@
             "manual_run": "手動実行",
             "scheduled_run": "スケジュール実行",
             "api": "API",
+            "sdk": "SDK",
+            "mcp": "MCP",
+            "cli": "CLI",
             "unknown_run_type": "不明な実行タイプ"
         },
         "run_status_chips": {

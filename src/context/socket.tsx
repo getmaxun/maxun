@@ -37,7 +37,7 @@ export const SocketProvider = ({ children }: { children: JSX.Element }) => {
     // the socket client connection is recomputed whenever id changes -> the new browser has been initialized
     const socket =
       io(`${SERVER_ENDPOINT}/${id}`, {
-        transports: ["websocket"],
+        transports: ["websocket", "polling"],
         rejectUnauthorized: false
       });
 
@@ -55,7 +55,7 @@ export const SocketProvider = ({ children }: { children: JSX.Element }) => {
     runScheduledCallbackRef.current = onRunScheduled || null;
 
     const newQueueSocket = io(`${SERVER_ENDPOINT}/queued-run`, {
-      transports: ["websocket"],
+      transports: ["websocket", "polling"],
       rejectUnauthorized: false,
       query: { userId }
     });

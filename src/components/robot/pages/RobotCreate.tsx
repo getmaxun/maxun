@@ -18,6 +18,10 @@ import {
   Select,
   MenuItem,
   InputLabel,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   Collapse,
   FormControlLabel
 } from '@mui/material';
@@ -27,6 +31,7 @@ import { canCreateBrowserInState, getActiveBrowserId, stopRecording } from '../.
 import { createScrapeRobot, createLLMRobot, createAndRunRecording, createCrawlRobot, createSearchRobot } from "../../../api/storage";
 import { AuthContext } from '../../../context/auth';
 import { GenericModal } from '../../ui/GenericModal';
+import { DEFAULT_OUTPUT_FORMATS, OUTPUT_FORMAT_LABELS, OUTPUT_FORMAT_OPTIONS, OutputFormat } from '../../../constants/outputFormats';
 
 
 interface TabPanelProps {
@@ -54,7 +59,7 @@ function TabPanel(props: TabPanelProps) {
 const RobotCreate: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { setBrowserId, setRecordingUrl, notify, setRecordingId, setRerenderRobots } = useGlobalInfoStore();
+  const { setBrowserId, setRecordingUrl, notify, setRecordingId, setRerenderRobots, recordings } = useGlobalInfoStore();
 
   const [tabValue, setTabValue] = useState(0);
   const [url, setUrl] = useState('');
@@ -93,9 +98,12 @@ const RobotCreate: React.FC = () => {
   const [searchMode, setSearchMode] = useState<'discover' | 'scrape'>('discover');
   const [searchTimeRange, setSearchTimeRange] = useState<'day' | 'week' | 'month' | 'year' | ''>('');
 
+  const [crawlOutputFormats, setCrawlOutputFormats] = useState<OutputFormat[]>(DEFAULT_OUTPUT_FORMATS);
+  const [searchOutputFormats, setSearchOutputFormats] = useState<OutputFormat[]>(DEFAULT_OUTPUT_FORMATS);
+
   const { state } = React.useContext(AuthContext);
   const { user } = state;
-  const { addOptimisticRobot, removeOptimisticRobot, invalidateRecordings, invalidateRuns, addOptimisticRun } = useCacheInvalidation();
+  const { addOptimisticRobot, removeOptimisticRobot, invalidateRecordings, invalidateRuns, updateOptimisticRun } = useCacheInvalidation();
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -135,6 +143,7 @@ const RobotCreate: React.FC = () => {
 
       const sessionId = Date.now().toString();
       window.sessionStorage.setItem('recordingSessionId', sessionId);
+      window.sessionStorage.setItem('recordingOriginPage', window.location.pathname + window.location.search);
 
       window.open(`/recording-setup?session=${sessionId}`, '_blank');
       window.sessionStorage.setItem('nextTabIsRecording', 'true');
@@ -169,6 +178,7 @@ const RobotCreate: React.FC = () => {
 
     const sessionId = Date.now().toString();
     window.sessionStorage.setItem('recordingSessionId', sessionId);
+    window.sessionStorage.setItem('recordingOriginPage', window.location.pathname + window.location.search);
 
     window.open(`/recording-setup?session=${sessionId}`, '_blank');
     window.sessionStorage.setItem('nextTabIsRecording', 'true');
@@ -185,30 +195,39 @@ const RobotCreate: React.FC = () => {
       notify('error', 'Please enter a robot name');
       return;
     }
+    if (crawlOutputFormats.length === 0) {
+      notify('error', 'Please select at least one output format');
+      return;
+    }
 
     setIsLoading(true);
-    const result = await createCrawlRobot(
-      crawlUrl,
-      crawlRobotName,
-      {
-        mode: crawlMode,
-        limit: crawlLimit,
-        maxDepth: crawlMaxDepth,
-        includePaths: crawlIncludePaths ? crawlIncludePaths.split(',').map(p => p.trim()) : [],
-        excludePaths: crawlExcludePaths ? crawlExcludePaths.split(',').map(p => p.trim()) : [],
-        useSitemap: crawlUseSitemap,
-        followLinks: crawlFollowLinks,
-        respectRobots: crawlRespectRobots
+    try {
+      const result = await createCrawlRobot(
+        crawlUrl,
+        crawlRobotName,
+        {
+          mode: crawlMode,
+          limit: crawlLimit,
+          maxDepth: crawlMaxDepth,
+          includePaths: crawlIncludePaths ? crawlIncludePaths.split(',').map(p => p.trim()) : [],
+          excludePaths: crawlExcludePaths ? crawlExcludePaths.split(',').map(p => p.trim()) : [],
+          useSitemap: crawlUseSitemap,
+          followLinks: crawlFollowLinks,
+          respectRobots: crawlRespectRobots
+        },
+        crawlOutputFormats
+      );
+      setIsLoading(false);
+      if (result) {
+        invalidateRecordings();
+        notify('success', `${crawlRobotName} created successfully!`);
+        navigate('/robots');
+      } else {
+        notify('error', 'Failed to create crawl robot');
       }
-    );
-    setIsLoading(false);
-
-    if (result) {
-      invalidateRecordings();
-      notify('success', `${crawlRobotName} created successfully!`);
-      navigate('/robots');
-    } else {
-      notify('error', 'Failed to create crawl robot');
+    } catch (error: any) {
+      setIsLoading(false);
+      notify('error', error.message || 'Failed to create crawl robot');
     }
   };
 
@@ -221,28 +240,39 @@ const RobotCreate: React.FC = () => {
       notify('error', 'Please enter a robot name');
       return;
     }
+    if (searchMode === 'scrape' && searchOutputFormats.length === 0) {
+      notify('error', 'Please select at least one output format');
+      return;
+    }
 
     setIsLoading(true);
-    const result = await createSearchRobot(
-      searchRobotName,
-      {
-        query: searchQuery,
-        limit: searchLimit,
-        provider: searchProvider,
-        filters: {
-          timeRange: searchTimeRange ? searchTimeRange as 'day' | 'week' | 'month' | 'year' : undefined
-        },
-        mode: searchMode
-      }
-    );
-    setIsLoading(false);
+    try {
+      const formatsForRequest = searchMode === 'discover' ? [] : searchOutputFormats;
 
-    if (result) {
-      invalidateRecordings();
-      notify('success', `${searchRobotName} created successfully!`);
-      navigate('/robots');
-    } else {
-      notify('error', 'Failed to create search robot');
+      const result = await createSearchRobot(
+        searchRobotName,
+        {
+          query: searchQuery,
+          limit: searchLimit,
+          provider: searchProvider,
+          filters: {
+            timeRange: searchTimeRange ? searchTimeRange as 'day' | 'week' | 'month' | 'year' : undefined
+          },
+          mode: searchMode
+        },
+        formatsForRequest
+      );
+      setIsLoading(false);
+      if (result) {
+        invalidateRecordings();
+        notify('success', `${searchRobotName} created successfully!`);
+        navigate('/robots');
+      } else {
+        notify('error', 'Failed to create search robot');
+      }
+    } catch (error: any) {
+      setIsLoading(false);
+      notify('error', error.message || 'Failed to create search robot');
     }
   };
 
@@ -342,7 +372,7 @@ const RobotCreate: React.FC = () => {
                       }
                     }}
                   >
-                    <CardContent sx={{ textAlign: 'center', py: 3, color:"text.secondary" }}>
+                    <CardContent sx={{ textAlign: 'center', py: 3, color: "text.secondary" }}>
                       <HighlightAlt sx={{ fontSize: 32, mb: 1 }} />
                       <Typography variant="h6" gutterBottom>
                         Recorder Mode
@@ -383,255 +413,259 @@ const RobotCreate: React.FC = () => {
                       Beta
                     </Box>
 
-                    <CardContent sx={{ textAlign: 'center', py: 3, color:"text.secondary" }}>
+                    <CardContent sx={{ textAlign: 'center', py: 3, color: "text.secondary" }}>
                       <AutoAwesome sx={{ fontSize: 32, mb: 1 }} />
                       <Typography variant="h6" gutterBottom>
                         AI Mode
                       </Typography>
                       <Typography variant="body2">
-                        Describe the task. It builds it for you.
+                        Describe the task. Maxun builds it for you.
                       </Typography>
                     </CardContent>
                   </Card>
                 </Box>
               </Box>
-                {generationMode === 'agent' && (
-                  <Box sx={{ width: '100%', maxWidth: 700 }}>
-                    <Box sx={{ mb: 3 }}>
-                      <TextField
-                        placeholder="Name"
-                        variant="outlined"
-                        fullWidth
-                        value={extractRobotName}
-                        onChange={(e) => setExtractRobotName(e.target.value)}
-                        label="Name"
-                      />
-                    </Box>
-
-                    <Box sx={{ mb: 3 }}>
-                      <TextField
-                        placeholder="Example: Extract first 15 company names, descriptions, and batch information"
-                        variant="outlined"
-                        fullWidth
-                        multiline
-                        rows={3}
-                        value={aiPrompt}
-                        onChange={(e) => setAiPrompt(e.target.value)}
-                        label="Extraction Prompt"
-                      />
-                    </Box>
-
-                    <Box sx={{ mb: 3 }}>
-                      <TextField
-                        placeholder="Example: https://www.ycombinator.com/companies/"
-                        variant="outlined"
-                        fullWidth
-                        value={url}
-                        onChange={(e) => setUrl(e.target.value)}
-                        label="Website URL (Optional)"
-                      />
-                    </Box>
-
-                    <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-                      <FormControl sx={{ flex: 1 }}>
-                        <InputLabel>LLM Provider</InputLabel>
-                        <Select
-                          value={llmProvider}
-                          label="LLM Provider"
-                          onChange={(e) => {
-                            const provider = e.target.value as 'anthropic' | 'openai' | 'ollama';
-                            setLlmProvider(provider);
-                            setLlmModel('default');
-                            if (provider === 'ollama') {
-                              setLlmBaseUrl('http://localhost:11434');
-                            } else {
-                              setLlmBaseUrl('');
-                            }
-                          }}
-                        >
-                          <MenuItem value="ollama">Ollama (Local)</MenuItem>
-                          <MenuItem value="anthropic">Anthropic (Claude)</MenuItem>
-                          <MenuItem value="openai">OpenAI (GPT-4)</MenuItem>
-                        </Select>
-                      </FormControl>
-
-                      <FormControl sx={{ flex: 1 }}>
-                        <InputLabel>Model</InputLabel>
-                        <Select
-                          value={llmModel}
-                          label="Model"
-                          onChange={(e) => setLlmModel(e.target.value)}
-                        >
-                          {llmProvider === 'ollama' ? (
-                            [
-                              <MenuItem key="default" value="default">Default (llama3.2-vision)</MenuItem>,
-                              <MenuItem key="llama3.2-vision" value="llama3.2-vision">llama3.2-vision</MenuItem>,
-                              <MenuItem key="llama3.2" value="llama3.2">llama3.2</MenuItem>
-                            ]
-                          ) : llmProvider === 'anthropic' ? (
-                            [
-                              <MenuItem key="default" value="default">Default (claude-3-5-sonnet)</MenuItem>,
-                              <MenuItem key="claude-3-5-sonnet-20241022" value="claude-3-5-sonnet-20241022">claude-3-5-sonnet-20241022</MenuItem>,
-                              <MenuItem key="claude-3-opus-20240229" value="claude-3-opus-20240229">claude-3-opus-20240229</MenuItem>
-                            ]
-                          ) : (
-                            [
-                              <MenuItem key="default" value="default">Default (gpt-4-vision-preview)</MenuItem>,
-                              <MenuItem key="gpt-4-vision-preview" value="gpt-4-vision-preview">gpt-4-vision-preview</MenuItem>,
-                              <MenuItem key="gpt-4o" value="gpt-4o">gpt-4o</MenuItem>
-                            ]
-                          )}
-                        </Select>
-                      </FormControl>
-                    </Box>
-
-                    {/* API Key for non-Ollama providers */}
-                    {llmProvider !== 'ollama' && (
-                      <Box sx={{ mb: 3 }}>
-                        <TextField
-                          placeholder={`${llmProvider === 'anthropic' ? 'Anthropic' : 'OpenAI'} API Key`}
-                          variant="outlined"
-                          fullWidth
-                          type="password"
-                          value={llmApiKey}
-                          onChange={(e) => setLlmApiKey(e.target.value)}
-                          label="API Key (Optional if set in .env)"
-                        />
-                      </Box>
-                    )}
-
-                    {llmProvider === 'ollama' && (
-                      <Box sx={{ mb: 3 }}>
-                        <TextField
-                          placeholder="http://localhost:11434"
-                          variant="outlined"
-                          fullWidth
-                          value={llmBaseUrl}
-                          onChange={(e) => setLlmBaseUrl(e.target.value)}
-                          label="Ollama Base URL (Optional)"
-                        />
-                      </Box>
-                    )}
-
-                    <Button
-                      variant="contained"
+              {generationMode === 'agent' && (
+                <Box sx={{ width: '100%', maxWidth: 700 }}>
+                  <Box sx={{ mb: 3 }}>
+                    <TextField
+                      placeholder="Name"
+                      variant="outlined"
                       fullWidth
-                      onClick={async () => {
-                        // URL is optional for AI mode - it will auto-search if not provided
-                        if (!extractRobotName.trim()) {
-                          notify('error', 'Please enter a robot name');
-                          return;
-                        }
-                        if (!aiPrompt.trim()) {
-                          notify('error', 'Please enter an extraction prompt');
-                          return;
-                        }
+                      value={extractRobotName}
+                      onChange={(e) => setExtractRobotName(e.target.value)}
+                      label="Name"
+                    />
+                  </Box>
 
-                        const tempRobotId = `temp-${Date.now()}`;
-                        const robotDisplayName = extractRobotName;
+                  <Box sx={{ mb: 3 }}>
+                    <TextField
+                      placeholder="Example: Extract first 15 company names, descriptions, and batch information"
+                      variant="outlined"
+                      fullWidth
+                      multiline
+                      rows={3}
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      label="Extraction Prompt"
+                    />
+                  </Box>
 
-                        const optimisticRobot = {
+                  <Box sx={{ mb: 3 }}>
+                    <TextField
+                      placeholder="Example: https://www.ycombinator.com/companies/"
+                      variant="outlined"
+                      fullWidth
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      label="Website URL (Optional)"
+                    />
+                  </Box>
+
+                  <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                    <FormControl sx={{ flex: 1 }}>
+                      <InputLabel>LLM Provider</InputLabel>
+                      <Select
+                        value={llmProvider}
+                        label="LLM Provider"
+                        onChange={(e) => {
+                          const provider = e.target.value as 'anthropic' | 'openai' | 'ollama';
+                          setLlmProvider(provider);
+                          setLlmModel('default');
+                          if (provider === 'ollama') {
+                            setLlmBaseUrl('http://localhost:11434');
+                          } else {
+                            setLlmBaseUrl('');
+                          }
+                        }}
+                      >
+                        <MenuItem value="ollama">Ollama (Local)</MenuItem>
+                        <MenuItem value="anthropic">Anthropic (Claude)</MenuItem>
+                        <MenuItem value="openai">OpenAI (GPT-4)</MenuItem>
+                      </Select>
+                    </FormControl>
+
+                    <FormControl sx={{ flex: 1 }}>
+                      <InputLabel>Model</InputLabel>
+                      <Select
+                        value={llmModel}
+                        label="Model"
+                        onChange={(e) => setLlmModel(e.target.value)}
+                      >
+                        {llmProvider === 'ollama' ? (
+                          [
+                            <MenuItem key="default" value="default">Default (llama3.2-vision)</MenuItem>,
+                            <MenuItem key="llama3.2-vision" value="llama3.2-vision">llama3.2-vision</MenuItem>,
+                            <MenuItem key="llama3.2" value="llama3.2">llama3.2</MenuItem>
+                          ]
+                        ) : llmProvider === 'anthropic' ? (
+                          [
+                            <MenuItem key="default" value="default">Default (claude-3-5-sonnet)</MenuItem>,
+                            <MenuItem key="claude-3-5-sonnet-20241022" value="claude-3-5-sonnet-20241022">claude-3-5-sonnet-20241022</MenuItem>,
+                            <MenuItem key="claude-3-opus-20240229" value="claude-3-opus-20240229">claude-3-opus-20240229</MenuItem>
+                          ]
+                        ) : (
+                          [
+                            <MenuItem key="default" value="default">Default (gpt-4-vision-preview)</MenuItem>,
+                            <MenuItem key="gpt-4-vision-preview" value="gpt-4-vision-preview">gpt-4-vision-preview</MenuItem>,
+                            <MenuItem key="gpt-4o" value="gpt-4o">gpt-4o</MenuItem>
+                          ]
+                        )}
+                      </Select>
+                    </FormControl>
+                  </Box>
+
+                  {/* API Key for non-Ollama providers */}
+                  {llmProvider !== 'ollama' && (
+                    <Box sx={{ mb: 3 }}>
+                      <TextField
+                        placeholder={`${llmProvider === 'anthropic' ? 'Anthropic' : 'OpenAI'} API Key`}
+                        variant="outlined"
+                        fullWidth
+                        type="password"
+                        value={llmApiKey}
+                        onChange={(e) => setLlmApiKey(e.target.value)}
+                        label="API Key (Optional if set in .env)"
+                      />
+                    </Box>
+                  )}
+
+                  {llmProvider === 'ollama' && (
+                    <Box sx={{ mb: 3 }}>
+                      <TextField
+                        placeholder="http://localhost:11434"
+                        variant="outlined"
+                        fullWidth
+                        value={llmBaseUrl}
+                        onChange={(e) => setLlmBaseUrl(e.target.value)}
+                        label="Ollama Base URL (Optional)"
+                      />
+                    </Box>
+                  )}
+
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    onClick={async () => {
+                      // URL is optional for AI mode - it will auto-search if not provided
+                      if (!extractRobotName.trim()) {
+                        notify('error', 'Please enter a robot name');
+                        return;
+                      }
+                      if (!aiPrompt.trim()) {
+                        notify('error', 'Please enter an extraction prompt');
+                        return;
+                      }
+                      if (recordings.some(r => r.trim().toLowerCase() === extractRobotName.trim().toLowerCase())) {
+                        notify('error', `A robot with the name "${extractRobotName.trim()}" already exists.`);
+                        return;
+                      }
+
+                      const tempRobotId = `temp-${Date.now()}`;
+                      const robotDisplayName = extractRobotName;
+
+                      const optimisticRobot = {
+                        id: tempRobotId,
+                        recording_meta: {
                           id: tempRobotId,
-                          recording_meta: {
-                            id: tempRobotId,
-                            name: robotDisplayName,
-                            createdAt: new Date().toISOString(),
-                            updatedAt: new Date().toISOString(),
-                            pairs: 0,
-                            params: [],
-                            type: 'extract',
-                            url: url || '(auto-detecting...)',
-                          },
-                          recording: { workflow: [] },
-                          isLoading: true,
+                          name: robotDisplayName,
+                          createdAt: new Date().toISOString(),
+                          updatedAt: new Date().toISOString(),
+                          pairs: 0,
+                          params: [],
+                          type: 'extract',
+                          url: url || '(auto-detecting...)',
+                        },
+                        recording: { workflow: [] },
+                        isLoading: true,
+                        isOptimistic: true
+                      };
+
+                      addOptimisticRobot(optimisticRobot);
+
+                      notify('info', url.trim()
+                        ? `Robot ${robotDisplayName} creation started`
+                        : `Robot ${robotDisplayName} creation started (searching for website...)`);
+                      navigate('/robots');
+
+                      try {
+                        const result = await createLLMRobot(
+                          url.trim() || undefined,
+                          aiPrompt,
+                          llmProvider,
+                          llmModel === 'default' ? undefined : llmModel,
+                          llmApiKey || undefined,
+                          llmBaseUrl || undefined,
+                          extractRobotName
+                        );
+
+                        removeOptimisticRobot(tempRobotId);
+
+                        if (!result || !result.robot) {
+                          notify('error', 'Failed to create AI robot. Please check your LLM configuration.');
+                          invalidateRecordings();
+                          return;
+                        }
+
+                        const robotMetaId = result.robot.recording_meta.id;
+                        const robotName = result.robot.recording_meta.name;
+
+                        invalidateRecordings();
+                        notify('success', `${robotName} created successfully!`);
+
+                        const optimisticRun = {
+                          id: robotMetaId,
+                          runId: `temp-${Date.now()}`,
+                          status: 'running',
+                          name: robotName,
+                          startedAt: new Date().toISOString(),
+                          finishedAt: '',
+                          robotMetaId: robotMetaId,
+                          log: 'Starting...',
                           isOptimistic: true
                         };
 
-                        addOptimisticRobot(optimisticRobot);
+                        updateOptimisticRun(optimisticRun);
 
-                        notify('info', url.trim() 
-                          ? `Robot ${robotDisplayName} creation started` 
-                          : `Robot ${robotDisplayName} creation started (searching for website...)`);
-                        navigate('/robots');
+                        const runResponse = await createAndRunRecording(robotMetaId, {
+                          maxConcurrency: 1,
+                          maxRepeats: 1,
+                          debug: false
+                        });
 
-                        try {
-                          const result = await createLLMRobot(
-                            url.trim() || undefined,
-                            aiPrompt,
-                            llmProvider,
-                            llmModel === 'default' ? undefined : llmModel,
-                            llmApiKey || undefined,
-                            llmBaseUrl || undefined,
-                            extractRobotName
-                          );
+                        invalidateRuns();
 
-                          removeOptimisticRobot(tempRobotId);
-
-                          if (!result || !result.robot) {
-                            notify('error', 'Failed to create AI robot. Please check your LLM configuration.');
-                            invalidateRecordings();
-                            return;
-                          }
-
-                          const robotMetaId = result.robot.recording_meta.id;
-                          const robotName = result.robot.recording_meta.name;
-
-                          invalidateRecordings();
-                          notify('success', `${robotName} created successfully!`);
-
-                          const optimisticRun = {
-                            id: robotMetaId,
-                            runId: `temp-${Date.now()}`,
-                            status: 'running',
-                            name: robotName,
-                            startedAt: new Date().toISOString(),
-                            finishedAt: '',
-                            robotMetaId: robotMetaId,
-                            log: 'Starting...',
-                            isOptimistic: true
-                          };
-
-                          addOptimisticRun(optimisticRun);
-
-                          const runResponse = await createAndRunRecording(robotMetaId, {
-                            maxConcurrency: 1,
-                            maxRepeats: 1,
-                            debug: false
-                          });
-
-                          invalidateRuns();
-
-                          if (runResponse && runResponse.runId) {
-                            await new Promise(resolve => setTimeout(resolve, 300));
-                            navigate(`/runs/${robotMetaId}/run/${runResponse.runId}`);
-                            notify('info', `Run started: ${robotName}`);
-                          } else {
-                            notify('warning', 'Robot created but failed to start execution.');
-                            navigate('/robots');
-                          }
-                        } catch (error: any) {
-                          console.error('Error in AI robot creation:', error);
-                          removeOptimisticRobot(tempRobotId);
-                          invalidateRecordings();
-                          notify('error', error?.message || 'Failed to create and run AI robot');
+                        if (runResponse && runResponse.runId) {
+                          await new Promise(resolve => setTimeout(resolve, 300));
+                          navigate(`/runs/${robotMetaId}/run/${runResponse.runId}`);
+                          notify('info', `Run started: ${robotName}`);
+                        } else {
+                          notify('warning', 'Robot created but failed to start execution.');
+                          navigate('/robots');
                         }
-                      }}
-                      disabled={!extractRobotName.trim() || !aiPrompt.trim() || isLoading}
-                      sx={{
-                        bgcolor: '#ff00c3',
-                        py: 1.4,
-                        fontSize: '1rem',
-                        textTransform: 'none',
-                        borderRadius: 2
-                      }}
-                      startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
-                    >
-                      {isLoading ? 'Creating & Running...' : 'Create & Run Robot'}
-                    </Button>
-                  </Box>
-                )}
+                      } catch (error: any) {
+                        console.error('Error in AI robot creation:', error);
+                        removeOptimisticRobot(tempRobotId);
+                        invalidateRecordings();
+                        notify('error', error?.message || 'Failed to create and run AI robot');
+                      }
+                    }}
+                    disabled={!extractRobotName.trim() || !aiPrompt.trim() || isLoading}
+                    sx={{
+                      bgcolor: '#ff00c3',
+                      py: 1.4,
+                      fontSize: '1rem',
+                      textTransform: 'none',
+                      borderRadius: 2
+                    }}
+                    startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
+                  >
+                    {isLoading ? 'Creating & Running...' : 'Create & Run Robot'}
+                  </Button>
+                </Box>
+              )}
 
-                {generationMode === 'recorder' && (
+              {generationMode === 'recorder' && (
                 <>
                   <Box sx={{ width: '100%', maxWidth: 700, mb: 3 }}>
                     <TextField
@@ -662,8 +696,8 @@ const RobotCreate: React.FC = () => {
                     </Button>
                   </Box>
                 </>
-                )}
-              </Box>
+              )}
+            </Box>
           </Card>
         </TabPanel>
 
@@ -803,15 +837,19 @@ const RobotCreate: React.FC = () => {
                   }
 
                   setIsLoading(true);
-                  const result = await createScrapeRobot(url, scrapeRobotName, outputFormats);
-                  setIsLoading(false);
-
-                  if (result) {
-                    setRerenderRobots(true);
-                    notify('success', `${scrapeRobotName} created successfully!`);
-                    navigate('/robots');
-                  } else {
-                    notify('error', 'Failed to create scrape robot');
+                  try {
+                    const result = await createScrapeRobot(url, scrapeRobotName, outputFormats);
+                    setIsLoading(false);
+                    if (result) {
+                      setRerenderRobots(true);
+                      notify('success', `${scrapeRobotName} created successfully!`);
+                      navigate('/robots');
+                    } else {
+                      notify('error', 'Failed to create scrape robot');
+                    }
+                  } catch (error: any) {
+                    setIsLoading(false);
+                    notify('error', error.message || 'Failed to create scrape robot');
                   }
                 }}
                 disabled={!url.trim() || !scrapeRobotName.trim() || outputFormats.length === 0 || isLoading}
@@ -880,14 +918,41 @@ const RobotCreate: React.FC = () => {
                 />
 
                 <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start', mb: 2 }}>
+                  <FormControl sx={{ width: '300px' }}>
+                    <InputLabel id="crawl-output-formats-label">Output Formats *</InputLabel>
+                    <Select
+                      labelId="crawl-output-formats-label"
+                      multiple
+                      value={crawlOutputFormats}
+                      label="Output Formats *"
+                      onChange={(e) => {
+                        const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
+                        setCrawlOutputFormats(value as OutputFormat[]);
+                      }}
+                      renderValue={(selected) => {
+                        const labels = selected.map(v => OUTPUT_FORMAT_LABELS[v] ?? v);
+                        return labels.length > 2 ? `${labels.slice(0, 2).join(', ')}…` : labels.join(', ');
+                      }}
+                    >
+                      {OUTPUT_FORMAT_OPTIONS.map((format) => (
+                        <MenuItem key={format} value={format}>
+                          <Checkbox checked={crawlOutputFormats.includes(format)} />
+                          {OUTPUT_FORMAT_LABELS[format]}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Box>
+
+                <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start', mb: 2 }}>
                   <Button
-                  onClick={() => setShowCrawlAdvanced(!showCrawlAdvanced)}
-                  sx={{
-                    textTransform: 'none',
-                    color: '#ff00c3',
-                  }}
+                    onClick={() => setShowCrawlAdvanced(!showCrawlAdvanced)}
+                    sx={{
+                      textTransform: 'none',
+                      color: '#ff00c3',
+                    }}
                   >
-                  {showCrawlAdvanced ? 'Hide Advanced Options' : 'Advanced Options'}
+                    {showCrawlAdvanced ? 'Hide Advanced Options' : 'Advanced Options'}
                   </Button>
                 </Box>
 
@@ -976,7 +1041,7 @@ const RobotCreate: React.FC = () => {
                 variant="contained"
                 fullWidth
                 onClick={handleCreateCrawlRobot}
-                disabled={!crawlUrl.trim() || !crawlRobotName.trim() || isLoading}
+                disabled={!crawlUrl.trim() || !crawlRobotName.trim() || crawlOutputFormats.length === 0 || isLoading}
                 sx={{
                   bgcolor: '#ff00c3',
                   py: 1.4,
@@ -1041,39 +1106,82 @@ const RobotCreate: React.FC = () => {
 
                 <Box sx={{ display: 'flex', gap: 2 }}>
                   <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>Mode</InputLabel>
-                  <Select
-                    value={searchMode}
-                    label="Mode"
-                    onChange={(e) => setSearchMode(e.target.value as any)}
-                  >
-                    <MenuItem value="discover">Discover URLs Only</MenuItem>
-                    <MenuItem value="scrape">Extract Data from Results</MenuItem>
-                  </Select>
+                    <InputLabel>Mode</InputLabel>
+                    <Select
+                      value={searchMode}
+                      label="Mode"
+                      onChange={(e) => {
+                        const newMode = e.target.value as 'discover' | 'scrape';
+                        setSearchMode(newMode);
+                        if (newMode === 'discover') {
+                          setSearchOutputFormats([]);
+                        } else if (searchOutputFormats.length === 0) {
+                          setSearchOutputFormats(DEFAULT_OUTPUT_FORMATS);
+                        }
+                      }}
+                    >
+                      <MenuItem value="discover">Discover URLs Only</MenuItem>
+                      <MenuItem value="scrape">Extract Data from Results</MenuItem>
+                    </Select>
                   </FormControl>
 
                   <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>Time Range</InputLabel>
-                  <Select
-                    value={searchTimeRange}
-                    label="Time Range"
-                    onChange={(e) => setSearchTimeRange(e.target.value as 'day' | 'week' | 'month' | 'year' | '')}
-                  >
-                    <MenuItem value="">No Filter</MenuItem>
-                    <MenuItem value="day">Past 24 Hours</MenuItem>
-                    <MenuItem value="week">Past Week</MenuItem>
-                    <MenuItem value="month">Past Month</MenuItem>
-                    <MenuItem value="year">Past Year</MenuItem>
-                  </Select>
+                    <InputLabel>Time Range</InputLabel>
+                    <Select
+                      value={searchTimeRange}
+                      label="Time Range"
+                      onChange={(e) => setSearchTimeRange(e.target.value as 'day' | 'week' | 'month' | 'year' | '')}
+                    >
+                      <MenuItem value="">No Filter</MenuItem>
+                      <MenuItem value="day">Past 24 Hours</MenuItem>
+                      <MenuItem value="week">Past Week</MenuItem>
+                      <MenuItem value="month">Past Month</MenuItem>
+                      <MenuItem value="year">Past Year</MenuItem>
+                    </Select>
                   </FormControl>
                 </Box>
+
+                {searchMode === 'scrape' ? (
+                  <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start', mb: 2 }}>
+                    <FormControl sx={{ width: '300px' }}>
+                      <InputLabel id="search-output-formats-label">Output Formats *</InputLabel>
+                      <Select
+                        labelId="search-output-formats-label"
+                        multiple
+                        value={searchOutputFormats}
+                        label="Output Formats *"
+                        onChange={(e) => {
+                          const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
+                          setSearchOutputFormats(value as OutputFormat[]);
+                        }}
+                        renderValue={(selected) => {
+                          const labels = selected.map(v => OUTPUT_FORMAT_LABELS[v] ?? v);
+                          return labels.length > 2 ? `${labels.slice(0, 2).join(', ')}…` : labels.join(', ');
+                        }}
+                      >
+                        {OUTPUT_FORMAT_OPTIONS.map((format) => (
+                          <MenuItem key={format} value={format}>
+                            <Checkbox checked={searchOutputFormats.includes(format)} />
+                            {OUTPUT_FORMAT_LABELS[format]}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Box>
+                ) : (
+                  <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start', mb: 2, alignItems: 'center' }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Output formats are only available in "Extract Data from Results" mode
+                    </Typography>
+                  </Box>
+                )}
               </Box>
 
               <Button
                 variant="contained"
                 fullWidth
                 onClick={handleCreateSearchRobot}
-                disabled={!searchQuery.trim() || !searchRobotName.trim() || isLoading}
+                disabled={!searchQuery.trim() || !searchRobotName.trim() || (searchMode === 'scrape' && searchOutputFormats.length === 0) || isLoading}
                 sx={{
                   bgcolor: '#ff00c3',
                   py: 1.4,
@@ -1091,38 +1199,50 @@ const RobotCreate: React.FC = () => {
         </TabPanel>
       </Box>
 
+      <Dialog
+        open={isWarningModalOpen}
+        onClose={() => {
+          setWarningModalOpen(false);
+          setIsLoading(false);
+        }}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            p: 0,
+            borderRadius: 2
+          }
+        }}
+      >
+        <DialogTitle>
+          {t('recordingtable.warning_modal.title')}
+        </DialogTitle>
 
-      <GenericModal isOpen={isWarningModalOpen} onClose={() => {
-        setWarningModalOpen(false);
-        setIsLoading(false);
-      }} modalStyle={modalStyle}>
-        <div style={{ padding: '10px' }}>
-          <Typography variant="h6" gutterBottom>{t('recordingtable.warning_modal.title')}</Typography>
-          <Typography variant="body1" style={{ marginBottom: '20px' }}>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mb: 2 }}>
             {t('recordingtable.warning_modal.message')}
           </Typography>
+        </DialogContent>
 
-          <Box display="flex" justifyContent="space-between" mt={2}>
-            <Button
-              onClick={handleDiscardAndCreate}
-              variant="contained"
-              color="error"
-            >
-              {t('recordingtable.warning_modal.discard_and_create')}
-            </Button>
-            <Button
-              onClick={() => {
-                setWarningModalOpen(false);
-                setIsLoading(false);
-              }}
-              variant="outlined"
-            >
-              {t('recordingtable.warning_modal.cancel')}
-            </Button>
-          </Box>
-        </div>
-      </GenericModal>
-
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => {
+              setWarningModalOpen(false);
+              setIsLoading(false);
+            }}
+            color="inherit"
+          >
+            {t('recordingtable.warning_modal.cancel')}
+          </Button>
+          <Button
+            onClick={handleDiscardAndCreate}
+            variant="contained"
+            color="error"
+          >
+            {t('recordingtable.warning_modal.discard_and_create')}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
     </Container>
   );

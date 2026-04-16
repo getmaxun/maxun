@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react'; 
+import React, { useState, useEffect } from 'react';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Paper, Button, useTheme, Modal, Typography, Stack, Divider } from "@mui/material";
-import { AutoAwesome, VpnKey, Usb, CloudQueue, Description, Favorite, SlowMotionVideo, PlayArrow, ArrowForwardIos, Star } from "@mui/icons-material";
+import { Paper, Button, useTheme, Modal, Typography, Stack, Divider, Dialog, DialogContent, DialogTitle } from "@mui/material";
+import { AutoAwesome, VpnKey, Usb, CloudQueue, Description, Favorite, SlowMotionVideo, PlayArrow, ArrowForwardIos, Star, Terminal } from "@mui/icons-material";
 import { useTranslation } from 'react-i18next';
 
 interface MainMenuProps {
@@ -32,7 +32,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             'Accept': 'application/vnd.github.v3+json'
           }
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           setStarCount(data.stargazers_count);
@@ -47,10 +47,10 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
     };
 
     fetchStarCount();
-    
+
     // Optional: Refresh star count every 5 minutes
     const intervalId = setInterval(fetchStarCount, 5 * 60 * 1000);
-    
+
     return () => clearInterval(intervalId);
   }, []);
 
@@ -89,7 +89,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
   const starButtonStyles = {
     justifyContent: 'flex-start',
     textAlign: 'left',
-    fontSize: '15px',
+    fontSize: '14px',
     padding: '12px 20px 12px 22px',
     minHeight: '48px',
     minWidth: '100%',
@@ -118,60 +118,53 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
         variant="outlined"
         square
       >
-        <Box sx={{ 
-          width: '100%', 
+        <Box sx={{
+          width: '100%',
           paddingBottom: '1rem',
           flexGrow: 1,
           overflowY: 'auto'
         }}>
           <Tabs
-              value={value}
-              onChange={handleChange}
-              textColor="primary"
-              indicatorColor="primary"
-              orientation="vertical"
-              sx={{ 
-                alignItems: 'flex-start', 
-                '& .MuiTabs-indicator': { display: 'none' },
-                paddingTop: '0.5rem'
-              }}
-            >
+            value={value}
+            onChange={handleChange}
+            textColor="primary"
+            indicatorColor="primary"
+            orientation="vertical"
+            sx={{
+              alignItems: 'flex-start',
+              '& .MuiTabs-indicator': { display: 'none' },
+              paddingTop: '0.5rem'
+            }}
+          >
             <Tab
               value="robots"
               label={t('mainmenu.recordings')}
               icon={<AutoAwesome sx={{ fontSize: 20 }} />}
               iconPosition="start"
               disableRipple={true}
-              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '16px' }}
+              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '15px' }}
               onClick={handleRobotsClick} />
             <Tab value="runs"
               label={t('mainmenu.runs')}
               icon={<PlayArrow sx={{ fontSize: 20 }} />}
               iconPosition="start"
               disableRipple={true}
-              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '16px' }} />
+              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '15px' }} />
             <Tab value="proxy"
               label={t('mainmenu.proxy')}
               icon={<Usb sx={{ fontSize: 20 }} />}
               iconPosition="start"
               disableRipple={true}
-              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '16px' }} />
+              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '15px' }} />
             <Tab value="apikey"
               label={t('mainmenu.apikey')}
-              icon={<VpnKey sx={{ fontSize: 20 }}/>}
+              icon={<VpnKey sx={{ fontSize: 20 }} />}
               iconPosition="start"
               disableRipple={true}
-              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '16px' }} />
+              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '15px' }} />
           </Tabs>
           <Divider sx={{ borderColor: theme.palette.mode === 'dark' ? "#080808ff" : "" }} />
           <Box sx={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
-            <Button
-              href='https://docs.maxun.dev/sdk/sdk-overview'
-              target="_blank"
-              rel="noopener noreferrer"
-              sx={buttonStyles} startIcon={<ArrowForwardIos sx={{ fontSize: 20 }} />}>
-              SDK
-            </Button>
             <Button
               onClick={() => setDocModalOpen(true)}
               sx={buttonStyles}
@@ -179,8 +172,19 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             >
               Documentation
             </Button>
-            <Modal open={docModalOpen ?? false} onClose={() => setDocModalOpen(false)}>
-              <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', bgcolor: 'background.paper', borderRadius: 2, p: 4, width: 400 }}>
+            <Dialog
+              open={docModalOpen ?? false}
+              onClose={() => setDocModalOpen(false)}
+              maxWidth="xs"
+              fullWidth
+              PaperProps={{
+                sx: {
+                  borderRadius: 2,
+                  width: 400
+                }
+              }}
+            >
+              <DialogContent>
                 <Stack spacing={2}>
                   <Button
                     href="https://docs.maxun.dev"
@@ -192,6 +196,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
                   >
                     Documentation
                   </Button>
+
                   <Button
                     href="https://www.youtube.com/@MaxunOSS/videos"
                     target="_blank"
@@ -203,14 +208,28 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
                     Video Tutorials
                   </Button>
                 </Stack>
-              </Box>
-            </Modal>
+              </DialogContent>
+            </Dialog>
             <Button
               href='https://app.maxun.dev/'
               target="_blank"
               rel="noopener noreferrer"
               sx={buttonStyles} startIcon={<CloudQueue sx={{ fontSize: 16 }} />}>
               Join Maxun Cloud
+            </Button>
+            <Button
+              href='https://docs.maxun.dev/category/sdk'
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={buttonStyles} startIcon={<ArrowForwardIos sx={{ fontSize: 20 }} />}>
+              SDK
+            </Button>
+            <Button
+              href='https://docs.maxun.dev/category/cli'
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={buttonStyles} startIcon={<Terminal sx={{ fontSize: 20 }} />}>
+              CLI
             </Button>
             <Button onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite sx={{ fontSize: 16 }} />}>
               Sponsor Us
@@ -224,20 +243,20 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
           rel="noopener noreferrer"
           sx={starButtonStyles}
           startIcon={
-            <Star 
-              sx={{ 
-                fontSize: 16, 
+            <Star
+              sx={{
+                fontSize: 16,
                 color: theme.palette.mode === 'light' ? '#ffb400' : '#ffd740'
-              }} 
+              }}
             />
           }
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <span style={{ fontSize: "0.85rem"}}>Star On GitHub</span>
+            <span style={{ fontSize: "0.85rem" }}>Star On GitHub</span>
             {isLoading ? (
-              <Typography 
-                variant="caption" 
-                sx={{ 
+              <Typography
+                variant="caption"
+                sx={{
                   color: theme.palette.mode === 'light' ? '#666' : '#aaa',
                   fontSize: '0.75rem'
                 }}
@@ -262,23 +281,43 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
         </Button>
       </Paper>
 
-      <Modal open={sponsorModalOpen} onClose={() => setSponsorModalOpen(false)}>
-        <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', bgcolor: 'rgba(13, 13, 13, 1)', borderRadius: 2, p: 4, width: 600 }}>
-          <Typography variant="h6" marginBottom={4}>
-            Support Maxun Open Source
-          </Typography>
+      <Dialog
+        open={sponsorModalOpen}
+        onClose={() => setSponsorModalOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            width: 600
+          }
+        }}
+      >
+        <DialogTitle>
+          Support Maxun Open Source
+        </DialogTitle>
+
+        <DialogContent sx={{ pt: 2 }}>
           <Typography variant="body1" gutterBottom>
-            Maxun is built by a small, full-time team. Your donations directly contribute to making it better.
+            Maxun is built by a small, full-time team. Your donations directly
+            contribute to making it better.
             <br />
             Thank you for your support! 🩷
           </Typography>
+
           <Stack direction="row" spacing={2} mt={4}>
-            <Button href="https://github.com/sponsors/amhsirak" target="_blank" rel="noopener noreferrer" variant="outlined" fullWidth>
+            <Button
+              href="https://github.com/sponsors/amhsirak"
+              target="_blank"
+              rel="noopener noreferrer"
+              variant="outlined"
+              fullWidth
+            >
               Sponsor Maxun on GitHub Sponsors
             </Button>
           </Stack>
-        </Box>
-      </Modal>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

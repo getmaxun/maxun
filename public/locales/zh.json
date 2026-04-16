@@ -279,6 +279,7 @@
     "errors": {
       "user_not_logged": "用户未登录。无法保存录制。",
       "exists_warning": "已存在同名机器人，请确认是否覆盖机器人。",
+      "name_exists": "已存在同名机器人，请选择不同的名称。",
       "no_actions_performed": "无法保存机器人。请在保存之前至少执行一次捕获操作。"
     },
     "tooltips": {
@@ -294,7 +295,8 @@
     "notifications": {
       "terminated": "当前录制已终止",
       "environment_reset": "浏览器环境已重置",
-      "reset_successful": "已成功重置所有捕获并返回初始状态"
+      "reset_successful": "已成功重置所有捕获并返回初始状态",
+      "timeout_discarded": "录制会话在10分钟后超时并自动丢弃。"
     }
   },
   "interpretation_log": {
@@ -440,7 +442,8 @@
       "warning": "⚠️ 确保新页面与原始页面具有相同的结构。"
     },
     "fields": {
-      "target_url": "机器人目标URL"
+      "target_url": "机器人目标URL",
+      "new_name": "机器人名称"
     },
     "buttons": {
       "duplicate": "复制机器人",
@@ -449,6 +452,7 @@
     "notifications": {
       "robot_not_found": "找不到机器人详细信息。请重试。",
       "url_required": "需要目标URL。",
+      "name_required": "机器人名称为必填项。",
       "duplicate_success": "机器人复制成功。",
       "duplicate_error": "更新目标URL失败。请重试。",
       "unknown_error": "更新目标URL时发生错误。"
@@ -457,6 +461,7 @@
   "robot_settings": {
     "title": "机器人设置",
     "target_url": "机器人目标URL",
+      "new_name": "机器人名称",
     "robot_id": "机器人ID",
     "robot_limit": "机器人限制",
     "created_by_user": "由用户创建",
@@ -551,6 +556,9 @@
       "manual_run": "手动运行",
       "scheduled_run": "计划运行",
       "api": "API",
+      "sdk": "SDK",
+      "mcp": "MCP",
+      "cli": "CLI",
       "unknown_run_type": "未知运行类型"
     },
     "run_status_chips": {

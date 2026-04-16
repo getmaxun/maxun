@@ -1004,8 +1004,24 @@ export class WorkflowGenerator {
           logger.log('info', `Robot retrained with id: ${robot.id}`);
         }
       } else {
+        const trimmedFileName = fileName.trim();
+        if (!trimmedFileName) {
+          this.socket.emit('fileSaved', { actionType: 'error' });
+          return;
+        }
+        const allUserRobots = await Robot.findAll({ where: { userId } as any });
+        const normalised = trimmedFileName.toLowerCase();
+        const nameConflict = allUserRobots.some(
+          (r: any) => typeof r.recording_meta?.name === 'string' &&
+            r.recording_meta.name.trim().toLowerCase() === normalised
+        );
+        if (nameConflict) {
+          this.socket.emit('fileSaved', { actionType: 'nameExists' });
+          return;
+        }
+
         this.recordingMeta = {
-          name: fileName,
+          name: trimmedFileName,
           id: uuid(),
           createdAt: this.recordingMeta.createdAt || new Date().toLocaleString(),
           pairs: recording.workflow.length,
@@ -1031,8 +1047,11 @@ export class WorkflowGenerator {
         logger.log('info', `Robot saved with id: ${robot.id}`);
       }  
     }
-    catch (e) {
-      const { message } = e as Error;
+    catch (e: any) {
+      if (e.name === 'SequelizeUniqueConstraintError' || e.parent?.code === '23505') {
+        this.socket.emit('fileSaved', { actionType: 'nameExists' });
+        return;
+      }
       logger.log('warn', `Cannot save the file to the local file system ${e}`)
       actionType = 'error';
     }

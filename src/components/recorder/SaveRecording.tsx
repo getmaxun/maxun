@@ -1,13 +1,10 @@
 import React, { useCallback, useEffect, useState, useContext } from 'react';
-import { Button, Box, LinearProgress, Tooltip } from "@mui/material";
-import { GenericModal } from "../ui/GenericModal";
+import { Button, Box, LinearProgress, Tooltip, Dialog, DialogTitle, DialogContent } from "@mui/material";
 import { stopRecording } from "../../api/recording";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { AuthContext } from '../../context/auth';
 import { useSocketStore } from "../../context/socket";
-import { TextField, Typography } from "@mui/material";
-import { WarningText } from "../ui/texts";
-import NotificationImportantIcon from "@mui/icons-material/NotificationImportant";
+import { TextField } from "@mui/material";
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
@@ -18,7 +15,6 @@ interface SaveRecordingProps {
 export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
   const { t } = useTranslation();
   const [openModal, setOpenModal] = useState<boolean>(false);
-  const [needConfirm, setNeedConfirm] = useState<boolean>(false);
   const [saveRecordingName, setSaveRecordingName] = useState<string>(fileName);
   const [waitingForSave, setWaitingForSave] = useState<boolean>(false);
 
@@ -35,27 +31,23 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
   }, [recordingName]);
 
   const handleChangeOfTitle = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const { value } = event.target;
-    if (needConfirm) {
-      setNeedConfirm(false);
-    }
-    setSaveRecordingName(value);
+    setSaveRecordingName(event.target.value);
   }
 
   const handleSaveRecording = async (event: React.SyntheticEvent) => {
     event.preventDefault();
-    if (recordings.includes(saveRecordingName)) {
-      if (needConfirm) { return; }
-      setNeedConfirm(true);
-    } else {
-      await saveRecording();
+    const trimmedName = saveRecordingName.trim();
+    if (!retrainRobotId && recordings.some(r => r.trim().toLowerCase() === trimmedName.toLowerCase())) {
+      notify('error', t('save_recording.errors.name_exists'));
+      return;
     }
+    await saveRecording();
   };
 
   const handleFinishClick = () => {
     const { hasScrapeListAction, hasScreenshotAction, hasScrapeSchemaAction } = currentWorkflowActionsState;
     const hasAnyAction = hasScrapeListAction || hasScreenshotAction || hasScrapeSchemaAction;
-    
+
     if (!hasAnyAction) {
       notify('warning', t('save_recording.errors.no_actions_performed'));
       return;
@@ -70,7 +62,7 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
 
   const exitRecording = useCallback(async (data?: { actionType: string }) => {
     let successMessage = t('save_recording.notifications.save_success');
-    
+
     if (data && data.actionType) {
       if (data.actionType === 'retrained') {
         successMessage = t('save_recording.notifications.retrain_success');
@@ -80,31 +72,31 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
         successMessage = t('save_recording.notifications.save_error');
       }
     }
-    
+
     const notificationData = {
       type: data?.actionType === 'error' ? 'error' : 'success',
       message: successMessage,
       timestamp: Date.now()
     };
     window.sessionStorage.setItem('pendingNotification', JSON.stringify(notificationData));
-    
+
     if (window.opener) {
       window.opener.postMessage({
         type: 'recording-notification',
         notification: notificationData
       }, '*');
-      
+
       window.opener.postMessage({
         type: 'session-data-clear',
         timestamp: Date.now()
       }, '*');
     }
-    
+
     if (browserId) {
       await stopRecording(browserId);
     }
     setBrowserId(null);
-    
+
     window.close();
   }, [setBrowserId, browserId, t]);
 
@@ -114,15 +106,15 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
     if (user) {
       const { hasScrapeListAction, hasScreenshotAction, hasScrapeSchemaAction } = currentWorkflowActionsState;
       const hasAnyAction = hasScrapeListAction || hasScreenshotAction || hasScrapeSchemaAction;
-      
+
       if (!hasAnyAction) {
         notify('warning', t('save_recording.errors.no_actions_performed'));
         return;
       }
 
-      const payload = { 
-        fileName: saveRecordingName || recordingName, 
-        userId: user.id, 
+      const payload = {
+        fileName: (saveRecordingName || recordingName).trim(),
+        userId: user.id,
         isLogin: isLogin,
         robotId: retrainRobotId,
       };
@@ -134,12 +126,21 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
     }
   };
 
-  useEffect(() => {
-    socket?.on('fileSaved', exitRecording);
-    return () => {
-      socket?.off('fileSaved', exitRecording);
+  const handleFileSaved = useCallback(async (data?: { actionType: string }) => {
+    if (data?.actionType === 'nameExists') {
+      setWaitingForSave(false);
+      notify('error', t('save_recording.errors.name_exists'));
+      return;
     }
-  }, [socket, exitRecording]);
+    await exitRecording(data);
+  }, [exitRecording, notify, t]);
+
+  useEffect(() => {
+    socket?.on('fileSaved', handleFileSaved);
+    return () => {
+      socket?.off('fileSaved', handleFileSaved);
+    }
+  }, [socket, handleFileSaved]);
 
   return (
     <div>
@@ -158,42 +159,54 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
         {t('right_panel.buttons.finish')}
       </Button>
 
-      <GenericModal isOpen={openModal} onClose={() => setOpenModal(false)} modalStyle={modalStyle}>
-        <form onSubmit={handleSaveRecording} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-          <Typography variant="h6">{t('save_recording.title')}</Typography>
-          <TextField
-            required
-            sx={{ width: '300px', margin: '15px 0px' }}
-            onChange={handleChangeOfTitle}
-            id="title"
-            label={t('save_recording.robot_name')}
-            variant="outlined"
-            value={saveRecordingName}
-          />
-          {needConfirm
-            ?
-            (<React.Fragment>
-              <Button color="error" variant="contained" onClick={saveRecording} sx={{ marginTop: '10px' }}>
-                {t('save_recording.buttons.confirm')}
-              </Button>
-              <WarningText>
-                <NotificationImportantIcon color="warning" />
-                {t('save_recording.errors.exists_warning')}
-              </WarningText>
-            </React.Fragment>)
-            : <Button type="submit" variant="contained" sx={{ marginTop: '10px' }}>
+      <Dialog
+        open={openModal}
+        onClose={() => setOpenModal(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            p: 0,
+            borderRadius: 2
+          }
+        }}
+      >
+        <DialogTitle>
+          {t('save_recording.title')}
+        </DialogTitle>
+
+        <DialogContent>
+          <form
+            onSubmit={handleSaveRecording}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}
+          >
+            <TextField
+              required
+              sx={{ width: '300px', margin: '15px 0px' }}
+              onChange={handleChangeOfTitle}
+              id="title"
+              label={t('save_recording.robot_name')}
+              variant="outlined"
+              value={saveRecordingName}
+            />
+
+            <Button type="submit" variant="contained" sx={{ marginTop: '10px' }}>
               {t('save_recording.buttons.save')}
             </Button>
-          }
-          {waitingForSave &&
-            <Tooltip title={t('save_recording.tooltips.optimizing')} placement={"bottom"}>
-              <Box sx={{ width: '100%', marginTop: '10px' }}>
-                <LinearProgress />
-              </Box>
-            </Tooltip>
-          }
-        </form>
-      </GenericModal>
+
+            {waitingForSave && (
+              <Tooltip
+                title={t('save_recording.tooltips.optimizing')}
+                placement="bottom"
+              >
+                <Box sx={{ width: '100%', marginTop: '10px' }}>
+                  <LinearProgress />
+                </Box>
+              </Tooltip>
+            )}
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
