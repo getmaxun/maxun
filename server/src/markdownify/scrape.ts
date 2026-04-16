@@ -2,18 +2,20 @@ import { Page } from "playwright-core";
 import { parseMarkdown } from "./markdown";
 import logger from "../logger";
 
-async function gotoWithFallback(page: any, url: string) {
+async function gotoWithFallback(page: any, url: string, forScreenshot = false) {
   try {
-    return await page.goto(url, {
-      waitUntil: "networkidle",
-      timeout: 100000,
-    });
+    const current = page.url();
+    if (current && current !== 'about:blank') {
+      const normalise = (u: string) => u.split('#')[0].split('?')[0].replace(/\/$/, '');
+      if (normalise(current) === normalise(url)) return;
+    }
+  } catch {}
+
+  const waitUntil = forScreenshot ? 'load' : 'domcontentloaded';
+  try {
+    return await page.goto(url, { waitUntil, timeout: 60000 });
   } catch (err) {
-    // fallback: JS-heavy or unstable sites
-    return await page.goto(url, {
-      waitUntil: "domcontentloaded",
-      timeout: 100000,
-    });
+    return await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
   }
 }
 
@@ -30,18 +32,68 @@ export async function convertPageToMarkdown(url: string, page: Page): Promise<st
     await gotoWithFallback(page, url);
 
     const cleanedHtml = await page.evaluate(() => {
+      function flattenShadowRoots(root: Element | ShadowRoot) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
+        const shadowHosts: Element[] = [];
+        let node: Node | null = walker.currentNode;
+        while (node) {
+          if (node instanceof Element && node.shadowRoot) {
+            shadowHosts.push(node);
+          }
+          node = walker.nextNode();
+        }
+        for (const host of shadowHosts) {
+          let visibleText = '';
+          const sr = host.shadowRoot!;
+
+          const digitEls = sr.querySelectorAll('[part*="digit"]');
+          if (digitEls.length > 0) {
+            const extractDigits = (container: Element | null): string => {
+              if (!container) return '';
+              const digits = container.querySelectorAll('[part*="digit"]');
+              let result = '';
+              digits.forEach(d => {
+                const style = d.getAttribute('style') || '';
+                const m = style.match(/--current:\s*(\d+)/);
+                if (m) result += m[1];
+              });
+              return result;
+            };
+            const intPart = extractDigits(sr.querySelector('[part="integer"]'));
+            const fracPart = extractDigits(sr.querySelector('[part="fraction"]'));
+            if (intPart || fracPart) {
+              visibleText = fracPart ? `${intPart || '0'}.${fracPart}` : (intPart || '0');
+            }
+          }
+
+          if (!visibleText) {
+            visibleText = host.getAttribute('aria-label')?.trim() || '';
+          }
+
+          if (!visibleText) {
+            visibleText = (host as HTMLElement).innerText?.trim() || '';
+          }
+
+          if (!visibleText) {
+            visibleText = host.shadowRoot?.textContent?.trim() || '';
+          }
+
+          if (visibleText) {
+            const span = document.createElement('span');
+            span.textContent = visibleText;
+            host.parentNode?.insertBefore(span, host);
+          }
+          host.remove();
+        }
+      }
+      flattenShadowRoots(document.documentElement);
+
       const selectors = [
         "script",
         "style",
         "link[rel='stylesheet']",
         "noscript",
         "meta",
-        "svg",
-        "img",
-        "picture",
-        "source",
-        "video",
-        "audio",
         "iframe",
         "object",
         "embed"
@@ -54,7 +106,8 @@ export async function convertPageToMarkdown(url: string, page: Page): Promise<st
       const all = document.querySelectorAll("*");
       all.forEach(el => {
         [...el.attributes].forEach(attr => {
-          if (attr.name.startsWith("on")) {
+          const name = attr.name.toLowerCase();
+          if (name.startsWith("on") || name === "data-mx-id" || name === "jsaction" || name === "jsname") {
             el.removeAttribute(attr.name);
           }
         });
@@ -84,18 +137,57 @@ export async function convertPageToHTML(url: string, page: Page): Promise<string
     await gotoWithFallback(page, url);
 
     const cleanedHtml = await page.evaluate(() => {
+      function flattenShadowRoots(root: Element | ShadowRoot) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
+        const shadowHosts: Element[] = [];
+        let node: Node | null = walker.currentNode;
+        while (node) {
+          if (node instanceof Element && node.shadowRoot) {
+            shadowHosts.push(node);
+          }
+          node = walker.nextNode();
+        }
+        for (const host of shadowHosts) {
+          let visibleText = '';
+          const sr = host.shadowRoot!;
+          const digitEls = sr.querySelectorAll('[part*="digit"]');
+          if (digitEls.length > 0) {
+            const extractDigits = (container: Element | null): string => {
+              if (!container) return '';
+              const digits = container.querySelectorAll('[part*="digit"]');
+              let result = '';
+              digits.forEach(d => {
+                const style = d.getAttribute('style') || '';
+                const m = style.match(/--current:\s*(\d+)/);
+                if (m) result += m[1];
+              });
+              return result;
+            };
+            const intPart = extractDigits(sr.querySelector('[part="integer"]'));
+            const fracPart = extractDigits(sr.querySelector('[part="fraction"]'));
+            if (intPart || fracPart) {
+              visibleText = fracPart ? `${intPart || '0'}.${fracPart}` : (intPart || '0');
+            }
+          }
+          if (!visibleText) visibleText = host.getAttribute('aria-label')?.trim() || '';
+          if (!visibleText) visibleText = (host as HTMLElement).innerText?.trim() || '';
+          if (!visibleText) visibleText = host.shadowRoot?.textContent?.trim() || '';
+          if (visibleText) {
+            const span = document.createElement('span');
+            span.textContent = visibleText;
+            host.parentNode?.insertBefore(span, host);
+          }
+          host.remove();
+        }
+      }
+      flattenShadowRoots(document.documentElement);
+
       const selectors = [
         "script",
         "style",
         "link[rel='stylesheet']",
         "noscript",
         "meta",
-        "svg",
-        "img",
-        "picture",
-        "source",
-        "video",
-        "audio",
         "iframe",
         "object",
         "embed"
@@ -108,7 +200,8 @@ export async function convertPageToHTML(url: string, page: Page): Promise<string
       const all = document.querySelectorAll("*");
       all.forEach(el => {
         [...el.attributes].forEach(attr => {
-          if (attr.name.startsWith("on")) {
+          const name = attr.name.toLowerCase();
+          if (name.startsWith("on") || name === "data-mx-id" || name === "jsaction" || name === "jsname") {
             el.removeAttribute(attr.name);
           }
         });
@@ -135,10 +228,7 @@ export async function convertPageToScreenshot(url: string, page: Page, fullPage:
     const screenshotType = fullPage ? 'full page' : 'visible viewport';
     logger.log('info', `[Scrape] Taking ${screenshotType} screenshot of ${url}`);
 
-    const currentUrl = page.url();
-    if (currentUrl !== url) {
-      await gotoWithFallback(page, url);
-    }
+    await gotoWithFallback(page, url, true);
 
     const screenshot = await page.screenshot({
       type: 'png',
