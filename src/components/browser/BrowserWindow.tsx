@@ -1,10 +1,10 @@
-import React, { useCallback, useContext, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { generateUUID } from '../../helpers/uuid';
 import { useSocketStore } from '../../context/socket';
 import { Button } from '@mui/material';
 import { GenericModal } from '../ui/GenericModal';
 import { useActionContext } from '../../context/browserActions';
-import { useBrowserSteps, TextStep, ListStep } from '../../context/browserSteps';
+import { useBrowserSteps, TextStep, ListStep, BrowserStep } from '../../context/browserSteps';
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../../context/auth';
@@ -86,6 +86,7 @@ export const BrowserWindow = () => {
     const [listSelector, setListSelector] = useState<string | null>(null);
     const [fields, setFields] = useState<Record<string, TextStep>>({});
     const [paginationSelector, setPaginationSelector] = useState<string>('');
+    const manualHighlightedSelectorRef = useRef<string>("");
 
     const [isCachingChildSelectors, setIsCachingChildSelectors] = useState(false);
     const [cachedListSelector, setCachedListSelector] = useState<string | null>(
@@ -1158,6 +1159,7 @@ export const BrowserWindow = () => {
             }
 
             setPaginationSelector(highlighterData.selector);
+            applyManualPaginationHighlight(highlighterData.selector);
             notify(
               `info`,
               t(
@@ -1402,6 +1404,7 @@ export const BrowserWindow = () => {
               }
 
               setPaginationSelector(highlighterData.selector);
+              applyManualPaginationHighlight(highlighterData.selector);
               notify(
                 `info`,
                 t(
@@ -1574,9 +1577,127 @@ export const BrowserWindow = () => {
         setAttributeOptions([]);
     };
 
+  const manualHighlightedElementsRef = useRef<HTMLElement[]>([]);
+
+  const applyManualPaginationHighlight = useCallback((selector: string) => {
+    if (!selector) return;
+    let iframeElement = document.querySelector("#dom-browser-iframe") as HTMLIFrameElement;
+    if (!iframeElement) {
+      iframeElement = document.querySelector("#browser-window iframe") as HTMLIFrameElement;
+    }
+    if (!iframeElement?.contentDocument) return;
+    const doc = iframeElement.contentDocument;
+
+    if (manualHighlightedElementsRef.current.length > 0) {
+      manualHighlightedElementsRef.current.forEach((el) => {
+        if (el) {
+          el.style.outline = "";
+          el.style.outlineOffset = "";
+          el.style.zIndex = "";
+        }
+      });
+      manualHighlightedElementsRef.current = [];
+    }
+
+    const prev = manualHighlightedSelectorRef.current;
+    if (prev) {
+      try {
+        const prevEls =
+          prev.startsWith("//") || prev.startsWith("(//")
+            ? (() => {
+                const r = doc.evaluate(prev, doc, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+                const arr: Element[] = [];
+                for (let i = 0; i < r.snapshotLength; i++) {
+                  const n = r.snapshotItem(i);
+                  if (n && n.nodeType === Node.ELEMENT_NODE) arr.push(n as Element);
+                }
+                return arr;
+              })()
+            : Array.from(doc.querySelectorAll(prev));
+        prevEls.forEach((el) => {
+          (el as HTMLElement).style.outline = "";
+          (el as HTMLElement).style.outlineOffset = "";
+          (el as HTMLElement).style.zIndex = "";
+        });
+      } catch (e) {}
+    }
+
+    try {
+      const elements: HTMLElement[] = (
+        selector.startsWith("//") || selector.startsWith("(//")
+          ? (() => {
+              const r = doc.evaluate(selector, doc, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+              const arr: HTMLElement[] = [];
+              for (let i = 0; i < r.snapshotLength; i++) {
+                const n = r.snapshotItem(i);
+                if (n && n.nodeType === Node.ELEMENT_NODE) arr.push(n as HTMLElement);
+              }
+              return arr;
+            })()
+          : Array.from(doc.querySelectorAll(selector))
+      ) as HTMLElement[];
+
+      elements.forEach((el) => {
+        el.style.outline = "3px dashed #ff00c3";
+        el.style.outlineOffset = "2px";
+        el.style.zIndex = "9999";
+      });
+      
+      manualHighlightedElementsRef.current = elements;
+      manualHighlightedSelectorRef.current = selector;
+    } catch (error) {
+      console.error("Error applying manual pagination highlight:", error);
+    }
+  }, []);
+
+  const clearManualPaginationHighlight = useCallback(() => {
+    if (manualHighlightedElementsRef.current.length > 0) {
+      manualHighlightedElementsRef.current.forEach((el) => {
+        if (el) {
+          el.style.outline = "";
+          el.style.outlineOffset = "";
+          el.style.zIndex = "";
+        }
+      });
+      manualHighlightedElementsRef.current = [];
+    }
+
+    const selector = manualHighlightedSelectorRef.current;
+    if (!selector) return;
+    let iframeElement = document.querySelector("#dom-browser-iframe") as HTMLIFrameElement;
+    if (!iframeElement) {
+      iframeElement = document.querySelector("#browser-window iframe") as HTMLIFrameElement;
+    }
+    if (!iframeElement?.contentDocument) return;
+    const doc = iframeElement.contentDocument;
+    try {
+      const elements: Element[] =
+        selector.startsWith("//") || selector.startsWith("(//")
+          ? (() => {
+              const r = doc.evaluate(selector, doc, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+              const arr: Element[] = [];
+              for (let i = 0; i < r.snapshotLength; i++) {
+                const n = r.snapshotItem(i);
+                if (n && n.nodeType === Node.ELEMENT_NODE) arr.push(n as Element);
+              }
+              return arr;
+            })()
+          : Array.from(doc.querySelectorAll(selector));
+      elements.forEach((el) => {
+        (el as HTMLElement).style.outline = "";
+        (el as HTMLElement).style.outlineOffset = "";
+        (el as HTMLElement).style.zIndex = "";
+      });
+    } catch (e) {
+      console.error("Error clearing manual pagination highlight:", e);
+    }
+    manualHighlightedSelectorRef.current = "";
+  }, []);
+
     const resetPaginationSelector = useCallback(() => {
-        setPaginationSelector('');
-    }, []);
+      clearManualPaginationHighlight();
+      setPaginationSelector('');
+    }, [clearManualPaginationHighlight]);
 
     useEffect(() => {
         if (!paginationMode) {
@@ -1593,27 +1714,40 @@ export const BrowserWindow = () => {
     useEffect(() => {
       if (paginationMode && currentListActionId) {
         const currentListStep = browserSteps.find(
-          step => step.type === 'list' && step.actionId === currentListActionId
-        ) as (ListStep & { type: 'list' }) | undefined;
+          (step) => step.type === "list" && step.actionId === currentListActionId
+        ) as (BrowserStep & { type: "list" }) | undefined;
 
-        const currentSelector = currentListStep?.pagination?.selector;
+        const stepSelector = currentListStep?.pagination?.selector;
         const currentType = currentListStep?.pagination?.type;
 
-        if (['clickNext', 'clickLoadMore'].includes(paginationType)) {
-          if (!currentSelector || (currentType && currentType !== paginationType)) {
-            setPaginationSelector('');
+        if (["clickNext", "clickLoadMore"].includes(paginationType)) {
+          if (!stepSelector || (currentType && currentType !== paginationType)) {
+            clearManualPaginationHighlight();
+            setPaginationSelector("");
           }
         }
 
-        const stepSelector = currentListStep?.pagination?.selector;
-
-        if (stepSelector && !paginationSelector) {
-          setPaginationSelector(stepSelector);
-        } else if (!stepSelector && paginationSelector) {
-          setPaginationSelector('');
+        if (stepSelector) {
+          if (paginationSelector !== stepSelector) {
+            setPaginationSelector(stepSelector);
+          }
+          if (manualHighlightedSelectorRef.current !== stepSelector) {
+            applyManualPaginationHighlight(stepSelector);
+          }
+        } else if (paginationSelector) {
+          clearManualPaginationHighlight();
+          setPaginationSelector("");
         }
       }
-    }, [browserSteps, paginationMode, currentListActionId, paginationSelector]);
+    }, [
+      browserSteps,
+      paginationMode,
+      currentListActionId,
+      paginationSelector,
+      clearManualPaginationHighlight,
+      applyManualPaginationHighlight,
+      paginationType,
+    ]);
 
     return (
       <div
