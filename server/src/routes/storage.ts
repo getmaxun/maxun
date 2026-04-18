@@ -396,6 +396,11 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
               gotoUpdated = true;
               return { ...action, args: [normalizeRobotUrl(targetUrl), ...action.args.slice(1)] };
             }
+            if ((action.action === 'scrape' || action.action === 'crawl') &&
+                action.args?.[0] && typeof action.args[0] === 'object' &&
+                action.args[0].url === originalEntryUrl) {
+              return { ...action, args: [{ ...action.args[0], url: normalizeRobotUrl(targetUrl) }, ...action.args.slice(1)] };
+            }
             return action;
           });
 
@@ -827,6 +832,11 @@ router.post('/recordings/:id/duplicate', requireSignIn, async (req: Authenticate
         if (!gotoUpdated && action.action === 'goto' && action.args?.[0] === originalEntryUrl) {
           gotoUpdated = true;
           return { ...action, args: [normalizeRobotUrl(targetUrl), ...action.args.slice(1)] };
+        }
+        if ((action.action === 'scrape' || action.action === 'crawl') &&
+            action.args?.[0] && typeof action.args[0] === 'object' &&
+            action.args[0].url === originalEntryUrl) {
+          return { ...action, args: [{ ...action.args[0], url: normalizeRobotUrl(targetUrl) }, ...action.args.slice(1)] };
         }
         return action;
       });

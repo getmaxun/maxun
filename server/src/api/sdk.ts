@@ -135,11 +135,16 @@ router.get("/sdk/status", requireAPIKey, async (req: AuthenticatedRequest, res: 
     }
 });
 
-/**
- * Shallow sort-stable JSON stringify for config comparison.
- */
-const stableStringify = (obj: any): string =>
-    JSON.stringify(obj, Object.keys(obj ?? {}).sort());
+const sortDeep = (val: any): any => {
+    if (Array.isArray(val)) return val.map(sortDeep);
+    if (val !== null && typeof val === 'object')
+        return Object.fromEntries(
+            Object.entries(val).sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => [k, sortDeep(v)])
+        );
+    return val;
+};
+
+const stableStringify = (obj: any): string => JSON.stringify(sortDeep(obj));
 
 /**
  * Create a new robot programmatically
@@ -970,6 +975,11 @@ router.post("/sdk/robots/:id/duplicate", requireAPIKey, async (req: Authenticate
                 if (!gotoUpdated && action.action === 'goto' && action.args?.[0] === originalEntryUrl) {
                     gotoUpdated = true;
                     return { ...action, args: [normalizedTargetUrl, ...action.args.slice(1)] };
+                }
+                if ((action.action === 'scrape' || action.action === 'crawl') &&
+                    action.args?.[0] && typeof action.args[0] === 'object' &&
+                    action.args[0].url === originalEntryUrl) {
+                    return { ...action, args: [{ ...action.args[0], url: normalizedTargetUrl }, ...action.args.slice(1)] };
                 }
                 return action;
             });

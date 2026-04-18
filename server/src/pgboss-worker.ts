@@ -85,14 +85,14 @@ const getRobotTargetUrl = (recording: any): string => {
 
   const workflow = recording?.recording?.workflow || [];
   const entryPair = [...workflow].reverse().find((pair: any) =>
-    pair?.what?.some((action: any) => action.action === 'goto' && action.args?.[0]),
+    pair?.what?.some((action: any) => action.action === 'goto' && typeof action.args?.[0] === 'string' && action.args[0] !== 'about:blank'),
   );
-  const gotoUrl = entryPair?.what?.find((action: any) => action.action === 'goto')?.args?.[0]?.trim();
+  const gotoUrl = entryPair?.what?.find((action: any) => action.action === 'goto' && typeof action.args?.[0] === 'string')?.args?.[0]?.trim();
   if (gotoUrl) {
     return gotoUrl;
   }
 
-  const firstWorkflowUrl = workflow.find((pair: any) => pair?.where?.url && pair.where.url !== 'about:blank')?.where?.url?.trim();
+  const firstWorkflowUrl = workflow.find((pair: any) => typeof pair?.where?.url === 'string' && pair.where.url !== 'about:blank')?.where?.url?.trim();
   return firstWorkflowUrl || '';
 };
 
