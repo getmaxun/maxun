@@ -23,6 +23,8 @@ import {
     OutputFormat,
     SCRAPE_OUTPUT_FORMAT_OPTIONS,
 } from '../constants/output-formats';
+import sequelizeInstance from '../storage/db';
+import { Op } from 'sequelize';
 
 const router = Router();
 
@@ -37,8 +39,16 @@ const findExistingRobotByName = async (
     name: string,
     userId: number
 ): Promise<any | null> => {
-    const where: any = { 'recording_meta.name': name, userId };
-    return Robot.findOne({ where });
+    const trimmed = name.trim();
+    return Robot.findOne({
+        where: {
+            userId,
+            [Op.and]: sequelizeInstance.where(
+                sequelizeInstance.fn('trim', sequelizeInstance.literal("recording_meta->>'name'")),
+                trimmed
+            ),
+        } as any,
+    });
 };
 
 /**
@@ -382,9 +392,13 @@ router.put("/sdk/robots/:id", requireAPIKey, async (req: AuthenticatedRequest, r
         const updateData: any = {};
 
         if (updates.workflow) {
-            updateData.recording = {
-                workflow: normalizeWorkflowUrls(updates.workflow)
-            };
+            try {
+                updateData.recording = {
+                    workflow: normalizeWorkflowUrls(updates.workflow)
+                };
+            } catch {
+                return res.status(400).json({ error: "Invalid URL in workflow" });
+            }
         }
 
         if (updates.meta) {
@@ -399,7 +413,12 @@ router.put("/sdk/robots/:id", requireAPIKey, async (req: AuthenticatedRequest, r
                 }
             }
 
-            const workflow = updates.workflow ? normalizeWorkflowUrls(updates.workflow) : JSON.parse(JSON.stringify(robot.recording?.workflow || []));
+            let workflow: any[];
+            try {
+                workflow = updates.workflow ? normalizeWorkflowUrls(updates.workflow) : JSON.parse(JSON.stringify(robot.recording?.workflow || []));
+            } catch {
+                return res.status(400).json({ error: "Invalid URL in workflow" });
+            }
             if (normalizedMetaUrl) {
                 workflow.forEach((pair: any) => {
                     let stepUpdate = false;
@@ -1080,10 +1099,12 @@ router.post("/sdk/crawl", requireAPIKey, async (req: AuthenticatedRequest, res: 
         const existingRobot = await findExistingRobotByName(robotName, user.id);
         if (existingRobot) {
             const existingCrawlArgs = existingRobot.recording?.workflow?.[0]?.what?.[0]?.args?.[0] || {};
+            const sameType = existingRobot.recording_meta?.type === 'crawl';
             const sameUrl = normalizeUrl(existingRobot.recording_meta?.url || '') === normalizeUrl(normalizedUrl);
             const sameConfig = stableStringify(existingCrawlArgs) === stableStringify(crawlConfig);
+            const sameFormats = JSON.stringify([...(existingRobot.recording_meta?.formats || [])].sort()) === JSON.stringify([...crawlFormats].sort());
 
-            if (sameUrl && sameConfig) {
+            if (sameType && sameUrl && sameConfig && sameFormats) {
                 return res.status(200).json({
                     data: existingRobot,
                     message: "Existing robot returned",

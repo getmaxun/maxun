@@ -89,13 +89,13 @@ const normalizeWorkflowUrls = (workflow: any[] = []): any[] =>
   }));
 
 async function isRobotNameTaken(name: string, userId: number, excludeId?: string): Promise<boolean> {
-  const normalised = name.trim().toLowerCase();
+  const trimmed = name.trim();
   const robots = await Robot.findAll({
     where: {
       userId,
       [Op.and]: sequelizeInstance.where(
-        sequelizeInstance.fn('lower', sequelizeInstance.fn('trim', sequelizeInstance.literal("recording_meta->>'name'"))),
-        normalised
+        sequelizeInstance.fn('trim', sequelizeInstance.literal("recording_meta->>'name'")),
+        trimmed
       ),
     } as any,
   });
