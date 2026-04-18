@@ -31,6 +31,90 @@ interface AuthenticatedRequest extends Request {
 }
 
 /**
+ * Find an existing robot by name scoped to a user or team.
+ */
+const findExistingRobotByName = async (
+    name: string,
+    userId: number
+): Promise<any | null> => {
+    const where: any = { 'recording_meta.name': name, userId };
+    return Robot.findOne({ where });
+};
+
+/**
+ * Normalize a URL for comparison (strip trailing slash, lowercase host).
+ */
+const normalizeUrl = (raw: string): string => {
+    try {
+        const u = new URL(raw);
+        u.search = u.searchParams.toString();
+        return `${u.protocol}//${u.host.toLowerCase()}${u.pathname.replace(/\/$/, '')}${u.search}`;
+    } catch {
+        return raw.toLowerCase().trim();
+    }
+};
+
+const normalizeRobotUrl = (rawUrl: string): string => {
+    const normalizedUrl = new URL(rawUrl.trim());
+    if (!['http:', 'https:'].includes(normalizedUrl.protocol)) {
+        throw new Error('Invalid URL protocol');
+    }
+
+    normalizedUrl.search = normalizedUrl.searchParams.toString();
+    return normalizedUrl.toString();
+};
+
+const normalizeWorkflowUrls = (workflow: any[] = []): any[] =>
+    workflow.map((pair: any) => ({
+        ...pair,
+        where: pair?.where
+            ? {
+                ...pair.where,
+                ...(typeof pair.where.url === 'string' && pair.where.url !== 'about:blank'
+                    ? { url: normalizeRobotUrl(pair.where.url) }
+                    : {}),
+            }
+            : pair?.where,
+        what: Array.isArray(pair?.what)
+            ? pair.what.map((action: any) => {
+                if (
+                    action.action === 'goto' &&
+                    Array.isArray(action.args) &&
+                    typeof action.args[0] === 'string' &&
+                    action.args[0] !== 'about:blank'
+                ) {
+                    return {
+                        ...action,
+                        args: [normalizeRobotUrl(action.args[0]), ...action.args.slice(1)],
+                    };
+                }
+
+                if (
+                    (action.action === 'scrape' || action.action === 'crawl') &&
+                    Array.isArray(action.args) &&
+                    action.args[0] &&
+                    typeof action.args[0] === 'object' &&
+                    typeof action.args[0].url === 'string' &&
+                    action.args[0].url !== 'about:blank'
+                ) {
+                    return {
+                        ...action,
+                        args: [
+                            {
+                                ...action.args[0],
+                                url: normalizeRobotUrl(action.args[0].url),
+                            },
+                            ...action.args.slice(1),
+                        ],
+                    };
+                }
+
+                return action;
+            })
+            : pair?.what,
+    }));
+
+/**
  * Get the status of the authenticated user
  * GET /api/sdk/status
  */
@@ -50,6 +134,12 @@ router.get("/sdk/status", requireAPIKey, async (req: AuthenticatedRequest, res: 
         });
     }
 });
+
+/**
+ * Shallow sort-stable JSON stringify for config comparison.
+ */
+const stableStringify = (obj: any): string =>
+    JSON.stringify(obj, Object.keys(obj ?? {}).sort());
 
 /**
  * Create a new robot programmatically
@@ -86,6 +176,14 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
                     error: "URL is required for scrape robots"
                 });
             }
+
+            try {
+                extractedUrl = normalizeRobotUrl(extractedUrl);
+            } catch {
+                return res.status(400).json({
+                    error: "Invalid URL format"
+                });
+            }
         } else {
             const enrichResult = await WorkflowEnricher.enrichWorkflow(workflowFile.workflow, user.id);
 
@@ -98,12 +196,12 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
                 });
             }
 
-            enrichedWorkflow = enrichResult.workflow!;
-            extractedUrl = enrichResult.url;
+            enrichedWorkflow = normalizeWorkflowUrls(enrichResult.workflow!);
+            extractedUrl = enrichResult.url ? normalizeRobotUrl(enrichResult.url) : undefined;
         }
 
         const rawFormats = (workflowFile.meta as any).formats;
-        const { validFormats, invalidFormats, wasProvided } = parseOutputFormats(
+        const { validFormats, invalidFormats } = parseOutputFormats(
             rawFormats,
             type === 'scrape' ? SCRAPE_OUTPUT_FORMAT_OPTIONS : undefined
         );
@@ -122,20 +220,38 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
                 .find((action: any) => action?.action === 'search');
             const searchMode = searchAction?.args?.[0]?.mode;
 
-            if (searchMode === 'discover') {
-                
+            if (searchMode === 'discover') {      
                 normalizedFormats = validFormats.length > 0 ? validFormats : [];
-            } else {
-                
+            } else {     
                 normalizedFormats = validFormats.length > 0 ? validFormats : [...DEFAULT_OUTPUT_FORMATS];
             }
         } else if (type === 'crawl' || type === 'scrape') {
-            
             normalizedFormats = validFormats.length > 0 ? validFormats : [...DEFAULT_OUTPUT_FORMATS];
         }
 
         const robotId = uuid();
         const metaId = uuid();
+
+        const existingRobot = await findExistingRobotByName(workflowFile.meta.name, user.id);
+        if (existingRobot) {
+            const meta = existingRobot.recording_meta;
+            const sameType = meta.type === type;
+            const sameUrl = normalizeUrl(meta.url || '') === normalizeUrl(extractedUrl || '');
+            const sameFormats = type === 'scrape'
+                ? JSON.stringify([...(meta.formats || [])].sort()) === JSON.stringify([...((workflowFile.meta as any).formats || ['markdown'])].sort())
+                : true;
+
+            if (sameType && sameUrl && sameFormats) {
+                return res.status(200).json({
+                    data: existingRobot,
+                    message: "Existing robot returned",
+                    existing: true
+                });
+            }
+            return res.status(409).json({
+                error: `A robot named "${workflowFile.meta.name}" already exists with a different configuration. Please choose a different name.`
+            });
+        }
 
         const robotMeta: any = {
             name: workflowFile.meta.name,
@@ -155,7 +271,7 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
             userId: user.id,
             recording_meta: robotMeta,
             recording: {
-                workflow: enrichedWorkflow
+                workflow: normalizeWorkflowUrls(enrichedWorkflow)
             }
         });
 
@@ -262,14 +378,47 @@ router.put("/sdk/robots/:id", requireAPIKey, async (req: AuthenticatedRequest, r
 
         if (updates.workflow) {
             updateData.recording = {
-                workflow: updates.workflow
+                workflow: normalizeWorkflowUrls(updates.workflow)
             };
         }
 
         if (updates.meta) {
+            let normalizedMetaUrl: string | undefined;
+            if (updates.meta.url) {
+                try {
+                    normalizedMetaUrl = normalizeRobotUrl(updates.meta.url);
+                } catch {
+                    return res.status(400).json({
+                        error: "Invalid URL format"
+                    });
+                }
+            }
+
+            const workflow = updates.workflow ? normalizeWorkflowUrls(updates.workflow) : JSON.parse(JSON.stringify(robot.recording?.workflow || []));
+            if (normalizedMetaUrl) {
+                workflow.forEach((pair: any) => {
+                    let stepUpdate = false;
+                    pair.what?.forEach((action: any) => {
+                        if (action.action === 'goto' && action.args?.length) {
+                            action.args[0] = normalizedMetaUrl;
+                            stepUpdate = true;
+                        } else if ((action.action === 'scrape' || action.action === 'crawl') && action.args?.[0] && typeof action.args[0] === 'object') {
+                            action.args[0].url = normalizedMetaUrl;
+                            stepUpdate = true;
+                        }
+                    });
+
+                    if (stepUpdate && pair.where?.url && pair.where.url !== 'about:blank') {
+                        pair.where.url = normalizedMetaUrl;
+                    }
+                });
+                updateData.recording = { workflow };
+            }
+
             updateData.recording_meta = {
                 ...robot.recording_meta,
                 ...updates.meta,
+                ...(normalizedMetaUrl ? { url: normalizedMetaUrl } : {}),
                 updatedAt: new Date().toISOString()
             };
         }
@@ -770,8 +919,10 @@ router.post("/sdk/robots/:id/duplicate", requireAPIKey, async (req: Authenticate
             });
         }
 
+        let normalizedTargetUrl: string;
         try {
-            const parsed = new URL(targetUrl);
+            normalizedTargetUrl = normalizeRobotUrl(targetUrl);
+            const parsed = new URL(normalizedTargetUrl);
             if (!['http:', 'https:'].includes(parsed.protocol)) {
                 return res.status(400).json({
                     error: "The \"targetUrl\" must use http or https protocol."
@@ -793,7 +944,7 @@ router.post("/sdk/robots/:id/duplicate", requireAPIKey, async (req: Authenticate
             });
         }
 
-        const lastWord = targetUrl.split('/').filter(Boolean).pop() || 'Unnamed';
+        const lastWord = normalizedTargetUrl.split('/').filter(Boolean).pop() || 'Unnamed';
 
         const steps: any[] = originalRobot.recording.workflow;
         const entryStep = steps.findLast((step: any) => step.where?.url === 'about:blank');
@@ -809,7 +960,7 @@ router.post("/sdk/robots/:id/duplicate", requireAPIKey, async (req: Authenticate
 
             if (originalEntryUrl && step.where?.url !== 'about:blank' && !whereUpdateStopped) {
                 if (step.where?.url === originalEntryUrl) {
-                    updatedWhere = { ...step.where, url: targetUrl };
+                    updatedWhere = { ...step.where, url: normalizedTargetUrl };
                 } else {
                     whereUpdateStopped = true;
                 }
@@ -818,7 +969,7 @@ router.post("/sdk/robots/:id/duplicate", requireAPIKey, async (req: Authenticate
             const updatedWhat = step.what.map((action: any) => {
                 if (!gotoUpdated && action.action === 'goto' && action.args?.[0] === originalEntryUrl) {
                     gotoUpdated = true;
-                    return { ...action, args: [targetUrl, ...action.args.slice(1)] };
+                    return { ...action, args: [normalizedTargetUrl, ...action.args.slice(1)] };
                 }
                 return action;
             });
@@ -835,7 +986,7 @@ router.post("/sdk/robots/:id/duplicate", requireAPIKey, async (req: Authenticate
                 ...originalRobot.recording_meta,
                 id: uuid(),
                 name: `${originalRobot.recording_meta.name} (${lastWord})`,
-                url: targetUrl,
+                url: normalizedTargetUrl,
                 createdAt: currentTimestamp,
                 updatedAt: currentTimestamp,
             },
@@ -885,8 +1036,9 @@ router.post("/sdk/crawl", requireAPIKey, async (req: AuthenticatedRequest, res: 
             });
         }
 
+        let normalizedUrl: string;
         try {
-            new URL(url);
+            normalizedUrl = normalizeRobotUrl(url);
         } catch (err) {
             return res.status(400).json({
                 error: "Invalid URL format"
@@ -911,9 +1063,27 @@ router.post("/sdk/crawl", requireAPIKey, async (req: AuthenticatedRequest, res: 
             ? requestedFormats 
             : [...DEFAULT_OUTPUT_FORMATS];
 
-        const robotName = name || `Crawl Robot - ${new URL(url).hostname}`;
+        const robotName = name || `Crawl Robot - ${new URL(normalizedUrl).hostname}`;
         const robotId = uuid();
         const metaId = uuid();
+
+        const existingRobot = await findExistingRobotByName(robotName, user.id);
+        if (existingRobot) {
+            const existingCrawlArgs = existingRobot.recording?.workflow?.[0]?.what?.[0]?.args?.[0] || {};
+            const sameUrl = normalizeUrl(existingRobot.recording_meta?.url || '') === normalizeUrl(normalizedUrl);
+            const sameConfig = stableStringify(existingCrawlArgs) === stableStringify(crawlConfig);
+
+            if (sameUrl && sameConfig) {
+                return res.status(200).json({
+                    data: existingRobot,
+                    message: "Existing robot returned",
+                    existing: true
+                });
+            }
+            return res.status(409).json({
+                error: `A robot named "${robotName}" already exists with a different configuration. Please choose a different name.`
+            });
+        }
 
         const robot = await Robot.create({
             id: robotId,
@@ -926,13 +1096,13 @@ router.post("/sdk/crawl", requireAPIKey, async (req: AuthenticatedRequest, res: 
                 pairs: 1,
                 params: [],
                 type: 'crawl',
-                url: url,
+                url: normalizedUrl,
                 formats: crawlFormats,
             },
             recording: {
                 workflow: [
                     {
-                        where: { url },
+                        where: { url: normalizedUrl },
                         what: [
                             {
                                 action: 'crawl',
@@ -946,7 +1116,7 @@ router.post("/sdk/crawl", requireAPIKey, async (req: AuthenticatedRequest, res: 
                         what: [
                             {
                                 action: 'goto',
-                                args: [url]
+                                args: [normalizedUrl]
                             },
                             {
                                 action: 'waitForLoadState',
@@ -964,7 +1134,7 @@ router.post("/sdk/crawl", requireAPIKey, async (req: AuthenticatedRequest, res: 
             userId: user.id.toString(),
             robotId: metaId,
             robotName: robotName,
-            url: url,
+            url: normalizedUrl,
             robotType: 'crawl',
             crawlConfig: crawlConfig,
             source: 'sdk',
@@ -1116,7 +1286,7 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
 
         if (url) {
             try {
-                new URL(url);
+                normalizeRobotUrl(url);
             } catch (err) {
                 return res.status(400).json({
                     error: "Invalid URL format"
@@ -1152,12 +1322,42 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
         const robotId = uuid();
         const metaId = uuid();
 
+        if (finalUrl) {
+            finalUrl = normalizeRobotUrl(finalUrl);
+        }
+
+        const finalRobotName = robotName || `LLM Extract: ${prompt.substring(0, 50)}`;
+
+        const existingRobot = await findExistingRobotByName(finalRobotName, user.id);
+        if (existingRobot) {
+            const meta = existingRobot.recording_meta;
+            const samePrompt = (meta.description || '') === prompt;
+            const sameUrl = normalizeUrl(meta.url || '') === normalizeUrl(finalUrl);
+
+            if (samePrompt && sameUrl) {
+                return res.status(200).json({
+                    success: true,
+                    data: {
+                        robotId: meta.id,
+                        name: meta.name,
+                        description: meta.description,
+                        url: meta.url,
+                        workflow: existingRobot.recording?.workflow || []
+                    },
+                    existing: true
+                });
+            }
+            return res.status(409).json({
+                error: `A robot named "${finalRobotName}" already exists with a different configuration. Please choose a different name.`
+            });
+        }
+
         const robotMeta: any = {
             name: robotName || `LLM Extract: ${prompt.substring(0, 50)}`,
             id: metaId,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            pairs: workflowResult.workflow.length,
+            pairs: normalizeWorkflowUrls(workflowResult.workflow).length,
             params: [],
             type: 'extract',
             url: finalUrl,
@@ -1169,7 +1369,7 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
             userId: user.id,
             recording_meta: robotMeta,
             recording: {
-                workflow: workflowResult.workflow
+                workflow: normalizeWorkflowUrls(workflowResult.workflow)
             },
         });
 
