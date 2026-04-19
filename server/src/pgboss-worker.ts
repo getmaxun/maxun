@@ -62,6 +62,7 @@ const pgBoss = new PgBoss({
   connectionString: pgBossConnectionString,
   expireInHours: 23,
   max: 5,
+  ...(process.env.DB_SSL === 'true' && { ssl: true }),
 });
 
 /**

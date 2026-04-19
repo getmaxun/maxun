@@ -17,7 +17,8 @@ export const pgBoss = new PgBoss({
   connectionString: pgBossConnectionString,
   max: 3,
   expireInHours: 23,
- });
+  ...(process.env.DB_SSL === 'true' && { ssl: true }),
+});
 
 const registeredQueues = new Set<string>();
 
