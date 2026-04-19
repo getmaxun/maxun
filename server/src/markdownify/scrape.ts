@@ -2,6 +2,32 @@ import { Page } from "playwright-core";
 import { parseMarkdown } from "./markdown";
 import logger from "../logger";
 
+async function waitForStability(page: Page): Promise<void> {
+  try {
+    await Promise.race([
+      page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {}),
+      page.evaluate(async () => {
+        let lastLen = 0;
+        let stableIterations = 0;
+        for (let i = 0; i < 60; i++) {
+          const currentLen = document.body?.innerText?.length ?? 0;
+          if (currentLen > 200 && currentLen === lastLen) {
+            stableIterations++;
+          } else {
+            stableIterations = 0;
+          }
+          if (stableIterations >= 8) return true;
+          lastLen = currentLen;
+          await new Promise(r => setTimeout(r, 100));
+        }
+        return false;
+      }).catch(() => {}),
+      new Promise(resolve => setTimeout(resolve, 10000))
+    ]);
+    await new Promise(resolve => setTimeout(resolve, 1500));
+  } catch {}
+}
+
 async function gotoWithFallback(page: any, url: string, forScreenshot = false) {
   try {
     const current = page.url();
@@ -30,6 +56,7 @@ export async function convertPageToMarkdown(url: string, page: Page): Promise<st
     logger.log('info', `[Scrape] Using existing page instance for markdown conversion of ${url}`);
 
     await gotoWithFallback(page, url);
+    await waitForStability(page);
 
     const cleanedHtml = await page.evaluate(() => {
       function flattenShadowRoots(root: Element | ShadowRoot) {
@@ -135,6 +162,7 @@ export async function convertPageToHTML(url: string, page: Page): Promise<string
     logger.log('info', `[Scrape] Using existing page instance for HTML conversion of ${url}`);
 
     await gotoWithFallback(page, url);
+    await waitForStability(page);
 
     const cleanedHtml = await page.evaluate(() => {
       function flattenShadowRoots(root: Element | ShadowRoot) {
@@ -229,6 +257,11 @@ export async function convertPageToScreenshot(url: string, page: Page, fullPage:
     logger.log('info', `[Scrape] Taking ${screenshotType} screenshot of ${url}`);
 
     await gotoWithFallback(page, url, true);
+    await waitForStability(page);
+    await page.waitForFunction(
+      () => Array.from(document.images).every(img => img.complete),
+      { timeout: 5000 }
+    ).catch(() => {});
 
     const screenshot = await page.screenshot({
       type: 'png',
