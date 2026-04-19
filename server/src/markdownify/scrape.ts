@@ -124,6 +124,25 @@ export async function convertPageToHTML(url: string, page: Page): Promise<string
   }
 }
 
+export async function convertPageToText(url: string, page: Page): Promise<string> {
+  try {
+    logger.log('info', `[Scrape] Using existing page instance for text conversion of ${url}`);
+
+    await gotoWithFallback(page, url);
+
+    const text = await page.evaluate(() => {
+      const body = document.body;
+      if (!body) return '';
+      return body.innerText || body.textContent || '';
+    });
+
+    return text ? text.trim() : '';
+  } catch (error: any) {
+    logger.error(`[Scrape] Error during text conversion: ${error.message}`);
+    throw error;
+  }
+}
+
 /**
  * Takes a screenshot of the page
  * @param url - The URL to screenshot
