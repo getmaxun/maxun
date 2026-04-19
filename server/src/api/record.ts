@@ -731,36 +731,6 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
 
                 const SCRAPE_TIMEOUT = 120000;
 
-                if (formats.includes('markdown')) {
-                    try {
-                        const markdownPromise = convertPageToMarkdown(url, currentPage);
-                        const timeoutPromise = new Promise<never>((_, reject) => {
-                            setTimeout(() => reject(new Error(`Markdown conversion timed out after ${SCRAPE_TIMEOUT / 1000}s`)), SCRAPE_TIMEOUT);
-                        });
-                        markdown = await Promise.race([markdownPromise, timeoutPromise]);
-                        if (markdown && markdown.trim().length > 0) {
-                            serializableOutput.markdown = [{ content: markdown }];
-                        }
-                    } catch (error: any) {
-                        logger.log('warn', `Markdown conversion failed for API run ${plainRun.runId}: ${error.message}`);
-                    }
-                }
-
-                if (formats.includes('html')) {
-                    try {
-                        const htmlPromise = convertPageToHTML(url, currentPage);
-                        const timeoutPromise = new Promise<never>((_, reject) => {
-                            setTimeout(() => reject(new Error(`HTML conversion timed out after ${SCRAPE_TIMEOUT / 1000}s`)), SCRAPE_TIMEOUT);
-                        });
-                        html = await Promise.race([htmlPromise, timeoutPromise]);
-                        if (html && html.trim().length > 0) {
-                            serializableOutput.html = [{ content: html }];
-                        }
-                    } catch (error: any) {
-                        logger.log('warn', `HTML conversion failed for API run ${plainRun.runId}: ${error.message}`);
-                    }
-                }
-
                 if (formats.includes("screenshot-visible")) {
                     try {
                         const screenshotPromise = convertPageToScreenshot(url, currentPage, false);
@@ -796,6 +766,36 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
                         }
                     } catch (error: any) {
                         logger.log('warn', `Screenshot-fullpage conversion failed for API run ${plainRun.runId}: ${error.message}`);
+                    }
+                }
+
+                if (formats.includes('markdown')) {
+                    try {
+                        const markdownPromise = convertPageToMarkdown(url, currentPage);
+                        const timeoutPromise = new Promise<never>((_, reject) => {
+                            setTimeout(() => reject(new Error(`Markdown conversion timed out after ${SCRAPE_TIMEOUT / 1000}s`)), SCRAPE_TIMEOUT);
+                        });
+                        markdown = await Promise.race([markdownPromise, timeoutPromise]);
+                        if (markdown && markdown.trim().length > 0) {
+                            serializableOutput.markdown = [{ content: markdown }];
+                        }
+                    } catch (error: any) {
+                        logger.log('warn', `Markdown conversion failed for API run ${plainRun.runId}: ${error.message}`);
+                    }
+                }
+
+                if (formats.includes('html')) {
+                    try {
+                        const htmlPromise = convertPageToHTML(url, currentPage);
+                        const timeoutPromise = new Promise<never>((_, reject) => {
+                            setTimeout(() => reject(new Error(`HTML conversion timed out after ${SCRAPE_TIMEOUT / 1000}s`)), SCRAPE_TIMEOUT);
+                        });
+                        html = await Promise.race([htmlPromise, timeoutPromise]);
+                        if (html && html.trim().length > 0) {
+                            serializableOutput.html = [{ content: html }];
+                        }
+                    } catch (error: any) {
+                        logger.log('warn', `HTML conversion failed for API run ${plainRun.runId}: ${error.message}`);
                     }
                 }
 
