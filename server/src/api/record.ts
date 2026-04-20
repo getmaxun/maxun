@@ -17,6 +17,7 @@ import { addGoogleSheetUpdateTask, processGoogleSheetUpdates } from "../workflow
 import { addAirtableUpdateTask, processAirtableUpdates } from "../workflow-management/integrations/airtable";
 import { sendWebhook } from "../routes/webhook";
 import { convertPageToHTML, convertPageToMarkdown, convertPageToScreenshot } from '../markdownify/scrape';
+import { executeBrowserAgent } from '../sdk/browserAgent';
 
 const router = Router();
 
@@ -796,6 +797,25 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
                         }
                     } catch (error: any) {
                         logger.log('warn', `Screenshot-fullpage conversion failed for API run ${plainRun.runId}: ${error.message}`);
+                    }
+                }
+
+                const promptInstructions = (recording.recording_meta as any).promptInstructions as string | undefined;
+                if (promptInstructions && currentPage) {
+                    try {
+                        const llmConfig = {
+                            provider: ((recording.recording_meta as any).promptLlmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama',
+                            model: (recording.recording_meta as any).promptLlmModel as string | undefined,
+                            apiKey: (recording.recording_meta as any).promptLlmApiKey as string | undefined,
+                            baseUrl: (recording.recording_meta as any).promptLlmBaseUrl as string | undefined,
+                        };
+                        logger.log('info', `Running smart query for API scrape run ${plainRun.runId}`);
+                        const agentResult = await executeBrowserAgent(currentPage, promptInstructions, llmConfig);
+                        serializableOutput.smartQuery = [{ result: agentResult.result, steps: agentResult.steps }];
+                        logger.log('info', `Smart query completed for API scrape run ${plainRun.runId}`);
+                    } catch (agentErr: any) {
+                        logger.log('warn', `Smart query failed for API scrape run ${plainRun.runId}: ${agentErr.message}`);
+                        serializableOutput.smartQuery = [{ result: `Smart query failed: ${agentErr.message}`, steps: [] }];
                     }
                 }
 

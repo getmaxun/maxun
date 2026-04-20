@@ -14,6 +14,11 @@ interface RobotMeta {
   url?: string;
   formats?: OutputFormat[];
   isLLM?: boolean;
+  promptInstructions?: string;
+  promptLlmProvider?: 'anthropic' | 'openai' | 'ollama';
+  promptLlmModel?: string;
+  promptLlmApiKey?: string;
+  promptLlmBaseUrl?: string;
 }
 
 interface RobotWorkflow {

@@ -137,6 +137,10 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
         const robotId = uuid();
         const metaId = uuid();
 
+        const promptInstructionsForMeta = type === 'scrape'
+            ? ((workflowFile.meta as any).promptInstructions || (workflowFile.meta as any).smartQueries || (workflowFile.meta as any).smart_queries) as string | undefined
+            : undefined;
+
         const robotMeta: any = {
             name: workflowFile.meta.name,
             id: metaId,
@@ -148,6 +152,11 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
             url: extractedUrl,
             formats: normalizedFormats,
             isLLM: (workflowFile.meta as any).isLLM,
+            ...(promptInstructionsForMeta ? { promptInstructions: promptInstructionsForMeta } : {}),
+            ...((workflowFile.meta as any).promptLlmProvider ? { promptLlmProvider: (workflowFile.meta as any).promptLlmProvider } : {}),
+            ...((workflowFile.meta as any).promptLlmModel ? { promptLlmModel: (workflowFile.meta as any).promptLlmModel } : {}),
+            ...((workflowFile.meta as any).promptLlmApiKey ? { promptLlmApiKey: (workflowFile.meta as any).promptLlmApiKey } : {}),
+            ...((workflowFile.meta as any).promptLlmBaseUrl ? { promptLlmBaseUrl: (workflowFile.meta as any).promptLlmBaseUrl } : {}),
         };
 
         const robot = await Robot.create({

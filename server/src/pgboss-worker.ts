@@ -21,6 +21,7 @@ import { io as serverIo } from "./server";
 import { sendWebhook } from './routes/webhook';
 import { BinaryOutputService } from './storage/mino';
 import { convertPageToMarkdown, convertPageToHTML, convertPageToScreenshot } from './markdownify/scrape';
+import { executeBrowserAgent } from './sdk/browserAgent';
 import { processRobotOutputFormats } from './utils/output-post-processor';
 import { getInterpretationFailureReason, hasExpectedRobotOutput } from './utils/output-validation';
 
@@ -293,6 +294,26 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
                 data: screenshotBuffer.toString('base64'),
                 mimeType: 'image/png'
               };
+            }
+          }
+
+          const promptInstructions = (recording.recording_meta as any).promptInstructions as string | undefined;
+          if (promptInstructions) {
+            try {
+              const llmConfig = {
+                provider: ((recording.recording_meta as any).promptLlmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama',
+                model: (recording.recording_meta as any).promptLlmModel as string | undefined,
+                apiKey: (recording.recording_meta as any).promptLlmApiKey as string | undefined,
+                baseUrl: (recording.recording_meta as any).promptLlmBaseUrl as string | undefined,
+              };
+              logger.log('info', `[SmartQuery] Running smart query for run ${data.runId}`);
+              await run.update({ log: 'Running smart query...' });
+              const agentResult = await executeBrowserAgent(currentPage, promptInstructions, llmConfig);
+              serializableOutput.smartQuery = [{ result: agentResult.result, steps: agentResult.steps }];
+              logger.log('info', `[SmartQuery] Smart query completed for run ${data.runId}`);
+            } catch (agentError: any) {
+              logger.log('warn', `[SmartQuery] Smart query failed for run ${data.runId}: ${agentError.message}`);
+              serializableOutput.smartQuery = [{ result: `Smart query failed: ${agentError.message}`, steps: [] }];
             }
           }
 
