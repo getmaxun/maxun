@@ -1093,8 +1093,7 @@ export default class Interpreter extends EventEmitter {
 
           const extractLinksFromPage = async (): Promise<string[]> => {
             try {
-              await page.waitForLoadState('load', { timeout: 15000 }).catch(() => {});
-              await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+              await page.waitForLoadState(this.getNavigationWaitStrategy(), { timeout: 15000 }).catch(() => {});
               await new Promise(resolve => setTimeout(resolve, 1000));
 
               const pageLinks = await page.evaluate(() => {
@@ -1424,7 +1423,7 @@ export default class Interpreter extends EventEmitter {
 
           await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
-          await page.waitForLoadState('load', { timeout: 10000 }).catch(() => {
+          await page.waitForLoadState(this.getNavigationWaitStrategy(), { timeout: 15000 }).catch(() => {
             this.log('Load state timeout, continuing anyway', Level.WARN);
           });
 
@@ -1900,15 +1899,32 @@ export default class Interpreter extends EventEmitter {
         } else if (methodName === 'waitForLoadState') {
           try {
             let args = step.args;
-
-            if (Array.isArray(args) && args.length === 1) {
-              args = [args[0], { timeout: 30000 }];
-            } else if (!Array.isArray(args)) {
-              args = [args, { timeout: 30000 }];
+            if (!Array.isArray(args)) {
+              args = [args];
             }
-            await executeAction(invokee, methodName, step.args);
+
+            const requestedState = args[0];
+            const remaining = (currentWorkflow || []).slice(0, -1);
+            const needsDataSoon = this.blockNeedsVisualRender(steps) || this.remainingWorkflowNeedsVisualRender(remaining);
+            
+            const optimalState = (requestedState === 'networkidle' || requestedState === 'load')
+              ? 'domcontentloaded'
+              : requestedState;
+
+            this.log(
+              `waitForLoadState: workflow requested '${requestedState}', using 'domcontentloaded' + surgical-ready midground`,
+              Level.LOG
+            );
+
+            args = [optimalState, { timeout: 15000 }];
+            await executeAction(invokee, methodName, args);
+            
+            if (needsDataSoon) {
+              await this.waitForDynamicStability(page, (currentWorkflow || []).slice(0, -1));
+            }
           } catch (error: any) {
-            await executeAction(invokee, methodName, 'domcontentloaded');
+            await executeAction(invokee, methodName, ['domcontentloaded', { timeout: 10000 }]);
+            await this.waitForDynamicStability(page, (currentWorkflow || []).slice(0, -1));
           }
         } else if (methodName === 'click') {
           try {
@@ -2387,7 +2403,7 @@ export default class Interpreter extends EventEmitter {
                   }
                 }
                 
-                await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
+                await page.waitForLoadState(this.getNavigationWaitStrategy(), { timeout: 15000 }).catch(() => {});
                 
                 if (!paginationSuccess) {
                   const newUrl = page.url();
