@@ -267,7 +267,7 @@ What is the next action? Respond with JSON only.`;
 
 async function callAnthropic(config: LLMConfig, messages: any[]): Promise<LLMCallResult> {
   const anthropic = new Anthropic({ apiKey: config.apiKey || process.env.ANTHROPIC_API_KEY });
-  const model = config.model || 'claude-3-5-sonnet-20241022';
+  const model = config.model || 'claude-sonnet-4-6';
 
   const systemMsg = messages.find((m: any) => m.role === 'system');
   const userMsg = messages.find((m: any) => m.role === 'user');
@@ -411,7 +411,7 @@ async function callLLMRawText(messages: any[], config: LLMConfig): Promise<strin
 
     if (provider === 'anthropic') {
       const anthropic = new Anthropic({ apiKey: config.apiKey || process.env.ANTHROPIC_API_KEY });
-      const model = config.model || 'claude-3-5-sonnet-20241022';
+      const model = config.model || 'claude-sonnet-4-6';
       const systemMsg = messages.find((m: any) => m.role === 'system');
       const userMsgs = messages.filter((m: any) => m.role !== 'system');
       const response = await anthropic.messages.create({
