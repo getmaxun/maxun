@@ -77,6 +77,25 @@ function extractJobData<T>(job: Job<T> | Job<T>[]): T {
   return job.data;
 }
 
+const getRobotTargetUrl = (recording: any): string => {
+  const metaUrl = recording?.recording_meta?.url?.trim();
+  if (metaUrl) {
+    return metaUrl;
+  }
+
+  const workflow = recording?.recording?.workflow || [];
+  const entryPair = [...workflow].reverse().find((pair: any) =>
+    pair?.what?.some((action: any) => action.action === 'goto' && typeof action.args?.[0] === 'string' && action.args[0] !== 'about:blank'),
+  );
+  const gotoUrl = entryPair?.what?.find((action: any) => action.action === 'goto' && typeof action.args?.[0] === 'string')?.args?.[0]?.trim();
+  if (gotoUrl) {
+    return gotoUrl;
+  }
+
+  const firstWorkflowUrl = workflow.find((pair: any) => typeof pair?.where?.url === 'string' && pair.where.url !== 'about:blank')?.where?.url?.trim();
+  return firstWorkflowUrl || '';
+};
+
 function AddGeneratedFlags(workflow: WorkflowFile) {
   const copy = JSON.parse(JSON.stringify(workflow));
   for (let i = 0; i < workflow.workflow.length; i++) {
@@ -235,7 +254,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
         });
 
         try {
-          const url = recording.recording_meta.url;
+          const url = getRobotTargetUrl(recording);
 
           if (!url) {
             throw new Error('No URL specified for markdown robot');
