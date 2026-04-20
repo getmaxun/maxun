@@ -267,6 +267,10 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
                 error: `A robot named "${workflowFile.meta.name}" already exists with a different configuration. Please choose a different name.`
             });
         }
+      
+        const promptInstructionsForMeta = type === 'scrape'
+            ? ((workflowFile.meta as any).promptInstructions || (workflowFile.meta as any).smartQueries || (workflowFile.meta as any).smart_queries) as string | undefined
+            : undefined;
 
         const robotMeta: any = {
             name: workflowFile.meta.name,
@@ -279,6 +283,11 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
             url: extractedUrl,
             formats: normalizedFormats,
             isLLM: (workflowFile.meta as any).isLLM,
+            ...(promptInstructionsForMeta ? { promptInstructions: promptInstructionsForMeta } : {}),
+            ...((workflowFile.meta as any).promptLlmProvider ? { promptLlmProvider: (workflowFile.meta as any).promptLlmProvider } : {}),
+            ...((workflowFile.meta as any).promptLlmModel ? { promptLlmModel: (workflowFile.meta as any).promptLlmModel } : {}),
+            ...((workflowFile.meta as any).promptLlmApiKey ? { promptLlmApiKey: (workflowFile.meta as any).promptLlmApiKey } : {}),
+            ...((workflowFile.meta as any).promptLlmBaseUrl ? { promptLlmBaseUrl: (workflowFile.meta as any).promptLlmBaseUrl } : {}),
         };
 
         const robot = await Robot.create({
@@ -663,7 +672,10 @@ router.post("/sdk/robots/:id/execute", requireAPIKey, async (req: AuthenticatedR
         logger.info(`[SDK] Starting execution for robot ${robotId}`);
 
         const runSource = req.headers['x-run-source'] === 'cli' ? 'cli' : 'sdk';
-        const runId = await handleRunRecording(robotId, user.id.toString(), runSource);
+        const promptInstructions = req.body?.promptInstructions;
+        const requestedFormats = req.body?.formats;
+        
+        const runId = await handleRunRecording(robotId, user.id.toString(), runSource, requestedFormats, promptInstructions);
         if (!runId) {
             throw new Error('Failed to start robot execution');
         }
@@ -744,7 +756,8 @@ router.post("/sdk/robots/:id/execute", requireAPIKey, async (req: AuthenticatedR
                     searchData: searchData,
                     text: text,
                     markdown: markdown,
-                    html: html
+                    html: html,
+                    promptResult: run.serializableOutput?.promptResult?.[0]?.content || null
                 },
                 screenshots: Object.values(run.binaryOutput || {})
             }

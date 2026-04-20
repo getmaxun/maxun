@@ -74,9 +74,15 @@ const RobotCreate: React.FC = () => {
 
   const [aiPrompt, setAiPrompt] = useState('');
   const [llmProvider, setLlmProvider] = useState<'anthropic' | 'openai' | 'ollama'>('ollama');
-  const [llmModel, setLlmModel] = useState('default');
+  const [llmModel, setLlmModel] = useState('');
   const [llmApiKey, setLlmApiKey] = useState('');
   const [llmBaseUrl, setLlmBaseUrl] = useState('');
+
+  const [scrapePromptInstructions, setScrapePromptInstructions] = useState('');
+  const [scrapePromptLlmProvider, setScrapePromptLlmProvider] = useState<'anthropic' | 'openai' | 'ollama'>('ollama');
+  const [scrapePromptLlmModel, setScrapePromptLlmModel] = useState('');
+  const [scrapePromptLlmApiKey, setScrapePromptLlmApiKey] = useState('');
+  const [scrapePromptLlmBaseUrl, setScrapePromptLlmBaseUrl] = useState('http://localhost:11434');
   const [aiRobotName, setAiRobotName] = useState('');
 
   const [crawlRobotName, setCrawlRobotName] = useState('');
@@ -471,7 +477,7 @@ const RobotCreate: React.FC = () => {
                         onChange={(e) => {
                           const provider = e.target.value as 'anthropic' | 'openai' | 'ollama';
                           setLlmProvider(provider);
-                          setLlmModel('default');
+                          setLlmModel('');
                           if (provider === 'ollama') {
                             setLlmBaseUrl('http://localhost:11434');
                           } else {
@@ -485,34 +491,22 @@ const RobotCreate: React.FC = () => {
                       </Select>
                     </FormControl>
 
-                    <FormControl sx={{ flex: 1 }}>
-                      <InputLabel>Model</InputLabel>
-                      <Select
-                        value={llmModel}
-                        label="Model"
-                        onChange={(e) => setLlmModel(e.target.value)}
-                      >
-                        {llmProvider === 'ollama' ? (
-                          [
-                            <MenuItem key="default" value="default">Default (llama3.2-vision)</MenuItem>,
-                            <MenuItem key="llama3.2-vision" value="llama3.2-vision">llama3.2-vision</MenuItem>,
-                            <MenuItem key="llama3.2" value="llama3.2">llama3.2</MenuItem>
-                          ]
-                        ) : llmProvider === 'anthropic' ? (
-                          [
-                            <MenuItem key="default" value="default">Default (claude-3-5-sonnet)</MenuItem>,
-                            <MenuItem key="claude-3-5-sonnet-20241022" value="claude-3-5-sonnet-20241022">claude-3-5-sonnet-20241022</MenuItem>,
-                            <MenuItem key="claude-3-opus-20240229" value="claude-3-opus-20240229">claude-3-opus-20240229</MenuItem>
-                          ]
-                        ) : (
-                          [
-                            <MenuItem key="default" value="default">Default (gpt-4-vision-preview)</MenuItem>,
-                            <MenuItem key="gpt-4-vision-preview" value="gpt-4-vision-preview">gpt-4-vision-preview</MenuItem>,
-                            <MenuItem key="gpt-4o" value="gpt-4o">gpt-4o</MenuItem>
-                          ]
-                        )}
-                      </Select>
-                    </FormControl>
+                    <TextField
+                      sx={{ flex: 1 }}
+                      value={llmModel}
+                      label="Model"
+                      placeholder={
+                        llmProvider === 'ollama' ? 'e.g. llama3.2-vision' :
+                        llmProvider === 'anthropic' ? 'e.g. claude-sonnet-4-6' :
+                        'e.g. gpt-4o'
+                      }
+                      onChange={(e) => setLlmModel(e.target.value)}
+                      helperText={`Leave blank to use default: ${
+                        llmProvider === 'ollama' ? 'llama3.2-vision' :
+                        llmProvider === 'anthropic' ? 'claude-sonnet-4-6' :
+                        'gpt-4o'
+                      }`}
+                    />
                   </Box>
 
                   {/* API Key for non-Ollama providers */}
@@ -593,7 +587,7 @@ const RobotCreate: React.FC = () => {
                           url.trim() || undefined,
                           aiPrompt,
                           llmProvider,
-                          llmModel === 'default' ? undefined : llmModel,
+                          llmModel.trim() || undefined,
                           llmApiKey || undefined,
                           llmBaseUrl || undefined,
                           extractRobotName
@@ -824,6 +818,82 @@ const RobotCreate: React.FC = () => {
                 </Box>
               </Box>
 
+              <Box sx={{ width: '100%', maxWidth: 700, mb: 2 }}>
+                <TextField
+                  placeholder={`Example: Click the "Login" button and extract the user profile data.\nExample: Navigate to the pricing page and list all plan names and prices.\nExample: Fill in the search box with "AI tools" and return the first 5 results.`}
+                  variant="outlined"
+                  fullWidth
+                  multiline
+                  minRows={3}
+                  maxRows={6}
+                  value={scrapePromptInstructions}
+                  onChange={(e) => setScrapePromptInstructions(e.target.value)}
+                  label="Smart Queries (Optional)"
+                  helperText="After scraping, Smart Queries analyze the page and return results based on your instructions."
+                  sx={{ mb: 2 }}
+                />
+                <Box>
+                    <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                      <FormControl sx={{ flex: 1 }}>
+                        <InputLabel>LLM Provider</InputLabel>
+                        <Select
+                          value={scrapePromptLlmProvider}
+                          label="LLM Provider"
+                          onChange={(e) => {
+                            const provider = e.target.value as 'anthropic' | 'openai' | 'ollama';
+                            setScrapePromptLlmProvider(provider);
+                            setScrapePromptLlmModel('');
+                            setScrapePromptLlmBaseUrl(provider === 'ollama' ? 'http://localhost:11434' : '');
+                          }}
+                        >
+                          <MenuItem value="ollama">Ollama (Local)</MenuItem>
+                          <MenuItem value="anthropic">Anthropic (Claude)</MenuItem>
+                          <MenuItem value="openai">OpenAI (GPT-4)</MenuItem>
+                        </Select>
+                      </FormControl>
+                      <TextField
+                        sx={{ flex: 1 }}
+                        value={scrapePromptLlmModel}
+                        label="Model"
+                        placeholder={
+                          scrapePromptLlmProvider === 'ollama' ? 'e.g. llama3.2-vision' :
+                          scrapePromptLlmProvider === 'anthropic' ? 'e.g. claude-sonnet-4-6' :
+                          'e.g. gpt-4o'
+                        }
+                        onChange={(e) => setScrapePromptLlmModel(e.target.value)}
+                        helperText={`Leave blank to use default: ${
+                          scrapePromptLlmProvider === 'ollama' ? 'llama3.2-vision' :
+                          scrapePromptLlmProvider === 'anthropic' ? 'claude-sonnet-4-6' :
+                          'gpt-4o'
+                        }`}
+                      />
+                    </Box>
+                    {scrapePromptLlmProvider !== 'ollama' && (
+                      <TextField
+                        placeholder={`${scrapePromptLlmProvider === 'anthropic' ? 'Anthropic' : 'OpenAI'} API Key`}
+                        variant="outlined"
+                        fullWidth
+                        type="password"
+                        value={scrapePromptLlmApiKey}
+                        onChange={(e) => setScrapePromptLlmApiKey(e.target.value)}
+                        label="API Key (Optional if set in .env)"
+                        sx={{ mb: 2 }}
+                      />
+                    )}
+                    {scrapePromptLlmProvider === 'ollama' && (
+                      <TextField
+                        placeholder="http://localhost:11434"
+                        variant="outlined"
+                        fullWidth
+                        value={scrapePromptLlmBaseUrl}
+                        onChange={(e) => setScrapePromptLlmBaseUrl(e.target.value)}
+                        label="Ollama Base URL"
+                        sx={{ mb: 2 }}
+                      />
+                    )}
+                  </Box>
+              </Box>
+
               <Button
                 variant="contained"
                 fullWidth
@@ -840,10 +910,19 @@ const RobotCreate: React.FC = () => {
                     notify('error', 'Please select at least one output format');
                     return;
                   }
-
                   setIsLoading(true);
                   try {
-                    const result = await createScrapeRobot(url, scrapeRobotName, outputFormats);
+                    const hasPrompt = !!scrapePromptInstructions.trim();
+                    const result = await createScrapeRobot(
+                      url,
+                      scrapeRobotName,
+                      outputFormats,
+                      hasPrompt ? scrapePromptInstructions : undefined,
+                      hasPrompt ? scrapePromptLlmProvider : undefined,
+                      hasPrompt ? scrapePromptLlmModel.trim() || undefined : undefined,
+                      hasPrompt && scrapePromptLlmProvider !== 'ollama' ? scrapePromptLlmApiKey || undefined : undefined,
+                      hasPrompt && scrapePromptLlmProvider === 'ollama' ? scrapePromptLlmBaseUrl || undefined : undefined,
+                    );
                     setIsLoading(false);
                     if (result) {
                       setRerenderRobots(true);

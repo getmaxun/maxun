@@ -31,7 +31,12 @@ export const getStoredRecordings = async (): Promise<string[] | null> => {
 export const createScrapeRobot = async (
   url: string,
   name?: string,
-  formats: string[] = ['markdown']
+  formats: string[] = ['markdown'],
+  promptInstructions?: string,
+  promptLlmProvider?: 'anthropic' | 'openai' | 'ollama',
+  promptLlmModel?: string,
+  promptLlmApiKey?: string,
+  promptLlmBaseUrl?: string
 ): Promise<any> => {
   try {
     const response = await axios.post(
@@ -40,6 +45,11 @@ export const createScrapeRobot = async (
         url,
         name,
         formats,
+        ...(promptInstructions ? { promptInstructions } : {}),
+        ...(promptLlmProvider ? { promptLlmProvider } : {}),
+        ...(promptLlmModel ? { promptLlmModel } : {}),
+        ...(promptLlmApiKey ? { promptLlmApiKey } : {}),
+        ...(promptLlmBaseUrl ? { promptLlmBaseUrl } : {}),
       },
       {
         headers: { 'Content-Type': 'application/json' },

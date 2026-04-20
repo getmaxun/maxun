@@ -525,7 +525,7 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
  */
 router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
-    const { url, name, formats } = req.body;
+    const { url, name, formats, promptInstructions, promptLlmProvider, promptLlmModel, promptLlmApiKey, promptLlmBaseUrl } = req.body;
 
     if (!url) {
       return res.status(400).json({ error: 'The "url" field is required.' });
@@ -584,6 +584,11 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
         type: 'scrape',
         url: normalizedUrl,
         formats: finalFormats,
+        ...(promptInstructions ? { promptInstructions: String(promptInstructions).substring(0, 1000) } : {}),
+        ...(promptLlmProvider ? { promptLlmProvider } : {}),
+        ...(promptLlmModel ? { promptLlmModel } : {}),
+        ...(promptLlmApiKey ? { promptLlmApiKey } : {}),
+        ...(promptLlmBaseUrl ? { promptLlmBaseUrl } : {}),
       },
       recording: { workflow: [] },
       google_sheet_email: null,

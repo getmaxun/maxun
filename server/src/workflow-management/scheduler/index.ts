@@ -14,6 +14,7 @@ import { Page } from "playwright-core";
 import { sendWebhook } from "../../routes/webhook";
 import { addAirtableUpdateTask, airtableUpdateTasks, processAirtableUpdates } from "../integrations/airtable";
 import { convertPageToMarkdown, convertPageToHTML, convertPageToScreenshot, convertPageToText } from "../../markdownify/scrape";
+import { executeBrowserAgent } from "../../sdk/browserAgent";
 import { processRobotOutputFormats } from "../../utils/output-post-processor";
 import { getInterpretationFailureReason, hasExpectedRobotOutput } from "../../utils/output-validation";
 
@@ -251,7 +252,7 @@ async function executeRun(id: string, userId: string) {
     if (recording.recording_meta.type === 'scrape') {
       logger.log('info', `Executing scrape robot for scheduled run ${id}`);
 
-      const formats = recording.recording_meta.formats || ['markdown'];
+      const formats = run.interpreterSettings?.formats || recording.recording_meta.formats || ['markdown'];
 
       await run.update({
         status: 'running',
@@ -349,7 +350,29 @@ async function executeRun(id: string, userId: string) {
           html = await Promise.race([htmlPromise, timeoutPromise]);
           serializableOutput.html = [{ content: html }];
         }
-
+        
+        const promptInstructions = (recording.recording_meta as any).promptInstructions as string | undefined;
+        if (promptInstructions && currentPage) {
+          try {
+            const llmConfig = {
+              provider: ((recording.recording_meta as any).promptLlmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama',
+              model: (recording.recording_meta as any).promptLlmModel as string | undefined,
+              apiKey: (recording.recording_meta as any).promptLlmApiKey as string | undefined,
+              baseUrl: (recording.recording_meta as any).promptLlmBaseUrl as string | undefined,
+            };
+            logger.log('info', `Running smart query for scheduled scrape run ${plainRun.runId}`);
+            const promptInstructions = run.interpreterSettings?.promptInstructions || (recording.recording_meta as any).promptInstructions as string | undefined;
+            if (promptInstructions) {
+              const agentResult = await executeBrowserAgent(currentPage, promptInstructions, llmConfig);
+              serializableOutput.promptResult = [{ content: agentResult.result, steps: agentResult.steps }];
+              logger.log('info', `Smart query completed for scheduled scrape run ${plainRun.runId}`);
+            }
+          } catch (agentErr: any) {
+            logger.log('warn', `Smart query failed for scheduled scrape run ${plainRun.runId}: ${agentErr.message}`);
+            serializableOutput.promptResult = [{ content: `Smart query failed: ${agentErr.message}`, steps: [] }];
+          }
+        }
+        
         await run.update({
           status: 'success',
           finishedAt: new Date().toLocaleString(),
@@ -357,7 +380,7 @@ async function executeRun(id: string, userId: string) {
           serializableOutput,
           binaryOutput,
         });
-        
+
         let uploadedBinaryOutput: Record<string, string> = {};
         if (Object.keys(binaryOutput).length > 0) {
           const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');

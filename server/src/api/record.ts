@@ -17,6 +17,7 @@ import { addGoogleSheetUpdateTask, processGoogleSheetUpdates } from "../workflow
 import { addAirtableUpdateTask, processAirtableUpdates } from "../workflow-management/integrations/airtable";
 import { sendWebhook } from "../routes/webhook";
 import { convertPageToHTML, convertPageToMarkdown, convertPageToScreenshot, convertPageToText } from '../markdownify/scrape';
+import { executeBrowserAgent } from '../sdk/browserAgent';
 
 const router = Router();
 
@@ -377,7 +378,8 @@ function formatRunResponse(run: any) {
             crawlData: {},
             searchData: {},
             markdown: '',
-            html: ''
+            html: '',
+            promptResult: null as any
         },
         screenshots: [] as any[],
     };
@@ -406,6 +408,10 @@ function formatRunResponse(run: any) {
 
     if (output.html && Array.isArray(output.html)) {
         formattedRun.data.html = output.html[0]?.content || '';
+    }
+
+    if (output.promptResult && Array.isArray(output.promptResult)) {
+        formattedRun.data.promptResult = output.promptResult[0]?.content || null;
     }
 
     if (run.binaryOutput) {
@@ -508,7 +514,7 @@ router.get("/robots/:id/runs/:runId", requireAPIKey, async (req: Request, res: R
     }
 });
 
-async function createWorkflowAndStoreMetadata(id: string, userId: string, runSource: 'api' | 'sdk' | 'mcp' | 'cli') {
+async function createWorkflowAndStoreMetadata(id: string, userId: string, runSource: 'api' | 'sdk' | 'mcp' | 'cli', requestedFormats?: string[], promptInstructions?: string) {
     try {
         const recording = await Robot.findOne({
             where: {
@@ -549,7 +555,7 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string, runSou
             startedAt: new Date().toLocaleString(),
             finishedAt: '',
             browserId,
-            interpreterSettings: { maxConcurrency: 1, maxRepeats: 1, debug: true },
+            interpreterSettings: { maxConcurrency: 1, maxRepeats: 1, debug: true, formats: requestedFormats, promptInstructions },
             log: '',
             runId,
             runByUserId: userId,
@@ -634,9 +640,9 @@ async function triggerIntegrationUpdates(runId: string, robotMetaId: string): Pr
   }
 }
 
-async function readyForRunHandler(browserId: string, id: string, userId: string, socket: Socket, requestedFormats?: string[]){
+async function readyForRunHandler(browserId: string, id: string, userId: string, socket: Socket) {
     try {
-        const result = await executeRun(id, userId, requestedFormats);
+        const result = await executeRun(id, userId);
 
         if (result && result.success) {
             logger.log('info', `Interpretation of ${id} succeeded`);
@@ -675,7 +681,7 @@ function AddGeneratedFlags(workflow: WorkflowFile) {
     return copy;
 };
 
-async function executeRun(id: string, userId: string, requestedFormats?: string[]) {
+async function executeRun(id: string, userId: string) {
     let browser: any = null;
     
     try {
@@ -709,6 +715,8 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
             });
             return { success: false, error: 'Max retries exceeded' };
         }
+        const requestedFormats = run.interpreterSettings.formats;
+        const promptInstructionsOverride = run.interpreterSettings.promptInstructions;
 
         const recording = await Robot.findOne({ where: { 'recording_meta.id': plainRun.robotMetaId }, raw: true });
         if (!recording) {
@@ -840,6 +848,25 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
                         }
                     } catch (error: any) {
                         logger.log('warn', `HTML conversion failed for API run ${plainRun.runId}: ${error.message}`);
+                    }
+                }
+              
+                const promptInstructions = promptInstructionsOverride || (recording.recording_meta as any).promptInstructions as string | undefined;
+                if (promptInstructions && currentPage) {
+                    try {
+                        const llmConfig = {
+                            provider: ((recording.recording_meta as any).promptLlmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama',
+                            model: (recording.recording_meta as any).promptLlmModel as string | undefined,
+                            apiKey: (recording.recording_meta as any).promptLlmApiKey as string | undefined,
+                            baseUrl: (recording.recording_meta as any).promptLlmBaseUrl as string | undefined,
+                        };
+                        logger.log('info', `Running smart query for API scrape run ${plainRun.runId}`);
+                        const agentResult = await executeBrowserAgent(currentPage, promptInstructions, llmConfig);
+                        serializableOutput.promptResult = [{ content: agentResult.result, steps: agentResult.steps }];
+                        logger.log('info', `Smart query completed for API scrape run ${plainRun.runId}`);
+                    } catch (agentErr: any) {
+                        logger.log('warn', `Smart query failed for API scrape run ${plainRun.runId}: ${agentErr.message}`);
+                        serializableOutput.promptResult = [{ content: `Smart query failed: ${agentErr.message}`, steps: [] }];
                     }
                 }
 
@@ -1242,11 +1269,11 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
     }
 }
 
-export async function handleRunRecording(id: string, userId: string, runSource: 'api' | 'sdk' | 'mcp' | 'cli' = 'api', requestedFormats?: string[]) {
+export async function handleRunRecording(id: string, userId: string, runSource: 'api' | 'sdk' | 'mcp' | 'cli' = 'api', requestedFormats?: string[], promptInstructions?: string) {
     let socket: Socket | null = null;
 
     try {
-        const result = await createWorkflowAndStoreMetadata(id, userId, runSource);
+        const result = await createWorkflowAndStoreMetadata(id, userId, runSource, requestedFormats, promptInstructions);
         const { browserId, runId: newRunId } = result;
 
         if (!browserId || !newRunId || !userId) {
@@ -1261,7 +1288,7 @@ export async function handleRunRecording(id: string, userId: string, runSource: 
             timeout: CONNECTION_TIMEOUT,
         });
 
-        const readyHandler = () => readyForRunHandler(browserId, newRunId, userId, socket!, requestedFormats);
+        const readyHandler = () => readyForRunHandler(browserId, newRunId, userId, socket!);
 
         socket.on('ready-for-run', readyHandler);
 
@@ -1426,8 +1453,9 @@ router.post("/robots/:id/runs", requireAPIKey, async (req: AuthenticatedRequest,
         }
 
         const requestedFormats = req.body?.formats;
+        const promptInstructions = req.body?.promptInstructions;
         const runSource = req.headers['x-run-source'] === 'mcp' ? 'mcp' : 'api';
-        const runId = await handleRunRecording(req.params.id, req.user.id, runSource, requestedFormats);
+        const runId = await handleRunRecording(req.params.id, req.user.id, runSource, requestedFormats, promptInstructions);
 
         if (!runId) {
             throw new Error('Run ID is undefined');
