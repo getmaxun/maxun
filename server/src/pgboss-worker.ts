@@ -20,7 +20,7 @@ import { addAirtableUpdateTask, airtableUpdateTasks, processAirtableUpdates } fr
 import { io as serverIo } from "./server";
 import { sendWebhook } from './routes/webhook';
 import { BinaryOutputService } from './storage/mino';
-import { convertPageToMarkdown, convertPageToHTML, convertPageToScreenshot } from './markdownify/scrape';
+import { convertPageToMarkdown, convertPageToHTML, convertPageToScreenshot, convertPageToText } from './markdownify/scrape';
 import { processRobotOutputFormats } from './utils/output-post-processor';
 import { getInterpretationFailureReason, hasExpectedRobotOutput } from './utils/output-validation';
 
@@ -263,6 +263,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
 
           let markdown = '';
           let html = '';
+          let text = '';
           const serializableOutput: any = {};
           const binaryOutput: any = {};
 
@@ -296,6 +297,15 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
                 mimeType: 'image/png'
               };
             }
+          }
+          
+          if (formats.includes('text')) {
+            const textPromise = convertPageToText(url, currentPage);
+            const timeoutPromise = new Promise<never>((_, reject) => {
+              setTimeout(() => reject(new Error(`Text conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
+            });
+            text = await Promise.race([textPromise, timeoutPromise]);
+            if (text) serializableOutput.text = [{ content: text }];
           }
 
           if (formats.includes('markdown')) {

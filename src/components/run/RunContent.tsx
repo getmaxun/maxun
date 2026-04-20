@@ -45,6 +45,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   const [tab, setTab] = React.useState<string>('output');
   const [markdownContent, setMarkdownContent] = useState<string>('');
   const [htmlContent, setHtmlContent] = useState<string>('');
+  const [textContent, setTextContent] = useState<string>('');
 
   const [schemaData, setSchemaData] = useState<any[]>([]);
   const [schemaColumns, setSchemaColumns] = useState<string[]>([]);
@@ -94,19 +95,42 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   useEffect(() => {
     setMarkdownContent('');
     setHtmlContent('');
+    setTextContent('');
 
-    if (row.serializableOutput?.markdown && Array.isArray(row.serializableOutput.markdown)) {
-      const markdownData = row.serializableOutput.markdown[0];
-      if (markdownData?.content) {
-        setMarkdownContent(markdownData.content);
-      }
-    }
+    if (!row.serializableOutput) return;
 
-    if (row.serializableOutput?.html && Array.isArray(row.serializableOutput.html)) {
-      const htmlData = row.serializableOutput.html[0];
-      if (htmlData?.content) {
-        setHtmlContent(htmlData.content);
+    const extractFromOutput = (output: any) => {
+      if (output?.markdown && Array.isArray(output.markdown)) {
+        const markdownData = output.markdown[0];
+        if (markdownData?.content) setMarkdownContent(markdownData.content);
       }
+
+      if (output?.html && Array.isArray(output.html)) {
+        const htmlData = output.html[0];
+        if (htmlData?.content) setHtmlContent(htmlData.content);
+      }
+
+      const textOutput = output?.textContent || output?.text;
+      if (textOutput) {
+        if (Array.isArray(textOutput)) {
+          const textData = textOutput[0];
+          if (typeof textData === 'string') {
+            setTextContent(textData);
+          } else if (textData && typeof textData === 'object' && textData.content) {
+            setTextContent(textData.content);
+          } else if (textData && typeof textData === 'object' && textData.text) {
+            setTextContent(textData.text);
+          }
+        } else if (typeof textOutput === 'string') {
+          setTextContent(textOutput);
+        }
+      }
+    };
+
+    extractFromOutput(row.serializableOutput);
+
+    if (row.serializableOutput.scrape) {
+      extractFromOutput(row.serializableOutput.scrape);
     }
   }, [row.serializableOutput]);
 
@@ -1070,6 +1094,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   const hasScreenshots = row.binaryOutput && Object.keys(row.binaryOutput).length > 0;
   const hasMarkdown = markdownContent.length > 0;
   const hasHTML = htmlContent.length > 0;
+  const hasTextFormat = textContent.length > 0;
   const hasCrawlPageScreenshots = crawlData.some(group => Array.isArray(group) && group.some((item: any) => item?.screenshotVisible || item?.screenshotFullpage));
   const hasSearchResultScreenshots = searchData.some((item: any) => item?.screenshotVisible || item?.screenshotFullpage);
   const showCapturedScreenshotSection = hasScreenshots && !hasCrawlPageScreenshots && !hasSearchResultScreenshots;
@@ -1078,7 +1103,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     <Box sx={{ width: '100%' }}>
       <TabContext value={tab}>
         <TabPanel value='output' sx={{ width: '100%', maxWidth: '900px' }}>
-          {hasMarkdown || hasHTML ? (
+          {hasMarkdown || hasHTML || hasTextFormat ? (
             <>
               {hasMarkdown && (
                 <Accordion defaultExpanded sx={{ mb: 2 }}>
@@ -1133,6 +1158,39 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                         sx={{ color: '#FF00C3', textTransform: 'none' }}
                       >
                         Download HTML
+                      </Button>
+                    </Box>
+                  </AccordionDetails>
+                </Accordion>
+              )}
+
+              {hasTextFormat && (
+                <Accordion defaultExpanded sx={{ mb: 2 }}>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography variant='h6'>Text Content</Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Paper sx={{ p: 2, maxHeight: '500px', overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
+                      <Typography component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: '0.875rem', m: 0 }}>
+                        {textContent}
+                      </Typography>
+                    </Paper>
+                    <Box sx={{ mt: 2 }}>
+                      <Button
+                        onClick={() => {
+                          const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8;' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = 'output.txt';
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          setTimeout(() => URL.revokeObjectURL(url), 100);
+                        }}
+                        sx={{ color: '#FF00C3', textTransform: 'none' }}
+                      >
+                        Download Text
                       </Button>
                     </Box>
                   </AccordionDetails>
