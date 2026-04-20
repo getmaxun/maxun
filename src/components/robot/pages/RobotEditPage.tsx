@@ -150,6 +150,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
   const [searchConfig, setSearchConfig] = useState<SearchConfig>({});
   const [crawlOutputFormats, setCrawlOutputFormats] = useState<OutputFormat[]>(DEFAULT_OUTPUT_FORMATS);
   const [searchOutputFormats, setSearchOutputFormats] = useState<OutputFormat[]>(DEFAULT_OUTPUT_FORMATS);
+  const [scrapeOutputFormats, setScrapeOutputFormats] = useState<OutputFormat[]>(DEFAULT_OUTPUT_FORMATS);
   const [showCrawlAdvanced, setShowCrawlAdvanced] = useState(false);
 
   const isEmailPattern = (value: string): boolean => {
@@ -232,6 +233,12 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
             filteredFormats.length > 0 ? filteredFormats : DEFAULT_OUTPUT_FORMATS
           );
         }
+      }
+
+      if (robot.recording_meta?.type === 'scrape' || robot.recording_meta?.type === 'extract' || !robot.recording_meta?.type) {
+        setScrapeOutputFormats(
+          filteredFormats.length > 0 ? filteredFormats : DEFAULT_OUTPUT_FORMATS
+        );
       }
     }
   }, [robot]);
@@ -1071,6 +1078,38 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
     );
   };
 
+  const renderScrapeOutputFormatsField = () => {
+    const robotType = robot?.recording_meta.type;
+    if (robotType && robotType !== 'scrape' && robotType !== 'extract') return null;
+
+    return (
+      <FormControl fullWidth sx={{ mb: 2 }}>
+        <InputLabel id="scrape-edit-output-formats-label">Output Formats *</InputLabel>
+        <Select
+          labelId="scrape-edit-output-formats-label"
+          multiple
+          value={scrapeOutputFormats}
+          label="Output Formats *"
+          onChange={(e) => {
+            const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
+            setScrapeOutputFormats(value as OutputFormat[]);
+          }}
+          renderValue={(selected) => {
+            const labels = (selected as OutputFormat[]).map(v => OUTPUT_FORMAT_LABELS[v] ?? v);
+            return labels.length > 2 ? `${labels.slice(0, 2).join(', ')}...` : labels.join(', ');
+          }}
+        >
+          {OUTPUT_FORMAT_OPTIONS.map((format) => (
+            <MenuItem key={format} value={format}>
+              <Checkbox checked={scrapeOutputFormats.includes(format)} />
+              {OUTPUT_FORMAT_LABELS[format]}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+    );
+  };
+
   const handleSave = async () => {
     if (!robot) return;
 
@@ -1084,6 +1123,12 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
       (searchConfig.mode || 'discover') === 'scrape' &&
       searchOutputFormats.length === 0
     ) {
+      notify("error", "Please select at least one output format");
+      return;
+    }
+
+    const type = robot.recording_meta.type;
+    if ((!type || type === 'scrape' || type === 'extract') && scrapeOutputFormats.length === 0) {
       notify("error", "Please select at least one output format");
       return;
     }
@@ -1162,7 +1207,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
           ? crawlOutputFormats
           : robot.recording_meta.type === 'search'
             ? ((searchConfig.mode || 'discover') === 'discover' ? [] : searchOutputFormats)
-            : undefined,
+            : scrapeOutputFormats,
       };
 
       const success = await updateRecording(robot.recording_meta.id, payload);
@@ -1228,6 +1273,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
               
               {renderCrawlConfigFields()}
               {renderSearchConfigFields()}
+              {renderScrapeOutputFormatsField()}
 
               {renderScrapeListLimitFields()}
               {renderActionNameFields()}
