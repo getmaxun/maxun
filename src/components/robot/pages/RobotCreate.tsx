@@ -757,6 +757,7 @@ const RobotCreate: React.FC = () => {
                         const OUTPUT_FORMAT_LABELS: Record<string, string> = {
                           markdown: 'Markdown',
                           html: 'HTML',
+                          text: 'Text Content',
                           'screenshot-visible': 'Screenshot (Visible)',
                           'screenshot-fullpage': 'Screenshot (Full Page)',
                         };
@@ -799,6 +800,10 @@ const RobotCreate: React.FC = () => {
                       <MenuItem value="html">
                         <Checkbox checked={outputFormats.includes('html')} />
                         HTML
+                      </MenuItem>
+                      <MenuItem value="text">
+                        <Checkbox checked={outputFormats.includes('text')} />
+                        Text Content
                       </MenuItem>
                       <MenuItem value="screenshot-visible">
                         <Checkbox checked={outputFormats.includes('screenshot-visible')} />

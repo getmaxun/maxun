@@ -16,7 +16,7 @@ import { WorkflowFile } from "maxun-core";
 import { addGoogleSheetUpdateTask, processGoogleSheetUpdates } from "../workflow-management/integrations/gsheet";
 import { addAirtableUpdateTask, processAirtableUpdates } from "../workflow-management/integrations/airtable";
 import { sendWebhook } from "../routes/webhook";
-import { convertPageToHTML, convertPageToMarkdown, convertPageToScreenshot } from '../markdownify/scrape';
+import { convertPageToHTML, convertPageToMarkdown, convertPageToScreenshot, convertPageToText } from '../markdownify/scrape';
 import { executeBrowserAgent } from '../sdk/browserAgent';
 
 const router = Router();
@@ -762,6 +762,7 @@ async function executeRun(id: string, userId: string) {
 
                 let markdown = '';
                 let html = '';
+                let text = '';
                 const serializableOutput: any = {};
                 const binaryOutput: any = {};
 
@@ -802,6 +803,21 @@ async function executeRun(id: string, userId: string) {
                         }
                     } catch (error: any) {
                         logger.log('warn', `Screenshot-fullpage conversion failed for API run ${plainRun.runId}: ${error.message}`);
+                    }
+                }
+              
+                if (formats.includes('text')) {
+                    try {
+                        const textPromise = convertPageToText(url, currentPage);
+                        const timeoutPromise = new Promise<never>((_, reject) => {
+                            setTimeout(() => reject(new Error(`Text conversion timed out after ${SCRAPE_TIMEOUT / 1000}s`)), SCRAPE_TIMEOUT);
+                        });
+                        text = await Promise.race([textPromise, timeoutPromise]);
+                        if (text && text.trim().length > 0) {
+                            serializableOutput.text = [{ content: text }];
+                        }
+                    } catch (error: any) {
+                        logger.log('warn', `Text conversion failed for API run ${plainRun.runId}: ${error.message}`);
                     }
                 }
 

@@ -11,6 +11,7 @@ export type OutputFormat = (typeof OUTPUT_FORMAT_OPTIONS)[number];
 export const SCRAPE_OUTPUT_FORMAT_OPTIONS: OutputFormat[] = [
   'markdown',
   'html',
+  'text',
   'screenshot-visible',
   'screenshot-fullpage',
 ];

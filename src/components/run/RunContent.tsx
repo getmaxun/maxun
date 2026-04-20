@@ -98,19 +98,42 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     setMarkdownContent('');
     setHtmlContent('');
     setSmartQueryResult('');
+    setTextContent('');
 
-    if (row.serializableOutput?.markdown && Array.isArray(row.serializableOutput.markdown)) {
-      const markdownData = row.serializableOutput.markdown[0];
-      if (markdownData?.content) {
-        setMarkdownContent(markdownData.content);
-      }
-    }
+    if (!row.serializableOutput) return;
 
-    if (row.serializableOutput?.html && Array.isArray(row.serializableOutput.html)) {
-      const htmlData = row.serializableOutput.html[0];
-      if (htmlData?.content) {
-        setHtmlContent(htmlData.content);
+    const extractFromOutput = (output: any) => {
+      if (output?.markdown && Array.isArray(output.markdown)) {
+        const markdownData = output.markdown[0];
+        if (markdownData?.content) setMarkdownContent(markdownData.content);
       }
+
+      if (output?.html && Array.isArray(output.html)) {
+        const htmlData = output.html[0];
+        if (htmlData?.content) setHtmlContent(htmlData.content);
+      }
+
+      const textOutput = output?.textContent || output?.text;
+      if (textOutput) {
+        if (Array.isArray(textOutput)) {
+          const textData = textOutput[0];
+          if (typeof textData === 'string') {
+            setTextContent(textData);
+          } else if (textData && typeof textData === 'object' && textData.content) {
+            setTextContent(textData.content);
+          } else if (textData && typeof textData === 'object' && textData.text) {
+            setTextContent(textData.text);
+          }
+        } else if (typeof textOutput === 'string') {
+          setTextContent(textOutput);
+        }
+      }
+    };
+
+    extractFromOutput(row.serializableOutput);
+
+    if (row.serializableOutput.scrape) {
+      extractFromOutput(row.serializableOutput.scrape);
     }
 
     const textOutput = row.serializableOutput?.textContent || row.serializableOutput?.text;

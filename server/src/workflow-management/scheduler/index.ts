@@ -13,7 +13,7 @@ import { WorkflowFile } from "maxun-core";
 import { Page } from "playwright-core";
 import { sendWebhook } from "../../routes/webhook";
 import { addAirtableUpdateTask, airtableUpdateTasks, processAirtableUpdates } from "../integrations/airtable";
-import { convertPageToMarkdown, convertPageToHTML, convertPageToScreenshot } from "../../markdownify/scrape";
+import { convertPageToMarkdown, convertPageToHTML, convertPageToScreenshot, convertPageToText } from "../../markdownify/scrape";
 import { executeBrowserAgent } from "../../sdk/browserAgent";
 import { processRobotOutputFormats } from "../../utils/output-post-processor";
 import { getInterpretationFailureReason, hasExpectedRobotOutput } from "../../utils/output-validation";
@@ -288,6 +288,7 @@ async function executeRun(id: string, userId: string) {
 
         let markdown = '';
         let html = '';
+        let text = '';
         const serializableOutput: any = {};
         const binaryOutput: any = {};
 
@@ -321,6 +322,15 @@ async function executeRun(id: string, userId: string) {
               mimeType: 'image/png'
             };
           }
+        }
+        
+        if (formats.includes("text")) {
+          const textPromise = convertPageToText(url, currentPage);
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error(`Text conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
+          });
+          text = await Promise.race([textPromise, timeoutPromise]);
+          if (text) serializableOutput.text = [{ content: text }];
         }
 
         if (formats.includes("markdown")) {
