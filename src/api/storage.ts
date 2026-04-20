@@ -107,6 +107,7 @@ export const updateRecording = async (id: string, data: {
   credentials?: Credentials; 
   targetUrl?: string;
   workflow?: any[];
+  proxy?: string | null;
   formats?: string[];
 }): Promise<boolean> => {
   try {

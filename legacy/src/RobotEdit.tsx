@@ -44,6 +44,7 @@ export interface RobotSettings {
     google_access_token?: string | null;
     google_refresh_token?: string | null;
     schedule?: ScheduleConfig | null;
+    proxy?: string | null;
 }
 
 interface RobotSettingsProps {
@@ -128,20 +129,19 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
             const extractedCredentials = extractInitialCredentials(robot.recording.workflow);
             setCredentials(extractedCredentials);
             setCredentialGroups(groupCredentialsByType(extractedCredentials));
-            
+
             findScrapeListLimits(robot.recording.workflow);
         }
     }, [robot]);
 
     const findScrapeListLimits = (workflow: WhereWhatPair[]) => {
         const limits: ScrapeListLimit[] = [];
-        
+
         workflow.forEach((pair, pairIndex) => {
             if (!pair.what) return;
-            
+
             pair.what.forEach((action, actionIndex) => {
                 if (action.action === 'scrapeList' && action.args && action.args.length > 0) {
-                    // Check if first argument has a limit property
                     const arg = action.args[0];
                     if (arg && typeof arg === 'object' && 'limit' in arg) {
                         limits.push({
@@ -154,7 +154,7 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                 }
             });
         });
-        
+
         setScrapeListLimits(limits);
     };
 
@@ -183,12 +183,12 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
 
                 const selector = action.args[0];
 
-                // Handle full word type actions first
-                if (action.action === 'type' &&
+                if (
+                    action.action === 'type' &&
                     action.args?.length >= 2 &&
                     typeof action.args[1] === 'string' &&
-                    action.args[1].length > 1) {
-
+                    action.args[1].length > 1
+                ) {
                     if (!credentials[selector]) {
                         credentials[selector] = {
                             value: action.args[1],
@@ -199,11 +199,11 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                     continue;
                 }
 
-                // Handle character-by-character sequences (both type and press)
-                if ((action.action === 'type' || action.action === 'press') &&
+                if (
+                    (action.action === 'type' || action.action === 'press') &&
                     action.args?.length >= 2 &&
-                    typeof action.args[1] === 'string') {
-
+                    typeof action.args[1] === 'string'
+                ) {
                     if (selector !== currentSelector) {
                         if (currentSelector && currentValue) {
                             credentials[currentSelector] = {
@@ -231,9 +231,12 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                     let j = i + 1;
                     while (j < step.what.length) {
                         const nextAction = step.what[j];
-                        if (!nextAction.action || !nextAction.args?.[0] ||
+                        if (
+                            !nextAction.action ||
+                            !nextAction.args?.[0] ||
                             nextAction.args[0] !== selector ||
-                            (nextAction.action !== 'type' && nextAction.action !== 'press')) {
+                            (nextAction.action !== 'type' && nextAction.action !== 'press')
+                        ) {
                             break;
                         }
                         if (nextAction.args[1] === 'Backspace') {
@@ -290,8 +293,11 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
 
     const getRobot = async () => {
         if (recordingId) {
-            const robot = await getStoredRecording(recordingId);
-            setRobot(robot);
+            const robotData = await getStoredRecording(recordingId);
+            setRobot({
+                ...robotData,
+                proxy: robotData?.proxy ?? null
+            });
         } else {
             notify('error', t('robot_edit.notifications.update_failed'));
         }
@@ -307,6 +313,12 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
     const handleRobotNameChange = (newName: string) => {
         setRobot((prev) =>
             prev ? { ...prev, recording_meta: { ...prev.recording_meta, name: newName } } : prev
+        );
+    };
+
+    const handleProxyChange = (newProxy: string) => {
+        setRobot((prev) =>
+            prev ? { ...prev, proxy: newProxy } : prev
         );
     };
 
@@ -333,12 +345,14 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                 updatedWorkflow[pairIndex].what[actionIndex].args.length > argIndex
             ) {
                 updatedWorkflow[pairIndex].what[actionIndex].args[argIndex].limit = newLimit;
-                
-                setScrapeListLimits(prev => {
-                    return prev.map(item => {
-                        if (item.pairIndex === pairIndex && 
-                            item.actionIndex === actionIndex && 
-                            item.argIndex === argIndex) {
+
+                setScrapeListLimits(prevLimits => {
+                    return prevLimits.map(item => {
+                        if (
+                            item.pairIndex === pairIndex &&
+                            item.actionIndex === actionIndex &&
+                            item.argIndex === argIndex
+                        ) {
                             return { ...item, currentLimit: newLimit };
                         }
                         return item;
@@ -437,13 +451,13 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
 
     const renderScrapeListLimitFields = () => {
         if (scrapeListLimits.length === 0) return null;
-        
+
         return (
             <>
                 <Typography variant="body1" style={{ marginBottom: '20px' }}>
                     {t('List Limits')}
                 </Typography>
-                
+
                 {scrapeListLimits.map((limitInfo, index) => (
                     <TextField
                         key={`limit-${limitInfo.pairIndex}-${limitInfo.actionIndex}`}
@@ -496,13 +510,13 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                 })),
                 credentials: credentialsForPayload,
                 targetUrl: targetUrl,
+                proxy: robot.proxy ?? null,
             };
 
             const success = await updateRecording(robot.recording_meta.id, payload);
 
             if (success) {
                 setRerenderRobots(true);
-
                 notify('success', t('robot_edit.notifications.update_success'));
                 handleStart(robot);
                 handleClose();
@@ -549,6 +563,16 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                                 style={{ marginBottom: '20px' }}
                             />
 
+                            <TextField
+                                label="Proxy"
+                                key="Robot Proxy"
+                                type='text'
+                                value={robot.proxy || ''}
+                                onChange={(e) => handleProxyChange(e.target.value)}
+                                placeholder="http://username:password@host:port"
+                                style={{ marginBottom: '20px' }}
+                            />
+
                             {renderScrapeListLimitFields()}
 
                             {(Object.keys(credentials).length > 0) && (
@@ -573,7 +597,8 @@ export const RobotEditModal = ({ isOpen, handleStart, handleClose, initialSettin
                                         color: '#ff00c3 !important',
                                         borderColor: '#ff00c3 !important',
                                         backgroundColor: 'whitesmoke !important',
-                                    }}>
+                                    }}
+                                >
                                     {t('robot_edit.cancel')}
                                 </Button>
                             </Box>

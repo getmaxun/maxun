@@ -37,7 +37,7 @@ export const initializeRemoteBrowserForRecording = (userId: string, mode: string
       } else {
         const browserSession = new RemoteBrowser(socket, userId, id, true);
         browserSession.interpreter.subscribeToPausing();
-        
+
         try {
           await browserSession.initialize(userId);
           await browserSession.registerEditorEvents();
@@ -108,15 +108,16 @@ export const initializeRemoteBrowserForRecording = (userId: string, mode: string
  * Creates a new {@link Socket} connection over a dedicated namespace.
  * Returns the new remote browser's generated id.
  * @param userId User ID for browser ownership
+ * @param proxyOptions Optional proxy options for this run
  * @returns string Browser ID
  * @category BrowserManagement-Controller
  */
-export const createRemoteBrowserForRun = (userId: string): string => {
+export const createRemoteBrowserForRun = (userId: string, proxyOptions?: any): string => {
   if (!userId) {
     logger.log('error', 'createRemoteBrowserForRun: Missing required parameter userId');
     throw new Error('userId is required');
   }
-  
+
   const id = uuid();
 
   const slotReserved = browserPool.reserveBrowserSlotAtomic(id, userId, "run");
@@ -127,12 +128,12 @@ export const createRemoteBrowserForRun = (userId: string): string => {
 
   logger.log('info', `createRemoteBrowserForRun: Reserved slot ${id} for user ${userId}`);
 
-  initializeBrowserAsync(id, userId)
+  initializeBrowserAsync(id, userId, proxyOptions)
     .catch((error: any) => {
       logger.log('error', `Unhandled error in initializeBrowserAsync for browser ${id}: ${error.message}`);
       browserPool.failBrowserSlot(id);
     });
-  
+
   return id;
 };
 
@@ -330,12 +331,12 @@ export const stopRunningInterpretation = async (userId: string) => {
   }
 };
 
-const initializeBrowserAsync = async (id: string, userId: string) => {
+const initializeBrowserAsync = async (id: string, userId: string, proxyOptions?: any) => {
   try {
     const namespace = io.of(id);
     let clientConnected = false;
     let connectionTimeout: NodeJS.Timeout;
-    
+
     const waitForConnection = new Promise<Socket | null>((resolve) => {
       namespace.on('connection', (socket: Socket) => {
         clientConnected = true;
@@ -343,7 +344,7 @@ const initializeBrowserAsync = async (id: string, userId: string) => {
         logger.log('info', `Frontend connected to browser ${id} via socket ${socket.id}`);
         resolve(socket);
       });
-      
+
       connectionTimeout = setTimeout(() => {
         if (!clientConnected) {
           logger.log('warn', `No client connected to browser ${id} within timeout, proceeding with dummy socket`);
@@ -360,7 +361,7 @@ const initializeBrowserAsync = async (id: string, userId: string) => {
 
     const connectWithRetry = async (maxRetries: number = 3): Promise<Socket | null> => {
       let retryCount = 0;
-      
+
       while (retryCount < maxRetries) {
         try {
           const socket = await waitForConnection;
@@ -370,7 +371,7 @@ const initializeBrowserAsync = async (id: string, userId: string) => {
         } catch (error: any) {
           logger.log('warn', `Connection attempt ${retryCount + 1} failed for browser ${id}: ${error.message}`);
         }
-        
+
         retryCount++;
         if (retryCount < maxRetries) {
           const delay = Math.pow(2, retryCount) * 1000;
@@ -378,15 +379,15 @@ const initializeBrowserAsync = async (id: string, userId: string) => {
           await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
-      
+
       return null;
     };
 
     const socket = await connectWithRetry(3);
-    
+
     try {
       let browserSession: RemoteBrowser;
-      
+
       if (socket) {
         logger.log('info', `Using real socket for browser ${id}`);
         browserSession = new RemoteBrowser(socket, userId, id);
@@ -399,7 +400,7 @@ const initializeBrowserAsync = async (id: string, userId: string) => {
           on: () => {},
           id: `dummy-${id}`,
         } as any;
-        
+
         browserSession = new RemoteBrowser(dummySocket, userId, id);
       }
 
@@ -409,7 +410,7 @@ const initializeBrowserAsync = async (id: string, userId: string) => {
         const BROWSER_INIT_TIMEOUT = 45000;
         logger.log('info', `Browser initialization starting with ${BROWSER_INIT_TIMEOUT/1000}s timeout`);
 
-        const initPromise = browserSession.initialize(userId);
+        const initPromise = browserSession.initialize(userId, proxyOptions);
         const timeoutPromise = new Promise<never>((_, reject) => {
           setTimeout(() => reject(new Error('Browser initialization timeout')), BROWSER_INIT_TIMEOUT);
         });
@@ -435,9 +436,9 @@ const initializeBrowserAsync = async (id: string, userId: string) => {
         }
         throw new Error('Failed to upgrade reserved browser slot');
       }
-      
+
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       if (socket) {
         socket.emit('ready-for-run');
       } else {
@@ -447,11 +448,11 @@ const initializeBrowserAsync = async (id: string, userId: string) => {
           } catch (error: any) {
             logger.log('error', `Error with dummy socket browser ${id}: ${error.message}`);
           }
-        }, 100); 
+        }, 100);
       }
-      
+
       logger.log('info', `Browser ${id} successfully initialized for run with ${socket ? 'real' : 'dummy'} socket`);
-      
+
     } catch (error: any) {
       logger.log('error', `Error initializing browser ${id}: ${error.message}`);
       browserPool.failBrowserSlot(id);
@@ -460,7 +461,7 @@ const initializeBrowserAsync = async (id: string, userId: string) => {
       }
       throw error;
     }
-    
+
   } catch (error: any) {
     logger.log('error', `Error setting up browser ${id}: ${error.message}`);
     browserPool.failBrowserSlot(id);
