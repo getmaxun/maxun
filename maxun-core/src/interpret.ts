@@ -1,7 +1,6 @@
 /* eslint-disable no-await-in-loop, no-restricted-syntax */
 import { ElementHandle, Page, PageScreenshotOptions } from 'playwright-core';
-import fetch from 'cross-fetch';
-import path from 'path';
+import * as path from 'path';
 
 import { EventEmitter } from 'events';
 import {
@@ -42,6 +41,7 @@ interface InterpreterOptions {
   serializableCallback: (output: any) => (void | Promise<void>);
   binaryCallback: (output: any, mimeType: string) => (void | Promise<void>);
   debug: boolean;
+  type?: 'extract' | 'scrape' | 'crawl' | 'search';
   debugChannel: Partial<{
     activeId: (id: number) => void,
     debugMessage: (msg: string) => void,
@@ -66,6 +66,8 @@ export default class Interpreter extends EventEmitter {
   private stopper: Function | null = null;
   
   private isAborted: boolean = false;
+
+  private visualRenderRequired: boolean = false;
 
   private log: typeof log;
 
@@ -105,6 +107,7 @@ export default class Interpreter extends EventEmitter {
       debugChannel: {},
       ...options,
     };
+    this.visualRenderRequired = (options?.type === 'extract');
     this.concurrency = new Concurrency(this.options.maxConcurrency);
     this.log = (...args) => log(...args);
 
@@ -376,6 +379,167 @@ export default class Interpreter extends EventEmitter {
   }
 
   /**
+   * Returns the optimal Playwright `waitUntil` navigation strategy based on
+   * whether the current operation requires visual rendering.
+   *
+   * - `'networkidle'`            — used when screenshots are requested; waits for all
+   *                         sub-resources so the page renders correctly.
+   * - `'domcontentloaded'` — used for all DOM-only operations (scraping, crawling,
+   *                         extraction, search); skips stylesheet/image loading for
+   *                         maximum speed.
+   *
+   * @param blockOverride Pass `true` when the caller will take a screenshot
+   *                          or requires styled layout. Defaults to `false`.
+   */
+  private getNavigationWaitStrategy(
+    blockOverride?: boolean
+  ): 'networkidle' | 'domcontentloaded' {
+    const finalRequirement = blockOverride ?? this.visualRenderRequired;
+    return finalRequirement ? 'networkidle' : 'domcontentloaded';
+  }
+
+  /**
+   * Returns true if any step in the given `what` block requires a fully
+   * rendered page.
+   */
+  private blockNeedsVisualRender(steps: What[]): boolean {
+    return steps.some((s) => {
+      if (s.action === 'screenshot') return true;
+      if (s.action === 'scrapeList' || s.action === 'scrapeSchema') return true;
+
+      const firstArg = Array.isArray(s.args) ? s.args[0] : s.args;
+      if (!firstArg || typeof firstArg !== 'object') return false;
+
+      if (s.action === 'scrape') {
+        const formats: string[] = firstArg.formats ?? [];
+        const heavyFormats = ['markdown', 'html', 'text', 'screenshot-visible', 'screenshot-full'];
+        return formats.some((f: string) => heavyFormats.includes(f));
+      }
+
+      if (s.action === 'crawl' || s.action === 'search') {
+        const outputFormats: string[] = (firstArg as any).outputFormats ?? [];
+        const heavyFormats = ['markdown', 'html', 'text', 'screenshot-visible', 'screenshot-full'];
+        return outputFormats.some((f: string) => heavyFormats.includes(f));
+      }
+
+      return false;
+    });
+  }
+
+  /**
+   * Returns true if any of the remaining blocks in the workflow require a visual render
+   * before the next page navigation.
+   */
+  private remainingWorkflowNeedsVisualRender(remainingWorkflow: Workflow): boolean {
+    if (!remainingWorkflow || remainingWorkflow.length === 0) return false;
+    
+    for (let i = remainingWorkflow.length - 1; i >= 0; i--) {
+      const pair = remainingWorkflow[i];
+      if (this.blockNeedsVisualRender(pair.what)) return true;
+      if (pair.what.some(s => s.action === 'goto')) return false;
+    }
+    return false;
+  }
+
+  /**
+   * Helper to wait for a "Network Quiet Window" (no meaningful activity for X ms).
+   */
+  private async waitForNetworkQuiet(page: Page, timeout: number = 4000, quietWindow: number = 600): Promise<void> {
+    let lastRequestTime = Date.now();
+    const onRequest = () => { lastRequestTime = Date.now(); };
+    page.on('request', onRequest);
+    page.on('requestfinished', onRequest);
+    page.on('requestfailed', onRequest);
+    try {
+      const checkInterval = 100;
+      const start = Date.now();
+      while (Date.now() - start < timeout) {
+        if (Date.now() - lastRequestTime > quietWindow) return;
+        await new Promise(r => setTimeout(r, checkInterval));
+      }
+    } finally {
+      page.off('request', onRequest);
+      page.off('requestfinished', onRequest);
+      page.off('requestfailed', onRequest);
+    }
+  }
+
+  /**
+   * Scans the remaining workflow to find the next meaningful extraction selector.
+   */
+  private getUpcomingExtractionSelector(remainingWorkflow: Workflow): string | null {
+    if (!remainingWorkflow || remainingWorkflow.length === 0) return null;
+    
+    for (let i = remainingWorkflow.length - 1; i >= 0; i--) {
+      const pair = remainingWorkflow[i];
+      for (const s of pair.what) {
+        if (s.action === 'goto') return null;
+
+        if (s.action === 'scrapeList' || s.action === 'scrapeSchema') {
+          const firstArg = Array.isArray(s.args) ? s.args[0] : s.args;
+          if (firstArg?.listSelector) return firstArg.listSelector;
+          if (firstArg?.fields) {
+            const firstField = Object.values(firstArg.fields)[0] as any;
+            if (firstField?.selector) return firstField.selector;
+          }
+          if (firstArg?.selector) return firstArg.selector;
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Function to wait for images to load.
+   */
+  private async waitForImagesLoaded(page: Page): Promise<void> {
+    await page.waitForFunction(
+      () => Array.from(document.images).every(img => img.complete),
+      { timeout: 5000 }
+    ).catch(() => {});
+  }
+
+  private async waitForDynamicStability(page: Page, upcomingWorkflow: Workflow = []): Promise<void> {
+    try {
+      const targetSelector = this.getUpcomingExtractionSelector(upcomingWorkflow);
+
+      const signals: Promise<any>[] = [
+        this.waitForNetworkQuiet(page, 10000, 1000),
+        page.evaluate(async () => {
+          let lastLen = 0;
+          let stableIterations = 0;
+
+          for (let i = 0; i < 60; i++) {
+            const currentLen = document.body.innerText.length;
+            if (currentLen > 200 && currentLen === lastLen) {
+              stableIterations++;
+            } else {
+              stableIterations = 0;
+            }
+            if (stableIterations >= 8) return true;
+            lastLen = currentLen;
+            await new Promise(r => setTimeout(r, 100));
+          }
+          return false;
+        }).catch(() => {}),
+        new Promise(resolve => setTimeout(resolve, 10000))
+      ];
+
+      if (targetSelector) {
+        const found = await page.waitForSelector(targetSelector, { timeout: 8000 }).catch(() => null);
+        if (found) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return;
+        }
+      }
+
+      await Promise.race(signals);
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    } catch (e) {
+    }
+  }
+
+  /**
  * Given a Playwright's page object and a "declarative" list of actions, this function
  * calls all mentioned functions on the Page object.\
  * \
@@ -384,7 +548,7 @@ export default class Interpreter extends EventEmitter {
  * @param page Playwright Page object
  * @param steps Array of actions.
  */
-  private async carryOutSteps(page: Page, steps: What[]): Promise<void> {
+  private async carryOutSteps(page: Page, steps: What[], currentWorkflow?: Workflow): Promise<void> {
     if (this.isAborted) {
       this.log('Workflow aborted, stopping execution', Level.WARN);
       return;
@@ -406,6 +570,8 @@ export default class Interpreter extends EventEmitter {
         if (this.options.debugChannel?.setActionType) {
           this.options.debugChannel.setActionType("screenshot");
         }
+
+        await this.waitForImagesLoaded(page);
 
         const screenshotBuffer = await page.screenshot({
           ...params,
@@ -449,8 +615,7 @@ export default class Interpreter extends EventEmitter {
             let newPage = null;
             try {
               newPage = await context.newPage();
-              await newPage.goto(link);
-              await newPage.waitForLoadState('networkidle');
+              await newPage.goto(link, { waitUntil: this.getNavigationWaitStrategy() });
               await this.runLoop(newPage, this.initializedWorkflow!);
             } catch (e) {
               // `runLoop` uses soft mode, so it recovers from it's own exceptions
@@ -475,6 +640,11 @@ export default class Interpreter extends EventEmitter {
           this.options.debugChannel.setActionType('scrape');
         }
 
+        await this.waitForDynamicStability(page, [{
+          action: 'scrape',
+          args: [selector]
+        } as any]);
+
         await this.ensureScriptsLoaded(page);
 
         const scrapeResults: Record<string, string>[] = await page.evaluate((s) => window.scrape(s ?? null), selector);
@@ -490,6 +660,11 @@ export default class Interpreter extends EventEmitter {
         if (this.options.debugChannel?.setActionType) {
           this.options.debugChannel.setActionType('scrapeSchema');
         }
+
+        await this.waitForDynamicStability(page, [{
+          action: 'scrapeSchema',
+          args: [schema]
+        } as any]);
 
         if (this.options.mode && this.options.mode === 'editor') {
           await this.options.serializableCallback({});
@@ -516,7 +691,7 @@ export default class Interpreter extends EventEmitter {
         const resultToProcess = Array.isArray(scrapeResult) ? scrapeResult[0] : scrapeResult;
         
         if (this.cumulativeResults.length === 0) {
-          const newRow = {};
+          const newRow: Record<string, any> = {};
           Object.entries(resultToProcess).forEach(([key, value]) => {
             if (value !== undefined) {
               newRow[key] = value;
@@ -529,7 +704,7 @@ export default class Interpreter extends EventEmitter {
           const hasRepeatedKeys = newResultKeys.some(key => lastRow.hasOwnProperty(key));
           
           if (hasRepeatedKeys) {
-            const newRow = {};
+            const newRow: Record<string, any> = {};
             Object.entries(resultToProcess).forEach(([key, value]) => {
               if (value !== undefined) {
                 newRow[key] = value;
@@ -559,10 +734,10 @@ export default class Interpreter extends EventEmitter {
         this.serializableDataByType[actionType][name] = [...this.cumulativeResults];
 
         await this.options.serializableCallback({
-          scrapeList: this.serializableDataByType.scrapeList,
-          scrapeSchema: this.serializableDataByType.scrapeSchema,
-          crawl: this.serializableDataByType.crawl || {},
-          search: this.serializableDataByType.search || {}
+          scrapeList: this.serializableDataByType['scrapeList'],
+          scrapeSchema: this.serializableDataByType['scrapeSchema'],
+          crawl: this.serializableDataByType['crawl'] || {},
+          search: this.serializableDataByType['search'] || {}
         });
       },
 
@@ -588,14 +763,14 @@ export default class Interpreter extends EventEmitter {
             this.options.debugChannel.incrementScrapeListIndex();
           }
 
-          let scrapeResults = [];
+          let scrapeResults: any[] = [];
           let paginationUsed = false;
 
           if (!config.pagination) {
             scrapeResults = await page.evaluate((cfg) => {
               try {
                 return window.scrapeList(cfg);
-              } catch (error) {
+              } catch (error: any) {
                 console.warn('ScrapeList evaluation failed:', error.message);
                 return [];
               }
@@ -628,11 +803,11 @@ export default class Interpreter extends EventEmitter {
             this.serializableDataByType[actionType][name].push(...scrapeResults);
 
             await this.options.serializableCallback({
-              scrapeList: this.serializableDataByType.scrapeList,
-              scrapeSchema: this.serializableDataByType.scrapeSchema
+              scrapeList: this.serializableDataByType['scrapeList'],
+              scrapeSchema: this.serializableDataByType['scrapeSchema']
             });
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error('ScrapeList action failed completely:', error.message);
 
           const actionType = "scrapeList";
@@ -650,8 +825,8 @@ export default class Interpreter extends EventEmitter {
           this.serializableDataByType[actionType][name] = [];
 
           await this.options.serializableCallback({
-            scrapeList: this.serializableDataByType.scrapeList,
-            scrapeSchema: this.serializableDataByType.scrapeSchema
+            scrapeList: this.serializableDataByType['scrapeList'],
+            scrapeSchema: this.serializableDataByType['scrapeSchema']
           });
         }
       },
@@ -694,7 +869,7 @@ export default class Interpreter extends EventEmitter {
           ).constructor;
           const x = new AsyncFunction('page', 'log', code);
           await x(page, this.log);
-        } catch (error) {
+        } catch (error: any) {
           this.log(`Script execution failed: ${error.message}`, Level.ERROR);
           throw new Error(`Script execution error: ${error.message}`);
         }
@@ -819,7 +994,7 @@ export default class Interpreter extends EventEmitter {
               } else {
                 this.log('No robots.txt found or not accessible, proceeding without restrictions', Level.WARN);
               }
-            } catch (error) {
+            } catch (error: any) {
               this.log(`Failed to fetch robots.txt: ${error.message}, proceeding without restrictions`, Level.WARN);
             }
           }
@@ -865,7 +1040,7 @@ export default class Interpreter extends EventEmitter {
               }
 
               return true;
-            } catch (error) {
+            } catch (error: any) {
               return true;
             }
           };
@@ -907,7 +1082,7 @@ export default class Interpreter extends EventEmitter {
               }
 
               return true;
-            } catch (error) {
+            } catch (error: any) {
               return false;
             }
           };
@@ -939,7 +1114,7 @@ export default class Interpreter extends EventEmitter {
               });
 
               return pageLinks;
-            } catch (error) {
+            } catch (error: any) {
               this.log(`Link extraction failed: ${error.message}`, Level.WARN);
               return [];
             }
@@ -1099,7 +1274,7 @@ export default class Interpreter extends EventEmitter {
                     }
 
                     this.log(`Found ${nestedUrls.length} URLs from nested sitemap ${nestedUrl}`, Level.LOG);
-                  } catch (error) {
+                  } catch (error: any) {
                     this.log(`Failed to fetch nested sitemap ${nestedUrl}: ${error.message}`, Level.WARN);
                   }
                 }
@@ -1108,7 +1283,7 @@ export default class Interpreter extends EventEmitter {
               } else {
                 this.log('No URLs found in sitemap or sitemap not available', Level.WARN);
               }
-            } catch (error) {
+            } catch (error: any) {
               this.log(`Sitemap fetch failed: ${error.message}`, Level.WARN);
             }
           }
@@ -1133,13 +1308,13 @@ export default class Interpreter extends EventEmitter {
               }
 
               await page.goto(url, {
-                waitUntil: 'domcontentloaded',
+                waitUntil: this.getNavigationWaitStrategy(),
                 timeout: 30000
               }).catch((err) => {
                 throw new Error(`Navigation failed: ${err.message}`);
               });
 
-              await page.waitForLoadState('load', { timeout: 10000 }).catch(() => {});
+              await this.waitForDynamicStability(page, currentWorkflow || []);
 
               const pageResult = await scrapePageContent(url);
               pageResult.metadata.depth = depth;
@@ -1168,7 +1343,7 @@ export default class Interpreter extends EventEmitter {
                 }
               }
 
-            } catch (error) {
+            } catch (error: any) {
               this.log(`Failed to crawl ${url}: ${error.message}`, Level.WARN);
               crawlResults.push({
                 metadata: {
@@ -1197,13 +1372,13 @@ export default class Interpreter extends EventEmitter {
           this.serializableDataByType[actionType][actionName] = crawlResults;
 
           await this.options.serializableCallback({
-            scrapeList: this.serializableDataByType.scrapeList || {},
-            scrapeSchema: this.serializableDataByType.scrapeSchema || {},
-            crawl: this.serializableDataByType.crawl || {},
-            search: this.serializableDataByType.search || {}
+            scrapeList: this.serializableDataByType['scrapeList'] || {},
+            scrapeSchema: this.serializableDataByType['scrapeSchema'] || {},
+            crawl: this.serializableDataByType['crawl'] || {},
+            search: this.serializableDataByType['search'] || {}
           });
 
-        } catch (error) {
+        } catch (error: any) {
           this.log(`Crawl action failed: ${error.message}`, Level.ERROR);
           throw new Error(`Crawl execution error: ${error.message}`);
         }
@@ -1470,10 +1645,10 @@ export default class Interpreter extends EventEmitter {
             this.serializableDataByType[actionType][actionName] = searchData;
 
             await this.options.serializableCallback({
-              scrapeList: this.serializableDataByType.scrapeList || {},
-              scrapeSchema: this.serializableDataByType.scrapeSchema || {},
-              crawl: this.serializableDataByType.crawl || {},
-              search: this.serializableDataByType.search || {}
+              scrapeList: this.serializableDataByType['scrapeList'] || {},
+              scrapeSchema: this.serializableDataByType['scrapeSchema'] || {},
+              crawl: this.serializableDataByType['crawl'] || {},
+              search: this.serializableDataByType['search'] || {}
             });
 
             this.log(`Search completed in discover mode with ${searchResults.length} results`, Level.LOG);
@@ -1489,13 +1664,13 @@ export default class Interpreter extends EventEmitter {
               this.log(`[${i + 1}/${searchResults.length}] Scraping: ${result.url}`, Level.LOG);
 
               await page.goto(result.url, {
-                waitUntil: 'domcontentloaded',
+                waitUntil: this.getNavigationWaitStrategy(),
                 timeout: 30000
               }).catch(() => {
                 this.log(`Failed to navigate to ${result.url}, skipping...`, Level.WARN);
               });
 
-              await page.waitForLoadState('load', { timeout: 10000 }).catch(() => {});
+              await this.waitForDynamicStability(page, currentWorkflow || []);
 
               const pageData = await page.evaluate(() => {
                 const getMeta = (name: string) => {
@@ -1564,7 +1739,7 @@ export default class Interpreter extends EventEmitter {
 
               this.log(`✓ Scraped ${result.url} (${pageData.wordCount} words)`, Level.LOG);
 
-            } catch (error) {
+            } catch (error: any) {
               this.log(`Failed to scrape ${result.url}: ${error.message}`, Level.WARN);
               scrapedResults.push({
                 searchResult: {
@@ -1605,13 +1780,13 @@ export default class Interpreter extends EventEmitter {
           this.serializableDataByType[actionType][actionName] = searchData;
 
           await this.options.serializableCallback({
-            scrapeList: this.serializableDataByType.scrapeList || {},
-            scrapeSchema: this.serializableDataByType.scrapeSchema || {},
-            crawl: this.serializableDataByType.crawl || {},
-            search: this.serializableDataByType.search || {}
+            scrapeList: this.serializableDataByType['scrapeList'] || {},
+            scrapeSchema: this.serializableDataByType['scrapeSchema'] || {},
+            crawl: this.serializableDataByType['crawl'] || {},
+            search: this.serializableDataByType['search'] || {}
           });
 
-        } catch (error) {
+        } catch (error: any) {
           this.log(`Search action failed: ${error.message}`, Level.ERROR);
           throw new Error(`Search execution error: ${error.message}`);
         }
@@ -1693,7 +1868,36 @@ export default class Interpreter extends EventEmitter {
           invokee = invokee[level];
         }
 
-        if (methodName === 'waitForLoadState') {
+        if (methodName === 'goto') {
+          try {
+            const gotoArgs = step.args || [];
+            const url = gotoArgs[0];
+            const existingOpts: Record<string, any> = (typeof gotoArgs[1] === 'object' && gotoArgs[1] !== null)
+              ? { ...gotoArgs[1] }
+              : {};
+
+            const requestedWait = existingOpts.waitUntil;
+            const remaining = (currentWorkflow || []).slice(0, -1);
+            const needsDataSoon = this.blockNeedsVisualRender(steps) || this.remainingWorkflowNeedsVisualRender(remaining);
+
+            if (!requestedWait || requestedWait === 'networkidle' || requestedWait === 'load') {
+              existingOpts.waitUntil = 'domcontentloaded';
+              this.log(
+                `goto: navigation speed-optimized to 'domcontentloaded' + surgical-ready midground`,
+                Level.LOG
+              );
+            }
+            if (!existingOpts.timeout) existingOpts.timeout = 15000;
+
+            await executeAction(invokee, methodName, [url, existingOpts]);
+            
+            if (needsDataSoon) {
+              await this.waitForDynamicStability(page, (currentWorkflow || []).slice(0, -1));
+            }
+          } catch (error: any) {
+            this.log(`goto failed: ${error.message}`, Level.WARN);
+          }
+        } else if (methodName === 'waitForLoadState') {
           try {
             let args = step.args;
 
@@ -1703,16 +1907,17 @@ export default class Interpreter extends EventEmitter {
               args = [args, { timeout: 30000 }];
             }
             await executeAction(invokee, methodName, step.args);
-          } catch (error) {
+          } catch (error: any) {
             await executeAction(invokee, methodName, 'domcontentloaded');
           }
         } else if (methodName === 'click') {
           try {
             await executeAction(invokee, methodName, step.args);
-          } catch (error) {
+          } catch (error: any) {
             try{
-              await executeAction(invokee, methodName, [step.args[0], { force: true }]);
-            } catch (error) {
+              const clickArgs = Array.isArray(step.args) ? step.args : [step.args];
+              await executeAction(invokee, methodName, [clickArgs[0], { force: true }]);
+            } catch (error: any) {
               this.log(`Click action failed: ${error.message}`, Level.WARN);
               continue;
             }
@@ -1720,7 +1925,7 @@ export default class Interpreter extends EventEmitter {
         } else {
           try {
             await executeAction(invokee, methodName, step.args);
-          } catch (error) {
+          } catch (error: any) {
             this.log(`Action ${methodName} failed: ${error.message}`, Level.ERROR);
             // Continue with next action instead of crashing
             continue;
@@ -1775,6 +1980,11 @@ export default class Interpreter extends EventEmitter {
           return;
         }
 
+        await this.waitForDynamicStability(page, [{
+          action: 'scrapeList',
+          args: [config]
+        } as any]);
+
         const evaluationPromise = page.evaluate((cfg) => window.scrapeList(cfg), config);
         const timeoutPromise = new Promise<any[]>((_, reject) =>
           setTimeout(() => reject(new Error('Page evaluation timeout')), 10000)
@@ -1783,7 +1993,7 @@ export default class Interpreter extends EventEmitter {
         let results;
         try {
           results = await Promise.race([evaluationPromise, timeoutPromise]);
-        } catch (error) {
+        } catch (error: any) {
           debugLog(`Page evaluation failed: ${error.message}`);
           return;
         }
@@ -1807,10 +2017,10 @@ export default class Interpreter extends EventEmitter {
 
         this.serializableDataByType[actionType][actionName] = [...allResults];
         await this.options.serializableCallback({
-          scrapeList: this.serializableDataByType.scrapeList,
-          scrapeSchema: this.serializableDataByType.scrapeSchema,
-          crawl: this.serializableDataByType.crawl || {},
-          search: this.serializableDataByType.search || {}
+          scrapeList: this.serializableDataByType['scrapeList'],
+          scrapeSchema: this.serializableDataByType['scrapeSchema'],
+          crawl: this.serializableDataByType['crawl'] || {},
+          search: this.serializableDataByType['search'] || {}
         });
     };
 
@@ -1853,7 +2063,7 @@ export default class Interpreter extends EventEmitter {
             timeout: options.timeout || 10000
           });
         }
-      } catch (error) {
+      } catch (error: any) {
         return null;
       }
     };
@@ -1900,7 +2110,7 @@ export default class Interpreter extends EventEmitter {
                 selectorSuccess = true;
               }
             }
-          } catch (error) {
+          } catch (error: any) {
             retryCount++;
             debugLog(`Selector "${selector}" error: attempt ${retryCount}/${MAX_RETRIES} - ${error.message}`);
 
@@ -1925,7 +2135,7 @@ export default class Interpreter extends EventEmitter {
     const retryOperation = async (operation: () => Promise<boolean>, retryCount = 0): Promise<boolean> => {
         try {
             return await operation();
-        } catch (error) {
+        } catch (error: any) {
             if (retryCount < MAX_RETRIES) {
                 debugLog(`Retrying operation. Attempt ${retryCount + 1} of ${MAX_RETRIES}`);
                 await page.waitForTimeout(RETRY_DELAY);
@@ -2197,7 +2407,7 @@ export default class Interpreter extends EventEmitter {
                     paginationSuccess = true;
                   }
                 }
-              } catch (error) {
+              } catch (error: any) {
                 debugLog(`Pagination attempt ${retryCount + 1} failed: ${error.message}`);
               }
               
@@ -2252,7 +2462,7 @@ export default class Interpreter extends EventEmitter {
                   try {
                     await loadMoreButton.click();
                     clickSuccess = true;
-                  } catch (error) {
+                  } catch (error: any) {
                     debugLog(`Regular click failed on attempt ${retryCount + 1}. Trying DispatchEvent`);
                     
                     // If regular click fails, try dispatchEvent
@@ -2270,7 +2480,7 @@ export default class Interpreter extends EventEmitter {
                     loadMoreCounter++;
                     debugLog(`Successfully clicked Load More button (${loadMoreCounter} times)`);
                   }
-                } catch (error) {
+                } catch (error: any) {
                   debugLog(`Click attempt ${retryCount + 1} failed completely.`);
                   retryCount++;
                   
@@ -2342,7 +2552,7 @@ export default class Interpreter extends EventEmitter {
 
         if (checkLimit()) break;
       }
-    } catch (error) {
+    } catch (error: any) {
         debugLog(`Fatal error: ${error.message}`);
         return allResults;
     }
@@ -2416,7 +2626,7 @@ export default class Interpreter extends EventEmitter {
     * User-requested concurrency should be entirely managed by the concurrency manager,
     * e.g. via `enqueueLinks`.
     */
-    const popupHandler = (popup) => {
+    const popupHandler = (popup: Page) => {
       this.concurrency.addJob(() => this.runLoop(popup, workflowCopy));
     };
     p.on('popup', popupHandler);
@@ -2540,7 +2750,7 @@ export default class Interpreter extends EventEmitter {
 
         try {
           console.log("Carrying out:", action.what);
-          await this.carryOutSteps(p, action.what);
+          await this.carryOutSteps(p, action.what, workflowCopy);
           usedActions.push(action.id ?? 'undefined');
 
           workflowCopy.splice(actionId, 1);
@@ -2603,11 +2813,11 @@ export default class Interpreter extends EventEmitter {
       if (!isScriptLoaded) {
         await page.addInitScript({ path: path.join(__dirname, 'browserSide', 'scraper.js') });
       }
-    } catch (error) {
+    } catch (error: any) {
       this.log(`Script check failed, adding script anyway: ${error.message}`, Level.WARN);
       try {
         await page.addInitScript({ path: path.join(__dirname, 'browserSide', 'scraper.js') });
-      } catch (scriptError) {
+      } catch (scriptError: any) {
         this.log(`Failed to add script: ${scriptError.message}`, Level.ERROR);
       }
     }

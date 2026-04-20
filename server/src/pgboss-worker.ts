@@ -63,6 +63,7 @@ const pgBoss = new PgBoss({
   connectionString: pgBossConnectionString,
   expireInHours: 23,
   max: 5,
+  ...(process.env.DB_SSL === 'true' && { ssl: true }),
 });
 
 /**
@@ -77,6 +78,25 @@ function extractJobData<T>(job: Job<T> | Job<T>[]): T {
   }
   return job.data;
 }
+
+const getRobotTargetUrl = (recording: any): string => {
+  const metaUrl = recording?.recording_meta?.url?.trim();
+  if (metaUrl) {
+    return metaUrl;
+  }
+
+  const workflow = recording?.recording?.workflow || [];
+  const entryPair = [...workflow].reverse().find((pair: any) =>
+    pair?.what?.some((action: any) => action.action === 'goto' && typeof action.args?.[0] === 'string' && action.args[0] !== 'about:blank'),
+  );
+  const gotoUrl = entryPair?.what?.find((action: any) => action.action === 'goto' && typeof action.args?.[0] === 'string')?.args?.[0]?.trim();
+  if (gotoUrl) {
+    return gotoUrl;
+  }
+
+  const firstWorkflowUrl = workflow.find((pair: any) => typeof pair?.where?.url === 'string' && pair.where.url !== 'about:blank')?.where?.url?.trim();
+  return firstWorkflowUrl || '';
+};
 
 function AddGeneratedFlags(workflow: WorkflowFile) {
   const copy = JSON.parse(JSON.stringify(workflow));
@@ -236,7 +256,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
         });
 
         try {
-          const url = recording.recording_meta.url;
+          const url = getRobotTargetUrl(recording);
 
           if (!url) {
             throw new Error('No URL specified for markdown robot');
@@ -248,24 +268,6 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
           const binaryOutput: any = {};
 
           const SCRAPE_TIMEOUT = 120000;
-
-          if (formats.includes('markdown')) {
-            const markdownPromise = convertPageToMarkdown(url, currentPage);
-            const timeoutPromise = new Promise<never>((_, reject) => {
-              setTimeout(() => reject(new Error(`Markdown conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
-            });
-            markdown = await Promise.race([markdownPromise, timeoutPromise]);
-            serializableOutput.markdown = [{ content: markdown }];
-          }
-
-          if (formats.includes('html')) {
-            const htmlPromise = convertPageToHTML(url, currentPage);
-            const timeoutPromise = new Promise<never>((_, reject) => {
-              setTimeout(() => reject(new Error(`HTML conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
-            });
-            html = await Promise.race([htmlPromise, timeoutPromise]);
-            serializableOutput.html = [{ content: html }];
-          }
 
           if (formats.includes("screenshot-visible")) {
             const screenshotPromise = convertPageToScreenshot(url, currentPage, false);
@@ -297,6 +299,24 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
             }
           }
 
+          if (formats.includes('markdown')) {
+            const markdownPromise = convertPageToMarkdown(url, currentPage);
+            const timeoutPromise = new Promise<never>((_, reject) => {
+              setTimeout(() => reject(new Error(`Markdown conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
+            });
+            markdown = await Promise.race([markdownPromise, timeoutPromise]);
+            serializableOutput.markdown = [{ content: markdown }];
+          }
+
+          if (formats.includes('html')) {
+            const htmlPromise = convertPageToHTML(url, currentPage);
+            const timeoutPromise = new Promise<never>((_, reject) => {
+              setTimeout(() => reject(new Error(`HTML conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
+            });
+            html = await Promise.race([htmlPromise, timeoutPromise]);
+            serializableOutput.html = [{ content: html }];
+          }
+          
           const promptInstructions = run.interpreterSettings?.promptInstructions || (recording.recording_meta as any).promptInstructions as string | undefined;
           if (promptInstructions) {
             try {

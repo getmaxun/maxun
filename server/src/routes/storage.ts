@@ -28,14 +28,74 @@ import {
 
 export const router = Router();
 
+const normalizeRobotUrl = (rawUrl: string): string => {
+  const normalizedUrl = new URL(rawUrl.trim());
+  if (!['http:', 'https:'].includes(normalizedUrl.protocol)) {
+    throw new Error('Invalid URL protocol');
+  }
+
+  normalizedUrl.search = normalizedUrl.searchParams.toString();
+  return normalizedUrl.toString();
+};
+
+const normalizeWorkflowUrls = (workflow: any[] = []): any[] =>
+  workflow.map((pair: any) => ({
+    ...pair,
+    where: pair?.where
+      ? {
+          ...pair.where,
+          ...(typeof pair.where.url === 'string' && pair.where.url !== 'about:blank'
+            ? { url: normalizeRobotUrl(pair.where.url) }
+            : {}),
+        }
+      : pair?.where,
+    what: Array.isArray(pair?.what)
+      ? pair.what.map((action: any) => {
+          if (
+            action.action === 'goto' &&
+            Array.isArray(action.args) &&
+            typeof action.args[0] === 'string' &&
+            action.args[0] !== 'about:blank'
+          ) {
+            return {
+              ...action,
+              args: [normalizeRobotUrl(action.args[0]), ...action.args.slice(1)],
+            };
+          }
+
+          if (
+            (action.action === 'scrape' || action.action === 'crawl') &&
+            Array.isArray(action.args) &&
+            action.args[0] &&
+            typeof action.args[0] === 'object' &&
+            typeof action.args[0].url === 'string' &&
+            action.args[0].url !== 'about:blank'
+          ) {
+            return {
+              ...action,
+              args: [
+                {
+                  ...action.args[0],
+                  url: normalizeRobotUrl(action.args[0].url),
+                },
+                ...action.args.slice(1),
+              ],
+            };
+          }
+
+          return action;
+        })
+      : pair?.what,
+  }));
+
 async function isRobotNameTaken(name: string, userId: number, excludeId?: string): Promise<boolean> {
-  const normalised = name.trim().toLowerCase();
+  const trimmed = name.trim();
   const robots = await Robot.findAll({
     where: {
       userId,
       [Op.and]: sequelizeInstance.where(
-        sequelizeInstance.fn('lower', sequelizeInstance.fn('trim', sequelizeInstance.literal("recording_meta->>'name'"))),
-        normalised
+        sequelizeInstance.fn('trim', sequelizeInstance.literal("recording_meta->>'name'")),
+        trimmed
       ),
     } as any,
   });
@@ -297,15 +357,15 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       if (robot.recording_meta?.type === 'scrape') {
         workflow = workflow.map((step: any) => {
           const updatedWhere = step.where?.url && step.where.url !== 'about:blank'
-            ? { ...step.where, url: targetUrl }
+            ? { ...step.where, url: normalizeRobotUrl(targetUrl) }
             : step.where;
 
           const updatedWhat = (step.what || []).map((action: any) => {
             if (action.action === 'goto' && action.args?.length) {
-              return { ...action, args: [targetUrl, ...action.args.slice(1)] };
+              return { ...action, args: [normalizeRobotUrl(targetUrl), ...action.args.slice(1)] };
             }
             if (action.action === 'scrape' && action.args?.[0] && typeof action.args[0] === 'object') {
-              return { ...action, args: [{ ...action.args[0], url: targetUrl }, ...action.args.slice(1)] };
+              return { ...action, args: [{ ...action.args[0], url: normalizeRobotUrl(targetUrl) }, ...action.args.slice(1)] };
             }
             return action;
           });
@@ -325,7 +385,7 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
           let updatedWhere = step.where;
           if (originalEntryUrl && step.where?.url !== 'about:blank' && !whereUpdateStopped) {
             if (step.where?.url === originalEntryUrl) {
-              updatedWhere = { ...step.where, url: targetUrl };
+              updatedWhere = { ...step.where, url: normalizeRobotUrl(targetUrl) };
             } else {
               whereUpdateStopped = true;
             }
@@ -334,7 +394,12 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
           const updatedWhat = (step.what || []).map((action: any) => {
             if (!gotoUpdated && action.action === 'goto' && action.args?.[0] === originalEntryUrl) {
               gotoUpdated = true;
-              return { ...action, args: [targetUrl, ...action.args.slice(1)] };
+              return { ...action, args: [normalizeRobotUrl(targetUrl), ...action.args.slice(1)] };
+            }
+            if ((action.action === 'scrape' || action.action === 'crawl') &&
+                action.args?.[0] && typeof action.args[0] === 'object' &&
+                action.args[0].url === originalEntryUrl) {
+              return { ...action, args: [{ ...action.args[0], url: normalizeRobotUrl(targetUrl) }, ...action.args.slice(1)] };
             }
             return action;
           });
@@ -425,11 +490,11 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
 
     let updatedMeta = { ...robot.recording_meta };
     if (trimmedName) updatedMeta.name = trimmedName;
-    if (targetUrl) updatedMeta.url = targetUrl;
+    if (targetUrl) updatedMeta.url = normalizeRobotUrl(targetUrl);
     if (normalizedFormats !== undefined) updatedMeta.formats = normalizedFormats;
 
     const updates: any = {
-      recording: { ...robot.recording, workflow },
+      recording: { ...robot.recording, workflow: normalizeWorkflowUrls(workflow) },
       recording_meta: updatedMeta,
     };
 
@@ -470,9 +535,9 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
       return res.status(401).send({ error: 'Unauthorized' });
     }
 
-    // Validate URL format
+    let normalizedUrl: string;
     try {
-      new URL(url);
+      normalizedUrl = normalizeRobotUrl(url);
     } catch (err) {
       return res.status(400).json({ error: 'Invalid URL format' });
     }
@@ -490,7 +555,7 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
 
     const finalFormats = scrapeFormats.length > 0 ? scrapeFormats : DEFAULT_OUTPUT_FORMATS;
 
-    const robotName = (typeof name === 'string' ? name.trim() : '') || `Markdown Robot - ${new URL(url).hostname}`;
+    const robotName = (typeof name === 'string' ? name.trim() : '') || `Markdown Robot - ${new URL(normalizedUrl).hostname}`;
     if (!robotName) {
       return res.status(400).json({ error: 'Robot name cannot be empty.' });
     }
@@ -517,7 +582,7 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
         pairs: 0,
         params: [],
         type: 'scrape',
-        url: url,
+        url: normalizedUrl,
         formats: finalFormats,
         ...(promptInstructions ? { promptInstructions: String(promptInstructions).substring(0, 1000) } : {}),
         ...(promptLlmProvider ? { promptLlmProvider } : {}),
@@ -580,7 +645,7 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
     // Validate URL format if provided
     if (url) {
       try {
-        new URL(url);
+        normalizeRobotUrl(url);
       } catch (err) {
         return res.status(400).json({ error: 'Invalid URL format' });
       }
@@ -618,6 +683,10 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
       }
     }
 
+    if (finalUrl) {
+      finalUrl = normalizeRobotUrl(finalUrl);
+    }
+
     if (!workflowResult.success || !workflowResult.workflow) {
       logger.log('error', `Failed to generate workflow: ${JSON.stringify(workflowResult.errors)}`);
       return res.status(400).json({
@@ -637,13 +706,13 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
         id: robotId,
         createdAt: currentTimestamp,
         updatedAt: currentTimestamp,
-        pairs: workflowResult.workflow.length,
+        pairs: normalizeWorkflowUrls(workflowResult.workflow).length,
         params: [],
         type: 'extract',
         url: finalUrl,
         isLLM: true,
       },
-      recording: { workflow: workflowResult.workflow },
+      recording: { workflow: normalizeWorkflowUrls(workflowResult.workflow) },
       google_sheet_email: null,
       google_sheet_name: null,
       google_sheet_id: null,
@@ -718,8 +787,10 @@ router.post('/recordings/:id/duplicate', requireSignIn, async (req: Authenticate
       return res.status(400).json({ error: 'The "targetUrl" field is required.' });
     }
 
+    let normalizedTargetUrl: string;
     try {
-      const parsed = new URL(targetUrl);
+      normalizedTargetUrl = normalizeRobotUrl(targetUrl);
+      const parsed = new URL(normalizedTargetUrl);
       if (!['http:', 'https:'].includes(parsed.protocol)) {
         return res.status(400).json({ error: 'The "targetUrl" must use http or https protocol.' });
       }
@@ -756,7 +827,7 @@ router.post('/recordings/:id/duplicate', requireSignIn, async (req: Authenticate
 
       if (originalEntryUrl && step.where?.url !== 'about:blank' && !whereUpdateStopped) {
         if (step.where?.url === originalEntryUrl) {
-          updatedWhere = { ...step.where, url: targetUrl };
+          updatedWhere = { ...step.where, url: normalizedTargetUrl };
         } else {
           whereUpdateStopped = true;
         }
@@ -765,7 +836,12 @@ router.post('/recordings/:id/duplicate', requireSignIn, async (req: Authenticate
       const updatedWhat = step.what.map((action: any) => {
         if (!gotoUpdated && action.action === 'goto' && action.args?.[0] === originalEntryUrl) {
           gotoUpdated = true;
-          return { ...action, args: [targetUrl, ...action.args.slice(1)] };
+          return { ...action, args: [normalizeRobotUrl(targetUrl), ...action.args.slice(1)] };
+        }
+        if ((action.action === 'scrape' || action.action === 'crawl') &&
+            action.args?.[0] && typeof action.args[0] === 'object' &&
+            action.args[0].url === originalEntryUrl) {
+          return { ...action, args: [{ ...action.args[0], url: normalizeRobotUrl(targetUrl) }, ...action.args.slice(1)] };
         }
         return action;
       });
@@ -782,7 +858,7 @@ router.post('/recordings/:id/duplicate', requireSignIn, async (req: Authenticate
         ...originalRobot.recording_meta,
         id: uuid(),
         name: duplicateName,
-        url: targetUrl,
+        url: normalizedTargetUrl,
         createdAt: currentTimestamp,
         updatedAt: currentTimestamp,
       },
@@ -1526,13 +1602,14 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
       return res.status(401).send({ error: 'Unauthorized' });
     }
 
+    let normalizedUrl: string;
     try {
-      new URL(url);
+      normalizedUrl = normalizeRobotUrl(url);
     } catch (err) {
       return res.status(400).json({ error: 'Invalid URL format' });
     }
 
-    const robotName = (typeof name === 'string' ? name.trim() : '') || `Crawl Robot - ${new URL(url).hostname}`;
+    const robotName = (typeof name === 'string' ? name.trim() : '') || `Crawl Robot - ${new URL(normalizedUrl).hostname}`;
     if (!robotName) {
       return res.status(400).json({ error: 'Robot name cannot be empty.' });
     }
@@ -1567,13 +1644,13 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
         pairs: 1,
         params: [],
         type: 'crawl',
-        url: url,
+        url: normalizedUrl,
         formats: crawlFormats,
       },
       recording: {
         workflow: [
           {
-            where: { url },
+            where: { url: normalizedUrl },
             what: [
               { action: 'flag', args: ['generated'] },
               {
@@ -1588,7 +1665,7 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
             what: [
               {
                 action: 'goto',
-                args: [url]
+                args: [normalizedUrl]
               },
               {
                 action: 'waitForLoadState',
@@ -1618,7 +1695,7 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
       userId: req.user.id.toString(),
       robotId: robotId,
       robotName: robotName,
-      url: url,
+      url: normalizedUrl,
       robotType: 'crawl',
       crawlConfig: crawlConfig,
       robot_meta: newRobot.recording_meta,

@@ -21,6 +21,35 @@ import { executeBrowserAgent } from '../sdk/browserAgent';
 
 const router = Router();
 
+const normalizeRobotUrl = (rawUrl: string): string => {
+    const normalizedUrl = new URL(rawUrl.trim());
+    if (!['http:', 'https:'].includes(normalizedUrl.protocol)) {
+        throw new Error('Invalid URL protocol');
+    }
+
+    normalizedUrl.search = normalizedUrl.searchParams.toString();
+    return normalizedUrl.toString();
+};
+
+const getRobotTargetUrl = (recording: any): string => {
+    const metaUrl = recording?.recording_meta?.url?.trim();
+    if (metaUrl) {
+        return metaUrl;
+    }
+
+    const workflow = recording?.recording?.workflow || [];
+    const entryPair = [...workflow].reverse().find((pair: any) =>
+        pair?.what?.some((action: any) => action.action === 'goto' && typeof action.args?.[0] === 'string' && action.args[0] !== 'about:blank')
+    );
+    const gotoUrl = entryPair?.what?.find((action: any) => action.action === 'goto' && typeof action.args?.[0] === 'string')?.args?.[0]?.trim();
+    if (gotoUrl) {
+        return gotoUrl;
+    }
+
+    const firstWorkflowUrl = workflow.find((pair: any) => typeof pair?.where?.url === 'string' && pair.where.url !== 'about:blank')?.where?.url?.trim();
+    return firstWorkflowUrl || '';
+};
+
 const formatRecording = (recordingData: any) => {
     const recordingMeta = recordingData.recording_meta;
     const workflow = recordingData.recording.workflow || [];
@@ -726,8 +755,7 @@ async function executeRun(id: string, userId: string) {
             });
 
             try {
-                const url = recording.recording_meta.url;
-
+                const url = getRobotTargetUrl(recording);
                 if (!url) {
                     throw new Error('No URL specified for markdown robot');
                 }
@@ -738,36 +766,6 @@ async function executeRun(id: string, userId: string) {
                 const binaryOutput: any = {};
 
                 const SCRAPE_TIMEOUT = 120000;
-
-                if (formats.includes('markdown')) {
-                    try {
-                        const markdownPromise = convertPageToMarkdown(url, currentPage);
-                        const timeoutPromise = new Promise<never>((_, reject) => {
-                            setTimeout(() => reject(new Error(`Markdown conversion timed out after ${SCRAPE_TIMEOUT / 1000}s`)), SCRAPE_TIMEOUT);
-                        });
-                        markdown = await Promise.race([markdownPromise, timeoutPromise]);
-                        if (markdown && markdown.trim().length > 0) {
-                            serializableOutput.markdown = [{ content: markdown }];
-                        }
-                    } catch (error: any) {
-                        logger.log('warn', `Markdown conversion failed for API run ${plainRun.runId}: ${error.message}`);
-                    }
-                }
-
-                if (formats.includes('html')) {
-                    try {
-                        const htmlPromise = convertPageToHTML(url, currentPage);
-                        const timeoutPromise = new Promise<never>((_, reject) => {
-                            setTimeout(() => reject(new Error(`HTML conversion timed out after ${SCRAPE_TIMEOUT / 1000}s`)), SCRAPE_TIMEOUT);
-                        });
-                        html = await Promise.race([htmlPromise, timeoutPromise]);
-                        if (html && html.trim().length > 0) {
-                            serializableOutput.html = [{ content: html }];
-                        }
-                    } catch (error: any) {
-                        logger.log('warn', `HTML conversion failed for API run ${plainRun.runId}: ${error.message}`);
-                    }
-                }
 
                 if (formats.includes("screenshot-visible")) {
                     try {
@@ -807,6 +805,36 @@ async function executeRun(id: string, userId: string) {
                     }
                 }
 
+                if (formats.includes('markdown')) {
+                    try {
+                        const markdownPromise = convertPageToMarkdown(url, currentPage);
+                        const timeoutPromise = new Promise<never>((_, reject) => {
+                            setTimeout(() => reject(new Error(`Markdown conversion timed out after ${SCRAPE_TIMEOUT / 1000}s`)), SCRAPE_TIMEOUT);
+                        });
+                        markdown = await Promise.race([markdownPromise, timeoutPromise]);
+                        if (markdown && markdown.trim().length > 0) {
+                            serializableOutput.markdown = [{ content: markdown }];
+                        }
+                    } catch (error: any) {
+                        logger.log('warn', `Markdown conversion failed for API run ${plainRun.runId}: ${error.message}`);
+                    }
+                }
+
+                if (formats.includes('html')) {
+                    try {
+                        const htmlPromise = convertPageToHTML(url, currentPage);
+                        const timeoutPromise = new Promise<never>((_, reject) => {
+                            setTimeout(() => reject(new Error(`HTML conversion timed out after ${SCRAPE_TIMEOUT / 1000}s`)), SCRAPE_TIMEOUT);
+                        });
+                        html = await Promise.race([htmlPromise, timeoutPromise]);
+                        if (html && html.trim().length > 0) {
+                            serializableOutput.html = [{ content: html }];
+                        }
+                    } catch (error: any) {
+                        logger.log('warn', `HTML conversion failed for API run ${plainRun.runId}: ${error.message}`);
+                    }
+                }
+              
                 const promptInstructions = promptInstructionsOverride || (recording.recording_meta as any).promptInstructions as string | undefined;
                 if (promptInstructions && currentPage) {
                     try {
@@ -1486,8 +1514,10 @@ router.post("/robots/:id/duplicate", requireAPIKey, async (req: Request, res: Re
             });
         }
 
+        let normalizedTargetUrl: string;
         try {
-            const parsed = new URL(targetUrl);
+            normalizedTargetUrl = normalizeRobotUrl(targetUrl);
+            const parsed = new URL(normalizedTargetUrl);
             if (!['http:', 'https:'].includes(parsed.protocol)) {
                 return res.status(400).json({
                     statusCode: 400,
@@ -1515,7 +1545,7 @@ router.post("/robots/:id/duplicate", requireAPIKey, async (req: Request, res: Re
             });
         }
 
-        const lastWord = targetUrl.split('/').filter(Boolean).pop() || 'Unnamed';
+        const lastWord = normalizedTargetUrl.split('/').filter(Boolean).pop() || 'Unnamed';
 
         const steps: any[] = originalRobot.recording.workflow;
         const entryStep = steps.findLast((step: any) => step.where?.url === 'about:blank');
@@ -1531,7 +1561,7 @@ router.post("/robots/:id/duplicate", requireAPIKey, async (req: Request, res: Re
 
             if (originalEntryUrl && step.where?.url !== 'about:blank' && !whereUpdateStopped) {
                 if (step.where?.url === originalEntryUrl) {
-                    updatedWhere = { ...step.where, url: targetUrl };
+                    updatedWhere = { ...step.where, url: normalizedTargetUrl };
                 } else {
                     whereUpdateStopped = true;
                 }
@@ -1540,7 +1570,12 @@ router.post("/robots/:id/duplicate", requireAPIKey, async (req: Request, res: Re
             const updatedWhat = step.what.map((action: any) => {
                 if (!gotoUpdated && action.action === 'goto' && action.args?.[0] === originalEntryUrl) {
                     gotoUpdated = true;
-                    return { ...action, args: [targetUrl, ...action.args.slice(1)] };
+                    return { ...action, args: [normalizedTargetUrl, ...action.args.slice(1)] };
+                }
+                if ((action.action === 'scrape' || action.action === 'crawl') &&
+                    action.args?.[0] && typeof action.args[0] === 'object' &&
+                    action.args[0].url === originalEntryUrl) {
+                    return { ...action, args: [{ ...action.args[0], url: normalizedTargetUrl }, ...action.args.slice(1)] };
                 }
                 return action;
             });
@@ -1557,7 +1592,7 @@ router.post("/robots/:id/duplicate", requireAPIKey, async (req: Request, res: Re
                 ...originalRobot.recording_meta,
                 id: uuid(),
                 name: `${originalRobot.recording_meta.name} (${lastWord})`,
-                url: targetUrl,
+                url: normalizedTargetUrl,
                 createdAt: currentTimestamp,
                 updatedAt: currentTimestamp,
             },

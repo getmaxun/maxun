@@ -614,7 +614,7 @@ class ClientSelectorGenerator {
     }
 
     const text = (element.textContent || "").trim();
-    const hasVisibleText = text.length > 0;
+    const hasVisibleText = text.length > 0 && /[a-zA-Z0-9\u00C0-\u024F\u4E00-\u9FFF\u3040-\u30FF]/.test(text);
 
     if (hasVisibleText || element.querySelector("svg")) {
       return true;
