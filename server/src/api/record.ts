@@ -20,6 +20,35 @@ import { convertPageToHTML, convertPageToMarkdown, convertPageToScreenshot, conv
 
 const router = Router();
 
+const normalizeRobotUrl = (rawUrl: string): string => {
+    const normalizedUrl = new URL(rawUrl.trim());
+    if (!['http:', 'https:'].includes(normalizedUrl.protocol)) {
+        throw new Error('Invalid URL protocol');
+    }
+
+    normalizedUrl.search = normalizedUrl.searchParams.toString();
+    return normalizedUrl.toString();
+};
+
+const getRobotTargetUrl = (recording: any): string => {
+    const metaUrl = recording?.recording_meta?.url?.trim();
+    if (metaUrl) {
+        return metaUrl;
+    }
+
+    const workflow = recording?.recording?.workflow || [];
+    const entryPair = [...workflow].reverse().find((pair: any) =>
+        pair?.what?.some((action: any) => action.action === 'goto' && typeof action.args?.[0] === 'string' && action.args[0] !== 'about:blank')
+    );
+    const gotoUrl = entryPair?.what?.find((action: any) => action.action === 'goto' && typeof action.args?.[0] === 'string')?.args?.[0]?.trim();
+    if (gotoUrl) {
+        return gotoUrl;
+    }
+
+    const firstWorkflowUrl = workflow.find((pair: any) => typeof pair?.where?.url === 'string' && pair.where.url !== 'about:blank')?.where?.url?.trim();
+    return firstWorkflowUrl || '';
+};
+
 const formatRecording = (recordingData: any) => {
     const recordingMeta = recordingData.recording_meta;
     const workflow = recordingData.recording.workflow || [];
@@ -718,8 +747,7 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
             });
 
             try {
-                const url = recording.recording_meta.url;
-
+                const url = getRobotTargetUrl(recording);
                 if (!url) {
                     throw new Error('No URL specified for markdown robot');
                 }
@@ -732,6 +760,44 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
 
                 const SCRAPE_TIMEOUT = 120000;
 
+                if (formats.includes("screenshot-visible")) {
+                    try {
+                        const screenshotPromise = convertPageToScreenshot(url, currentPage, false);
+                        const timeoutPromise = new Promise<never>((_, reject) => {
+                            setTimeout(() => reject(new Error(`Screenshot conversion timed out after ${SCRAPE_TIMEOUT / 1000}s`)), SCRAPE_TIMEOUT);
+                        });
+                        const screenshotBuffer = await Promise.race([screenshotPromise, timeoutPromise]);
+
+                        if (screenshotBuffer && screenshotBuffer.length > 0) {
+                            binaryOutput['screenshot-visible'] = {
+                                data: screenshotBuffer.toString('base64'),
+                                mimeType: 'image/png'
+                            };
+                        }
+                    } catch (error: any) {
+                        logger.log('warn', `Screenshot-visible conversion failed for API run ${plainRun.runId}: ${error.message}`);
+                    }
+                }
+
+                if (formats.includes("screenshot-fullpage")) {
+                    try {
+                        const screenshotPromise = convertPageToScreenshot(url, currentPage, true);
+                        const timeoutPromise = new Promise<never>((_, reject) => {
+                            setTimeout(() => reject(new Error(`Screenshot conversion timed out after ${SCRAPE_TIMEOUT / 1000}s`)), SCRAPE_TIMEOUT);
+                        });
+                        const screenshotBuffer = await Promise.race([screenshotPromise, timeoutPromise]);
+
+                        if (screenshotBuffer && screenshotBuffer.length > 0) {
+                            binaryOutput['screenshot-fullpage'] = {
+                                data: screenshotBuffer.toString('base64'),
+                                mimeType: 'image/png'
+                            };
+                        }
+                    } catch (error: any) {
+                        logger.log('warn', `Screenshot-fullpage conversion failed for API run ${plainRun.runId}: ${error.message}`);
+                    }
+                }
+              
                 if (formats.includes('text')) {
                     try {
                         const textPromise = convertPageToText(url, currentPage);
@@ -774,44 +840,6 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
                         }
                     } catch (error: any) {
                         logger.log('warn', `HTML conversion failed for API run ${plainRun.runId}: ${error.message}`);
-                    }
-                }
-
-                if (formats.includes("screenshot-visible")) {
-                    try {
-                        const screenshotPromise = convertPageToScreenshot(url, currentPage, false);
-                        const timeoutPromise = new Promise<never>((_, reject) => {
-                            setTimeout(() => reject(new Error(`Screenshot conversion timed out after ${SCRAPE_TIMEOUT / 1000}s`)), SCRAPE_TIMEOUT);
-                        });
-                        const screenshotBuffer = await Promise.race([screenshotPromise, timeoutPromise]);
-
-                        if (screenshotBuffer && screenshotBuffer.length > 0) {
-                            binaryOutput['screenshot-visible'] = {
-                                data: screenshotBuffer.toString('base64'),
-                                mimeType: 'image/png'
-                            };
-                        }
-                    } catch (error: any) {
-                        logger.log('warn', `Screenshot-visible conversion failed for API run ${plainRun.runId}: ${error.message}`);
-                    }
-                }
-
-                if (formats.includes("screenshot-fullpage")) {
-                    try {
-                        const screenshotPromise = convertPageToScreenshot(url, currentPage, true);
-                        const timeoutPromise = new Promise<never>((_, reject) => {
-                            setTimeout(() => reject(new Error(`Screenshot conversion timed out after ${SCRAPE_TIMEOUT / 1000}s`)), SCRAPE_TIMEOUT);
-                        });
-                        const screenshotBuffer = await Promise.race([screenshotPromise, timeoutPromise]);
-
-                        if (screenshotBuffer && screenshotBuffer.length > 0) {
-                            binaryOutput['screenshot-fullpage'] = {
-                                data: screenshotBuffer.toString('base64'),
-                                mimeType: 'image/png'
-                            };
-                        }
-                    } catch (error: any) {
-                        logger.log('warn', `Screenshot-fullpage conversion failed for API run ${plainRun.runId}: ${error.message}`);
                     }
                 }
 
@@ -1474,8 +1502,10 @@ router.post("/robots/:id/duplicate", requireAPIKey, async (req: Request, res: Re
             });
         }
 
+        let normalizedTargetUrl: string;
         try {
-            const parsed = new URL(targetUrl);
+            normalizedTargetUrl = normalizeRobotUrl(targetUrl);
+            const parsed = new URL(normalizedTargetUrl);
             if (!['http:', 'https:'].includes(parsed.protocol)) {
                 return res.status(400).json({
                     statusCode: 400,
@@ -1503,7 +1533,7 @@ router.post("/robots/:id/duplicate", requireAPIKey, async (req: Request, res: Re
             });
         }
 
-        const lastWord = targetUrl.split('/').filter(Boolean).pop() || 'Unnamed';
+        const lastWord = normalizedTargetUrl.split('/').filter(Boolean).pop() || 'Unnamed';
 
         const steps: any[] = originalRobot.recording.workflow;
         const entryStep = steps.findLast((step: any) => step.where?.url === 'about:blank');
@@ -1519,7 +1549,7 @@ router.post("/robots/:id/duplicate", requireAPIKey, async (req: Request, res: Re
 
             if (originalEntryUrl && step.where?.url !== 'about:blank' && !whereUpdateStopped) {
                 if (step.where?.url === originalEntryUrl) {
-                    updatedWhere = { ...step.where, url: targetUrl };
+                    updatedWhere = { ...step.where, url: normalizedTargetUrl };
                 } else {
                     whereUpdateStopped = true;
                 }
@@ -1528,7 +1558,12 @@ router.post("/robots/:id/duplicate", requireAPIKey, async (req: Request, res: Re
             const updatedWhat = step.what.map((action: any) => {
                 if (!gotoUpdated && action.action === 'goto' && action.args?.[0] === originalEntryUrl) {
                     gotoUpdated = true;
-                    return { ...action, args: [targetUrl, ...action.args.slice(1)] };
+                    return { ...action, args: [normalizedTargetUrl, ...action.args.slice(1)] };
+                }
+                if ((action.action === 'scrape' || action.action === 'crawl') &&
+                    action.args?.[0] && typeof action.args[0] === 'object' &&
+                    action.args[0].url === originalEntryUrl) {
+                    return { ...action, args: [{ ...action.args[0], url: normalizedTargetUrl }, ...action.args.slice(1)] };
                 }
                 return action;
             });
@@ -1545,7 +1580,7 @@ router.post("/robots/:id/duplicate", requireAPIKey, async (req: Request, res: Re
                 ...originalRobot.recording_meta,
                 id: uuid(),
                 name: `${originalRobot.recording_meta.name} (${lastWord})`,
-                url: targetUrl,
+                url: normalizedTargetUrl,
                 createdAt: currentTimestamp,
                 updatedAt: currentTimestamp,
             },
