@@ -6,6 +6,8 @@ interface InterpreterSettings {
   maxConcurrency: number;
   maxRepeats: number;
   debug: boolean;
+  formats?: string[];
+  promptInstructions?: string;
 }
 
 interface RunAttributes {

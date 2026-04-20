@@ -129,10 +129,12 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
       }
     }
 
-    if (row.serializableOutput?.smartQuery && Array.isArray(row.serializableOutput.smartQuery)) {
-      const sq = row.serializableOutput.smartQuery[0];
-      if (sq?.result) {
-        setSmartQueryResult(sq.result);
+    const promptResult = row.serializableOutput?.promptResult || row.serializableOutput?.smartQuery;
+    if (promptResult && Array.isArray(promptResult)) {
+      const sq = promptResult[0];
+      const result = sq?.content || sq?.result;
+      if (result) {
+        setSmartQueryResult(result);
       }
     }
   }, [row.serializableOutput]);

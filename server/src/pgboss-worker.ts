@@ -228,7 +228,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
       if (recording.recording_meta.type === 'scrape') {
         logger.log('info', `Executing scrape robot for run ${data.runId}`);
 
-        const formats = recording.recording_meta.formats || ['markdown'];
+        const formats = run.interpreterSettings?.formats || recording.recording_meta.formats || ['markdown'];
 
         await run.update({
           status: 'running',
@@ -297,7 +297,7 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
             }
           }
 
-          const promptInstructions = (recording.recording_meta as any).promptInstructions as string | undefined;
+          const promptInstructions = run.interpreterSettings?.promptInstructions || (recording.recording_meta as any).promptInstructions as string | undefined;
           if (promptInstructions) {
             try {
               const llmConfig = {
@@ -306,14 +306,14 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
                 apiKey: (recording.recording_meta as any).promptLlmApiKey as string | undefined,
                 baseUrl: (recording.recording_meta as any).promptLlmBaseUrl as string | undefined,
               };
-              logger.log('info', `[SmartQuery] Running smart query for run ${data.runId}`);
+              logger.log('info', `Running smart query for run ${data.runId}`);
               await run.update({ log: 'Running smart query...' });
               const agentResult = await executeBrowserAgent(currentPage, promptInstructions, llmConfig);
-              serializableOutput.smartQuery = [{ result: agentResult.result, steps: agentResult.steps }];
-              logger.log('info', `[SmartQuery] Smart query completed for run ${data.runId}`);
+              serializableOutput.promptResult = [{ content: agentResult.result, steps: agentResult.steps }];
+              logger.log('info', `Smart query completed for run ${data.runId}`);
             } catch (agentError: any) {
-              logger.log('warn', `[SmartQuery] Smart query failed for run ${data.runId}: ${agentError.message}`);
-              serializableOutput.smartQuery = [{ result: `Smart query failed: ${agentError.message}`, steps: [] }];
+              logger.log('warn', `Smart query failed for run ${data.runId}: ${agentError.message}`);
+              serializableOutput.promptResult = [{ content: `Smart query failed: ${agentError.message}`, steps: [] }];
             }
           }
 

@@ -499,7 +499,10 @@ router.post("/sdk/robots/:id/execute", requireAPIKey, async (req: AuthenticatedR
         logger.info(`[SDK] Starting execution for robot ${robotId}`);
 
         const runSource = req.headers['x-run-source'] === 'cli' ? 'cli' : 'sdk';
-        const runId = await handleRunRecording(robotId, user.id.toString(), runSource);
+        const promptInstructions = req.body?.promptInstructions;
+        const requestedFormats = req.body?.formats;
+        
+        const runId = await handleRunRecording(robotId, user.id.toString(), runSource, requestedFormats, promptInstructions);
         if (!runId) {
             throw new Error('Failed to start robot execution');
         }
@@ -580,7 +583,8 @@ router.post("/sdk/robots/:id/execute", requireAPIKey, async (req: AuthenticatedR
                     searchData: searchData,
                     text: text,
                     markdown: markdown,
-                    html: html
+                    html: html,
+                    promptResult: run.serializableOutput?.promptResult?.[0]?.content || null
                 },
                 screenshots: Object.values(run.binaryOutput || {})
             }
