@@ -248,24 +248,6 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
 
           const SCRAPE_TIMEOUT = 120000;
 
-          if (formats.includes('markdown')) {
-            const markdownPromise = convertPageToMarkdown(url, currentPage);
-            const timeoutPromise = new Promise<never>((_, reject) => {
-              setTimeout(() => reject(new Error(`Markdown conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
-            });
-            markdown = await Promise.race([markdownPromise, timeoutPromise]);
-            serializableOutput.markdown = [{ content: markdown }];
-          }
-
-          if (formats.includes('html')) {
-            const htmlPromise = convertPageToHTML(url, currentPage);
-            const timeoutPromise = new Promise<never>((_, reject) => {
-              setTimeout(() => reject(new Error(`HTML conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
-            });
-            html = await Promise.race([htmlPromise, timeoutPromise]);
-            serializableOutput.html = [{ content: html }];
-          }
-
           if (formats.includes("screenshot-visible")) {
             const screenshotPromise = convertPageToScreenshot(url, currentPage, false);
             const timeoutPromise = new Promise<never>((_, reject) => {
@@ -294,6 +276,24 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
                 mimeType: 'image/png'
               };
             }
+          }
+
+          if (formats.includes('markdown')) {
+            const markdownPromise = convertPageToMarkdown(url, currentPage);
+            const timeoutPromise = new Promise<never>((_, reject) => {
+              setTimeout(() => reject(new Error(`Markdown conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
+            });
+            markdown = await Promise.race([markdownPromise, timeoutPromise]);
+            serializableOutput.markdown = [{ content: markdown }];
+          }
+
+          if (formats.includes('html')) {
+            const htmlPromise = convertPageToHTML(url, currentPage);
+            const timeoutPromise = new Promise<never>((_, reject) => {
+              setTimeout(() => reject(new Error(`HTML conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
+            });
+            html = await Promise.race([htmlPromise, timeoutPromise]);
+            serializableOutput.html = [{ content: html }];
           }
 
           // Success update

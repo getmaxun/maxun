@@ -274,7 +274,36 @@ async function executeRun(id: string, userId: string) {
 
         const SCRAPE_TIMEOUT = 120000;
 
-        // Markdown conversion
+        if (formats.includes("screenshot-visible")) {
+          const screenshotPromise = convertPageToScreenshot(url, currentPage, false);
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error(`Screenshot conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
+          });
+          const screenshotBuffer = await Promise.race([screenshotPromise, timeoutPromise]);
+
+          if (!binaryOutput['screenshot-visible']) {
+            binaryOutput['screenshot-visible'] = {
+              data: screenshotBuffer.toString('base64'),
+              mimeType: 'image/png'
+            };
+          }
+        }
+
+        if (formats.includes("screenshot-fullpage")) {
+          const screenshotPromise = convertPageToScreenshot(url, currentPage, true);
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error(`Screenshot conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
+          });
+          const screenshotBuffer = await Promise.race([screenshotPromise, timeoutPromise]);
+
+          if (!binaryOutput['screenshot-fullpage']) {
+            binaryOutput['screenshot-fullpage'] = {
+              data: screenshotBuffer.toString('base64'),
+              mimeType: 'image/png'
+            };
+          }
+        }
+
         if (formats.includes("markdown")) {
           const markdownPromise = convertPageToMarkdown(url, currentPage);
           const timeoutPromise = new Promise<never>((_, reject) => {
@@ -291,37 +320,6 @@ async function executeRun(id: string, userId: string) {
           });
           html = await Promise.race([htmlPromise, timeoutPromise]);
           serializableOutput.html = [{ content: html }];
-        }
-
-        if (formats.includes("screenshot-visible")) {
-          const screenshotPromise = convertPageToScreenshot(url, currentPage, false);
-          const timeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error(`Screenshot conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
-          });
-          const screenshotBuffer = await Promise.race([screenshotPromise, timeoutPromise]);
-
-          if (!binaryOutput['screenshot-visible']) {
-            binaryOutput['screenshot-visible'] = {
-              data: screenshotBuffer.toString('base64'),
-              mimeType: 'image/png'
-            };
-          }
-        }
-
-        // Screenshot - full page
-        if (formats.includes("screenshot-fullpage")) {
-          const screenshotPromise = convertPageToScreenshot(url, currentPage, true);
-          const timeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error(`Screenshot conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
-          });
-          const screenshotBuffer = await Promise.race([screenshotPromise, timeoutPromise]);
-
-          if (!binaryOutput['screenshot-fullpage']) {
-            binaryOutput['screenshot-fullpage'] = {
-              data: screenshotBuffer.toString('base64'),
-              mimeType: 'image/png'
-            };
-          }
         }
 
         await run.update({
