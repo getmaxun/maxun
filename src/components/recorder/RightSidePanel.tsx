@@ -854,6 +854,13 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                 {t('right_panel.buttons.capture_screenshot')}
               </Button>
             )}
+
+            <Button
+              variant="contained"
+              onClick={() => {}}
+              >
+                Scripting
+              </Button>
           </>
         )}
 
