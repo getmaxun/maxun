@@ -503,7 +503,7 @@ const RobotCreate: React.FC = () => {
                       onChange={(e) => setLlmModel(e.target.value)}
                       helperText={`Leave blank to use default: ${
                         llmProvider === 'ollama' ? 'llama3.2-vision' :
-                        llmProvider === 'anthropic' ? 'claude-3-5-sonnet-20241022' :
+                        llmProvider === 'anthropic' ? 'claude-sonnet-4-6' :
                         'gpt-4o'
                       }`}
                     />
@@ -858,7 +858,7 @@ const RobotCreate: React.FC = () => {
                         onChange={(e) => setScrapePromptLlmModel(e.target.value)}
                         helperText={`Leave blank to use default: ${
                           scrapePromptLlmProvider === 'ollama' ? 'llama3.2-vision' :
-                          scrapePromptLlmProvider === 'anthropic' ? 'claude-3-5-sonnet-20241022' :
+                          scrapePromptLlmProvider === 'anthropic' ? 'claude-sonnet-4-6' :
                           'gpt-4o'
                         }`}
                       />
