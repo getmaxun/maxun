@@ -220,9 +220,10 @@ function tidyHtml(html: string): string {
 }
 
 function fixBrokenLinks(md: string): string {
-  const parts = md.split(/(`{3,}[\s\S]*?`{3,}|~{3,}[\s\S]*?~{3,})/g);
+  const parts = md.split(/((?:^|\n)(`{3,}|~{3,})[\s\S]*?\n\2(?:\n|$))/g);
   return parts.map((part, i) => {
-    if (i % 2 === 1) return part;
+    if (i % 3 === 1) return part;
+    if (i % 3 === 2) return "";
     
     return part.split("\n\n").map(paragraph => {
       let depth = 0;
