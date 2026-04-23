@@ -33,6 +33,15 @@ export async function parseMarkdown(
     replacement: () => "",
   });
 
+  t.addRule("superscript", {
+    filter: "sup",
+    replacement: (content: string) => {
+      const clean = content.trim();
+      if (!clean) return "";
+      return `^${clean}^`;
+    },
+  });
+
   t.addRule("improved-paragraph", {
     filter: "p",
     replacement: (innerText: string) => {
@@ -54,10 +63,13 @@ export async function parseMarkdown(
           node.getAttribute("aria-label")?.trim() ||
           node.getAttribute("title")?.trim() ||
           getDomainFromUrl(node.getAttribute("href")) ||
-          "link";
+          "";
       }
 
+      if (!text) return "";
+
       let href = node.getAttribute("href").trim();
+      if (href.startsWith("javascript:")) return text;
 
       if (baseUrl && isRelativeUrl(href)) {
         try {
@@ -66,11 +78,16 @@ export async function parseMarkdown(
         } catch { }
       }
 
-      if (baseUrl && isSameDomain(href, baseUrl)) {
-        return text;
+      const headingMatch = text.match(/^(#{1,6})\s+([\s\S]+)$/);
+      if (headingMatch) {
+        const level = headingMatch[1];
+        const headingText = headingMatch[2]
+          .split(/!\[[^\]]*\]\([^)]*\)/)[0]
+          .replace(/\s+/g, " ")
+          .trim();
+        if (!headingText) return "";
+        return `\n${level} [${headingText}](${href})\n`;
       }
-
-      href = cleanUrl(href);
 
       return `[${text}](${href})`;
     },
@@ -112,14 +129,6 @@ function isRelativeUrl(url: string): boolean {
   return !url.includes("://") && !url.startsWith("mailto:") && !url.startsWith("tel:") && !url.startsWith("data:");
 }
 
-function isSameDomain(href: string, baseUrl: string): boolean {
-  try {
-    return new URL(href).hostname === new URL(baseUrl).hostname;
-  } catch {
-    return false;
-  }
-}
-
 function getDomainFromUrl(url: string): string | null {
   try {
     const u = new URL(url);
@@ -127,10 +136,6 @@ function getDomainFromUrl(url: string): string | null {
   } catch {
     return null;
   }
-}
-
-function cleanUrl(u: string): string {
-  return u.split("#")[0];
 }
 
 function tidyHtml(html: string): string {
@@ -155,27 +160,8 @@ function tidyHtml(html: string): string {
     }
   });
 
-  const noiseSelectors = [
-    "nav", "header", "footer", "aside",
-    ".nav", ".header", ".footer", ".sidebar", ".menu", ".ads", ".ad", ".advertisement",
-    "#nav", "#header", "#footer", "#sidebar", ".breadcrumb", ".social-share",
-    ".comments", ".popup", ".modal", ".cookie-banner", ".location-widget",
-    ".keyboard-shortcuts", ".skip-link", ".banner", ".top-bar", ".nav-bar",
-    '[role="navigation"]', '[role="banner"]', '[role="contentinfo"]',
-    '[role="complementary"]', "#shortcut-menu", ".nav-sprite", ".a-header", ".a-footer",
-    ".gb_wa", ".gb_xa",
-    "#nav-belt", "#nav-main", "#nav-footer",
-    ".mw-editsection", ".mw-editsection-bracket", ".mw-editsection-divider",
-  ];
-  noiseSelectors.forEach((sel) => $(sel).remove());
-
-  const uiArtifacts = ["Undo", "Done", "Edit", "Viewed categories", "Dismiss", "Close", "View detail", "View more"];
-  $("button, span, a, div").each((_i, el) => {
-    const text = $(el).text().trim();
-    if (uiArtifacts.includes(text) && $(el).children().length === 0) {
-      $(el).remove();
-    }
-  });
+  $("body > header, body > footer, body > nav, body > aside").remove();
+  $('[role="navigation"], [role="banner"], [role="contentinfo"]').remove();
 
   const mainSelectors = ["main", "article", "#main-content", "#content", ".main", ".content", ".article", ".post-content", "[role='main']"];
   let bestContent: cheerio.Cheerio<any> | null = null;
@@ -198,38 +184,32 @@ function tidyHtml(html: string): string {
     }
   }
 
-  let contentToProcess = bestContent || $("body");
+  const $content = bestContent || $("body");
 
-  contentToProcess.find("div, ul, section").each((_i, el) => {
-    const $el = $(el);
-    const children = $el.children();
-    if (children.length > 10) {
-      const tagCounts: Record<string, number> = {};
-      children.each((_idx, child) => {
-        const tag = (child as any).tagName || (child as any).name;
-        if (tag) {
-          tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-        }
-      });
-      const dominantTag = Object.keys(tagCounts).find(tag => tagCounts[tag] > 15);
-      const hasCurrency = /[$\u20b9\u20ac\u00a3\u00a5]/.test($el.text());
-      if (dominantTag && $el.text().length / children.length < 30 && !hasCurrency) {
-        $el.remove();
-      }
-    }
-  });
+  const innerNoiseSelectors = [
+    "nav", "footer",
+    ".nav", ".header", ".footer", ".sidebar", ".menu", ".ads", ".ad", ".advertisement",
+    "#nav", "#header", "#footer", "#sidebar", ".breadcrumb", ".social-share",
+    ".comments", ".popup", ".modal", ".cookie-banner", ".location-widget",
+    ".keyboard-shortcuts", ".skip-link", ".banner", ".top-bar", ".nav-bar",
+    '[role="complementary"]',
+    "#shortcut-menu", ".nav-sprite", ".a-header", ".a-footer",
+    ".gb_wa", ".gb_xa",
+    "#nav-belt", "#nav-main", "#nav-footer",
+    ".mw-editsection", ".mw-editsection-bracket", ".mw-editsection-divider",
+  ];
+  innerNoiseSelectors.forEach((sel) => $content.find(sel).remove());
 
-  contentToProcess.find("ul, ol").each((_i, el) => {
-    const $el = $(el);
-    const items = $el.children("li");
-    if (items.length > 40) {
-      items.slice(40).remove();
-      $el.append("<li>... (further items truncated for readability)</li>");
+  const uiArtifacts = ["Undo", "Done", "Edit", "Viewed categories", "Dismiss", "Close", "View detail", "View more"];
+  $content.find("button, span, a, div").each((_i, el) => {
+    const text = $(el).text().trim();
+    if (uiArtifacts.includes(text) && $(el).children().length === 0) {
+      $(el).remove();
     }
   });
 
   const title = $("title").text().trim() || $("h1").first().text().trim();
-  let resultHtml = contentToProcess.html() || "";
+  let resultHtml = $content.html() || "";
 
   if (title && !resultHtml.includes(title)) {
     resultHtml = `<h1>${title}</h1>\n${resultHtml}`;
@@ -239,15 +219,21 @@ function tidyHtml(html: string): string {
 }
 
 function fixBrokenLinks(md: string): string {
-  let depth = 0;
-  let result = "";
-
-  for (const ch of md) {
-    if (ch === "[") depth++;
-    if (ch === "]") depth = Math.max(0, depth - 1);
-    result += depth > 0 && ch === "\n" ? "\\\n" : ch;
-  }
-  return result;
+  const parts = md.split(/(```[\s\S]*?```)/g);
+  return parts.map((part, i) => {
+    if (i % 2 === 1) return part;
+    
+    return part.split("\n\n").map(paragraph => {
+      let depth = 0;
+      let result = "";
+      for (const ch of paragraph) {
+        if (ch === "[") depth++;
+        if (ch === "]") depth = Math.max(0, depth - 1);
+        result += depth > 0 && ch === "\n" ? "\\\n" : ch;
+      }
+      return result;
+    }).join("\n\n");
+  }).join("");
 }
 
 function stripSkipLinks(md: string): string {
@@ -264,6 +250,5 @@ function stripEditLinks(md: string): string {
 function cleanupExtraWhitespace(md: string): string {
   return md
     .replace(/\n{3,}/g, "\n\n")
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n[ \t]+/g, "\n");
+    .replace(/[ \t]+\n/g, "\n");
 }
