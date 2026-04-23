@@ -69,7 +69,8 @@ export async function parseMarkdown(
       if (!text) return "";
 
       let href = node.getAttribute("href").trim();
-      if (href.startsWith("javascript:")) return text;
+      const normalizedHref = href.replace(/[\x00-\x1F\x7F-\x9F\s]/g, "").toLowerCase();
+      if (normalizedHref.startsWith("javascript:")) return text;
 
       if (baseUrl && isRelativeUrl(href)) {
         try {
@@ -219,7 +220,7 @@ function tidyHtml(html: string): string {
 }
 
 function fixBrokenLinks(md: string): string {
-  const parts = md.split(/(```[\s\S]*?```)/g);
+  const parts = md.split(/(`{3,}[\s\S]*?`{3,}|~{3,}[\s\S]*?~{3,})/g);
   return parts.map((part, i) => {
     if (i % 2 === 1) return part;
     
