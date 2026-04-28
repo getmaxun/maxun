@@ -882,7 +882,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                       <>
                         <TableCell
                           sx={{
-                            backgroundColor: (theme) => theme.palette.mode === 'dark' ? '#11111' : '#f8f9fa'
+                            backgroundColor: (theme) => theme.palette.mode === 'dark' ? '#11111' : '#f8f9fa',
+                            minWidth: '100px',
+                            whiteSpace: 'nowrap'
                           }}
                         >
                           Label
@@ -913,7 +915,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   {shouldShowAsKeyValue ? (
                     columns.map((column) => (
                       <TableRow key={column}>
-                        <TableCell sx={{ fontWeight: 500 }}>
+                        <TableCell sx={{ fontWeight: 500, whiteSpace: 'nowrap' }}>
                           {column}
                         </TableCell>
                         <TableCell>
@@ -1052,7 +1054,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                     <>
                       <TableCell
                         sx={{
-                          backgroundColor: (theme) => theme.palette.mode === 'dark' ? '#11111' : '#f8f9fa'
+                          backgroundColor: (theme) => theme.palette.mode === 'dark' ? '#11111' : '#f8f9fa',
+                          minWidth: '100px',
+                          whiteSpace: 'nowrap'
                         }}
                       >
                         Label
@@ -1083,7 +1087,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 {shouldShowAsKeyValue ? (
                   columns.map((column) => (
                     <TableRow key={column}>
-                      <TableCell sx={{ fontWeight: 500 }}>
+                      <TableCell sx={{ fontWeight: 500, whiteSpace: 'nowrap' }}>
                         {column}
                       </TableCell>
                       <TableCell>
@@ -1560,7 +1564,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                   {crawlData[0][currentCrawlIndex].metadata &&
                                     Object.entries(crawlData[0][currentCrawlIndex].metadata).map(([key, value]: [string, any]) => (
                                       <TableRow key={key}>
-                                        <TableCell sx={{ fontWeight: 500, width: '200px' }}>
+                                        <TableCell sx={{ fontWeight: 500, width: '200px', whiteSpace: 'nowrap' }}>
                                           {key}
                                         </TableCell>
                                         <TableCell sx={{ wordBreak: 'break-word' }}>
@@ -1916,7 +1920,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                       {searchData[currentSearchIndex].metadata &&
                                         Object.entries(searchData[currentSearchIndex].metadata).map(([key, value]: [string, any]) => (
                                           <TableRow key={key}>
-                                            <TableCell sx={{ fontWeight: 500, width: '200px' }}>
+                                            <TableCell sx={{ fontWeight: 500, width: '200px', whiteSpace: 'nowrap' }}>
                                               {key}
                                             </TableCell>
                                             <TableCell sx={{ wordBreak: 'break-word' }}>
@@ -2201,7 +2205,8 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                 <TableCell
                                   sx={{
                                     backgroundColor: darkMode ? '#11111' : '#f8f9fa',
-                                    minWidth: '200px'
+                                    minWidth: '200px', 
+                                    whiteSpace: 'nowrap' 
                                   }}
                                 >
                                   Title
@@ -2209,7 +2214,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                 <TableCell
                                   sx={{
                                     backgroundColor: darkMode ? '#11111' : '#f8f9fa',
-                                    minWidth: '250px'
+                                    minWidth: '250px',
+                                    whiteSpace: 'nowrap' 
+
                                   }}
                                 >
                                   URL
@@ -2217,7 +2224,8 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                 <TableCell
                                   sx={{
                                     backgroundColor: darkMode ? '#11111' : '#f8f9fa',
-                                    minWidth: '300px'
+                                    minWidth: '300px',
+                                    whiteSpace: 'nowrap' 
                                   }}
                                 >
                                   Description
