@@ -13,7 +13,7 @@ import { WorkflowFile } from "maxun-core";
 import { Page } from "playwright-core";
 import { sendWebhook } from "../../routes/webhook";
 import { addAirtableUpdateTask, airtableUpdateTasks, processAirtableUpdates } from "../integrations/airtable";
-import { convertPageToMarkdown, convertPageToHTML, convertPageToScreenshot, convertPageToText } from "../../markdownify/scrape";
+import { convertPageToMarkdown, convertPageToHTML, convertPageToLinks, convertPageToScreenshot, convertPageToText } from "../../markdownify/scrape";
 import { executeBrowserAgent } from "../../sdk/browserAgent";
 import { processRobotOutputFormats } from "../../utils/output-post-processor";
 import { getInterpretationFailureReason, hasExpectedRobotOutput } from "../../utils/output-validation";
@@ -252,7 +252,8 @@ async function executeRun(id: string, userId: string) {
     if (recording.recording_meta.type === 'scrape') {
       logger.log('info', `Executing scrape robot for scheduled run ${id}`);
 
-      const formats = run.interpreterSettings?.formats || recording.recording_meta.formats || ['markdown'];
+      const rawFormats = run.interpreterSettings?.formats || recording.recording_meta.formats;
+      const formats = rawFormats && rawFormats.length > 0 ? rawFormats : ['markdown'];
 
       await run.update({
         status: 'running',
@@ -350,7 +351,21 @@ async function executeRun(id: string, userId: string) {
           html = await Promise.race([htmlPromise, timeoutPromise]);
           serializableOutput.html = [{ content: html }];
         }
-        
+
+        if (formats.includes('links')) {
+          try {
+            const links = await Promise.race([
+              convertPageToLinks(url, currentPage),
+              new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`Links extraction timed out`)), SCRAPE_TIMEOUT))
+            ]);
+            if (links && links.length > 0) {
+              serializableOutput.links = links.map((link: string) => ({ url: link }));
+            }
+          } catch (error: any) {
+            logger.log('warn', `Links extraction failed for run ${plainRun.runId}: ${error.message}`);
+          }
+        }
+
         const promptInstructions = (recording.recording_meta as any).promptInstructions as string | undefined;
         if (promptInstructions && currentPage) {
           try {

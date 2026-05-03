@@ -47,6 +47,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   const [markdownContent, setMarkdownContent] = useState<string>('');
   const [htmlContent, setHtmlContent] = useState<string>('');
   const [textContent, setTextContent] = useState<string>('');
+  const [linksContent, setLinksContent] = useState<string[]>([]);
   const [smartQueryResult, setSmartQueryResult] = useState<string>('');
 
   const [schemaData, setSchemaData] = useState<any[]>([]);
@@ -99,6 +100,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     setHtmlContent('');
     setSmartQueryResult('');
     setTextContent('');
+    setLinksContent([]);
 
     if (!row.serializableOutput) return;
 
@@ -127,6 +129,13 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
         } else if (typeof textOutput === 'string') {
           setTextContent(textOutput);
         }
+      }
+
+      if (output?.links && Array.isArray(output.links) && output.links.length > 0) {
+        const urls: string[] = output.links.map((item: any) =>
+          typeof item === 'string' ? item : item?.url ?? ''
+        ).filter(Boolean);
+        if (urls.length > 0) setLinksContent(urls);
       }
     };
 
@@ -1123,7 +1132,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   const hasMarkdown = markdownContent && markdownContent.length > 0;
   const hasHTML = htmlContent && htmlContent.length > 0;
   const hasTextFormat = textContent && textContent.length > 0;
-  const hasSmartQuery = smartQueryResult.length > 0;
+  const hasLinks = linksContent && linksContent.length > 0;
+  const promptResultData = smartQueryResult || null;
+  const hasPromptResult = !!promptResultData;
   const hasCrawlPageScreenshots = crawlData.some(group => Array.isArray(group) && group.some((item: any) => item?.screenshotVisible || item?.screenshotFullpage));
   const hasSearchResultScreenshots = searchData.some((item: any) => item?.screenshotVisible || item?.screenshotFullpage);
   const showCapturedScreenshotSection = hasScreenshots && !hasCrawlPageScreenshots && !hasSearchResultScreenshots;
@@ -1132,7 +1143,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     <Box sx={{ width: '100%' }}>
       <TabContext value={tab}>
         <TabPanel value='output' sx={{ width: '100%', maxWidth: '900px' }}>
-          {hasMarkdown || hasHTML || hasTextFormat ? (
+          {hasMarkdown || hasHTML || hasTextFormat || hasLinks ? (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {hasMarkdown && (
                 <Accordion defaultExpanded>
@@ -1230,6 +1241,47 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 </Accordion>
               )}
 
+              {hasLinks && (
+                <Accordion defaultExpanded>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <ArticleIcon sx={{ mr: 1 }} />
+                      <Typography variant='h6'>Links ({linksContent.length})</Typography>
+                    </Box>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Paper sx={{ p: 2, maxHeight: 400, overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        {Array.from(new Set(linksContent)).map((link: string, idx: number) => (
+                          <Link key={idx} href={link} target="_blank" rel="noopener" sx={{ color: '#FF00C3', wordBreak: 'break-all', fontSize: '0.875rem' }}>
+                            {link}
+                          </Link>
+                        ))}
+                      </Box>
+                    </Paper>
+                    <Box sx={{ mt: 1 }}>
+                      <Button
+                        onClick={() => {
+                          const uniqueLinks = Array.from(new Set(linksContent));
+                          const blob = new Blob([uniqueLinks.join('\n')], { type: 'text/plain' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `${row.name || 'links'}.txt`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          URL.revokeObjectURL(url);
+                        }}
+                        sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
+                      >
+                        Download Links
+                      </Button>
+                    </Box>
+                  </AccordionDetails>
+                </Accordion>
+              )}
+
               {showCapturedScreenshotSection && renderCapturedScreenshotsAccordion(
                 t('run_content.captured_screenshot.title', 'Captured Screenshots'),
                 screenshotKeys.map((label, index) => ({ key: label, label, value: rawScreenshotKeys[index] })).filter(tab => tab.value),
@@ -1262,7 +1314,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 {t('run_content.buttons.stop')}
               </Button>
             </>
-          ) : (!hasData && !hasScreenshots
+          ) : (!hasData && !hasScreenshots && !hasMarkdown && !hasHTML && !hasTextFormat && !hasLinks && !hasPromptResult
             ? (['failed', 'aborted', 'aborting'].includes(row.status)
               ? <Typography color='error'>{t('run_content.failed_no_output', 'Run failed before generating output. Check run logs for details.')}</Typography>
               : <Typography>{t('run_content.empty_output')}</Typography>)
@@ -2295,7 +2347,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
           </>
           )}
 
-          {hasSmartQuery && (
+          {hasPromptResult && promptResultData && (
             <Accordion defaultExpanded sx={{ mb: 2 }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -2306,13 +2358,13 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               <AccordionDetails>
                 <Paper sx={{ p: 2, maxHeight: '500px', overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
                   <Box component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: '13px', lineHeight: 1.6, m: 0, color: 'inherit' }}>
-                    {smartQueryResult}
+                    {promptResultData}
                   </Box>
                 </Paper>
                 <Box sx={{ mt: 2 }}>
                   <Button
                     onClick={() => {
-                      const blob = new Blob([smartQueryResult], { type: 'text/plain' });
+                      const blob = new Blob([promptResultData], { type: 'text/plain' });
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement('a');
                       a.href = url;

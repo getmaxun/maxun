@@ -4,6 +4,7 @@ import { RunSettings } from "../components/run/RunSettings";
 import { ScheduleSettings } from "../components/robot/pages/ScheduleSettingsPage";
 import { CreateRunResponse, ScheduleRunResponse } from "../pages/MainPage";
 import { apiUrl } from "../apiConfig";
+import { OutputFormats } from "../constants/outputFormats";
 
 interface CredentialInfo {
   value: string;
@@ -117,7 +118,7 @@ export const updateRecording = async (id: string, data: {
   credentials?: Credentials; 
   targetUrl?: string;
   workflow?: any[];
-  formats?: string[];
+  formats?: OutputFormats[];
 }): Promise<boolean> => {
   try {
     const response = await axios.put(`${apiUrl}/storage/recordings/${id}`, data);
@@ -418,7 +419,7 @@ export const createSearchRobot = async (
     };
     mode: 'discover' | 'scrape';
   },
-  formats?: string[]
+  formats?: OutputFormats[]
 ): Promise<any> => {
   try {
     const response = await axios.post(

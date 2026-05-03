@@ -30,8 +30,7 @@ import { useGlobalInfoStore, useCacheInvalidation } from '../../../context/globa
 import { canCreateBrowserInState, getActiveBrowserId, stopRecording } from '../../../api/recording';
 import { createScrapeRobot, createLLMRobot, createAndRunRecording, createCrawlRobot, createSearchRobot } from "../../../api/storage";
 import { AuthContext } from '../../../context/auth';
-import { GenericModal } from '../../ui/GenericModal';
-import { DEFAULT_OUTPUT_FORMATS, OUTPUT_FORMAT_LABELS, OUTPUT_FORMAT_OPTIONS, OutputFormat } from '../../../constants/outputFormats';
+import { DEFAULT_OUTPUT_FORMATS, OUTPUT_FORMAT_LABELS, OUTPUT_FORMAT_OPTIONS, OutputFormats } from '../../../constants/outputFormats';
 
 
 interface TabPanelProps {
@@ -69,7 +68,7 @@ const RobotCreate: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isWarningModalOpen, setWarningModalOpen] = useState(false);
   const [activeBrowserId, setActiveBrowserId] = useState('');
-  const [outputFormats, setOutputFormats] = useState<string[]>([]);
+  const [outputFormats, setOutputFormats] = useState<OutputFormats[]>(DEFAULT_OUTPUT_FORMATS);
   const [generationMode, setGenerationMode] = useState<'agent' | 'recorder' | null>('recorder');
 
   const [aiPrompt, setAiPrompt] = useState('');
@@ -104,8 +103,8 @@ const RobotCreate: React.FC = () => {
   const [searchMode, setSearchMode] = useState<'discover' | 'scrape'>('discover');
   const [searchTimeRange, setSearchTimeRange] = useState<'day' | 'week' | 'month' | 'year' | ''>('');
 
-  const [crawlOutputFormats, setCrawlOutputFormats] = useState<OutputFormat[]>(DEFAULT_OUTPUT_FORMATS);
-  const [searchOutputFormats, setSearchOutputFormats] = useState<OutputFormat[]>(DEFAULT_OUTPUT_FORMATS);
+  const [crawlOutputFormats, setCrawlOutputFormats] = useState<OutputFormats[]>(DEFAULT_OUTPUT_FORMATS);
+  const [searchOutputFormats, setSearchOutputFormats] = useState<OutputFormats[]>(DEFAULT_OUTPUT_FORMATS);
 
   const { state } = React.useContext(AuthContext);
   const { user } = state;
@@ -743,47 +742,12 @@ const RobotCreate: React.FC = () => {
                       value={outputFormats}
                       label="Output Formats *"
                       onChange={(e) => {
-                        const value =
-                          typeof e.target.value === 'string'
-                            ? e.target.value.split(',')
-                            : e.target.value;
-                        setOutputFormats(value);
+                        const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
+                        setOutputFormats(value as OutputFormats[]);
                       }}
                       renderValue={(selected) => {
-                        if (selected.length === 0) {
-                          return <em style={{ color: '#999' }}>Select formats</em>;
-                        }
-
-                        const OUTPUT_FORMAT_LABELS: Record<string, string> = {
-                          markdown: 'Markdown',
-                          html: 'HTML',
-                          text: 'Text Content',
-                          'screenshot-visible': 'Screenshot (Visible)',
-                          'screenshot-fullpage': 'Screenshot (Full Page)',
-                        };
-
-                        const labels = selected.map(
-                          (value) => OUTPUT_FORMAT_LABELS[value] ?? value
-                        );
-
-                        const MAX_ITEMS = 2; // Show only first 2, then ellipsis
-
-                        const display =
-                          labels.length > MAX_ITEMS
-                            ? `${labels.slice(0, MAX_ITEMS).join(', ')}…`
-                            : labels.join(', ');
-
-                        return (
-                          <Box
-                            sx={{
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                            }}
-                          >
-                            {display}
-                          </Box>
-                        );
+                        const labels = selected.map(v => OUTPUT_FORMAT_LABELS[v] ?? v);
+                        return labels.length > 2 ? `${labels.slice(0, 2).join(', ')}…` : labels.join(', ');
                       }}
                       MenuProps={{
                         PaperProps: {
@@ -793,26 +757,12 @@ const RobotCreate: React.FC = () => {
                         },
                       }}
                     >
-                      <MenuItem value="markdown">
-                        <Checkbox checked={outputFormats.includes('markdown')} />
-                        Markdown
-                      </MenuItem>
-                      <MenuItem value="html">
-                        <Checkbox checked={outputFormats.includes('html')} />
-                        HTML
-                      </MenuItem>
-                      <MenuItem value="text">
-                        <Checkbox checked={outputFormats.includes('text')} />
-                        Text Content
-                      </MenuItem>
-                      <MenuItem value="screenshot-visible">
-                        <Checkbox checked={outputFormats.includes('screenshot-visible')} />
-                        Screenshot - Visible Viewport
-                      </MenuItem>
-                      <MenuItem value="screenshot-fullpage">
-                        <Checkbox checked={outputFormats.includes('screenshot-fullpage')} />
-                        Screenshot - Full Page
-                      </MenuItem>
+                      {OUTPUT_FORMAT_OPTIONS.map((format) => (
+                        <MenuItem key={format} value={format}>
+                          <Checkbox checked={outputFormats.includes(format)} />
+                          {OUTPUT_FORMAT_LABELS[format]}
+                        </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                 </Box>
@@ -1011,7 +961,7 @@ const RobotCreate: React.FC = () => {
                       label="Output Formats *"
                       onChange={(e) => {
                         const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
-                        setCrawlOutputFormats(value as OutputFormat[]);
+                        setCrawlOutputFormats(value as OutputFormats[]);
                       }}
                       renderValue={(selected) => {
                         const labels = selected.map(v => OUTPUT_FORMAT_LABELS[v] ?? v);
@@ -1236,7 +1186,7 @@ const RobotCreate: React.FC = () => {
                         label="Output Formats *"
                         onChange={(e) => {
                           const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
-                          setSearchOutputFormats(value as OutputFormat[]);
+                          setSearchOutputFormats(value as OutputFormats[]);
                         }}
                         renderValue={(selected) => {
                           const labels = selected.map(v => OUTPUT_FORMAT_LABELS[v] ?? v);

@@ -25,7 +25,7 @@ import {
   DEFAULT_OUTPUT_FORMATS,
   OUTPUT_FORMAT_LABELS,
   OUTPUT_FORMAT_OPTIONS,
-  OutputFormat,
+  OutputFormats,
 } from "../../../constants/outputFormats";
 
 interface RobotMeta {
@@ -38,7 +38,7 @@ interface RobotMeta {
   params: any[];
   type?: 'extract' | 'scrape' | 'crawl' | 'search';
   url?: string;
-  formats?: OutputFormat[];
+  formats?: OutputFormats[];
   isLLM?: boolean;
 }
 
@@ -148,9 +148,9 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [crawlConfig, setCrawlConfig] = useState<CrawlConfig>({});
   const [searchConfig, setSearchConfig] = useState<SearchConfig>({});
-  const [crawlOutputFormats, setCrawlOutputFormats] = useState<OutputFormat[]>(DEFAULT_OUTPUT_FORMATS);
-  const [searchOutputFormats, setSearchOutputFormats] = useState<OutputFormat[]>(DEFAULT_OUTPUT_FORMATS);
-  const [scrapeOutputFormats, setScrapeOutputFormats] = useState<OutputFormat[]>(DEFAULT_OUTPUT_FORMATS);
+  const [crawlOutputFormats, setCrawlOutputFormats] = useState<OutputFormats[]>(DEFAULT_OUTPUT_FORMATS);
+  const [searchOutputFormats, setSearchOutputFormats] = useState<OutputFormats[]>(DEFAULT_OUTPUT_FORMATS);
+  const [scrapeOutputFormats, setScrapeOutputFormats] = useState<OutputFormats[]>(DEFAULT_OUTPUT_FORMATS);
   const [showCrawlAdvanced, setShowCrawlAdvanced] = useState(false);
 
   const isEmailPattern = (value: string): boolean => {
@@ -207,8 +207,8 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         ? robot.recording_meta.formats
         : [];
 
-      const filteredFormats = rawFormats.filter((format): format is OutputFormat =>
-        OUTPUT_FORMAT_OPTIONS.includes(format as OutputFormat)
+      const filteredFormats = rawFormats.filter((format): format is OutputFormats =>
+        OUTPUT_FORMAT_OPTIONS.includes(format as OutputFormats)
       );
 
       if (robot.recording_meta?.type === 'crawl') {
@@ -839,10 +839,10 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
             label="Output Formats *"
             onChange={(e) => {
               const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
-              setCrawlOutputFormats(value as OutputFormat[]);
+              setCrawlOutputFormats(value as OutputFormats[]);
             }}
             renderValue={(selected) => {
-              const labels = (selected as OutputFormat[]).map(v => OUTPUT_FORMAT_LABELS[v] ?? v);
+              const labels = (selected as OutputFormats[]).map(v => OUTPUT_FORMAT_LABELS[v] ?? v);
               return labels.length > 2 ? `${labels.slice(0, 2).join(', ')}...` : labels.join(', ');
             }}
           >
@@ -1036,10 +1036,10 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
               label="Output Formats *"
               onChange={(e) => {
                 const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
-                setSearchOutputFormats(value as OutputFormat[]);
+                setSearchOutputFormats(value as OutputFormats[]);
               }}
               renderValue={(selected) => {
-                const labels = (selected as OutputFormat[]).map(v => OUTPUT_FORMAT_LABELS[v] ?? v);
+                const labels = (selected as OutputFormats[]).map(v => OUTPUT_FORMAT_LABELS[v] ?? v);
                 return labels.length > 2 ? `${labels.slice(0, 2).join(', ')}...` : labels.join(', ');
               }}
             >
@@ -1092,10 +1092,10 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
           label="Output Formats *"
           onChange={(e) => {
             const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
-            setScrapeOutputFormats(value as OutputFormat[]);
+            setScrapeOutputFormats(value as OutputFormats[]);
           }}
           renderValue={(selected) => {
-            const labels = (selected as OutputFormat[]).map(v => OUTPUT_FORMAT_LABELS[v] ?? v);
+            const labels = (selected as OutputFormats[]).map(v => OUTPUT_FORMAT_LABELS[v] ?? v);
             return labels.length > 2 ? `${labels.slice(0, 2).join(', ')}...` : labels.join(', ');
           }}
         >
