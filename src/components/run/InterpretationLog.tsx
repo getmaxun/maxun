@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { useBrowserSteps } from '../../context/browserSteps';
 import { useActionContext } from '../../context/browserActions';
 import { useSocketStore } from '../../context/socket';
+import { clientSelectorGenerator } from '../../helpers/clientSelectorGenerator';
 
 interface InterpretationLogProps {
   isOpen: boolean;
@@ -59,11 +60,11 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
   const autoFocusedScreenshotIndices = useRef<Set<number>>(new Set());
 
   const { browserSteps, updateListTextFieldLabel, removeListTextField, updateListStepName, updateScreenshotStepName, updateBrowserTextStepLabel, deleteBrowserStep, deleteStepsByActionId, emitForStepId } = useBrowserSteps();
-  const { captureStage, getText } = useActionContext();
+  const { captureStage, getText, stopGetList, stopPaginationMode, stopLimitMode, setShowPaginationOptions, setShowLimitOptions, setCaptureStage } = useActionContext();
   const { socket } = useSocketStore();
 
   const { browserWidth, outputPreviewHeight, outputPreviewWidth } = useBrowserDimensionsStore();
-  const { currentWorkflowActionsState, shouldResetInterpretationLog, currentTextGroupName, setCurrentTextGroupName, notify } = useGlobalInfoStore();
+  const { currentWorkflowActionsState, shouldResetInterpretationLog, currentTextGroupName, setCurrentTextGroupName, notify, currentTextActionId, currentListActionId, setCurrentListActionId } = useGlobalInfoStore();
 
   const [showPreviewData, setShowPreviewData] = useState<boolean>(false);
   const userClosedDrawer = useRef<boolean>(false);
@@ -179,6 +180,17 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
     if (socket) {
       socket.emit('removeAction', { actionId });
+    }
+
+    if (actionId === currentListActionId) {
+      stopGetList();
+      stopPaginationMode();
+      stopLimitMode();
+      setShowPaginationOptions(false);
+      setShowLimitOptions(false);
+      setCaptureStage('initial');
+      setCurrentListActionId('');
+      clientSelectorGenerator.cleanup();
     }
 
     if (isActiveList && captureListData.length > 1) {
