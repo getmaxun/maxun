@@ -15,7 +15,6 @@ import StorageIcon from '@mui/icons-material/Storage';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import CloseIcon from '@mui/icons-material/Close';
 import CheckIcon from '@mui/icons-material/Check';
-import { SidePanelHeader } from '../recorder/SidePanelHeader';
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { useThemeMode } from '../../context/theme-provider';
 import { useTranslation } from 'react-i18next';
@@ -109,7 +108,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
       updateListTextFieldLabel(editingField.listId, editingField.fieldKey, editingValue.trim());
 
-      // Emit updated action to backend after state update completes
       if (actionId) {
         setTimeout(() => emitForStepId(actionId), 0);
       }
@@ -130,7 +128,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
     removeListTextField(listId, fieldKey);
 
-    // Emit updated action to backend after state update completes
     if (actionId) {
       setTimeout(() => emitForStepId(actionId), 0);
     }
@@ -148,7 +145,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     setCurrentTextGroupName(finalName);
     setEditingTextGroupName(false);
 
-    // Emit after React updates global state
     setTimeout(() => {
       const activeTextStep = captureTextData.find(step => step.actionId);
       if (activeTextStep?.actionId) emitForStepId(activeTextStep.actionId);
@@ -161,9 +157,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
     deleteBrowserStep(textId);
 
-    // Emit updated action to backend after deletion
     if (actionId) {
-      // Small delay to ensure state update completes
       setTimeout(() => emitForStepId(actionId), 0);
     }
   };
@@ -335,7 +329,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
       setActiveTab(availableTabs.findIndex(tab => tab.id === 'captureText'));
     } else if (hasNewScreenshotData && availableTabs.findIndex(tab => tab.id === 'captureScreenshot') !== -1) {
       setActiveTab(availableTabs.findIndex(tab => tab.id === 'captureScreenshot'));
-      // Set the active screenshot tab to the latest screenshot
       setActiveScreenshotTab(screenshotData.length - 1);
     }
   }, [captureListData.length, captureTextData.length, screenshotData.length]);
