@@ -21,7 +21,6 @@
     "@types/node": "22.7.9",
     "@types/react": "^18.0.5",
     "@types/react-dom": "^18.0.1",
-    "@types/uuid": "^8.3.4",
     "airtable": "^0.12.2",
     "axios": "^1.9.0",
     "bcrypt": "^5.1.1",
