@@ -4,14 +4,9 @@ import { gfm } from 'joplin-turndown-plugin-gfm';
 import * as cheerio from 'cheerio';
 import { URL } from 'url';
 
-export async function parseMarkdown(
-  html: string | null | undefined,
-  baseUrl?: string | null
-): Promise<string> {
-  if (!html) return "";
+let _baseUrl: string | null = null;
 
-  const tidiedHtml = tidyHtml(html);
-
+const _turndown = (() => {
   const t = new TurndownService({
     headingStyle: "atx",
     codeBlockStyle: "fenced",
@@ -31,6 +26,15 @@ export async function parseMarkdown(
   t.addRule("truncate-svg", {
     filter: (node: any) => node.nodeName.toLowerCase() === "svg",
     replacement: () => "",
+  });
+
+  t.addRule("superscript", {
+    filter: "sup",
+    replacement: (content: string) => {
+      const clean = content.trim();
+      if (!clean) return "";
+      return `^${clean}^`;
+    },
   });
 
   t.addRule("improved-paragraph", {
@@ -54,23 +58,32 @@ export async function parseMarkdown(
           node.getAttribute("aria-label")?.trim() ||
           node.getAttribute("title")?.trim() ||
           getDomainFromUrl(node.getAttribute("href")) ||
-          "link";
+          "";
       }
 
-      let href = node.getAttribute("href").trim();
+      if (!text) return "";
 
-      if (baseUrl && isRelativeUrl(href)) {
+      let href = node.getAttribute("href").trim();
+      const normalizedHref = href.replace(/[\x00-\x1F\x7F-\x9F\s]/g, "").toLowerCase();
+      if (normalizedHref.startsWith("javascript:")) return text;
+
+      if (_baseUrl && isRelativeUrl(href)) {
         try {
-          const u = new URL(href, baseUrl);
+          const u = new URL(href, _baseUrl);
           href = u.toString();
         } catch { }
       }
 
-      if (baseUrl && isSameDomain(href, baseUrl)) {
-        return text;
+      const headingMatch = text.match(/^(#{1,6})\s+([\s\S]+)$/);
+      if (headingMatch) {
+        const level = headingMatch[1];
+        const headingText = headingMatch[2]
+          .split(/!\[[^\]]*\]\([^)]*\)/)[0]
+          .replace(/\s+/g, " ")
+          .trim();
+        if (!headingText) return "";
+        return `\n${level} [${headingText}](${href})\n`;
       }
-
-      href = cleanUrl(href);
 
       return `[${text}](${href})`;
     },
@@ -83,9 +96,9 @@ export async function parseMarkdown(
       let src = node.getAttribute("src")?.trim() || "";
       if (!src) return "";
 
-      if (baseUrl && isRelativeUrl(src)) {
+      if (_baseUrl && isRelativeUrl(src)) {
         try {
-          src = new URL(src, baseUrl).toString();
+          src = new URL(src, _baseUrl).toString();
         } catch {}
       }
       return alt ? `![${alt}](${src})` : `[Image](${src})`;
@@ -93,9 +106,42 @@ export async function parseMarkdown(
   });
 
   t.use(gfm);
+  return t;
+})();
+
+const TECHNICAL_SELECTOR = [
+  "script", "style", "iframe", "noscript", "meta", "link", "object",
+  "embed", "canvas", "audio", "video", "svg", "map", "area",
+].join(",");
+
+const INNER_NOISE_SELECTOR = [
+  "nav", "footer",
+  ".nav", ".header", ".footer", ".sidebar", ".menu", ".ads", ".ad", ".advertisement",
+  "#nav", "#header", "#footer", "#sidebar", ".breadcrumb", ".social-share",
+  ".comments", ".popup", ".modal", ".cookie-banner", ".location-widget",
+  ".keyboard-shortcuts", ".skip-link", ".banner", ".top-bar", ".nav-bar",
+  '[role="complementary"]',
+  "#shortcut-menu", ".nav-sprite", ".a-header", ".a-footer",
+  ".gb_wa", ".gb_xa",
+  "#nav-belt", "#nav-main", "#nav-footer",
+  ".mw-editsection", ".mw-editsection-bracket", ".mw-editsection-divider",
+].join(",");
+
+const UI_ARTIFACTS = new Set([
+  "Undo", "Done", "Edit", "Viewed categories", "Dismiss", "Close", "View detail", "View more",
+]);
+
+export async function parseMarkdown(
+  html: string | null | undefined,
+  baseUrl?: string | null
+): Promise<string> {
+  if (!html) return "";
+
+  const tidiedHtml = tidyHtml(html);
+  _baseUrl = baseUrl ?? null;
 
   try {
-    let out = t.turndown(tidiedHtml);
+    let out = _turndown.turndown(tidiedHtml);
     out = fixBrokenLinks(out);
     out = stripSkipLinks(out);
     out = stripEditLinks(out);
@@ -109,15 +155,7 @@ export async function parseMarkdown(
 
 function isRelativeUrl(url: string): boolean {
   if (!url) return false;
-  return !url.includes("://") && !url.startsWith("mailto:") && !url.startsWith("tel:") && !url.startsWith("data:");
-}
-
-function isSameDomain(href: string, baseUrl: string): boolean {
-  try {
-    return new URL(href).hostname === new URL(baseUrl).hostname;
-  } catch {
-    return false;
-  }
+  return !url.includes("://") && !url.startsWith("mailto:") && !url.startsWith("data:") && !url.startsWith("tel:");
 }
 
 function getDomainFromUrl(url: string): string | null {
@@ -129,18 +167,10 @@ function getDomainFromUrl(url: string): string | null {
   }
 }
 
-function cleanUrl(u: string): string {
-  return u.split("#")[0];
-}
-
 function tidyHtml(html: string): string {
   const $ = cheerio.load(html);
 
-  const technicalElements = [
-    "script", "style", "iframe", "noscript", "meta", "link", "object",
-    "embed", "canvas", "audio", "video", "svg", "map", "area"
-  ];
-  technicalElements.forEach((tag) => $(tag).remove());
+  $(TECHNICAL_SELECTOR).remove();
 
   $("math").each((_i, el) => {
     const $el = $(el);
@@ -155,27 +185,8 @@ function tidyHtml(html: string): string {
     }
   });
 
-  const noiseSelectors = [
-    "nav", "header", "footer", "aside",
-    ".nav", ".header", ".footer", ".sidebar", ".menu", ".ads", ".ad", ".advertisement",
-    "#nav", "#header", "#footer", "#sidebar", ".breadcrumb", ".social-share",
-    ".comments", ".popup", ".modal", ".cookie-banner", ".location-widget",
-    ".keyboard-shortcuts", ".skip-link", ".banner", ".top-bar", ".nav-bar",
-    '[role="navigation"]', '[role="banner"]', '[role="contentinfo"]',
-    '[role="complementary"]', "#shortcut-menu", ".nav-sprite", ".a-header", ".a-footer",
-    ".gb_wa", ".gb_xa",
-    "#nav-belt", "#nav-main", "#nav-footer",
-    ".mw-editsection", ".mw-editsection-bracket", ".mw-editsection-divider",
-  ];
-  noiseSelectors.forEach((sel) => $(sel).remove());
-
-  const uiArtifacts = ["Undo", "Done", "Edit", "Viewed categories", "Dismiss", "Close", "View detail", "View more"];
-  $("button, span, a, div").each((_i, el) => {
-    const text = $(el).text().trim();
-    if (uiArtifacts.includes(text) && $(el).children().length === 0) {
-      $(el).remove();
-    }
-  });
+  $("body > header, body > footer, body > nav, body > aside").remove();
+  $('[role="navigation"], [role="banner"], [role="contentinfo"]').remove();
 
   const mainSelectors = ["main", "article", "#main-content", "#content", ".main", ".content", ".article", ".post-content", "[role='main']"];
   let bestContent: cheerio.Cheerio<any> | null = null;
@@ -198,38 +209,18 @@ function tidyHtml(html: string): string {
     }
   }
 
-  let contentToProcess = bestContent || $("body");
+  const $content = bestContent || $("body");
 
-  contentToProcess.find("div, ul, section").each((_i, el) => {
-    const $el = $(el);
-    const children = $el.children();
-    if (children.length > 10) {
-      const tagCounts: Record<string, number> = {};
-      children.each((_idx, child) => {
-        const tag = (child as any).tagName || (child as any).name;
-        if (tag) {
-          tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-        }
-      });
-      const dominantTag = Object.keys(tagCounts).find(tag => tagCounts[tag] > 15);
-      const hasCurrency = /[$\u20b9\u20ac\u00a3\u00a5]/.test($el.text());
-      if (dominantTag && $el.text().length / children.length < 30 && !hasCurrency) {
-        $el.remove();
-      }
-    }
-  });
+  $content.find(INNER_NOISE_SELECTOR).remove();
 
-  contentToProcess.find("ul, ol").each((_i, el) => {
+  $content.find("button, span, a, div").each((_i, el) => {
     const $el = $(el);
-    const items = $el.children("li");
-    if (items.length > 40) {
-      items.slice(40).remove();
-      $el.append("<li>... (further items truncated for readability)</li>");
-    }
+    if ($el.children().length > 0) return;
+    if (UI_ARTIFACTS.has($el.text().trim())) $el.remove();
   });
 
   const title = $("title").text().trim() || $("h1").first().text().trim();
-  let resultHtml = contentToProcess.html() || "";
+  let resultHtml = $content.html() || "";
 
   if (title && !resultHtml.includes(title)) {
     resultHtml = `<h1>${title}</h1>\n${resultHtml}`;
@@ -239,15 +230,23 @@ function tidyHtml(html: string): string {
 }
 
 function fixBrokenLinks(md: string): string {
-  let depth = 0;
-  let result = "";
+  const parts = md.split(/((?:^|\n)(`{3,}|~{3,})[\s\S]*?\n\2(?:\n|$))/g);
+  return parts.map((part, i) => {
+    if (i % 3 === 1) return part;
+    if (i % 3 === 2) return "";
 
-  for (const ch of md) {
-    if (ch === "[") depth++;
-    if (ch === "]") depth = Math.max(0, depth - 1);
-    result += depth > 0 && ch === "\n" ? "\\\n" : ch;
-  }
-  return result;
+    return part.split("\n\n").map(paragraph => {
+      if (!paragraph.includes("[") || !paragraph.includes("\n")) return paragraph;
+      let depth = 0;
+      let result = "";
+      for (const ch of paragraph) {
+        if (ch === "[") depth++;
+        if (ch === "]") depth = Math.max(0, depth - 1);
+        result += depth > 0 && ch === "\n" ? "\\\n" : ch;
+      }
+      return result;
+    }).join("\n\n");
+  }).join("");
 }
 
 function stripSkipLinks(md: string): string {
@@ -264,6 +263,5 @@ function stripEditLinks(md: string): string {
 function cleanupExtraWhitespace(md: string): string {
   return md
     .replace(/\n{3,}/g, "\n\n")
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n[ \t]+/g, "\n");
+    .replace(/[ \t]+\n/g, "\n");
 }
