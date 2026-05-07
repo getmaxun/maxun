@@ -235,7 +235,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         }
       }
 
-      if (robot.recording_meta?.type === 'scrape' || robot.recording_meta?.type === 'extract' || !robot.recording_meta?.type) {
+      if (robot.recording_meta?.type === 'scrape') {
         setScrapeOutputFormats(
           filteredFormats.length > 0 ? filteredFormats : DEFAULT_OUTPUT_FORMATS
         );
@@ -1080,7 +1080,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
 
   const renderScrapeOutputFormatsField = () => {
     const robotType = robot?.recording_meta.type;
-    if (robotType && robotType !== 'scrape' && robotType !== 'extract') return null;
+    if (robotType !== 'scrape') return null;
 
     return (
       <FormControl fullWidth sx={{ mb: 2 }}>
@@ -1128,7 +1128,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
     }
 
     const type = robot.recording_meta.type;
-    if ((!type || type === 'scrape' || type === 'extract') && scrapeOutputFormats.length === 0) {
+    if (type === 'scrape' && scrapeOutputFormats.length === 0) {
       notify("error", "Please select at least one output format");
       return;
     }
@@ -1207,7 +1207,9 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
           ? crawlOutputFormats
           : robot.recording_meta.type === 'search'
             ? ((searchConfig.mode || 'discover') === 'discover' ? [] : searchOutputFormats)
-            : scrapeOutputFormats,
+            : robot.recording_meta.type === 'scrape'
+              ? scrapeOutputFormats
+              : undefined,
       };
 
       const success = await updateRecording(robot.recording_meta.id, payload);
