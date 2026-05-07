@@ -15,13 +15,13 @@ import StorageIcon from '@mui/icons-material/Storage';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import CloseIcon from '@mui/icons-material/Close';
 import CheckIcon from '@mui/icons-material/Check';
-import { SidePanelHeader } from '../recorder/SidePanelHeader';
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { useThemeMode } from '../../context/theme-provider';
 import { useTranslation } from 'react-i18next';
 import { useBrowserSteps } from '../../context/browserSteps';
 import { useActionContext } from '../../context/browserActions';
 import { useSocketStore } from '../../context/socket';
+import { clientSelectorGenerator } from '../../helpers/clientSelectorGenerator';
 
 interface InterpretationLogProps {
   isOpen: boolean;
@@ -59,11 +59,11 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
   const autoFocusedScreenshotIndices = useRef<Set<number>>(new Set());
 
   const { browserSteps, updateListTextFieldLabel, removeListTextField, updateListStepName, updateScreenshotStepName, updateBrowserTextStepLabel, deleteBrowserStep, deleteStepsByActionId, emitForStepId } = useBrowserSteps();
-  const { captureStage, getText } = useActionContext();
+  const { captureStage, getText, stopGetList, stopPaginationMode, stopLimitMode, setShowPaginationOptions, setShowLimitOptions, setCaptureStage } = useActionContext();
   const { socket } = useSocketStore();
 
   const { browserWidth, outputPreviewHeight, outputPreviewWidth } = useBrowserDimensionsStore();
-  const { currentWorkflowActionsState, shouldResetInterpretationLog, currentTextGroupName, setCurrentTextGroupName, notify } = useGlobalInfoStore();
+  const { currentWorkflowActionsState, shouldResetInterpretationLog, currentTextGroupName, setCurrentTextGroupName, notify, currentTextActionId, currentListActionId, setCurrentListActionId } = useGlobalInfoStore();
 
   const [showPreviewData, setShowPreviewData] = useState<boolean>(false);
   const userClosedDrawer = useRef<boolean>(false);
@@ -108,7 +108,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
       updateListTextFieldLabel(editingField.listId, editingField.fieldKey, editingValue.trim());
 
-      // Emit updated action to backend after state update completes
       if (actionId) {
         setTimeout(() => emitForStepId(actionId), 0);
       }
@@ -129,7 +128,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
     removeListTextField(listId, fieldKey);
 
-    // Emit updated action to backend after state update completes
     if (actionId) {
       setTimeout(() => emitForStepId(actionId), 0);
     }
@@ -147,7 +145,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     setCurrentTextGroupName(finalName);
     setEditingTextGroupName(false);
 
-    // Emit after React updates global state
     setTimeout(() => {
       const activeTextStep = captureTextData.find(step => step.actionId);
       if (activeTextStep?.actionId) emitForStepId(activeTextStep.actionId);
@@ -160,9 +157,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
     deleteBrowserStep(textId);
 
-    // Emit updated action to backend after deletion
     if (actionId) {
-      // Small delay to ensure state update completes
       setTimeout(() => emitForStepId(actionId), 0);
     }
   };
@@ -179,6 +174,17 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
     if (socket) {
       socket.emit('removeAction', { actionId });
+    }
+
+    if (actionId === currentListActionId) {
+      stopGetList();
+      stopPaginationMode();
+      stopLimitMode();
+      setShowPaginationOptions(false);
+      setShowLimitOptions(false);
+      setCaptureStage('initial');
+      setCurrentListActionId('');
+      clientSelectorGenerator.cleanup();
     }
 
     if (isActiveList && captureListData.length > 1) {
@@ -323,7 +329,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
       setActiveTab(availableTabs.findIndex(tab => tab.id === 'captureText'));
     } else if (hasNewScreenshotData && availableTabs.findIndex(tab => tab.id === 'captureScreenshot') !== -1) {
       setActiveTab(availableTabs.findIndex(tab => tab.id === 'captureScreenshot'));
-      // Set the active screenshot tab to the latest screenshot
       setActiveScreenshotTab(screenshotData.length - 1);
     }
   }, [captureListData.length, captureTextData.length, screenshotData.length]);
