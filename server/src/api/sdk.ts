@@ -20,7 +20,7 @@ import moment from 'moment-timezone';
 import {
     DEFAULT_OUTPUT_FORMATS,
     parseOutputFormats,
-    OutputFormat,
+    OutputFormats,
     SCRAPE_OUTPUT_FORMAT_OPTIONS,
 } from '../constants/output-formats';
 import sequelizeInstance from '../storage/db';
@@ -227,7 +227,7 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
             });
         }
 
-        let normalizedFormats: OutputFormat[] = validFormats;
+        let normalizedFormats: OutputFormats[] = validFormats;
 
         if (type === 'search') {
             const searchAction = enrichedWorkflow
@@ -673,7 +673,7 @@ router.post("/sdk/robots/:id/execute", requireAPIKey, async (req: AuthenticatedR
 
         const runSource = req.headers['x-run-source'] === 'cli' ? 'cli' : 'sdk';
         const promptInstructions = req.body?.promptInstructions;
-        const requestedFormats = req.body?.formats;
+        const requestedFormats = req.body?.formats as OutputFormats[] | undefined;
         
         const runId = await handleRunRecording(robotId, user.id.toString(), runSource, requestedFormats, promptInstructions);
         if (!runId) {
@@ -745,6 +745,11 @@ router.post("/sdk/robots/:id/execute", requireAPIKey, async (req: AuthenticatedR
             html = scrapeOutput.html[0]?.content || undefined;
         }
 
+        const promptResultRaw = run.serializableOutput?.promptResult;
+        const promptResult = Array.isArray(promptResultRaw) && promptResultRaw.length > 0
+            ? (promptResultRaw[0]?.content || null)
+            : null;
+
         return res.status(200).json({
             data: {
                 runId: run.runId,
@@ -757,7 +762,7 @@ router.post("/sdk/robots/:id/execute", requireAPIKey, async (req: AuthenticatedR
                     text: text,
                     markdown: markdown,
                     html: html,
-                    promptResult: run.serializableOutput?.promptResult?.[0]?.content || null
+                    promptResult: promptResult
                 },
                 screenshots: Object.values(run.binaryOutput || {})
             }
@@ -1101,7 +1106,7 @@ router.post("/sdk/crawl", requireAPIKey, async (req: AuthenticatedRequest, res: 
         }
 
         // Crawl always needs formats; use defaults even if explicit empty array is provided
-        const crawlFormats: OutputFormat[] = requestedFormats.length > 0 
+        const crawlFormats: OutputFormats[] = requestedFormats.length > 0 
             ? requestedFormats 
             : [...DEFAULT_OUTPUT_FORMATS];
 
@@ -1240,7 +1245,7 @@ router.post("/sdk/search", requireAPIKey, async (req: AuthenticatedRequest, res:
             });
         }
 
-        const searchFormats: OutputFormat[] = searchConfig.mode === 'discover'
+        const searchFormats: OutputFormats[] = searchConfig.mode === 'discover'
             ? (requestedFormats.length > 0 ? requestedFormats : [])
             : (requestedFormats.length > 0 ? requestedFormats : [...DEFAULT_OUTPUT_FORMATS]);
 

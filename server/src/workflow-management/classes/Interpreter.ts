@@ -177,6 +177,24 @@ export class WorkflowInterpreter {
   }
 
   /**
+   * Broadcasts an event to all clients connected to this socket's namespace.
+   * Falls back to direct socket emit if namespace is unavailable.
+   * Used in run mode so all frontend components receive events.
+   * @private
+   */
+  private broadcastToNamespace(event: string, ...args: any[]): void {
+    try {
+      if (this.socket?.nsp) {
+        this.socket.nsp.emit(event, ...args);
+      } else {
+        this.socket.emit(event, ...args);
+      }
+    } catch (error: any) {
+      logger.warn(`Failed to broadcast event ${event}: ${error.message}`);
+    }
+  }
+
+  /**
    * Removes pausing-related socket listeners to prevent memory leaks
    * Must be called before re-registering listeners or during cleanup
    * @private
@@ -569,7 +587,7 @@ export class WorkflowInterpreter {
         },
         debugMessage: (msg: any) => {
           this.debugMessages.push(`[${new Date().toLocaleString()}] ` + msg);
-          this.socket.emit('debugMessage', msg)
+          this.broadcastToNamespace('debugMessage', msg)
         },
         setActionType: (type: string) => {
           this.currentActionType = type;
@@ -679,7 +697,7 @@ export class WorkflowInterpreter {
             [actionName]: processedData,
           });
 
-          this.socket.emit("serializableCallback", {
+          this.broadcastToNamespace("serializableCallback", {
             type: typeKey,
             name: actionName,
             data: processedData,
@@ -705,7 +723,7 @@ export class WorkflowInterpreter {
 
           await this.persistBinaryDataToDatabase(binaryItem);
 
-          this.socket.emit("binaryCallback", {
+          this.broadcastToNamespace("binaryCallback", {
             name: uniqueName,
             data: base64Data,
             mimeType
