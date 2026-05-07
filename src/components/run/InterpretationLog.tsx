@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { useBrowserSteps, ListStep, TextStep, ScreenshotStep } from '../../context/browserSteps';
 import { useActionContext } from '../../context/browserActions';
 import { useSocketStore } from '../../context/socket';
+import { clientSelectorGenerator } from '../../helpers/clientSelectorGenerator';
 
 interface InterpretationLogProps {
   isOpen: boolean;
@@ -58,6 +59,13 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
   const hasAutoFocusedTextTab = useRef<boolean>(false);
   const previousGetText = useRef<boolean>(false);
   const autoFocusedScreenshotIndices = useRef<Set<number>>(new Set());
+
+  const { browserSteps, updateListTextFieldLabel, removeListTextField, updateListStepName, updateScreenshotStepName, updateBrowserTextStepLabel, deleteBrowserStep, deleteStepsByActionId, emitForStepId } = useBrowserSteps();
+  const { captureStage, getText, stopGetList, stopPaginationMode, stopLimitMode, setShowPaginationOptions, setShowLimitOptions, setCaptureStage } = useActionContext();
+  const { socket } = useSocketStore();
+
+  const { browserWidth, outputPreviewHeight, outputPreviewWidth } = useBrowserDimensionsStore();
+  const { currentWorkflowActionsState, shouldResetInterpretationLog, currentTextGroupName, setCurrentTextGroupName, notify, currentTextActionId, currentListActionId, setCurrentListActionId } = useGlobalInfoStore();
 
   const [showPreviewData, setShowPreviewData] = useState<boolean>(false);
   const userClosedDrawer = useRef<boolean>(false);
@@ -255,6 +263,17 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
       socket.emit('removeAction', { actionId });
     }
 
+    if (actionId === currentListActionId) {
+      stopGetList();
+      stopPaginationMode();
+      stopLimitMode();
+      setShowPaginationOptions(false);
+      setShowLimitOptions(false);
+      setCaptureStage('initial');
+      setCurrentListActionId('');
+      clientSelectorGenerator.cleanup();
+    }
+
     if (isActiveList && captureListData.length > 1) {
       if (listIndex === captureListData.length - 1) {
         setActiveListTab(listIndex - 1);
@@ -331,7 +350,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
       setActiveTab(availableTabs.findIndex(tab => tab.id === 'captureText'));
     } else if (hasNewScreenshotData && availableTabs.findIndex(tab => tab.id === 'captureScreenshot') !== -1) {
       setActiveTab(availableTabs.findIndex(tab => tab.id === 'captureScreenshot'));
-      // Set the active screenshot tab to the latest screenshot
       setActiveScreenshotTab(screenshotData.length - 1);
     }
   }, [captureListData.length, captureTextData.length, screenshotData.length]);
