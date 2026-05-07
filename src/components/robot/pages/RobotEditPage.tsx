@@ -25,7 +25,7 @@ import {
   DEFAULT_OUTPUT_FORMATS,
   OUTPUT_FORMAT_LABELS,
   OUTPUT_FORMAT_OPTIONS,
-  OutputFormat,
+  OutputFormats,
 } from "../../../constants/outputFormats";
 
 interface RobotMeta {
@@ -38,7 +38,7 @@ interface RobotMeta {
   params: any[];
   type?: 'extract' | 'scrape' | 'crawl' | 'search';
   url?: string;
-  formats?: OutputFormat[];
+  formats?: OutputFormats[];
   isLLM?: boolean;
 }
 
@@ -148,8 +148,9 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [crawlConfig, setCrawlConfig] = useState<CrawlConfig>({});
   const [searchConfig, setSearchConfig] = useState<SearchConfig>({});
-  const [crawlOutputFormats, setCrawlOutputFormats] = useState<OutputFormat[]>(DEFAULT_OUTPUT_FORMATS);
-  const [searchOutputFormats, setSearchOutputFormats] = useState<OutputFormat[]>(DEFAULT_OUTPUT_FORMATS);
+  const [crawlOutputFormats, setCrawlOutputFormats] = useState<OutputFormats[]>(DEFAULT_OUTPUT_FORMATS);
+  const [searchOutputFormats, setSearchOutputFormats] = useState<OutputFormats[]>(DEFAULT_OUTPUT_FORMATS);
+  const [scrapeOutputFormats, setScrapeOutputFormats] = useState<OutputFormats[]>(DEFAULT_OUTPUT_FORMATS);
   const [showCrawlAdvanced, setShowCrawlAdvanced] = useState(false);
 
   const isEmailPattern = (value: string): boolean => {
@@ -206,8 +207,8 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         ? robot.recording_meta.formats
         : [];
 
-      const filteredFormats = rawFormats.filter((format): format is OutputFormat =>
-        OUTPUT_FORMAT_OPTIONS.includes(format as OutputFormat)
+      const filteredFormats = rawFormats.filter((format): format is OutputFormats =>
+        OUTPUT_FORMAT_OPTIONS.includes(format as OutputFormats)
       );
 
       if (robot.recording_meta?.type === 'crawl') {
@@ -232,6 +233,12 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
             filteredFormats.length > 0 ? filteredFormats : DEFAULT_OUTPUT_FORMATS
           );
         }
+      }
+
+      if (robot.recording_meta?.type === 'scrape') {
+        setScrapeOutputFormats(
+          filteredFormats.length > 0 ? filteredFormats : DEFAULT_OUTPUT_FORMATS
+        );
       }
     }
   }, [robot]);
@@ -832,10 +839,10 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
             label="Output Formats *"
             onChange={(e) => {
               const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
-              setCrawlOutputFormats(value as OutputFormat[]);
+              setCrawlOutputFormats(value as OutputFormats[]);
             }}
             renderValue={(selected) => {
-              const labels = (selected as OutputFormat[]).map(v => OUTPUT_FORMAT_LABELS[v] ?? v);
+              const labels = (selected as OutputFormats[]).map(v => OUTPUT_FORMAT_LABELS[v] ?? v);
               return labels.length > 2 ? `${labels.slice(0, 2).join(', ')}...` : labels.join(', ');
             }}
           >
@@ -1029,10 +1036,10 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
               label="Output Formats *"
               onChange={(e) => {
                 const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
-                setSearchOutputFormats(value as OutputFormat[]);
+                setSearchOutputFormats(value as OutputFormats[]);
               }}
               renderValue={(selected) => {
-                const labels = (selected as OutputFormat[]).map(v => OUTPUT_FORMAT_LABELS[v] ?? v);
+                const labels = (selected as OutputFormats[]).map(v => OUTPUT_FORMAT_LABELS[v] ?? v);
                 return labels.length > 2 ? `${labels.slice(0, 2).join(', ')}...` : labels.join(', ');
               }}
             >
@@ -1071,6 +1078,38 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
     );
   };
 
+  const renderScrapeOutputFormatsField = () => {
+    const robotType = robot?.recording_meta.type;
+    if (robotType !== 'scrape') return null;
+
+    return (
+      <FormControl fullWidth sx={{ mb: 2 }}>
+        <InputLabel id="scrape-edit-output-formats-label">Output Formats *</InputLabel>
+        <Select
+          labelId="scrape-edit-output-formats-label"
+          multiple
+          value={scrapeOutputFormats}
+          label="Output Formats *"
+          onChange={(e) => {
+            const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
+            setScrapeOutputFormats(value as OutputFormats[]);
+          }}
+          renderValue={(selected) => {
+            const labels = (selected as OutputFormats[]).map(v => OUTPUT_FORMAT_LABELS[v] ?? v);
+            return labels.length > 2 ? `${labels.slice(0, 2).join(', ')}...` : labels.join(', ');
+          }}
+        >
+          {OUTPUT_FORMAT_OPTIONS.map((format) => (
+            <MenuItem key={format} value={format}>
+              <Checkbox checked={scrapeOutputFormats.includes(format)} />
+              {OUTPUT_FORMAT_LABELS[format]}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+    );
+  };
+
   const handleSave = async () => {
     if (!robot) return;
 
@@ -1084,6 +1123,12 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
       (searchConfig.mode || 'discover') === 'scrape' &&
       searchOutputFormats.length === 0
     ) {
+      notify("error", "Please select at least one output format");
+      return;
+    }
+
+    const type = robot.recording_meta.type;
+    if (type === 'scrape' && scrapeOutputFormats.length === 0) {
       notify("error", "Please select at least one output format");
       return;
     }
@@ -1162,7 +1207,9 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
           ? crawlOutputFormats
           : robot.recording_meta.type === 'search'
             ? ((searchConfig.mode || 'discover') === 'discover' ? [] : searchOutputFormats)
-            : undefined,
+            : robot.recording_meta.type === 'scrape'
+              ? scrapeOutputFormats
+              : undefined,
       };
 
       const success = await updateRecording(robot.recording_meta.id, payload);
@@ -1228,6 +1275,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
               
               {renderCrawlConfigFields()}
               {renderSearchConfigFields()}
+              {renderScrapeOutputFormatsField()}
 
               {renderScrapeListLimitFields()}
               {renderActionNameFields()}

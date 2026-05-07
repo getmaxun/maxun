@@ -16,9 +16,40 @@ import { WorkflowFile } from "maxun-core";
 import { addGoogleSheetUpdateTask, processGoogleSheetUpdates } from "../workflow-management/integrations/gsheet";
 import { addAirtableUpdateTask, processAirtableUpdates } from "../workflow-management/integrations/airtable";
 import { sendWebhook } from "../routes/webhook";
-import { convertPageToHTML, convertPageToMarkdown, convertPageToScreenshot } from '../markdownify/scrape';
+import { convertPageToHTML, convertPageToLinks, convertPageToMarkdown, convertPageToScreenshot, convertPageToText } from '../markdownify/scrape';
+import { executeBrowserAgent } from '../sdk/browserAgent';
+import { OutputFormats } from '../constants/output-formats';
 
 const router = Router();
+
+const normalizeRobotUrl = (rawUrl: string): string => {
+    const normalizedUrl = new URL(rawUrl.trim());
+    if (!['http:', 'https:'].includes(normalizedUrl.protocol)) {
+        throw new Error('Invalid URL protocol');
+    }
+
+    normalizedUrl.search = normalizedUrl.searchParams.toString();
+    return normalizedUrl.toString();
+};
+
+const getRobotTargetUrl = (recording: any): string => {
+    const metaUrl = recording?.recording_meta?.url?.trim();
+    if (metaUrl) {
+        return metaUrl;
+    }
+
+    const workflow = recording?.recording?.workflow || [];
+    const entryPair = [...workflow].reverse().find((pair: any) =>
+        pair?.what?.some((action: any) => action.action === 'goto' && typeof action.args?.[0] === 'string' && action.args[0] !== 'about:blank')
+    );
+    const gotoUrl = entryPair?.what?.find((action: any) => action.action === 'goto' && typeof action.args?.[0] === 'string')?.args?.[0]?.trim();
+    if (gotoUrl) {
+        return gotoUrl;
+    }
+
+    const firstWorkflowUrl = workflow.find((pair: any) => typeof pair?.where?.url === 'string' && pair.where.url !== 'about:blank')?.where?.url?.trim();
+    return firstWorkflowUrl || '';
+};
 
 const formatRecording = (recordingData: any) => {
     const recordingMeta = recordingData.recording_meta;
@@ -348,7 +379,8 @@ function formatRunResponse(run: any) {
             crawlData: {},
             searchData: {},
             markdown: '',
-            html: ''
+            html: '',
+            promptResult: null as any
         },
         screenshots: [] as any[],
     };
@@ -377,6 +409,10 @@ function formatRunResponse(run: any) {
 
     if (output.html && Array.isArray(output.html)) {
         formattedRun.data.html = output.html[0]?.content || '';
+    }
+
+    if (output.promptResult && Array.isArray(output.promptResult)) {
+        formattedRun.data.promptResult = output.promptResult[0]?.content || null;
     }
 
     if (run.binaryOutput) {
@@ -479,7 +515,7 @@ router.get("/robots/:id/runs/:runId", requireAPIKey, async (req: Request, res: R
     }
 });
 
-async function createWorkflowAndStoreMetadata(id: string, userId: string, runSource: 'api' | 'sdk' | 'mcp' | 'cli') {
+async function createWorkflowAndStoreMetadata(id: string, userId: string, runSource: 'api' | 'sdk' | 'mcp' | 'cli', requestedFormats?: OutputFormats[], promptInstructions?: string) {
     try {
         const recording = await Robot.findOne({
             where: {
@@ -520,7 +556,7 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string, runSou
             startedAt: new Date().toLocaleString(),
             finishedAt: '',
             browserId,
-            interpreterSettings: { maxConcurrency: 1, maxRepeats: 1, debug: true },
+            interpreterSettings: { maxConcurrency: 1, maxRepeats: 1, debug: true, formats: requestedFormats, promptInstructions },
             log: '',
             runId,
             runByUserId: userId,
@@ -605,9 +641,9 @@ async function triggerIntegrationUpdates(runId: string, robotMetaId: string): Pr
   }
 }
 
-async function readyForRunHandler(browserId: string, id: string, userId: string, socket: Socket, requestedFormats?: string[]){
+async function readyForRunHandler(browserId: string, id: string, userId: string, socket: Socket) {
     try {
-        const result = await executeRun(id, userId, requestedFormats);
+        const result = await executeRun(id, userId);
 
         if (result && result.success) {
             logger.log('info', `Interpretation of ${id} succeeded`);
@@ -646,7 +682,7 @@ function AddGeneratedFlags(workflow: WorkflowFile) {
     return copy;
 };
 
-async function executeRun(id: string, userId: string, requestedFormats?: string[]) {
+async function executeRun(id: string, userId: string) {
     let browser: any = null;
     
     try {
@@ -680,6 +716,8 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
             });
             return { success: false, error: 'Max retries exceeded' };
         }
+        const requestedFormats = run.interpreterSettings.formats;
+        const promptInstructionsOverride = run.interpreterSettings.promptInstructions;
 
         const recording = await Robot.findOne({ where: { 'recording_meta.id': plainRun.robotMetaId }, raw: true });
         if (!recording) {
@@ -704,11 +742,12 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
         if (robotType === 'scrape') {
             logger.log('info', `Executing scrape robot for API run ${id}`);
 
-            let formats = recording.recording_meta.formats || ['markdown'];
+            const rawFormats = recording.recording_meta.formats;
+            let formats = rawFormats && rawFormats.length > 0 ? rawFormats : ['markdown'];
 
             if (requestedFormats && Array.isArray(requestedFormats) && requestedFormats.length > 0) {
-                formats = requestedFormats.filter((f): f is 'markdown' | 'html' | 'screenshot-visible' | 'screenshot-fullpage' =>
-                    ['markdown', 'html', 'screenshot-visible', 'screenshot-fullpage'].includes(f)
+                formats = requestedFormats.filter((f): f is 'text' | 'markdown' | 'html' | 'links' | 'screenshot-visible' | 'screenshot-fullpage' =>
+                    ['text', 'markdown', 'html', 'links', 'screenshot-visible', 'screenshot-fullpage'].includes(f)
                 );
             }
 
@@ -718,48 +757,18 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
             });
 
             try {
-                const url = recording.recording_meta.url;
-
+                const url = getRobotTargetUrl(recording);
                 if (!url) {
                     throw new Error('No URL specified for markdown robot');
                 }
 
                 let markdown = '';
                 let html = '';
+                let text = '';
                 const serializableOutput: any = {};
                 const binaryOutput: any = {};
 
                 const SCRAPE_TIMEOUT = 120000;
-
-                if (formats.includes('markdown')) {
-                    try {
-                        const markdownPromise = convertPageToMarkdown(url, currentPage);
-                        const timeoutPromise = new Promise<never>((_, reject) => {
-                            setTimeout(() => reject(new Error(`Markdown conversion timed out after ${SCRAPE_TIMEOUT / 1000}s`)), SCRAPE_TIMEOUT);
-                        });
-                        markdown = await Promise.race([markdownPromise, timeoutPromise]);
-                        if (markdown && markdown.trim().length > 0) {
-                            serializableOutput.markdown = [{ content: markdown }];
-                        }
-                    } catch (error: any) {
-                        logger.log('warn', `Markdown conversion failed for API run ${plainRun.runId}: ${error.message}`);
-                    }
-                }
-
-                if (formats.includes('html')) {
-                    try {
-                        const htmlPromise = convertPageToHTML(url, currentPage);
-                        const timeoutPromise = new Promise<never>((_, reject) => {
-                            setTimeout(() => reject(new Error(`HTML conversion timed out after ${SCRAPE_TIMEOUT / 1000}s`)), SCRAPE_TIMEOUT);
-                        });
-                        html = await Promise.race([htmlPromise, timeoutPromise]);
-                        if (html && html.trim().length > 0) {
-                            serializableOutput.html = [{ content: html }];
-                        }
-                    } catch (error: any) {
-                        logger.log('warn', `HTML conversion failed for API run ${plainRun.runId}: ${error.message}`);
-                    }
-                }
 
                 if (formats.includes("screenshot-visible")) {
                     try {
@@ -796,6 +805,84 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
                         }
                     } catch (error: any) {
                         logger.log('warn', `Screenshot-fullpage conversion failed for API run ${plainRun.runId}: ${error.message}`);
+                    }
+                }
+              
+                if (formats.includes('text')) {
+                    try {
+                        const textPromise = convertPageToText(url, currentPage);
+                        const timeoutPromise = new Promise<never>((_, reject) => {
+                            setTimeout(() => reject(new Error(`Text conversion timed out after ${SCRAPE_TIMEOUT / 1000}s`)), SCRAPE_TIMEOUT);
+                        });
+                        text = await Promise.race([textPromise, timeoutPromise]);
+                        if (text && text.trim().length > 0) {
+                            serializableOutput.text = [{ content: text }];
+                        }
+                    } catch (error: any) {
+                        logger.log('warn', `Text conversion failed for API run ${plainRun.runId}: ${error.message}`);
+                    }
+                }
+
+                if (formats.includes('markdown')) {
+                    try {
+                        const markdownPromise = convertPageToMarkdown(url, currentPage);
+                        const timeoutPromise = new Promise<never>((_, reject) => {
+                            setTimeout(() => reject(new Error(`Markdown conversion timed out after ${SCRAPE_TIMEOUT / 1000}s`)), SCRAPE_TIMEOUT);
+                        });
+                        markdown = await Promise.race([markdownPromise, timeoutPromise]);
+                        if (markdown && markdown.trim().length > 0) {
+                            serializableOutput.markdown = [{ content: markdown }];
+                        }
+                    } catch (error: any) {
+                        logger.log('warn', `Markdown conversion failed for API run ${plainRun.runId}: ${error.message}`);
+                    }
+                }
+
+                if (formats.includes('html')) {
+                    try {
+                        const htmlPromise = convertPageToHTML(url, currentPage);
+                        const timeoutPromise = new Promise<never>((_, reject) => {
+                            setTimeout(() => reject(new Error(`HTML conversion timed out after ${SCRAPE_TIMEOUT / 1000}s`)), SCRAPE_TIMEOUT);
+                        });
+                        html = await Promise.race([htmlPromise, timeoutPromise]);
+                        if (html && html.trim().length > 0) {
+                            serializableOutput.html = [{ content: html }];
+                        }
+                    } catch (error: any) {
+                        logger.log('warn', `HTML conversion failed for API run ${plainRun.runId}: ${error.message}`);
+                    }
+                }
+
+                if (formats.includes('links')) {
+                    try {
+                        const links = await Promise.race([
+                            convertPageToLinks(url, currentPage),
+                            new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`Links extraction timed out`)), SCRAPE_TIMEOUT))
+                        ]);
+                        if (links && links.length > 0) {
+                            serializableOutput.links = links.map((link: string) => ({ url: link }));
+                        }
+                    } catch (error: any) {
+                        logger.log('warn', `Links extraction failed for API run ${plainRun.runId}: ${error.message}`);
+                    }
+                }
+              
+                const promptInstructions = promptInstructionsOverride || (recording.recording_meta as any).promptInstructions as string | undefined;
+                if (promptInstructions && currentPage) {
+                    try {
+                        const llmConfig = {
+                            provider: ((recording.recording_meta as any).promptLlmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama',
+                            model: (recording.recording_meta as any).promptLlmModel as string | undefined,
+                            apiKey: (recording.recording_meta as any).promptLlmApiKey as string | undefined,
+                            baseUrl: (recording.recording_meta as any).promptLlmBaseUrl as string | undefined,
+                        };
+                        logger.log('info', `Running smart query for API scrape run ${plainRun.runId}`);
+                        const agentResult = await executeBrowserAgent(currentPage, promptInstructions, llmConfig);
+                        serializableOutput.promptResult = [{ content: agentResult.result, steps: agentResult.steps }];
+                        logger.log('info', `Smart query completed for API scrape run ${plainRun.runId}`);
+                    } catch (agentErr: any) {
+                        logger.log('warn', `Smart query failed for API scrape run ${plainRun.runId}: ${agentErr.message}`);
+                        serializableOutput.promptResult = [{ content: `Smart query failed: ${agentErr.message}`, steps: [] }];
                     }
                 }
 
@@ -1198,11 +1285,11 @@ async function executeRun(id: string, userId: string, requestedFormats?: string[
     }
 }
 
-export async function handleRunRecording(id: string, userId: string, runSource: 'api' | 'sdk' | 'mcp' | 'cli' = 'api', requestedFormats?: string[]) {
+export async function handleRunRecording(id: string, userId: string, runSource: 'api' | 'sdk' | 'mcp' | 'cli' = 'api', requestedFormats?: OutputFormats[], promptInstructions?: string) {
     let socket: Socket | null = null;
 
     try {
-        const result = await createWorkflowAndStoreMetadata(id, userId, runSource);
+        const result = await createWorkflowAndStoreMetadata(id, userId, runSource, requestedFormats, promptInstructions);
         const { browserId, runId: newRunId } = result;
 
         if (!browserId || !newRunId || !userId) {
@@ -1217,7 +1304,7 @@ export async function handleRunRecording(id: string, userId: string, runSource: 
             timeout: CONNECTION_TIMEOUT,
         });
 
-        const readyHandler = () => readyForRunHandler(browserId, newRunId, userId, socket!, requestedFormats);
+        const readyHandler = () => readyForRunHandler(browserId, newRunId, userId, socket!);
 
         socket.on('ready-for-run', readyHandler);
 
@@ -1381,9 +1468,10 @@ router.post("/robots/:id/runs", requireAPIKey, async (req: AuthenticatedRequest,
             return res.status(401).json({ ok: false, error: 'Unauthorized' });
         }
 
-        const requestedFormats = req.body?.formats;
+        const requestedFormats = req.body?.formats as OutputFormats[] | undefined;
+        const promptInstructions = req.body?.promptInstructions;
         const runSource = req.headers['x-run-source'] === 'mcp' ? 'mcp' : 'api';
-        const runId = await handleRunRecording(req.params.id, req.user.id, runSource, requestedFormats);
+        const runId = await handleRunRecording(req.params.id, req.user.id, runSource, requestedFormats, promptInstructions);
 
         if (!runId) {
             throw new Error('Run ID is undefined');
@@ -1458,8 +1546,10 @@ router.post("/robots/:id/duplicate", requireAPIKey, async (req: Request, res: Re
             });
         }
 
+        let normalizedTargetUrl: string;
         try {
-            const parsed = new URL(targetUrl);
+            normalizedTargetUrl = normalizeRobotUrl(targetUrl);
+            const parsed = new URL(normalizedTargetUrl);
             if (!['http:', 'https:'].includes(parsed.protocol)) {
                 return res.status(400).json({
                     statusCode: 400,
@@ -1487,7 +1577,7 @@ router.post("/robots/:id/duplicate", requireAPIKey, async (req: Request, res: Re
             });
         }
 
-        const lastWord = targetUrl.split('/').filter(Boolean).pop() || 'Unnamed';
+        const lastWord = normalizedTargetUrl.split('/').filter(Boolean).pop() || 'Unnamed';
 
         const steps: any[] = originalRobot.recording.workflow;
         const entryStep = steps.findLast((step: any) => step.where?.url === 'about:blank');
@@ -1503,7 +1593,7 @@ router.post("/robots/:id/duplicate", requireAPIKey, async (req: Request, res: Re
 
             if (originalEntryUrl && step.where?.url !== 'about:blank' && !whereUpdateStopped) {
                 if (step.where?.url === originalEntryUrl) {
-                    updatedWhere = { ...step.where, url: targetUrl };
+                    updatedWhere = { ...step.where, url: normalizedTargetUrl };
                 } else {
                     whereUpdateStopped = true;
                 }
@@ -1512,7 +1602,12 @@ router.post("/robots/:id/duplicate", requireAPIKey, async (req: Request, res: Re
             const updatedWhat = step.what.map((action: any) => {
                 if (!gotoUpdated && action.action === 'goto' && action.args?.[0] === originalEntryUrl) {
                     gotoUpdated = true;
-                    return { ...action, args: [targetUrl, ...action.args.slice(1)] };
+                    return { ...action, args: [normalizedTargetUrl, ...action.args.slice(1)] };
+                }
+                if ((action.action === 'scrape' || action.action === 'crawl') &&
+                    action.args?.[0] && typeof action.args[0] === 'object' &&
+                    action.args[0].url === originalEntryUrl) {
+                    return { ...action, args: [{ ...action.args[0], url: normalizedTargetUrl }, ...action.args.slice(1)] };
                 }
                 return action;
             });
@@ -1529,7 +1624,7 @@ router.post("/robots/:id/duplicate", requireAPIKey, async (req: Request, res: Re
                 ...originalRobot.recording_meta,
                 id: uuid(),
                 name: `${originalRobot.recording_meta.name} (${lastWord})`,
-                url: targetUrl,
+                url: normalizedTargetUrl,
                 createdAt: currentTimestamp,
                 updatedAt: currentTimestamp,
             },
