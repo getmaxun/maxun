@@ -26,6 +26,7 @@ export const columns: readonly Column[] = [
   { id: 'startedAt', label: 'Started At', minWidth: 80 },
   { id: 'finishedAt', label: 'Finished At', minWidth: 80 },
   { id: 'settings', label: 'Settings', minWidth: 80 },
+  { id: 'rerun', label: 'Re-run', minWidth: 80 },
   { id: 'delete', label: 'Delete', minWidth: 80 },
 ];
 
@@ -39,7 +40,7 @@ interface AccordionSortConfig {
 }
 
 interface Column {
-  id: 'runStatus' | 'name' | 'startedAt' | 'finishedAt' | 'delete' | 'settings';
+  id: 'runStatus' | 'name' | 'startedAt' | 'finishedAt' | 'delete' | 'settings' | 'rerun';
   label: string;
   minWidth?: number;
   align?: 'right';
@@ -71,6 +72,7 @@ export interface Data {
 interface RunsTableProps {
   currentInterpretationLog: string;
   abortRunHandler: (runId: string, robotName: string, browserId: string) => void;
+  rerunHandler: (robotMetaId: string, robotName: string, interpreterSettings: any) => void;
   runId: string;
   runningRecordingName: string;
 }
@@ -85,6 +87,7 @@ interface PaginationState {
 export const RunsTable: React.FC<RunsTableProps> = ({
   currentInterpretationLog,
   abortRunHandler,
+  rerunHandler,
   runId,
   runningRecordingName
 }) => {
@@ -472,11 +475,12 @@ export const RunsTable: React.FC<RunsTableProps> = ({
           onToggleExpanded={(shouldExpand) => handleRowExpand(row.runId, row.robotMetaId, shouldExpand)}
           currentLog={currentInterpretationLog}
           abortRunHandler={abortRunHandler}
+          rerunHandler={rerunHandler}
           runningRecordingName={runningRecordingName}
           urlRunId={urlRunId}
         />
       ));
-  }, [paginationStates, runId, runningRecordingName, currentInterpretationLog, abortRunHandler, handleDelete, accordionSortConfigs]);
+  }, [paginationStates, runId, runningRecordingName, currentInterpretationLog, abortRunHandler, rerunHandler, handleDelete, accordionSortConfigs, expandedRows, handleRowExpand, getPaginationState, urlRunId]);
 
   const renderSortIcon = useCallback((column: Column, robotMetaId: string) => {
     const sortConfig = accordionSortConfigs[robotMetaId];

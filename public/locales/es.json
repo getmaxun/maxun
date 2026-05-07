@@ -95,6 +95,7 @@
     "finishedAt": "Finalizado el",
     "delete": "Eliminar",
     "settings": "Ajustes",
+    "rerun": "Re-ejecutar",
     "search": "Buscar ejecuciones...",
     "sort_tooltip": "Haga clic para ordenar",
     "placeholder": {
@@ -577,7 +578,8 @@
         "run_by_api": "Ejecutado por API",
         "run_type": "Tipo de Ejecución"
       }
-    }
+    },
+    "rerun": "Re-ejecutar"
   },
   "run_content": {
     "tabs": {
