@@ -4,14 +4,9 @@ import { gfm } from 'joplin-turndown-plugin-gfm';
 import * as cheerio from 'cheerio';
 import { URL } from 'url';
 
-export async function parseMarkdown(
-  html: string | null | undefined,
-  baseUrl?: string | null
-): Promise<string> {
-  if (!html) return "";
+let _baseUrl: string | null = null;
 
-  const tidiedHtml = tidyHtml(html);
-
+const _turndown = (() => {
   const t = new TurndownService({
     headingStyle: "atx",
     codeBlockStyle: "fenced",
@@ -72,9 +67,9 @@ export async function parseMarkdown(
       const normalizedHref = href.replace(/[\x00-\x1F\x7F-\x9F\s]/g, "").toLowerCase();
       if (normalizedHref.startsWith("javascript:")) return text;
 
-      if (baseUrl && isRelativeUrl(href)) {
+      if (_baseUrl && isRelativeUrl(href)) {
         try {
-          const u = new URL(href, baseUrl);
+          const u = new URL(href, _baseUrl);
           href = u.toString();
         } catch { }
       }
@@ -101,9 +96,9 @@ export async function parseMarkdown(
       let src = node.getAttribute("src")?.trim() || "";
       if (!src) return "";
 
-      if (baseUrl && isRelativeUrl(src)) {
+      if (_baseUrl && isRelativeUrl(src)) {
         try {
-          src = new URL(src, baseUrl).toString();
+          src = new URL(src, _baseUrl).toString();
         } catch {}
       }
       return alt ? `![${alt}](${src})` : `[Image](${src})`;
@@ -111,9 +106,42 @@ export async function parseMarkdown(
   });
 
   t.use(gfm);
+  return t;
+})();
+
+const TECHNICAL_SELECTOR = [
+  "script", "style", "iframe", "noscript", "meta", "link", "object",
+  "embed", "canvas", "audio", "video", "svg", "map", "area",
+].join(",");
+
+const INNER_NOISE_SELECTOR = [
+  "nav", "footer",
+  ".nav", ".header", ".footer", ".sidebar", ".menu", ".ads", ".ad", ".advertisement",
+  "#nav", "#header", "#footer", "#sidebar", ".breadcrumb", ".social-share",
+  ".comments", ".popup", ".modal", ".cookie-banner", ".location-widget",
+  ".keyboard-shortcuts", ".skip-link", ".banner", ".top-bar", ".nav-bar",
+  '[role="complementary"]',
+  "#shortcut-menu", ".nav-sprite", ".a-header", ".a-footer",
+  ".gb_wa", ".gb_xa",
+  "#nav-belt", "#nav-main", "#nav-footer",
+  ".mw-editsection", ".mw-editsection-bracket", ".mw-editsection-divider",
+].join(",");
+
+const UI_ARTIFACTS = new Set([
+  "Undo", "Done", "Edit", "Viewed categories", "Dismiss", "Close", "View detail", "View more",
+]);
+
+export async function parseMarkdown(
+  html: string | null | undefined,
+  baseUrl?: string | null
+): Promise<string> {
+  if (!html) return "";
+
+  const tidiedHtml = tidyHtml(html);
+  _baseUrl = baseUrl ?? null;
 
   try {
-    let out = t.turndown(tidiedHtml);
+    let out = _turndown.turndown(tidiedHtml);
     out = fixBrokenLinks(out);
     out = stripSkipLinks(out);
     out = stripEditLinks(out);
@@ -127,7 +155,7 @@ export async function parseMarkdown(
 
 function isRelativeUrl(url: string): boolean {
   if (!url) return false;
-  return !url.includes("://") && !url.startsWith("mailto:") && !url.startsWith("tel:") && !url.startsWith("data:");
+  return !url.includes("://") && !url.startsWith("mailto:") && !url.startsWith("data:") && !url.startsWith("tel:");
 }
 
 function getDomainFromUrl(url: string): string | null {
@@ -142,11 +170,7 @@ function getDomainFromUrl(url: string): string | null {
 function tidyHtml(html: string): string {
   const $ = cheerio.load(html);
 
-  const technicalElements = [
-    "script", "style", "iframe", "noscript", "meta", "link", "object",
-    "embed", "canvas", "audio", "video", "svg", "map", "area"
-  ];
-  technicalElements.forEach((tag) => $(tag).remove());
+  $(TECHNICAL_SELECTOR).remove();
 
   $("math").each((_i, el) => {
     const $el = $(el);
@@ -187,26 +211,12 @@ function tidyHtml(html: string): string {
 
   const $content = bestContent || $("body");
 
-  const innerNoiseSelectors = [
-    "nav", "footer",
-    ".nav", ".header", ".footer", ".sidebar", ".menu", ".ads", ".ad", ".advertisement",
-    "#nav", "#header", "#footer", "#sidebar", ".breadcrumb", ".social-share",
-    ".comments", ".popup", ".modal", ".cookie-banner", ".location-widget",
-    ".keyboard-shortcuts", ".skip-link", ".banner", ".top-bar", ".nav-bar",
-    '[role="complementary"]',
-    "#shortcut-menu", ".nav-sprite", ".a-header", ".a-footer",
-    ".gb_wa", ".gb_xa",
-    "#nav-belt", "#nav-main", "#nav-footer",
-    ".mw-editsection", ".mw-editsection-bracket", ".mw-editsection-divider",
-  ];
-  innerNoiseSelectors.forEach((sel) => $content.find(sel).remove());
+  $content.find(INNER_NOISE_SELECTOR).remove();
 
-  const uiArtifacts = ["Undo", "Done", "Edit", "Viewed categories", "Dismiss", "Close", "View detail", "View more"];
   $content.find("button, span, a, div").each((_i, el) => {
-    const text = $(el).text().trim();
-    if (uiArtifacts.includes(text) && $(el).children().length === 0) {
-      $(el).remove();
-    }
+    const $el = $(el);
+    if ($el.children().length > 0) return;
+    if (UI_ARTIFACTS.has($el.text().trim())) $el.remove();
   });
 
   const title = $("title").text().trim() || $("h1").first().text().trim();
@@ -224,8 +234,9 @@ function fixBrokenLinks(md: string): string {
   return parts.map((part, i) => {
     if (i % 3 === 1) return part;
     if (i % 3 === 2) return "";
-    
+
     return part.split("\n\n").map(paragraph => {
+      if (!paragraph.includes("[") || !paragraph.includes("\n")) return paragraph;
       let depth = 0;
       let result = "";
       for (const ch of paragraph) {
