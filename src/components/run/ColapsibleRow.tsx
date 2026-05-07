@@ -17,45 +17,7 @@ import { GenericModal } from "../ui/GenericModal";
 import { getUserById } from "../../api/auth";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@mui/material/styles";
-import { io, Socket } from "socket.io-client";
-import { apiUrl } from "../../apiConfig";
-
-const socketCache = new Map<string, Socket>();
-const progressCallbacks = new Map<string, Set<(data: any) => void>>();
-
-function getOrCreateSocket(browserId: string): Socket {
-  if (socketCache.has(browserId)) {
-    return socketCache.get(browserId)!;
-  }
-
-  const socket = io(`${apiUrl}/${browserId}`, {
-    transports: ["websocket", "polling"],
-    rejectUnauthorized: false
-  });
-
-  socket.on('workflowProgress', (data: any) => {
-    const callbacks = progressCallbacks.get(browserId);
-    if (callbacks) {
-      callbacks.forEach(cb => cb(data));
-    }
-  });
-
-  socketCache.set(browserId, socket);
-  return socket;
-}
-
-function cleanupSocketIfUnused(browserId: string) {
-  const callbacks = progressCallbacks.get(browserId);
-
-  if (!callbacks || callbacks.size === 0) {
-    const socket = socketCache.get(browserId);
-    if (socket) {
-      socket.disconnect();
-      socketCache.delete(browserId);
-      progressCallbacks.delete(browserId);
-    }
-  }
-}
+import { getOrCreateBrowserSocket, releaseBrowserSocket } from "../../utils/browserSocket";
 
 interface RunTypeChipProps {
   runByUserId?: string;
@@ -116,46 +78,27 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
     percentage: number;
   } | null>(null);
 
-  // Subscribe to progress updates using module-level socket cache
   useEffect(() => {
     if (!row.browserId || row.status !== 'running') return;
 
-    // Get or create socket (from module cache)
-    getOrCreateSocket(row.browserId);
-
-    // Register callback
-    if (!progressCallbacks.has(row.browserId)) {
-      progressCallbacks.set(row.browserId, new Set());
-    }
-
+    const socket = getOrCreateBrowserSocket(row.browserId);
     const callback = (data: any) => {
       setWorkflowProgress(data);
     };
 
-    progressCallbacks.get(row.browserId)!.add(callback);
+    socket.on('workflowProgress', callback);
 
-    // Cleanup: remove callback and cleanup socket if no callbacks remain
     return () => {
-      const callbacks = progressCallbacks.get(row.browserId);
-      if (callbacks) {
-        callbacks.delete(callback);
-        // Cleanup socket if this was the last callback
-        cleanupSocketIfUnused(row.browserId);
-      }
+      socket.off('workflowProgress', callback);
+      releaseBrowserSocket(row.browserId);
     };
   }, [row.browserId, row.status]);
 
-  // Clear progress UI when run completes and trigger socket cleanup
   useEffect(() => {
     if (row.status !== 'running' && row.status !== 'queued') {
       setWorkflowProgress(null);
-      // Attempt to cleanup socket when run completes
-      // (will only cleanup if no other callbacks exist)
-      if (row.browserId) {
-        cleanupSocketIfUnused(row.browserId);
-      }
     }
-  }, [row.status, row.browserId]);
+  }, [row.status]);
 
   const handleAbort = () => {
     abortRunHandler(row.runId, row.name, row.browserId);

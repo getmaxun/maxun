@@ -17,8 +17,8 @@ import { useGlobalInfoStore, useCachedRuns, useCacheInvalidation } from "../../c
 import { RunSettings } from "./RunSettings";
 import { CollapsibleRow } from "./ColapsibleRow";
 import { ArrowDownward, ArrowUpward, UnfoldMore } from '@mui/icons-material';
-import { io, Socket } from 'socket.io-client';
-import { apiUrl } from '../../apiConfig';
+import { Socket } from 'socket.io-client';
+import { getOrCreateBrowserSocket, releaseBrowserSocket } from '../../utils/browserSocket';
 
 export const columns: readonly Column[] = [
   { id: 'runStatus', label: 'Status', minWidth: 80 },
@@ -172,7 +172,6 @@ export const RunsTable: React.FC<RunsTableProps> = ({
       return newSet;
     });
     
-    // Update URL navigation
     navigate(
       shouldExpand 
         ? `/runs/${robotMetaId}/run/${runId}`
@@ -180,7 +179,6 @@ export const RunsTable: React.FC<RunsTableProps> = ({
     );
   }, [navigate]);
 
-  // Sync expandedRows and expandedAccordions with URL params
   useEffect(() => {
     if (urlRunId) {
       setExpandedRows(prev => {
@@ -199,7 +197,6 @@ export const RunsTable: React.FC<RunsTableProps> = ({
     }
   }, [urlRunId, urlRobotMetaId]);
 
-  // Auto-expand currently running robot (but allow manual collapse)
   useEffect(() => {
     if (runId && runningRecordingName) {
       const currentRunningRow = rows.find(row => 
@@ -231,16 +228,6 @@ export const RunsTable: React.FC<RunsTableProps> = ({
       [robotMetaId]: {
         ...prev[robotMetaId],
         page: newPage
-      }
-    }));
-  }, []);
-
-  const handleChangeRowsPerPage = useCallback((robotMetaId: string, newRowsPerPage: number) => {
-    setPaginationStates(prev => ({
-      ...prev,
-      [robotMetaId]: {
-        page: 0, // Reset to first page when changing rows per page
-        rowsPerPage: newRowsPerPage
       }
     }));
   }, []);
@@ -284,10 +271,8 @@ export const RunsTable: React.FC<RunsTableProps> = ({
   }, [debouncedSearch]);
 
 
-  // Handle rerender requests using cache invalidation
   useEffect(() => {
     if (rerenderRuns) {
-      // Invalidate cache to force refetch
       refetch();
       setRerenderRuns(false);
     }
@@ -307,70 +292,78 @@ export const RunsTable: React.FC<RunsTableProps> = ({
         return;
       }
 
-      console.log(`[RunsTable] Connecting to browser socket: ${browserId} for run: ${currentRunId}`);
+      console.log(`Connecting to browser socket: ${browserId} for run: ${currentRunId}`);
 
       try {
-        const socket = io(`${apiUrl}/${browserId}`, {
-          transports: ['websocket', 'polling'],
-          rejectUnauthorized: false
-        });
+        const socket = getOrCreateBrowserSocket(browserId);
 
         socket.on('connect', () => {
-          console.log(`[RunsTable] Connected to browser ${browserId}`);
+          console.log(`Connected to browser ${browserId}`);
         });
 
         socket.on('debugMessage', (msg: string) => {
-          console.log(`[RunsTable] Debug message for ${browserId}:`, msg);
-          // Optionally update logs in real-time here
+          console.log(`Debug message for ${browserId}:`, msg);
         });
 
         socket.on('run-completed', (data: any) => {
-          console.log(`[RunsTable] Run completed for ${browserId}:`, data);
+          console.log(`Run completed for ${browserId}:`, data);
           
-          // Invalidate cache to show updated run status
           invalidateRuns();
           setRerenderRuns(true);
           
-          // Show notification
           if (data.status === 'success') {
             notify('success', t('main_page.notifications.interpretation_success', { name: data.robotName || name }));
           } else {
             notify('error', t('main_page.notifications.interpretation_failed', { name: data.robotName || name }));
           }
           
-          socket.disconnect();
+          socket.off('connect');
+          socket.off('debugMessage');
+          socket.off('run-completed');
+          socket.off('urlChanged');
+          socket.off('dom-snapshot-loading');
+          socket.off('connect_error');
+          socket.off('disconnect');
+          
+          releaseBrowserSocket(browserId);
           activeSocketsRef.current.delete(browserId);
         });
 
         socket.on('urlChanged', (url: string) => {
-          console.log(`[RunsTable] URL changed for ${browserId}:`, url);
+          console.log(`URL changed for ${browserId}:`, url);
         });
 
         socket.on('dom-snapshot-loading', () => {
-          console.log(`[RunsTable] DOM snapshot loading for ${browserId}`);
+          console.log(`DOM snapshot loading for ${browserId}`);
         });
 
         socket.on('connect_error', (error: Error) => {
-          console.error(`[RunsTable] Connection error for browser ${browserId}:`, error.message);
+          console.error(`Connection error for browser ${browserId}:`, error.message);
         });
 
         socket.on('disconnect', (reason: string) => {
-          console.log(`[RunsTable] Disconnected from browser ${browserId}:`, reason);
+          console.log(`Disconnected from browser ${browserId}:`, reason);
           activeSocketsRef.current.delete(browserId);
         });
 
         activeSocketsRef.current.set(browserId, socket);
       } catch (error) {
-        console.error(`[RunsTable] Error connecting to browser ${browserId}:`, error);
+        console.error(`Error connecting to browser ${browserId}:`, error);
       }
     });
 
-    // Disconnect from sockets for runs that are no longer active
     const activeBrowserIds = new Set(activeRuns.map((run: Data) => run.browserId));
     activeSocketsRef.current.forEach((socket, browserId) => {
       if (!activeBrowserIds.has(browserId)) {
-        console.log(`[RunsTable] Disconnecting from inactive browser: ${browserId}`);
-        socket.disconnect();
+        console.log(`Disconnecting from inactive browser: ${browserId}`);
+        socket.off('connect');
+        socket.off('debugMessage');
+        socket.off('run-completed');
+        socket.off('urlChanged');
+        socket.off('dom-snapshot-loading');
+        socket.off('connect_error');
+        socket.off('disconnect');
+        releaseBrowserSocket(browserId);
         activeSocketsRef.current.delete(browserId);
       }
     });
@@ -378,9 +371,16 @@ export const RunsTable: React.FC<RunsTableProps> = ({
 
   useEffect(() => {
     return () => {
-      console.log('[RunsTable] Cleaning up all socket connections');
-      activeSocketsRef.current.forEach((socket) => {
-        socket.disconnect();
+      console.log('Cleaning up all socket connections');
+      activeSocketsRef.current.forEach((socket, browserId) => {
+        socket.off('connect');
+        socket.off('debugMessage');
+        socket.off('run-completed');
+        socket.off('urlChanged');
+        socket.off('dom-snapshot-loading');
+        socket.off('connect_error');
+        socket.off('disconnect');
+        releaseBrowserSocket(browserId);
       });
       activeSocketsRef.current.clear();
     };
