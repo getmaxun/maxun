@@ -18,7 +18,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { useThemeMode } from '../../context/theme-provider';
 import { useTranslation } from 'react-i18next';
-import { useBrowserSteps } from '../../context/browserSteps';
+import { useBrowserSteps, ListStep, TextStep, ScreenshotStep } from '../../context/browserSteps';
 import { useActionContext } from '../../context/browserActions';
 import { useSocketStore } from '../../context/socket';
 import { clientSelectorGenerator } from '../../helpers/clientSelectorGenerator';
@@ -31,9 +31,11 @@ interface InterpretationLogProps {
 export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, setIsOpen }) => {
   const { t } = useTranslation();
 
-  const [captureListData, setCaptureListData] = useState<any[]>([]);
-  const [captureTextData, setCaptureTextData] = useState<any[]>([]);
-  const [screenshotData, setScreenshotData] = useState<string[]>([]);
+  const { browserSteps, updateListTextFieldLabel, removeListTextField, updateListStepName, updateScreenshotStepName, updateBrowserTextStepLabel, deleteBrowserStep, deleteStepsByActionId, emitForStepId } = useBrowserSteps();
+  const { captureStage, getText, stopGetList, stopPaginationMode, stopLimitMode, setShowPaginationOptions, setShowLimitOptions, setCaptureStage } = useActionContext();
+  const { socket } = useSocketStore();
+  const { browserWidth, outputPreviewWidth } = useBrowserDimensionsStore();
+  const { currentWorkflowActionsState, shouldResetInterpretationLog, currentTextGroupName, setCurrentTextGroupName, notify, currentTextActionId, currentListActionId, setCurrentListActionId } = useGlobalInfoStore();
 
   const [activeTab, setActiveTab] = useState(0);
   const [activeListTab, setActiveListTab] = useState(0);
@@ -71,6 +73,26 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
   const lastTextDataLength = useRef<number>(0);
   const lastScreenshotDataLength = useRef<number>(0);
 
+  const captureListData = React.useMemo(() => 
+    browserSteps.filter((step): step is ListStep => step.type === 'list')
+  , [browserSteps]);
+
+  const browserStepsRef = useRef(browserSteps);
+
+  const captureTextData = React.useMemo(() =>
+    browserSteps.filter((step): step is TextStep =>
+      step.type === 'text' && !(getText && step.actionId === currentTextActionId)
+    )
+  , [browserSteps, getText, currentTextActionId]);
+
+  const screenshotData = React.useMemo(() => {
+    const screenshotSteps = browserSteps.filter((step): step is ScreenshotStep =>
+      step.type === 'screenshot'
+    );
+
+    return screenshotSteps.filter(step => step.screenshotData).map(step => step.screenshotData!);
+  }, [browserSteps]);
+
   const toggleDrawer = (newOpen: boolean) => (event: React.KeyboardEvent | React.MouseEvent) => {
     if (
       event.type === 'keydown' &&
@@ -92,7 +114,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
   const handleSaveEdit = () => {
     if (editingField && editingValue.trim()) {
-      const listStep = browserSteps.find(step => step.id === editingField.listId);
+      const listStep = browserStepsRef.current.find(step => step.id === editingField.listId);
       const actionId = listStep?.actionId;
 
       if (listStep && listStep.type === 'list') {
@@ -131,6 +153,71 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     if (actionId) {
       setTimeout(() => emitForStepId(actionId), 0);
     }
+  };
+
+  const checkForDuplicateName = (stepId: number, type: 'list' | 'text' | 'screenshot', newName: string): boolean => {
+    const trimmedName = newName.trim();
+
+    if (type === 'list') {
+      const listSteps = browserSteps.filter(step => step.type === 'list' && step.id !== stepId);
+      const duplicate = listSteps.find(step => step.name === trimmedName);
+      if (duplicate) {
+        notify('error', `A list with the name "${trimmedName}" already exists. Please choose a different name.`);
+        return true;
+      }
+    } else if (type === 'screenshot') {
+      const screenshotSteps = browserSteps.filter(step => step.type === 'screenshot' && step.id !== stepId);
+      const duplicate = screenshotSteps.find(step => step.name === trimmedName);
+      if (duplicate) {
+        notify('error', `A screenshot with the name "${trimmedName}" already exists. Please choose a different name.`);
+        return true;
+      }
+    } else if (type === 'text') {
+      const textSteps = browserSteps.filter(step => step.type === 'text' && step.id !== stepId);
+      const duplicate = textSteps.find((step: any) => step.label === trimmedName);
+      if (duplicate) {
+        notify('error', `A field with the name "${trimmedName}" already exists. Please choose a different name.`);
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  const startEdit = (stepId: number, type: 'list' | 'text' | 'screenshot', currentValue: string) => {
+    setEditing({ stepId, type, value: currentValue });
+  };
+
+  const saveEdit = () => {
+    const { stepId, type, value } = editing;
+    if (stepId == null || !type) return;
+
+    const finalValue = value.trim();
+    if (!finalValue) {
+      setEditing({ stepId: null, type: null, value: '' });
+      return;
+    }
+
+    if (checkForDuplicateName(stepId, type, finalValue)) {
+      return;
+    }
+
+    if (type === 'list') {
+      updateListStepName(stepId, finalValue);
+    } else if (type === 'text') {
+      updateBrowserTextStepLabel(stepId, finalValue);
+    } else if (type === 'screenshot') {
+      updateScreenshotStepName(stepId, finalValue);
+    }
+
+    const step = browserSteps.find(s => s.id === stepId);
+    if (step?.actionId) setTimeout(() => emitForStepId(step.actionId!), 0);
+
+    setEditing({ stepId: null, type: null, value: '' });
+  };
+
+  const cancelEdit = () => {
+    setEditing({ stepId: null, type: null, value: '' });
   };
 
   const handleStartEditTextGroupName = () => {
@@ -242,72 +329,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
     notify('error', `Text data "${currentTextGroupName}" discarded`);
   };
-  
-  const checkForDuplicateName = (stepId: number, type: 'list' | 'text' | 'screenshot', newName: string): boolean => {
-    const trimmedName = newName.trim();
-
-    if (type === 'list') {
-      const listSteps = browserSteps.filter(step => step.type === 'list' && step.id !== stepId);
-      const duplicate = listSteps.find(step => step.name === trimmedName);
-      if (duplicate) {
-        notify('error', `A list with the name "${trimmedName}" already exists. Please choose a different name.`);
-        return true;
-      }
-    } else if (type === 'screenshot') {
-      const screenshotSteps = browserSteps.filter(step => step.type === 'screenshot' && step.id !== stepId);
-      const duplicate = screenshotSteps.find(step => step.name === trimmedName);
-      if (duplicate) {
-        notify('error', `A screenshot with the name "${trimmedName}" already exists. Please choose a different name.`);
-        return true;
-      }
-    } else if (type === 'text') {
-      const textSteps = browserSteps.filter(step => step.type === 'text' && step.id !== stepId);
-      const duplicate = textSteps.find((step: any) => step.label === trimmedName);
-      if (duplicate) {
-        notify('error', `A field with the name "${trimmedName}" already exists. Please choose a different name.`);
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  const startEdit = (stepId: number, type: 'list' | 'text' | 'screenshot', currentValue: string) => {
-    setEditing({ stepId, type, value: currentValue });
-  };
-
-  const saveEdit = () => {
-    const { stepId, type, value } = editing;
-    if (stepId == null || !type) return;
-
-    const finalValue = value.trim();
-    if (!finalValue) {
-      setEditing({ stepId: null, type: null, value: '' });
-      return;
-    }
-
-    if (checkForDuplicateName(stepId, type, finalValue)) {
-      return;
-    }
-
-    if (type === 'list') {
-      updateListStepName(stepId, finalValue);
-    } else if (type === 'text') {
-      updateBrowserTextStepLabel(stepId, finalValue);
-    } else if (type === 'screenshot') {
-      updateScreenshotStepName(stepId, finalValue);
-    }
-
-    const step = browserSteps.find(s => s.id === stepId);
-    if (step?.actionId) setTimeout(() => emitForStepId(step.actionId!), 0);
-
-    setEditing({ stepId: null, type: null, value: '' });
-  };
-
-  const cancelEdit = () => {
-    setEditing({ stepId: null, type: null, value: '' });
-  };
-
 
   const previousTabsCount = useRef({ lists: 0, texts: 0, screenshots: 0 });
 
@@ -333,12 +354,18 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     }
   }, [captureListData.length, captureTextData.length, screenshotData.length]);
 
+  useEffect(() => {
+    browserStepsRef.current = browserSteps;
+  }, [browserSteps]);
 
   useEffect(() => {
-    const textSteps = browserSteps.filter(step => step.type === 'text');
-    setCaptureTextData(textSteps);
+    if (captureListData.length > 0 || captureTextData.length > 0 || screenshotData.length > 0) {
+      setShowPreviewData(true);
+    } else {
+      setShowPreviewData(false);
+    }
 
-    if (!getText && previousGetText.current && textSteps.length > 0) {
+    if (!getText && previousGetText.current && captureTextData.length > 0) {
       if (!hasAutoFocusedTextTab.current) {
         hasAutoFocusedTextTab.current = true;
         setTimeout(() => {
@@ -348,32 +375,11 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     }
 
     previousGetText.current = getText;
-
-    const listSteps = browserSteps.filter(step => step.type === 'list');
-    setCaptureListData(listSteps);
-
-    const screenshotSteps = browserSteps.filter(step =>
-      step.type === 'screenshot'
-    ) as Array<{ type: 'screenshot'; id: number; name?: string; fullPage: boolean; actionId?: string; screenshotData?: string }>;
-
-    const screenshotsWithData = screenshotSteps.filter(step => step.screenshotData);
-    const screenshots = screenshotsWithData.map(step => step.screenshotData!);
-    setScreenshotData(screenshots);
-
-    if (textSteps.length > 0 || listSteps.length > 0 || screenshots.length > 0) {
-      setShowPreviewData(true);
-    } else {
-      setShowPreviewData(false);
-    }
-
     updateActiveTab();
-  }, [browserSteps, updateActiveTab, getText]);
+  }, [captureListData.length, captureTextData.length, screenshotData.length, updateActiveTab, getText]);
 
   useEffect(() => {
     if (shouldResetInterpretationLog) {
-      setCaptureListData([]);
-      setCaptureTextData([]);
-      setScreenshotData([]);
       setActiveTab(0);
       setShowPreviewData(false);
       autoFocusedListIds.current.clear();
@@ -420,7 +426,8 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
   useEffect(() => {
     let shouldOpenDrawer = false;
 
-    if (hasScrapeListAction && captureListData.length > 0 && captureListData[0]?.data?.length > 0) {
+    const firstListStep = captureListData[0];
+    if (hasScrapeListAction && firstListStep && firstListStep.data && firstListStep.data.length > 0) {
       setShowPreviewData(true);
       if (captureListData.length > lastListDataLength.current) {
         userClosedDrawer.current = false;
@@ -504,7 +511,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     if (captureListData.length > 0 && isOpen && captureStage === 'initial') {
       const latestListIndex = captureListData.length - 1;
       const latestList = captureListData[latestListIndex];
-      if (latestList && latestList.data && latestList.data.length > 0  && editing.type !== 'list') {
+      if (latestList && latestList.data && latestList.data.length > 0 && editing.type !== 'list') {
         const previousLength = previousDataLengths.current.get(latestList.id) || 0;
         const currentLength = latestList.data.length;
 
@@ -580,7 +587,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
               background: `${darkMode ? '#1d1c1cff' : 'white'}`,
               color: `${darkMode ? 'white' : 'black'}`,
               padding: '10px',
-              height: outputPreviewHeight,
+              height: "calc(100% - 140px)",
               width: outputPreviewWidth,
               display: 'flex',
               flexDirection: 'column',
@@ -664,13 +671,13 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
 
                           return (
                             <Tooltip
+                              key={listItem.id}
                               title="Double click to edit captured list name"
                               arrow
                               placement="top"
                             >
                               <Box
                                 id={index === captureListData.length - 1 ? "list-name-tab" : undefined}
-                                key={listItem.id}
                                 onClick={() => {
                                   if (!isEditing) {
                                     setActiveListTab(index);
@@ -1199,6 +1206,10 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                                 backgroundColor: `${darkMode ? '#080808ff' : '#f8f9fa'} !important`,
                                 position: 'sticky',
                                 top: 0,
+                                width: '10%',
+                                minWidth: '150px',
+                                whiteSpace: 'normal',
+                                wordWrap: 'break-word',
                               }}
                             >
                               Label
@@ -1210,6 +1221,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                                 backgroundColor: `${darkMode ? '#080808ff' : '#f8f9fa'} !important`,
                                 position: 'sticky',
                                 top: 0,
+                                width: '90%',
                               }}
                             >
                               Value
