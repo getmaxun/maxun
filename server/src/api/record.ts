@@ -16,8 +16,9 @@ import { WorkflowFile } from "maxun-core";
 import { addGoogleSheetUpdateTask, processGoogleSheetUpdates } from "../workflow-management/integrations/gsheet";
 import { addAirtableUpdateTask, processAirtableUpdates } from "../workflow-management/integrations/airtable";
 import { sendWebhook } from "../routes/webhook";
-import { convertPageToHTML, convertPageToMarkdown, convertPageToScreenshot, convertPageToText } from '../markdownify/scrape';
+import { convertPageToHTML, convertPageToLinks, convertPageToMarkdown, convertPageToScreenshot, convertPageToText } from '../markdownify/scrape';
 import { executeBrowserAgent } from '../sdk/browserAgent';
+import { OutputFormats } from '../constants/output-formats';
 
 const router = Router();
 
@@ -514,7 +515,7 @@ router.get("/robots/:id/runs/:runId", requireAPIKey, async (req: Request, res: R
     }
 });
 
-async function createWorkflowAndStoreMetadata(id: string, userId: string, runSource: 'api' | 'sdk' | 'mcp' | 'cli', requestedFormats?: string[], promptInstructions?: string) {
+async function createWorkflowAndStoreMetadata(id: string, userId: string, runSource: 'api' | 'sdk' | 'mcp' | 'cli', requestedFormats?: OutputFormats[], promptInstructions?: string) {
     try {
         const recording = await Robot.findOne({
             where: {
@@ -741,11 +742,12 @@ async function executeRun(id: string, userId: string) {
         if (robotType === 'scrape') {
             logger.log('info', `Executing scrape robot for API run ${id}`);
 
-            let formats = recording.recording_meta.formats || ['markdown'];
+            const rawFormats = recording.recording_meta.formats;
+            let formats = rawFormats && rawFormats.length > 0 ? rawFormats : ['markdown'];
 
             if (requestedFormats && Array.isArray(requestedFormats) && requestedFormats.length > 0) {
-                formats = requestedFormats.filter((f): f is 'markdown' | 'html' | 'screenshot-visible' | 'screenshot-fullpage' =>
-                    ['markdown', 'html', 'screenshot-visible', 'screenshot-fullpage'].includes(f)
+                formats = requestedFormats.filter((f): f is 'text' | 'markdown' | 'html' | 'links' | 'screenshot-visible' | 'screenshot-fullpage' =>
+                    ['text', 'markdown', 'html', 'links', 'screenshot-visible', 'screenshot-fullpage'].includes(f)
                 );
             }
 
@@ -848,6 +850,20 @@ async function executeRun(id: string, userId: string) {
                         }
                     } catch (error: any) {
                         logger.log('warn', `HTML conversion failed for API run ${plainRun.runId}: ${error.message}`);
+                    }
+                }
+
+                if (formats.includes('links')) {
+                    try {
+                        const links = await Promise.race([
+                            convertPageToLinks(url, currentPage),
+                            new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`Links extraction timed out`)), SCRAPE_TIMEOUT))
+                        ]);
+                        if (links && links.length > 0) {
+                            serializableOutput.links = links.map((link: string) => ({ url: link }));
+                        }
+                    } catch (error: any) {
+                        logger.log('warn', `Links extraction failed for API run ${plainRun.runId}: ${error.message}`);
                     }
                 }
               
@@ -1269,7 +1285,7 @@ async function executeRun(id: string, userId: string) {
     }
 }
 
-export async function handleRunRecording(id: string, userId: string, runSource: 'api' | 'sdk' | 'mcp' | 'cli' = 'api', requestedFormats?: string[], promptInstructions?: string) {
+export async function handleRunRecording(id: string, userId: string, runSource: 'api' | 'sdk' | 'mcp' | 'cli' = 'api', requestedFormats?: OutputFormats[], promptInstructions?: string) {
     let socket: Socket | null = null;
 
     try {
@@ -1452,7 +1468,7 @@ router.post("/robots/:id/runs", requireAPIKey, async (req: AuthenticatedRequest,
             return res.status(401).json({ ok: false, error: 'Unauthorized' });
         }
 
-        const requestedFormats = req.body?.formats;
+        const requestedFormats = req.body?.formats as OutputFormats[] | undefined;
         const promptInstructions = req.body?.promptInstructions;
         const runSource = req.headers['x-run-source'] === 'mcp' ? 'mcp' : 'api';
         const runId = await handleRunRecording(req.params.id, req.user.id, runSource, requestedFormats, promptInstructions);

@@ -265,6 +265,31 @@ export async function convertPageToText(url: string, page: Page): Promise<string
 }
 
 /**
+ * Extracts all HTTP/HTTPS links from the page.
+ * @param url - The URL to extract links from
+ * @param page - Existing Playwright page instance to use
+ */
+export async function convertPageToLinks(url: string, page: Page): Promise<string[]> {
+  try {
+    logger.log('info', `Extracting links from ${url}`);
+
+    await gotoWithFallback(page, url);
+    await waitForStability(page);
+
+    const links = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('a'))
+        .map((a) => (a as HTMLAnchorElement).href)
+        .filter((href) => href.startsWith('http'))
+    );
+
+    return links;
+  } catch (error: any) {
+    logger.error(`Error during links extraction: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
  * Takes a screenshot of the page
  * @param url - The URL to screenshot
  * @param page - Existing Playwright page instance to use

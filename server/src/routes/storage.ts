@@ -23,7 +23,7 @@ import {
   parseOutputFormats,
   SEARCH_SCRAPE_OUTPUT_FORMAT_OPTIONS,
   SCRAPE_OUTPUT_FORMAT_OPTIONS,
-  OutputFormat,
+  OutputFormats,
 } from '../constants/output-formats';
 
 export const router = Router();
@@ -430,7 +430,7 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       }
     }
 
-    let normalizedFormats: OutputFormat[] | undefined;
+    let normalizedFormats: OutputFormats[] | undefined;
     
     let searchMode: string | undefined;
     if (robot.recording_meta?.type === 'search') {
@@ -441,7 +441,7 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
     }
 
     if (formats !== undefined || (robot.recording_meta?.type === 'search' && searchMode === 'discover')) {
-      let allowedFormats: readonly OutputFormat[] | undefined;
+      let allowedFormats: readonly OutputFormats[] | undefined;
       if (robot.recording_meta?.type === 'scrape') {
         allowedFormats = SCRAPE_OUTPUT_FORMAT_OPTIONS;
       } else if (robot.recording_meta?.type === 'search' && searchMode === 'scrape') {
@@ -1626,7 +1626,7 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
     }
 
     // Crawl always needs formats; use defaults even if explicit empty array is provided
-    const crawlFormats: OutputFormat[] = requestedFormats.length > 0
+    const crawlFormats: OutputFormats[] = requestedFormats.length > 0
       ? requestedFormats
       : [...DEFAULT_OUTPUT_FORMATS];
 
@@ -1756,7 +1756,7 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
       });
     }
 
-    let searchFormats: OutputFormat[];
+    let searchFormats: OutputFormats[];
     if (searchConfig.mode === 'discover') {
       // Discover-mode: always empty, ignore caller input
       searchFormats = [];

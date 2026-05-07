@@ -1,7 +1,7 @@
 import { Model, DataTypes, Optional } from 'sequelize';
 import sequelize from '../storage/db';
 import { WhereWhatPair } from 'maxun-core';
-import { OutputFormat } from '../constants/output-formats';
+import { OutputFormats } from '../constants/output-formats';
 
 interface RobotMeta {
   name: string;
@@ -12,7 +12,7 @@ interface RobotMeta {
   params: any[];
   type?: 'extract' | 'scrape' | 'crawl' | 'search';
   url?: string;
-  formats?: OutputFormat[];
+  formats?: OutputFormats[];
   isLLM?: boolean;
   promptInstructions?: string;
   promptLlmProvider?: 'anthropic' | 'openai' | 'ollama';
