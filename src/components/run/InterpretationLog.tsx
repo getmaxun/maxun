@@ -60,13 +60,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
   const previousGetText = useRef<boolean>(false);
   const autoFocusedScreenshotIndices = useRef<Set<number>>(new Set());
 
-  const { browserSteps, updateListTextFieldLabel, removeListTextField, updateListStepName, updateScreenshotStepName, updateBrowserTextStepLabel, deleteBrowserStep, deleteStepsByActionId, emitForStepId } = useBrowserSteps();
-  const { captureStage, getText, stopGetList, stopPaginationMode, stopLimitMode, setShowPaginationOptions, setShowLimitOptions, setCaptureStage } = useActionContext();
-  const { socket } = useSocketStore();
-
-  const { browserWidth, outputPreviewHeight, outputPreviewWidth } = useBrowserDimensionsStore();
-  const { currentWorkflowActionsState, shouldResetInterpretationLog, currentTextGroupName, setCurrentTextGroupName, notify, currentTextActionId, currentListActionId, setCurrentListActionId } = useGlobalInfoStore();
-
   const [showPreviewData, setShowPreviewData] = useState<boolean>(false);
   const userClosedDrawer = useRef<boolean>(false);
   const lastListDataLength = useRef<number>(0);
