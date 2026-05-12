@@ -1314,7 +1314,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
-                    <Paper sx={{ p: 2, maxHeight: 400, overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
+                    <Paper sx={{ p: 2, maxHeight: '500px', overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                         {Array.from(new Set(linksContent)).map((link: string, idx: number) => (
                           <Link key={idx} href={link} target="_blank" rel="noopener" sx={{ color: '#FF00C3', wordBreak: 'break-all', fontSize: '0.875rem' }}>
@@ -1723,7 +1723,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               <Paper
                                 sx={{
                                   p: 2,
-                                  maxHeight: '300px',
+                                  maxHeight: '500px',
                                   overflow: 'auto',
                                   backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
                                 }}
@@ -1774,7 +1774,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               <Paper
                                 sx={{
                                   p: 2,
-                                  maxHeight: '300px',
+                                  maxHeight: '500px',
                                   overflow: 'auto',
                                   backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
                                 }}
@@ -1825,7 +1825,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               <Paper
                                 sx={{
                                   p: 2,
-                                  maxHeight: '300px',
+                                  maxHeight: '500px',
                                   overflow: 'auto',
                                   backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
                                 }}
@@ -1878,7 +1878,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                 </Box>
                               </AccordionSummary>
                               <AccordionDetails>
-                                <Paper sx={{ maxHeight: 200, overflow: 'auto', p: 2, backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
+                                <Paper sx={{ maxHeight: '500px', overflow: 'auto', p: 2, backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
                                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                                     {(Array.from(new Set(validLinks)) as string[]).map((link: string, idx: number) => (
                                       <Link key={idx} href={link} target="_blank" rel="noopener" sx={{ color: '#FF00C3', wordBreak: 'break-all', fontSize: '0.875rem' }}>
@@ -2084,7 +2084,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                   <Paper
                                     sx={{
                                       p: 2,
-                                      maxHeight: '300px',
+                                      maxHeight: '500px',
                                       overflow: 'auto',
                                       backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
                                     }}
@@ -2134,7 +2134,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                   <Paper
                                     sx={{
                                       p: 2,
-                                      maxHeight: '300px',
+                                      maxHeight: '500px',
                                       overflow: 'auto',
                                       backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
                                     }}
@@ -2186,7 +2186,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                   <Paper
                                     sx={{
                                       p: 2,
-                                      maxHeight: '300px',
+                                      maxHeight: '500px',
                                       overflow: 'auto',
                                       backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
                                     }}
@@ -2240,7 +2240,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                     </Box>
                                   </AccordionSummary>
                                   <AccordionDetails>
-                                    <Paper sx={{ maxHeight: 200, overflow: 'auto', p: 2, backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
+                                    <Paper sx={{ maxHeight: '500px', overflow: 'auto', p: 2, backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
                                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                                         {(Array.from(new Set(validLinks)) as string[]).map((link: string, idx: number) => (
                                           <Link key={idx} href={link} target="_blank" rel="noopener" sx={{ color: '#FF00C3', wordBreak: 'break-all', fontSize: '0.875rem' }}>
