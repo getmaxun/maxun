@@ -1667,9 +1667,8 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                         <Accordion defaultExpanded sx={{ mb: 2 }}>
                           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                              <InfoOutlinedIcon sx={{ mr: 1 }} />
                               <Typography variant='h6'>
-                                Metadata
+                                <InfoOutlinedIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Metadata
                               </Typography>
                             </Box>
                           </AccordionSummary>
@@ -2028,9 +2027,8 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                             <Accordion defaultExpanded sx={{ mb: 2 }}>
                               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                  <InfoOutlinedIcon sx={{ mr: 1 }} />
                                   <Typography variant='h6'>
-                                    Metadata
+                                    <InfoOutlinedIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Metadata
                                   </Typography>
                                 </Box>
                               </AccordionSummary>
