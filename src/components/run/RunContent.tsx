@@ -1158,6 +1158,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   const hasCrawlPageScreenshots = crawlData.some(group => Array.isArray(group) && group.some((item: any) => item?.screenshotVisible || item?.screenshotFullpage));
   const hasSearchResultScreenshots = searchData.some((item: any) => item?.screenshotVisible || item?.screenshotFullpage);
   const showCapturedScreenshotSection = hasScreenshots && !hasCrawlPageScreenshots && !hasSearchResultScreenshots;
+  const isExtractRobot = schemaData.length > 0 || listData.length > 0 || legacyData.length > 0 || (!hasMarkdown && !hasHTML && !hasTextFormat && !hasLinks && crawlData.length === 0 && searchData.length === 0);
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -1907,7 +1908,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                         })()}
 
                         {renderCapturedScreenshotsAccordion(
-                          t('run_content.captured_screenshot.title', 'Captured Screenshots'),
+                          t('run_content.screenshot.title', 'Screenshots'),
                           [
                             ...(crawlData[0][currentCrawlIndex].screenshotVisible ? [{ key: 'visible', label: 'Screenshot (Visible)', value: crawlData[0][currentCrawlIndex].screenshotVisible }] : []),
                             ...(crawlData[0][currentCrawlIndex].screenshotFullpage ? [{ key: 'fullpage', label: 'Screenshot (Full Page)', value: crawlData[0][currentCrawlIndex].screenshotFullpage }] : []),
@@ -2271,7 +2272,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                             })()}
 
                             {renderCapturedScreenshotsAccordion(
-                              t('run_content.captured_screenshot.title', 'Captured Screenshots'),
+                              t('run_content.screenshot.title', 'Screenshots'),
                               [
                                 ...(searchData[currentSearchIndex].screenshotVisible ? [{ key: 'visible', label: 'Screenshot (Visible)', value: searchData[currentSearchIndex].screenshotVisible }] : []),
                                 ...(searchData[currentSearchIndex].screenshotFullpage ? [{ key: 'fullpage', label: 'Screenshot (Full Page)', value: searchData[currentSearchIndex].screenshotFullpage }] : []),
@@ -2405,7 +2406,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 </Accordion>
               )}
               {showCapturedScreenshotSection && renderCapturedScreenshotsAccordion(
-                t('run_content.captured_screenshot.title', 'Captured Screenshots'),
+                isExtractRobot ? t('run_content.captured_screenshot.title_extract', 'Captured Screenshots') : t('run_content.screenshot.title', 'Screenshots'),
                 screenshotKeys.map((label, index) => ({ key: label, label, value: rawScreenshotKeys[index] })).filter(tab => tab.value),
                 currentScreenshotIndex,
                 setCurrentScreenshotIndex,
