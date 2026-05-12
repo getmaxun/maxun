@@ -27,6 +27,11 @@ import {
   OUTPUT_FORMAT_OPTIONS,
   OutputFormats,
 } from "../../../constants/outputFormats";
+import ImageIcon from '@mui/icons-material/Image';
+import CodeIcon from '@mui/icons-material/Code';
+import DescriptionIcon from '@mui/icons-material/Description';
+import SubjectIcon from '@mui/icons-material/Subject';
+import LinkIcon from '@mui/icons-material/Link';
 
 interface RobotMeta {
   name: string;
@@ -127,6 +132,18 @@ interface SearchConfig {
   filters?: Record<string, any>;
   provider?: string;
 }
+
+const getFormatIcon = (format: string) => {
+  switch (format) {
+    case 'markdown': return <DescriptionIcon sx={{ mr: 1, fontSize: 20, verticalAlign: 'middle' }} />;
+    case 'html': return <CodeIcon sx={{ mr: 1, fontSize: 20, verticalAlign: 'middle' }} />;
+    case 'text': return <SubjectIcon sx={{ mr: 1, fontSize: 20, verticalAlign: 'middle' }} />;
+    case 'links': return <LinkIcon sx={{ mr: 1, fontSize: 20, verticalAlign: 'middle' }} />;
+    case 'screenshot-visible':
+    case 'screenshot-fullpage': return <ImageIcon sx={{ mr: 1, fontSize: 20, verticalAlign: 'middle' }} />;
+    default: return null;
+  }
+};
 
 export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
   const { t } = useTranslation();
@@ -849,6 +866,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
             {OUTPUT_FORMAT_OPTIONS.map((format) => (
               <MenuItem key={format} value={format}>
                 <Checkbox checked={crawlOutputFormats.includes(format)} />
+                {getFormatIcon(format)}
                 {OUTPUT_FORMAT_LABELS[format]}
               </MenuItem>
             ))}
@@ -1046,6 +1064,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
               {OUTPUT_FORMAT_OPTIONS.map((format) => (
                 <MenuItem key={format} value={format}>
                   <Checkbox checked={searchOutputFormats.includes(format)} />
+                  {getFormatIcon(format)}
                   {OUTPUT_FORMAT_LABELS[format]}
                 </MenuItem>
               ))}
@@ -1102,6 +1121,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
           {OUTPUT_FORMAT_OPTIONS.map((format) => (
             <MenuItem key={format} value={format}>
               <Checkbox checked={scrapeOutputFormats.includes(format)} />
+              {getFormatIcon(format)}
               {OUTPUT_FORMAT_LABELS[format]}
             </MenuItem>
           ))}
