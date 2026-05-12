@@ -31,11 +31,6 @@ import { canCreateBrowserInState, getActiveBrowserId, stopRecording } from '../.
 import { createScrapeRobot, createLLMRobot, createAndRunRecording, createCrawlRobot, createSearchRobot } from "../../../api/storage";
 import { AuthContext } from '../../../context/auth';
 import { DEFAULT_OUTPUT_FORMATS, OUTPUT_FORMAT_LABELS, OUTPUT_FORMAT_OPTIONS, OutputFormats } from '../../../constants/outputFormats';
-import ImageIcon from '@mui/icons-material/Image';
-import CodeIcon from '@mui/icons-material/Code';
-import DescriptionIcon from '@mui/icons-material/Description';
-import SubjectIcon from '@mui/icons-material/Subject';
-import LinkIcon from '@mui/icons-material/Link';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -58,18 +53,6 @@ function TabPanel(props: TabPanelProps) {
     </div>
   );
 }
-
-const getFormatIcon = (format: string) => {
-  switch (format) {
-    case 'markdown': return <DescriptionIcon sx={{ mr: 1, fontSize: 20, verticalAlign: 'middle' }} />;
-    case 'html': return <CodeIcon sx={{ mr: 1, fontSize: 20, verticalAlign: 'middle' }} />;
-    case 'text': return <SubjectIcon sx={{ mr: 1, fontSize: 20, verticalAlign: 'middle' }} />;
-    case 'links': return <LinkIcon sx={{ mr: 1, fontSize: 20, verticalAlign: 'middle' }} />;
-    case 'screenshot-visible':
-    case 'screenshot-fullpage': return <ImageIcon sx={{ mr: 1, fontSize: 20, verticalAlign: 'middle' }} />;
-    default: return null;
-  }
-};
 
 const RobotCreate: React.FC = () => {
   const { t } = useTranslation();
@@ -776,7 +759,6 @@ const RobotCreate: React.FC = () => {
                       {OUTPUT_FORMAT_OPTIONS.map((format) => (
                         <MenuItem key={format} value={format}>
                           <Checkbox checked={outputFormats.includes(format)} />
-                          {getFormatIcon(format)}
                           {OUTPUT_FORMAT_LABELS[format]}
                         </MenuItem>
                       ))}
@@ -988,7 +970,6 @@ const RobotCreate: React.FC = () => {
                       {OUTPUT_FORMAT_OPTIONS.map((format) => (
                         <MenuItem key={format} value={format}>
                           <Checkbox checked={crawlOutputFormats.includes(format)} />
-                          {getFormatIcon(format)}
                           {OUTPUT_FORMAT_LABELS[format]}
                         </MenuItem>
                       ))}
@@ -1214,7 +1195,6 @@ const RobotCreate: React.FC = () => {
                         {OUTPUT_FORMAT_OPTIONS.map((format) => (
                           <MenuItem key={format} value={format}>
                             <Checkbox checked={searchOutputFormats.includes(format)} />
-                            {getFormatIcon(format)}
                             {OUTPUT_FORMAT_LABELS[format]}
                           </MenuItem>
                         ))}
