@@ -4,6 +4,7 @@ import { RunSettings } from "../components/run/RunSettings";
 import { ScheduleSettings } from "../components/robot/pages/ScheduleSettingsPage";
 import { CreateRunResponse, ScheduleRunResponse } from "../pages/MainPage";
 import { apiUrl } from "../apiConfig";
+import { OutputFormats } from "../constants/outputFormats";
 
 interface CredentialInfo {
   value: string;
@@ -31,7 +32,12 @@ export const getStoredRecordings = async (): Promise<string[] | null> => {
 export const createScrapeRobot = async (
   url: string,
   name?: string,
-  formats: string[] = ['markdown']
+  formats: string[] = ['markdown'],
+  promptInstructions?: string,
+  promptLlmProvider?: 'anthropic' | 'openai' | 'ollama',
+  promptLlmModel?: string,
+  promptLlmApiKey?: string,
+  promptLlmBaseUrl?: string
 ): Promise<any> => {
   try {
     const response = await axios.post(
@@ -40,6 +46,11 @@ export const createScrapeRobot = async (
         url,
         name,
         formats,
+        ...(promptInstructions ? { promptInstructions } : {}),
+        ...(promptLlmProvider ? { promptLlmProvider } : {}),
+        ...(promptLlmModel ? { promptLlmModel } : {}),
+        ...(promptLlmApiKey ? { promptLlmApiKey } : {}),
+        ...(promptLlmBaseUrl ? { promptLlmBaseUrl } : {}),
       },
       {
         headers: { 'Content-Type': 'application/json' },
@@ -107,7 +118,7 @@ export const updateRecording = async (id: string, data: {
   credentials?: Credentials; 
   targetUrl?: string;
   workflow?: any[];
-  formats?: string[];
+  formats?: OutputFormats[];
 }): Promise<boolean> => {
   try {
     const response = await axios.put(`${apiUrl}/storage/recordings/${id}`, data);
@@ -408,7 +419,7 @@ export const createSearchRobot = async (
     };
     mode: 'discover' | 'scrape';
   },
-  formats?: string[]
+  formats?: OutputFormats[]
 ): Promise<any> => {
   try {
     const response = await axios.post(

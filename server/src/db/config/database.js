@@ -11,6 +11,8 @@ requiredEnvVars.forEach(envVar => {
 });
 
 
+const sslOptions = process.env.DB_SSL === 'true' ? { ssl: { require: true, rejectUnauthorized: false } } : {};
+
 module.exports = {
   development: {
     username: process.env.DB_USER,
@@ -20,6 +22,7 @@ module.exports = {
     port: process.env.DB_PORT,
     dialect: 'postgres',
     logging: console.log,
+    dialectOptions: { ...sslOptions },
   },
   test: {
     username: process.env.DB_USER,
@@ -29,6 +32,7 @@ module.exports = {
     port: process.env.DB_PORT,
     dialect: 'postgres',
     logging: false,
+    dialectOptions: { ...sslOptions },
   },
   production: {
     username: process.env.DB_USER,
@@ -38,5 +42,6 @@ module.exports = {
     port: process.env.DB_PORT,
     dialect: 'postgres',
     logging: false,
+    dialectOptions: { ...sslOptions },
   }
 };

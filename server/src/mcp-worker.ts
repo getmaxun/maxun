@@ -142,6 +142,11 @@ class MaxunMCPWorker {
               resultText += JSON.stringify(extractedData.listData, null, 2) + '\n\n';
             }
 
+            if (extractedData.promptResult) {
+              resultText += `Smart Query Result:\n`;
+              resultText += extractedData.promptResult + '\n\n';
+            }
+
             if (screenshots && screenshots.length > 0) {
               resultText += `Screenshots captured: ${screenshots.length}\n`;
               resultText += `Screenshot URLs:\n`;
@@ -229,6 +234,10 @@ class MaxunMCPWorker {
 
           if (run.data.listData && run.data.listData.length > 0) {
             resultText += `Extracted List Data:\n${JSON.stringify(run.data.listData, null, 2)}\n\n`;
+          }
+
+          if (run.data.promptResult) {
+            resultText += `Smart Query Result:\n${run.data.promptResult}\n\n`;
           }
 
           if (run.screenshots && run.screenshots.length > 0) {

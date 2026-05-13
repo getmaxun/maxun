@@ -3,6 +3,7 @@ import { AlertSnackbarProps } from "../components/ui/AlertSnackbar";
 import { WhereWhatPair } from "maxun-core";
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getStoredRuns, getStoredRecordings } from "../api/storage";
+import { OutputFormats } from "../constants/outputFormats";
 
 const createDataCacheClient = () => new QueryClient({
   defaultOptions: {
@@ -29,7 +30,7 @@ interface RobotMeta {
     params: any[];
     type?: 'extract' | 'scrape' | 'crawl' | 'search';
     url?: string;
-    formats?: ('markdown' | 'html' | 'screenshot-visible' | 'screenshot-fullpage')[];
+    formats?: OutputFormats[];
     isLLM?: boolean;
 }
 

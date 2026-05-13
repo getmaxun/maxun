@@ -7,6 +7,7 @@ import { WhereWhatPair } from "maxun-core";
 import { getUserById } from "../../../api/auth";
 import { RobotConfigPage } from "./RobotConfigPage";
 import { useNavigate, useLocation } from "react-router-dom";
+import { OutputFormats } from "../../../constants/outputFormats";
 
 interface RobotMeta {
   name: string;
@@ -17,7 +18,7 @@ interface RobotMeta {
   params: any[];
   type?: 'extract' | 'scrape' | 'crawl' | 'search';
   url?: string;
-  formats?: ('markdown' | 'html' | 'screenshot-visible' | 'screenshot-fullpage')[];
+  formats?: OutputFormats[];
   isLLM?: boolean;
 }
 

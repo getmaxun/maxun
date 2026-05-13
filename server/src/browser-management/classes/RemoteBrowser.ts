@@ -198,6 +198,24 @@ export class RemoteBrowser {
     }
 
     /**
+     * Broadcasts an event to all clients connected to this browser's namespace.
+     * Falls back to direct socket emit if namespace is unavailable.
+     * This ensures events reach all frontend components (RunsTable, CollapsibleRow, etc.)
+     * even if the original socket has been replaced by a reconnection.
+     */
+    private broadcast(event: string, data?: any): void {
+        try {
+            if (this.socket?.nsp) {
+                this.socket.nsp.emit(event, data);
+            } else {
+                this.socket.emit(event, data);
+            }
+        } catch (error: any) {
+            logger.warn(`Failed to broadcast event ${event}: ${error.message}`);
+        }
+    }
+
+    /**
      * Setup scroll event listener to track user scrolling
      */
     private setupScrollEventListener(): void {
@@ -217,7 +235,7 @@ export class RemoteBrowser {
     }
 
     private emitLoadingProgress(progress: number, pendingRequests: number): void {
-      this.socket.emit("domLoadingProgress", {
+      this.broadcast("domLoadingProgress", {
         progress: Math.round(progress),
         pendingRequests,
         userId: this.userId,
@@ -239,7 +257,7 @@ export class RemoteBrowser {
             const currentUrl = page.url();
             if (this.shouldEmitUrlChange(currentUrl)) {
               this.lastEmittedUrl = currentUrl;
-              this.socket.emit('urlChanged', { url: currentUrl, userId: this.userId });
+              this.broadcast('urlChanged', { url: currentUrl, userId: this.userId });
             }
 
             await page.evaluate(() => {

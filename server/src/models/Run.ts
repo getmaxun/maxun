@@ -1,11 +1,14 @@
 import { Model, DataTypes, Optional } from 'sequelize';
 import sequelize from '../storage/db';
 import Robot from './Robot';
+import { OutputFormats } from '../constants/output-formats';
 
 interface InterpreterSettings {
   maxConcurrency: number;
   maxRepeats: number;
   debug: boolean;
+  formats?: OutputFormats[];
+  promptInstructions?: string;
 }
 
 interface RunAttributes {

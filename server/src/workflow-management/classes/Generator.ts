@@ -19,6 +19,66 @@ import { v4 as uuid } from "uuid";
 import { capture } from "../../utils/analytics"
 import { decrypt, encrypt } from "../../utils/auth";
 
+const normalizeRobotUrl = (rawUrl: string): string => {
+  const normalizedUrl = new URL(rawUrl.trim());
+  if (!['http:', 'https:'].includes(normalizedUrl.protocol)) {
+    throw new Error('Invalid URL protocol');
+  }
+
+  normalizedUrl.search = normalizedUrl.searchParams.toString();
+  return normalizedUrl.toString();
+};
+
+const normalizeWorkflowUrls = (workflow: any[] = []): any[] =>
+  workflow.map((pair: any) => ({
+    ...pair,
+    where: pair?.where
+      ? {
+          ...pair.where,
+          ...(typeof pair.where.url === 'string' && pair.where.url !== 'about:blank'
+            ? { url: normalizeRobotUrl(pair.where.url) }
+            : {}),
+        }
+      : pair?.where,
+    what: Array.isArray(pair?.what)
+      ? pair.what.map((action: any) => {
+          if (
+            action.action === 'goto' &&
+            Array.isArray(action.args) &&
+            typeof action.args[0] === 'string' &&
+            action.args[0] !== 'about:blank'
+          ) {
+            return {
+              ...action,
+              args: [normalizeRobotUrl(action.args[0]), ...action.args.slice(1)],
+            };
+          }
+
+          if (
+            (action.action === 'scrape' || action.action === 'crawl') &&
+            Array.isArray(action.args) &&
+            action.args[0] &&
+            typeof action.args[0] === 'object' &&
+            typeof action.args[0].url === 'string' &&
+            action.args[0].url !== 'about:blank'
+          ) {
+            return {
+              ...action,
+              args: [
+                {
+                  ...action.args[0],
+                  url: normalizeRobotUrl(action.args[0].url),
+                },
+                ...action.args.slice(1),
+              ],
+            };
+          }
+
+          return action;
+        })
+      : pair?.what,
+  }));
+
 interface PersistedGeneratedData {
   lastUsedSelector: string;
   lastIndex: number | null;
@@ -990,11 +1050,15 @@ export class WorkflowGenerator {
         const robot = await Robot.findOne({ where: { 'recording_meta.id': robotId }});
 
         if (robot) {
+          const normalizedRecording = {
+            ...recording,
+            workflow: normalizeWorkflowUrls(recording.workflow),
+          };
           await robot.update({
-            recording: recording,
+            recording: normalizedRecording,
             recording_meta: {
               ...robot.recording_meta,
-              pairs: recording.workflow.length,
+              pairs: normalizedRecording.workflow.length,
               params: this.getParams() || [],
               updatedAt: new Date().toLocaleString(),
             },
@@ -1004,6 +1068,10 @@ export class WorkflowGenerator {
           logger.log('info', `Robot retrained with id: ${robot.id}`);
         }
       } else {
+        const normalizedRecording = {
+          ...recording,
+          workflow: normalizeWorkflowUrls(recording.workflow),
+        };
         const trimmedFileName = fileName.trim();
         if (!trimmedFileName) {
           this.socket.emit('fileSaved', { actionType: 'error' });
@@ -1024,7 +1092,7 @@ export class WorkflowGenerator {
           name: trimmedFileName,
           id: uuid(),
           createdAt: this.recordingMeta.createdAt || new Date().toLocaleString(),
-          pairs: recording.workflow.length,
+          pairs: normalizedRecording.workflow.length,
           updatedAt: new Date().toLocaleString(),
           params: this.getParams() || [],
           type: this.recordingMeta.type || 'extract',
@@ -1033,7 +1101,7 @@ export class WorkflowGenerator {
         const robot = await Robot.create({
           userId,
           recording_meta: this.recordingMeta,
-          recording: recording,
+          recording: normalizedRecording,
         });
         capture(
           'maxun-oss-robot-created',

@@ -92,6 +92,7 @@ Maxun can run locally with or without Docker
 1. [Self Host Maxun With Docker & Portainer](https://docs.maxun.dev/self-host)
 2. [Upgrade Maxun With Docker Compose Setup](https://docs.maxun.dev/installation/upgrade#upgrading-with-docker-compose)
 3. [Upgrade Maxun Without Docker Compose Setup](https://docs.maxun.dev/installation/upgrade#upgrading-with-local-setup)
+4. [Self Host With Neon](https://docs.maxun.dev/self-host/neon)
 
 ## Sponsors
 <table>

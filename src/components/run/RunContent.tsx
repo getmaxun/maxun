@@ -15,6 +15,7 @@ import * as React from "react";
 import { Data } from "./RunsTable";
 import { TabPanel, TabContext } from "@mui/lab";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ArticleIcon from '@mui/icons-material/Article';
 import { useEffect, useState } from "react";
 import JSZip from "jszip";
 import Table from '@mui/material/Table';
@@ -45,6 +46,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   const [tab, setTab] = React.useState<string>('output');
   const [markdownContent, setMarkdownContent] = useState<string>('');
   const [htmlContent, setHtmlContent] = useState<string>('');
+  const [textContent, setTextContent] = useState<string>('');
+  const [linksContent, setLinksContent] = useState<string[]>([]);
+  const [smartQueryResult, setSmartQueryResult] = useState<string>('');
 
   const [schemaData, setSchemaData] = useState<any[]>([]);
   const [schemaColumns, setSchemaColumns] = useState<string[]>([]);
@@ -94,18 +98,75 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   useEffect(() => {
     setMarkdownContent('');
     setHtmlContent('');
+    setSmartQueryResult('');
+    setTextContent('');
+    setLinksContent([]);
 
-    if (row.serializableOutput?.markdown && Array.isArray(row.serializableOutput.markdown)) {
-      const markdownData = row.serializableOutput.markdown[0];
-      if (markdownData?.content) {
-        setMarkdownContent(markdownData.content);
+    if (!row.serializableOutput) return;
+
+    const extractFromOutput = (output: any) => {
+      if (output?.markdown && Array.isArray(output.markdown)) {
+        const markdownData = output.markdown[0];
+        if (markdownData?.content) setMarkdownContent(markdownData.content);
+      }
+
+      if (output?.html && Array.isArray(output.html)) {
+        const htmlData = output.html[0];
+        if (htmlData?.content) setHtmlContent(htmlData.content);
+      }
+
+      const textOutput = output?.textContent || output?.text;
+      if (textOutput) {
+        if (Array.isArray(textOutput)) {
+          const textData = textOutput[0];
+          if (typeof textData === 'string') {
+            setTextContent(textData);
+          } else if (textData && typeof textData === 'object' && textData.content) {
+            setTextContent(textData.content);
+          } else if (textData && typeof textData === 'object' && textData.text) {
+            setTextContent(textData.text);
+          }
+        } else if (typeof textOutput === 'string') {
+          setTextContent(textOutput);
+        }
+      }
+
+      if (output?.links && Array.isArray(output.links) && output.links.length > 0) {
+        const urls: string[] = output.links.map((item: any) =>
+          typeof item === 'string' ? item : item?.url ?? ''
+        ).filter(Boolean);
+        if (urls.length > 0) setLinksContent(urls);
+      }
+    };
+
+    extractFromOutput(row.serializableOutput);
+
+    if (row.serializableOutput.scrape) {
+      extractFromOutput(row.serializableOutput.scrape);
+    }
+
+    const textOutput = row.serializableOutput?.textContent || row.serializableOutput?.text;
+    if (textOutput) {
+      if (Array.isArray(textOutput)) {
+        const textData = textOutput[0];
+        if (typeof textData === 'string') {
+          setTextContent(textData);
+        } else if (textData && typeof textData === 'object' && textData.content) {
+          setTextContent(textData.content);
+        } else if (textData && typeof textData === 'object' && textData.text) {
+          setTextContent(textData.text);
+        }
+      } else if (typeof textOutput === 'string') {
+        setTextContent(textOutput);
       }
     }
 
-    if (row.serializableOutput?.html && Array.isArray(row.serializableOutput.html)) {
-      const htmlData = row.serializableOutput.html[0];
-      if (htmlData?.content) {
-        setHtmlContent(htmlData.content);
+    const promptResult = row.serializableOutput?.promptResult || row.serializableOutput?.smartQuery;
+    if (promptResult && Array.isArray(promptResult)) {
+      const sq = promptResult[0];
+      const result = sq?.content || sq?.result;
+      if (result) {
+        setSmartQueryResult(result);
       }
     }
   }, [row.serializableOutput]);
@@ -1068,8 +1129,12 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
   const hasData = schemaData.length > 0 || listData.length > 0 || crawlData.length > 0 || searchData.length > 0 || legacyData.length > 0;
   const hasScreenshots = row.binaryOutput && Object.keys(row.binaryOutput).length > 0;
-  const hasMarkdown = markdownContent.length > 0;
-  const hasHTML = htmlContent.length > 0;
+  const hasMarkdown = markdownContent && markdownContent.length > 0;
+  const hasHTML = htmlContent && htmlContent.length > 0;
+  const hasTextFormat = textContent && textContent.length > 0;
+  const hasLinks = linksContent && linksContent.length > 0;
+  const promptResultData = smartQueryResult || null;
+  const hasPromptResult = !!promptResultData;
   const hasCrawlPageScreenshots = crawlData.some(group => Array.isArray(group) && group.some((item: any) => item?.screenshotVisible || item?.screenshotFullpage));
   const hasSearchResultScreenshots = searchData.some((item: any) => item?.screenshotVisible || item?.screenshotFullpage);
   const showCapturedScreenshotSection = hasScreenshots && !hasCrawlPageScreenshots && !hasSearchResultScreenshots;
@@ -1078,24 +1143,27 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     <Box sx={{ width: '100%' }}>
       <TabContext value={tab}>
         <TabPanel value='output' sx={{ width: '100%', maxWidth: '900px' }}>
-          {hasMarkdown || hasHTML ? (
-            <>
+          {hasMarkdown || hasHTML || hasTextFormat || hasLinks ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {hasMarkdown && (
-                <Accordion defaultExpanded sx={{ mb: 2 }}>
+                <Accordion defaultExpanded>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography variant='h6'>Markdown</Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <ArticleIcon sx={{ mr: 1 }} />
+                      <Typography variant='h6'>Markdown</Typography>
+                    </Box>
                   </AccordionSummary>
                   <AccordionDetails>
-                    <Paper sx={{ p: 2, maxHeight: '500px', overflow: 'auto' }}>
-                      <Typography component="pre" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
+                    <Paper sx={{ p: 2, maxHeight: '500px', overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
+                      <Box component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: '13px', lineHeight: 1.6, m: 0, color: 'inherit' }}>
                         {markdownContent}
-                      </Typography>
+                      </Box>
                     </Paper>
 
                     <Box sx={{ mt: 2 }}>
                       <Button
-                        onClick={() => downloadMarkdown(markdownContent, 'output.md')}
-                        sx={{ color: '#FF00C3', textTransform: 'none' }}
+                        onClick={() => downloadMarkdown(markdownContent, `${row.name || 'content'}.md`)}
+                        sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
                       >
                         Download Markdown
                       </Button>
@@ -1105,18 +1173,18 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {hasHTML && (
-                <Accordion defaultExpanded sx={{ mb: 2 }}>
+                <Accordion defaultExpanded>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography variant='h6'>HTML</Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <ArticleIcon sx={{ mr: 1 }} />
+                      <Typography variant='h6'>HTML</Typography>
+                    </Box>
                   </AccordionSummary>
                   <AccordionDetails>
-                    <Paper sx={{ p: 2, maxHeight: '500px', overflow: 'auto' }}>
-                      <Typography
-                        component="pre"
-                        sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}
-                      >
+                    <Paper sx={{ p: 2, maxHeight: '500px', overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
+                      <Box component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: '13px', lineHeight: 1.6, m: 0, color: 'inherit' }}>
                         {htmlContent}
-                      </Typography>
+                      </Box>
                     </Paper>
 
                     <Box sx={{ mt: 2 }}>
@@ -1126,13 +1194,88 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                           const url = URL.createObjectURL(blob);
                           const link = document.createElement("a");
                           link.href = url;
-                          link.download = "output.html";
+                          link.download = `${row.name || 'content'}.html`;
                           link.click();
                           setTimeout(() => URL.revokeObjectURL(url), 100);
                         }}
-                        sx={{ color: '#FF00C3', textTransform: 'none' }}
+                        sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
                       >
                         Download HTML
+                      </Button>
+                    </Box>
+                  </AccordionDetails>
+                </Accordion>
+              )}
+
+              {hasTextFormat && (
+                <Accordion defaultExpanded>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <ArticleIcon sx={{ mr: 1 }} />
+                      <Typography variant='h6'>Text Content</Typography>
+                    </Box>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Paper sx={{ p: 2, maxHeight: '500px', overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
+                      <Box component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: '13px', lineHeight: 1.6, m: 0, color: 'inherit' }}>
+                        {textContent}
+                      </Box>
+                    </Paper>
+                    <Box sx={{ mt: 2 }}>
+                      <Button
+                        onClick={() => {
+                          const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8;' });
+                          const url = URL.createObjectURL(blob);
+                          const link = document.createElement("a");
+                          link.href = url;
+                          link.download = `${row.name || 'content'}.txt`;
+                          link.click();
+                          setTimeout(() => URL.revokeObjectURL(url), 100);
+                        }}
+                        sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
+                      >
+                        Download Text
+                      </Button>
+                    </Box>
+                  </AccordionDetails>
+                </Accordion>
+              )}
+
+              {hasLinks && (
+                <Accordion defaultExpanded>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <ArticleIcon sx={{ mr: 1 }} />
+                      <Typography variant='h6'>Links ({linksContent.length})</Typography>
+                    </Box>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Paper sx={{ p: 2, maxHeight: 400, overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        {Array.from(new Set(linksContent)).map((link: string, idx: number) => (
+                          <Link key={idx} href={link} target="_blank" rel="noopener" sx={{ color: '#FF00C3', wordBreak: 'break-all', fontSize: '0.875rem' }}>
+                            {link}
+                          </Link>
+                        ))}
+                      </Box>
+                    </Paper>
+                    <Box sx={{ mt: 1 }}>
+                      <Button
+                        onClick={() => {
+                          const uniqueLinks = Array.from(new Set(linksContent));
+                          const blob = new Blob([uniqueLinks.join('\n')], { type: 'text/plain' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `${row.name || 'links'}.txt`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          URL.revokeObjectURL(url);
+                        }}
+                        sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
+                      >
+                        Download Links
                       </Button>
                     </Box>
                   </AccordionDetails>
@@ -1146,7 +1289,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 setCurrentScreenshotIndex,
                 'global-screenshots-primary'
               )}
-            </>
+            </Box>
           ) : (
             <>
           {row.status === 'running' || row.status === 'queued' ? (
@@ -1171,7 +1314,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 {t('run_content.buttons.stop')}
               </Button>
             </>
-          ) : (!hasData && !hasScreenshots
+          ) : (!hasData && !hasScreenshots && !hasMarkdown && !hasHTML && !hasTextFormat && !hasLinks && !hasPromptResult
             ? (['failed', 'aborted', 'aborting'].includes(row.status)
               ? <Typography color='error'>{t('run_content.failed_no_output', 'Run failed before generating output. Check run logs for details.')}</Typography>
               : <Typography>{t('run_content.empty_output')}</Typography>)
@@ -2202,6 +2345,42 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
             'global-screenshots-secondary'
           )}
           </>
+          )}
+
+          {hasPromptResult && promptResultData && (
+            <Accordion defaultExpanded sx={{ mb: 2 }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <ArticleIcon sx={{ mr: 1 }} />
+                  <Typography variant='h6'>Smart Query Result</Typography>
+                </Box>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Paper sx={{ p: 2, maxHeight: '500px', overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
+                  <Box component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: '13px', lineHeight: 1.6, m: 0, color: 'inherit' }}>
+                    {promptResultData}
+                  </Box>
+                </Paper>
+                <Box sx={{ mt: 2 }}>
+                  <Button
+                    onClick={() => {
+                      const blob = new Blob([promptResultData], { type: 'text/plain' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `${row.name || 'smart-query'}-result.txt`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                    }}
+                    sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
+                  >
+                    Download Result
+                  </Button>
+                </Box>
+              </AccordionDetails>
+            </Accordion>
           )}
         </TabPanel>
       </TabContext>

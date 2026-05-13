@@ -1,9 +1,12 @@
 {
   "compilerOptions": {
+    "rootDir": "./src",
     "outDir": "./build",
     "declaration": true,
     "allowJs": true,
     "target": "es6",
+    "lib": ["ES2017", "DOM"],
+    "types": ["node"],
     "module": "commonjs",
     "esModuleInterop": true,
     "skipLibCheck": true

@@ -13,9 +13,29 @@ import { WorkflowFile } from "maxun-core";
 import { Page } from "playwright-core";
 import { sendWebhook } from "../../routes/webhook";
 import { addAirtableUpdateTask, airtableUpdateTasks, processAirtableUpdates } from "../integrations/airtable";
-import { convertPageToMarkdown, convertPageToHTML, convertPageToScreenshot } from "../../markdownify/scrape";
+import { convertPageToMarkdown, convertPageToHTML, convertPageToLinks, convertPageToScreenshot, convertPageToText } from "../../markdownify/scrape";
+import { executeBrowserAgent } from "../../sdk/browserAgent";
 import { processRobotOutputFormats } from "../../utils/output-post-processor";
 import { getInterpretationFailureReason, hasExpectedRobotOutput } from "../../utils/output-validation";
+
+const getRobotTargetUrl = (recording: any): string => {
+  const metaUrl = recording?.recording_meta?.url?.trim();
+  if (metaUrl) {
+    return metaUrl;
+  }
+
+  const workflow = recording?.recording?.workflow || [];
+  const entryPair = [...workflow].reverse().find((pair: any) =>
+    pair?.what?.some((action: any) => action.action === 'goto' && typeof action.args?.[0] === 'string' && action.args[0] !== 'about:blank'),
+  );
+  const gotoUrl = entryPair?.what?.find((action: any) => action.action === 'goto' && typeof action.args?.[0] === 'string')?.args?.[0]?.trim();
+  if (gotoUrl) {
+    return gotoUrl;
+  }
+
+  const firstWorkflowUrl = workflow.find((pair: any) => typeof pair?.where?.url === 'string' && pair.where.url !== 'about:blank')?.where?.url?.trim();
+  return firstWorkflowUrl || '';
+};
 
 async function createWorkflowAndStoreMetadata(id: string, userId: string) {
   try {
@@ -232,7 +252,8 @@ async function executeRun(id: string, userId: string) {
     if (recording.recording_meta.type === 'scrape') {
       logger.log('info', `Executing scrape robot for scheduled run ${id}`);
 
-      const formats = recording.recording_meta.formats || ['markdown'];
+      const rawFormats = run.interpreterSettings?.formats || recording.recording_meta.formats;
+      const formats = rawFormats && rawFormats.length > 0 ? rawFormats : ['markdown'];
 
       await run.update({
         status: 'running',
@@ -261,20 +282,58 @@ async function executeRun(id: string, userId: string) {
       }
 
       try {
-        const url = recording.recording_meta.url;
-
+        const url = getRobotTargetUrl(recording);
         if (!url) {
           throw new Error('No URL specified for markdown robot');
         }
 
         let markdown = '';
         let html = '';
+        let text = '';
         const serializableOutput: any = {};
         const binaryOutput: any = {};
 
         const SCRAPE_TIMEOUT = 120000;
 
-        // Markdown conversion
+        if (formats.includes("screenshot-visible")) {
+          const screenshotPromise = convertPageToScreenshot(url, currentPage, false);
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error(`Screenshot conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
+          });
+          const screenshotBuffer = await Promise.race([screenshotPromise, timeoutPromise]);
+
+          if (!binaryOutput['screenshot-visible']) {
+            binaryOutput['screenshot-visible'] = {
+              data: screenshotBuffer.toString('base64'),
+              mimeType: 'image/png'
+            };
+          }
+        }
+
+        if (formats.includes("screenshot-fullpage")) {
+          const screenshotPromise = convertPageToScreenshot(url, currentPage, true);
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error(`Screenshot conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
+          });
+          const screenshotBuffer = await Promise.race([screenshotPromise, timeoutPromise]);
+
+          if (!binaryOutput['screenshot-fullpage']) {
+            binaryOutput['screenshot-fullpage'] = {
+              data: screenshotBuffer.toString('base64'),
+              mimeType: 'image/png'
+            };
+          }
+        }
+        
+        if (formats.includes("text")) {
+          const textPromise = convertPageToText(url, currentPage);
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error(`Text conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
+          });
+          text = await Promise.race([textPromise, timeoutPromise]);
+          if (text) serializableOutput.text = [{ content: text }];
+        }
+
         if (formats.includes("markdown")) {
           const markdownPromise = convertPageToMarkdown(url, currentPage);
           const timeoutPromise = new Promise<never>((_, reject) => {
@@ -293,37 +352,42 @@ async function executeRun(id: string, userId: string) {
           serializableOutput.html = [{ content: html }];
         }
 
-        if (formats.includes("screenshot-visible")) {
-          const screenshotPromise = convertPageToScreenshot(url, currentPage, false);
-          const timeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error(`Screenshot conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
-          });
-          const screenshotBuffer = await Promise.race([screenshotPromise, timeoutPromise]);
-
-          if (!binaryOutput['screenshot-visible']) {
-            binaryOutput['screenshot-visible'] = {
-              data: screenshotBuffer.toString('base64'),
-              mimeType: 'image/png'
-            };
+        if (formats.includes('links')) {
+          try {
+            const links = await Promise.race([
+              convertPageToLinks(url, currentPage),
+              new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`Links extraction timed out`)), SCRAPE_TIMEOUT))
+            ]);
+            if (links && links.length > 0) {
+              serializableOutput.links = links.map((link: string) => ({ url: link }));
+            }
+          } catch (error: any) {
+            logger.log('warn', `Links extraction failed for run ${plainRun.runId}: ${error.message}`);
           }
         }
 
-        // Screenshot - full page
-        if (formats.includes("screenshot-fullpage")) {
-          const screenshotPromise = convertPageToScreenshot(url, currentPage, true);
-          const timeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error(`Screenshot conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
-          });
-          const screenshotBuffer = await Promise.race([screenshotPromise, timeoutPromise]);
-
-          if (!binaryOutput['screenshot-fullpage']) {
-            binaryOutput['screenshot-fullpage'] = {
-              data: screenshotBuffer.toString('base64'),
-              mimeType: 'image/png'
+        const promptInstructions = (recording.recording_meta as any).promptInstructions as string | undefined;
+        if (promptInstructions && currentPage) {
+          try {
+            const llmConfig = {
+              provider: ((recording.recording_meta as any).promptLlmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama',
+              model: (recording.recording_meta as any).promptLlmModel as string | undefined,
+              apiKey: (recording.recording_meta as any).promptLlmApiKey as string | undefined,
+              baseUrl: (recording.recording_meta as any).promptLlmBaseUrl as string | undefined,
             };
+            logger.log('info', `Running smart query for scheduled scrape run ${plainRun.runId}`);
+            const promptInstructions = run.interpreterSettings?.promptInstructions || (recording.recording_meta as any).promptInstructions as string | undefined;
+            if (promptInstructions) {
+              const agentResult = await executeBrowserAgent(currentPage, promptInstructions, llmConfig);
+              serializableOutput.promptResult = [{ content: agentResult.result, steps: agentResult.steps }];
+              logger.log('info', `Smart query completed for scheduled scrape run ${plainRun.runId}`);
+            }
+          } catch (agentErr: any) {
+            logger.log('warn', `Smart query failed for scheduled scrape run ${plainRun.runId}: ${agentErr.message}`);
+            serializableOutput.promptResult = [{ content: `Smart query failed: ${agentErr.message}`, steps: [] }];
           }
         }
-
+        
         await run.update({
           status: 'success',
           finishedAt: new Date().toLocaleString(),
@@ -331,7 +395,7 @@ async function executeRun(id: string, userId: string) {
           serializableOutput,
           binaryOutput,
         });
-        
+
         let uploadedBinaryOutput: Record<string, string> = {};
         if (Object.keys(binaryOutput).length > 0) {
           const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');

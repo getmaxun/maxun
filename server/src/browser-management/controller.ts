@@ -337,11 +337,17 @@ const initializeBrowserAsync = async (id: string, userId: string) => {
     let connectionTimeout: NodeJS.Timeout;
     
     const waitForConnection = new Promise<Socket | null>((resolve) => {
+      let initialResolved = false;
       namespace.on('connection', (socket: Socket) => {
-        clientConnected = true;
-        clearTimeout(connectionTimeout);
-        logger.log('info', `Frontend connected to browser ${id} via socket ${socket.id}`);
-        resolve(socket);
+        if (!initialResolved) {
+          initialResolved = true;
+          clientConnected = true;
+          clearTimeout(connectionTimeout);
+          logger.log('info', `Frontend connected to browser ${id} via socket ${socket.id}`);
+          resolve(socket);
+        } else {
+          logger.log('debug', `Additional frontend socket ${socket.id} joined browser ${id} namespace (shared connection)`);
+        }
       });
       
       connectionTimeout = setTimeout(() => {
@@ -398,6 +404,11 @@ const initializeBrowserAsync = async (id: string, userId: string) => {
           },
           on: () => {},
           id: `dummy-${id}`,
+          nsp: {
+            emit: (event: string, ...args: any[]) => {
+              logger.log('debug', `Browser ${id} dummy namespace emitted ${event}`);
+            },
+          },
         } as any;
         
         browserSession = new RemoteBrowser(dummySocket, userId, id);
@@ -490,6 +501,9 @@ export const createRemoteBrowserForValidation = async (
       on: () => {},
       off: () => {},
       id: `validation-${id}`,
+      nsp: {
+        emit: (event: string, ...args: any[]) => {},
+      },
     } as any;
 
     const browserSession = new RemoteBrowser(dummySocket, userId, id);
