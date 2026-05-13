@@ -1,154 +1,189 @@
 /**
- * Worker process focused solely on scheduling logic
+ * DB-backed schedule worker.
+ * Polls the robot table for due scheduled robots and enqueues them
+ * via Graphile Worker. No pgboss dependency.
  */
-import PgBoss, { Job } from 'pg-boss';
+import { Op, QueryTypes, Sequelize } from 'sequelize';
 import logger from './logger';
 import Robot from './models/Robot';
-import { handleRunRecording } from './workflow-management/scheduler';
+import sequelize from './storage/db';
 import { computeNextRun } from './utils/schedule';
+import { addJob } from './storage/graphileWorker';
+import { QUEUE_NAMES } from './task-runner';
 
-if (!process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_HOST || !process.env.DB_PORT || !process.env.DB_NAME) {
-    throw new Error('One or more required environment variables are missing.');
-}
+const DB_SCHEDULER_BATCH_SIZE = 10;
+const DB_SCHEDULER_POLL_MS = 30000;
+const DB_SCHEDULER_CLAIM_TIMEOUT_MS = 10 * 60 * 1000;
+const DB_SCHEDULER_ADVISORY_LOCK_KEY = 43821742;
 
-const pgBossConnectionString = `postgresql://${process.env.DB_USER}:${encodeURIComponent(process.env.DB_PASSWORD)}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
+let scheduleWorkerStarted = false;
+let dbScheduleTickRunning = false;
+const workerIntervals: NodeJS.Timeout[] = [];
 
-export const pgBoss = new PgBoss({
-  connectionString: pgBossConnectionString,
-  max: 3,
-  expireInHours: 23,
-  ...(process.env.DB_SSL === 'true' && { ssl: true }),
-});
-
-const registeredQueues = new Set<string>();
-
-interface ScheduledWorkflowData {
+interface DbScheduledRobot {
   id: string;
-  runId: string;
+  robotMetaId: string;
   userId: string;
 }
-/**
- * Process a scheduled workflow job
- */
-async function processScheduledWorkflow(job: Job<ScheduledWorkflowData>) {
-  const { id, runId, userId } = job.data;
-  logger.log('info', `Processing scheduled workflow job for robotId: ${id}, runId: ${runId}, userId: ${userId}`);
-  
-  try {
-    // Execute the workflow using the existing handleRunRecording function
-    await handleRunRecording(id, userId);
-    
-    // Update the robot's schedule with last run and next run times
-    const robot = await Robot.findOne({ where: { 'recording_meta.id': id } });
-    if (robot && robot.schedule && robot.schedule.cronExpression && robot.schedule.timezone) {
-      // Update lastRunAt to the current time
-      const lastRunAt = new Date();
-      
-      // Compute the next run date
-      const nextRunAt = computeNextRun(robot.schedule.cronExpression, robot.schedule.timezone) || undefined;
-      
+
+async function claimDueDbSchedules(): Promise<DbScheduledRobot[]> {
+  const now = new Date();
+  const claimExpiry = new Date(now.getTime() - DB_SCHEDULER_CLAIM_TIMEOUT_MS);
+
+  return sequelize.transaction(async (transaction) => {
+    const lockResult = await sequelize.query<{ locked: boolean }>(
+      'SELECT pg_try_advisory_xact_lock(:lockKey) AS locked',
+      { replacements: { lockKey: DB_SCHEDULER_ADVISORY_LOCK_KEY }, type: QueryTypes.SELECT, transaction }
+    );
+
+    if (!lockResult[0]?.locked) return [];
+
+    const dueRobots = await Robot.findAll({
+      where: {
+        schedule: { [Op.ne]: null },
+        [Op.and]: [
+          Sequelize.literal(`schedule->>'cronExpression' IS NOT NULL`),
+          Sequelize.literal(`schedule->>'timezone' IS NOT NULL`),
+          Sequelize.literal(`schedule->>'nextRunAt' IS NOT NULL`),
+          Sequelize.literal(`schedule->>'nextRunAt' <= '${now.toISOString()}'`),
+          {
+            [Op.or]: [
+              Sequelize.literal(`schedule->>'schedulerClaimedAt' IS NULL`),
+              Sequelize.literal(`schedule->>'schedulerClaimedAt' < '${claimExpiry.toISOString()}'`),
+            ],
+          },
+        ],
+      },
+      attributes: [
+        'id',
+        'userId',
+        'schedule',
+        [Sequelize.literal(`recording_meta->>'id'`), 'robotMetaId'],
+      ],
+      limit: DB_SCHEDULER_BATCH_SIZE,
+      order: [Sequelize.literal(`schedule->>'nextRunAt' ASC`)],
+      lock: transaction.LOCK.UPDATE,
+      skipLocked: true,
+      transaction,
+    });
+
+    const claimed: DbScheduledRobot[] = [];
+
+    for (const robot of dueRobots) {
+      const robotMetaId = robot.get('robotMetaId') as string | undefined;
+      if (!robotMetaId) continue;
+
       await robot.update({
-        schedule: {
-          ...robot.schedule,
-          lastRunAt,
-          nextRunAt,
-        },
-      });
-      
-      logger.log('info', `Updated robot ${id} schedule - next run at: ${nextRunAt}`);
-    } else {
-      logger.log('error', `Robot ${id} schedule, cronExpression, or timezone is missing.`);
+        schedule: { ...robot.schedule, schedulerClaimedAt: now } as any,
+      }, { transaction });
+
+      claimed.push({ id: robot.id, robotMetaId, userId: String(robot.userId) });
     }
-    
-    return { success: true };
+
+    return claimed;
+  });
+}
+
+async function finalizeSchedule(robotMetaId: string, executedAt: Date): Promise<void> {
+  try {
+    const robot = await Robot.findOne({ where: { 'recording_meta.id': robotMetaId }, attributes: ['id', 'schedule'] });
+    if (!robot || !robot.schedule?.cronExpression || !robot.schedule?.timezone) return;
+
+    const nextRunAt = computeNextRun(robot.schedule.cronExpression, robot.schedule.timezone) || undefined;
+
+    await robot.update({
+      schedule: {
+        ...robot.schedule,
+        schedulerClaimedAt: undefined,
+        lastRunAt: executedAt,
+        nextRunAt,
+      } as any,
+    });
+
+    logger.log('info', `Updated robot ${robotMetaId} schedule - next run at: ${nextRunAt}`);
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.log('error', `Scheduled workflow job failed: ${errorMessage}`);
-    return { success: false };
+    logger.log('error', `Failed to finalize schedule for robot ${robotMetaId}: ${errorMessage}`);
   }
 }
 
-/**
- * Register a worker to handle scheduled workflow jobs
- */
-async function registerScheduledWorkflowWorker() {
+async function releaseScheduleClaim(robotMetaId: string): Promise<void> {
   try {
-    const jobs = await pgBoss.getSchedules();
-    for (const job of jobs) {
-      await pgBoss.createQueue(job.name);
-      await registerWorkerForQueue(job.name);
-    }
-    
-    logger.log('info', 'Scheduled workflow workers registered successfully');
+    const robot = await Robot.findOne({ where: { 'recording_meta.id': robotMetaId }, attributes: ['id', 'schedule'] });
+    if (!robot?.schedule) return;
+
+    await robot.update({ schedule: { ...robot.schedule, schedulerClaimedAt: undefined } as any });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.log('error', `Failed to register scheduled workflow workers: ${errorMessage}`);
+    logger.log('error', `Failed to release schedule claim for robot ${robotMetaId}: ${errorMessage}`);
   }
 }
 
-/**
- * Register a worker for a specific queue
- * Exported to allow dynamic registration when new schedules are created
- */
-export async function registerWorkerForQueue(queueName: string) {
+async function processDueSchedules(): Promise<void> {
+  if (dbScheduleTickRunning) return;
+  dbScheduleTickRunning = true;
+
   try {
-    if (registeredQueues.has(queueName)) {
-      return;
-    }
-    
-    await pgBoss.work(queueName, async (job: Job<ScheduledWorkflowData> | Job<ScheduledWorkflowData>[]) => {
+    const claimedRobots = await claimDueDbSchedules();
+
+    for (const robot of claimedRobots) {
+      const executedAt = new Date();
+      let dispatched = false;
+
       try {
-        const singleJob = Array.isArray(job) ? job[0] : job;
-        return await processScheduledWorkflow(singleJob);
+        logger.log('info', `Dispatching scheduled workflow for robot ${robot.robotMetaId}`);
+        await addJob(QUEUE_NAMES.SCHEDULED_WORKFLOW, { robotMetaId: robot.robotMetaId, userId: robot.userId }, { maxAttempts: 6 });
+        dispatched = true;
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        logger.log('error', `Scheduled workflow job failed in queue ${queueName}: ${errorMessage}`);
-        throw error;
+        logger.log('error', `Scheduled workflow dispatch failed for robot ${robot.robotMetaId}: ${errorMessage}`);
+      } finally {
+        if (dispatched) {
+          await finalizeSchedule(robot.robotMetaId, executedAt);
+        } else {
+          await releaseScheduleClaim(robot.robotMetaId);
+        }
       }
+    }
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.log('error', `Failed to process DB-backed schedules: ${errorMessage}`);
+  } finally {
+    dbScheduleTickRunning = false;
+  }
+}
+
+export async function startScheduleWorker(): Promise<void> {
+  if (scheduleWorkerStarted) {
+    logger.log('warn', 'Schedule worker already started, skipping...');
+    return;
+  }
+
+  setImmediate(() => {
+    processDueSchedules().catch((error) => {
+      logger.log('error', `Initial DB schedule poll failed: ${error instanceof Error ? error.message : String(error)}`);
     });
-    
-    registeredQueues.add(queueName);
-    logger.log('info', `Registered worker for queue: ${queueName}`);
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.log('error', `Failed to register worker for queue ${queueName}: ${errorMessage}`);
-  }
+  });
+
+  const interval = setInterval(() => {
+    processDueSchedules().catch((error) => {
+      logger.log('error', `DB schedule poll failed: ${error instanceof Error ? error.message : String(error)}`);
+    });
+  }, DB_SCHEDULER_POLL_MS);
+
+  workerIntervals.push(interval);
+  scheduleWorkerStarted = true;
+  logger.log('info', `DB-backed schedule worker started (${DB_SCHEDULER_POLL_MS / 1000}s interval)`);
 }
 
-/**
- * Initialize PgBoss and register scheduling workers
- */
-async function startScheduleWorker() {
-  try {
-    logger.log('info', 'Starting PgBoss scheduling worker...');
-    await pgBoss.start();
-    logger.log('info', 'PgBoss scheduling worker started successfully');
+export async function stopScheduleWorker(): Promise<void> {
+  if (!scheduleWorkerStarted) return;
 
-    // Register the scheduled workflow worker
-    await registerScheduledWorkflowWorker();
-
-    logger.log('info', 'Scheduling worker registered successfully');
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.log('error', `Failed to start PgBoss scheduling worker: ${errorMessage}`);
-    process.exit(1);
+  for (const interval of workerIntervals.splice(0)) {
+    clearInterval(interval);
   }
+
+  scheduleWorkerStarted = false;
+  dbScheduleTickRunning = false;
+  logger.log('info', 'Schedule worker stopped');
 }
-
-startScheduleWorker();
-
-pgBoss.on('error', (error) => {
-  logger.log('error', `PgBoss scheduler error: ${error.message}`);
-});
-
-process.on('SIGTERM', async () => {
-  logger.log('info', 'SIGTERM received, shutting down PgBoss scheduler...');
-  await pgBoss.stop();
-  logger.log('info', 'PgBoss scheduler stopped, ready for termination');
-});
-
-process.on('SIGINT', async () => {
-  logger.log('info', 'SIGINT received, shutting down PgBoss scheduler...');
-  await pgBoss.stop();
-  logger.log('info', 'PgBoss scheduler stopped, waiting for main process cleanup...');
-});
