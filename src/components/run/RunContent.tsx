@@ -195,13 +195,16 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
     if (!row.serializableOutput) return;
 
+    const modernKeys = ['scrapeSchema', 'scrapeList', 'crawl', 'search', 'markdown', 'html', 'textContent', 'text', 'scrapeDoc', 'links', 'promptResult'];
+    const hasModernData = modernKeys.some(key => row.serializableOutput[key]);
+
     const hasLegacySchema = row.serializableOutput.scrapeSchema && Array.isArray(row.serializableOutput.scrapeSchema);
     const hasLegacyList = row.serializableOutput.scrapeList && Array.isArray(row.serializableOutput.scrapeList);
-    const hasOldFormat = !row.serializableOutput.scrapeSchema && !row.serializableOutput.scrapeList && !row.serializableOutput.crawl && !row.serializableOutput.search && Object.keys(row.serializableOutput).length > 0;
+    const hasLegacyDataInOutput = Object.keys(row.serializableOutput).some(key => !modernKeys.includes(key));
 
-    if (hasLegacySchema || hasLegacyList || hasOldFormat) {
+    if (hasLegacySchema || hasLegacyList || (hasLegacyDataInOutput && !hasModernData)) {
       processLegacyData(row.serializableOutput);
-      setIsLegacyData(false);
+      setIsLegacyData(true);
       return;
     }
 
@@ -221,6 +224,49 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
     if (row.serializableOutput.search) {
       processSearch(row.serializableOutput.search);
+    }
+
+    if (row.serializableOutput.scrapeDoc?.data) {
+      const docData: Record<string, any> = row.serializableOutput.scrapeDoc.data;
+
+      const formatLabel = (key: string): string =>
+        key
+          .replace(/_/g, ' ')
+          .replace(/([a-z])([A-Z])/g, '$1 $2')
+          .replace(/\b\w/g, c => c.toUpperCase());
+
+      const flat: Record<string, any> = {};
+      const flatten = (obj: Record<string, any>, prefix = '') => {
+        Object.entries(obj).forEach(([k, v]) => {
+          const label = formatLabel(k);
+          const key = prefix ? `${prefix} › ${label}` : label;
+          if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
+            flatten(v, key);
+          } else if (!Array.isArray(v) || (v.length > 0 && typeof v[0] !== 'object')) {
+            flat[key] = Array.isArray(v) ? v.join(', ') : v;
+          }
+        });
+      };
+      flatten(docData);
+
+      if (Object.keys(flat).length > 0) {
+        const tabName = row.serializableOutput.scrapeDoc?.tabName || 'Extracted Data';
+        processSchemaData({ [tabName]: [flat] });
+      }
+
+      const listInput: Record<string, any[]> = {};
+      Object.entries(docData).forEach(([k, v]) => {
+        if (Array.isArray(v) && v.length > 0 && typeof v[0] === 'object' && v[0] !== null) {
+          listInput[formatLabel(k)] = v.map((item: Record<string, any>) => {
+            const formatted: Record<string, any> = {};
+            Object.entries(item).forEach(([ik, iv]) => { formatted[formatLabel(ik)] = iv; });
+            return formatted;
+          });
+        }
+      });
+      if (Object.keys(listInput).length > 0) {
+        processScrapeList(listInput);
+      }
     }
   }, [row.serializableOutput, row.status]);
 
@@ -1297,22 +1343,29 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                 {workflowProgress ? (
                   <>
-                    <CircularProgress 
-                      size={22} 
-                      sx={{ marginRight: '10px' }} 
+                    <CircularProgress
+                      size={22}
+                      sx={{ marginRight: '10px' }}
                     />
                     {getProgressMessage(workflowProgress.percentage)}
                   </>
                 ) : (
                   <>
                     <CircularProgress size={22} sx={{ marginRight: '10px' }} />
-                    {t('run_content.loading')}
+                    {(row.interpreterSettings as any)?.robotType === 'doc-extract'
+                      ? t('run_content.loading_document', 'Extracting document data...')
+                      : (row.interpreterSettings as any)?.robotType === 'doc-parse'
+                      ? t('run_content.loading_document_parse', 'Parsing document...')
+                      : t('run_content.loading')}
                   </>
                 )}
               </Box>
-              <Button color="error" onClick={abortRunHandler} sx={{ mt: 1 }}>
-                {t('run_content.buttons.stop')}
-              </Button>
+              {(row.interpreterSettings as any)?.robotType !== 'doc-extract' &&
+               (row.interpreterSettings as any)?.robotType !== 'doc-parse' && (
+                <Button color="error" onClick={abortRunHandler} sx={{ mt: 1 }}>
+                  {t('run_content.buttons.stop')}
+                </Button>
+              )}
             </>
           ) : (!hasData && !hasScreenshots && !hasMarkdown && !hasHTML && !hasTextFormat && !hasLinks && !hasPromptResult
             ? (['failed', 'aborted', 'aborting'].includes(row.status)

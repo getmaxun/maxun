@@ -406,6 +406,113 @@ export const createCrawlRobot = async (
   }
 };
 
+export const createDocumentExtractRobot = async (
+  file: File,
+  prompt: string,
+  robotName?: string,
+  llmProvider?: 'anthropic' | 'openai' | 'ollama',
+  llmModel?: string,
+  llmApiKey?: string,
+  llmBaseUrl?: string
+): Promise<any> => {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('prompt', prompt);
+    if (robotName) formData.append('name', robotName);
+    if (llmProvider) formData.append('llmProvider', llmProvider);
+    if (llmModel) formData.append('llmModel', llmModel);
+    if (llmApiKey) formData.append('llmApiKey', llmApiKey);
+    if (llmBaseUrl) formData.append('llmBaseUrl', llmBaseUrl);
+
+    const response = await axios.post(
+      `${apiUrl}/storage/recordings/document`,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        withCredentials: true,
+        timeout: 120000,
+      }
+    );
+    if (response.status === 201) return response.data;
+    throw new Error('Failed to create document extraction robot');
+  } catch (error: any) {
+    const message = error.response?.data?.error;
+    if (message) throw new Error(message);
+    console.error('Error creating document extraction robot:', error);
+    return null;
+  }
+};
+
+export const createDocumentParseRobot = async (
+  file: File,
+  robotName: string,
+  outputFormats: string[]
+): Promise<any> => {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('name', robotName);
+    outputFormats.forEach((fmt) => formData.append('formats', fmt));
+
+    const response = await axios.post(
+      `${apiUrl}/storage/recordings/document-parse`,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        withCredentials: true,
+        timeout: 120000,
+      }
+    );
+    if (response.status === 201) return response.data;
+    throw new Error('Failed to create document parse robot');
+  } catch (error: any) {
+    const message = error.response?.data?.error;
+    if (message) throw new Error(message);
+    console.error('Error creating document parse robot:', error);
+    return null;
+  }
+};
+
+export interface DocumentRunResponse {
+  runId: string;
+  robotMetaId: string;
+  status: string;
+  error?: string;
+}
+
+export const runDocumentRobot = async (
+  robotMetaId: string
+): Promise<DocumentRunResponse | null> => {
+  try {
+    const response = await axios.post(
+      `${apiUrl}/storage/runs/document-run/${robotMetaId}`,
+      {},
+      { withCredentials: true }
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error('Error running document robot:', error);
+    return null;
+  }
+};
+
+export const runDocumentParseRobot = async (
+  robotMetaId: string
+): Promise<DocumentRunResponse | null> => {
+  try {
+    const response = await axios.post(
+      `${apiUrl}/storage/runs/document-parse-run/${robotMetaId}`,
+      {},
+      { withCredentials: true }
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error('Error running document parse robot:', error);
+    return null;
+  }
+};
+
 export const createSearchRobot = async (
   name: string,
   searchConfig: {

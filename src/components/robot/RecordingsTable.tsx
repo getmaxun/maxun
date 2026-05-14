@@ -41,7 +41,7 @@ import {
   ContentCopy,
 } from "@mui/icons-material";
 import { useGlobalInfoStore, useCachedRecordings } from "../../context/globalInfo";
-import { checkRunsForRecording, deleteRecordingFromStorage } from "../../api/storage";
+import { checkRunsForRecording, deleteRecordingFromStorage, runDocumentRobot, runDocumentParseRobot } from "../../api/storage";
 import { Add } from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
 import { canCreateBrowserInState, getActiveBrowserId, stopRecording } from "../../api/recording";
@@ -352,6 +352,34 @@ export const RecordingsTable = ({
     setModalOpen(true);
   };
 
+  const wrappedHandleRunRecording = useCallback(async (id: string, fileName: string, params: string[]) => {
+    const row = rows.find(r => String(r.id) === String(id));
+
+    if (row?.type === 'doc-extract') {
+      const result = await runDocumentRobot(id);
+      if (!result || result.error) {
+        notify('error', result?.error || 'Failed to start document run');
+        return;
+      }
+      notify('info', `Document extraction started for ${fileName}`);
+      navigate(`/runs/${result.robotMetaId}/run/${result.runId}`);
+      return;
+    }
+
+    if (row?.type === 'doc-parse') {
+      const result = await runDocumentParseRobot(id);
+      if (!result || result.error) {
+        notify('error', result?.error || 'Failed to start document parse run');
+        return;
+      }
+      notify('info', `Document parsing started for ${fileName}`);
+      navigate(`/runs/${result.robotMetaId}/run/${result.runId}`);
+      return;
+    }
+
+    handleRunRecording(id, fileName, params);
+  }, [rows, handleRunRecording, notify, navigate]);
+
   const handleRetrainRobot = useCallback(async (id: string, name: string) => {
     const robot = rows.find(row => row.id === id);
     let targetUrl;
@@ -503,7 +531,7 @@ export const RecordingsTable = ({
   const pendingRow = pendingDeleteId ? rows.find(r => String(r.id) === pendingDeleteId) : null;
 
   const handlers = useMemo(() => ({
-    handleRunRecording,
+    handleRunRecording: wrappedHandleRunRecording,
     handleScheduleRecording,
     handleIntegrateRecording,
     handleSettingsRecording,
@@ -511,7 +539,7 @@ export const RecordingsTable = ({
     handleDuplicateRobot,
     handleRetrainRobot,
     handleDelete: async (id: string) => openDeleteConfirm(id)
-  }), [handleRunRecording, handleScheduleRecording, handleIntegrateRecording, handleSettingsRecording, handleEditRobot, handleDuplicateRobot, handleRetrainRobot, notify, t, refetch]);
+  }), [wrappedHandleRunRecording, handleScheduleRecording, handleIntegrateRecording, handleSettingsRecording, handleEditRobot, handleDuplicateRobot, handleRetrainRobot, notify, t, refetch]);
 
   return (
     <React.Fragment>

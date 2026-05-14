@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import multer from 'multer';
 import logger from "../logger";
 import { createRemoteBrowserForRun, destroyRemoteBrowser, getActiveBrowserIdByState } from "../browser-management/controller";
 import { browserPool } from "../server";
@@ -25,8 +26,23 @@ import {
   SCRAPE_OUTPUT_FORMAT_OPTIONS,
   OutputFormats,
 } from '../constants/output-formats';
+import { MAX_FILE_SIZE_BYTES } from '../workflow-management/classes/DocumentInterpreter';
+import { createDocumentRobotRecord } from '../utils/document/createDocumentRobotRecord';
+import { createDocumentParseRobotRecord } from '../utils/document/createDocumentParseRobotRecord';
 
 export const router = Router();
+
+const pdfUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_FILE_SIZE_BYTES },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF files are allowed'));
+    }
+  },
+});
 
 const normalizeRobotUrl = (rawUrl: string): string => {
   const normalizedUrl = new URL(rawUrl.trim());
@@ -1838,5 +1854,262 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
     }
   }
 });
+
+/**
+ * POST endpoint for creating a document extraction robot (doc-extract).
+ * Accepts a PDF upload and an extraction prompt. Uses the configured LLM to generate
+ * an extraction schema and stores the document in MinIO.
+ */
+router.post(
+  '/recordings/document',
+  requireSignIn,
+  pdfUpload.single('file'),
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+
+      const file = (req as any).file as Express.Multer.File | undefined;
+      if (!file) return res.status(400).json({ error: 'A PDF file is required.' });
+
+      const { prompt, name, llmProvider, llmModel, llmApiKey, llmBaseUrl } = req.body;
+      if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
+        return res.status(400).json({ error: 'The "prompt" field is required.' });
+      }
+
+      const finalName = (typeof name === 'string' ? name.trim() : '') || `Document: ${prompt.substring(0, 50)}`;
+      if (await isRobotNameTaken(finalName, req.user.id)) {
+        return res.status(409).json({ error: `A robot with the name "${finalName}" already exists.` });
+      }
+
+      const { robot, extractionSchema } = await createDocumentRobotRecord({
+        pdfBuffer: file.buffer,
+        originalFileName: file.originalname,
+        prompt: prompt.trim(),
+        robotName: finalName,
+        llmProvider: llmProvider as 'anthropic' | 'openai' | 'ollama' | undefined,
+        llmModel: typeof llmModel === 'string' ? llmModel : undefined,
+        llmApiKey: typeof llmApiKey === 'string' ? llmApiKey : undefined,
+        llmBaseUrl: typeof llmBaseUrl === 'string' ? llmBaseUrl : undefined,
+        userId: req.user.id,
+      });
+
+      capture('maxun-oss-robot-created', {
+        robot_meta: robot.recording_meta,
+        robot_type: 'doc-extract',
+      });
+
+      return res.status(201).json({
+        message: 'Document extraction robot created successfully.',
+        robot,
+        extractionSchema,
+      });
+    } catch (error: any) {
+      if (error.name === 'SequelizeUniqueConstraintError' || error.parent?.code === '23505') {
+        return res.status(409).json({ error: 'A robot with this name already exists.' });
+      }
+      logger.error(`Error creating document extraction robot: ${error.message}`);
+      return res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+/**
+ * POST endpoint for creating a document parse robot (doc-parse).
+ * Accepts a PDF upload and output format list. Parses the document immediately and
+ * stores both the document and parsed output in MinIO / database.
+ */
+router.post(
+  '/recordings/document-parse',
+  requireSignIn,
+  pdfUpload.single('file'),
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+
+      const file = (req as any).file as Express.Multer.File | undefined;
+      if (!file) return res.status(400).json({ error: 'A PDF file is required.' });
+
+      const { name, formats } = req.body;
+
+      const DOC_PARSE_FORMATS: OutputFormats[] = ['markdown', 'html', 'links'];
+      const rawFormats = Array.isArray(formats) ? formats : (typeof formats === 'string' ? [formats] : []);
+      const outputFormats: OutputFormats[] = rawFormats.length > 0
+        ? rawFormats.filter((f: string) => DOC_PARSE_FORMATS.includes(f as OutputFormats))
+        : DOC_PARSE_FORMATS;
+
+      const finalName = (typeof name === 'string' ? name.trim() : '') || `Doc Parse: ${file.originalname}`;
+      if (await isRobotNameTaken(finalName, req.user.id)) {
+        return res.status(409).json({ error: `A robot with the name "${finalName}" already exists.` });
+      }
+
+      const { robot, parsedOutput } = await createDocumentParseRobotRecord({
+        pdfBuffer: file.buffer,
+        originalFileName: file.originalname,
+        robotName: finalName,
+        outputFormats,
+        userId: req.user.id,
+      });
+
+      capture('maxun-oss-robot-created', {
+        robot_meta: robot.recording_meta,
+        robot_type: 'doc-parse',
+      });
+
+      return res.status(201).json({
+        message: 'Document parse robot created successfully.',
+        robot,
+        parsedOutput,
+      });
+    } catch (error: any) {
+      if (error.name === 'SequelizeUniqueConstraintError' || error.parent?.code === '23505') {
+        return res.status(409).json({ error: 'A robot with this name already exists.' });
+      }
+      logger.error(`Error creating document parse robot: ${error.message}`);
+      return res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+/**
+ * POST endpoint to trigger a document extraction run for a doc-extract robot.
+ * Creates a Run record and queues the job — no browser is launched.
+ */
+router.post('/runs/document-run/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const recording = await Robot.findOne({ where: { 'recording_meta.id': req.params.id }, raw: true });
+    if (!recording) return res.status(404).json({ error: 'Robot not found.' });
+    if (recording.recording_meta.type !== 'doc-extract') {
+      return res.status(400).json({ error: 'Robot is not a document extraction robot.' });
+    }
+
+    const runId = uuid();
+    const now = new Date().toLocaleString();
+
+    await Run.create({
+      status: 'running',
+      name: recording.recording_meta.name,
+      robotId: recording.id,
+      robotMetaId: recording.recording_meta.id,
+      startedAt: now,
+      finishedAt: '',
+      browserId: uuid(),
+      interpreterSettings: { maxConcurrency: 1, maxRepeats: 1, debug: false, robotType: 'doc-extract' },
+      log: 'Document extraction queued',
+      runId,
+      runByUserId: req.user.id,
+      serializableOutput: {},
+      binaryOutput: {},
+    } as any);
+
+    const userQueueName = `execute-run-user-${req.user.id}`;
+    await pgBossClient.createQueue(userQueueName);
+    await pgBossClient.send(userQueueName, {
+      userId: req.user.id,
+      runId,
+      browserId: runId,
+    });
+
+    logger.log('info', `Queued document-run ${runId} for robot ${recording.recording_meta.id}`);
+    return res.status(202).json({ runId, robotMetaId: recording.recording_meta.id, status: 'running' });
+  } catch (error: any) {
+    logger.error(`Error starting document run: ${error.message}`);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST endpoint to trigger a document parse run for a doc-parse robot.
+ * Creates a Run record and queues the job — no browser is launched.
+ */
+router.post('/runs/document-parse-run/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const recording = await Robot.findOne({ where: { 'recording_meta.id': req.params.id }, raw: true });
+    if (!recording) return res.status(404).json({ error: 'Robot not found.' });
+    if (recording.recording_meta.type !== 'doc-parse') {
+      return res.status(400).json({ error: 'Robot is not a document parse robot.' });
+    }
+
+    const runId = uuid();
+    const now = new Date().toLocaleString();
+
+    await Run.create({
+      status: 'running',
+      name: recording.recording_meta.name,
+      robotId: recording.id,
+      robotMetaId: recording.recording_meta.id,
+      startedAt: now,
+      finishedAt: '',
+      browserId: uuid(),
+      interpreterSettings: { maxConcurrency: 1, maxRepeats: 1, debug: false, robotType: 'doc-parse' },
+      log: 'Document parse queued',
+      runId,
+      runByUserId: req.user.id,
+      serializableOutput: {},
+      binaryOutput: {},
+    } as any);
+
+    const userQueueName = `execute-run-user-${req.user.id}`;
+    await pgBossClient.createQueue(userQueueName);
+    await pgBossClient.send(userQueueName, {
+      userId: req.user.id,
+      runId,
+      browserId: runId,
+    });
+
+    logger.log('info', `Queued document-parse-run ${runId} for robot ${recording.recording_meta.id}`);
+    return res.status(202).json({ runId, robotMetaId: recording.recording_meta.id, status: 'running' });
+  } catch (error: any) {
+    logger.error(`Error starting document parse run: ${error.message}`);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * PUT endpoint to replace the PDF document for an existing doc-extract or doc-parse robot.
+ */
+router.put(
+  '/recordings/:id/document',
+  requireSignIn,
+  pdfUpload.single('file'),
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+
+      const file = (req as any).file as Express.Multer.File | undefined;
+      if (!file) return res.status(400).json({ error: 'A PDF file is required.' });
+
+      const robot = await Robot.findOne({ where: { 'recording_meta.id': req.params.id } });
+      if (!robot) return res.status(404).json({ error: 'Robot not found.' });
+
+      const robotType = robot.recording_meta.type;
+      if (robotType !== 'doc-extract' && robotType !== 'doc-parse') {
+        return res.status(400).json({ error: 'Robot is not a document robot.' });
+      }
+
+      const { uploadDocumentToMinio } = await import('../storage/mino');
+      const documentKey = (robot.recording as any).documentKey;
+      if (!documentKey) return res.status(400).json({ error: 'Robot has no document key.' });
+
+      await uploadDocumentToMinio(documentKey, file.buffer);
+
+      const updatedRecording: any = {
+        ...(robot.recording as any),
+        documentFileName: file.originalname,
+      };
+
+      await robot.update({ recording: updatedRecording });
+
+      logger.log('info', `Replaced document for robot ${req.params.id}`);
+      return res.status(200).json({ message: 'Document replaced successfully.' });
+    } catch (error: any) {
+      logger.error(`Error replacing document: ${error.message}`);
+      return res.status(500).json({ error: error.message });
+    }
+  }
+);
 
 export { processQueuedRuns };

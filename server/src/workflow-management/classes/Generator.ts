@@ -94,7 +94,7 @@ interface MetaData {
   pairs: number;
   updatedAt: string;
   params: string[],
-  type?: 'extract' | 'scrape' | 'crawl' | 'search';
+  type?: 'extract' | 'scrape' | 'crawl' | 'search' | 'doc-extract' | 'doc-parse';
   isLogin?: boolean;
 }
 
