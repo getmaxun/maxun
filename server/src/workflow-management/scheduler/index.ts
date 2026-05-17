@@ -17,6 +17,8 @@ import { convertPageToMarkdown, convertPageToHTML, convertPageToLinks, convertPa
 import { executeBrowserAgent } from "../../sdk/browserAgent";
 import { processRobotOutputFormats } from "../../utils/output-post-processor";
 import { getInterpretationFailureReason, hasExpectedRobotOutput } from "../../utils/output-validation";
+import { addJob } from '../../storage/graphileWorker';
+import { QUEUE_NAMES } from '../../task-runner';
 
 const getRobotTargetUrl = (recording: any): string => {
   const metaUrl = recording?.recording_meta?.url?.trim();
@@ -66,7 +68,10 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string) {
       };
     }
 
-    const browserId = createRemoteBrowserForRun(userId);
+    const robotType = (recording.recording_meta as any).type || (recording.recording_meta as any).robotType;
+    const isDocRobot = robotType === 'doc-extract' || robotType === 'doc-parse';
+
+    const browserId = isDocRobot ? uuid() : createRemoteBrowserForRun(userId);
     const runId = uuid();
 
     const run = await Run.create({
@@ -77,7 +82,7 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string) {
       startedAt: new Date().toLocaleString(),
       finishedAt: '',
       browserId,
-      interpreterSettings: { maxConcurrency: 1, maxRepeats: 1, debug: true },
+      interpreterSettings: { maxConcurrency: 1, maxRepeats: 1, debug: true, ...(isDocRobot && { robotType }) },
       log: '',
       runId,
       runByScheduleId: uuid(),
@@ -105,6 +110,15 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string) {
       logger.log('info', `Scheduled run notification sent for run: ${plainRun.runId} to user-${userId}`);
     } catch (socketError: any) {
       logger.log('warn', `Failed to send run-scheduled notification for run ${plainRun.runId}: ${socketError.message}`);
+    }
+
+    if (isDocRobot) {
+      await addJob(QUEUE_NAMES.EXECUTE_RUN, {
+        userId,
+        runId: plainRun.runId,
+        browserId,
+      }, { maxAttempts: 1 });
+      return { browserId, runId: plainRun.runId, isDocRobot: true };
     }
 
     return {
@@ -811,10 +825,19 @@ export async function handleRunRecording(id: string, userId: string) {
   
   try {
     const result = await createWorkflowAndStoreMetadata(id, userId);
-    const { browserId, runId: newRunId } = result;
+    const { browserId, runId: newRunId, isDocRobot } = result as any;
 
-    if (!browserId || !newRunId || !userId) {
-      throw new Error('browserId or runId or userId is undefined');
+    if (!newRunId || !userId) {
+      throw new Error('runId or userId is undefined');
+    }
+
+    if (isDocRobot) {
+      logger.log('info', `Doc robot scheduled run ${newRunId} queued without browser`);
+      return newRunId;
+    }
+
+    if (!browserId) {
+      throw new Error('browserId is undefined for non-document robot');
     }
 
     const CONNECTION_TIMEOUT = 30000;

@@ -19,6 +19,8 @@ import { sendWebhook } from "../routes/webhook";
 import { convertPageToHTML, convertPageToLinks, convertPageToMarkdown, convertPageToScreenshot, convertPageToText } from '../markdownify/scrape';
 import { executeBrowserAgent } from '../sdk/browserAgent';
 import { OutputFormats } from '../constants/output-formats';
+import { addJob } from '../storage/graphileWorker';
+import { QUEUE_NAMES } from '../task-runner';
 
 const router = Router();
 
@@ -531,6 +533,9 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string, runSou
             };
         }
 
+        const robotType = (recording.recording_meta as any).type || (recording.recording_meta as any).robotType;
+        const isDocRobot = robotType === 'doc-extract' || robotType === 'doc-parse';
+
         const proxyConfig = await getDecryptedProxyConfig(userId);
         let proxyOptions: any = {};
 
@@ -544,7 +549,7 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string, runSou
             };
         }
 
-        const browserId = createRemoteBrowserForRun(userId);
+        const browserId = isDocRobot ? uuid() : createRemoteBrowserForRun(userId);
 
         const runId = uuid();
 
@@ -556,7 +561,7 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string, runSou
             startedAt: new Date().toLocaleString(),
             finishedAt: '',
             browserId,
-            interpreterSettings: { maxConcurrency: 1, maxRepeats: 1, debug: true, formats: requestedFormats, promptInstructions },
+            interpreterSettings: { maxConcurrency: 1, maxRepeats: 1, debug: true, formats: requestedFormats, promptInstructions, ...(isDocRobot && { robotType }) },
             log: '',
             runId,
             runByUserId: userId,
@@ -590,9 +595,18 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string, runSou
             logger.log('warn', `Failed to send run-started notification for API run ${plainRun.runId}: ${socketError.message}`);
         }
 
+        if (isDocRobot) {
+            await addJob(QUEUE_NAMES.EXECUTE_RUN, {
+                userId,
+                runId: plainRun.runId,
+                browserId,
+            }, { maxAttempts: 1 });
+        }
+
         return {
             browserId,
             runId: plainRun.runId,
+            isDocRobot,
         }
 
     } catch (e) {
@@ -1290,10 +1304,19 @@ export async function handleRunRecording(id: string, userId: string, runSource: 
 
     try {
         const result = await createWorkflowAndStoreMetadata(id, userId, runSource, requestedFormats, promptInstructions);
-        const { browserId, runId: newRunId } = result;
+        const { browserId, runId: newRunId, isDocRobot } = result as any;
 
-        if (!browserId || !newRunId || !userId) {
-            throw new Error('browserId or runId or userId is undefined');
+        if (!newRunId || !userId) {
+            throw new Error('runId or userId is undefined');
+        }
+
+        if (isDocRobot) {
+            logger.log('info', `Doc robot run ${newRunId} queued without browser`);
+            return newRunId;
+        }
+
+        if (!browserId) {
+            throw new Error('browserId is undefined for non-document robot');
         }
 
         const CONNECTION_TIMEOUT = 30000;

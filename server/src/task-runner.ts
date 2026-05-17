@@ -151,6 +151,33 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
     }
 
     const plainRun = run.toJSON();
+
+    if ((plainRun.interpreterSettings as any)?.robotType === 'doc-extract') {
+      logger.log('info', `Run ${data.runId} is a document robot — skipping browser, running document extraction`);
+      const recording = await Robot.findOne({ where: { 'recording_meta.id': plainRun.robotMetaId }, raw: true });
+      if (!recording) {
+        logger.log('error', `Robot not found for document run ${data.runId}`);
+        await run.update({ status: 'failed', finishedAt: new Date().toLocaleString(), log: 'Robot not found' });
+        return;
+      }
+      const { executeDocumentRun } = await import('./utils/document/executeDocumentRun');
+      await executeDocumentRun(recording, run, data.userId, serverIo);
+      return;
+    }
+
+    if ((plainRun.interpreterSettings as any)?.robotType === 'doc-parse') {
+      logger.log('info', `Run ${data.runId} is a document-parse robot — skipping browser, running document parsing`);
+      const recording = await Robot.findOne({ where: { 'recording_meta.id': plainRun.robotMetaId }, raw: true });
+      if (!recording) {
+        logger.log('error', `Robot not found for document-parse run ${data.runId}`);
+        await run.update({ status: 'failed', finishedAt: new Date().toLocaleString(), log: 'Robot not found' });
+        return;
+      }
+      const { executeDocumentParseRun } = await import('./utils/document/executeDocumentParseRun');
+      await executeDocumentParseRun(recording, run, data.userId, serverIo);
+      return;
+    }
+
     const browserId = data.browserId || plainRun.browserId;
 
     if (!browserId) throw new Error(`No browser ID available for run ${data.runId}`);
