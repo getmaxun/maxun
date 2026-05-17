@@ -69,6 +69,7 @@ interface ScheduleConfig {
   nextRunAt?: Date;
   dayOfMonth?: string;
   cronExpression?: string;
+  schedulerClaimedAt?: Date;
 }
 
 interface RobotCreationAttributes extends Optional<RobotAttributes, 'id'> { }
