@@ -846,7 +846,19 @@ const RobotCreate: React.FC = () => {
                   value={scrapePromptInstructions}
                   onChange={(e) => setScrapePromptInstructions(e.target.value)}
                   label="Smart Queries (Optional)"
-                  helperText="After scraping, Smart Queries analyze the page and return results based on your instructions."
+                  helperText={
+                    <>
+                      After scraping, Smart Queries analyze the page and return results based on your instructions.{" "}
+                      <a
+                        href="https://docs.maxun.dev/robot/scrape#smart-queries"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ textDecoration: "none"}}
+                      >
+                        Learn more
+                      </a>
+                    </>
+                  }
                   sx={{ mb: 2 }}
                   FormHelperTextProps={{ sx: { ml: 0.5, mb:2 } }}
                 />
