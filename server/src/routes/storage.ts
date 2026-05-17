@@ -1990,13 +1990,11 @@ router.post('/runs/document-run/:id', requireSignIn, async (req: AuthenticatedRe
       binaryOutput: {},
     } as any);
 
-    const userQueueName = `execute-run-user-${req.user.id}`;
-    await pgBossClient.createQueue(userQueueName);
-    await pgBossClient.send(userQueueName, {
+    await addJob(QUEUE_NAMES.EXECUTE_RUN, {
       userId: req.user.id,
       runId,
       browserId: runId,
-    });
+    }, { maxAttempts: 1 });
 
     logger.log('info', `Queued document-run ${runId} for robot ${recording.recording_meta.id}`);
     return res.status(202).json({ runId, robotMetaId: recording.recording_meta.id, status: 'running' });
@@ -2039,13 +2037,11 @@ router.post('/runs/document-parse-run/:id', requireSignIn, async (req: Authentic
       binaryOutput: {},
     } as any);
 
-    const userQueueName = `execute-run-user-${req.user.id}`;
-    await pgBossClient.createQueue(userQueueName);
-    await pgBossClient.send(userQueueName, {
+    await addJob(QUEUE_NAMES.EXECUTE_RUN, {
       userId: req.user.id,
       runId,
       browserId: runId,
-    });
+    }, { maxAttempts: 1 });
 
     logger.log('info', `Queued document-parse-run ${runId} for robot ${recording.recording_meta.id}`);
     return res.status(202).json({ runId, robotMetaId: recording.recording_meta.id, status: 'running' });
