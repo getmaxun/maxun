@@ -571,6 +571,7 @@ const RobotCreate: React.FC = () => {
                         llmProvider === 'anthropic' ? 'claude-sonnet-4-6' :
                         'gpt-4o'
                       }`}
+                      FormHelperTextProps={{ sx: { ml: 0.5 } }}
                     />
                   </Box>
 
