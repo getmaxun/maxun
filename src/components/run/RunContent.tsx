@@ -8,6 +8,8 @@ import {
   AccordionSummary,
   AccordionDetails,
   Link,
+  Tooltip,
+  IconButton,
   Tabs,
   Tab
 } from "@mui/material";
@@ -15,7 +17,19 @@ import * as React from "react";
 import { Data } from "./RunsTable";
 import { TabPanel, TabContext } from "@mui/lab";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ArticleIcon from '@mui/icons-material/Article';
+import ImageIcon from '@mui/icons-material/Image';
+import CodeIcon from '@mui/icons-material/Code';
+import DescriptionIcon from '@mui/icons-material/Description';
+import SubjectIcon from '@mui/icons-material/Subject';
+import LinkIcon from '@mui/icons-material/Link';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import TextFieldsIcon from '@mui/icons-material/TextFields';
+import ViewListIcon from '@mui/icons-material/ViewList';
+import TravelExploreIcon from '@mui/icons-material/TravelExplore';
+import SearchIcon from '@mui/icons-material/Search';
+import PsychologyIcon from '@mui/icons-material/Psychology';
+import StorageIcon from '@mui/icons-material/Storage';
+import { ContentCopy } from "@mui/icons-material";
 import { useEffect, useState } from "react";
 import JSZip from "jszip";
 import Table from '@mui/material/Table';
@@ -840,6 +854,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
       <Accordion defaultExpanded={defaultExpanded} sx={{ mb: 2 }}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <ImageIcon sx={{ mr: 1 }} />
             <Typography variant='h6'>{title}</Typography>
           </Box>
         </AccordionSummary>
@@ -928,77 +943,79 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     if (!title || title.trim() === '') {
       return (
         <>
-          <Box sx={{ mb: 2 }}>
-            <TableContainer component={Paper} sx={{ maxHeight: 320 }}>
-              <Table stickyHeader aria-label="sticky table">
-                <TableHead>
-                  <TableRow>
-                    {shouldShowAsKeyValue ? (
-                      <>
-                        <TableCell
-                          sx={{
-                            backgroundColor: (theme) => theme.palette.mode === 'dark' ? '#11111' : '#f8f9fa'
-                          }}
-                        >
-                          Label
-                        </TableCell>
-                        <TableCell
-                          sx={{
-                            backgroundColor: (theme) => theme.palette.mode === 'dark' ? '#11111' : '#f8f9fa'
-                          }}
-                        >
-                          Value
-                        </TableCell>
-                      </>
-                    ) : (
-                      columns.map((column) => (
-                        <TableCell
-                          key={column}
-                          sx={{
-                            backgroundColor: (theme) => theme.palette.mode === 'dark' ? '#11111' : '#f8f9fa'
-                          }}
-                        >
-                          {column}
-                        </TableCell>
-                      ))
-                    )}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
+        <Box sx={{ mb: 2 }}>
+          <TableContainer component={Paper} sx={{ maxHeight: 320 }}>
+            <Table stickyHeader aria-label="sticky table">
+              <TableHead>
+                <TableRow>
                   {shouldShowAsKeyValue ? (
-                    columns.map((column) => (
-                      <TableRow key={column}>
-                        <TableCell sx={{ fontWeight: 500 }}>
-                          {column}
-                        </TableCell>
-                        <TableCell>
-                          {data[0][column] === undefined || data[0][column] === ""
-                            ? "-"
-                            : (typeof data[0][column] === 'object'
-                              ? JSON.stringify(data[0][column])
-                              : String(data[0][column]))}
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    <>
+                      <TableCell
+                        sx={{
+                          backgroundColor: darkMode ? '#11111' : '#f8f9fa',
+                          minWidth: '100px',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        Label
+                      </TableCell>
+                      <TableCell
+                        sx={{
+                          backgroundColor: darkMode ? '#11111' : '#f8f9fa'
+                        }}
+                      >
+                        Value
+                      </TableCell>
+                    </>
                   ) : (
-                    data.map((row, index) => (
-                      <TableRow key={index}>
-                        {columns.map((column) => (
-                          <TableCell key={column}>
-                            {row[column] === undefined || row[column] === ""
-                              ? "-"
-                              : (typeof row[column] === 'object'
-                                ? JSON.stringify(row[column])
-                                : String(row[column]))}
-                          </TableCell>
-                        ))}
-                      </TableRow>
+                    columns.map((column) => (
+                      <TableCell
+                        key={column}
+                        sx={{
+                          backgroundColor: darkMode ? '#11111' : '#f8f9fa'
+                        }}
+                      >
+                        {column}
+                      </TableCell>
                     ))
                   )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Box>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {shouldShowAsKeyValue ? (
+                  columns.map((column) => (
+                    <TableRow key={column}>
+                      <TableCell sx={{ fontWeight: 500, whiteSpace: 'nowrap' }}>
+                        {column}
+                      </TableCell>
+                      <TableCell>
+                        {data[0][column] === undefined || data[0][column] === ""
+                          ? "-"
+                          : (typeof data[0][column] === 'object'
+                            ? JSON.stringify(data[0][column])
+                            : String(data[0][column]))}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  data.map((row, index) => (
+                    <TableRow key={index}>
+                      {columns.map((column) => (
+                        <TableCell key={column}>
+                          {row[column] === undefined || row[column] === ""
+                            ? "-"
+                            : (typeof row[column] === 'object'
+                              ? JSON.stringify(row[column])
+                              : String(row[column]))}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
             <Box>
               <Button
@@ -1043,62 +1060,21 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
       );
     }
 
-    const accordionIdBase = `${title.toLowerCase().replace(/\s+/g, '-')}-${csvFilename.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
-
     return (
       <Accordion defaultExpanded sx={{ mb: 2 }}>
         <AccordionSummary
           expandIcon={<ExpandMoreIcon />}
-          aria-controls={`${accordionIdBase}-content`}
-          id={`${accordionIdBase}-header`}
+          aria-controls={`${title.toLowerCase()}-content`}
+          id={`${title.toLowerCase()}-header`}
         >
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <StorageIcon sx={{ mr: 1 }} />
             <Typography variant='h6'>
               {title}
             </Typography>
           </Box>
         </AccordionSummary>
         <AccordionDetails>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-            <Box>
-              <Button
-                component="a"
-                onClick={() => downloadJSON(data, jsonFilename)}
-                sx={{
-                  color: '#FF00C3',
-                  textTransform: 'none',
-                  mr: 2,
-                  p: 0,
-                  minWidth: 'auto',
-                  backgroundColor: 'transparent',
-                  '&:hover': {
-                    backgroundColor: 'transparent',
-                    textDecoration: 'underline'
-                  }
-                }}
-              >
-                {t('run_content.captured_data.download_json', 'Download JSON')}
-              </Button>
-
-              <Button
-                component="a"
-                onClick={() => downloadCSV(data, columns, csvFilename, isSchemaData, isSchemaTabular)}
-                sx={{
-                  color: '#FF00C3',
-                  textTransform: 'none',
-                  p: 0,
-                  minWidth: 'auto',
-                  backgroundColor: 'transparent',
-                  '&:hover': {
-                    backgroundColor: 'transparent',
-                    textDecoration: 'underline'
-                  }
-                }}
-              >
-                {t('run_content.captured_data.download_csv', 'Download as CSV')}
-              </Button>
-            </Box>
-          </Box>
           <TableContainer component={Paper} sx={{ maxHeight: 320 }}>
             <Table stickyHeader aria-label="sticky table">
               <TableHead>
@@ -1107,14 +1083,16 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                     <>
                       <TableCell
                         sx={{
-                          backgroundColor: (theme) => theme.palette.mode === 'dark' ? '#11111' : '#f8f9fa'
+                          backgroundColor: darkMode ? '#11111' : '#f8f9fa',
+                          minWidth: '100px',
+                          whiteSpace: 'nowrap'
                         }}
                       >
                         Label
                       </TableCell>
                       <TableCell
                         sx={{
-                          backgroundColor: (theme) => theme.palette.mode === 'dark' ? '#11111' : '#f8f9fa'
+                          backgroundColor: darkMode ? '#11111' : '#f8f9fa'
                         }}
                       >
                         Value
@@ -1125,7 +1103,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                       <TableCell
                         key={column}
                         sx={{
-                          backgroundColor: (theme) => theme.palette.mode === 'dark' ? '#11111' : '#f8f9fa'
+                          backgroundColor: darkMode ? '#11111' : '#f8f9fa'
                         }}
                       >
                         {column}
@@ -1138,7 +1116,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 {shouldShowAsKeyValue ? (
                   columns.map((column) => (
                     <TableRow key={column}>
-                      <TableCell sx={{ fontWeight: 500 }}>
+                      <TableCell sx={{ fontWeight: 500, whiteSpace: 'nowrap' }}>
                         {column}
                       </TableCell>
                       <TableCell>
@@ -1168,6 +1146,45 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               </TableBody>
             </Table>
           </TableContainer>
+
+          <Box sx={{ mt: 2 }}>
+            <Button
+              component="a"
+              onClick={() => downloadJSON(data, jsonFilename)}
+              sx={{
+                color: '#FF00C3',
+                textTransform: 'none',
+                mr: 2,
+                p: 0,
+                minWidth: 'auto',
+                backgroundColor: 'transparent',
+                '&:hover': {
+                  backgroundColor: 'transparent',
+                  textDecoration: 'underline'
+                }
+              }}
+            >
+              {t('run_content.captured_data.download_json', 'Download JSON')}
+            </Button>
+
+            <Button
+              component="a"
+              onClick={() => downloadCSV(data, columns, csvFilename, isSchemaData, isSchemaTabular)}
+              sx={{
+                color: '#FF00C3',
+                textTransform: 'none',
+                p: 0,
+                minWidth: 'auto',
+                backgroundColor: 'transparent',
+                '&:hover': {
+                  backgroundColor: 'transparent',
+                  textDecoration: 'underline'
+                }
+              }}
+            >
+              {t('run_content.captured_data.download_csv', 'Download as CSV')}
+            </Button>
+          </Box>
         </AccordionDetails>
       </Accordion>
     );
@@ -1184,34 +1201,92 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   const hasCrawlPageScreenshots = crawlData.some(group => Array.isArray(group) && group.some((item: any) => item?.screenshotVisible || item?.screenshotFullpage));
   const hasSearchResultScreenshots = searchData.some((item: any) => item?.screenshotVisible || item?.screenshotFullpage);
   const showCapturedScreenshotSection = hasScreenshots && !hasCrawlPageScreenshots && !hasSearchResultScreenshots;
+  const isExtractRobot = schemaData.length > 0 || listData.length > 0 || legacyData.length > 0 || (!hasMarkdown && !hasHTML && !hasTextFormat && !hasLinks && crawlData.length === 0 && searchData.length === 0);
 
   return (
     <Box sx={{ width: '100%' }}>
       <TabContext value={tab}>
-        <TabPanel value='output' sx={{ width: '100%', maxWidth: '900px' }}>
-          {hasMarkdown || hasHTML || hasTextFormat || hasLinks ? (
+        <TabPanel value='output' sx={{ width: '100%', maxWidth: '1000px' }}>
+          {row.status === 'running' || row.status === 'queued' ? (
+            <>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                {workflowProgress ? (
+                  <>
+                    <CircularProgress
+                      size={22}
+                      sx={{ marginRight: '10px' }}
+                    />
+                    {getProgressMessage(workflowProgress.percentage)}
+                  </>
+                ) : (
+                  <>
+                    <CircularProgress size={22} sx={{ marginRight: '10px' }} />
+                    {(row.interpreterSettings as any)?.robotType === 'doc-extract'
+                      ? t('run_content.loading_document', 'Extracting document data...')
+                      : (row.interpreterSettings as any)?.robotType === 'doc-parse'
+                      ? t('run_content.loading_document_parse', 'Parsing document...')
+                      : t('run_content.loading')}
+                  </>
+                )}
+              </Box>
+              {(row.interpreterSettings as any)?.robotType !== 'doc-extract' &&
+               (row.interpreterSettings as any)?.robotType !== 'doc-parse' && (
+                <Button color="error" onClick={abortRunHandler} sx={{ mt: 1 }}>
+                  {t('run_content.buttons.stop')}
+                </Button>
+              )}
+            </>
+          ) : (!hasData && !hasScreenshots && !hasMarkdown && !hasHTML && !hasTextFormat && !hasLinks && !hasPromptResult ? (
+            <Box sx={{ p: 2 }}>
+              <Typography paragraph>
+                {t('run_content.no_data_found', 'No data found. Need help?')}{" "}
+                <Link href="mailto:support@maxun.dev" underline="hover" color="#ff00c3">
+                  {t('run_content.contact_support', 'Contact Support')}
+                </Link>{" "}
+                {t('run_content.or', 'or')}{" "}
+                <Link
+                  href="https://github.com/getmaxun/maxun/issues/new"
+                  target="_blank"
+                  rel="noopener"
+                  underline="hover"
+                  color="#ff00c3"
+                >
+                  {t('run_content.open_github_issue', 'Open a GitHub Issue')}
+                </Link>.
+              </Typography>
+            </Box>
+          ) : (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {hasMarkdown && (
+              {hasTextFormat && (
                 <Accordion defaultExpanded>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <ArticleIcon sx={{ mr: 1 }} />
-                      <Typography variant='h6'>Markdown</Typography>
+                      <SubjectIcon sx={{ mr: 1 }} />
+                      <Typography variant='h6'>Text Content</Typography>
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
                     <Paper sx={{ p: 2, maxHeight: '500px', overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
-                      <Box component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: '13px', lineHeight: 1.6, m: 0, color: 'inherit' }}>
-                        {markdownContent}
-                      </Box>
+                      <Typography component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: '14px', lineHeight: 1.6, m: 0 }}>
+                        {textContent}
+                      </Typography>
                     </Paper>
-
                     <Box sx={{ mt: 2 }}>
-                      <Button
-                        onClick={() => downloadMarkdown(markdownContent, `${row.name || 'content'}.md`)}
+                      <Button 
+                        onClick={() => {
+                          const blob = new Blob([textContent], { type: 'text/plain' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `${row.name || 'content'}.txt`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          URL.revokeObjectURL(url);
+                        }} 
                         sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
                       >
-                        Download Markdown
+                        Download Text
                       </Button>
                     </Box>
                   </AccordionDetails>
@@ -1222,28 +1297,29 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 <Accordion defaultExpanded>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <ArticleIcon sx={{ mr: 1 }} />
+                      <CodeIcon sx={{ mr: 1 }} />
                       <Typography variant='h6'>HTML</Typography>
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
                     <Paper sx={{ p: 2, maxHeight: '500px', overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
-                      <Box component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: '13px', lineHeight: 1.6, m: 0, color: 'inherit' }}>
+                      <Typography component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: '14px', lineHeight: 1.6, m: 0, color: 'inherit' }}>
                         {htmlContent}
-                      </Box>
+                      </Typography>
                     </Paper>
-
                     <Box sx={{ mt: 2 }}>
-                      <Button
+                      <Button 
                         onClick={() => {
-                          const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
+                          const blob = new Blob([htmlContent], { type: 'text/html' });
                           const url = URL.createObjectURL(blob);
-                          const link = document.createElement("a");
-                          link.href = url;
-                          link.download = `${row.name || 'content'}.html`;
-                          link.click();
-                          setTimeout(() => URL.revokeObjectURL(url), 100);
-                        }}
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `${row.name || 'content'}.html`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          URL.revokeObjectURL(url);
+                        }} 
                         sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
                       >
                         Download HTML
@@ -1253,34 +1329,26 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 </Accordion>
               )}
 
-              {hasTextFormat && (
+              {hasMarkdown && (
                 <Accordion defaultExpanded>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <ArticleIcon sx={{ mr: 1 }} />
-                      <Typography variant='h6'>Text Content</Typography>
+                      <DescriptionIcon sx={{ mr: 1 }} />
+                      <Typography variant='h6'>Markdown</Typography>
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
                     <Paper sx={{ p: 2, maxHeight: '500px', overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
-                      <Box component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: '13px', lineHeight: 1.6, m: 0, color: 'inherit' }}>
-                        {textContent}
-                      </Box>
+                      <Typography component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: '14px', lineHeight: 1.6, m: 0, color: 'inherit' }}>
+                        {markdownContent}
+                      </Typography>
                     </Paper>
                     <Box sx={{ mt: 2 }}>
-                      <Button
-                        onClick={() => {
-                          const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8;' });
-                          const url = URL.createObjectURL(blob);
-                          const link = document.createElement("a");
-                          link.href = url;
-                          link.download = `${row.name || 'content'}.txt`;
-                          link.click();
-                          setTimeout(() => URL.revokeObjectURL(url), 100);
-                        }}
+                      <Button 
+                        onClick={() => downloadMarkdown(markdownContent, `${row.name || 'content'}.md`)} 
                         sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
                       >
-                        Download Text
+                        Download Markdown
                       </Button>
                     </Box>
                   </AccordionDetails>
@@ -1291,12 +1359,12 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 <Accordion defaultExpanded>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <ArticleIcon sx={{ mr: 1 }} />
+                      <LinkIcon sx={{ mr: 1 }} />
                       <Typography variant='h6'>Links ({linksContent.length})</Typography>
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
-                    <Paper sx={{ p: 2, maxHeight: 400, overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
+                    <Paper sx={{ p: 2, maxHeight: '500px', overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                         {Array.from(new Set(linksContent)).map((link: string, idx: number) => (
                           <Link key={idx} href={link} target="_blank" rel="noopener" sx={{ color: '#FF00C3', wordBreak: 'break-all', fontSize: '0.875rem' }}>
@@ -1328,53 +1396,44 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 </Accordion>
               )}
 
-              {showCapturedScreenshotSection && renderCapturedScreenshotsAccordion(
-                t('run_content.captured_screenshot.title', 'Captured Screenshots'),
-                screenshotKeys.map((label, index) => ({ key: label, label, value: rawScreenshotKeys[index] })).filter(tab => tab.value),
-                currentScreenshotIndex,
-                setCurrentScreenshotIndex,
-                'global-screenshots-primary'
+              {hasPromptResult && promptResultData && (
+                <Accordion defaultExpanded>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <PsychologyIcon sx={{ mr: 1 }} />
+                      <Typography variant='h6'>Smart Queries</Typography>
+                    </Box>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Paper sx={{ p: 2, maxHeight: '500px', overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
+                      <Typography component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: '14px', lineHeight: 1.6, m: 0, color: 'inherit' }}>
+                        {promptResultData}
+                      </Typography>
+                    </Paper>
+                    <Box sx={{ mt: 2 }}>
+                      <Button
+                        onClick={() => {
+                          const blob = new Blob([promptResultData], { type: 'text/plain' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `${row.name || 'agent'}-result.txt`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          URL.revokeObjectURL(url);
+                        }}
+                        sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
+                      >
+                        Download Result
+                      </Button>
+                    </Box>
+                  </AccordionDetails>
+                </Accordion>
               )}
-            </Box>
-          ) : (
-            <>
-          {row.status === 'running' || row.status === 'queued' ? (
-            <>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                {workflowProgress ? (
-                  <>
-                    <CircularProgress
-                      size={22}
-                      sx={{ marginRight: '10px' }}
-                    />
-                    {getProgressMessage(workflowProgress.percentage)}
-                  </>
-                ) : (
-                  <>
-                    <CircularProgress size={22} sx={{ marginRight: '10px' }} />
-                    {(row.interpreterSettings as any)?.robotType === 'doc-extract'
-                      ? t('run_content.loading_document', 'Extracting document data...')
-                      : (row.interpreterSettings as any)?.robotType === 'doc-parse'
-                      ? t('run_content.loading_document_parse', 'Parsing document...')
-                      : t('run_content.loading')}
-                  </>
-                )}
-              </Box>
-              {(row.interpreterSettings as any)?.robotType !== 'doc-extract' &&
-               (row.interpreterSettings as any)?.robotType !== 'doc-parse' && (
-                <Button color="error" onClick={abortRunHandler} sx={{ mt: 1 }}>
-                  {t('run_content.buttons.stop')}
-                </Button>
-              )}
-            </>
-          ) : (!hasData && !hasScreenshots && !hasMarkdown && !hasHTML && !hasTextFormat && !hasLinks && !hasPromptResult
-            ? (['failed', 'aborted', 'aborting'].includes(row.status)
-              ? <Typography color='error'>{t('run_content.failed_no_output', 'Run failed before generating output. Check run logs for details.')}</Typography>
-              : <Typography>{t('run_content.empty_output')}</Typography>)
-            : null)}
 
-          {hasData && (
-            <Box sx={{ mb: 3 }}>
+              {(schemaData.length > 0 || listData.length > 0 || legacyData.length > 0) && (
+                <>
               {isLegacyData && (
                 renderDataTable(
                   legacyData,
@@ -1391,6 +1450,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                     <Accordion defaultExpanded sx={{ mb: 2 }}>
                       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <TextFieldsIcon sx={{ mr: 1 }} />
                           <Typography variant='h6'>
                             {t('run_content.captured_data.schema_title', 'Captured Texts')}
                           </Typography>
@@ -1416,12 +1476,12 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                   cursor: 'pointer',
                                   backgroundColor:
                                     currentSchemaIndex === idx
-                                      ? (theme) => theme.palette.mode === 'dark'
+                                      ? darkMode
                                         ? '#121111ff'
                                         : '#e9ecef'
                                       : 'transparent',
                                   borderBottom: currentSchemaIndex === idx ? '3px solid #FF00C3' : 'none',
-                                  color: (theme) => theme.palette.mode === 'dark' ? '#fff' : '#000',
+                                  color: darkMode ? '#fff' : '#000',
                                 }}
                               >
                                 {key}
@@ -1446,6 +1506,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                     <Accordion defaultExpanded sx={{ mb: 2 }}>
                       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <ViewListIcon sx={{ mr: 1 }} />
                           <Typography variant='h6'>
                             {t('run_content.captured_data.list_title', 'Captured Lists')}
                           </Typography>
@@ -1470,12 +1531,12 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                 cursor: 'pointer',
                                 backgroundColor:
                                   currentListIndex === idx
-                                    ? (theme) => theme.palette.mode === 'dark'
+                                    ? darkMode
                                       ? '#121111ff'
                                       : '#e9ecef'
                                     : 'transparent',
                                 borderBottom: currentListIndex === idx ? '3px solid #FF00C3' : 'none',
-                                color: (theme) => theme.palette.mode === 'dark' ? '#fff' : '#000',
+                                color: darkMode ? '#fff' : '#000',
                               }}
                             >
                               {key}
@@ -1491,7 +1552,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                   <TableCell
                                     key={column}
                                     sx={{
-                                      backgroundColor: (theme) => theme.palette.mode === 'dark' ? '#11111' : '#f8f9fa'
+                                      backgroundColor: darkMode ? '#11111' : '#f8f9fa'
                                     }}
                                   >
                                     {column}
@@ -1584,11 +1645,14 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   )}
                 </>
               )}
+                </>
+              )}
 
               {crawlData.length > 0 && crawlData[0] && crawlData[0].length > 0 && (
                 <Accordion defaultExpanded sx={{ mb: 2 }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <TravelExploreIcon sx={{ mr: 1 }} />
                       <Typography variant='h6'>
                         Crawl Results
                       </Typography>
@@ -1654,7 +1718,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
                               <Typography variant='h6'>
-                                Metadata
+                                <InfoOutlinedIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Metadata
                               </Typography>
                             </Box>
                           </AccordionSummary>
@@ -1701,7 +1765,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                 <Typography variant='h6'>
-                                  Text Content
+                                  <SubjectIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Text Content
                                 </Typography>
                               </Box>
                             </AccordionSummary>
@@ -1709,7 +1773,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               <Paper
                                 sx={{
                                   p: 2,
-                                  maxHeight: '300px',
+                                  maxHeight: '500px',
                                   overflow: 'auto',
                                   backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
                                 }}
@@ -1720,7 +1784,8 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                     whiteSpace: 'pre-wrap',
                                     wordBreak: 'break-word',
                                     fontFamily: 'monospace',
-                                    fontSize: '0.75rem',
+                                    fontSize: '14px',
+                                    lineHeight: 1.6,
                                     m: 0
                                   }}
                                 >
@@ -1751,7 +1816,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                 <Typography variant='h6'>
-                                  HTML
+                                  <CodeIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> HTML
                                 </Typography>
                               </Box>
                             </AccordionSummary>
@@ -1759,7 +1824,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               <Paper
                                 sx={{
                                   p: 2,
-                                  maxHeight: '300px',
+                                  maxHeight: '500px',
                                   overflow: 'auto',
                                   backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
                                 }}
@@ -1770,7 +1835,8 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                     whiteSpace: 'pre-wrap',
                                     wordBreak: 'break-word',
                                     fontFamily: 'monospace',
-                                    fontSize: '0.65rem',
+                                    fontSize: '14px',
+                                    lineHeight: 1.6,
                                     m: 0
                                   }}
                                 >
@@ -1801,7 +1867,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                 <Typography variant='h6'>
-                                  Markdown
+                                  <DescriptionIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Markdown
                                 </Typography>
                               </Box>
                             </AccordionSummary>
@@ -1809,7 +1875,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               <Paper
                                 sx={{
                                   p: 2,
-                                  maxHeight: '300px',
+                                  maxHeight: '500px',
                                   overflow: 'auto',
                                   backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
                                 }}
@@ -1820,7 +1886,8 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                     whiteSpace: 'pre-wrap',
                                     wordBreak: 'break-word',
                                     fontFamily: 'monospace',
-                                    fontSize: '0.875rem',
+                                    fontSize: '14px',
+                                    lineHeight: 1.6,
                                     m: 0
                                   }}
                                 >
@@ -1846,18 +1913,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                           </Accordion>
                         )}
 
-                        {renderCapturedScreenshotsAccordion(
-                          t('run_content.captured_screenshot.title', 'Captured Screenshots'),
-                          [
-                            ...(crawlData[0][currentCrawlIndex].screenshotVisible ? [{ key: 'visible', label: 'Screenshot (Visible)', value: crawlData[0][currentCrawlIndex].screenshotVisible }] : []),
-                            ...(crawlData[0][currentCrawlIndex].screenshotFullpage ? [{ key: 'fullpage', label: 'Screenshot (Full Page)', value: crawlData[0][currentCrawlIndex].screenshotFullpage }] : []),
-                          ],
-                          currentCrawlScreenshotTab,
-                          setCurrentCrawlScreenshotTab,
-                          `crawl-${currentCrawlIndex}`,
-                          false
-                        )}
-
                         {(() => {
                           const validLinks = crawlData[0][currentCrawlIndex].links?.filter((link: any) =>
                             typeof link === 'string' && link.trim() !== ''
@@ -1868,12 +1923,12 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                   <Typography variant='h6'>
-                                    Links ({validLinks.length})
+                                    <LinkIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Links ({validLinks.length})
                                   </Typography>
                                 </Box>
                               </AccordionSummary>
                               <AccordionDetails>
-                                <Paper sx={{ maxHeight: 200, overflow: 'auto', p: 2, backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
+                                <Paper sx={{ maxHeight: '500px', overflow: 'auto', p: 2, backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
                                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                                     {(Array.from(new Set(validLinks)) as string[]).map((link: string, idx: number) => (
                                       <Link key={idx} href={link} target="_blank" rel="noopener" sx={{ color: '#FF00C3', wordBreak: 'break-all', fontSize: '0.875rem' }}>
@@ -1900,6 +1955,18 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                             </Accordion>
                           );
                         })()}
+
+                        {renderCapturedScreenshotsAccordion(
+                          t('run_content.screenshot.title', 'Screenshots'),
+                          [
+                            ...(crawlData[0][currentCrawlIndex].screenshotVisible ? [{ key: 'visible', label: 'Screenshot (Visible)', value: crawlData[0][currentCrawlIndex].screenshotVisible }] : []),
+                            ...(crawlData[0][currentCrawlIndex].screenshotFullpage ? [{ key: 'fullpage', label: 'Screenshot (Full Page)', value: crawlData[0][currentCrawlIndex].screenshotFullpage }] : []),
+                          ],
+                          currentCrawlScreenshotTab,
+                          setCurrentCrawlScreenshotTab,
+                          `crawl-${currentCrawlIndex}`,
+                          false
+                        )}
 
                         <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
                           <Button
@@ -1946,6 +2013,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 <Accordion defaultExpanded sx={{ mb: 2 }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <SearchIcon sx={{ mr: 1 }} />
                       <Typography variant='h6'>
                         Search Results
                       </Typography>
@@ -2010,7 +2078,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                   <Typography variant='h6'>
-                                    Metadata
+                                    <InfoOutlinedIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Metadata
                                   </Typography>
                                 </Box>
                               </AccordionSummary>
@@ -2058,7 +2126,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                     <Typography variant='h6'>
-                                      Text Content
+                                      <SubjectIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Text Content
                                     </Typography>
                                   </Box>
                                 </AccordionSummary>
@@ -2066,7 +2134,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                   <Paper
                                     sx={{
                                       p: 2,
-                                      maxHeight: '300px',
+                                      maxHeight: '500px',
                                       overflow: 'auto',
                                       backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
                                     }}
@@ -2077,7 +2145,8 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                         whiteSpace: 'pre-wrap',
                                         wordBreak: 'break-word',
                                         fontFamily: 'monospace',
-                                        fontSize: '0.75rem',
+                                        fontSize: '14px',
+                                        lineHeight: 1.6,
                                         m: 0
                                       }}
                                     >
@@ -2107,7 +2176,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                     <Typography variant='h6'>
-                                      HTML
+                                      <CodeIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> HTML
                                     </Typography>
                                   </Box>
                                 </AccordionSummary>
@@ -2115,7 +2184,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                   <Paper
                                     sx={{
                                       p: 2,
-                                      maxHeight: '300px',
+                                      maxHeight: '500px',
                                       overflow: 'auto',
                                       backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
                                     }}
@@ -2126,7 +2195,8 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                         whiteSpace: 'pre-wrap',
                                         wordBreak: 'break-word',
                                         fontFamily: 'monospace',
-                                        fontSize: '0.75rem',
+                                        fontSize: '14px',
+                                        lineHeight: 1.6,
                                         m: 0
                                       }}
                                     >
@@ -2158,7 +2228,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                     <Typography variant='h6'>
-                                      Markdown
+                                      <DescriptionIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Markdown
                                     </Typography>
                                   </Box>
                                 </AccordionSummary>
@@ -2166,7 +2236,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                   <Paper
                                     sx={{
                                       p: 2,
-                                      maxHeight: '300px',
+                                      maxHeight: '500px',
                                       overflow: 'auto',
                                       backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
                                     }}
@@ -2177,7 +2247,8 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                         whiteSpace: 'pre-wrap',
                                         wordBreak: 'break-word',
                                         fontFamily: 'monospace',
-                                        fontSize: '0.875rem',
+                                        fontSize: '14px',
+                                        lineHeight: 1.6,
                                         m: 0
                                       }}
                                     >
@@ -2214,12 +2285,12 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                       <Typography variant='h6'>
-                                        Links ({validLinks.length})
+                                        <LinkIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Links ({validLinks.length})
                                       </Typography>
                                     </Box>
                                   </AccordionSummary>
                                   <AccordionDetails>
-                                    <Paper sx={{ maxHeight: 200, overflow: 'auto', p: 2, backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
+                                    <Paper sx={{ maxHeight: '500px', overflow: 'auto', p: 2, backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
                                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                                         {(Array.from(new Set(validLinks)) as string[]).map((link: string, idx: number) => (
                                           <Link key={idx} href={link} target="_blank" rel="noopener" sx={{ color: '#FF00C3', wordBreak: 'break-all', fontSize: '0.875rem' }}>
@@ -2249,7 +2320,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                             })()}
 
                             {renderCapturedScreenshotsAccordion(
-                              t('run_content.captured_screenshot.title', 'Captured Screenshots'),
+                              t('run_content.screenshot.title', 'Screenshots'),
                               [
                                 ...(searchData[currentSearchIndex].screenshotVisible ? [{ key: 'visible', label: 'Screenshot (Visible)', value: searchData[currentSearchIndex].screenshotVisible }] : []),
                                 ...(searchData[currentSearchIndex].screenshotFullpage ? [{ key: 'fullpage', label: 'Screenshot (Full Page)', value: searchData[currentSearchIndex].screenshotFullpage }] : []),
@@ -2299,65 +2370,60 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                       </>
                     ) : (
                       <>
-                        <TableContainer component={Paper} sx={{ maxHeight: 600 }}>
-                          <Table stickyHeader aria-label="search-results-table">
+                        <TableContainer component={Paper}>
+                          <Table stickyHeader>
                             <TableHead>
                               <TableRow>
-                                <TableCell
-                                  sx={{
-                                    backgroundColor: darkMode ? '#11111' : '#f8f9fa',
-                                    minWidth: '200px'
-                                  }}
-                                >
-                                  Title
-                                </TableCell>
-                                <TableCell
-                                  sx={{
-                                    backgroundColor: darkMode ? '#11111' : '#f8f9fa',
-                                    minWidth: '250px'
-                                  }}
-                                >
-                                  URL
-                                </TableCell>
-                                <TableCell
-                                  sx={{
-                                    backgroundColor: darkMode ? '#11111' : '#f8f9fa',
-                                    minWidth: '300px'
-                                  }}
-                                >
-                                  Description
-                                </TableCell>
+                                <TableCell sx={{ backgroundColor: darkMode ? '#1e1e1e' : '#f8f9fa', whiteSpace: 'nowrap' }}>Title</TableCell>
+                                <TableCell sx={{ backgroundColor: darkMode ? '#1e1e1e' : '#f8f9fa', whiteSpace: 'nowrap' }}>URL</TableCell>
+                                <TableCell sx={{ backgroundColor: darkMode ? '#1e1e1e' : '#f8f9fa', whiteSpace: 'nowrap' }}>Description</TableCell>
                               </TableRow>
                             </TableHead>
-
                             <TableBody>
-                              {searchData.map((result: any, idx: number) => (
-                                <TableRow key={idx}>
-                                  <TableCell>
-                                    {result.title || '-'}
+                              {searchData.map((r: any, i: number) => (
+                                <TableRow key={i}>
+                                  <TableCell sx={{ minWidth: 200 }}>{r.title || '-'}</TableCell>
+                                  <TableCell sx={{ minWidth: 250 }}>
+                                    {r.url && r.url !== '-' ? (
+                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Tooltip title={r.url}>
+                                          <Link
+                                            href={r.url}
+                                            target="_blank"
+                                            rel="noopener"
+                                            sx={{
+                                              color: '#FF00C3',
+                                              textDecoration: 'none',
+                                              '&:hover': { textDecoration: 'underline' },
+                                              maxWidth: '200px',
+                                              overflow: 'hidden',
+                                              textOverflow: 'ellipsis',
+                                              whiteSpace: 'nowrap',
+                                              display: 'block'
+                                            }}
+                                          >
+                                            {r.url.length > 35 ? r.url.substring(0, 35) + '...' : r.url}
+                                          </Link>
+                                        </Tooltip>
+                                        <IconButton
+                                          size="small"
+                                          onClick={() => {
+                                            navigator.clipboard.writeText(r.url);
+                                          }}
+                                          sx={{
+                                            color: '#6c757d',
+                                            '&:hover': { color: '#FF00C3' },
+                                            p: 0.5
+                                          }}
+                                        >
+                                          <ContentCopy sx={{ fontSize: '0.9rem' }} />
+                                        </IconButton>
+                                      </Box>
+                                    ) : (
+                                      '-'
+                                    )}
                                   </TableCell>
-                                  <TableCell>
-                                    {result.url ? (
-                                      <Link
-                                        href={result.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        sx={{
-                                          color: '#FF00C3',
-                                          textDecoration: 'none',
-                                          '&:hover': {
-                                            textDecoration: 'underline'
-                                          },
-                                          wordBreak: 'break-all'
-                                        }}
-                                      >
-                                        {result.url}
-                                      </Link>
-                                    ) : '-'}
-                                  </TableCell>
-                                  <TableCell>
-                                    {result.description || '-'}
-                                  </TableCell>
+                                  <TableCell sx={{ minWidth: 300 }}>{r.description || '-'}</TableCell>
                                 </TableRow>
                               ))}
                             </TableBody>
@@ -2387,54 +2453,15 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   </AccordionDetails>
                 </Accordion>
               )}
+              {showCapturedScreenshotSection && renderCapturedScreenshotsAccordion(
+                isExtractRobot ? t('run_content.captured_screenshot.title_extract', 'Captured Screenshots') : t('run_content.screenshot.title', 'Screenshots'),
+                screenshotKeys.map((label, index) => ({ key: label, label, value: rawScreenshotKeys[index] })).filter(tab => tab.value),
+                currentScreenshotIndex,
+                setCurrentScreenshotIndex,
+                'global-screenshots-secondary'
+              )}
             </Box>
-          )}
-
-          {showCapturedScreenshotSection && renderCapturedScreenshotsAccordion(
-            t('run_content.captured_screenshot.title', 'Captured Screenshots'),
-            screenshotKeys.map((label, index) => ({ key: label, label, value: rawScreenshotKeys[index] })).filter(tab => tab.value),
-            currentScreenshotIndex,
-            setCurrentScreenshotIndex,
-            'global-screenshots-secondary'
-          )}
-          </>
-          )}
-
-          {hasPromptResult && promptResultData && (
-            <Accordion defaultExpanded sx={{ mb: 2 }}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <ArticleIcon sx={{ mr: 1 }} />
-                  <Typography variant='h6'>Smart Query Result</Typography>
-                </Box>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Paper sx={{ p: 2, maxHeight: '500px', overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
-                  <Box component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: '13px', lineHeight: 1.6, m: 0, color: 'inherit' }}>
-                    {promptResultData}
-                  </Box>
-                </Paper>
-                <Box sx={{ mt: 2 }}>
-                  <Button
-                    onClick={() => {
-                      const blob = new Blob([promptResultData], { type: 'text/plain' });
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = `${row.name || 'smart-query'}-result.txt`;
-                      document.body.appendChild(a);
-                      a.click();
-                      document.body.removeChild(a);
-                      URL.revokeObjectURL(url);
-                    }}
-                    sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
-                  >
-                    Download Result
-                  </Button>
-                </Box>
-              </AccordionDetails>
-            </Accordion>
-          )}
+          ))}
         </TabPanel>
       </TabContext>
     </Box>

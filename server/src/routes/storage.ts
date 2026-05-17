@@ -15,7 +15,8 @@ import { capture } from "../utils/analytics";
 import { encrypt, decrypt } from '../utils/auth';
 import { WorkflowFile } from 'maxun-core';
 import { cancelScheduledWorkflow, scheduleWorkflow } from '../storage/schedule';
-import { pgBossClient } from '../storage/pgboss';
+import { addJob } from '../storage/graphileWorker';
+import { QUEUE_NAMES } from '../task-runner';
 import { WorkflowEnricher } from '../sdk/workflowEnricher';
 import sequelizeInstance from '../storage/db';
 import { Op } from 'sequelize';
@@ -953,7 +954,7 @@ router.delete('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res)
  * PUT endpoint for starting a remote browser instance and saving run metadata to the storage.
  * Making it ready for interpretation and returning a runId.
  * 
- * If the user has reached their browser limit, the run will be queued using pgBossClient.
+ * If the user has reached their browser limit, the run will be queued.
  */
 router.put('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
@@ -1026,15 +1027,12 @@ router.put('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res) =>
       }
 
       try {
-        const userQueueName = `execute-run-user-${req.user.id}`;
-        await pgBossClient.createQueue(userQueueName);
-       
-        const jobId = await pgBossClient.send(userQueueName, {
+        const jobId = await addJob(QUEUE_NAMES.EXECUTE_RUN, {
           userId: req.user.id,
           runId: runId,
-          browserId: browserId, 
-        });
-        
+          browserId: browserId,
+        }, { maxAttempts: 1 });
+
         logger.log('info', `Queued run execution job with ID: ${jobId} for run: ${runId}`);
       } catch (queueError: any) {
         logger.log('error', `Failed to queue run execution: ${queueError.message}`);
@@ -1141,16 +1139,11 @@ router.post('/runs/run/:id', requireSignIn, async (req: AuthenticatedRequest, re
     }
 
     try {
-      const userQueueName = `execute-run-user-${req.user.id}`;
-
-      // Queue the execution job
-      await pgBossClient.createQueue(userQueueName);
-
-      const jobId = await pgBossClient.send(userQueueName, {
+      const jobId = await addJob(QUEUE_NAMES.EXECUTE_RUN, {
         userId: req.user.id,
         runId: req.params.id,
-        browserId: plainRun.browserId
-      });
+        browserId: plainRun.browserId,
+      }, { maxAttempts: 1 });
 
       logger.log('info', `Queued run execution job with ID: ${jobId} for run: ${req.params.id}`);
     } catch (queueError: any) {
@@ -1336,7 +1329,7 @@ router.delete('/schedule/:id', requireSignIn, async (req: AuthenticatedRequest, 
       return res.status(404).json({ error: 'Robot not found' });
     }
 
-    // Cancel the scheduled job in pgBossClient
+    // Cancel the scheduled job
     try {
       await cancelScheduledWorkflow(id);
     } catch (error) {
@@ -1416,13 +1409,10 @@ router.post('/runs/abort/:id', requireSignIn, async (req: AuthenticatedRequest, 
       logger.log('warn', `Failed to immediately stop interpreter: ${immediateStopError.message}`);
     }
 
-    const userQueueName = `abort-run-user-${req.user.id}`;
-    await pgBossClient.createQueue(userQueueName);
-  
-    const jobId = await pgBossClient.send(userQueueName, {
+    const jobId = await addJob(QUEUE_NAMES.ABORT_RUN, {
       userId: req.user.id,
-      runId: req.params.id
-    });
+      runId: req.params.id,
+    }, { maxAttempts: 3 });
 
     logger.log('info', `Abort signal sent for run ${req.params.id}, job ID: ${jobId}`);
 
@@ -1492,14 +1482,11 @@ async function processQueuedRuns() {
           log: 'Browser created and ready for execution'
         });
 
-        const userQueueName = `execute-run-user-${userId}`;
-        await pgBossClient.createQueue(userQueueName);
-        
-        const jobId = await pgBossClient.send(userQueueName, {
+        const jobId = await addJob(QUEUE_NAMES.EXECUTE_RUN, {
           userId: userId,
           runId: queuedRun.runId,
           browserId: newBrowserId,
-        });
+        }, { maxAttempts: 1 });
 
         logger.log('info', `Queued execution for run ${queuedRun.runId} with ready browser ${newBrowserId}, job ID: ${jobId}`);
         

@@ -2,7 +2,7 @@ import * as React from 'react';
 import SwipeableDrawer from '@mui/material/SwipeableDrawer';
 import Typography from '@mui/material/Typography';
 import { Button, Grid, Box, TextField, IconButton, Tooltip } from '@mui/material';
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useBrowserDimensionsStore } from "../../context/browserDimensions";
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -58,7 +58,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
   const previousDataLengths = useRef<Map<number, number>>(new Map());
   const hasAutoFocusedTextTab = useRef<boolean>(false);
   const previousGetText = useRef<boolean>(false);
-  const autoFocusedScreenshotIndices = useRef<Set<number>>(new Set());
+  const autoFocusedScreenshotIds = useRef<Set<number>>(new Set());
 
   const [showPreviewData, setShowPreviewData] = useState<boolean>(false);
   const userClosedDrawer = useRef<boolean>(false);
@@ -78,13 +78,15 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     )
   , [browserSteps, getText, currentTextActionId]);
 
-  const screenshotData = React.useMemo(() => {
-    const screenshotSteps = browserSteps.filter((step): step is ScreenshotStep =>
-      step.type === 'screenshot'
-    );
+  const screenshotSteps = React.useMemo(() =>
+    browserSteps.filter((step): step is ScreenshotStep =>
+      step.type === 'screenshot' && Boolean(step.screenshotData)
+    )
+  , [browserSteps]);
 
-    return screenshotSteps.filter(step => step.screenshotData).map(step => step.screenshotData!);
-  }, [browserSteps]);
+  const screenshotData = React.useMemo(() =>
+    screenshotSteps.map(step => step.screenshotData!)
+  , [screenshotSteps]);
 
   const toggleDrawer = (newOpen: boolean) => (event: React.KeyboardEvent | React.MouseEvent) => {
     if (
@@ -281,7 +283,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
   const handleRemoveScreenshotAction = (screenshotId: number, actionId: string | undefined) => {
     if (!actionId) return;
 
-    const screenshotSteps = browserSteps.filter(step => step.type === 'screenshot' && step.screenshotData);
     const screenshotIndex = screenshotSteps.findIndex(step => step.id === screenshotId);
     const screenshotStep = screenshotSteps[screenshotIndex];
     const screenshotName = screenshotStep?.name || `Screenshot ${screenshotIndex + 1}`;
@@ -343,7 +344,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
       setActiveTab(availableTabs.findIndex(tab => tab.id === 'captureText'));
     } else if (hasNewScreenshotData && availableTabs.findIndex(tab => tab.id === 'captureScreenshot') !== -1) {
       setActiveTab(availableTabs.findIndex(tab => tab.id === 'captureScreenshot'));
-      setActiveScreenshotTab(screenshotData.length - 1);
     }
   }, [captureListData.length, captureTextData.length, screenshotData.length]);
 
@@ -351,7 +351,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     browserStepsRef.current = browserSteps;
   }, [browserSteps]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (captureListData.length > 0 || captureTextData.length > 0 || screenshotData.length > 0) {
       setShowPreviewData(true);
     } else {
@@ -377,7 +377,7 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
       setShowPreviewData(false);
       autoFocusedListIds.current.clear();
       previousDataLengths.current.clear();
-      autoFocusedScreenshotIndices.current.clear();
+      autoFocusedScreenshotIds.current.clear();
       userClosedDrawer.current = false;
       lastListDataLength.current = 0;
       lastTextDataLength.current = 0;
@@ -480,20 +480,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
           const screenshotTabIndex = getAvailableTabs().findIndex(tab => tab.id === "captureScreenshot");
           if (screenshotTabIndex !== -1) {
             setActiveTab(screenshotTabIndex);
-            const latestIndex = screenshotData.length - 1;
-            setActiveScreenshotTab(latestIndex);
-
-            if (!autoFocusedScreenshotIndices.current.has(latestIndex)) {
-              autoFocusedScreenshotIndices.current.add(latestIndex);
-              setTimeout(() => {
-                const screenshotSteps = browserSteps.filter(step => step.type === "screenshot");
-                const latestScreenshotStep = screenshotSteps[latestIndex];
-                if (latestScreenshotStep) {
-                  const screenshotName = latestScreenshotStep.name || `Screenshot ${latestIndex + 1}`;
-                  startEdit(latestScreenshotStep.id, 'screenshot', screenshotName);
-                }
-              }, 300);
-            }
           }
         }
       }, 100);
@@ -523,12 +509,22 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
     }
   }, [captureListData.length, isOpen, captureStage]);
 
-  useEffect(() => {
-    if (screenshotData.length > 0 && isOpen) {
-      const latestScreenshotIndex = screenshotData.length - 1;
-      setActiveScreenshotTab(latestScreenshotIndex);
+  useLayoutEffect(() => {
+    if (screenshotSteps.length > 0 && isOpen) {
+      const latestScreenshotIndex = screenshotSteps.length - 1;
+      const latestScreenshot = screenshotSteps[latestScreenshotIndex];
+
+      if (latestScreenshot && !autoFocusedScreenshotIds.current.has(latestScreenshot.id)) {
+        autoFocusedScreenshotIds.current.add(latestScreenshot.id);
+        setActiveScreenshotTab(latestScreenshotIndex);
+        cancelEdit();
+
+        setTimeout(() => {
+          startEdit(latestScreenshot.id, 'screenshot', latestScreenshot.name || `Screenshot ${latestScreenshotIndex + 1}`);
+        }, 300);
+      }
     }
-  }, [screenshotData.length, isOpen]);
+  }, [screenshotSteps.length, isOpen]);
 
   const { darkMode } = useThemeMode();
 
@@ -940,7 +936,6 @@ export const InterpretationLog: React.FC<InterpretationLogProps> = ({ isOpen, se
                       }}
                     >
                       {(() => {
-                        const screenshotSteps = browserSteps.filter(step => step.type === 'screenshot' && step.screenshotData) as Array<{ id: number; name?: string; type: 'screenshot'; fullPage: boolean; actionId?: string; screenshotData?: string }>;
                         return screenshotData.map((screenshot, index) => {
                           const screenshotStep = screenshotSteps[index];
                           if (!screenshotStep) return null;
