@@ -485,7 +485,7 @@ const RobotCreate: React.FC = () => {
                     </Box>
 
                     <CardContent sx={{ textAlign: 'center', py: 3, color: "text.secondary" }}>
-                      <AutoAwesome sx={{ fontSize: 26, mb: 1 }} />
+                      <AutoAwesome sx={{ fontSize: 26, mb: 0.5 }} />
                       <Typography variant="h6" gutterBottom>
                         AI Mode
                       </Typography>
