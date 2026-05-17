@@ -884,6 +884,7 @@ const RobotCreate: React.FC = () => {
                           scrapePromptLlmProvider === 'anthropic' ? 'claude-sonnet-4-6' :
                           'gpt-4o'
                         }`}
+                        FormHelperTextProps={{ sx: { ml: 0.5, mb: 1 } }}
                       />
                     </Box>
                     {scrapePromptLlmProvider !== 'ollama' && (
