@@ -41,7 +41,7 @@ interface InterpreterOptions {
   serializableCallback: (output: any) => (void | Promise<void>);
   binaryCallback: (output: any, mimeType: string) => (void | Promise<void>);
   debug: boolean;
-  type?: 'extract' | 'scrape' | 'crawl' | 'search';
+  type?: 'extract' | 'scrape' | 'crawl' | 'search' | 'doc-extract' | 'doc-parse';
   debugChannel: Partial<{
     activeId: (id: number) => void,
     debugMessage: (msg: string) => void,

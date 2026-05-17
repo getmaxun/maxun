@@ -227,4 +227,23 @@ class BinaryOutputService {
   }
 }
 
+const DOCUMENT_BUCKET = process.env.DOCUMENT_BUCKET_NAME || 'maxun-documents';
+
+export async function uploadDocumentToMinio(key: string, data: Buffer): Promise<void> {
+  await fixMinioBucketConfiguration(DOCUMENT_BUCKET);
+  await minioClient.putObject(DOCUMENT_BUCKET, key, data, data.length, {
+    'Content-Type': 'application/pdf',
+  });
+}
+
+export async function getDocumentFromMinio(key: string): Promise<Buffer> {
+  const stream = await minioClient.getObject(DOCUMENT_BUCKET, key);
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    stream.on('data', (chunk) => chunks.push(chunk));
+    stream.on('end', () => resolve(Buffer.concat(chunks)));
+    stream.on('error', reject);
+  });
+}
+
 export { minioClient, BinaryOutputService };

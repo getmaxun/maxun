@@ -11,6 +11,8 @@ export type OutputFormats = (typeof OUTPUT_FORMAT_OPTIONS)[number];
 
 export const DEFAULT_OUTPUT_FORMATS: OutputFormats[] = ['markdown'];
 
+export const DOC_PARSE_FORMAT_OPTIONS: OutputFormats[] = ['markdown', 'html', 'links'];
+
 export const OUTPUT_FORMAT_LABELS: Record<OutputFormats, string> = {
   markdown: 'Markdown',
   html: 'HTML',

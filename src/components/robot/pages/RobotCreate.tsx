@@ -25,12 +25,12 @@ import {
   Collapse,
   FormControlLabel
 } from '@mui/material';
-import { ArrowBack, AutoAwesome, HighlightAlt } from '@mui/icons-material';
+import { ArrowBack, AutoAwesome, HighlightAlt, Article } from '@mui/icons-material';
 import { useGlobalInfoStore, useCacheInvalidation } from '../../../context/globalInfo';
 import { canCreateBrowserInState, getActiveBrowserId, stopRecording } from '../../../api/recording';
-import { createScrapeRobot, createLLMRobot, createAndRunRecording, createCrawlRobot, createSearchRobot } from "../../../api/storage";
+import { createScrapeRobot, createLLMRobot, createAndRunRecording, createCrawlRobot, createSearchRobot, createDocumentExtractRobot, createDocumentParseRobot } from "../../../api/storage";
 import { AuthContext } from '../../../context/auth';
-import { DEFAULT_OUTPUT_FORMATS, OUTPUT_FORMAT_LABELS, OUTPUT_FORMAT_OPTIONS, OutputFormats } from '../../../constants/outputFormats';
+import { DEFAULT_OUTPUT_FORMATS, DOC_PARSE_FORMAT_OPTIONS, OUTPUT_FORMAT_LABELS, OUTPUT_FORMAT_OPTIONS, OutputFormats } from '../../../constants/outputFormats';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -104,6 +104,16 @@ const RobotCreate: React.FC = () => {
 
   const [crawlOutputFormats, setCrawlOutputFormats] = useState<OutputFormats[]>(DEFAULT_OUTPUT_FORMATS);
   const [searchOutputFormats, setSearchOutputFormats] = useState<OutputFormats[]>(DEFAULT_OUTPUT_FORMATS);
+
+  const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const [documentPrompt, setDocumentPrompt] = useState('');
+  const [documentRobotName, setDocumentRobotName] = useState('');
+  const [documentMode, setDocumentMode] = useState<'extract' | 'parse'>('extract');
+  const [documentParseFormats, setDocumentParseFormats] = useState<OutputFormats[]>([]);
+  const [documentLlmProvider, setDocumentLlmProvider] = useState<'anthropic' | 'openai' | 'ollama'>('ollama');
+  const [documentLlmModel, setDocumentLlmModel] = useState('');
+  const [documentLlmApiKey, setDocumentLlmApiKey] = useState('');
+  const [documentLlmBaseUrl, setDocumentLlmBaseUrl] = useState('');
 
   const { state } = React.useContext(AuthContext);
   const { user } = state;
@@ -280,6 +290,62 @@ const RobotCreate: React.FC = () => {
     }
   };
 
+  const handleCreateDocumentRobot = async () => {
+    if (!documentFile) { notify('error', 'Please upload a PDF file'); return; }
+    if (!documentPrompt.trim()) { notify('error', 'Please enter an extraction prompt'); return; }
+    if (!documentRobotName.trim()) { notify('error', 'Please enter a robot name'); return; }
+
+    setIsLoading(true);
+    try {
+      const result = await createDocumentExtractRobot(
+        documentFile,
+        documentPrompt.trim(),
+        documentRobotName.trim(),
+        documentLlmProvider,
+        documentLlmModel || undefined,
+        documentLlmApiKey || undefined,
+        documentLlmBaseUrl || undefined
+      );
+      setIsLoading(false);
+      if (result) {
+        invalidateRecordings();
+        notify('success', `${documentRobotName} created successfully!`);
+        navigate('/robots');
+      } else {
+        notify('error', 'Failed to create document robot');
+      }
+    } catch (error: any) {
+      setIsLoading(false);
+      notify('error', error.message || 'Failed to create document robot');
+    }
+  };
+
+  const handleCreateDocumentParseRobot = async () => {
+    if (!documentFile) { notify('error', 'Please upload a PDF file'); return; }
+    if (!documentRobotName.trim()) { notify('error', 'Please enter a robot name'); return; }
+    if (documentParseFormats.length === 0) { notify('error', 'Please select at least one output format'); return; }
+
+    setIsLoading(true);
+    try {
+      const result = await createDocumentParseRobot(
+        documentFile,
+        documentRobotName.trim(),
+        documentParseFormats
+      );
+      setIsLoading(false);
+      if (result) {
+        invalidateRecordings();
+        notify('success', `${documentRobotName} created successfully!`);
+        navigate('/robots');
+      } else {
+        notify('error', 'Failed to create document parse robot');
+      }
+    } catch (error: any) {
+      setIsLoading(false);
+      notify('error', error.message || 'Failed to create document parse robot');
+    }
+  };
+
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
       <Box>
@@ -337,6 +403,7 @@ const RobotCreate: React.FC = () => {
             <Tab label="Scrape" id="scrape-robot" aria-controls="scrape-robot" />
             <Tab label="Crawl" id="crawl-robot" aria-controls="crawl-robot" />
             <Tab label="Search" id="search-robot" aria-controls="search-robot" />
+            <Tab label="Document" id="document-robot" aria-controls="document-robot" />
           </Tabs>
         </Box>
 
@@ -1227,6 +1294,217 @@ const RobotCreate: React.FC = () => {
               >
                 {isLoading ? 'Creating...' : 'Create Robot'}
               </Button>
+            </Box>
+          </Card>
+        </TabPanel>
+        {/* Document Robot Tab */}
+        <TabPanel value={tabValue} index={4}>
+          <Card sx={{ mb: 4, p: 4 }}>
+            <Box display="flex" flexDirection="column" alignItems="center">
+              <Typography variant="body2" color="text.secondary" mb={3}>
+                Process PDFs with AI — extract structured fields or convert to Markdown, HTML, and links.
+              </Typography>
+
+              <Box sx={{ width: '100%', maxWidth: 700 }}>
+                <Typography variant="subtitle1" gutterBottom sx={{ mb: 2 }} color="text.secondary">
+                  Choose Mode
+                </Typography>
+
+                <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                  <Card
+                    onClick={() => setDocumentMode('extract')}
+                    sx={{
+                      flex: 1,
+                      cursor: 'pointer',
+                      border: '2px solid',
+                      borderColor: documentMode === 'extract' ? '#ff00c3' : 'divider',
+                      transition: 'all 0.2s',
+                      '&:hover': { borderColor: '#ff00c3' },
+                    }}
+                  >
+                    <CardContent sx={{ textAlign: 'center', py: 3, color: 'text.secondary' }}>
+                      <AutoAwesome sx={{ fontSize: 26, mb: 0.5 }} />
+                      <Typography variant="h6" gutterBottom>Extract</Typography>
+                      <Typography variant="body2">
+                        Pull structured data fields from a document using AI.
+                      </Typography>
+                    </CardContent>
+                  </Card>
+
+                  <Card
+                    onClick={() => setDocumentMode('parse')}
+                    sx={{
+                      flex: 1,
+                      cursor: 'pointer',
+                      border: '2px solid',
+                      borderColor: documentMode === 'parse' ? '#ff00c3' : 'divider',
+                      transition: 'all 0.2s',
+                      '&:hover': { borderColor: '#ff00c3' },
+                    }}
+                  >
+                    <CardContent sx={{ textAlign: 'center', py: 3, color: 'text.secondary' }}>
+                      <Article sx={{ fontSize: 26, mb: 0.5 }} />
+                      <Typography variant="h6" gutterBottom>Parse</Typography>
+                      <Typography variant="body2">
+                        Convert a document to Markdown, HTML, and links.
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Box>
+
+                <TextField
+                  label="Robot Name"
+                  fullWidth
+                  value={documentRobotName}
+                  onChange={(e) => setDocumentRobotName(e.target.value)}
+                  sx={{ mb: 3 }}
+                />
+
+                <Box
+                  sx={{
+                    border: '2px dashed',
+                    borderColor: documentFile ? '#ff00c3' : 'divider',
+                    borderRadius: 2,
+                    p: 3,
+                    mb: 3,
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    '&:hover': { borderColor: '#ff00c3' },
+                  }}
+                  onClick={() => document.getElementById('doc-upload-input')?.click()}
+                >
+                  <input
+                    id="doc-upload-input"
+                    type="file"
+                    accept="application/pdf"
+                    style={{ display: 'none' }}
+                    onChange={(e) => setDocumentFile(e.target.files?.[0] || null)}
+                  />
+                  {documentFile ? (
+                    <Typography variant="body1" color="#ff00c3" fontWeight={500}>
+                      📄 {documentFile.name}
+                    </Typography>
+                  ) : (
+                    <>
+                      <Typography variant="body1" fontWeight={500}>Click to upload a PDF</Typography>
+                      <Typography variant="body2" color="text.secondary">Max file size: 10 MB</Typography>
+                    </>
+                  )}
+                </Box>
+
+                {documentMode === 'extract' && (
+                  <>
+                    <TextField
+                      label="Extraction Prompt"
+                      fullWidth
+                      multiline
+                      rows={3}
+                      value={documentPrompt}
+                      onChange={(e) => setDocumentPrompt(e.target.value)}
+                      placeholder='e.g. "Extract invoice number, vendor name, total amount, and line items"'
+                      sx={{ mb: 3 }}
+                    />
+
+                    <FormControl fullWidth sx={{ mb: 2 }}>
+                      <InputLabel>LLM Provider</InputLabel>
+                      <Select
+                        value={documentLlmProvider}
+                        label="LLM Provider"
+                        onChange={(e) => setDocumentLlmProvider(e.target.value as 'anthropic' | 'openai' | 'ollama')}
+                      >
+                        <MenuItem value="ollama">Ollama (Local)</MenuItem>
+                        <MenuItem value="openai">OpenAI</MenuItem>
+                        <MenuItem value="anthropic">Anthropic</MenuItem>
+                      </Select>
+                    </FormControl>
+
+                    <TextField
+                      label={documentLlmProvider === 'ollama' ? 'Model (e.g. llama3.2:latest)' : 'Model (e.g. gpt-4o-mini)'}
+                      fullWidth
+                      value={documentLlmModel}
+                      onChange={(e) => setDocumentLlmModel(e.target.value)}
+                      sx={{ mb: 2 }}
+                    />
+
+                    {documentLlmProvider !== 'ollama' && (
+                      <TextField
+                        label="API Key"
+                        fullWidth
+                        type="password"
+                        value={documentLlmApiKey}
+                        onChange={(e) => setDocumentLlmApiKey(e.target.value)}
+                        sx={{ mb: 2 }}
+                      />
+                    )}
+
+                    {documentLlmProvider === 'ollama' && (
+                      <TextField
+                        label="Ollama Base URL"
+                        fullWidth
+                        value={documentLlmBaseUrl}
+                        onChange={(e) => setDocumentLlmBaseUrl(e.target.value)}
+                        placeholder="http://localhost:11434"
+                        sx={{ mb: 3 }}
+                      />
+                    )}
+                  </>
+                )}
+
+                {documentMode === 'parse' && (
+                  <FormControl fullWidth sx={{ mb: 3 }}>
+                    <InputLabel id="doc-parse-formats-label">Output Formats</InputLabel>
+                    <Select
+                      labelId="doc-parse-formats-label"
+                      multiple
+                      value={documentParseFormats}
+                      label="Output Formats"
+                      onChange={(e) => {
+                        const value = (typeof e.target.value === 'string'
+                          ? e.target.value.split(',')
+                          : e.target.value) as OutputFormats[];
+                        setDocumentParseFormats(value);
+                      }}
+                      renderValue={(selected) =>
+                        (selected as OutputFormats[]).length === 0
+                          ? <span style={{ color: '#999' }}>Select formats</span>
+                          : (selected as OutputFormats[]).map((v) => OUTPUT_FORMAT_LABELS[v] ?? v).join(', ')
+                      }
+                      MenuProps={{ PaperProps: { style: { maxHeight: 300 } } }}
+                    >
+                      {DOC_PARSE_FORMAT_OPTIONS.map((format) => (
+                        <MenuItem key={format} value={format}>
+                          <Checkbox checked={documentParseFormats.includes(format)} />
+                          {OUTPUT_FORMAT_LABELS[format]}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+
+                <Button
+                  variant="contained"
+                  fullWidth
+                  onClick={documentMode === 'extract' ? handleCreateDocumentRobot : handleCreateDocumentParseRobot}
+                  disabled={
+                    !documentFile ||
+                    !documentRobotName.trim() ||
+                    (documentMode === 'extract' && !documentPrompt.trim()) ||
+                    (documentMode === 'parse' && documentParseFormats.length === 0) ||
+                    isLoading
+                  }
+                  sx={{
+                    bgcolor: '#ff00c3',
+                    py: 1.4,
+                    fontSize: '1rem',
+                    textTransform: 'none',
+                    borderRadius: 2,
+                    '&:hover': { bgcolor: '#d400a6' },
+                  }}
+                  startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
+                >
+                  {isLoading ? 'Creating...' : 'Create Robot'}
+                </Button>
+              </Box>
             </Box>
           </Card>
         </TabPanel>
