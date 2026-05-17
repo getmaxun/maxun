@@ -17,6 +17,7 @@ import { WorkflowFile } from 'maxun-core';
 import { cancelScheduledWorkflow, scheduleWorkflow } from '../storage/schedule';
 import { addJob } from '../storage/graphileWorker';
 import { QUEUE_NAMES } from '../task-runner';
+import { io as serverIo } from '../server';
 import { WorkflowEnricher } from '../sdk/workflowEnricher';
 import sequelizeInstance from '../storage/db';
 import { Op } from 'sequelize';
@@ -1996,6 +1997,15 @@ router.post('/runs/document-run/:id', requireSignIn, async (req: AuthenticatedRe
       browserId: runId,
     }, { maxAttempts: 1 });
 
+    serverIo.of('/queued-run').to(`user-${req.user.id}`).emit('run-started', {
+      runId,
+      robotMetaId: recording.recording_meta.id,
+      robotName: recording.recording_meta.name,
+      status: 'running',
+      startedAt: now,
+      runByUserId: req.user.id,
+    });
+
     logger.log('info', `Queued document-run ${runId} for robot ${recording.recording_meta.id}`);
     return res.status(202).json({ runId, robotMetaId: recording.recording_meta.id, status: 'running' });
   } catch (error: any) {
@@ -2042,6 +2052,15 @@ router.post('/runs/document-parse-run/:id', requireSignIn, async (req: Authentic
       runId,
       browserId: runId,
     }, { maxAttempts: 1 });
+
+    serverIo.of('/queued-run').to(`user-${req.user.id}`).emit('run-started', {
+      runId,
+      robotMetaId: recording.recording_meta.id,
+      robotName: recording.recording_meta.name,
+      status: 'running',
+      startedAt: now,
+      runByUserId: req.user.id,
+    });
 
     logger.log('info', `Queued document-parse-run ${runId} for robot ${recording.recording_meta.id}`);
     return res.status(202).json({ runId, robotMetaId: recording.recording_meta.id, status: 'running' });
