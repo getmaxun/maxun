@@ -48,6 +48,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     confidence: 'high' | 'medium' | 'low';
   } | null>(null);
   const autoDetectionRunRef = useRef<string | null>(null);
+  const userHasSelectedPaginationRef = useRef<boolean>(false);
 
   const { notify, currentWorkflowActionsState, setCurrentWorkflowActionsState, resetInterpretationLog, currentListActionId, setCurrentListActionId, currentTextActionId, setCurrentTextActionId, currentScreenshotActionId, setCurrentScreenshotActionId, isDOMMode, updateDOMMode, currentTextGroupName } = useGlobalInfoStore();
   const {
@@ -375,6 +376,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     setShowLimitOptions(false);
     updateLimitType('');
     updateCustomLimit('');
+    userHasSelectedPaginationRef.current = false;
   }, [updatePaginationType, updateLimitType, updateCustomLimit]);
 
   const handleStopGetList = useCallback(() => {
@@ -482,6 +484,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         if (currentListStepForAutoDetect?.listSelector) {
           if (autoDetectionRunRef.current !== currentListActionId) {
             autoDetectionRunRef.current = currentListActionId;
+            userHasSelectedPaginationRef.current = false;
 
             notify('info', 'Detecting pagination...');
 
@@ -492,23 +495,25 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
 
               const handleScrollTestResult = (result: any) => {
                 if (result.success && result.contentLoaded) {
-                  notify("success", "Scroll Down pagination has been auto-detected.");
-                  setAutoDetectedPagination({
-                    type: 'scrollDown',
-                    selector: null,
-                    confidence: 'high'
-                  });
-                  updatePaginationType('scrollDown');
-
-                  const latestListStep = browserSteps.find(
-                    step => step.type === 'list' && step.actionId === currentListActionId
-                  );
-                  if (latestListStep) {
-                    updateListStepPagination(latestListStep.id, {
+                  if (!userHasSelectedPaginationRef.current) {
+                    notify("success", "Scroll Down pagination has been auto-detected.");
+                    setAutoDetectedPagination({
                       type: 'scrollDown',
                       selector: null,
-                      isShadow: false
+                      confidence: 'high'
                     });
+                    updatePaginationType('scrollDown');
+
+                    const latestListStep = browserSteps.find(
+                      step => step.type === 'list' && step.actionId === currentListActionId
+                    );
+                    if (latestListStep) {
+                      updateListStepPagination(latestListStep.id, {
+                        type: 'scrollDown',
+                        selector: null,
+                        isShadow: false
+                      });
+                    }
                   }
                 } else if (result.success && !result.contentLoaded) {
                   const iframeElement = document.querySelector('#browser-window iframe') as HTMLIFrameElement;
@@ -522,7 +527,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                       { disableScrollDetection: true }
                     );
 
-                    if (detectionResult.type) {
+                    if (detectionResult.type && !userHasSelectedPaginationRef.current) {
                       if (detectionResult.type === 'scrollDown') {
                         notify("success", "Scroll Down pagination has been auto-detected.");
                       } else if (detectionResult.type === 'scrollUp') {
@@ -623,8 +628,10 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                     }
                   }
                 } else {
-                  console.error('Scroll test failed:', result.error);
-                  setAutoDetectedPagination(null);
+                  if (!userHasSelectedPaginationRef.current) {
+                    console.error('Scroll test failed:', result.error);
+                    setAutoDetectedPagination(null);
+                  }
                 }
 
                 socket?.off('paginationScrollTestResult', handleScrollTestResult);
@@ -740,6 +747,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         setAutoDetectedPagination(null);
         updatePaginationType("");
         setCaptureStage("initial");
+        userHasSelectedPaginationRef.current = false;
         break;
     }
   }, [captureStage,
@@ -755,6 +763,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
 
   const handlePaginationSettingSelect = (option: PaginationType) => {
     updatePaginationType(option);
+    userHasSelectedPaginationRef.current = true;
   };
 
   const discardGetText = useCallback(() => {
