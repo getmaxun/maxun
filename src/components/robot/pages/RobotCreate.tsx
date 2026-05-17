@@ -32,7 +32,6 @@ import { createScrapeRobot, createLLMRobot, createAndRunRecording, createCrawlRo
 import { AuthContext } from '../../../context/auth';
 import { DEFAULT_OUTPUT_FORMATS, OUTPUT_FORMAT_LABELS, OUTPUT_FORMAT_OPTIONS, OutputFormats } from '../../../constants/outputFormats';
 
-
 interface TabPanelProps {
   children?: React.ReactNode;
   index: number;
@@ -733,7 +732,7 @@ const RobotCreate: React.FC = () => {
                 />
 
                 <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start' }}>
-                  <FormControl sx={{ mb: 2, width: '300px' }}>
+                  <FormControl fullWidth sx={{ mb: 2 }}>
                     <InputLabel id="output-formats-label">Output Formats *</InputLabel>
                     <Select
                       labelId="output-formats-label"
@@ -952,7 +951,7 @@ const RobotCreate: React.FC = () => {
                 />
 
                 <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start', mb: 2 }}>
-                  <FormControl sx={{ width: '300px' }}>
+                  <FormControl fullWidth sx={{ mb: 2 }}>
                     <InputLabel id="crawl-output-formats-label">Output Formats *</InputLabel>
                     <Select
                       labelId="crawl-output-formats-label"
@@ -1177,7 +1176,7 @@ const RobotCreate: React.FC = () => {
 
                 {searchMode === 'scrape' ? (
                   <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start', mb: 2 }}>
-                    <FormControl sx={{ width: '300px' }}>
+                    <FormControl fullWidth sx={{ mb: 2 }}>
                       <InputLabel id="search-output-formats-label">Output Formats *</InputLabel>
                       <Select
                         labelId="search-output-formats-label"
