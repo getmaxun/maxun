@@ -847,7 +847,7 @@ const RobotCreate: React.FC = () => {
                   label="Smart Queries (Optional)"
                   helperText="After scraping, Smart Queries analyze the page and return results based on your instructions."
                   sx={{ mb: 2 }}
-                  FormHelperTextProps={{ sx: { ml: 0.5 } }}
+                  FormHelperTextProps={{ sx: { ml: 0.5, mb:2 } }}
                 />
                 <Box>
                     <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
