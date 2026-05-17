@@ -562,15 +562,14 @@ const RobotCreate: React.FC = () => {
                       label="Model"
                       placeholder={
                         llmProvider === 'ollama' ? 'e.g. llama3.2-vision' :
-                        llmProvider === 'anthropic' ? 'e.g. claude-sonnet-4-6' :
-                        'e.g. gpt-4o'
+                          llmProvider === 'anthropic' ? 'e.g. claude-sonnet-4-6' :
+                            'e.g. gpt-4o'
                       }
                       onChange={(e) => setLlmModel(e.target.value)}
-                      helperText={`Leave blank to use default: ${
-                        llmProvider === 'ollama' ? 'llama3.2-vision' :
-                        llmProvider === 'anthropic' ? 'claude-sonnet-4-6' :
-                        'gpt-4o'
-                      }`}
+                      helperText={`Leave blank to use default: ${llmProvider === 'ollama' ? 'llama3.2-vision' :
+                          llmProvider === 'anthropic' ? 'claude-sonnet-4-6' :
+                            'gpt-4o'
+                        }`}
                       FormHelperTextProps={{ sx: { ml: 0.5 } }}
                     />
                   </Box>
@@ -853,76 +852,75 @@ const RobotCreate: React.FC = () => {
                         href="https://docs.maxun.dev/robot/scrape#smart-queries"
                         target="_blank"
                         rel="noopener noreferrer"
-                        style={{ textDecoration: "none"}}
+                        style={{ textDecoration: "none" }}
                       >
                         Learn more
                       </a>
                     </>
                   }
                   sx={{ mb: 2 }}
-                  FormHelperTextProps={{ sx: { ml: 0.5, mb:2 } }}
+                  FormHelperTextProps={{ sx: { ml: 0.5, mb: 2 } }}
                 />
                 <Box>
-                    <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-                      <FormControl sx={{ flex: 1 }}>
-                        <InputLabel>LLM Provider</InputLabel>
-                        <Select
-                          value={scrapePromptLlmProvider}
-                          label="LLM Provider"
-                          onChange={(e) => {
-                            const provider = e.target.value as 'anthropic' | 'openai' | 'ollama';
-                            setScrapePromptLlmProvider(provider);
-                            setScrapePromptLlmModel('');
-                            setScrapePromptLlmBaseUrl(provider === 'ollama' ? 'http://localhost:11434' : '');
-                          }}
-                        >
-                          <MenuItem value="ollama">Ollama (Local)</MenuItem>
-                          <MenuItem value="anthropic">Anthropic (Claude)</MenuItem>
-                          <MenuItem value="openai">OpenAI (GPT-4)</MenuItem>
-                        </Select>
-                      </FormControl>
-                      <TextField
-                        sx={{ flex: 1 }}
-                        value={scrapePromptLlmModel}
-                        label="Model"
-                        placeholder={
-                          scrapePromptLlmProvider === 'ollama' ? 'e.g. llama3.2-vision' :
+                  <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                    <FormControl sx={{ flex: 1 }}>
+                      <InputLabel>LLM Provider</InputLabel>
+                      <Select
+                        value={scrapePromptLlmProvider}
+                        label="LLM Provider"
+                        onChange={(e) => {
+                          const provider = e.target.value as 'anthropic' | 'openai' | 'ollama';
+                          setScrapePromptLlmProvider(provider);
+                          setScrapePromptLlmModel('');
+                          setScrapePromptLlmBaseUrl(provider === 'ollama' ? 'http://localhost:11434' : '');
+                        }}
+                      >
+                        <MenuItem value="ollama">Ollama (Local)</MenuItem>
+                        <MenuItem value="anthropic">Anthropic (Claude)</MenuItem>
+                        <MenuItem value="openai">OpenAI (GPT-4)</MenuItem>
+                      </Select>
+                    </FormControl>
+                    <TextField
+                      sx={{ flex: 1 }}
+                      value={scrapePromptLlmModel}
+                      label="Model"
+                      placeholder={
+                        scrapePromptLlmProvider === 'ollama' ? 'e.g. llama3.2-vision' :
                           scrapePromptLlmProvider === 'anthropic' ? 'e.g. claude-sonnet-4-6' :
-                          'e.g. gpt-4o'
-                        }
-                        onChange={(e) => setScrapePromptLlmModel(e.target.value)}
-                        helperText={`Leave blank to use default: ${
-                          scrapePromptLlmProvider === 'ollama' ? 'llama3.2-vision' :
+                            'e.g. gpt-4o'
+                      }
+                      onChange={(e) => setScrapePromptLlmModel(e.target.value)}
+                      helperText={`Leave blank to use default: ${scrapePromptLlmProvider === 'ollama' ? 'llama3.2-vision' :
                           scrapePromptLlmProvider === 'anthropic' ? 'claude-sonnet-4-6' :
-                          'gpt-4o'
+                            'gpt-4o'
                         }`}
-                        FormHelperTextProps={{ sx: { ml: 0.5, mb: 1 } }}
-                      />
-                    </Box>
-                    {scrapePromptLlmProvider !== 'ollama' && (
-                      <TextField
-                        placeholder={`${scrapePromptLlmProvider === 'anthropic' ? 'Anthropic' : 'OpenAI'} API Key`}
-                        variant="outlined"
-                        fullWidth
-                        type="password"
-                        value={scrapePromptLlmApiKey}
-                        onChange={(e) => setScrapePromptLlmApiKey(e.target.value)}
-                        label="API Key (Optional if set in .env)"
-                        sx={{ mb: 2 }}
-                      />
-                    )}
-                    {scrapePromptLlmProvider === 'ollama' && (
-                      <TextField
-                        placeholder="http://localhost:11434"
-                        variant="outlined"
-                        fullWidth
-                        value={scrapePromptLlmBaseUrl}
-                        onChange={(e) => setScrapePromptLlmBaseUrl(e.target.value)}
-                        label="Ollama Base URL"
-                        sx={{ mb: 2 }}
-                      />
-                    )}
+                      FormHelperTextProps={{ sx: { ml: 0.5, mb: 1 } }}
+                    />
                   </Box>
+                  {scrapePromptLlmProvider !== 'ollama' && (
+                    <TextField
+                      placeholder={`${scrapePromptLlmProvider === 'anthropic' ? 'Anthropic' : 'OpenAI'} API Key`}
+                      variant="outlined"
+                      fullWidth
+                      type="password"
+                      value={scrapePromptLlmApiKey}
+                      onChange={(e) => setScrapePromptLlmApiKey(e.target.value)}
+                      label="API Key (Optional if set in .env)"
+                      sx={{ mb: 2 }}
+                    />
+                  )}
+                  {scrapePromptLlmProvider === 'ollama' && (
+                    <TextField
+                      placeholder="http://localhost:11434"
+                      variant="outlined"
+                      fullWidth
+                      value={scrapePromptLlmBaseUrl}
+                      onChange={(e) => setScrapePromptLlmBaseUrl(e.target.value)}
+                      label="Ollama Base URL"
+                      sx={{ mb: 2 }}
+                    />
+                  )}
+                </Box>
               </Box>
 
               <Button
