@@ -94,22 +94,6 @@ Maxun can run locally with or without Docker
 3. [Upgrade Maxun Without Docker Compose Setup](https://docs.maxun.dev/installation/upgrade#upgrading-with-local-setup)
 4. [Self Host With Neon](https://docs.maxun.dev/self-host/neon)
 
-## Sponsors
-<table>
-  <tr>
-  <td width="229">
-      <br/>
-      <a href="https://www.testmuai.com/?utm_medium=sponsor&utm_source=maxun" target="_blank">
-        <img src="https://github.com/user-attachments/assets/6c96005b-85df-43e0-9b63-96aaca676c11" /><br/><br/>
-        <b>TestMu AI</b>
-      </a>
-      <br/>
-      <sub>The Native AI-Agentic Cloud Platform to Supercharge Quality Engineering. Test Intelligently and Ship Faster.
-      </sub>
-    </td>
-  </tr>
-</table>
-
 ## Features
 
 - ✨ **Extract Data With No-Code** – Point and click interface
