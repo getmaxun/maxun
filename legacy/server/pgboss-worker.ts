@@ -24,6 +24,8 @@ import { convertPageToMarkdown, convertPageToHTML, convertPageToLinks, convertPa
 import { executeBrowserAgent } from './sdk/browserAgent';
 import { processRobotOutputFormats } from './utils/output-post-processor';
 import { getInterpretationFailureReason, hasExpectedRobotOutput } from './utils/output-validation';
+import { executeDocumentRun } from './utils/document/executeDocumentRun';
+import { executeDocumentParseRun } from './utils/document/executeDocumentParseRun';
 
 if (!process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_HOST || !process.env.DB_PORT || !process.env.DB_NAME) {
     throw new Error('Failed to start pgboss worker: one or more required environment variables are missing.');
@@ -172,6 +174,24 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
     }
 
     const plainRun = run.toJSON();
+
+    const recordingForTypeCheck = await Robot.findOne({
+      where: { 'recording_meta.id': plainRun.robotMetaId },
+      raw: true,
+    });
+
+    if (recordingForTypeCheck?.recording_meta?.type === 'doc-extract') {
+      logger.log('info', `Processing doc-extract run ${data.runId} without browser`);
+      await executeDocumentRun(recordingForTypeCheck, run, data.userId, serverIo);
+      return { success: true };
+    }
+
+    if (recordingForTypeCheck?.recording_meta?.type === 'doc-parse') {
+      logger.log('info', `Processing doc-parse run ${data.runId} without browser`);
+      await executeDocumentParseRun(recordingForTypeCheck, run, data.userId, serverIo);
+      return { success: true };
+    }
+
     const browserId = data.browserId || plainRun.browserId;
 
     if (!browserId) {
@@ -362,7 +382,6 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
             }
           }
 
-          // Success update
           await run.update({
             status: 'success',
             finishedAt: new Date().toLocaleString(),
@@ -380,7 +399,6 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
 
           logger.log('info', `Markdown robot execution completed for run ${data.runId}`);
 
-          // Notify sockets
           try {
             const completionData = {
               runId: data.runId,
@@ -396,7 +414,6 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
             logger.log('warn', `Failed to send run-completed notification for markdown robot run ${data.runId}: ${socketError.message}`);
           }
 
-          // Webhooks
           try {
             const webhookPayload: any = {
               runId: data.runId,
@@ -547,7 +564,6 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
         ...(interpretationInfo.binaryOutput || {})
       };
 
-      // Post-process crawl/search output according to selected output formats
       const robotType = recording.recording_meta.type;
       const outputFormats = (recording.recording_meta as any).formats as string[] | undefined;
       if (robotType === 'crawl' || robotType === 'search') {
@@ -627,7 +643,6 @@ async function processRunExecution(job: Job<ExecuteRunData>) {
       
       const totalRowsExtracted = totalSchemaItemsExtracted + totalListItemsExtracted;
 
-      // Capture metrics
       capture(
         'maxun-oss-run-created',
         {
@@ -988,7 +1003,6 @@ async function abortRun(runId: string, userId: string): Promise<boolean> {
   }
 }
 
-// Track registered queues globally for individual queue registration
 const registeredUserQueues = new Map();
 const registeredAbortQueues = new Map();
 
@@ -1037,7 +1051,6 @@ async function registerAbortWorkerForQueue(queueName: string) {
 async function registerRunExecutionWorker() {
   try {
 
-    // Worker for executing runs (Legacy)
     await pgBoss.work('execute-run', async (job: Job<ExecuteRunData> | Job<ExecuteRunData>[]) => {
       try {
         const singleJob = Array.isArray(job) ? job[0] : job;
@@ -1128,7 +1141,6 @@ async function startWorkers() {
     await pgBoss.start();
     logger.log('info', 'PgBoss worker started successfully');
 
-    // Worker for initializing browser recording
     await pgBoss.work('initialize-browser-recording', async (job: Job<InitializeBrowserData> | Job<InitializeBrowserData>[]) => {
       try {
         const data = extractJobData(job);
@@ -1145,7 +1157,6 @@ async function startWorkers() {
       }
     });
 
-    // Worker for stopping a browser
     await pgBoss.work('destroy-browser', async (job: Job<DestroyBrowserData> | Job<DestroyBrowserData>[]) => {
       try {
         const data = extractJobData(job);
@@ -1162,7 +1173,6 @@ async function startWorkers() {
       }
     });
 
-    // Worker for interpreting workflow
     await pgBoss.work('interpret-workflow', async (job: Job<InterpretWorkflow> | Job<InterpretWorkflow>[]) => {
       try {
         const data = extractJobData(job);
@@ -1179,7 +1189,6 @@ async function startWorkers() {
       }
     });
 
-    // Worker for stopping workflow interpretation
     await pgBoss.work('stop-interpretation', async (job: Job<StopInterpretWorkflow> | Job<StopInterpretWorkflow>[]) => {
       try {
         const data = extractJobData(job);
@@ -1196,10 +1205,8 @@ async function startWorkers() {
       }
     });
     
-    // Register the run execution worker
     await registerRunExecutionWorker();
 
-    // Register the abort run worker
     await registerAbortRunWorker();
 
     logger.log('info', 'All recording workers registered successfully');
@@ -1214,7 +1221,6 @@ pgBoss.on('error', (error) => {
   logger.log('error', `PgBoss error: ${error.message}`);
 });
 
-// Handle graceful shutdown
 process.on('SIGTERM', async () => {
   logger.log('info', 'SIGTERM received, shutting down PgBoss...');
 

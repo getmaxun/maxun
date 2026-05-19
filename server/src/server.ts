@@ -12,7 +12,6 @@ import sequelize, { connectDB, syncDB } from './storage/db'
 import cookieParser from 'cookie-parser';
 import { SERVER_PORT } from "./constants/config";
 import { readdirSync } from "fs"
-import { fork } from 'child_process';
 import { capture } from "./utils/analytics";
 import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './swagger/config';
@@ -20,8 +19,9 @@ import connectPgSimple from 'connect-pg-simple';
 import pg from 'pg';
 import session from 'express-session';
 import { processQueuedRuns, recoverOrphanedRuns } from './routes/storage';
-import { startWorkers } from './pgboss-worker';
-import { stopPgBossClient, startPgBossClient } from './storage/pgboss'
+import { startWorkers, stopWorkers } from './task-runner';
+import { startGraphileWorkerUtils, stopGraphileWorkerUtils } from './storage/graphileWorker';
+import { startScheduleWorker, stopScheduleWorker } from './schedule-worker';
 import Run from './models/Run';
 
 const normalizeOrigin = (urlString?: string): string => {
@@ -135,11 +135,6 @@ readdirSync(path.join(__dirname, 'api')).forEach((r) => {
 });
 
 const isProduction = process.env.NODE_ENV === 'production';
-const workerPath = path.resolve(__dirname, isProduction ? './schedule-worker.js' : './schedule-worker.ts');
-const recordingWorkerPath = path.resolve(__dirname, isProduction ? './pgboss-worker.js' : './pgboss-worker.ts');
-
-let workerProcess: any;
-let recordingWorkerProcess: any;
 
 app.get('/', function (req, res) {
   capture(
@@ -177,9 +172,9 @@ if (require.main === module) {
 
       await recoverOrphanedRuns();
 
-      await startPgBossClient();
-
+      await startGraphileWorkerUtils();
       await startWorkers();
+      await startScheduleWorker();
 
       io.of('/queued-run').on('connection', (socket) => {
         const userId = socket.handshake.query.userId as string;
@@ -206,55 +201,7 @@ if (require.main === module) {
         }
       });
 
-      if (!isProduction) {
-        // Development mode
-        if (process.platform === 'win32') {
-          workerProcess = fork(workerPath, [], {
-            execArgv: ['--inspect=5859'],
-          });
-          workerProcess.on('message', (message: any) => {
-            console.log(`Message from worker: ${message}`);
-          });
-          workerProcess.on('error', (error: any) => {
-            console.error(`Error in worker: ${error}`);
-          });
-          workerProcess.on('exit', (code: any) => {
-            console.log(`Worker exited with code: ${code}`);
-          });
-
-          recordingWorkerProcess = fork(recordingWorkerPath, [], {
-            execArgv: ['--inspect=5860'],
-          });
-          recordingWorkerProcess.on('message', (message: any) => {
-            console.log(`Message from recording worker: ${message}`);
-          });
-          recordingWorkerProcess.on('error', (error: any) => {
-            console.error(`Error in recording worker: ${error}`);
-          });
-          recordingWorkerProcess.on('exit', (code: any) => {
-            console.log(`Recording worker exited with code: ${code}`);
-          });
-        } else {
-          // Run in same process for non-Windows development
-          try {
-            await import('./schedule-worker');
-            await import('./pgboss-worker');
-            console.log('Workers started in main process for memory sharing');
-          } catch (error) {
-            console.error('Failed to start workers in main process:', error);
-          }
-        }
-      } else {
-        // Production mode - run workers in same process for memory sharing
-        try {
-          await import('./schedule-worker');
-          await import('./pgboss-worker');
-          logger.log('info', 'Workers started in main process');
-        } catch (error: any) {
-          logger.log('error', `Failed to start workers: ${error.message}`);
-          process.exit(1);
-        }
-      }
+      logger.log('info', 'All workers started in main process');
 
       logger.log('info', `Server listening on port ${SERVER_PORT}`);
     } catch (error: any) {
@@ -345,19 +292,12 @@ if (require.main === module) {
       console.error('Error during browser cleanup:', error.message);
     }
 
-    if (!isProduction) {
-      try {
-        if (workerProcess) {
-          workerProcess.kill('SIGTERM');
-        }
-        if (recordingWorkerProcess) {
-          recordingWorkerProcess.kill('SIGTERM');
-        }
-      } catch (workerError: any) {
-        console.error('Error terminating worker processes:', workerError.message);
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      await stopScheduleWorker();
+      await stopWorkers();
+      await stopGraphileWorkerUtils();
+    } catch (workerError: any) {
+      console.error('Error stopping workers:', workerError.message);
     }
 
     try {
@@ -392,12 +332,6 @@ if (require.main === module) {
       shutdownSuccessful = false;
     }
 
-    try {
-      await stopPgBossClient();
-    } catch (pgBossError: any) {
-      console.error('Error closing PgBoss client connection:', pgBossError.message);
-      shutdownSuccessful = false;
-    }
 
     try {
       await sequelize.close();
