@@ -7,10 +7,11 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
+  CircularProgress,
 } from "@mui/material";
 import { Button } from "@mui/material";
 import { DeleteForever, KeyboardArrowDown, KeyboardArrowUp, Settings } from "@mui/icons-material";
-import { deleteRunFromStorage } from "../../api/storage";
+import { deleteRunFromStorage, getStoredRun } from "../../api/storage";
 import { columns, Data } from "./RunsTable";
 import { RunContent } from "./RunContent";
 import { GenericModal } from "../ui/GenericModal";
@@ -56,6 +57,8 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
   const [isDeleteOpen, setDeleteOpen] = useState(false);
   const [openSettingsModal, setOpenSettingsModal] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [runDetails, setRunDetails] = useState<Data>(row);
+  const [isLoadingRunDetails, setIsLoadingRunDetails] = useState(false);
   const runByLabel = row.runByScheduleId
     ? `${row.runByScheduleId}`
     : row.runByUserId
@@ -108,6 +111,43 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
     const newOpen = !isOpen;
     onToggleExpanded(newOpen);
   };
+
+  useEffect(() => {
+    setRunDetails(prev => {
+      if (prev.runId !== row.runId) return row;
+      return {
+        ...row,
+        serializableOutput: prev.serializableOutput ?? row.serializableOutput,
+        binaryOutput: prev.binaryOutput ?? row.binaryOutput,
+      };
+    });
+  }, [row]);
+
+  useEffect(() => {
+    const hasOutputLoaded =
+      runDetails.serializableOutput !== undefined &&
+      runDetails.binaryOutput !== undefined;
+
+    if (!isOpen || row.status === 'running' || row.status === 'queued' || hasOutputLoaded) return;
+
+    let isCancelled = false;
+    setIsLoadingRunDetails(true);
+
+    getStoredRun(row.runId)
+      .then((run) => {
+        if (!run || isCancelled) return;
+        setRunDetails(prev => ({ ...prev, ...run }));
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsLoadingRunDetails(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isOpen, row.runId, row.status, runDetails.serializableOutput, runDetails.binaryOutput]);
 
   useEffect(() => {
     const fetchUserEmail = async () => {
@@ -233,9 +273,15 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
       <TableRow>
         <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
           <Collapse in={isOpen} timeout="auto" unmountOnExit>
-            <RunContent row={row} abortRunHandler={handleAbort} currentLog={currentLog}
-              logEndRef={logEndRef} interpretationInProgress={runningRecordingName === row.name}
-              workflowProgress={workflowProgress} />
+            {isLoadingRunDetails ? (
+              <Box display="flex" justifyContent="center" py={3}>
+                <CircularProgress size={24} />
+              </Box>
+            ) : (
+              <RunContent row={runDetails} abortRunHandler={handleAbort} currentLog={currentLog}
+                logEndRef={logEndRef} interpretationInProgress={runningRecordingName === row.name}
+                workflowProgress={workflowProgress} />
+            )}
           </Collapse>
         </TableCell>
       </TableRow>
