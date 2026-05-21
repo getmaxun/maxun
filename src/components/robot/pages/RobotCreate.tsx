@@ -54,6 +54,187 @@ function TabPanel(props: TabPanelProps) {
   );
 }
 
+type LlmProvider = 'anthropic' | 'openai' | 'ollama';
+type OpenAICompatiblePresetId = 'openai' | 'qianfan' | 'openrouter' | 'deepseek' | 'custom';
+
+interface OpenAICompatiblePreset {
+  label: string;
+  baseUrl: string;
+  baseUrlPlaceholder: string;
+  baseUrlHelperText: string;
+  modelPlaceholder: string;
+  modelHelperText: string;
+  apiKeyPlaceholder: string;
+  apiKeyHelperText: string;
+}
+
+const OLLAMA_DEFAULT_BASE_URL = 'http://localhost:11434';
+const DEFAULT_OPENAI_COMPATIBLE_PRESET_ID: OpenAICompatiblePresetId = 'openai';
+
+const OPENAI_COMPATIBLE_PRESETS: Record<OpenAICompatiblePresetId, OpenAICompatiblePreset> = {
+  openai: {
+    label: 'OpenAI',
+    baseUrl: 'https://api.openai.com/v1',
+    baseUrlPlaceholder: 'https://api.openai.com/v1',
+    baseUrlHelperText: 'Override only if your OpenAI-compatible endpoint is different.',
+    modelPlaceholder: 'e.g. gpt-4o',
+    modelHelperText: "Use an OpenAI model, or leave blank to use Maxun's default.",
+    apiKeyPlaceholder: 'OpenAI API key',
+    apiKeyHelperText: 'Use an OpenAI API key. If blank, Maxun falls back to OPENAI_API_KEY on the server.',
+  },
+  qianfan: {
+    label: 'Qianfan / ERNIE',
+    baseUrl: 'https://qianfan.baidubce.com/v2',
+    baseUrlPlaceholder: 'https://qianfan.baidubce.com/v2',
+    baseUrlHelperText: 'Use the Qianfan OpenAI-compatible endpoint, or override it for your account.',
+    modelPlaceholder: 'e.g. ernie-4.5-turbo-128k',
+    modelHelperText: 'Enter an ERNIE model available in your Qianfan account.',
+    apiKeyPlaceholder: 'Qianfan API key',
+    apiKeyHelperText: 'Use a Qianfan API key. If blank, Maxun falls back to OPENAI_API_KEY on the server.',
+  },
+  openrouter: {
+    label: 'OpenRouter',
+    baseUrl: 'https://openrouter.ai/api/v1',
+    baseUrlPlaceholder: 'https://openrouter.ai/api/v1',
+    baseUrlHelperText: 'Use the OpenRouter OpenAI-compatible endpoint, or override it for your account.',
+    modelPlaceholder: 'e.g. openai/gpt-4o-mini',
+    modelHelperText: 'Enter an OpenRouter model id from your enabled models.',
+    apiKeyPlaceholder: 'OpenRouter API key',
+    apiKeyHelperText: 'Use an OpenRouter API key. If blank, Maxun falls back to OPENAI_API_KEY on the server.',
+  },
+  deepseek: {
+    label: 'DeepSeek',
+    baseUrl: 'https://api.deepseek.com',
+    baseUrlPlaceholder: 'https://api.deepseek.com',
+    baseUrlHelperText: 'Use the DeepSeek OpenAI-compatible endpoint, or override it for your account.',
+    modelPlaceholder: 'e.g. deepseek-v4-flash',
+    modelHelperText: 'Enter a DeepSeek model, for example deepseek-v4-flash.',
+    apiKeyPlaceholder: 'DeepSeek API key',
+    apiKeyHelperText: 'Use a DeepSeek API key. If blank, Maxun falls back to OPENAI_API_KEY on the server.',
+  },
+  custom: {
+    label: 'Custom',
+    baseUrl: '',
+    baseUrlPlaceholder: 'https://api.example.com/v1',
+    baseUrlHelperText: 'Enter your provider OpenAI-compatible base URL.',
+    modelPlaceholder: 'e.g. provider-model-name',
+    modelHelperText: 'Enter the model name expected by your provider.',
+    apiKeyPlaceholder: 'Provider API key',
+    apiKeyHelperText: 'Use the API key for your OpenAI-compatible provider.',
+  },
+};
+
+const OPENAI_COMPATIBLE_PRESET_IDS: OpenAICompatiblePresetId[] = [
+  'openai',
+  'qianfan',
+  'openrouter',
+  'deepseek',
+  'custom',
+];
+
+const getOpenAICompatiblePreset = (presetId: OpenAICompatiblePresetId) =>
+  OPENAI_COMPATIBLE_PRESETS[presetId];
+
+interface ModelFieldTextOptions {
+  ollamaPlaceholder?: string;
+  ollamaHelperText?: string;
+  anthropicPlaceholder?: string;
+  anthropicHelperText?: string;
+}
+
+const getModelPlaceholder = (
+  provider: LlmProvider,
+  presetId: OpenAICompatiblePresetId,
+  options: ModelFieldTextOptions = {}
+) => {
+  if (provider === 'ollama') return options.ollamaPlaceholder || 'e.g. llama3.2-vision';
+  if (provider === 'anthropic') return options.anthropicPlaceholder || 'e.g. claude-sonnet-4-6';
+  return getOpenAICompatiblePreset(presetId).modelPlaceholder;
+};
+
+const getModelHelperText = (
+  provider: LlmProvider,
+  presetId: OpenAICompatiblePresetId,
+  options: ModelFieldTextOptions = {}
+) => {
+  if (provider === 'ollama') return options.ollamaHelperText || 'Leave blank to use default: llama3.2-vision';
+  if (provider === 'anthropic') return options.anthropicHelperText || 'Leave blank to use default: claude-sonnet-4-6';
+  return getOpenAICompatiblePreset(presetId).modelHelperText;
+};
+
+const DOCUMENT_MODEL_FIELD_TEXT: ModelFieldTextOptions = {
+  ollamaPlaceholder: 'e.g. llama3.2:latest',
+  ollamaHelperText: 'Leave blank to use default: llama3.2:latest',
+  anthropicPlaceholder: 'e.g. claude-3-5-haiku-20241022',
+  anthropicHelperText: 'Leave blank to use default: claude-3-5-haiku-20241022',
+};
+
+interface OpenAICompatiblePresetFieldsProps {
+  presetId: OpenAICompatiblePresetId;
+  onPresetChange: (presetId: OpenAICompatiblePresetId) => void;
+  baseUrl: string;
+  onBaseUrlChange: (baseUrl: string) => void;
+  apiKey: string;
+  onApiKeyChange: (apiKey: string) => void;
+  bottomMargin?: number;
+}
+
+const OpenAICompatiblePresetFields: React.FC<OpenAICompatiblePresetFieldsProps> = ({
+  presetId,
+  onPresetChange,
+  baseUrl,
+  onBaseUrlChange,
+  apiKey,
+  onApiKeyChange,
+  bottomMargin = 3,
+}) => {
+  const preset = getOpenAICompatiblePreset(presetId);
+
+  return (
+    <>
+      <FormControl fullWidth sx={{ mb: 2 }}>
+        <InputLabel>OpenAI-compatible Preset</InputLabel>
+        <Select
+          value={presetId}
+          label="OpenAI-compatible Preset"
+          onChange={(e) => onPresetChange(e.target.value as OpenAICompatiblePresetId)}
+        >
+          {OPENAI_COMPATIBLE_PRESET_IDS.map((id) => (
+            <MenuItem key={id} value={id}>
+              {OPENAI_COMPATIBLE_PRESETS[id].label}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
+      <TextField
+        placeholder={preset.baseUrlPlaceholder}
+        variant="outlined"
+        fullWidth
+        value={baseUrl}
+        onChange={(e) => onBaseUrlChange(e.target.value)}
+        label="Base URL"
+        helperText={preset.baseUrlHelperText}
+        sx={{ mb: 2 }}
+        FormHelperTextProps={{ sx: { ml: 0.5 } }}
+      />
+
+      <TextField
+        placeholder={preset.apiKeyPlaceholder}
+        variant="outlined"
+        fullWidth
+        type="password"
+        value={apiKey}
+        onChange={(e) => onApiKeyChange(e.target.value)}
+        label="API Key"
+        helperText={preset.apiKeyHelperText}
+        sx={{ mb: bottomMargin }}
+        FormHelperTextProps={{ sx: { ml: 0.5 } }}
+      />
+    </>
+  );
+};
+
 const RobotCreate: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -71,16 +252,18 @@ const RobotCreate: React.FC = () => {
   const [generationMode, setGenerationMode] = useState<'agent' | 'recorder' | null>('recorder');
 
   const [aiPrompt, setAiPrompt] = useState('');
-  const [llmProvider, setLlmProvider] = useState<'anthropic' | 'openai' | 'ollama'>('ollama');
+  const [llmProvider, setLlmProvider] = useState<LlmProvider>('ollama');
+  const [llmOpenAICompatiblePreset, setLlmOpenAICompatiblePreset] = useState<OpenAICompatiblePresetId>(DEFAULT_OPENAI_COMPATIBLE_PRESET_ID);
   const [llmModel, setLlmModel] = useState('');
   const [llmApiKey, setLlmApiKey] = useState('');
   const [llmBaseUrl, setLlmBaseUrl] = useState('');
 
   const [scrapePromptInstructions, setScrapePromptInstructions] = useState('');
-  const [scrapePromptLlmProvider, setScrapePromptLlmProvider] = useState<'anthropic' | 'openai' | 'ollama'>('ollama');
+  const [scrapePromptLlmProvider, setScrapePromptLlmProvider] = useState<LlmProvider>('ollama');
+  const [scrapePromptOpenAICompatiblePreset, setScrapePromptOpenAICompatiblePreset] = useState<OpenAICompatiblePresetId>(DEFAULT_OPENAI_COMPATIBLE_PRESET_ID);
   const [scrapePromptLlmModel, setScrapePromptLlmModel] = useState('');
   const [scrapePromptLlmApiKey, setScrapePromptLlmApiKey] = useState('');
-  const [scrapePromptLlmBaseUrl, setScrapePromptLlmBaseUrl] = useState('http://localhost:11434');
+  const [scrapePromptLlmBaseUrl, setScrapePromptLlmBaseUrl] = useState(OLLAMA_DEFAULT_BASE_URL);
   const [aiRobotName, setAiRobotName] = useState('');
 
   const [crawlRobotName, setCrawlRobotName] = useState('');
@@ -110,7 +293,8 @@ const RobotCreate: React.FC = () => {
   const [documentRobotName, setDocumentRobotName] = useState('');
   const [documentMode, setDocumentMode] = useState<'extract' | 'parse'>('extract');
   const [documentParseFormats, setDocumentParseFormats] = useState<OutputFormats[]>([]);
-  const [documentLlmProvider, setDocumentLlmProvider] = useState<'anthropic' | 'openai' | 'ollama'>('ollama');
+  const [documentLlmProvider, setDocumentLlmProvider] = useState<LlmProvider>('ollama');
+  const [documentOpenAICompatiblePreset, setDocumentOpenAICompatiblePreset] = useState<OpenAICompatiblePresetId>(DEFAULT_OPENAI_COMPATIBLE_PRESET_ID);
   const [documentLlmModel, setDocumentLlmModel] = useState('');
   const [documentLlmApiKey, setDocumentLlmApiKey] = useState('');
   const [documentLlmBaseUrl, setDocumentLlmBaseUrl] = useState('');
@@ -121,6 +305,35 @@ const RobotCreate: React.FC = () => {
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
+  };
+
+  const getBaseUrlForProvider = (provider: LlmProvider, presetId: OpenAICompatiblePresetId) => {
+    if (provider === 'ollama') return OLLAMA_DEFAULT_BASE_URL;
+    if (provider === 'openai') return getOpenAICompatiblePreset(presetId).baseUrl;
+    return '';
+  };
+
+  const applyLlmProvider = (
+    provider: LlmProvider,
+    presetId: OpenAICompatiblePresetId,
+    setProvider: React.Dispatch<React.SetStateAction<LlmProvider>>,
+    setModel: React.Dispatch<React.SetStateAction<string>>,
+    setBaseUrl: React.Dispatch<React.SetStateAction<string>>
+  ) => {
+    setProvider(provider);
+    setModel('');
+    setBaseUrl(getBaseUrlForProvider(provider, presetId));
+  };
+
+  const applyOpenAICompatiblePreset = (
+    presetId: OpenAICompatiblePresetId,
+    setPresetId: React.Dispatch<React.SetStateAction<OpenAICompatiblePresetId>>,
+    setModel: React.Dispatch<React.SetStateAction<string>>,
+    setBaseUrl: React.Dispatch<React.SetStateAction<string>>
+  ) => {
+    setPresetId(presetId);
+    setModel('');
+    setBaseUrl(getOpenAICompatiblePreset(presetId).baseUrl);
   };
 
 
@@ -540,19 +753,18 @@ const RobotCreate: React.FC = () => {
                         value={llmProvider}
                         label="LLM Provider"
                         onChange={(e) => {
-                          const provider = e.target.value as 'anthropic' | 'openai' | 'ollama';
-                          setLlmProvider(provider);
-                          setLlmModel('');
-                          if (provider === 'ollama') {
-                            setLlmBaseUrl('http://localhost:11434');
-                          } else {
-                            setLlmBaseUrl('');
-                          }
+                          applyLlmProvider(
+                            e.target.value as LlmProvider,
+                            llmOpenAICompatiblePreset,
+                            setLlmProvider,
+                            setLlmModel,
+                            setLlmBaseUrl
+                          );
                         }}
                       >
                         <MenuItem value="ollama">Ollama (Local)</MenuItem>
                         <MenuItem value="anthropic">Anthropic (Claude)</MenuItem>
-                        <MenuItem value="openai">OpenAI (GPT-4)</MenuItem>
+                        <MenuItem value="openai">OpenAI-compatible</MenuItem>
                       </Select>
                     </FormControl>
 
@@ -560,25 +772,33 @@ const RobotCreate: React.FC = () => {
                       sx={{ flex: 1 }}
                       value={llmModel}
                       label="Model"
-                      placeholder={
-                        llmProvider === 'ollama' ? 'e.g. llama3.2-vision' :
-                          llmProvider === 'anthropic' ? 'e.g. claude-sonnet-4-6' :
-                            'e.g. gpt-4o'
-                      }
+                      placeholder={getModelPlaceholder(llmProvider, llmOpenAICompatiblePreset)}
                       onChange={(e) => setLlmModel(e.target.value)}
-                      helperText={`Leave blank to use default: ${llmProvider === 'ollama' ? 'llama3.2-vision' :
-                          llmProvider === 'anthropic' ? 'claude-sonnet-4-6' :
-                            'gpt-4o'
-                        }`}
+                      helperText={getModelHelperText(llmProvider, llmOpenAICompatiblePreset)}
                       FormHelperTextProps={{ sx: { ml: 0.5 } }}
                     />
                   </Box>
 
-                  {/* API Key for non-Ollama providers */}
-                  {llmProvider !== 'ollama' && (
+                  {llmProvider === 'openai' && (
+                    <OpenAICompatiblePresetFields
+                      presetId={llmOpenAICompatiblePreset}
+                      onPresetChange={(presetId) => applyOpenAICompatiblePreset(
+                        presetId,
+                        setLlmOpenAICompatiblePreset,
+                        setLlmModel,
+                        setLlmBaseUrl
+                      )}
+                      baseUrl={llmBaseUrl}
+                      onBaseUrlChange={setLlmBaseUrl}
+                      apiKey={llmApiKey}
+                      onApiKeyChange={setLlmApiKey}
+                    />
+                  )}
+
+                  {llmProvider === 'anthropic' && (
                     <Box sx={{ mb: 3 }}>
                       <TextField
-                        placeholder={`${llmProvider === 'anthropic' ? 'Anthropic' : 'OpenAI'} API Key`}
+                        placeholder="Anthropic API key"
                         variant="outlined"
                         fullWidth
                         type="password"
@@ -869,37 +1089,49 @@ const RobotCreate: React.FC = () => {
                         value={scrapePromptLlmProvider}
                         label="LLM Provider"
                         onChange={(e) => {
-                          const provider = e.target.value as 'anthropic' | 'openai' | 'ollama';
-                          setScrapePromptLlmProvider(provider);
-                          setScrapePromptLlmModel('');
-                          setScrapePromptLlmBaseUrl(provider === 'ollama' ? 'http://localhost:11434' : '');
+                          applyLlmProvider(
+                            e.target.value as LlmProvider,
+                            scrapePromptOpenAICompatiblePreset,
+                            setScrapePromptLlmProvider,
+                            setScrapePromptLlmModel,
+                            setScrapePromptLlmBaseUrl
+                          );
                         }}
                       >
                         <MenuItem value="ollama">Ollama (Local)</MenuItem>
                         <MenuItem value="anthropic">Anthropic (Claude)</MenuItem>
-                        <MenuItem value="openai">OpenAI (GPT-4)</MenuItem>
+                        <MenuItem value="openai">OpenAI-compatible</MenuItem>
                       </Select>
                     </FormControl>
                     <TextField
                       sx={{ flex: 1 }}
                       value={scrapePromptLlmModel}
                       label="Model"
-                      placeholder={
-                        scrapePromptLlmProvider === 'ollama' ? 'e.g. llama3.2-vision' :
-                          scrapePromptLlmProvider === 'anthropic' ? 'e.g. claude-sonnet-4-6' :
-                            'e.g. gpt-4o'
-                      }
+                      placeholder={getModelPlaceholder(scrapePromptLlmProvider, scrapePromptOpenAICompatiblePreset)}
                       onChange={(e) => setScrapePromptLlmModel(e.target.value)}
-                      helperText={`Leave blank to use default: ${scrapePromptLlmProvider === 'ollama' ? 'llama3.2-vision' :
-                          scrapePromptLlmProvider === 'anthropic' ? 'claude-sonnet-4-6' :
-                            'gpt-4o'
-                        }`}
+                      helperText={getModelHelperText(scrapePromptLlmProvider, scrapePromptOpenAICompatiblePreset)}
                       FormHelperTextProps={{ sx: { ml: 0.5, mb: 1 } }}
                     />
                   </Box>
-                  {scrapePromptLlmProvider !== 'ollama' && (
+                  {scrapePromptLlmProvider === 'openai' && (
+                    <OpenAICompatiblePresetFields
+                      presetId={scrapePromptOpenAICompatiblePreset}
+                      onPresetChange={(presetId) => applyOpenAICompatiblePreset(
+                        presetId,
+                        setScrapePromptOpenAICompatiblePreset,
+                        setScrapePromptLlmModel,
+                        setScrapePromptLlmBaseUrl
+                      )}
+                      baseUrl={scrapePromptLlmBaseUrl}
+                      onBaseUrlChange={setScrapePromptLlmBaseUrl}
+                      apiKey={scrapePromptLlmApiKey}
+                      onApiKeyChange={setScrapePromptLlmApiKey}
+                      bottomMargin={2}
+                    />
+                  )}
+                  {scrapePromptLlmProvider === 'anthropic' && (
                     <TextField
-                      placeholder={`${scrapePromptLlmProvider === 'anthropic' ? 'Anthropic' : 'OpenAI'} API Key`}
+                      placeholder="Anthropic API key"
                       variant="outlined"
                       fullWidth
                       type="password"
@@ -950,7 +1182,7 @@ const RobotCreate: React.FC = () => {
                       hasPrompt ? scrapePromptLlmProvider : undefined,
                       hasPrompt ? scrapePromptLlmModel.trim() || undefined : undefined,
                       hasPrompt && scrapePromptLlmProvider !== 'ollama' ? scrapePromptLlmApiKey || undefined : undefined,
-                      hasPrompt && scrapePromptLlmProvider === 'ollama' ? scrapePromptLlmBaseUrl || undefined : undefined,
+                      hasPrompt && scrapePromptLlmProvider !== 'anthropic' ? scrapePromptLlmBaseUrl || undefined : undefined,
                     );
                     setIsLoading(false);
                     if (result) {
@@ -1433,25 +1665,53 @@ const RobotCreate: React.FC = () => {
                       <Select
                         value={documentLlmProvider}
                         label="LLM Provider"
-                        onChange={(e) => setDocumentLlmProvider(e.target.value as 'anthropic' | 'openai' | 'ollama')}
+                        onChange={(e) => {
+                          applyLlmProvider(
+                            e.target.value as LlmProvider,
+                            documentOpenAICompatiblePreset,
+                            setDocumentLlmProvider,
+                            setDocumentLlmModel,
+                            setDocumentLlmBaseUrl
+                          );
+                        }}
                       >
                         <MenuItem value="ollama">Ollama (Local)</MenuItem>
-                        <MenuItem value="openai">OpenAI</MenuItem>
+                        <MenuItem value="openai">OpenAI-compatible</MenuItem>
                         <MenuItem value="anthropic">Anthropic</MenuItem>
                       </Select>
                     </FormControl>
 
                     <TextField
-                      label={documentLlmProvider === 'ollama' ? 'Model (e.g. llama3.2:latest)' : 'Model (e.g. gpt-4o-mini)'}
+                      label="Model"
+                      placeholder={getModelPlaceholder(documentLlmProvider, documentOpenAICompatiblePreset, DOCUMENT_MODEL_FIELD_TEXT)}
+                      helperText={getModelHelperText(documentLlmProvider, documentOpenAICompatiblePreset, DOCUMENT_MODEL_FIELD_TEXT)}
                       fullWidth
                       value={documentLlmModel}
                       onChange={(e) => setDocumentLlmModel(e.target.value)}
                       sx={{ mb: 2 }}
+                      FormHelperTextProps={{ sx: { ml: 0.5 } }}
                     />
 
-                    {documentLlmProvider !== 'ollama' && (
+                    {documentLlmProvider === 'openai' && (
+                      <OpenAICompatiblePresetFields
+                        presetId={documentOpenAICompatiblePreset}
+                        onPresetChange={(presetId) => applyOpenAICompatiblePreset(
+                          presetId,
+                          setDocumentOpenAICompatiblePreset,
+                          setDocumentLlmModel,
+                          setDocumentLlmBaseUrl
+                        )}
+                        baseUrl={documentLlmBaseUrl}
+                        onBaseUrlChange={setDocumentLlmBaseUrl}
+                        apiKey={documentLlmApiKey}
+                        onApiKeyChange={setDocumentLlmApiKey}
+                      />
+                    )}
+
+                    {documentLlmProvider === 'anthropic' && (
                       <TextField
                         label="API Key"
+                        placeholder="Anthropic API key"
                         fullWidth
                         type="password"
                         value={documentLlmApiKey}
