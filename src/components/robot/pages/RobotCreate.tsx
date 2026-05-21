@@ -318,22 +318,26 @@ const RobotCreate: React.FC = () => {
     presetId: OpenAICompatiblePresetId,
     setProvider: React.Dispatch<React.SetStateAction<LlmProvider>>,
     setModel: React.Dispatch<React.SetStateAction<string>>,
-    setBaseUrl: React.Dispatch<React.SetStateAction<string>>
+    setBaseUrl: React.Dispatch<React.SetStateAction<string>>,
+    setApiKey: React.Dispatch<React.SetStateAction<string>>
   ) => {
     setProvider(provider);
     setModel('');
     setBaseUrl(getBaseUrlForProvider(provider, presetId));
+    setApiKey('');
   };
 
   const applyOpenAICompatiblePreset = (
     presetId: OpenAICompatiblePresetId,
     setPresetId: React.Dispatch<React.SetStateAction<OpenAICompatiblePresetId>>,
     setModel: React.Dispatch<React.SetStateAction<string>>,
-    setBaseUrl: React.Dispatch<React.SetStateAction<string>>
+    setBaseUrl: React.Dispatch<React.SetStateAction<string>>,
+    setApiKey: React.Dispatch<React.SetStateAction<string>>
   ) => {
     setPresetId(presetId);
     setModel('');
     setBaseUrl(getOpenAICompatiblePreset(presetId).baseUrl);
+    setApiKey('');
   };
 
 
@@ -758,7 +762,8 @@ const RobotCreate: React.FC = () => {
                             llmOpenAICompatiblePreset,
                             setLlmProvider,
                             setLlmModel,
-                            setLlmBaseUrl
+                            setLlmBaseUrl,
+                            setLlmApiKey
                           );
                         }}
                       >
@@ -786,7 +791,8 @@ const RobotCreate: React.FC = () => {
                         presetId,
                         setLlmOpenAICompatiblePreset,
                         setLlmModel,
-                        setLlmBaseUrl
+                        setLlmBaseUrl,
+                        setLlmApiKey
                       )}
                       baseUrl={llmBaseUrl}
                       onBaseUrlChange={setLlmBaseUrl}
@@ -1094,7 +1100,8 @@ const RobotCreate: React.FC = () => {
                             scrapePromptOpenAICompatiblePreset,
                             setScrapePromptLlmProvider,
                             setScrapePromptLlmModel,
-                            setScrapePromptLlmBaseUrl
+                            setScrapePromptLlmBaseUrl,
+                            setScrapePromptLlmApiKey
                           );
                         }}
                       >
@@ -1120,7 +1127,8 @@ const RobotCreate: React.FC = () => {
                         presetId,
                         setScrapePromptOpenAICompatiblePreset,
                         setScrapePromptLlmModel,
-                        setScrapePromptLlmBaseUrl
+                        setScrapePromptLlmBaseUrl,
+                        setScrapePromptLlmApiKey
                       )}
                       baseUrl={scrapePromptLlmBaseUrl}
                       onBaseUrlChange={setScrapePromptLlmBaseUrl}
@@ -1671,7 +1679,8 @@ const RobotCreate: React.FC = () => {
                             documentOpenAICompatiblePreset,
                             setDocumentLlmProvider,
                             setDocumentLlmModel,
-                            setDocumentLlmBaseUrl
+                            setDocumentLlmBaseUrl,
+                            setDocumentLlmApiKey
                           );
                         }}
                       >
@@ -1695,12 +1704,13 @@ const RobotCreate: React.FC = () => {
                     {documentLlmProvider === 'openai' && (
                       <OpenAICompatiblePresetFields
                         presetId={documentOpenAICompatiblePreset}
-                        onPresetChange={(presetId) => applyOpenAICompatiblePreset(
-                          presetId,
-                          setDocumentOpenAICompatiblePreset,
-                          setDocumentLlmModel,
-                          setDocumentLlmBaseUrl
-                        )}
+                      onPresetChange={(presetId) => applyOpenAICompatiblePreset(
+                        presetId,
+                        setDocumentOpenAICompatiblePreset,
+                        setDocumentLlmModel,
+                        setDocumentLlmBaseUrl,
+                        setDocumentLlmApiKey
+                      )}
                         baseUrl={documentLlmBaseUrl}
                         onBaseUrlChange={setDocumentLlmBaseUrl}
                         apiKey={documentLlmApiKey}
