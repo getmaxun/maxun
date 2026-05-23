@@ -2575,11 +2575,71 @@
             xpath += `[${classConditions}]`;
           }
 
+          let semanticParent = 'unknown';
+          let isNavOrFooter = false;
+          let parent = group.representative.parentElement;
+          let parentDepth = 0;
+          while (parent && parentDepth < 20) {
+            const pTag = parent.tagName.toLowerCase();
+            if (['main', 'article', 'section', 'nav', 'aside', 'footer', 'header'].includes(pTag)) {
+              semanticParent = pTag;
+              if (['nav', 'footer', 'header'].includes(pTag)) {
+                isNavOrFooter = true;
+              }
+              break;
+            }
+            parent = parent.parentElement;
+            parentDepth++;
+          }
+
+          const allChildren = Array.from(group.representative.querySelectorAll('*'));
+          const uniqueTags = new Set(allChildren.map(el => el.tagName.toLowerCase()));
+          const childTagCount = uniqueTags.size;
+
+          const attributeCount = allChildren.reduce((count, el) => {
+            if (el.hasAttribute('href')) count++;
+            if (el.hasAttribute('src')) count++;
+            if (el.hasAttribute('data-src')) count++;
+            return count;
+          }, 0);
+
           const sampleTexts = group.elements.slice(0, 3).map((el) => {
-            return (el.textContent || '').trim().substring(0, 200);
+            return (el.textContent || '').replace(/\s+/g, ' ').trim().substring(0, 300);
           });
 
           const sampleHTML = group.representative.outerHTML.substring(0, 500);
+
+          let ariaRole = null;
+          let roleAncestor = group.representative;
+          let roleDepth = 0;
+          while (roleAncestor && roleDepth < 5) {
+            const r = roleAncestor.getAttribute && roleAncestor.getAttribute('role');
+            if (r) {
+              const norm = r.toLowerCase();
+              if (['main', 'navigation', 'contentinfo', 'banner', 'complementary', 'article', 'region', 'search'].includes(norm)) {
+                ariaRole = norm;
+                break;
+              }
+            }
+            roleAncestor = roleAncestor.parentElement;
+            roleDepth++;
+          }
+
+          const textLengths = group.elements.slice(0, 10).map(el => {
+            return (el.textContent || '').replace(/\s+/g, ' ').trim().length;
+          });
+          const avgTextLength = textLengths.length > 0
+            ? Math.round(textLengths.reduce((a, b) => a + b, 0) / textLengths.length)
+            : 0;
+
+          const repText = (group.representative.textContent || '').replace(/\s+/g, ' ').trim();
+          const linkTextChars = Array.from(group.representative.querySelectorAll('a'))
+            .reduce((sum, a) => sum + (a.textContent || '').replace(/\s+/g, ' ').trim().length, 0);
+          const linkTextRatio = repText.length > 0
+            ? Math.min(1, linkTextChars / repText.length)
+            : 0;
+
+          const headingCount = group.representative.querySelectorAll('h1, h2, h3, h4, h5, h6').length;
 
           uniqueGroups.set(signature, {
             fingerprint: group.fingerprint,
@@ -2587,6 +2647,14 @@
             xpath: xpath,
             sampleTexts: sampleTexts,
             sampleHTML: sampleHTML,
+            semanticParent: semanticParent,
+            isNavOrFooter: isNavOrFooter,
+            childTagCount: childTagCount,
+            attributeCount: attributeCount,
+            ariaRole: ariaRole,
+            avgTextLength: avgTextLength,
+            linkTextRatio: Math.round(linkTextRatio * 100) / 100,
+            headingCount: headingCount
           });
         }
       });
