@@ -29,7 +29,7 @@ import TravelExploreIcon from '@mui/icons-material/TravelExplore';
 import SearchIcon from '@mui/icons-material/Search';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import StorageIcon from '@mui/icons-material/Storage';
-import { ContentCopy } from "@mui/icons-material";
+import { ContentCopy, Check } from "@mui/icons-material";
 import { useEffect, useState } from "react";
 import JSZip from "jszip";
 import Table from '@mui/material/Table';
@@ -53,6 +53,37 @@ interface RunContentProps {
     percentage: number;
   } | null,
 }
+
+const CopyButton: React.FC<{ content: string; darkMode: boolean }> = ({ content, darkMode }) => {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <Tooltip title={copied ? 'Copied!' : 'Copy'} placement="left">
+      <IconButton
+        onClick={handleCopy}
+        size="small"
+        sx={{
+          position: 'absolute',
+          top: 8,
+          right: 20,
+          color: copied ? '#4caf50' : (darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.35)'),
+          backgroundColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+          '&:hover': {
+            color: copied ? '#4caf50' : '#FF00C3',
+            backgroundColor: darkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
+          },
+          zIndex: 1,
+        }}
+      >
+        {copied ? <Check fontSize="small" /> : <ContentCopy fontSize="small" />}
+      </IconButton>
+    </Tooltip>
+  );
+};
 
 export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRef, abortRunHandler, workflowProgress }: RunContentProps) => {
   const { t } = useTranslation();
@@ -1266,11 +1297,14 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
-                    <Paper sx={{ p: 2, maxHeight: '500px', overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
-                      <Typography component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: '14px', lineHeight: 1.6, m: 0 }}>
-                        {textContent}
-                      </Typography>
-                    </Paper>
+                    <Box sx={{ position: 'relative' }}>
+                      <Paper sx={{ p: 2, maxHeight: '500px', overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
+                        <Typography component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: '14px', lineHeight: 1.6, m: 0 }}>
+                          {textContent}
+                        </Typography>
+                      </Paper>
+                      <CopyButton content={textContent} darkMode={darkMode} />
+                    </Box>
                     <Box sx={{ mt: 2 }}>
                       <Button 
                         onClick={() => {
@@ -1302,11 +1336,14 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
-                    <Paper sx={{ p: 2, maxHeight: '500px', overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
-                      <Typography component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: '14px', lineHeight: 1.6, m: 0, color: 'inherit' }}>
-                        {htmlContent}
-                      </Typography>
-                    </Paper>
+                    <Box sx={{ position: 'relative' }}>
+                      <Paper sx={{ p: 2, maxHeight: '500px', overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
+                        <Typography component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: '14px', lineHeight: 1.6, m: 0, color: 'inherit' }}>
+                          {htmlContent}
+                        </Typography>
+                      </Paper>
+                      <CopyButton content={htmlContent} darkMode={darkMode} />
+                    </Box>
                     <Box sx={{ mt: 2 }}>
                       <Button 
                         onClick={() => {
@@ -1338,11 +1375,14 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
-                    <Paper sx={{ p: 2, maxHeight: '500px', overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
-                      <Typography component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: '14px', lineHeight: 1.6, m: 0, color: 'inherit' }}>
-                        {markdownContent}
-                      </Typography>
-                    </Paper>
+                    <Box sx={{ position: 'relative' }}>
+                      <Paper sx={{ p: 2, maxHeight: '500px', overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
+                        <Typography component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: '14px', lineHeight: 1.6, m: 0, color: 'inherit' }}>
+                          {markdownContent}
+                        </Typography>
+                      </Paper>
+                      <CopyButton content={markdownContent} darkMode={darkMode} />
+                    </Box>
                     <Box sx={{ mt: 2 }}>
                       <Button 
                         onClick={() => downloadMarkdown(markdownContent, `${row.name || 'content'}.md`)} 
@@ -1364,15 +1404,18 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
-                    <Paper sx={{ p: 2, maxHeight: '500px', overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                        {Array.from(new Set(linksContent)).map((link: string, idx: number) => (
-                          <Link key={idx} href={link} target="_blank" rel="noopener" sx={{ color: '#FF00C3', wordBreak: 'break-all', fontSize: '0.875rem' }}>
-                            {link}
-                          </Link>
-                        ))}
-                      </Box>
-                    </Paper>
+                    <Box sx={{ position: 'relative' }}>
+                      <Paper sx={{ p: 2, maxHeight: '500px', overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                          {Array.from(new Set(linksContent)).map((link: string, idx: number) => (
+                            <Link key={idx} href={link} target="_blank" rel="noopener" sx={{ color: '#FF00C3', wordBreak: 'break-all', fontSize: '0.875rem' }}>
+                              {link}
+                            </Link>
+                          ))}
+                        </Box>
+                      </Paper>
+                      <CopyButton content={Array.from(new Set(linksContent)).join('\n')} darkMode={darkMode} />
+                    </Box>
                     <Box sx={{ mt: 1 }}>
                       <Button
                         onClick={() => {
@@ -1405,11 +1448,14 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
-                    <Paper sx={{ p: 2, maxHeight: '500px', overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
-                      <Typography component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: '14px', lineHeight: 1.6, m: 0, color: 'inherit' }}>
-                        {promptResultData}
-                      </Typography>
-                    </Paper>
+                    <Box sx={{ position: 'relative' }}>
+                      <Paper sx={{ p: 2, maxHeight: '500px', overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
+                        <Typography component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: '14px', lineHeight: 1.6, m: 0, color: 'inherit' }}>
+                          {promptResultData}
+                        </Typography>
+                      </Paper>
+                      <CopyButton content={promptResultData} darkMode={darkMode} />
+                    </Box>
                     <Box sx={{ mt: 2 }}>
                       <Button
                         onClick={() => {
@@ -1770,30 +1816,33 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               </Box>
                             </AccordionSummary>
                             <AccordionDetails>
-                              <Paper
-                                sx={{
-                                  p: 2,
-                                  maxHeight: '500px',
-                                  overflow: 'auto',
-                                  backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
-                                }}
-                              >
-                                <Typography
-                                  component="pre"
+                              <Box sx={{ position: 'relative' }}>
+                                <Paper
                                   sx={{
-                                    whiteSpace: 'pre-wrap',
-                                    wordBreak: 'break-word',
-                                    fontFamily: 'monospace',
-                                    fontSize: '14px',
-                                    lineHeight: 1.6,
-                                    m: 0
+                                    p: 2,
+                                    maxHeight: '500px',
+                                    overflow: 'auto',
+                                    backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
                                   }}
                                 >
-                                  {typeof crawlData[0][currentCrawlIndex].text === 'object'
-                                    ? JSON.stringify(crawlData[0][currentCrawlIndex].text, null, 2)
-                                    : crawlData[0][currentCrawlIndex].text}
-                                </Typography>
-                              </Paper>
+                                  <Typography
+                                    component="pre"
+                                    sx={{
+                                      whiteSpace: 'pre-wrap',
+                                      wordBreak: 'break-word',
+                                      fontFamily: 'monospace',
+                                      fontSize: '14px',
+                                      lineHeight: 1.6,
+                                      m: 0
+                                    }}
+                                  >
+                                    {typeof crawlData[0][currentCrawlIndex].text === 'object'
+                                      ? JSON.stringify(crawlData[0][currentCrawlIndex].text, null, 2)
+                                      : crawlData[0][currentCrawlIndex].text}
+                                  </Typography>
+                                </Paper>
+                                <CopyButton content={typeof crawlData[0][currentCrawlIndex].text === 'object' ? JSON.stringify(crawlData[0][currentCrawlIndex].text, null, 2) : crawlData[0][currentCrawlIndex].text} darkMode={darkMode} />
+                              </Box>
                               <Box sx={{ mt: 1 }}>
                                 <Button
                                   onClick={() => {
@@ -1821,30 +1870,33 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               </Box>
                             </AccordionSummary>
                             <AccordionDetails>
-                              <Paper
-                                sx={{
-                                  p: 2,
-                                  maxHeight: '500px',
-                                  overflow: 'auto',
-                                  backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
-                                }}
-                              >
-                                <Typography
-                                  component="pre"
+                              <Box sx={{ position: 'relative' }}>
+                                <Paper
                                   sx={{
-                                    whiteSpace: 'pre-wrap',
-                                    wordBreak: 'break-word',
-                                    fontFamily: 'monospace',
-                                    fontSize: '14px',
-                                    lineHeight: 1.6,
-                                    m: 0
+                                    p: 2,
+                                    maxHeight: '500px',
+                                    overflow: 'auto',
+                                    backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
                                   }}
                                 >
-                                  {typeof crawlData[0][currentCrawlIndex].html === 'object'
-                                    ? JSON.stringify(crawlData[0][currentCrawlIndex].html, null, 2)
-                                    : crawlData[0][currentCrawlIndex].html}
-                                </Typography>
-                              </Paper>
+                                  <Typography
+                                    component="pre"
+                                    sx={{
+                                      whiteSpace: 'pre-wrap',
+                                      wordBreak: 'break-word',
+                                      fontFamily: 'monospace',
+                                      fontSize: '14px',
+                                      lineHeight: 1.6,
+                                      m: 0
+                                    }}
+                                  >
+                                    {typeof crawlData[0][currentCrawlIndex].html === 'object'
+                                      ? JSON.stringify(crawlData[0][currentCrawlIndex].html, null, 2)
+                                      : crawlData[0][currentCrawlIndex].html}
+                                  </Typography>
+                                </Paper>
+                                <CopyButton content={typeof crawlData[0][currentCrawlIndex].html === 'object' ? JSON.stringify(crawlData[0][currentCrawlIndex].html, null, 2) : crawlData[0][currentCrawlIndex].html} darkMode={darkMode} />
+                              </Box>
                               <Box sx={{ mt: 1 }}>
                                 <Button
                                   onClick={() => {
@@ -1872,30 +1924,33 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               </Box>
                             </AccordionSummary>
                             <AccordionDetails>
-                              <Paper
-                                sx={{
-                                  p: 2,
-                                  maxHeight: '500px',
-                                  overflow: 'auto',
-                                  backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
-                                }}
-                              >
-                                <Typography
-                                  component="pre"
+                              <Box sx={{ position: 'relative' }}>
+                                <Paper
                                   sx={{
-                                    whiteSpace: 'pre-wrap',
-                                    wordBreak: 'break-word',
-                                    fontFamily: 'monospace',
-                                    fontSize: '14px',
-                                    lineHeight: 1.6,
-                                    m: 0
+                                    p: 2,
+                                    maxHeight: '500px',
+                                    overflow: 'auto',
+                                    backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
                                   }}
                                 >
-                                  {typeof crawlData[0][currentCrawlIndex].markdown === 'object'
-                                    ? JSON.stringify(crawlData[0][currentCrawlIndex].markdown, null, 2)
-                                    : crawlData[0][currentCrawlIndex].markdown}
-                                </Typography>
-                              </Paper>
+                                  <Typography
+                                    component="pre"
+                                    sx={{
+                                      whiteSpace: 'pre-wrap',
+                                      wordBreak: 'break-word',
+                                      fontFamily: 'monospace',
+                                      fontSize: '14px',
+                                      lineHeight: 1.6,
+                                      m: 0
+                                    }}
+                                  >
+                                    {typeof crawlData[0][currentCrawlIndex].markdown === 'object'
+                                      ? JSON.stringify(crawlData[0][currentCrawlIndex].markdown, null, 2)
+                                      : crawlData[0][currentCrawlIndex].markdown}
+                                  </Typography>
+                                </Paper>
+                                <CopyButton content={typeof crawlData[0][currentCrawlIndex].markdown === 'object' ? JSON.stringify(crawlData[0][currentCrawlIndex].markdown, null, 2) : crawlData[0][currentCrawlIndex].markdown} darkMode={darkMode} />
+                              </Box>
                               <Box sx={{ mt: 1 }}>
                                 <Button
                                   onClick={() => {
@@ -1928,15 +1983,18 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                 </Box>
                               </AccordionSummary>
                               <AccordionDetails>
-                                <Paper sx={{ maxHeight: '500px', overflow: 'auto', p: 2, backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
-                                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                    {(Array.from(new Set(validLinks)) as string[]).map((link: string, idx: number) => (
-                                      <Link key={idx} href={link} target="_blank" rel="noopener" sx={{ color: '#FF00C3', wordBreak: 'break-all', fontSize: '0.875rem' }}>
-                                        {link}
-                                      </Link>
-                                    ))}
-                                  </Box>
-                                </Paper>
+                                <Box sx={{ position: 'relative' }}>
+                                  <Paper sx={{ maxHeight: '500px', overflow: 'auto', p: 2, backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                      {(Array.from(new Set(validLinks)) as string[]).map((link: string, idx: number) => (
+                                        <Link key={idx} href={link} target="_blank" rel="noopener" sx={{ color: '#FF00C3', wordBreak: 'break-all', fontSize: '0.875rem' }}>
+                                          {link}
+                                        </Link>
+                                      ))}
+                                    </Box>
+                                  </Paper>
+                                  <CopyButton content={(Array.from(new Set(validLinks)) as string[]).join('\n')} darkMode={darkMode} />
+                                </Box>
                                 <Box sx={{ mt: 1 }}>
                                   <Button
                                     onClick={() => {
@@ -2131,28 +2189,31 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                   </Box>
                                 </AccordionSummary>
                                 <AccordionDetails>
-                                  <Paper
-                                    sx={{
-                                      p: 2,
-                                      maxHeight: '500px',
-                                      overflow: 'auto',
-                                      backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
-                                    }}
-                                  >
-                                    <Typography
-                                      component="pre"
+                                  <Box sx={{ position: 'relative' }}>
+                                    <Paper
                                       sx={{
-                                        whiteSpace: 'pre-wrap',
-                                        wordBreak: 'break-word',
-                                        fontFamily: 'monospace',
-                                        fontSize: '14px',
-                                        lineHeight: 1.6,
-                                        m: 0
+                                        p: 2,
+                                        maxHeight: '500px',
+                                        overflow: 'auto',
+                                        backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
                                       }}
                                     >
-                                      {searchData[currentSearchIndex].text}
-                                    </Typography>
-                                  </Paper>
+                                      <Typography
+                                        component="pre"
+                                        sx={{
+                                          whiteSpace: 'pre-wrap',
+                                          wordBreak: 'break-word',
+                                          fontFamily: 'monospace',
+                                          fontSize: '14px',
+                                          lineHeight: 1.6,
+                                          m: 0
+                                        }}
+                                      >
+                                        {searchData[currentSearchIndex].text}
+                                      </Typography>
+                                    </Paper>
+                                    <CopyButton content={typeof searchData[currentSearchIndex].text === 'object' ? JSON.stringify(searchData[currentSearchIndex].text, null, 2) : searchData[currentSearchIndex].text} darkMode={darkMode} />
+                                  </Box>
                                   <Box sx={{ mt: 1 }}>
                                     <Button
                                       onClick={() => {
@@ -2181,30 +2242,33 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                   </Box>
                                 </AccordionSummary>
                                 <AccordionDetails>
-                                  <Paper
-                                    sx={{
-                                      p: 2,
-                                      maxHeight: '500px',
-                                      overflow: 'auto',
-                                      backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
-                                    }}
-                                  >
-                                    <Typography
-                                      component="pre"
+                                  <Box sx={{ position: 'relative' }}>
+                                    <Paper
                                       sx={{
-                                        whiteSpace: 'pre-wrap',
-                                        wordBreak: 'break-word',
-                                        fontFamily: 'monospace',
-                                        fontSize: '14px',
-                                        lineHeight: 1.6,
-                                        m: 0
+                                        p: 2,
+                                        maxHeight: '500px',
+                                        overflow: 'auto',
+                                        backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
                                       }}
                                     >
-                                      {typeof searchData[currentSearchIndex].html === 'object'
-                                        ? JSON.stringify(searchData[currentSearchIndex].html, null, 2)
-                                        : searchData[currentSearchIndex].html}
-                                    </Typography>
-                                  </Paper>
+                                      <Typography
+                                        component="pre"
+                                        sx={{
+                                          whiteSpace: 'pre-wrap',
+                                          wordBreak: 'break-word',
+                                          fontFamily: 'monospace',
+                                          fontSize: '14px',
+                                          lineHeight: 1.6,
+                                          m: 0
+                                        }}
+                                      >
+                                        {typeof searchData[currentSearchIndex].html === 'object'
+                                          ? JSON.stringify(searchData[currentSearchIndex].html, null, 2)
+                                          : searchData[currentSearchIndex].html}
+                                      </Typography>
+                                    </Paper>
+                                    <CopyButton content={typeof searchData[currentSearchIndex].html === 'object' ? JSON.stringify(searchData[currentSearchIndex].html, null, 2) : searchData[currentSearchIndex].html} darkMode={darkMode} />
+                                  </Box>
                                   <Box sx={{ mt: 1 }}>
                                     <Button
                                       onClick={() => {
@@ -2233,30 +2297,33 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                   </Box>
                                 </AccordionSummary>
                                 <AccordionDetails>
-                                  <Paper
-                                    sx={{
-                                      p: 2,
-                                      maxHeight: '500px',
-                                      overflow: 'auto',
-                                      backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
-                                    }}
-                                  >
-                                    <Typography
-                                      component="pre"
+                                  <Box sx={{ position: 'relative' }}>
+                                    <Paper
                                       sx={{
-                                        whiteSpace: 'pre-wrap',
-                                        wordBreak: 'break-word',
-                                        fontFamily: 'monospace',
-                                        fontSize: '14px',
-                                        lineHeight: 1.6,
-                                        m: 0
+                                        p: 2,
+                                        maxHeight: '500px',
+                                        overflow: 'auto',
+                                        backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5'
                                       }}
                                     >
-                                      {typeof searchData[currentSearchIndex].markdown === 'object'
-                                        ? JSON.stringify(searchData[currentSearchIndex].markdown, null, 2)
-                                        : searchData[currentSearchIndex].markdown}
-                                    </Typography>
-                                  </Paper>
+                                      <Typography
+                                        component="pre"
+                                        sx={{
+                                          whiteSpace: 'pre-wrap',
+                                          wordBreak: 'break-word',
+                                          fontFamily: 'monospace',
+                                          fontSize: '14px',
+                                          lineHeight: 1.6,
+                                          m: 0
+                                        }}
+                                      >
+                                        {typeof searchData[currentSearchIndex].markdown === 'object'
+                                          ? JSON.stringify(searchData[currentSearchIndex].markdown, null, 2)
+                                          : searchData[currentSearchIndex].markdown}
+                                      </Typography>
+                                    </Paper>
+                                    <CopyButton content={typeof searchData[currentSearchIndex].markdown === 'object' ? JSON.stringify(searchData[currentSearchIndex].markdown, null, 2) : searchData[currentSearchIndex].markdown} darkMode={darkMode} />
+                                  </Box>
                                   <Box sx={{ mt: 1 }}>
                                     <Button
                                       onClick={() => {
@@ -2290,15 +2357,18 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                     </Box>
                                   </AccordionSummary>
                                   <AccordionDetails>
-                                    <Paper sx={{ maxHeight: '500px', overflow: 'auto', p: 2, backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
-                                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                        {(Array.from(new Set(validLinks)) as string[]).map((link: string, idx: number) => (
-                                          <Link key={idx} href={link} target="_blank" rel="noopener" sx={{ color: '#FF00C3', wordBreak: 'break-all', fontSize: '0.875rem' }}>
-                                            {link}
-                                          </Link>
-                                        ))}
-                                      </Box>
-                                    </Paper>
+                                    <Box sx={{ position: 'relative' }}>
+                                      <Paper sx={{ maxHeight: '500px', overflow: 'auto', p: 2, backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
+                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                          {(Array.from(new Set(validLinks)) as string[]).map((link: string, idx: number) => (
+                                            <Link key={idx} href={link} target="_blank" rel="noopener" sx={{ color: '#FF00C3', wordBreak: 'break-all', fontSize: '0.875rem' }}>
+                                              {link}
+                                            </Link>
+                                          ))}
+                                        </Box>
+                                      </Paper>
+                                      <CopyButton content={(Array.from(new Set(validLinks)) as string[]).join('\n')} darkMode={darkMode} />
+                                    </Box>
                                     <Box sx={{ mt: 1 }}>
                                       <Button
                                         onClick={() => {
