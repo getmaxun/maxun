@@ -351,6 +351,14 @@ export class WorkflowEnricher {
   /**
    * Analyze page groups using browser-side script
    */
+  // LLMs sometimes embed literal newlines in string fields like "reasoning". JSON.parse rejects
+  // unescaped control characters in strings, so we escape them before parsing.
+  private static sanitizeJsonString(jsonStr: string): string {
+    return jsonStr.replace(/"(?:[^"\\]|\\.)*"/g, (match) =>
+      match.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t')
+    );
+  }
+
   private static async analyzePageGroups(validator: SelectorValidator): Promise<any[]> {
     try {
       const page = (validator as any).page;
@@ -586,7 +594,7 @@ Note: selectedGroupIndex must be between 0 and ${elementGroups.length - 1}`;
         jsonStr = objectMatch[0];
       }
 
-      const decision = JSON.parse(jsonStr);
+      const decision = JSON.parse(this.sanitizeJsonString(jsonStr));
 
       if (!decision.actionType || decision.actionType !== 'captureList') {
         throw new Error('LLM response must have actionType: "captureList"');
@@ -901,7 +909,7 @@ Return a JSON object with this exact structure:
         jsonStr = objectMatch[0];
       }
 
-      const parsedResponse = JSON.parse(jsonStr);
+      const parsedResponse = JSON.parse(this.sanitizeJsonString(jsonStr));
 
       let labelMapping: Record<string, string>;
       if (parsedResponse.fieldLabels) {
@@ -1116,7 +1124,7 @@ Rules:
         jsonStr = objectMatch[0];
       }
 
-      const filterResult = JSON.parse(jsonStr);
+      const filterResult = JSON.parse(this.sanitizeJsonString(jsonStr));
 
       if (!Array.isArray(filterResult.selectedFields)) {
         throw new Error('Invalid response: selectedFields must be an array');
@@ -1752,7 +1760,7 @@ Extract the search query, extraction goal, and limit. Return JSON only.`;
         jsonStr = objectMatch[0];
       }
 
-      const intent = JSON.parse(jsonStr);
+      const intent = JSON.parse(this.sanitizeJsonString(jsonStr));
 
       if (!intent.searchQuery || !intent.extractionGoal) {
         throw new Error('Invalid intent parsing response - missing required fields');
@@ -2023,7 +2031,7 @@ Select the BEST result index (0-${searchResults.length - 1}). Return JSON only.`
         jsonStr = objectMatch[0];
       }
 
-      const decision = JSON.parse(jsonStr);
+      const decision = JSON.parse(this.sanitizeJsonString(jsonStr));
 
       if (decision.selectedIndex === undefined || decision.selectedIndex < 0 || decision.selectedIndex >= searchResults.length) {
         throw new Error(`Invalid selectedIndex: ${decision.selectedIndex}`);
