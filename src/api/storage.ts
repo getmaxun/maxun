@@ -154,6 +154,20 @@ export const getStoredRuns = async (): Promise<string[] | null> => {
   }
 };
 
+export const getStoredRun = async (id: string): Promise<any | null> => {
+  try {
+    const response = await axios.get(`${apiUrl}/storage/runs/run/${id}`);
+    if (response.status === 200) {
+      return response.data;
+    } else {
+      throw new Error(`Couldn't retrieve stored run ${id}`);
+    }
+  } catch (error: any) {
+    console.log(error);
+    return null;
+  }
+};
+
 export const duplicateRecording = async (id: string, targetUrl: string, newName?: string): Promise<any> => {
   try {
     const response = await axios.post(`${apiUrl}/storage/recordings/${id}/duplicate`, {

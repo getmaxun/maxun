@@ -213,6 +213,9 @@ router.get(('/recordings/:id/runs'), requireSignIn, async (req, res) => {
       where: {
         robotMetaId: req.params.id
       },
+      attributes: {
+        exclude: ['serializableOutput', 'binaryOutput']
+      },
       raw: true
     });
     const formattedRuns = runs.map(formatRunResponse);
@@ -918,7 +921,11 @@ router.post('/recordings/:id/duplicate', requireSignIn, async (req: Authenticate
  */
 router.get('/runs', requireSignIn, async (req, res) => {
   try {
-    const data = await Run.findAll();
+    const data = await Run.findAll({
+      attributes: {
+        exclude: ['serializableOutput', 'binaryOutput']
+      }
+    });
     return res.send(data);
   } catch (e) {
     logger.log('info', 'Error while reading runs');
@@ -1097,7 +1104,7 @@ router.put('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res) =>
  */
 router.get('/runs/run/:id', requireSignIn, async (req, res) => {
   try {
-    const run = await Run.findOne({ where: { runId: req.params.runId }, raw: true });
+    const run = await Run.findOne({ where: { runId: req.params.id }, raw: true });
     if (!run) {
       return res.status(404).send(null);
     }
