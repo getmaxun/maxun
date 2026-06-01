@@ -99,9 +99,28 @@ const lightTheme = createTheme({
         },
       },
     },
+   MuiAccordion: {
+      styleOverrides: {
+        root: {
+          '&.MuiAccordion-root:before': {
+            display: 'none',
+          },
+        },
+      },
+    },
+    MuiAccordionSummary: {
+      styleOverrides: {
+        root: {
+          minHeight: 50,
+
+          '&.Mui-expanded': {
+            minHeight: 40,
+          },
+        },
+      },
+    },
   },
 });
-
 const darkTheme = createTheme({
   palette: {
     mode: 'dark',
