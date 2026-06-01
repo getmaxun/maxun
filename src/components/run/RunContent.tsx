@@ -1100,7 +1100,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
         >
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <StorageIcon sx={{ mr: 1 }} />
-            <Typography variant='h6'>
+            <Typography variant='subtitle1'>
               {title}
             </Typography>
           </Box>
