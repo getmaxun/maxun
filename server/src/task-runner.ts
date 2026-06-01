@@ -658,6 +658,7 @@ export async function startWorkers(): Promise<void> {
       pgPool: runnerPool,
       concurrency: TOTAL_CONCURRENCY,
       noHandleSignals: true,
+      pollInterval: 3600000,
       taskList,
     });
 
