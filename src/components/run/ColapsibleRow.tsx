@@ -3,7 +3,7 @@ import * as React from "react";
 import TableRow from "@mui/material/TableRow";
 import TableCell from "@mui/material/TableCell";
 import {
-  Box, Collapse, IconButton, Chip, Dialog, DialogTitle,
+  Box, Collapse, IconButton, Typography, Chip, TextField, Dialog, DialogTitle,
   DialogContent,
   DialogContentText,
   DialogActions,
@@ -71,7 +71,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
             : row.runByAPI
               ? 'API'
               : 'Unknown';
-
+  
   const logEndRef = useRef<HTMLDivElement | null>(null);
 
   const [workflowProgress, setWorkflowProgress] = useState<{
@@ -219,6 +219,67 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                     <IconButton aria-label="settings" size="small" onClick={() => setOpenSettingsModal(true)}>
                       <Settings />
                     </IconButton>
+                     <Dialog
+                      open={openSettingsModal}
+                      onClose={() => setOpenSettingsModal(false)}
+                      maxWidth="sm"
+                      fullWidth
+                      PaperProps={{
+                        sx: {
+                          borderRadius: 2
+                        }
+                      }}
+                    >
+                      <DialogTitle>
+                        {t('runs_table.run_settings_modal.title')}
+                      </DialogTitle>
+
+                      <DialogContent>
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 2.5,
+                            mt: 1
+                          }}
+                        >
+                          <TextField
+                            label={t('runs_table.run_settings_modal.labels.run_id')}
+                            value={row.runId}
+                            InputProps={{ readOnly: true }}
+                            fullWidth
+                          />
+
+                          <TextField
+                            label={
+                              row.runByScheduleId
+                                ? t('runs_table.run_settings_modal.labels.run_by_schedule')
+                                : row.runByUserId
+                                  ? t('runs_table.run_settings_modal.labels.run_by_user')
+                                  : t('runs_table.run_settings_modal.labels.run_by_unknown')
+                            }
+                            value={runByLabel}
+                            InputProps={{ readOnly: true }}
+                            fullWidth
+                          />
+
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <Typography variant="body1">
+                              {t('runs_table.run_settings_modal.labels.run_type')}:
+                            </Typography>
+
+                            <RunTypeChip
+                              runByUserId={row.runByUserId}
+                              runByScheduledId={row.runByScheduleId}
+                              runByAPI={row.runByAPI ?? false}
+                              runBySDK={row.runBySDK}
+                              runByMCP={row.runByMCP}
+                              runByCLI={row.runByCLI}
+                            />
+                          </Box>
+                        </Box>
+                      </DialogContent>
+                    </Dialog>
                   </TableCell>
                 )
               default:
