@@ -1440,11 +1440,11 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {hasPromptResult && promptResultData && (
-                <Accordion defaultExpanded>
+                <Accordion defaultExpanded style={{ marginLeft: "-38px" }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <PsychologyIcon sx={{ mr: 1 }} />
-                      <Typography variant='h6'>Smart Queries</Typography>
+                      <Typography variant='subtitle1'>Smart Queries</Typography>
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
