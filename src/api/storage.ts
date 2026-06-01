@@ -527,6 +527,29 @@ export const runDocumentParseRobot = async (
   }
 };
 
+export const replaceDocumentFile = async (
+  robotMetaId: string,
+  file: File
+): Promise<{ message?: string; documentFileName?: string; error?: string } | null> => {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await axios.put(
+      `${apiUrl}/storage/recordings/${robotMetaId}/document`,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        withCredentials: true,
+        timeout: 60000,
+      }
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error('Error replacing document:', error);
+    return { error: error.response?.data?.error || 'Failed to replace document' };
+  }
+};
+
 export const createSearchRobot = async (
   name: string,
   searchConfig: {
