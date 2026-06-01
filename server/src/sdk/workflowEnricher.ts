@@ -298,8 +298,6 @@ export class WorkflowEnricher {
       await validator.initialize(page as any, url);
 
       const validatorPage = (validator as any).page;
-      // Use JPEG with quality 85 for faster processing and smaller file size
-      // Vision models handle this compression well while maintaining accuracy
       const screenshotBuffer = await page.screenshot({ 
         fullPage: true, 
         type: 'jpeg',
@@ -321,7 +319,7 @@ export class WorkflowEnricher {
       );
       logger.info(`LLM decided action type: ${llmDecision.actionType}`);
 
-      const workflow = await this.buildWorkflowFromLLMDecision(llmDecision, url, validator, prompt, llmConfig);
+      const workflow = await this.tryGroupCandidates(llmDecision, elementGroups, url, validator, prompt, llmConfig);
 
       await validator.close();
 
@@ -346,6 +344,12 @@ export class WorkflowEnricher {
       logger.error('Error generating workflow from prompt:', error);
       return { success: false, errors: [error.message] };
     }
+  }
+
+  private static sanitizeJsonString(jsonStr: string): string {
+    return jsonStr.replace(/"(?:[^"\\]|\\.)*"/g, (match) =>
+      match.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t')
+    );
   }
 
   /**
@@ -397,58 +401,8 @@ export class WorkflowEnricher {
       const provider = llmConfig?.provider || 'ollama';
       const axios = require('axios');
 
-      const groupsDescription = elementGroups.map((group, index) => {
-        const sampleText = group.sampleTexts.slice(0, 2).filter((t: string) => t && t.trim().length > 0).join(' | ');
-        const hasContent = sampleText.length > 0;
-        const contentPreview = hasContent ? sampleText : '(no text content - likely images/icons)';
-
-        return `Group ${index}:
-- Tag: ${group.fingerprint.tagName}
-- Count: ${group.count} similar elements
-- Has text content: ${hasContent ? 'YES' : 'NO'}
-- Sample content: ${contentPreview.substring(0, 300)}`;
-      }).join('\n\n');
-
-      const systemPrompt = `You are a request classifier for list extraction. Your job is to:
-1. Identify that the user wants to extract a list of items
-2. Select the BEST element group that matches what they want
-3. Extract any numeric limit from their request
-
-CRITICAL GROUP SELECTION RULES:
-- Match the sample content to what the user is asking for - this is the PRIMARY criterion
-- Groups with text content are often easier to match, but image galleries, icon grids, or data-attribute based groups can also be correct
-- Analyze the keywords in the user's request and find the group whose sample content or structure best matches
-- Consider the context: product sites may have image grids, job sites have text listings, etc.
-- The group with the most relevant content should be selected, NOT just the first group or the group with most text
-
-LIMIT EXTRACTION:
-- Look for numbers in the request that indicate quantity (e.g., "50", "25", "100", "first 30", "top 10")
-- If no limit specified, use null
-
-Must return valid JSON: {"actionType": "captureList", "reasoning": "...", "selectedGroupIndex": NUMBER, "limit": NUMBER_OR_NULL}`;
-
-      const userPrompt = `User's request: "${prompt}"
-
-Available element groups on page:
-${groupsDescription}
-
-TASK:
-1. Identify the key terms from the user's request
-2. Look through ALL the groups above
-3. Find the group whose "Sample content" best matches the key terms from the request
-4. Prefer groups with "Has text content: YES" over "NO"
-5. Extract any numeric limit from the request if present
-
-Return JSON:
-{
-  "actionType": "captureList",
-  "reasoning": "Brief explanation of why this group was selected",
-  "selectedGroupIndex": INDEX_NUMBER,
-  "limit": NUMBER_OR_NULL
-}
-
-Note: selectedGroupIndex must be between 0 and ${elementGroups.length - 1}`;
-
+      const keywords = this.extractMeaningfulKeywords(prompt);
+      const { systemPrompt, userPrompt } = this.buildUnifiedPrompt(prompt, elementGroups, keywords);
 
       let llmResponse: string;
 
@@ -456,44 +410,15 @@ Note: selectedGroupIndex must be between 0 and ${elementGroups.length - 1}`;
         const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
         const ollamaModel = llmConfig?.model || 'llama3.2-vision';
 
-        const jsonSchema = {
-          type: 'object',
-          required: ['actionType', 'reasoning', 'selectedGroupIndex'],
-          properties: {
-            actionType: {
-              type: 'string',
-              enum: ['captureList']
-            },
-            reasoning: {
-              type: 'string'
-            },
-            selectedGroupIndex: {
-              type: 'integer'
-            },
-            limit: {
-              type: ['integer', 'null']
-            }
-          }
-        };
-
         const response = await axios.post(`${ollamaBaseUrl}/api/chat`, {
           model: ollamaModel,
           messages: [
-            {
-              role: 'system',
-              content: systemPrompt
-            },
-            {
-              role: 'user',
-              content: userPrompt,
-              images: [screenshotBase64]
-            }
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt, images: [screenshotBase64] }
           ],
           stream: false,
-          format: jsonSchema,
-          options: {
-            temperature: 0.1
-          }
+          format: 'json',
+          options: { temperature: 0.1 }
         });
 
         llmResponse = response.data.message.content;
@@ -510,18 +435,8 @@ Note: selectedGroupIndex must be between 0 and ${elementGroups.length - 1}`;
           messages: [{
             role: 'user',
             content: [
-              {
-                type: 'image',
-                source: {
-                  type: 'base64',
-                  media_type: 'image/png',
-                  data: screenshotBase64
-                }
-              },
-              {
-                type: 'text',
-                text: userPrompt
-              }
+              { type: 'image', source: { type: 'base64', media_type: 'image/png', data: screenshotBase64 } },
+              { type: 'text', text: userPrompt }
             ]
           }],
           system: systemPrompt
@@ -537,25 +452,11 @@ Note: selectedGroupIndex must be between 0 and ${elementGroups.length - 1}`;
         const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
           model: openaiModel,
           messages: [
-            {
-              role: 'system',
-              content: systemPrompt
-            },
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'text',
-                  text: userPrompt
-                },
-                {
-                  type: 'image_url',
-                  image_url: {
-                    url: `data:image/png;base64,${screenshotBase64}`
-                  }
-                }
-              ]
-            }
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: [
+              { type: 'text', text: userPrompt },
+              { type: 'image_url', image_url: { url: `data:image/png;base64,${screenshotBase64}` } }
+            ]}
           ],
           max_tokens: 1024,
           temperature: 0.1
@@ -575,40 +476,228 @@ Note: selectedGroupIndex must be between 0 and ${elementGroups.length - 1}`;
       logger.info(`LLM Response: ${llmResponse}`);
 
       let jsonStr = llmResponse.trim();
-
       const jsonMatch = jsonStr.match(/```json\s*([\s\S]*?)\s*```/) || jsonStr.match(/```\s*([\s\S]*?)\s*```/);
-      if (jsonMatch) {
-        jsonStr = jsonMatch[1].trim();
-      }
+      if (jsonMatch) jsonStr = jsonMatch[1].trim();
+      const objectMatch = jsonStr.match(/\{[\s\S]*\}/);
+      if (objectMatch) jsonStr = objectMatch[0];
 
-      const objectMatch = jsonStr.match(/\{[\s\S]*"actionType"[\s\S]*\}/);
-      if (objectMatch) {
-        jsonStr = objectMatch[0];
-      }
-
-      const decision = JSON.parse(jsonStr);
-
-      if (!decision.actionType || decision.actionType !== 'captureList') {
-        throw new Error('LLM response must have actionType: "captureList"');
-      }
-
-      if (decision.selectedGroupIndex === undefined || decision.selectedGroupIndex < 0 || decision.selectedGroupIndex >= elementGroups.length) {
-        throw new Error(`Invalid selectedGroupIndex: ${decision.selectedGroupIndex}. Must be between 0 and ${elementGroups.length - 1}`);
-      }
-
-      const selectedGroup = elementGroups[decision.selectedGroupIndex];
-      return {
-        actionType: 'captureList',
-        selectedGroup,
-        itemSelector: selectedGroup.xpath,
-        reasoning: decision.reasoning,
-        limit: decision.limit || null
-      };
+      const decision = JSON.parse(this.sanitizeJsonString(jsonStr));
+      const parsed = WorkflowEnricher.parseGroupCandidates(decision, elementGroups, decision.limit || null);
+      return WorkflowEnricher.buildDecisionFromCandidates(parsed.candidates, parsed.reasoning, decision.limit || null);
 
     } catch (error: any) {
       logger.error('LLM decision error:', error);
       return this.fallbackHeuristicDecision(prompt, elementGroups);
     }
+  }
+
+  private static extractMeaningfulKeywords(prompt: string): string[] {
+    const stopwords = ['extract', 'information', 'from', 'this', 'that', 'these', 'those', 'page', 'website', 'data', 'details', 'given', 'list', 'items', 'show', 'get', 'find', 'all', 'top', 'first', 'last'];
+    return prompt.toLowerCase()
+      .replace(/[^\w\s]/g, '')
+      .split(/\s+/)
+      .filter(w => w.length > 3 && !stopwords.includes(w));
+  }
+
+  private static isStructurallyExcluded(group: any): boolean {
+    if (group.isNavOrFooter) return true;
+    const role = (group.ariaRole || '').toLowerCase();
+    if (['navigation', 'contentinfo', 'banner', 'complementary', 'search'].includes(role)) return true;
+    if (typeof group.linkTextRatio === 'number' && group.linkTextRatio > 0.85 && (group.avgTextLength || 0) < 60) return true;
+    if ((group.count || 1) < 2) return true;
+    return false;
+  }
+
+  private static buildUnifiedGroupDescription(elementGroups: any[], keywords: string[]): string {
+    return elementGroups.map((group, index) => {
+      if (this.isStructurallyExcluded(group)) return null;
+
+      const sampleText = (group.sampleTexts || []).slice(0, 3).filter((t: string) => t && t.trim().length > 0).join(' | ');
+      const hasContent = sampleText.length > 0;
+      const elementCount = group.count || 1;
+
+      let matchCount = 0;
+      const sampleLower = sampleText.toLowerCase();
+      for (const kw of keywords) {
+        if (sampleLower.includes(kw.toLowerCase())) matchCount++;
+      }
+
+      const looksLikeCode = (
+        (/[{}]/.test(sampleText) && /[:;]/.test(sampleText) && sampleText.length > 80) ||
+        /@media\s|@keyframes\s|function\s*\(|=>\s*\{/.test(sampleText) ||
+        /document\.|window\./.test(sampleText)
+      );
+
+      const matchNote = matchCount > 0 ? ` [MATCH]` : '';
+      const codeWarning = looksLikeCode ? ` [CONTAINS_CODE]` : '';
+      const content = hasContent ? sampleText.substring(0, 400) : '(no text)';
+
+      const tagInfo = group.fingerprint?.tagName ? `<${group.fingerprint.tagName}>` : '';
+      const parentInfo = group.semanticParent && group.semanticParent !== 'unknown' ? ` inside <${group.semanticParent}>` : '';
+      const fieldsInfo = group.childTagCount ? ` (${group.childTagCount} tags, ${group.attributeCount || 0} links/imgs)` : '';
+
+      const roleInfo = group.ariaRole ? ` role:${group.ariaRole}` : '';
+      const avgText = typeof group.avgTextLength === 'number' ? ` avgText:${group.avgTextLength}ch` : '';
+      const linkRatio = typeof group.linkTextRatio === 'number' ? ` linkRatio:${group.linkTextRatio.toFixed(2)}` : '';
+      const headings = typeof group.headingCount === 'number' && group.headingCount > 0 ? ` headings:${group.headingCount}` : '';
+      const signals = `${roleInfo}${avgText}${linkRatio}${headings}`.trim();
+      const signalsBlock = signals ? ` |${signals}` : '';
+
+      return `${index}: ${elementCount} ${tagInfo} items${parentInfo}${signalsBlock}${fieldsInfo}${matchNote}${codeWarning} - "${content}"`;
+    }).filter(Boolean).join('\n');
+  }
+
+  private static buildUnifiedPrompt(
+    prompt: string,
+    elementGroups: any[],
+    keywords: string[]
+  ): { systemPrompt: string; userPrompt: string } {
+    const groupsText = this.buildUnifiedGroupDescription(elementGroups, keywords);
+
+    const systemPrompt = `You are a data extraction AI. Your job is to select the group of elements that best matches what the user wants to scrape, plus a runner-up.
+
+EACH GROUP DESCRIPTION SHOWS STRUCTURAL SIGNALS:
+- role:X       → ARIA role of an ancestor (main = content, navigation/banner/contentinfo = avoid)
+- avgText:Nch  → average text length per item. Content cards are usually >80ch; nav links are <30ch.
+- linkRatio:N  → fraction of item text that is link text. Content cards: <0.4. Nav/menu items: >0.7.
+- headings:N   → number of <h1>-<h6> per item. Content cards often have one; nav links never do.
+- [MATCH]      → the item sample text contains user keywords.
+- [CONTAINS_CODE] → the group is page layout junk (CSS/JS), NEVER select it.
+
+RULES:
+1. Identify exactly what the user wants to extract (e.g., blog posts, products, companies).
+2. Prefer groups with [MATCH] AND avgText >= 60ch AND linkRatio < 0.6. These are almost always real content items.
+3. Strongly prefer groups whose role is "main" or "article". Reject any with role "navigation", "banner", "contentinfo", "complementary".
+4. A high linkRatio (> 0.7) with low avgText (< 30ch) is a strong nav/menu signal — avoid.
+5. Between two viable groups, pick the one with more items AND richer fields (higher tag count, more links/imgs).
+6. If NO group matches at all (login page, error page, irrelevant content), return -1 for both first and second.
+7. NEVER select a group marked [CONTAINS_CODE].
+
+Reply with ONLY valid JSON. No markdown blocks, no extra text. Pick a best choice AND a runner-up.
+{"first": NUMBER, "second": NUMBER, "reason": "brief explanation"}
+
+If only one group is viable, set "second" to the same number as "first" (or -1).
+If no group matches, set both to -1.`;
+
+    const userPrompt = `USER REQUEST: "${prompt}"
+
+GROUPS (format: INDEX: COUNT items |signals| (fields) [flags] - "sample content"):
+${groupsText}
+
+Pick the BEST group and a RUNNER-UP. Reply JSON: {"first": NUMBER, "second": NUMBER, "reason": "..."}`;
+
+    return { systemPrompt, userPrompt };
+  }
+
+  private static parseGroupCandidates(
+    decision: any,
+    elementGroups: any[],
+    limit: number | null = null
+  ): { candidates: any[]; isNoMatch: boolean; reasoning: string } {
+    const reasoning = decision.reason || decision.reasoning || '';
+    const rawIndices: any[] = [];
+    if (decision.first !== undefined) rawIndices.push(decision.first);
+    if (decision.second !== undefined) rawIndices.push(decision.second);
+    if (decision.group !== undefined) rawIndices.push(decision.group);
+    if (decision.selectedGroupIndex !== undefined) rawIndices.push(decision.selectedGroupIndex);
+
+    if (rawIndices.length > 0 && rawIndices.every(v => v === -1)) {
+      return { candidates: [], isNoMatch: true, reasoning };
+    }
+
+    const seen = new Set<number>();
+    const candidates: any[] = [];
+    for (const raw of rawIndices) {
+      if (typeof raw !== 'number' || raw === -1) continue;
+      if (raw < 0 || raw >= elementGroups.length) continue;
+      if (seen.has(raw)) continue;
+      seen.add(raw);
+      const group = elementGroups[raw];
+      candidates.push({
+        actionType: 'captureList',
+        selectedGroup: group,
+        selectedGroupIndex: raw,
+        itemSelector: group.xpath,
+        reasoning,
+        limit
+      });
+    }
+
+    return { candidates, isNoMatch: false, reasoning };
+  }
+
+  private static buildDecisionFromCandidates(
+    candidates: any[],
+    reasoning: string,
+    limit: number | null
+  ): any {
+    if (candidates.length === 0) {
+      throw new Error('No valid candidates parsed from LLM response');
+    }
+    const first = candidates[0];
+    return {
+      actionType: 'captureList',
+      candidates,
+      selectedGroup: first.selectedGroup,
+      selectedGroupIndex: first.selectedGroupIndex,
+      itemSelector: first.itemSelector,
+      reasoning,
+      limit
+    };
+  }
+
+  private static async tryGroupCandidates(
+    llmDecision: any,
+    allGroups: any[],
+    url: string,
+    validator: SelectorValidator,
+    prompt: string,
+    llmConfig?: {
+      provider?: 'anthropic' | 'openai' | 'ollama';
+      model?: string;
+      apiKey?: string;
+      baseUrl?: string;
+    }
+  ): Promise<any[]> {
+    const candidates: any[] = Array.isArray(llmDecision?.candidates) && llmDecision.candidates.length > 0
+      ? llmDecision.candidates
+      : (llmDecision?.itemSelector ? [llmDecision] : []);
+
+    const triedSelectors = new Set<string>();
+    let lastError: Error | null = null;
+
+    for (const candidate of candidates) {
+      if (!candidate?.itemSelector) continue;
+      if (triedSelectors.has(candidate.itemSelector)) continue;
+      triedSelectors.add(candidate.itemSelector);
+
+      try {
+        logger.info(`Trying candidate group ${candidate.selectedGroupIndex} (${candidate.itemSelector})`);
+        const workflow = await this.buildWorkflowFromLLMDecision(candidate, url, validator, prompt, llmConfig);
+        logger.info(`Candidate group ${candidate.selectedGroupIndex} succeeded`);
+        return workflow;
+      } catch (e: any) {
+        lastError = e;
+        logger.warn(`Candidate group ${candidate.selectedGroupIndex} failed: ${e.message}`);
+      }
+    }
+
+    const remaining = allGroups.filter(g => g && g.xpath && !triedSelectors.has(g.xpath));
+    if (remaining.length > 0) {
+      logger.info(`All LLM candidates failed; falling back to heuristic over ${remaining.length} remaining groups`);
+      try {
+        const heuristicDecision = this.fallbackHeuristicDecision(prompt, remaining);
+        if (heuristicDecision?.itemSelector && !triedSelectors.has(heuristicDecision.itemSelector)) {
+          triedSelectors.add(heuristicDecision.itemSelector);
+          return await this.buildWorkflowFromLLMDecision(heuristicDecision, url, validator, prompt, llmConfig);
+        }
+      } catch (e: any) {
+        lastError = e;
+        logger.warn(`Heuristic fallback also failed: ${e.message}`);
+      }
+    }
+
+    throw lastError || new Error('All candidate groups failed field detection');
   }
 
   /**
@@ -621,15 +710,43 @@ Note: selectedGroupIndex must be between 0 and ${elementGroups.length - 1}`;
       throw new Error('No element groups found on page for list extraction');
     }
 
+    const keywords = promptLower.split(' ').filter((w: string) => w.length > 3);
+
     const scoredGroups = elementGroups.map((group, index) => {
       let score = 0;
-      for (const sampleText of group.sampleTexts) {
-        const keywords = promptLower.split(' ').filter((w: string) => w.length > 3);
-        for (const keyword of keywords) {
-          if (sampleText.toLowerCase().includes(keyword)) score += 2;
-        }
+
+      const sampleJoined = (group.sampleTexts || []).join(' ').toLowerCase();
+      for (const keyword of keywords) {
+        if (sampleJoined.includes(keyword)) score += 3;
       }
-      score += Math.min(group.count / 10, 5);
+
+      if (group.isNavOrFooter) score -= 20;
+      const role = (group.ariaRole || '').toLowerCase();
+      if (['navigation', 'banner', 'contentinfo', 'complementary', 'search'].includes(role)) score -= 25;
+      if (role === 'main' || role === 'article') score += 12;
+
+      const sp = (group.semanticParent || '').toLowerCase();
+      if (sp === 'main' || sp === 'article' || sp === 'section') score += 6;
+      if (sp === 'nav' || sp === 'footer' || sp === 'header' || sp === 'aside') score -= 12;
+
+      const avgText = group.avgTextLength || 0;
+      if (avgText >= 80) score += 6;
+      else if (avgText >= 40) score += 3;
+      else if (avgText < 15) score -= 5;
+
+      const linkRatio = typeof group.linkTextRatio === 'number' ? group.linkTextRatio : 0;
+      if (linkRatio > 0.85) score -= 15;
+      else if (linkRatio > 0.7) score -= 8;
+      else if (linkRatio < 0.4) score += 4;
+
+      if ((group.headingCount || 0) > 0) score += 3;
+
+      if ((group.count || 0) < 2) score -= 15;
+      score += Math.min((group.count || 0) / 10, 5);
+
+      if ((group.childTagCount || 0) >= 4) score += 3;
+      if ((group.attributeCount || 0) >= 2) score += 2;
+
       return { group, score, index };
     });
 
@@ -639,7 +756,9 @@ Note: selectedGroupIndex must be between 0 and ${elementGroups.length - 1}`;
     return {
       actionType: 'captureList',
       selectedGroup: best.group,
-      itemSelector: best.group.xpath
+      selectedGroupIndex: best.index,
+      itemSelector: best.group.xpath,
+      limit: null
     };
   }
 
@@ -1103,7 +1222,6 @@ Rules:
 
       logger.info(`LLM Field Filtering Response: ${llmResponse}`);
 
-      // Parse JSON response
       let jsonStr = llmResponse.trim();
 
       const jsonMatch = jsonStr.match(/```json\s*([\s\S]*?)\s*```/) || jsonStr.match(/```\s*([\s\S]*?)\s*```/);
@@ -1600,7 +1718,7 @@ Return ONLY the list name, nothing else:`;
         llmDecision.limit = intent.limit;
       }
 
-      const workflow = await this.buildWorkflowFromLLMDecision(llmDecision, selection.url, validator, userPrompt, llmConfig);
+      const workflow = await this.tryGroupCandidates(llmDecision, elementGroups, selection.url, validator, userPrompt, llmConfig);
 
       await validator.close();
 
