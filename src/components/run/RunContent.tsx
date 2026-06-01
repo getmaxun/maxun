@@ -1289,7 +1289,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
           ) : (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {hasTextFormat && (
-                <Accordion defaultExpanded>
+                <Accordion defaultExpanded style={{ marginLeft: "-38px" }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <SubjectIcon sx={{ mr: 1 }} />
