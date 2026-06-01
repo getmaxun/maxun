@@ -220,48 +220,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                     <IconButton aria-label="settings" size="small" onClick={() => setOpenSettingsModal(true)}>
                       <Settings />
                     </IconButton>
-                    <GenericModal
-                      isOpen={openSettingsModal}
-                      onClose={() => setOpenSettingsModal(false)}
-                      modalStyle={modalStyle}
-                    >
-                      <>
-                        <Typography variant="h5" style={{ marginBottom: '20px' }}>
-                          {t('runs_table.run_settings_modal.title')}
-                        </Typography>
-                        <Box style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                          <TextField
-                            label={t('runs_table.run_settings_modal.labels.run_id')}
-                            value={row.runId}
-                            InputProps={{ readOnly: true }}
-                          />
-                          <TextField
-                            label={
-                              row.runByScheduleId
-                                ? t('runs_table.run_settings_modal.labels.run_by_schedule')
-                                : row.runByUserId
-                                  ? t('runs_table.run_settings_modal.labels.run_by_user')
-                                  : t('runs_table.run_settings_modal.labels.run_by_api')
-                            }
-                            value={runByLabel}
-                            InputProps={{ readOnly: true }}
-                          />
-                          <Box style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <Typography variant="body1">
-                              {t('runs_table.run_settings_modal.labels.run_type')}:
-                            </Typography>
-                            <RunTypeChip
-                              runByUserId={row.runByUserId}
-                              runByScheduledId={row.runByScheduleId}
-                              runByAPI={row.runByAPI ?? false}
-                              runBySDK={row.runBySDK}
-                              runByMCP={row.runByMCP}
-                              runByCLI={row.runByCLI}
-                            />
-                          </Box>
-                        </Box>
-                      </>
-                    </GenericModal>
+                    
                   </TableCell>
                 )
               default:
