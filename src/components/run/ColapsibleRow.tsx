@@ -72,7 +72,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
             : row.runByAPI
               ? 'API'
               : 'Unknown';
-  
+
   const logEndRef = useRef<HTMLDivElement | null>(null);
 
   const [workflowProgress, setWorkflowProgress] = useState<{
@@ -220,7 +220,6 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                     <IconButton aria-label="settings" size="small" onClick={() => setOpenSettingsModal(true)}>
                       <Settings />
                     </IconButton>
-                    
                   </TableCell>
                 )
               default:
