@@ -225,7 +225,7 @@ export const validMomentTimezones: string[] = [
     'America/Tortola',
     'America/Vancouver',
     'America/Virgin',
-    'America/Whitheorse',
+    'America/Whitehorse',
     'America/Winnipeg',
     'America/Yakutat',
     'America/Yellowknife',
