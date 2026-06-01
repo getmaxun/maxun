@@ -76,8 +76,8 @@ const lightTheme = createTheme({
     MuiTab: {
       styleOverrides: {
         root: {
-         minHeight: 60, 
-         textTransform: "none",
+          minHeight: 60,
+          textTransform: "none",
         },
       },
     },
@@ -99,7 +99,7 @@ const lightTheme = createTheme({
         },
       },
     },
-   MuiAccordion: {
+    MuiAccordion: {
       styleOverrides: {
         root: {
           '&.MuiAccordion-root:before': {
@@ -233,7 +233,7 @@ const darkTheme = createTheme({
     MuiTab: {
       styleOverrides: {
         root: {
-          minHeight: 60, 
+          minHeight: 60,
           textTransform: "none",
           color: '#ffffff',
           "&.Mui-selected": {
@@ -305,7 +305,7 @@ const darkTheme = createTheme({
     //         },
     //   }
     // }}
-  MuiAccordion: {
+    MuiAccordion: {
       styleOverrides: {
         root: {
           '&.MuiAccordion-root:before': {
