@@ -2147,7 +2147,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                             <Accordion defaultExpanded sx={{ mb: 2 }}>
                               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                  <Typography variant='h6'>
+                                  <Typography variant='subtitle1'>
                                     <InfoOutlinedIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Metadata
                                   </Typography>
                                 </Box>
@@ -2195,7 +2195,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               <Accordion defaultExpanded sx={{ mb: 2 }}>
                                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    <Typography variant='h6'>
+                                    <Typography variant='subtitle1'>
                                       <SubjectIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Text Content
                                     </Typography>
                                   </Box>
@@ -2248,7 +2248,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               <Accordion defaultExpanded sx={{ mb: 2 }}>
                                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    <Typography variant='h6'>
+                                    <Typography variant='subtitle1'>
                                       <CodeIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> HTML
                                     </Typography>
                                   </Box>
@@ -2303,7 +2303,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               <Accordion sx={{ mb: 2 }}>
                                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    <Typography variant='h6'>
+                                    <Typography variant='subtitle1'>
                                       <DescriptionIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Markdown
                                     </Typography>
                                   </Box>
@@ -2363,7 +2363,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                 <Accordion sx={{ mb: 2 }}>
                                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                      <Typography variant='h6'>
+                                      <Typography variant='subtitle1'>
                                         <LinkIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Links ({validLinks.length})
                                       </Typography>
                                     </Box>
