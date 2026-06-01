@@ -1293,7 +1293,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <SubjectIcon sx={{ mr: 1 }} />
-                      <Typography variant='h6'>Text Content</Typography>
+                      <Typography variant='subtitle1'>Text Content</Typography>
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
