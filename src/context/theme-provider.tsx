@@ -305,6 +305,26 @@ const darkTheme = createTheme({
     //         },
     //   }
     // }}
+  MuiAccordion: {
+      styleOverrides: {
+        root: {
+          '&.MuiAccordion-root:before': {
+            display: 'none',
+          },
+        },
+      },
+    },
+    MuiAccordionSummary: {
+      styleOverrides: {
+        root: {
+          minHeight: 50,
+
+          '&.Mui-expanded': {
+            minHeight: 40,
+          },
+        },
+      },
+    },
   },
 });
 
