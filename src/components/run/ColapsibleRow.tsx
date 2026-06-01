@@ -341,6 +341,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button
             onClick={() => setDeleteOpen(false)}
+            color='inherit'
           >
             {t('common.cancel', { defaultValue: 'Cancel' })}
           </Button>
