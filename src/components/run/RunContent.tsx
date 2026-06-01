@@ -73,7 +73,7 @@ const CopyButton: React.FC<{ content: string; darkMode: boolean }> = ({ content,
           color: copied ? '#4caf50' : (darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.35)'),
           backgroundColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
           '&:hover': {
-            color: copied ? '#4caf50' : '#FF00C3',
+            color: copied ? '#4caf50' : '',
             backgroundColor: darkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
           },
           zIndex: 1,
