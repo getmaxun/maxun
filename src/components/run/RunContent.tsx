@@ -882,11 +882,11 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     };
 
     return (
-      <Accordion defaultExpanded={defaultExpanded} sx={{ mb: 2 }}>
+      <Accordion defaultExpanded={defaultExpanded} sx={{ mb: 2, marginLeft: "-38px" }}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <ImageIcon sx={{ mr: 1 }} />
-            <Typography variant='h6'>{title}</Typography>
+            <Typography variant='subtitle1'>{title}</Typography>
           </Box>
         </AccordionSummary>
         <AccordionDetails>
@@ -1493,11 +1493,16 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               {!isLegacyData && (
                 <>
                   {schemaData.length > 0 && (
-                    <Accordion defaultExpanded sx={{ mb: 2 }}>
+                    <Accordion defaultExpanded sx={{ mb: 2,
+                      ml: '-38px',
+                      '&.Mui-expanded': {
+                        margin: 0,
+                        marginLeft: '-38px',
+                      }}}>
                       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
                           <TextFieldsIcon sx={{ mr: 1 }} />
-                          <Typography variant='h6'>
+                          <Typography variant='subtitle1'>
                             {t('run_content.captured_data.schema_title', 'Captured Texts')}
                           </Typography>
                         </Box>
@@ -1549,11 +1554,18 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   )}
 
                   {listData.length > 0 && (
-                    <Accordion defaultExpanded sx={{ mb: 2 }}>
+                    <Accordion defaultExpanded sx={{ 
+                      mb: 2,
+                      ml: '-38px',
+                      '&.Mui-expanded': {
+                        margin: 0,
+                        marginLeft: '-38px',
+                      }
+                    }}>
                       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
                           <ViewListIcon sx={{ mr: 1 }} />
-                          <Typography variant='h6'>
+                          <Typography variant='subtitle1'>
                             {t('run_content.captured_data.list_title', 'Captured Lists')}
                           </Typography>
                         </Box>
@@ -1695,11 +1707,11 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {crawlData.length > 0 && crawlData[0] && crawlData[0].length > 0 && (
-                <Accordion defaultExpanded sx={{ mb: 2 }}>
+                 <Accordion defaultExpanded style={{ marginLeft: "-38px" }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <TravelExploreIcon sx={{ mr: 1 }} />
-                      <Typography variant='h6'>
+                      <Typography variant='subtitle1'>
                         Crawl Results
                       </Typography>
                     </Box>
@@ -1763,7 +1775,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                         <Accordion defaultExpanded sx={{ mb: 2 }}>
                           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                              <Typography variant='h6'>
+                              <Typography variant='subtitle1'>
                                 <InfoOutlinedIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Metadata
                               </Typography>
                             </Box>
@@ -1810,7 +1822,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                           <Accordion defaultExpanded sx={{ mb: 2 }}>
                             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                               <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Typography variant='h6'>
+                                <Typography variant='subtitle1'>
                                   <SubjectIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Text Content
                                 </Typography>
                               </Box>
@@ -1864,7 +1876,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                           <Accordion defaultExpanded sx={{ mb: 2 }}>
                             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                               <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Typography variant='h6'>
+                                <Typography variant='subtitle1'>
                                   <CodeIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> HTML
                                 </Typography>
                               </Box>
@@ -1918,7 +1930,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                           <Accordion sx={{ mb: 2 }}>
                             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                               <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Typography variant='h6'>
+                                <Typography variant='subtitle1'>
                                   <DescriptionIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Markdown
                                 </Typography>
                               </Box>
@@ -1977,7 +1989,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                             <Accordion sx={{ mb: 2 }}>
                               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                  <Typography variant='h6'>
+                                  <Typography variant='subtitle1'>
                                     <LinkIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Links ({validLinks.length})
                                   </Typography>
                                 </Box>
@@ -2068,11 +2080,11 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {searchData.length > 0 && (
-                <Accordion defaultExpanded sx={{ mb: 2 }}>
+                <Accordion defaultExpanded sx={{ mb: 2, marginLeft: "-38px" }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <SearchIcon sx={{ mr: 1 }} />
-                      <Typography variant='h6'>
+                      <Typography variant='subtitle1'>
                         Search Results
                       </Typography>
                     </Box>
