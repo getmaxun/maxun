@@ -1396,11 +1396,11 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {hasLinks && (
-                <Accordion defaultExpanded>
+                <Accordion defaultExpanded style={{ marginLeft: "-38px" }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <LinkIcon sx={{ mr: 1 }} />
-                      <Typography variant='h6'>Links ({linksContent.length})</Typography>
+                      <Typography variant='subtitle1'>Links ({linksContent.length})</Typography>
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
