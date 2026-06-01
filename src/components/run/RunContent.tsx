@@ -1328,7 +1328,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {hasHTML && (
-                <Accordion defaultExpanded>
+                <Accordion defaultExpanded  style={{ marginLeft: "-38px" }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <CodeIcon sx={{ mr: 1 }} />
