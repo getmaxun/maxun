@@ -2080,7 +2080,12 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {searchData.length > 0 && (
-                <Accordion defaultExpanded sx={{ mb: 2, marginLeft: "-38px" }}>
+                <Accordion defaultExpanded  sx={{ mb: 2,
+                      ml: '-38px',
+                      '&.Mui-expanded': {
+                        margin: 0,
+                        marginLeft: '-38px',
+                      }}}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <SearchIcon sx={{ mr: 1 }} />
