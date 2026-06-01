@@ -3,7 +3,7 @@ import * as React from "react";
 import TableRow from "@mui/material/TableRow";
 import TableCell from "@mui/material/TableCell";
 import {
-  Box, Collapse, IconButton, Typography, Chip, TextField, Dialog, DialogTitle,
+  Box, Collapse, IconButton, Chip, Dialog, DialogTitle,
   DialogContent,
   DialogContentText,
   DialogActions,
@@ -14,7 +14,6 @@ import { DeleteForever, KeyboardArrowDown, KeyboardArrowUp, Settings } from "@mu
 import { deleteRunFromStorage, getStoredRun } from "../../api/storage";
 import { columns, Data } from "./RunsTable";
 import { RunContent } from "./RunContent";
-import { GenericModal } from "../ui/GenericModal";
 import { getUserById } from "../../api/auth";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@mui/material/styles";
