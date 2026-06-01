@@ -1367,11 +1367,11 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {hasMarkdown && (
-                <Accordion defaultExpanded>
+                <Accordion defaultExpanded style={{ marginLeft: "-38px" }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <DescriptionIcon sx={{ mr: 1 }} />
-                      <Typography variant='h6'>Markdown</Typography>
+                      <Typography variant='subtitle1'>Markdown</Typography>
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
