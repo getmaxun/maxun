@@ -256,7 +256,15 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                                 ? t('runs_table.run_settings_modal.labels.run_by_schedule')
                                 : row.runByUserId
                                   ? t('runs_table.run_settings_modal.labels.run_by_user')
-                                  : t('runs_table.run_settings_modal.labels.run_by_unknown')
+                                  : row.runByCLI
+                                    ? t('runs_table.run_settings_modal.labels.run_by_cli')
+                                    : row.runByMCP
+                                      ? t('runs_table.run_settings_modal.labels.run_by_mcp')
+                                      : row.runBySDK
+                                        ? t('runs_table.run_settings_modal.labels.run_by_sdk')
+                                        : row.runByAPI
+                                          ? t('runs_table.run_settings_modal.labels.run_by_api')
+                                          : t('runs_table.run_settings_modal.labels.run_by_unknown')
                             }
                             value={runByLabel}
                             InputProps={{ readOnly: true }}
