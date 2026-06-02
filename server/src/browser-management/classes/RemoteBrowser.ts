@@ -253,49 +253,63 @@ export class RemoteBrowser {
         }
 
         page.on('framenavigated', async (frame) => {
-          if (frame === page.mainFrame()) {
-            const currentUrl = page.url();
-            if (this.shouldEmitUrlChange(currentUrl)) {
-              this.lastEmittedUrl = currentUrl;
-              this.broadcast('urlChanged', { url: currentUrl, userId: this.userId });
-            }
-
-            await page.evaluate(() => {
-              if (window.rrweb && window.isRecording) {
-                window.isRecording = false;
+          try {
+            if (frame === page.mainFrame()) {
+              if (page.isClosed()) {
+                return;
               }
-            });
 
-            if (this.isRecordingMode) {
-              await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {
-                logger.warn('[rrweb] Network idle timeout on navigation, proceeding with rrweb initialization');
-              });
+              const currentUrl = page.url();
+              if (this.shouldEmitUrlChange(currentUrl)) {
+                this.lastEmittedUrl = currentUrl;
+                this.broadcast('urlChanged', { url: currentUrl, userId: this.userId });
+              }
 
-              await this.initializeRRWebRecording(page);
+              await page.evaluate(() => {
+                if (window.rrweb && window.isRecording) {
+                  window.isRecording = false;
+                }
+              }).catch(() => {});
+
+              if (this.isRecordingMode && !page.isClosed()) {
+                await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {
+                  logger.warn('[rrweb] Network idle timeout on navigation, proceeding with rrweb initialization');
+                });
+
+                await this.initializeRRWebRecording(page).catch((error: any) => {
+                  logger.warn(`[rrweb] Failed to initialize recording on navigation: ${error?.message}`);
+                });
+              }
             }
+          } catch (error: any) {
+            logger.warn(`Error handling framenavigated event: ${error?.message}`);
           }
         });
 
         page.on('load', async () => {
-            const injectScript = async (): Promise<boolean> => {
-                try {
-                    await page.waitForLoadState('networkidle', { timeout: 5000 });
+            try {
+              const injectScript = async (): Promise<boolean> => {
+                  try {
+                      await page.waitForLoadState('networkidle', { timeout: 5000 });
 
-                    if (page.isClosed()) {
-                      logger.debug('Page is closed, cannot inject script');
+                      if (page.isClosed()) {
+                        logger.debug('Page is closed, cannot inject script');
+                        return false;
+                      }
+
+                      await page.evaluate(getInjectableScript());
+                      return true;
+                  } catch (error: any) {
+                      logger.log('warn', `Script injection attempt failed: ${error.message}`);
                       return false;
-                    }
+                  }
+              };
 
-                    await page.evaluate(getInjectableScript());
-                    return true;
-                } catch (error: any) {
-                    logger.log('warn', `Script injection attempt failed: ${error.message}`);
-                    return false;
-                }
-            };
-
-            const success = await injectScript();
-            console.log("Script injection result:", success);
+              const success = await injectScript();
+              console.log("Script injection result:", success);
+            } catch (error: any) {
+              logger.warn(`Error handling page load event: ${error?.message}`);
+            }
         });
     }
 
