@@ -3,10 +3,7 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
-
-# Install build tools required by canvas
-RUN apk add --no-cache python3 make g++ cairo-dev pango-dev jpeg-dev giflib-dev librsvg-dev
+COPY package.frontend.json ./package.json
 
 # Install dependencies
 RUN npm install --legacy-peer-deps || npm install --legacy-peer-deps
