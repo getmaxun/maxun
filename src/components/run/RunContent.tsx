@@ -41,6 +41,13 @@ import TableRow from '@mui/material/TableRow';
 import { useTranslation } from "react-i18next";
 import { useThemeMode } from "../../context/theme-provider";
 
+interface ScreenshotTabsProps {
+  screenshotVisible?: string;
+  screenshotFullpage?: string;
+  binaryOutput?: Record<string, any>;
+  darkMode: boolean;
+}
+
 interface RunContentProps {
   row: Data,
   currentLog: string,
@@ -53,6 +60,74 @@ interface RunContentProps {
     percentage: number;
   } | null,
 }
+
+const ScreenshotTabs: React.FC<ScreenshotTabsProps> = ({ screenshotVisible, screenshotFullpage, binaryOutput, darkMode }) => {
+  const [activeTab, setActiveTab] = React.useState(0);
+
+  const tabs: { key: string; label: string; value: string }[] = [];
+  if (screenshotVisible) tabs.push({ key: 'visible', label: 'Screenshot (Visible)', value: screenshotVisible });
+  if (screenshotFullpage) tabs.push({ key: 'fullpage', label: 'Screenshot (Full Page)', value: screenshotFullpage });
+
+  if (tabs.length === 0) return null;
+
+  const getImageSrc = (val: string): string => {
+    if (!val || typeof val !== 'string') return '';
+    if (val.startsWith('http') || val.startsWith('data:')) return val;
+    if (binaryOutput && binaryOutput[val]) {
+      const item = binaryOutput[val];
+      const binaryData = typeof item === 'object' && item !== null ? (item.data || item) : item;
+      if (typeof binaryData === 'string') {
+        return binaryData.startsWith('http') ? binaryData : `data:image/png;base64,${binaryData}`;
+      }
+    }
+    return val.length > 50 ? `data:image/png;base64,${val}` : '';
+  };
+
+  return (
+    <>
+      <Box sx={{ display: 'flex', borderBottom: '1px solid', borderColor: darkMode ? '#2a3441' : '#dee2e6', mb: 2 }}>
+        {tabs.map((tab, idx) => (
+          <Box
+            key={tab.key}
+            onClick={() => tabs.length > 1 && setActiveTab(idx)}
+            sx={{
+              px: 3, py: 1,
+              cursor: tabs.length > 1 ? 'pointer' : 'default',
+              backgroundColor: activeTab === idx ? (darkMode ? '#121111ff' : '#e9ecef') : 'transparent',
+              borderBottom: activeTab === idx ? '3px solid #FF00C3' : 'none',
+              color: darkMode ? '#fff' : '#000',
+            }}
+          >
+            {tab.label}
+          </Box>
+        ))}
+      </Box>
+      <Box>
+        <img
+          src={getImageSrc(tabs[activeTab].value)}
+          alt={tabs[activeTab].label}
+          style={{ maxWidth: '100%', borderRadius: '4px', border: '1px solid rgba(0,0,0,0.1)' }}
+        />
+      </Box>
+      <Box sx={{ mt: 1 }}>
+        <Button
+          onClick={() => {
+            const src = getImageSrc(tabs[activeTab].value);
+            const link = document.createElement('a');
+            link.href = src;
+            link.download = `${tabs[activeTab].label}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }}
+          sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
+        >
+          Download Screenshot
+        </Button>
+      </Box>
+    </>
+  );
+};
 
 const CopyButton: React.FC<{ content: string; darkMode: boolean }> = ({ content, darkMode }) => {
   const [copied, setCopied] = useState(false);
@@ -119,8 +194,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   const [screenshotKeys, setScreenshotKeys] = useState<string[]>([]);
   const [rawScreenshotKeys, setRawScreenshotKeys] = useState<string[]>([]);
   const [currentScreenshotIndex, setCurrentScreenshotIndex] = useState<number>(0);
-  const [currentCrawlScreenshotTab, setCurrentCrawlScreenshotTab] = useState<number>(0);
-  const [currentSearchScreenshotTab, setCurrentSearchScreenshotTab] = useState<number>(0);
   const [currentSchemaIndex, setCurrentSchemaIndex] = useState<number>(0);
 
   const [legacyData, setLegacyData] = useState<any[]>([]);
@@ -1756,7 +1829,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                             key={idx}
                             onClick={() => {
                               setCurrentCrawlIndex(idx);
-                              setCurrentCrawlScreenshotTab(0);
                             }}
                             sx={{
                               px: 2,
@@ -2035,16 +2107,24 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                           );
                         })()}
 
-                        {renderCapturedScreenshotsAccordion(
-                          t('run_content.screenshot.title', 'Screenshots'),
-                          [
-                            ...(crawlData[0][currentCrawlIndex].screenshotVisible ? [{ key: 'visible', label: 'Screenshot (Visible)', value: crawlData[0][currentCrawlIndex].screenshotVisible }] : []),
-                            ...(crawlData[0][currentCrawlIndex].screenshotFullpage ? [{ key: 'fullpage', label: 'Screenshot (Full Page)', value: crawlData[0][currentCrawlIndex].screenshotFullpage }] : []),
-                          ],
-                          currentCrawlScreenshotTab,
-                          setCurrentCrawlScreenshotTab,
-                          `crawl-${currentCrawlIndex}`,
-                          false
+                        {(crawlData[0][currentCrawlIndex].screenshotVisible || crawlData[0][currentCrawlIndex].screenshotFullpage) && (
+                          <Accordion>
+                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <Typography variant='subtitle1'>
+                                  <ImageIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> {t('run_content.screenshot.title', 'Screenshots')}
+                                </Typography>
+                              </Box>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                              <ScreenshotTabs
+                                screenshotVisible={crawlData[0][currentCrawlIndex].screenshotVisible}
+                                screenshotFullpage={crawlData[0][currentCrawlIndex].screenshotFullpage}
+                                binaryOutput={row.binaryOutput}
+                                darkMode={darkMode}
+                              />
+                            </AccordionDetails>
+                          </Accordion>
                         )}
 
                         <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
@@ -2417,16 +2497,24 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               );
                             })()}
 
-                            {renderCapturedScreenshotsAccordion(
-                              t('run_content.screenshot.title', 'Screenshots'),
-                              [
-                                ...(searchData[currentSearchIndex].screenshotVisible ? [{ key: 'visible', label: 'Screenshot (Visible)', value: searchData[currentSearchIndex].screenshotVisible }] : []),
-                                ...(searchData[currentSearchIndex].screenshotFullpage ? [{ key: 'fullpage', label: 'Screenshot (Full Page)', value: searchData[currentSearchIndex].screenshotFullpage }] : []),
-                              ],
-                              currentSearchScreenshotTab,
-                              setCurrentSearchScreenshotTab,
-                              `search-${currentSearchIndex}`,
-                              false
+                            {(searchData[currentSearchIndex].screenshotVisible || searchData[currentSearchIndex].screenshotFullpage) && (
+                              <Accordion>
+                                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <Typography variant='subtitle1'>
+                                      <ImageIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> {t('run_content.screenshot.title', 'Screenshots')}
+                                    </Typography>
+                                  </Box>
+                                </AccordionSummary>
+                                <AccordionDetails>
+                                  <ScreenshotTabs
+                                    screenshotVisible={searchData[currentSearchIndex].screenshotVisible}
+                                    screenshotFullpage={searchData[currentSearchIndex].screenshotFullpage}
+                                    binaryOutput={row.binaryOutput}
+                                    darkMode={darkMode}
+                                  />
+                                </AccordionDetails>
+                              </Accordion>
                             )}
 
                             <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
