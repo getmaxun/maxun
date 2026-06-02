@@ -73,7 +73,7 @@ const CopyButton: React.FC<{ content: string; darkMode: boolean }> = ({ content,
           color: copied ? '#4caf50' : (darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.35)'),
           backgroundColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
           '&:hover': {
-            color: copied ? '#4caf50' : '#FF00C3',
+            color: copied ? '#4caf50' : '',
             backgroundColor: darkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
           },
           zIndex: 1,
@@ -614,7 +614,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   const convertToCSV = (data: any[], columns: string[], isSchemaData: boolean = false, isTabular: boolean = false): string => {
     if (isSchemaData && !isTabular && data.length === 1) {
       const header = 'Label,Value';
-      const rows = columns.map(column => 
+      const rows = columns.map(column =>
         `"${column}","${data[0][column] || ""}"`
       );
       return [header, ...rows].join('\n');
@@ -642,7 +642,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
+
     setTimeout(() => {
       URL.revokeObjectURL(url);
     }, 100);
@@ -748,7 +748,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
       const folderName = url
         ? url.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_')
         : `page_${index + 1}`;
-      
+
       const pageFolder = zip.folder(folderName);
       if (!pageFolder) continue;
 
@@ -826,7 +826,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
       if (typeof src === 'string' && src.startsWith('http')) {
         // Handles HTTP-based screenshots with error handling
         const response = await fetch(src);
-        
+
         if (!response.ok) {
           const errorMsg = `Failed to download screenshot: ${response.status} ${response.statusText}`;
           console.error(errorMsg);
@@ -882,11 +882,18 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     };
 
     return (
-      <Accordion defaultExpanded={defaultExpanded} sx={{ mb: 2 }}>
+      <Accordion defaultExpanded={defaultExpanded} sx={{
+        mb: 2,
+        ml: '-38px',
+        '&.Mui-expanded': {
+          margin: 0,
+          marginLeft: '-38px',
+        },
+      }}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <ImageIcon sx={{ mr: 1 }} />
-            <Typography variant='h6'>{title}</Typography>
+            <Typography variant='subtitle1'>{title}</Typography>
           </Box>
         </AccordionSummary>
         <AccordionDetails>
@@ -974,79 +981,79 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     if (!title || title.trim() === '') {
       return (
         <>
-        <Box sx={{ mb: 2 }}>
-          <TableContainer component={Paper} sx={{ maxHeight: 320 }}>
-            <Table stickyHeader aria-label="sticky table">
-              <TableHead>
-                <TableRow>
+          <Box sx={{ mb: 2 }}>
+            <TableContainer component={Paper} sx={{ maxHeight: 320 }}>
+              <Table stickyHeader aria-label="sticky table">
+                <TableHead>
+                  <TableRow>
+                    {shouldShowAsKeyValue ? (
+                      <>
+                        <TableCell
+                          sx={{
+                            backgroundColor: darkMode ? '#11111' : '#f8f9fa',
+                            minWidth: '100px',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          Label
+                        </TableCell>
+                        <TableCell
+                          sx={{
+                            backgroundColor: darkMode ? '#11111' : '#f8f9fa'
+                          }}
+                        >
+                          Value
+                        </TableCell>
+                      </>
+                    ) : (
+                      columns.map((column) => (
+                        <TableCell
+                          key={column}
+                          sx={{
+                            backgroundColor: darkMode ? '#11111' : '#f8f9fa'
+                          }}
+                        >
+                          {column}
+                        </TableCell>
+                      ))
+                    )}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
                   {shouldShowAsKeyValue ? (
-                    <>
-                      <TableCell
-                        sx={{
-                          backgroundColor: darkMode ? '#11111' : '#f8f9fa',
-                          minWidth: '100px',
-                          whiteSpace: 'nowrap'
-                        }}
-                      >
-                        Label
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          backgroundColor: darkMode ? '#11111' : '#f8f9fa'
-                        }}
-                      >
-                        Value
-                      </TableCell>
-                    </>
-                  ) : (
                     columns.map((column) => (
-                      <TableCell
-                        key={column}
-                        sx={{
-                          backgroundColor: darkMode ? '#11111' : '#f8f9fa'
-                        }}
-                      >
-                        {column}
-                      </TableCell>
+                      <TableRow key={column}>
+                        <TableCell sx={{ fontWeight: 500, whiteSpace: 'nowrap' }}>
+                          {column}
+                        </TableCell>
+                        <TableCell>
+                          {data[0][column] === undefined || data[0][column] === ""
+                            ? "-"
+                            : (typeof data[0][column] === 'object'
+                              ? JSON.stringify(data[0][column])
+                              : String(data[0][column]))}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    data.map((row, index) => (
+                      <TableRow key={index}>
+                        {columns.map((column) => (
+                          <TableCell key={column}>
+                            {row[column] === undefined || row[column] === ""
+                              ? "-"
+                              : (typeof row[column] === 'object'
+                                ? JSON.stringify(row[column])
+                                : String(row[column]))}
+                          </TableCell>
+                        ))}
+                      </TableRow>
                     ))
                   )}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {shouldShowAsKeyValue ? (
-                  columns.map((column) => (
-                    <TableRow key={column}>
-                      <TableCell sx={{ fontWeight: 500, whiteSpace: 'nowrap' }}>
-                        {column}
-                      </TableCell>
-                      <TableCell>
-                        {data[0][column] === undefined || data[0][column] === ""
-                          ? "-"
-                          : (typeof data[0][column] === 'object'
-                            ? JSON.stringify(data[0][column])
-                            : String(data[0][column]))}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  data.map((row, index) => (
-                    <TableRow key={index}>
-                      {columns.map((column) => (
-                        <TableCell key={column}>
-                          {row[column] === undefined || row[column] === ""
-                            ? "-"
-                            : (typeof row[column] === 'object'
-                              ? JSON.stringify(row[column])
-                              : String(row[column]))}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Box>
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
             <Box>
               <Button
@@ -1092,7 +1099,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     }
 
     return (
-      <Accordion defaultExpanded sx={{ mb: 2 }}>
+      <Accordion defaultExpanded sx={{ mb: 2, marginLeft: "-38px" }}>
         <AccordionSummary
           expandIcon={<ExpandMoreIcon />}
           aria-controls={`${title.toLowerCase()}-content`}
@@ -1100,7 +1107,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
         >
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <StorageIcon sx={{ mr: 1 }} />
-            <Typography variant='h6'>
+            <Typography variant='subtitle1'>
               {title}
             </Typography>
           </Box>
@@ -1255,17 +1262,17 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                     {(row.interpreterSettings as any)?.robotType === 'doc-extract'
                       ? t('run_content.loading_document', 'Extracting document data...')
                       : (row.interpreterSettings as any)?.robotType === 'doc-parse'
-                      ? t('run_content.loading_document_parse', 'Parsing document...')
-                      : t('run_content.loading')}
+                        ? t('run_content.loading_document_parse', 'Parsing document...')
+                        : t('run_content.loading')}
                   </>
                 )}
               </Box>
               {(row.interpreterSettings as any)?.robotType !== 'doc-extract' &&
-               (row.interpreterSettings as any)?.robotType !== 'doc-parse' && (
-                <Button color="error" onClick={abortRunHandler} sx={{ mt: 1 }}>
-                  {t('run_content.buttons.stop')}
-                </Button>
-              )}
+                (row.interpreterSettings as any)?.robotType !== 'doc-parse' && (
+                  <Button color="error" onClick={abortRunHandler} sx={{ mt: 1 }}>
+                    {t('run_content.buttons.stop')}
+                  </Button>
+                )}
             </>
           ) : (!hasData && !hasScreenshots && !hasMarkdown && !hasHTML && !hasTextFormat && !hasLinks && !hasPromptResult ? (
             <Box sx={{ p: 2 }}>
@@ -1289,11 +1296,11 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
           ) : (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {hasTextFormat && (
-                <Accordion defaultExpanded>
+                <Accordion defaultExpanded style={{ marginLeft: "-38px" }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <SubjectIcon sx={{ mr: 1 }} />
-                      <Typography variant='h6'>Text Content</Typography>
+                      <Typography variant='subtitle1'>Text Content</Typography>
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
@@ -1306,7 +1313,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                       <CopyButton content={textContent} darkMode={darkMode} />
                     </Box>
                     <Box sx={{ mt: 2 }}>
-                      <Button 
+                      <Button
                         onClick={() => {
                           const blob = new Blob([textContent], { type: 'text/plain' });
                           const url = URL.createObjectURL(blob);
@@ -1317,7 +1324,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                           a.click();
                           document.body.removeChild(a);
                           URL.revokeObjectURL(url);
-                        }} 
+                        }}
                         sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
                       >
                         Download Text
@@ -1328,11 +1335,11 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {hasHTML && (
-                <Accordion defaultExpanded>
+                <Accordion defaultExpanded style={{ marginLeft: "-38px" }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <CodeIcon sx={{ mr: 1 }} />
-                      <Typography variant='h6'>HTML</Typography>
+                      <Typography variant='subtitle1'>HTML</Typography>
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
@@ -1345,7 +1352,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                       <CopyButton content={htmlContent} darkMode={darkMode} />
                     </Box>
                     <Box sx={{ mt: 2 }}>
-                      <Button 
+                      <Button
                         onClick={() => {
                           const blob = new Blob([htmlContent], { type: 'text/html' });
                           const url = URL.createObjectURL(blob);
@@ -1356,7 +1363,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                           a.click();
                           document.body.removeChild(a);
                           URL.revokeObjectURL(url);
-                        }} 
+                        }}
                         sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
                       >
                         Download HTML
@@ -1367,11 +1374,11 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {hasMarkdown && (
-                <Accordion defaultExpanded>
+                <Accordion defaultExpanded style={{ marginLeft: "-38px" }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <DescriptionIcon sx={{ mr: 1 }} />
-                      <Typography variant='h6'>Markdown</Typography>
+                      <Typography variant='subtitle1'>Markdown</Typography>
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
@@ -1384,8 +1391,8 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                       <CopyButton content={markdownContent} darkMode={darkMode} />
                     </Box>
                     <Box sx={{ mt: 2 }}>
-                      <Button 
-                        onClick={() => downloadMarkdown(markdownContent, `${row.name || 'content'}.md`)} 
+                      <Button
+                        onClick={() => downloadMarkdown(markdownContent, `${row.name || 'content'}.md`)}
                         sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
                       >
                         Download Markdown
@@ -1396,11 +1403,11 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {hasLinks && (
-                <Accordion defaultExpanded>
+                <Accordion defaultExpanded style={{ marginLeft: "-38px" }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <LinkIcon sx={{ mr: 1 }} />
-                      <Typography variant='h6'>Links ({linksContent.length})</Typography>
+                      <Typography variant='subtitle1'>Links ({linksContent.length})</Typography>
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
@@ -1440,11 +1447,11 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {hasPromptResult && promptResultData && (
-                <Accordion defaultExpanded>
+                <Accordion defaultExpanded style={{ marginLeft: "-38px" }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <PsychologyIcon sx={{ mr: 1 }} />
-                      <Typography variant='h6'>Smart Queries</Typography>
+                      <Typography variant='subtitle1'>Smart Queries</Typography>
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
@@ -1480,226 +1487,240 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
               {(schemaData.length > 0 || listData.length > 0 || legacyData.length > 0) && (
                 <>
-              {isLegacyData && (
-                renderDataTable(
-                  legacyData,
-                  legacyColumns,
-                  t('run_content.captured_data.title'),
-                  'data.csv',
-                  'data.json'
-                )
-              )}
+                  {isLegacyData && (
+                    renderDataTable(
+                      legacyData,
+                      legacyColumns,
+                      t('run_content.captured_data.title'),
+                      'data.csv',
+                      'data.json'
+                    )
+                  )}
 
-              {!isLegacyData && (
-                <>
-                  {schemaData.length > 0 && (
-                    <Accordion defaultExpanded sx={{ mb: 2 }}>
-                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <TextFieldsIcon sx={{ mr: 1 }} />
-                          <Typography variant='h6'>
-                            {t('run_content.captured_data.schema_title', 'Captured Texts')}
-                          </Typography>
-                        </Box>
-                      </AccordionSummary>
-                      <AccordionDetails>
-                        {schemaKeys.length > 0 && (
-                          <Box
-                            sx={{
-                              display: 'flex',
-                              borderBottom: '1px solid',
-                              borderColor: 'divider',
-                              mb: 2,
-                            }}
-                          >
-                            {schemaKeys.map((key, idx) => (
+                  {!isLegacyData && (
+                    <>
+                      {schemaData.length > 0 && (
+                        <Accordion defaultExpanded sx={{
+                          mb: 2,
+                          ml: '-38px',
+                          '&.Mui-expanded': {
+                            margin: 0,
+                            marginLeft: '-38px',
+                          }
+                        }}>
+                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                              <TextFieldsIcon sx={{ mr: 1 }} />
+                              <Typography variant='subtitle1'>
+                                {t('run_content.captured_data.schema_title', 'Captured Texts')}
+                              </Typography>
+                            </Box>
+                          </AccordionSummary>
+                          <AccordionDetails>
+                            {schemaKeys.length > 0 && (
                               <Box
-                                key={key}
-                                onClick={() => setCurrentSchemaIndex(idx)}
                                 sx={{
-                                  px: 3,
-                                  py: 1,
-                                  cursor: 'pointer',
-                                  backgroundColor:
-                                    currentSchemaIndex === idx
-                                      ? darkMode
-                                        ? '#121111ff'
-                                        : '#e9ecef'
-                                      : 'transparent',
-                                  borderBottom: currentSchemaIndex === idx ? '3px solid #FF00C3' : 'none',
-                                  color: darkMode ? '#fff' : '#000',
+                                  display: 'flex',
+                                  borderBottom: '1px solid',
+                                  borderColor: 'divider',
+                                  mb: 2,
                                 }}
                               >
-                                {key}
-                              </Box>
-                            ))}
-                          </Box>
-                        )}
-
-                        {renderDataTable(
-                          schemaDataByKey[schemaKeys[currentSchemaIndex]] || schemaData,
-                          schemaColumnsByKey[schemaKeys[currentSchemaIndex]] || schemaColumns,
-                          '',
-                          `${schemaKeys[currentSchemaIndex] || 'schema_data'}.csv`,
-                          `${schemaKeys[currentSchemaIndex] || 'schema_data'}.json`,
-                          true
-                        )}
-                      </AccordionDetails>
-                    </Accordion>
-                  )}
-
-                  {listData.length > 0 && (
-                    <Accordion defaultExpanded sx={{ mb: 2 }}>
-                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <ViewListIcon sx={{ mr: 1 }} />
-                          <Typography variant='h6'>
-                            {t('run_content.captured_data.list_title', 'Captured Lists')}
-                          </Typography>
-                        </Box>
-                      </AccordionSummary>
-                      <AccordionDetails>
-                        <Box
-                          sx={{
-                            display: 'flex',
-                            borderBottom: '1px solid',
-                            borderColor: 'divider',
-                            mb: 2,
-                          }}
-                        >
-                          {listKeys.map((key, idx) => (
-                            <Box
-                              key={key}
-                              onClick={() => setCurrentListIndex(idx)}
-                              sx={{
-                                px: 3,
-                                py: 1,
-                                cursor: 'pointer',
-                                backgroundColor:
-                                  currentListIndex === idx
-                                    ? darkMode
-                                      ? '#121111ff'
-                                      : '#e9ecef'
-                                    : 'transparent',
-                                borderBottom: currentListIndex === idx ? '3px solid #FF00C3' : 'none',
-                                color: darkMode ? '#fff' : '#000',
-                              }}
-                            >
-                              {key}
-                            </Box>
-                          ))}
-                        </Box>
-
-                        <TableContainer component={Paper} sx={{ maxHeight: 320 }}>
-                          <Table stickyHeader aria-label="captured-list-table">
-                            <TableHead>
-                              <TableRow>
-                                {(listColumns[currentListIndex] || []).map((column) => (
-                                  <TableCell
-                                    key={column}
+                                {schemaKeys.map((key, idx) => (
+                                  <Box
+                                    key={key}
+                                    onClick={() => setCurrentSchemaIndex(idx)}
                                     sx={{
-                                      backgroundColor: darkMode ? '#11111' : '#f8f9fa'
+                                      px: 3,
+                                      py: 1,
+                                      cursor: 'pointer',
+                                      backgroundColor:
+                                        currentSchemaIndex === idx
+                                          ? darkMode
+                                            ? '#121111ff'
+                                            : '#e9ecef'
+                                          : 'transparent',
+                                      borderBottom: currentSchemaIndex === idx ? '3px solid #FF00C3' : 'none',
+                                      color: darkMode ? '#fff' : '#000',
                                     }}
                                   >
-                                    {column}
-                                  </TableCell>
+                                    {key}
+                                  </Box>
                                 ))}
-                              </TableRow>
-                            </TableHead>
+                              </Box>
+                            )}
 
-                            <TableBody>
-                              {(listData[currentListIndex] || []).map((rowItem, idx) => (
-                                <TableRow key={idx}>
-                                  {(listColumns[currentListIndex] || []).map((column) => (
-                                    <TableCell key={column}>
-                                      {rowItem[column] === undefined || rowItem[column] === ''
-                                        ? '-'
-                                        : typeof rowItem[column] === 'object'
-                                        ? JSON.stringify(rowItem[column])
-                                        : String(rowItem[column])}
-                                    </TableCell>
-                                  ))}
-                                </TableRow>
+                            {renderDataTable(
+                              schemaDataByKey[schemaKeys[currentSchemaIndex]] || schemaData,
+                              schemaColumnsByKey[schemaKeys[currentSchemaIndex]] || schemaColumns,
+                              '',
+                              `${schemaKeys[currentSchemaIndex] || 'schema_data'}.csv`,
+                              `${schemaKeys[currentSchemaIndex] || 'schema_data'}.json`,
+                              true
+                            )}
+                          </AccordionDetails>
+                        </Accordion>
+                      )}
+
+                      {listData.length > 0 && (
+                        <Accordion defaultExpanded sx={{
+                          mb: 2,
+                          ml: '-38px',
+                          '&.Mui-expanded': {
+                            margin: 0,
+                            marginLeft: '-38px',
+                          }
+                        }}>
+                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                              <ViewListIcon sx={{ mr: 1 }} />
+                              <Typography variant='subtitle1'>
+                                {t('run_content.captured_data.list_title', 'Captured Lists')}
+                              </Typography>
+                            </Box>
+                          </AccordionSummary>
+                          <AccordionDetails>
+                            <Box
+                              sx={{
+                                display: 'flex',
+                                borderBottom: '1px solid',
+                                borderColor: 'divider',
+                                mb: 2,
+                              }}
+                            >
+                              {listKeys.map((key, idx) => (
+                                <Box
+                                  key={key}
+                                  onClick={() => setCurrentListIndex(idx)}
+                                  sx={{
+                                    px: 3,
+                                    py: 1,
+                                    cursor: 'pointer',
+                                    backgroundColor:
+                                      currentListIndex === idx
+                                        ? darkMode
+                                          ? '#121111ff'
+                                          : '#e9ecef'
+                                        : 'transparent',
+                                    borderBottom: currentListIndex === idx ? '3px solid #FF00C3' : 'none',
+                                    color: darkMode ? '#fff' : '#000',
+                                  }}
+                                >
+                                  {key}
+                                </Box>
                               ))}
-                            </TableBody>
-                          </Table>
-                        </TableContainer>
+                            </Box>
 
-                        <Box
-                          sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            mb: 2,
-                            mt: 2
-                          }}
-                        >
-                          <Box>
-                            <Button
-                              component="a"
-                              onClick={() =>
-                                downloadJSON(
-                                  listData[currentListIndex],
-                                  `${listKeys[currentListIndex] || 'list_data'}.json`
-                                )
-                              }
+                            <TableContainer component={Paper} sx={{ maxHeight: 320 }}>
+                              <Table stickyHeader aria-label="captured-list-table">
+                                <TableHead>
+                                  <TableRow>
+                                    {(listColumns[currentListIndex] || []).map((column) => (
+                                      <TableCell
+                                        key={column}
+                                        sx={{
+                                          backgroundColor: darkMode ? '#11111' : '#f8f9fa'
+                                        }}
+                                      >
+                                        {column}
+                                      </TableCell>
+                                    ))}
+                                  </TableRow>
+                                </TableHead>
+
+                                <TableBody>
+                                  {(listData[currentListIndex] || []).map((rowItem, idx) => (
+                                    <TableRow key={idx}>
+                                      {(listColumns[currentListIndex] || []).map((column) => (
+                                        <TableCell key={column}>
+                                          {rowItem[column] === undefined || rowItem[column] === ''
+                                            ? '-'
+                                            : typeof rowItem[column] === 'object'
+                                              ? JSON.stringify(rowItem[column])
+                                              : String(rowItem[column])}
+                                        </TableCell>
+                                      ))}
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </TableContainer>
+
+                            <Box
                               sx={{
-                                color: '#FF00C3',
-                                textTransform: 'none',
-                                mr: 2,
-                                p: 0,
-                                minWidth: 'auto',
-                                backgroundColor: 'transparent',
-                                '&:hover': {
-                                  backgroundColor: 'transparent',
-                                  textDecoration: 'underline',
-                                },
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                mb: 2,
+                                mt: 2
                               }}
                             >
-                              {t('run_content.captured_data.download_json', 'Download JSON')}
-                            </Button>
+                              <Box>
+                                <Button
+                                  component="a"
+                                  onClick={() =>
+                                    downloadJSON(
+                                      listData[currentListIndex],
+                                      `${listKeys[currentListIndex] || 'list_data'}.json`
+                                    )
+                                  }
+                                  sx={{
+                                    color: '#FF00C3',
+                                    textTransform: 'none',
+                                    mr: 2,
+                                    p: 0,
+                                    minWidth: 'auto',
+                                    backgroundColor: 'transparent',
+                                    '&:hover': {
+                                      backgroundColor: 'transparent',
+                                      textDecoration: 'underline',
+                                    },
+                                  }}
+                                >
+                                  {t('run_content.captured_data.download_json', 'Download JSON')}
+                                </Button>
 
-                            <Button
-                              component="a"
-                              onClick={() =>
-                                downloadCSV(
-                                  listData[currentListIndex],
-                                  listColumns[currentListIndex] || [],
-                                  `${listKeys[currentListIndex] || 'list_data'}.csv`,
-                                  false,
-                                  false
-                                )
-                              }
-                              sx={{
-                                color: '#FF00C3',
-                                textTransform: 'none',
-                                p: 0,
-                                minWidth: 'auto',
-                                backgroundColor: 'transparent',
-                                '&:hover': {
-                                  backgroundColor: 'transparent',
-                                  textDecoration: 'underline',
-                                },
-                              }}
-                            >
-                              {t('run_content.captured_data.download_csv', 'Download as CSV')}
-                            </Button>
-                          </Box>
-                        </Box>
-                      </AccordionDetails>
-                    </Accordion>
+                                <Button
+                                  component="a"
+                                  onClick={() =>
+                                    downloadCSV(
+                                      listData[currentListIndex],
+                                      listColumns[currentListIndex] || [],
+                                      `${listKeys[currentListIndex] || 'list_data'}.csv`,
+                                      false,
+                                      false
+                                    )
+                                  }
+                                  sx={{
+                                    color: '#FF00C3',
+                                    textTransform: 'none',
+                                    p: 0,
+                                    minWidth: 'auto',
+                                    backgroundColor: 'transparent',
+                                    '&:hover': {
+                                      backgroundColor: 'transparent',
+                                      textDecoration: 'underline',
+                                    },
+                                  }}
+                                >
+                                  {t('run_content.captured_data.download_csv', 'Download as CSV')}
+                                </Button>
+                              </Box>
+                            </Box>
+                          </AccordionDetails>
+                        </Accordion>
+                      )}
+                    </>
                   )}
-                </>
-              )}
                 </>
               )}
 
               {crawlData.length > 0 && crawlData[0] && crawlData[0].length > 0 && (
-                <Accordion defaultExpanded sx={{ mb: 2 }}>
+                <Accordion defaultExpanded style={{ marginLeft: "-38px" }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <TravelExploreIcon sx={{ mr: 1 }} />
-                      <Typography variant='h6'>
+                      <Typography variant='subtitle1'>
                         Crawl Results
                       </Typography>
                     </Box>
@@ -1763,7 +1784,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                         <Accordion defaultExpanded sx={{ mb: 2 }}>
                           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                              <Typography variant='h6'>
+                              <Typography variant='subtitle1'>
                                 <InfoOutlinedIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Metadata
                               </Typography>
                             </Box>
@@ -1810,7 +1831,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                           <Accordion defaultExpanded sx={{ mb: 2 }}>
                             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                               <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Typography variant='h6'>
+                                <Typography variant='subtitle1'>
                                   <SubjectIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Text Content
                                 </Typography>
                               </Box>
@@ -1864,7 +1885,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                           <Accordion defaultExpanded sx={{ mb: 2 }}>
                             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                               <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Typography variant='h6'>
+                                <Typography variant='subtitle1'>
                                   <CodeIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> HTML
                                 </Typography>
                               </Box>
@@ -1918,7 +1939,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                           <Accordion sx={{ mb: 2 }}>
                             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                               <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Typography variant='h6'>
+                                <Typography variant='subtitle1'>
                                   <DescriptionIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Markdown
                                 </Typography>
                               </Box>
@@ -1977,7 +1998,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                             <Accordion sx={{ mb: 2 }}>
                               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                  <Typography variant='h6'>
+                                  <Typography variant='subtitle1'>
                                     <LinkIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Links ({validLinks.length})
                                   </Typography>
                                 </Box>
@@ -2034,7 +2055,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               const baseFilename = pageUrl
                                 ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_')
                                 : `page_${currentCrawlIndex + 1}`;
-                              
+
                               downloadAllCrawlsAsZip(
                                 [item],
                                 `${baseFilename}_bundle.zip`
@@ -2068,11 +2089,18 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {searchData.length > 0 && (
-                <Accordion defaultExpanded sx={{ mb: 2 }}>
+                <Accordion defaultExpanded sx={{
+                  mb: 2,
+                  ml: '-38px',
+                  '&.Mui-expanded': {
+                    margin: 0,
+                    marginLeft: '-38px',
+                  }
+                }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <SearchIcon sx={{ mr: 1 }} />
-                      <Typography variant='h6'>
+                      <Typography variant='subtitle1'>
                         Search Results
                       </Typography>
                     </Box>
@@ -2135,7 +2163,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                             <Accordion defaultExpanded sx={{ mb: 2 }}>
                               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                  <Typography variant='h6'>
+                                  <Typography variant='subtitle1'>
                                     <InfoOutlinedIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Metadata
                                   </Typography>
                                 </Box>
@@ -2183,7 +2211,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               <Accordion defaultExpanded sx={{ mb: 2 }}>
                                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    <Typography variant='h6'>
+                                    <Typography variant='subtitle1'>
                                       <SubjectIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Text Content
                                     </Typography>
                                   </Box>
@@ -2236,7 +2264,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               <Accordion defaultExpanded sx={{ mb: 2 }}>
                                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    <Typography variant='h6'>
+                                    <Typography variant='subtitle1'>
                                       <CodeIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> HTML
                                     </Typography>
                                   </Box>
@@ -2291,7 +2319,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               <Accordion sx={{ mb: 2 }}>
                                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    <Typography variant='h6'>
+                                    <Typography variant='subtitle1'>
                                       <DescriptionIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Markdown
                                     </Typography>
                                   </Box>
@@ -2351,7 +2379,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                 <Accordion sx={{ mb: 2 }}>
                                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                      <Typography variant='h6'>
+                                      <Typography variant='subtitle1'>
                                         <LinkIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Links ({validLinks.length})
                                       </Typography>
                                     </Box>

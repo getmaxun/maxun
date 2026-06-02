@@ -14,7 +14,6 @@ import { DeleteForever, KeyboardArrowDown, KeyboardArrowUp, Settings } from "@mu
 import { deleteRunFromStorage, getStoredRun } from "../../api/storage";
 import { columns, Data } from "./RunsTable";
 import { RunContent } from "./RunContent";
-import { GenericModal } from "../ui/GenericModal";
 import { getUserById } from "../../api/auth";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@mui/material/styles";
@@ -72,7 +71,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
             : row.runByAPI
               ? 'API'
               : 'Unknown';
-  
+
   const logEndRef = useRef<HTMLDivElement | null>(null);
 
   const [workflowProgress, setWorkflowProgress] = useState<{
@@ -220,36 +219,55 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                     <IconButton aria-label="settings" size="small" onClick={() => setOpenSettingsModal(true)}>
                       <Settings />
                     </IconButton>
-                    <GenericModal
-                      isOpen={openSettingsModal}
+                    <Dialog
+                      open={openSettingsModal}
                       onClose={() => setOpenSettingsModal(false)}
-                      modalStyle={modalStyle}
+                      maxWidth="sm"
+                      fullWidth
+                      PaperProps={{
+                        sx: {
+                          borderRadius: 2
+                        }
+                      }}
                     >
-                      <>
-                        <Typography variant="h5" style={{ marginBottom: '20px' }}>
-                          {t('runs_table.run_settings_modal.title')}
-                        </Typography>
-                        <Box style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      <DialogTitle>
+                        {t('runs_table.run_settings_modal.title')}
+                      </DialogTitle>
+
+                      <DialogContent>
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 2.5,
+                            mt: 1
+                          }}
+                        >
                           <TextField
                             label={t('runs_table.run_settings_modal.labels.run_id')}
                             value={row.runId}
                             InputProps={{ readOnly: true }}
+                            fullWidth
                           />
+
                           <TextField
                             label={
                               row.runByScheduleId
                                 ? t('runs_table.run_settings_modal.labels.run_by_schedule')
                                 : row.runByUserId
                                   ? t('runs_table.run_settings_modal.labels.run_by_user')
-                                  : t('runs_table.run_settings_modal.labels.run_by_api')
+                                  : t('runs_table.run_settings_modal.labels.run_by_unknown')
                             }
                             value={runByLabel}
                             InputProps={{ readOnly: true }}
+                            fullWidth
                           />
-                          <Box style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                             <Typography variant="body1">
                               {t('runs_table.run_settings_modal.labels.run_type')}:
                             </Typography>
+
                             <RunTypeChip
                               runByUserId={row.runByUserId}
                               runByScheduledId={row.runByScheduleId}
@@ -260,8 +278,8 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                             />
                           </Box>
                         </Box>
-                      </>
-                    </GenericModal>
+                      </DialogContent>
+                    </Dialog>
                   </TableCell>
                 )
               default:
@@ -323,6 +341,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button
             onClick={() => setDeleteOpen(false)}
+            color='inherit'
           >
             {t('common.cancel', { defaultValue: 'Cancel' })}
           </Button>
