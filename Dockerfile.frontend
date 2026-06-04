@@ -3,10 +3,10 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package.frontend.json ./package.json
 
 # Install dependencies
-RUN npm install --legacy-peer-deps
+RUN npm install --legacy-peer-deps || npm install --legacy-peer-deps
 
 # Copy frontend source code and config
 COPY src ./src

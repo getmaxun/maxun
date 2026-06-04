@@ -134,7 +134,11 @@ const formatRecording = (recordingData: any) => {
  */
 router.get("/robots", requireAPIKey, async (req: Request, res: Response) => {
     try {
-        const robots = await Robot.findAll({ raw: true });
+        const authenticatedReq = req as AuthenticatedRequest;
+        if (!authenticatedReq.user) {
+            return res.status(401).json({ statusCode: 401, messageCode: 'error', message: 'Unauthorized' });
+        }
+        const robots = await Robot.findAll({ where: { userId: authenticatedReq.user.id }, raw: true });
         const formattedRecordings = robots.map(formatRecording);
 
         const response = {
@@ -238,9 +242,14 @@ const formatRecordingById = (recordingData: any) => {
  */
 router.get("/robots/:id", requireAPIKey, async (req: Request, res: Response) => {
     try {
+        const authenticatedReq = req as AuthenticatedRequest;
+        if (!authenticatedReq.user) {
+            return res.status(401).json({ statusCode: 401, messageCode: 'error', message: 'Unauthorized' });
+        }
         const robot = await Robot.findOne({
             where: {
-                'recording_meta.id': req.params.id
+                'recording_meta.id': req.params.id,
+                userId: authenticatedReq.user.id,
             },
             raw: true
         });
@@ -329,6 +338,14 @@ router.get("/robots/:id", requireAPIKey, async (req: Request, res: Response) => 
  */
 router.get("/robots/:id/runs",requireAPIKey, async (req: Request, res: Response) => {
     try {
+        const authenticatedReq = req as AuthenticatedRequest;
+        if (!authenticatedReq.user) {
+            return res.status(401).json({ statusCode: 401, messageCode: 'error', message: 'Unauthorized' });
+        }
+        const robot = await Robot.findOne({ where: { 'recording_meta.id': req.params.id, userId: authenticatedReq.user.id } });
+        if (!robot) {
+            return res.status(404).json({ statusCode: 404, messageCode: 'not_found', message: 'Robot not found' });
+        }
         const runs = await Run.findAll({
             where: {
                 robotMetaId: req.params.id
@@ -492,6 +509,14 @@ function formatRunResponse(run: any) {
  */
 router.get("/robots/:id/runs/:runId", requireAPIKey, async (req: Request, res: Response) => {
     try {
+        const authenticatedReq = req as AuthenticatedRequest;
+        if (!authenticatedReq.user) {
+            return res.status(401).json({ statusCode: 401, messageCode: 'error', message: 'Unauthorized' });
+        }
+        const robot = await Robot.findOne({ where: { 'recording_meta.id': req.params.id, userId: authenticatedReq.user.id } });
+        if (!robot) {
+            return res.status(404).json({ statusCode: 404, messageCode: 'not_found', message: `Robot with ID "${req.params.id}" not found.` });
+        }
         const run = await Run.findOne({
             where: {
                 runId: req.params.runId,
@@ -521,7 +546,8 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string, runSou
     try {
         const recording = await Robot.findOne({
             where: {
-                'recording_meta.id': id
+                'recording_meta.id': id,
+                userId: userId,
             },
             raw: true
         });
@@ -1558,6 +1584,10 @@ router.post("/robots/:id/runs", requireAPIKey, async (req: AuthenticatedRequest,
  */
 router.post("/robots/:id/duplicate", requireAPIKey, async (req: Request, res: Response) => {
     try {
+        const authenticatedReq = req as AuthenticatedRequest;
+        if (!authenticatedReq.user) {
+            return res.status(401).json({ statusCode: 401, messageCode: 'error', message: 'Unauthorized' });
+        }
         const { id } = req.params;
         const { targetUrl } = req.body;
 
@@ -1589,7 +1619,7 @@ router.post("/robots/:id/duplicate", requireAPIKey, async (req: Request, res: Re
         }
 
         const originalRobot = await Robot.findOne({
-            where: { 'recording_meta.id': id },
+            where: { 'recording_meta.id': id, userId: authenticatedReq.user!.id },
         });
 
         if (!originalRobot) {

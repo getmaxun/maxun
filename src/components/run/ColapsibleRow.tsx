@@ -7,13 +7,13 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
+  CircularProgress,
 } from "@mui/material";
 import { Button } from "@mui/material";
 import { DeleteForever, KeyboardArrowDown, KeyboardArrowUp, Settings } from "@mui/icons-material";
-import { deleteRunFromStorage } from "../../api/storage";
+import { deleteRunFromStorage, getStoredRun } from "../../api/storage";
 import { columns, Data } from "./RunsTable";
 import { RunContent } from "./RunContent";
-import { GenericModal } from "../ui/GenericModal";
 import { getUserById } from "../../api/auth";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@mui/material/styles";
@@ -56,6 +56,8 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
   const [isDeleteOpen, setDeleteOpen] = useState(false);
   const [openSettingsModal, setOpenSettingsModal] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [runDetails, setRunDetails] = useState<Data>(row);
+  const [isLoadingRunDetails, setIsLoadingRunDetails] = useState(false);
   const runByLabel = row.runByScheduleId
     ? `${row.runByScheduleId}`
     : row.runByUserId
@@ -69,7 +71,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
             : row.runByAPI
               ? 'API'
               : 'Unknown';
-  
+
   const logEndRef = useRef<HTMLDivElement | null>(null);
 
   const [workflowProgress, setWorkflowProgress] = useState<{
@@ -108,6 +110,43 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
     const newOpen = !isOpen;
     onToggleExpanded(newOpen);
   };
+
+  useEffect(() => {
+    setRunDetails(prev => {
+      if (prev.runId !== row.runId) return row;
+      return {
+        ...row,
+        serializableOutput: prev.serializableOutput ?? row.serializableOutput,
+        binaryOutput: prev.binaryOutput ?? row.binaryOutput,
+      };
+    });
+  }, [row]);
+
+  useEffect(() => {
+    const hasOutputLoaded =
+      runDetails.serializableOutput !== undefined &&
+      runDetails.binaryOutput !== undefined;
+
+    if (!isOpen || row.status === 'running' || row.status === 'queued' || hasOutputLoaded) return;
+
+    let isCancelled = false;
+    setIsLoadingRunDetails(true);
+
+    getStoredRun(row.runId)
+      .then((run) => {
+        if (!run || isCancelled) return;
+        setRunDetails(prev => ({ ...prev, ...run }));
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsLoadingRunDetails(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isOpen, row.runId, row.status, runDetails.serializableOutput, runDetails.binaryOutput]);
 
   useEffect(() => {
     const fetchUserEmail = async () => {
@@ -180,36 +219,63 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                     <IconButton aria-label="settings" size="small" onClick={() => setOpenSettingsModal(true)}>
                       <Settings />
                     </IconButton>
-                    <GenericModal
-                      isOpen={openSettingsModal}
+                    <Dialog
+                      open={openSettingsModal}
                       onClose={() => setOpenSettingsModal(false)}
-                      modalStyle={modalStyle}
+                      maxWidth="sm"
+                      fullWidth
+                      PaperProps={{
+                        sx: {
+                          borderRadius: 2
+                        }
+                      }}
                     >
-                      <>
-                        <Typography variant="h5" style={{ marginBottom: '20px' }}>
-                          {t('runs_table.run_settings_modal.title')}
-                        </Typography>
-                        <Box style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      <DialogTitle>
+                        {t('runs_table.run_settings_modal.title')}
+                      </DialogTitle>
+
+                      <DialogContent>
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 2.5,
+                            mt: 1
+                          }}
+                        >
                           <TextField
                             label={t('runs_table.run_settings_modal.labels.run_id')}
                             value={row.runId}
                             InputProps={{ readOnly: true }}
+                            fullWidth
                           />
+
                           <TextField
                             label={
                               row.runByScheduleId
                                 ? t('runs_table.run_settings_modal.labels.run_by_schedule')
                                 : row.runByUserId
                                   ? t('runs_table.run_settings_modal.labels.run_by_user')
-                                  : t('runs_table.run_settings_modal.labels.run_by_api')
+                                  : row.runByCLI
+                                    ? t('runs_table.run_settings_modal.labels.run_by_cli')
+                                    : row.runByMCP
+                                      ? t('runs_table.run_settings_modal.labels.run_by_mcp')
+                                      : row.runBySDK
+                                        ? t('runs_table.run_settings_modal.labels.run_by_sdk')
+                                        : row.runByAPI
+                                          ? t('runs_table.run_settings_modal.labels.run_by_api')
+                                          : t('runs_table.run_settings_modal.labels.run_by_unknown')
                             }
                             value={runByLabel}
                             InputProps={{ readOnly: true }}
+                            fullWidth
                           />
-                          <Box style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                             <Typography variant="body1">
                               {t('runs_table.run_settings_modal.labels.run_type')}:
                             </Typography>
+
                             <RunTypeChip
                               runByUserId={row.runByUserId}
                               runByScheduledId={row.runByScheduleId}
@@ -220,8 +286,8 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                             />
                           </Box>
                         </Box>
-                      </>
-                    </GenericModal>
+                      </DialogContent>
+                    </Dialog>
                   </TableCell>
                 )
               default:
@@ -233,9 +299,15 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
       <TableRow>
         <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
           <Collapse in={isOpen} timeout="auto" unmountOnExit>
-            <RunContent row={row} abortRunHandler={handleAbort} currentLog={currentLog}
-              logEndRef={logEndRef} interpretationInProgress={runningRecordingName === row.name}
-              workflowProgress={workflowProgress} />
+            {isLoadingRunDetails ? (
+              <Box display="flex" justifyContent="center" py={3}>
+                <CircularProgress size={24} />
+              </Box>
+            ) : (
+              <RunContent row={runDetails} abortRunHandler={handleAbort} currentLog={currentLog}
+                logEndRef={logEndRef} interpretationInProgress={runningRecordingName === row.name}
+                workflowProgress={workflowProgress} />
+            )}
           </Collapse>
         </TableCell>
       </TableRow>
@@ -277,6 +349,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button
             onClick={() => setDeleteOpen(false)}
+            color='inherit'
           >
             {t('common.cancel', { defaultValue: 'Cancel' })}
           </Button>

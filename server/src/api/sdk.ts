@@ -331,7 +331,10 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
  */
 router.get("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
     try {
-        const robots = await Robot.findAll();
+        if (!req.user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+        const robots = await Robot.findAll({ where: { userId: req.user.id } });
 
         return res.status(200).json({
             data: robots
@@ -351,11 +354,15 @@ router.get("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res: 
  */
 router.get("/sdk/robots/:id", requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
     try {
+        if (!req.user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
         const robotId = req.params.id;
 
         const robot = await Robot.findOne({
             where: {
-                'recording_meta.id': robotId
+                'recording_meta.id': robotId,
+                userId: req.user.id,
             }
         });
 
@@ -383,12 +390,16 @@ router.get("/sdk/robots/:id", requireAPIKey, async (req: AuthenticatedRequest, r
  */
 router.put("/sdk/robots/:id", requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
     try {
+        if (!req.user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
         const robotId = req.params.id;
         const updates = req.body;
 
         const robot = await Robot.findOne({
             where: {
-                'recording_meta.id': robotId
+                'recording_meta.id': robotId,
+                userId: req.user.id,
             }
         });
 
@@ -614,11 +625,15 @@ router.put("/sdk/robots/:id", requireAPIKey, async (req: AuthenticatedRequest, r
  */
 router.delete("/sdk/robots/:id", requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
     try {
+        if (!req.user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
         const robotId = req.params.id;
 
         const robot = await Robot.findOne({
             where: {
-                'recording_meta.id': robotId
+                'recording_meta.id': robotId,
+                userId: req.user.id,
             }
         });
 
@@ -809,11 +824,15 @@ async function waitForRunCompletion(runId: string, interval: number = 2000) {
  */
 router.get("/sdk/robots/:id/runs", requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
     try {
+        if (!req.user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
         const robotId = req.params.id;
 
         const robot = await Robot.findOne({
             where: {
-                'recording_meta.id': robotId
+                'recording_meta.id': robotId,
+                userId: req.user.id,
             }
         });
 
@@ -848,12 +867,16 @@ router.get("/sdk/robots/:id/runs", requireAPIKey, async (req: AuthenticatedReque
  */
 router.get("/sdk/robots/:id/runs/:runId", requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
     try {
+        if (!req.user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
         const robotId = req.params.id;
         const runId = req.params.runId;
 
         const robot = await Robot.findOne({
             where: {
-                'recording_meta.id': robotId
+                'recording_meta.id': robotId,
+                userId: req.user.id,
             }
         });
 
@@ -894,12 +917,16 @@ router.get("/sdk/robots/:id/runs/:runId", requireAPIKey, async (req: Authenticat
  */
 router.post("/sdk/robots/:id/runs/:runId/abort", requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
     try {
+        if (!req.user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
         const robotId = req.params.id;
         const runId = req.params.runId;
 
         const robot = await Robot.findOne({
             where: {
-                'recording_meta.id': robotId
+                'recording_meta.id': robotId,
+                userId: req.user.id,
             }
         });
 
@@ -952,6 +979,9 @@ router.post("/sdk/robots/:id/runs/:runId/abort", requireAPIKey, async (req: Auth
  */
 router.post("/sdk/robots/:id/duplicate", requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
     try {
+        if (!req.user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
         const robotId = req.params.id;
         const { targetUrl } = req.body;
 
@@ -977,7 +1007,7 @@ router.post("/sdk/robots/:id/duplicate", requireAPIKey, async (req: Authenticate
         }
 
         const originalRobot = await Robot.findOne({
-            where: { 'recording_meta.id': robotId }
+            where: { 'recording_meta.id': robotId, userId: req.user!.id }
         });
 
         if (!originalRobot) {

@@ -154,6 +154,20 @@ export const getStoredRuns = async (): Promise<string[] | null> => {
   }
 };
 
+export const getStoredRun = async (id: string): Promise<any | null> => {
+  try {
+    const response = await axios.get(`${apiUrl}/storage/runs/run/${id}`);
+    if (response.status === 200) {
+      return response.data;
+    } else {
+      throw new Error(`Couldn't retrieve stored run ${id}`);
+    }
+  } catch (error: any) {
+    console.log(error);
+    return null;
+  }
+};
+
 export const duplicateRecording = async (id: string, targetUrl: string, newName?: string): Promise<any> => {
   try {
     const response = await axios.post(`${apiUrl}/storage/recordings/${id}/duplicate`, {
@@ -510,6 +524,29 @@ export const runDocumentParseRobot = async (
   } catch (error: any) {
     console.error('Error running document parse robot:', error);
     return null;
+  }
+};
+
+export const replaceDocumentFile = async (
+  robotMetaId: string,
+  file: File
+): Promise<{ message?: string; documentFileName?: string; error?: string } | null> => {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await axios.put(
+      `${apiUrl}/storage/recordings/${robotMetaId}/document`,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        withCredentials: true,
+        timeout: 60000,
+      }
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error('Error replacing document:', error);
+    return { error: error.response?.data?.error || 'Failed to replace document' };
   }
 };
 

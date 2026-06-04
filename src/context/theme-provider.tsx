@@ -76,8 +76,8 @@ const lightTheme = createTheme({
     MuiTab: {
       styleOverrides: {
         root: {
-         minHeight: 60, 
-         textTransform: "none",
+          minHeight: 60,
+          textTransform: "none",
         },
       },
     },
@@ -99,9 +99,28 @@ const lightTheme = createTheme({
         },
       },
     },
+    MuiAccordion: {
+      styleOverrides: {
+        root: {
+          '&.MuiAccordion-root:before': {
+            display: 'none',
+          },
+        },
+      },
+    },
+    MuiAccordionSummary: {
+      styleOverrides: {
+        root: {
+          minHeight: 50,
+
+          '&.Mui-expanded': {
+            minHeight: 40,
+          },
+        },
+      },
+    },
   },
 });
-
 const darkTheme = createTheme({
   palette: {
     mode: 'dark',
@@ -214,7 +233,7 @@ const darkTheme = createTheme({
     MuiTab: {
       styleOverrides: {
         root: {
-          minHeight: 60, 
+          minHeight: 60,
           textTransform: "none",
           color: '#ffffff',
           "&.Mui-selected": {
@@ -286,6 +305,26 @@ const darkTheme = createTheme({
     //         },
     //   }
     // }}
+    MuiAccordion: {
+      styleOverrides: {
+        root: {
+          '&.MuiAccordion-root:before': {
+            display: 'none',
+          },
+        },
+      },
+    },
+    MuiAccordionSummary: {
+      styleOverrides: {
+        root: {
+          minHeight: 50,
+
+          '&.Mui-expanded': {
+            minHeight: 40,
+          },
+        },
+      },
+    },
   },
 });
 

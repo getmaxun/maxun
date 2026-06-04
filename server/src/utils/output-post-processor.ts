@@ -71,6 +71,7 @@ export async function processRobotOutputFormats(
           delete pageResult.html;
         }
         if (!effectiveFormats.includes('text')) delete pageResult.text;
+        if (!effectiveFormats.includes('links')) delete pageResult.links;
 
         const pageUrl = pageResult.metadata?.url || pageResult.url;
         const hasPageUrl = typeof pageUrl === 'string' && pageUrl.trim() !== '';
@@ -141,6 +142,7 @@ export async function processRobotOutputFormats(
             delete result.html;
           }
           if (!effectiveFormats.includes('text')) delete result.text;
+          if (!effectiveFormats.includes('links')) delete result.links;
 
           const resultUrl = result.metadata?.url || result.url;
           const hasResultUrl = typeof resultUrl === 'string' && resultUrl.trim() !== '';

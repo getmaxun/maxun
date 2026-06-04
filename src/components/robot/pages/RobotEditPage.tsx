@@ -13,11 +13,13 @@ import {
   MenuItem,
   FormControlLabel,
   Checkbox,
-  Collapse
+  Collapse,
+  CircularProgress,
+  Divider,
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { useGlobalInfoStore } from "../../../context/globalInfo";
-import { getStoredRecording, updateRecording } from "../../../api/storage";
+import { getStoredRecording, updateRecording, replaceDocumentFile } from "../../../api/storage";
 import { WhereWhatPair } from "maxun-core";
 import { RobotConfigPage } from "./RobotConfigPage";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -152,6 +154,8 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
   const [searchOutputFormats, setSearchOutputFormats] = useState<OutputFormats[]>(DEFAULT_OUTPUT_FORMATS);
   const [scrapeOutputFormats, setScrapeOutputFormats] = useState<OutputFormats[]>(DEFAULT_OUTPUT_FORMATS);
   const [showCrawlAdvanced, setShowCrawlAdvanced] = useState(false);
+  const [replacementFile, setReplacementFile] = useState<File | null>(null);
+  const [isReplacingFile, setIsReplacingFile] = useState(false);
 
   const isEmailPattern = (value: string): boolean => {
     return value.includes("@");
@@ -1110,6 +1114,84 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
     );
   };
 
+  const handleReplaceDocument = async () => {
+    if (!robot || !replacementFile) return;
+    setIsReplacingFile(true);
+    const result = await replaceDocumentFile(robot.recording_meta.id, replacementFile);
+    setIsReplacingFile(false);
+    if (result?.error) {
+      notify('error', result.error);
+    } else {
+      notify('success', `Document replaced: ${replacementFile.name}`);
+      setReplacementFile(null);
+      getRobot();
+    }
+  };
+
+  const renderDocumentFileSection = () => {
+    const robotType = robot?.recording_meta.type;
+    if (robotType !== 'doc-extract' && robotType !== 'doc-parse') return null;
+
+    const currentFileName = (robot?.recording as any)?.documentFileName || 'Unknown file';
+
+    return (
+      <>
+        <Divider sx={{ my: 3 }} />
+        <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1 }}>
+          Replace Document
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Current file: <strong>{currentFileName}</strong>
+        </Typography>
+        <Box
+          sx={{
+            border: '2px dashed',
+            borderColor: replacementFile ? '#ff00c3' : 'divider',
+            borderRadius: 2,
+            p: 3,
+            mb: 2,
+            textAlign: 'center',
+            cursor: 'pointer',
+            '&:hover': { borderColor: '#ff00c3' },
+          }}
+          onClick={() => document.getElementById('doc-replace-input')?.click()}
+        >
+          <input
+            id="doc-replace-input"
+            type="file"
+            accept="application/pdf"
+            style={{ display: 'none' }}
+            onChange={(e) => setReplacementFile(e.target.files?.[0] || null)}
+          />
+          {replacementFile ? (
+            <Typography variant="body2" color="#ff00c3" fontWeight={500}>
+              📄 {replacementFile.name}
+            </Typography>
+          ) : (
+            <>
+              <Typography variant="body2" fontWeight={500}>Click to upload a replacement PDF</Typography>
+              <Typography variant="caption" color="text.secondary">Max file size: 10 MB</Typography>
+            </>
+          )}
+        </Box>
+        <Button
+          variant="outlined"
+          disabled={!replacementFile || isReplacingFile}
+          onClick={handleReplaceDocument}
+          sx={{
+            borderColor: '#ff00c3',
+            color: '#ff00c3',
+            textTransform: 'none',
+            '&:hover': { borderColor: '#ff00c3', backgroundColor: 'rgba(255,0,195,0.04)' },
+          }}
+          startIcon={isReplacingFile ? <CircularProgress size={16} color="inherit" /> : null}
+        >
+          {isReplacingFile ? 'Replacing...' : 'Replace Document'}
+        </Button>
+      </>
+    );
+  };
+
   const handleSave = async () => {
     if (!robot) return;
 
@@ -1280,6 +1362,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
               {renderScrapeListLimitFields()}
               {renderActionNameFields()}
               {renderAllCredentialFields()}
+              {renderDocumentFileSection()}
             </>
           )}
         </Box>
