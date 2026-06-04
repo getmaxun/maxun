@@ -106,15 +106,19 @@ router.put('/pair/:index', requireSignIn, (req: AuthenticatedRequest, res) => {
 /**
  * PUT endpoint for updating the currently generated workflow file from the one in the storage.
  */
-router.put('/:browserId/:id', requireSignIn, async (req, res) => {
+router.put('/:browserId/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
     const browser = browserPool.getRemoteBrowser(req.params.browserId);
     logger.log('debug', `Updating workflow for Robot: ${req.params.id}`);
 
     if (browser && browser.generator) {
       const robot = await Robot.findOne({
         where: {
-          'recording_meta.id': req.params.id
+          'recording_meta.id': req.params.id,
+          userId: req.user.id,
         },
         raw: true
       });
