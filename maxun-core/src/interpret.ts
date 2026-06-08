@@ -7,6 +7,7 @@ import {
   Where, What, PageState, Workflow, WorkflowFile,
   ParamType, SelectorArray, CustomFunctions,
 } from './types/workflow';
+import { HEAVY_RENDER_FORMATS } from './types/formats';
 
 import { operators, meta } from './types/logic';
 import { arrayToObject } from './utils/utils';
@@ -412,14 +413,12 @@ export default class Interpreter extends EventEmitter {
 
       if (s.action === 'scrape') {
         const formats: string[] = firstArg.formats ?? [];
-        const heavyFormats = ['markdown', 'html', 'text', 'screenshot-visible', 'screenshot-full'];
-        return formats.some((f: string) => heavyFormats.includes(f));
+        return formats.some((f: string) => (HEAVY_RENDER_FORMATS as readonly string[]).includes(f));
       }
 
       if (s.action === 'crawl' || s.action === 'search') {
         const outputFormats: string[] = (firstArg as any).outputFormats ?? [];
-        const heavyFormats = ['markdown', 'html', 'text', 'screenshot-visible', 'screenshot-full'];
-        return outputFormats.some((f: string) => heavyFormats.includes(f));
+        return outputFormats.some((f: string) => (HEAVY_RENDER_FORMATS as readonly string[]).includes(f));
       }
 
       return false;
