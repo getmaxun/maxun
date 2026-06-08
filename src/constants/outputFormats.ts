@@ -3,6 +3,7 @@ export const OUTPUT_FORMAT_OPTIONS = [
   'html',
   'text',
   'links',
+  'summary',
   'screenshot-visible',
   'screenshot-fullpage',
 ] as const;
@@ -18,6 +19,7 @@ export const OUTPUT_FORMAT_LABELS: Record<OutputFormats, string> = {
   html: 'HTML',
   text: 'Text Content',
   links: 'Links',
+  summary: 'Summary',
   'screenshot-visible': 'Screenshot (Visible)',
   'screenshot-fullpage': 'Screenshot (Full Page)',
 };

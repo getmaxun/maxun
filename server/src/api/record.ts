@@ -19,6 +19,7 @@ import { sendWebhook } from "../routes/webhook";
 import { convertPageToHTML, convertPageToLinks, convertPageToMarkdown, convertPageToScreenshot, convertPageToText } from '../markdownify/scrape';
 import { executeBrowserAgent } from '../sdk/browserAgent';
 import { OutputFormats } from '../constants/output-formats';
+import { processRobotOutputFormats } from '../utils/output-post-processor';
 import { addJob } from '../storage/graphileWorker';
 import { QUEUE_NAMES } from '../task-runner';
 
@@ -399,6 +400,8 @@ function formatRunResponse(run: any) {
             searchData: {},
             markdown: '',
             html: '',
+            links: [] as string[],
+            summary: null as string | null,
             promptResult: null as any
         },
         screenshots: [] as any[],
@@ -428,6 +431,10 @@ function formatRunResponse(run: any) {
 
     if (output.html && Array.isArray(output.html)) {
         formattedRun.data.html = output.html[0]?.content || '';
+    }
+
+    if (output.summary && Array.isArray(output.summary) && output.summary.length > 0) {
+        formattedRun.data.summary = output.summary[0]?.content || null;
     }
 
     if (output.promptResult && Array.isArray(output.promptResult)) {
@@ -786,8 +793,8 @@ async function executeRun(id: string, userId: string) {
             let formats = rawFormats && rawFormats.length > 0 ? rawFormats : ['markdown'];
 
             if (requestedFormats && Array.isArray(requestedFormats) && requestedFormats.length > 0) {
-                formats = requestedFormats.filter((f): f is 'text' | 'markdown' | 'html' | 'links' | 'screenshot-visible' | 'screenshot-fullpage' =>
-                    ['text', 'markdown', 'html', 'links', 'screenshot-visible', 'screenshot-fullpage'].includes(f)
+                formats = requestedFormats.filter((f): f is 'text' | 'markdown' | 'html' | 'links' | 'screenshot-visible' | 'screenshot-fullpage' | 'summary' =>
+                    ['text', 'markdown', 'html', 'links', 'screenshot-visible', 'screenshot-fullpage', 'summary'].includes(f)
                 );
             }
 
@@ -863,18 +870,42 @@ async function executeRun(id: string, userId: string) {
                     }
                 }
 
-                if (formats.includes('markdown')) {
+                if (formats.includes('markdown') || formats.includes('summary')) {
                     try {
                         const markdownPromise = convertPageToMarkdown(url, currentPage);
                         const timeoutPromise = new Promise<never>((_, reject) => {
                             setTimeout(() => reject(new Error(`Markdown conversion timed out after ${SCRAPE_TIMEOUT / 1000}s`)), SCRAPE_TIMEOUT);
                         });
                         markdown = await Promise.race([markdownPromise, timeoutPromise]);
-                        if (markdown && markdown.trim().length > 0) {
+                        if (markdown && markdown.trim().length > 0 && formats.includes('markdown')) {
                             serializableOutput.markdown = [{ content: markdown }];
                         }
                     } catch (error: any) {
                         logger.log('warn', `Markdown conversion failed for API run ${plainRun.runId}: ${error.message}`);
+                    }
+                }
+
+                if (formats.includes('summary')) {
+                    try {
+                        if (!markdown) {
+                            markdown = await Promise.race([
+                                convertPageToMarkdown(url, currentPage),
+                                new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`Markdown timed out`)), SCRAPE_TIMEOUT))
+                            ]);
+                        }
+                        if (markdown && markdown.trim().length > 0) {
+                            const { summarizeMarkdown } = require('../utils/summarizer');
+                            const llmConfig = {
+                                provider: ((recording.recording_meta as any).promptLlmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama',
+                                model: (recording.recording_meta as any).promptLlmModel as string | undefined,
+                                apiKey: (recording.recording_meta as any).promptLlmApiKey as string | undefined,
+                                baseUrl: (recording.recording_meta as any).promptLlmBaseUrl as string | undefined,
+                            };
+                            const summaryText = await summarizeMarkdown(markdown, llmConfig);
+                            serializableOutput.summary = [{ content: summaryText }];
+                        }
+                    } catch (error: any) {
+                        logger.log('warn', `Summary generation failed for API run ${plainRun.runId}: ${error.message}`);
                     }
                 }
 
@@ -978,6 +1009,7 @@ async function executeRun(id: string, userId: string) {
 
                 if (serializableOutput.markdown) webhookPayload.markdown = markdown;
                 if (serializableOutput.html) webhookPayload.html = html;
+                if (serializableOutput.summary) webhookPayload.summary = serializableOutput.summary[0]?.content || '';
                 if (uploadedBinaryOutput['screenshot-visible']) webhookPayload.screenshot_visible = uploadedBinaryOutput['screenshot-visible'];
                 if (uploadedBinaryOutput['screenshot-fullpage']) webhookPayload.screenshot_fullpage = uploadedBinaryOutput['screenshot-fullpage'];
 
@@ -1095,8 +1127,51 @@ async function executeRun(id: string, userId: string) {
 
         const interpretationInfo = await Promise.race([interpretationPromise, timeoutPromise]);
 
+        const finalRun = await Run.findByPk(run.id);
+        let categorizedOutput = {
+            crawl: finalRun?.serializableOutput?.crawl || {},
+            search: finalRun?.serializableOutput?.search || {},
+        };
+        let postBinaryOutput: Record<string, any> = { ...(interpretationInfo.binaryOutput || {}) };
+
+        if (robotType === 'crawl' || robotType === 'search') {
+            const outputFormats = run.interpreterSettings?.formats || (recording.recording_meta as any).formats as string[] | undefined;
+            const llmConfig = {
+                provider: ((recording.recording_meta as any).promptLlmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama',
+                model: (recording.recording_meta as any).promptLlmModel as string | undefined,
+                apiKey: (recording.recording_meta as any).promptLlmApiKey as string | undefined,
+                baseUrl: (recording.recording_meta as any).promptLlmBaseUrl as string | undefined,
+            };
+            try {
+                const processedOutput = await processRobotOutputFormats({
+                    robotType,
+                    outputFormats,
+                    categorizedOutput: {
+                        crawl: categorizedOutput.crawl as Record<string, any>,
+                        search: categorizedOutput.search as Record<string, any>,
+                    },
+                    currentPage,
+                    initialBinaryOutput: postBinaryOutput,
+                    llmConfig,
+                });
+                categorizedOutput.crawl = processedOutput.categorizedOutput.crawl;
+                categorizedOutput.search = processedOutput.categorizedOutput.search;
+                postBinaryOutput = processedOutput.binaryOutput;
+
+                await run.update({
+                    serializableOutput: {
+                        ...(finalRun?.serializableOutput || {}),
+                        crawl: categorizedOutput.crawl,
+                        search: categorizedOutput.search,
+                    }
+                });
+            } catch (postProcessError: any) {
+                logger.log('warn', `Output post-processing failed for run ${plainRun.runId}: ${postProcessError.message}`);
+            }
+        }
+
         const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
-        const uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, interpretationInfo.binaryOutput);
+        const uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, postBinaryOutput);
 
         if (browser && browser.interpreter) {
             await browser.interpreter.clearState();

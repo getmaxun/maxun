@@ -3,8 +3,9 @@ export const OUTPUT_FORMAT_OPTIONS = [
   'html',
   'text',
   'links',
+  'summary',
   'screenshot-visible',
-  'screenshot-fullpage',
+  'screenshot-fullpage'
 ] as const;
 
 export type OutputFormats = (typeof OUTPUT_FORMAT_OPTIONS)[number];
@@ -14,8 +15,9 @@ export const SCRAPE_OUTPUT_FORMAT_OPTIONS: OutputFormats[] = [
   'html',
   'text',
   'links',
+  'summary',
   'screenshot-visible',
-  'screenshot-fullpage',
+  'screenshot-fullpage'
 ];
 
 export const SEARCH_SCRAPE_OUTPUT_FORMAT_OPTIONS: OutputFormats[] = [
@@ -23,8 +25,9 @@ export const SEARCH_SCRAPE_OUTPUT_FORMAT_OPTIONS: OutputFormats[] = [
   'html',
   'text',
   'links',
+  'summary',
   'screenshot-visible',
-  'screenshot-fullpage',
+  'screenshot-fullpage'
 ];
 
 const OUTPUT_FORMAT_SET = new Set<string>(OUTPUT_FORMAT_OPTIONS as readonly string[]);
