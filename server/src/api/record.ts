@@ -1532,7 +1532,7 @@ async function waitForRunCompletion(runId: string, interval: number = 2000) {
  *                   enum: [markdown, html]
  *                 description: Optional override formats for this run.
  *           example:
- *             formats: ["html"]
+ *             formats: ['markdown','html','text','links','summary','screenshot-visible','screenshot-fullpage']
  *     responses:
  *       200:
  *         description: Robot run started successfully.
