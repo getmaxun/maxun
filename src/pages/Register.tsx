@@ -99,7 +99,7 @@ const Register = () => {
           height={50}
           width={60}
           style={{
-            marginBottom: 20,
+            marginBottom: 10,
             borderRadius: "20%",
             alignItems: "center",
           }}
