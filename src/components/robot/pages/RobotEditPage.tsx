@@ -1178,10 +1178,9 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
           disabled={!replacementFile || isReplacingFile}
           onClick={handleReplaceDocument}
           sx={{
-            borderColor: '#ff00c3',
-            color: '#ff00c3',
+            borderColor: 'divider',
+            color: 'text.primary',
             textTransform: 'none',
-            '&:hover': { borderColor: '#ff00c3', backgroundColor: 'rgba(255,0,195,0.04)' },
           }}
           startIcon={isReplacingFile ? <CircularProgress size={16} color="inherit" /> : null}
         >
