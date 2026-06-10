@@ -129,7 +129,7 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
         <Box style={{ display: "flex", flexDirection: "column" }}>
           {robot && (
             <>
-              {robot.recording_meta.type !== 'search' && (
+              {!['search', 'doc-parse', 'doc-extract'].includes(robot.recording_meta.type || '') && (
                 <TextField
                   label={t("robot_settings.target_url")}
                   key="Target URL"
