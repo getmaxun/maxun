@@ -1345,7 +1345,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
                 style={{ marginBottom: "20px" }}
               />
 
-              {robot.recording_meta.type !== 'search' && (
+              {!['search', 'doc-parse', 'doc-extract'].includes(robot.recording_meta.type || '') && (
                 <TextField
                   label={t("robot_duplication.fields.target_url")}
                   key={t("robot_duplication.fields.target_url")}
