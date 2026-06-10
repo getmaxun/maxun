@@ -1146,7 +1146,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         <Box
           sx={{
             border: '2px dashed',
-            borderColor: replacementFile ? '#ff00c3' : 'divider',
+            borderColor: 'divider',
             borderRadius: 2,
             p: 3,
             mb: 2,
