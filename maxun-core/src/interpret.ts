@@ -2507,9 +2507,6 @@ export default class Interpreter extends EventEmitter {
 
               availableSelectors = updatedSelectors;
 
-              if (workingSelector) {
-              }
-
               if (!workingSelector || !loadMoreButton) {
                 debugLog('No Load More button found, probing for scroll-based fallback...');
                 const prevCount = allResults.length;
