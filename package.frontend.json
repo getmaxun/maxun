@@ -1,6 +1,6 @@
 {
   "name": "maxun-frontend",
-  "version": "0.0.41",
+  "version": "0.0.42",
   "dependencies": {
     "@emotion/react": "^11.9.0",
     "@emotion/styled": "^11.8.1",
