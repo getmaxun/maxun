@@ -1181,6 +1181,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
             borderColor: 'divider',
             color: 'text.primary',
             textTransform: 'none',
+            '&:hover': { borderColor: 'divider' },
           }}
           startIcon={isReplacingFile ? <CircularProgress size={16} color="inherit" /> : null}
         >
@@ -1352,7 +1353,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
                   style={{ marginBottom: "20px" }}
                 />
               )}
-
+              
               {renderCrawlConfigFields()}
               {renderSearchConfigFields()}
               {renderScrapeOutputFormatsField()}
