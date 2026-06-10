@@ -341,35 +341,96 @@ export class SelectorValidator {
 
       if (buttonResult.type && buttonResult.type !== '') {
         if (buttonResult.type === 'clickLoadMore' && buttonResult.selector) {
-          logger.info('Testing Load More button by clicking...');
-          const loadMoreVerified = await this.testLoadMoreButton(buttonResult.selector, listSelector);
+          const selectorExists = await this.verifySelectorExists(buttonResult.selector);
 
-          if (!loadMoreVerified) {
-            logger.warn('Load More button did not load content, falling back to scroll detection');
-            const scrollTestResult = await this.testInfiniteScrollByScrolling(listSelector);
-
-            if (scrollTestResult.detected) {
+          if (!selectorExists) {
+            logger.warn('Load More button selector not found on page, trying fallback next-button detection');
+            const fallback = await this.detectNextButtonFallback(listSelector);
+            if (fallback.type) {
+              logger.info(`Fallback detected pagination type: ${fallback.type}${fallback.selector ? ` with selector: ${fallback.selector}` : ''}`);
               return {
                 success: true,
-                type: 'scrollDown',
-                selector: null
+                type: fallback.type,
+                selector: fallback.selector
               };
             }
           } else {
-            logger.info(`Verified Load More button works`);
+            logger.info('Testing Load More button by clicking...');
+            const loadMoreVerified = await this.testLoadMoreButton(buttonResult.selector, listSelector);
+
+            if (loadMoreVerified) {
+              logger.info(`Verified Load More button works`);
+              return {
+                success: true,
+                type: buttonResult.type,
+                selector: buttonResult.selector
+              };
+            }
+
+            logger.warn('Load More button did not load content, trying fallback next-button detection');
+            const fallback = await this.detectNextButtonFallback(listSelector);
+            if (fallback.type) {
+              logger.info(`Fallback detected pagination type: ${fallback.type}${fallback.selector ? ` with selector: ${fallback.selector}` : ''}`);
+              return {
+                success: true,
+                type: fallback.type,
+                selector: fallback.selector
+              };
+            }
+          }
+
+          logger.warn('Falling back to scroll detection');
+          const scrollTestResult = await this.testInfiniteScrollByScrolling(listSelector);
+
+          if (scrollTestResult.detected) {
             return {
               success: true,
-              type: buttonResult.type,
-              selector: buttonResult.selector
+              type: 'scrollDown',
+              selector: null
+            };
+          }
+        } else if (buttonResult.type === 'scrollDown') {
+          const scrollTestResult = await this.testInfiniteScrollByScrolling(listSelector);
+
+          if (scrollTestResult.detected) {
+            return {
+              success: true,
+              type: 'scrollDown',
+              selector: null
+            };
+          }
+
+          logger.warn('Scroll-based pagination not confirmed, trying fallback next-button detection');
+          const fallback = await this.detectNextButtonFallback(listSelector);
+          if (fallback.type) {
+            logger.info(`Fallback detected pagination type: ${fallback.type}${fallback.selector ? ` with selector: ${fallback.selector}` : ''}`);
+            return {
+              success: true,
+              type: fallback.type,
+              selector: fallback.selector
             };
           }
         } else {
-          logger.info(`Detected pagination type: ${buttonResult.type}${buttonResult.selector ? ` with selector: ${buttonResult.selector}` : ''}`);
-          return {
-            success: true,
-            type: buttonResult.type,
-            selector: buttonResult.selector
-          };
+          if (buttonResult.selector) {
+            const selectorExists = await this.verifySelectorExists(buttonResult.selector);
+            if (!selectorExists) {
+              logger.warn(`Detected pagination selector not found on page, discarding: ${buttonResult.selector}`);
+            } else {
+              logger.info(`Detected pagination type: ${buttonResult.type} with selector: ${buttonResult.selector}`);
+              return {
+                success: true,
+                type: buttonResult.type,
+                selector: buttonResult.selector
+              };
+            }
+          } else {
+            logger.info(`Detected pagination type: ${buttonResult.type}`);
+            return {
+              success: true,
+              type: buttonResult.type,
+              selector: null
+            };
+          }
         }
       }
 
@@ -572,6 +633,132 @@ export class SelectorValidator {
     } catch (error: any) {
       logger.error('Error during scroll test:', error.message);
       return { detected: false };
+    }
+  }
+
+  /**
+   * Verify that a selector (or any of its comma-separated variants) matches at least one element on the page
+   */
+  private async verifySelectorExists(selector: string): Promise<boolean> {
+    if (!this.page || !selector) return false;
+    try {
+      const selectors = selector.split(',').map(s => s.trim()).filter(Boolean);
+      for (const sel of selectors) {
+        const count = await this.page.evaluate((s) => {
+          try {
+            return document.querySelectorAll(s).length;
+          } catch {
+            return 0;
+          }
+        }, sel);
+        if (count > 0) return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Fallback detection of a "next page" style button/link near the list, used when the
+   * primary detection's selector can't be verified or doesn't work as expected
+   */
+  private async detectNextButtonFallback(listSelector: string): Promise<{ type: string; selector: string | null }> {
+    if (!this.page) return { type: '', selector: null };
+
+    try {
+      const result = await this.page.evaluate((listSel) => {
+        const nextTextPatterns = [
+          /^\s*next\s*$/i,
+          /\bnext\s+page\b/i,
+          /^[>\s›→»⟩]+$/,
+          /^>>$/
+        ];
+
+        function isVisible(el: Element): boolean {
+          const rect = el.getBoundingClientRect();
+          if (rect.width === 0 || rect.height === 0) return false;
+          const style = window.getComputedStyle(el);
+          if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') return false;
+          return true;
+        }
+
+        function isNearList(el: Element, listEl: Element | null): boolean {
+          if (!listEl) return true;
+          const elRect = el.getBoundingClientRect();
+          const listRect = listEl.getBoundingClientRect();
+          const verticalGap = Math.max(
+            0,
+            elRect.top - listRect.bottom,
+            listRect.top - elRect.bottom
+          );
+          return verticalGap <= 400;
+        }
+
+        function buildSelector(el: Element): string {
+          const id = el.getAttribute('id');
+          if (id) return `#${CSS.escape(id)}`;
+
+          const rel = el.getAttribute('rel');
+          if (rel === 'next') {
+            return `${el.tagName.toLowerCase()}[rel="next"]`;
+          }
+
+          const ariaLabel = el.getAttribute('aria-label');
+          if (ariaLabel) {
+            return `${el.tagName.toLowerCase()}[aria-label="${ariaLabel}"]`;
+          }
+
+          const classes = Array.from(el.classList).slice(0, 2).map(c => `.${CSS.escape(c)}`).join('');
+          return `${el.tagName.toLowerCase()}${classes}`;
+        }
+
+        let listEl: Element | null = null;
+        try {
+          if (listSel) {
+            const isXPath = listSel.startsWith('//') || listSel.startsWith('(//');
+            if (isXPath) {
+              const xpathResult = document.evaluate(listSel, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+              listEl = xpathResult.singleNodeValue as Element | null;
+            } else {
+              listEl = document.querySelector(listSel);
+            }
+          }
+        } catch {
+          listEl = null;
+        }
+
+        const candidates = Array.from(document.querySelectorAll('a[rel="next"], a, button, [role="button"]'));
+
+        for (const el of candidates) {
+          if (!isVisible(el)) continue;
+
+          const rel = el.getAttribute('rel');
+          if (rel === 'next') {
+            return { type: 'clickNext', selector: buildSelector(el) };
+          }
+
+          const text = (el.textContent || '').trim();
+          const ariaLabel = (el.getAttribute('aria-label') || '').trim();
+
+          const matchesPattern = nextTextPatterns.some(pattern => pattern.test(text) || pattern.test(ariaLabel));
+          if (!matchesPattern) continue;
+
+          if (!isNearList(el, listEl)) continue;
+
+          return { type: 'clickNext', selector: buildSelector(el) };
+        }
+
+        return null;
+      }, listSelector);
+
+      if (result) {
+        return result;
+      }
+      return { type: '', selector: null };
+    } catch (error: any) {
+      logger.error('Error during next-button fallback detection:', error.message);
+      return { type: '', selector: null };
     }
   }
 

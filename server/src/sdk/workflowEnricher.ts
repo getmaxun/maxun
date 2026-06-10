@@ -482,13 +482,30 @@ export class WorkflowEnricher {
       if (objectMatch) jsonStr = objectMatch[0];
 
       const decision = JSON.parse(this.sanitizeJsonString(jsonStr));
-      const parsed = WorkflowEnricher.parseGroupCandidates(decision, elementGroups, decision.limit || null);
-      return WorkflowEnricher.buildDecisionFromCandidates(parsed.candidates, parsed.reasoning, decision.limit || null);
+      const limit = decision.limit || this.extractLimitFromPrompt(prompt) || null;
+      const parsed = WorkflowEnricher.parseGroupCandidates(decision, elementGroups, limit);
+      return WorkflowEnricher.buildDecisionFromCandidates(parsed.candidates, parsed.reasoning, limit);
 
     } catch (error: any) {
       logger.error('LLM decision error:', error);
       return this.fallbackHeuristicDecision(prompt, elementGroups);
     }
+  }
+
+  /**
+   * Extract an item-count limit from a verb-bound number in the prompt (e.g. "scrape 50 products"),
+   * excluding numbers that look like years.
+   */
+  private static extractLimitFromPrompt(prompt: string): number | null {
+    const verbBoundNumber = prompt.match(
+      /\b(?:scrape|extract|get|fetch|pull|grab|collect|need|want|find|return|give\s+me|show\s+me)\s+(\d+)\b/i
+    );
+    if (verbBoundNumber && verbBoundNumber[1]) {
+      const limit = parseInt(verbBoundNumber[1], 10);
+      const isYear = limit >= 1900 && limit <= 2099;
+      if (!isNaN(limit) && limit > 0 && !isYear) return limit;
+    }
+    return null;
   }
 
   private static extractMeaningfulKeywords(prompt: string): string[] {
@@ -572,9 +589,10 @@ RULES:
 5. Between two viable groups, pick the one with more items AND richer fields (higher tag count, more links/imgs).
 6. If NO group matches at all (login page, error page, irrelevant content), return -1 for both first and second.
 7. NEVER select a group marked [CONTAINS_CODE].
+8. "limit": if the user's request mentions a specific quantity (e.g. "top 50 products", "get 200 results"), set this to that number. Otherwise set it to null.
 
 Reply with ONLY valid JSON. No markdown blocks, no extra text. Pick a best choice AND a runner-up.
-{"first": NUMBER, "second": NUMBER, "reason": "brief explanation"}
+{"first": NUMBER, "second": NUMBER, "reason": "brief explanation", "limit": NUMBER_OR_NULL}
 
 If only one group is viable, set "second" to the same number as "first" (or -1).
 If no group matches, set both to -1.`;
@@ -584,7 +602,7 @@ If no group matches, set both to -1.`;
 GROUPS (format: INDEX: COUNT items |signals| (fields) [flags] - "sample content"):
 ${groupsText}
 
-Pick the BEST group and a RUNNER-UP. Reply JSON: {"first": NUMBER, "second": NUMBER, "reason": "..."}`;
+Pick the BEST group and a RUNNER-UP. Reply JSON: {"first": NUMBER, "second": NUMBER, "reason": "...", "limit": NUMBER_OR_NULL}`;
 
     return { systemPrompt, userPrompt };
   }
@@ -758,7 +776,7 @@ Pick the BEST group and a RUNNER-UP. Reply JSON: {"first": NUMBER, "second": NUM
       selectedGroup: best.group,
       selectedGroupIndex: best.index,
       itemSelector: best.group.xpath,
-      limit: null
+      limit: this.extractLimitFromPrompt(prompt)
     };
   }
 
@@ -1521,6 +1539,36 @@ Return ONLY the list name, nothing else:`;
   }
 
   /**
+   * Count how many items matching the list selector are currently present on the page
+   */
+  private static async countListItems(
+    listSelector: string,
+    validator: SelectorValidator
+  ): Promise<number> {
+    try {
+      const page = (validator as any).page;
+      if (!page) return 0;
+      const count = await page.evaluate((selector: string) => {
+        try {
+          const isXPath = selector.startsWith('//') || selector.startsWith('(//');
+          if (isXPath) {
+            const result = document.evaluate(
+              selector, document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null
+            );
+            return result.snapshotLength;
+          }
+          return document.querySelectorAll(selector).length;
+        } catch {
+          return 0;
+        }
+      }, listSelector);
+      return typeof count === 'number' ? count : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  /**
    * Build workflow from LLM decision
    */
   private static async buildWorkflowFromLLMDecision(
@@ -1553,7 +1601,7 @@ Return ONLY the list name, nothing else:`;
       }
 
       logger.info('Extracting field samples and detecting pagination in parallel...');
-      const [fieldSamples, paginationResult] = await Promise.all([
+      const [fieldSamples, paginationResult, itemsOnPage] = await Promise.all([
         this.extractFieldSamples(
           autoDetectResult.fields,
           autoDetectResult.listSelector || '',
@@ -1562,8 +1610,11 @@ Return ONLY the list name, nothing else:`;
         validator.autoDetectPagination(llmDecision.itemSelector).catch((error: any) => {
           logger.warn('Pagination auto-detection failed:', error.message);
           return { success: false, type: 'none', selector: '' };
-        })
+        }),
+        this.countListItems(autoDetectResult.listSelector || llmDecision.itemSelector, validator)
       ]);
+
+      logger.info(`[WorkflowEnricher] Items on current page: ${itemsOnPage}`);
 
       logger.info('Generating semantic field labels with LLM...');
       const fieldLabels = await this.generateFieldLabels(
@@ -1602,16 +1653,20 @@ Return ONLY the list name, nothing else:`;
         logger.warn(`Low confidence (${filterResult.confidence}) or no fields selected. Using all detected fields as fallback.`);
       }
 
+      const limit = llmDecision.limit || 100;
+      logger.info(`Using limit: ${limit}`);
+
       let paginationType = 'none';
       let paginationSelector = '';
 
-      if (paginationResult.success && paginationResult.type) {
+      const limitFitsOnePage = itemsOnPage > 0 && limit <= itemsOnPage;
+
+      if (limitFitsOnePage) {
+        logger.info(`[WorkflowEnricher] Pagination disabled: requested limit (${limit}) fits within items already on page (${itemsOnPage}).`);
+      } else if (paginationResult.success && paginationResult.type) {
         paginationType = paginationResult.type;
         paginationSelector = paginationResult.selector || '';
       }
-
-      const limit = llmDecision.limit || 100;
-      logger.info(`Using limit: ${limit}`);
 
       logger.info('Generating semantic list name with LLM...');
       const listName = await this.generateListName(
