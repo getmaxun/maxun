@@ -104,9 +104,6 @@ const Register = () => {
             alignItems: "center",
           }}
         />
-        <Typography variant="h4" gutterBottom>
-          {t('register.title')}
-        </Typography>
         <TextField
           fullWidth
           label={t('register.email')}
