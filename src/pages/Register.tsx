@@ -96,8 +96,8 @@ const Register = () => {
         <img
           src="../src/assets/maxunlogo.png"
           alt="logo"
-          height={60}
-          width={70}
+          height={50}
+          width={60}
           style={{
             marginBottom: 20,
             borderRadius: "20%",
