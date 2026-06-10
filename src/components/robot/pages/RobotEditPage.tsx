@@ -1352,7 +1352,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
                   style={{ marginBottom: "20px" }}
                 />
               )}
-              
+
               {renderCrawlConfigFields()}
               {renderSearchConfigFields()}
               {renderScrapeOutputFormatsField()}
