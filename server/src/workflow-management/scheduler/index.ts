@@ -348,13 +348,43 @@ async function executeRun(id: string, userId: string) {
           if (text) serializableOutput.text = [{ content: text }];
         }
 
-        if (formats.includes("markdown")) {
-          const markdownPromise = convertPageToMarkdown(url, currentPage);
-          const timeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error(`Markdown conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
-          });
-          markdown = await Promise.race([markdownPromise, timeoutPromise]);
-          serializableOutput.markdown = [{ content: markdown }];
+        if (formats.includes("markdown") || formats.includes("summary")) {
+          try {
+            const markdownPromise = convertPageToMarkdown(url, currentPage);
+            const timeoutPromise = new Promise<never>((_, reject) => {
+              setTimeout(() => reject(new Error(`Markdown conversion timed out after ${SCRAPE_TIMEOUT/1000}s`)), SCRAPE_TIMEOUT);
+            });
+            markdown = await Promise.race([markdownPromise, timeoutPromise]);
+            if (markdown && markdown.trim().length > 0 && formats.includes("markdown")) {
+              serializableOutput.markdown = [{ content: markdown }];
+            }
+          } catch (error: any) {
+            logger.log('warn', `Markdown conversion failed for scheduled run ${plainRun.runId}: ${error.message}`);
+          }
+        }
+
+        if (formats.includes("summary")) {
+          try {
+            if (!markdown) {
+              markdown = await Promise.race([
+                convertPageToMarkdown(url, currentPage),
+                new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`Markdown timed out`)), SCRAPE_TIMEOUT))
+              ]);
+            }
+            if (markdown && markdown.trim().length > 0) {
+              const { summarizeMarkdown } = require('../../utils/summarizer');
+              const llmConfig = {
+                provider: ((recording.recording_meta as any).promptLlmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama',
+                model: (recording.recording_meta as any).promptLlmModel as string | undefined,
+                apiKey: (recording.recording_meta as any).promptLlmApiKey as string | undefined,
+                baseUrl: (recording.recording_meta as any).promptLlmBaseUrl as string | undefined,
+              };
+              const summaryText = await summarizeMarkdown(markdown, llmConfig);
+              serializableOutput.summary = [{ content: summaryText }];
+            }
+          } catch (error: any) {
+            logger.log('warn', `Summary generation failed for scheduled run ${plainRun.runId}: ${error.message}`);
+          }
         }
 
         if (formats.includes("html")) {
@@ -454,6 +484,7 @@ async function executeRun(id: string, userId: string) {
 
         if (formats.includes('markdown')) webhookPayload.markdown = markdown;
         if (formats.includes('html')) webhookPayload.html = html;
+        if (serializableOutput.summary) webhookPayload.summary = serializableOutput.summary[0]?.content || '';
         if (uploadedBinaryOutput['screenshot-visible']) webhookPayload.screenshot_visible = uploadedBinaryOutput['screenshot-visible'];
         if (uploadedBinaryOutput['screenshot-fullpage']) webhookPayload.screenshot_fullpage = uploadedBinaryOutput['screenshot-fullpage'];
 
@@ -584,6 +615,12 @@ async function executeRun(id: string, userId: string) {
         },
         currentPage,
         initialBinaryOutput: binaryOutput,
+        llmConfig: {
+          provider: ((recording.recording_meta as any).promptLlmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama',
+          model: (recording.recording_meta as any).promptLlmModel as string | undefined,
+          apiKey: (recording.recording_meta as any).promptLlmApiKey as string | undefined,
+          baseUrl: (recording.recording_meta as any).promptLlmBaseUrl as string | undefined,
+        },
       });
 
       categorizedOutput.crawl = processedOutput.categorizedOutput.crawl;

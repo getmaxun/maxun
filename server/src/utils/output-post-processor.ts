@@ -3,6 +3,7 @@ import logger from '../logger';
 import { parseMarkdown } from '../markdownify/markdown';
 import { convertPageToScreenshot } from '../markdownify/scrape';
 import { DEFAULT_OUTPUT_FORMATS } from '../constants/output-formats';
+import { LLMConfig } from '../sdk/browserAgent';
 
 interface CategorizedOutput {
   crawl: Record<string, any>;
@@ -15,6 +16,7 @@ interface ProcessRobotOutputParams {
   categorizedOutput: CategorizedOutput;
   currentPage: Page;
   initialBinaryOutput?: Record<string, any>;
+  llmConfig?: LLMConfig;
 }
 
 interface ProcessRobotOutputResult {
@@ -31,6 +33,7 @@ export async function processRobotOutputFormats(
     categorizedOutput,
     currentPage,
     initialBinaryOutput,
+    llmConfig,
   } = params;
 
   const binaryOutput: Record<string, any> = {
@@ -72,6 +75,18 @@ export async function processRobotOutputFormats(
         }
         if (!effectiveFormats.includes('text')) delete pageResult.text;
         if (!effectiveFormats.includes('links')) delete pageResult.links;
+
+        if (effectiveFormats.includes('summary')) {
+          const pageText = (pageResult.markdown || pageResult.text || '').substring(0, 40000);
+          if (pageText.trim()) {
+            try {
+              const { summarizeMarkdown } = require('../utils/summarizer');
+              pageResult.summary = await summarizeMarkdown(pageText, llmConfig);
+            } catch (e: any) {
+              logger.log('warn', `Failed to generate crawl page summary: ${e.message}`);
+            }
+          }
+        }
 
         const pageUrl = pageResult.metadata?.url || pageResult.url;
         const hasPageUrl = typeof pageUrl === 'string' && pageUrl.trim() !== '';
@@ -143,6 +158,18 @@ export async function processRobotOutputFormats(
           }
           if (!effectiveFormats.includes('text')) delete result.text;
           if (!effectiveFormats.includes('links')) delete result.links;
+
+          if (effectiveFormats.includes('summary')) {
+            const pageText = (result.markdown || result.text || '').substring(0, 40000);
+            if (pageText.trim()) {
+              try {
+                const { summarizeMarkdown } = require('../utils/summarizer');
+                result.summary = await summarizeMarkdown(pageText, llmConfig);
+              } catch (e: any) {
+                logger.log('warn', `Failed to generate search result summary: ${e.message}`);
+              }
+            }
+          }
 
           const resultUrl = result.metadata?.url || result.url;
           const hasResultUrl = typeof resultUrl === 'string' && resultUrl.trim() !== '';
