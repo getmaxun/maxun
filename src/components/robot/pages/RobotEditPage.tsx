@@ -1163,7 +1163,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
             onChange={(e) => setReplacementFile(e.target.files?.[0] || null)}
           />
           {replacementFile ? (
-            <Typography variant="body2" color="#ff00c3" fontWeight={500}>
+            <Typography variant="body2" fontWeight={500}>
               📄 {replacementFile.name}
             </Typography>
           ) : (
