@@ -56,8 +56,18 @@ export const RobotDuplicatePage = ({ handleStart }: RobotDuplicatePageProps) => 
     setRobot(data);
   };
 
+  const normalizeUrl = (rawUrl: string): string => {
+    const trimmed = rawUrl.trim();
+    if (!trimmed) return trimmed;
+    if (!/^https?:\/\//i.test(trimmed)) return `https://${trimmed}`;
+    return trimmed;
+  };
+
   const handleSave = async () => {
-    if (!robot || !targetUrl) {
+    const normalizedUrl = normalizeUrl(targetUrl || '');
+    setTargetUrl(normalizedUrl);
+
+    if (!robot || !normalizedUrl) {
       notify("error", t("robot_duplication.notifications.url_required"));
       return;
     }
@@ -69,7 +79,7 @@ export const RobotDuplicatePage = ({ handleStart }: RobotDuplicatePageProps) => 
 
     setIsLoading(true);
     try {
-      const result = await duplicateRecording(robot.recording_meta.id, targetUrl, newName.trim());
+      const result = await duplicateRecording(robot.recording_meta.id, normalizedUrl, newName.trim());
 
       if (result) {
         setRerenderRobots(true);
@@ -129,6 +139,7 @@ export const RobotDuplicatePage = ({ handleStart }: RobotDuplicatePageProps) => 
                     setNewName(`${robot.recording_meta.name} (${lastWord})`);
                   }
                 }}
+                onBlur={() => setTargetUrl(normalizeUrl(targetUrl || ''))}
                 style={{ marginBottom: "20px" }}
                 fullWidth
               />

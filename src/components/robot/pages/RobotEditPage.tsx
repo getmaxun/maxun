@@ -557,6 +557,13 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
     });
   };
 
+  const normalizeUrl = (rawUrl: string): string => {
+    const trimmed = rawUrl.trim();
+    if (!trimmed) return trimmed;
+    if (!/^https?:\/\//i.test(trimmed)) return `https://${trimmed}`;
+    return trimmed;
+  };
+
   const handleTargetUrlChange = (newUrl: string) => {
     setRobot((prev) => {
       if (!prev) return prev;
@@ -565,6 +572,11 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         recording_meta: { ...prev.recording_meta, url: newUrl },
       };
     });
+  };
+
+  const handleTargetUrlBlur = () => {
+    const current = getTargetUrl() || '';
+    handleTargetUrlChange(normalizeUrl(current));
   };
 
   const renderAllCredentialFields = () => {
@@ -1230,7 +1242,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         {} as Record<string, CredentialInfo>
       );
 
-      const targetUrl = getTargetUrl();
+      const targetUrl = normalizeUrl(getTargetUrl() || '');
 
       let updatedWorkflow = robot.recording.workflow;
       if (robot.recording_meta.type === 'crawl') {
@@ -1351,6 +1363,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
                   key={t("robot_duplication.fields.target_url")}
                   value={getTargetUrl() || ""}
                   onChange={(e) => handleTargetUrlChange(e.target.value)}
+                  onBlur={handleTargetUrlBlur}
                   style={{ marginBottom: "20px" }}
                 />
               )}
