@@ -1168,7 +1168,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
             </Typography>
           ) : (
             <>
-              <Typography variant="body2" fontWeight={500}>Click to upload a replacement PDF</Typography>
+              <Typography variant="body2" fontWeight={500}>Click to upload new PDF</Typography>
               <Typography variant="caption" color="text.secondary">Max file size: 10 MB</Typography>
             </>
           )}
