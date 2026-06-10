@@ -1137,7 +1137,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
     return (
       <>
         <Divider sx={{ my: 3 }} />
-        <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1 }}>
+        <Typography variant="subtitle1" sx={{ mb: 1 }}>
           Replace Document
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
