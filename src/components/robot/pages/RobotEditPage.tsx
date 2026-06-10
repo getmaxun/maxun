@@ -1152,7 +1152,6 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
             mb: 2,
             textAlign: 'center',
             cursor: 'pointer',
-            '&:hover': { borderColor: '#ff00c3' },
           }}
           onClick={() => document.getElementById('doc-replace-input')?.click()}
         >
