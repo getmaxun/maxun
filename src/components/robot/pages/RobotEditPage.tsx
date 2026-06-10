@@ -1136,7 +1136,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
 
     return (
       <>
-        <Divider sx={{ my: 3 }} />
+        <Divider sx={{ my: 2 }} />
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           Current file: <strong>{currentFileName}</strong>
         </Typography>
