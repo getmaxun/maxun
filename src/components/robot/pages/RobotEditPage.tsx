@@ -1148,23 +1148,19 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
 
     return (
       <>
-        <Divider sx={{ my: 3 }} />
-        <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1 }}>
-          Replace Document
-        </Typography>
+        <Divider sx={{ my: 2 }} />
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           Current file: <strong>{currentFileName}</strong>
         </Typography>
         <Box
           sx={{
             border: '2px dashed',
-            borderColor: replacementFile ? '#ff00c3' : 'divider',
+            borderColor: 'rgba(52, 51, 52, 0.43)',
             borderRadius: 2,
             p: 3,
             mb: 2,
             textAlign: 'center',
             cursor: 'pointer',
-            '&:hover': { borderColor: '#ff00c3' },
           }}
           onClick={() => document.getElementById('doc-replace-input')?.click()}
         >
@@ -1176,12 +1172,12 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
             onChange={(e) => setReplacementFile(e.target.files?.[0] || null)}
           />
           {replacementFile ? (
-            <Typography variant="body2" color="#ff00c3" fontWeight={500}>
+            <Typography variant="body2" fontWeight={500}>
               📄 {replacementFile.name}
             </Typography>
           ) : (
             <>
-              <Typography variant="body2" fontWeight={500}>Click to upload a replacement PDF</Typography>
+              <Typography variant="body2" fontWeight={500}>Click to upload new PDF</Typography>
               <Typography variant="caption" color="text.secondary">Max file size: 10 MB</Typography>
             </>
           )}
@@ -1191,10 +1187,10 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
           disabled={!replacementFile || isReplacingFile}
           onClick={handleReplaceDocument}
           sx={{
-            borderColor: '#ff00c3',
-            color: '#ff00c3',
+            borderColor: 'divider',
+            color: 'text.primary',
             textTransform: 'none',
-            '&:hover': { borderColor: '#ff00c3', backgroundColor: 'rgba(255,0,195,0.04)' },
+            '&:hover': { borderColor: 'divider' },
           }}
           startIcon={isReplacingFile ? <CircularProgress size={16} color="inherit" /> : null}
         >
