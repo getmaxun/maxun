@@ -557,6 +557,13 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
     });
   };
 
+  const normalizeUrl = (rawUrl: string): string => {
+    const trimmed = rawUrl.trim();
+    if (!trimmed) return trimmed;
+    if (!/^https?:\/\//i.test(trimmed)) return `https://${trimmed}`;
+    return trimmed;
+  };
+
   const handleTargetUrlChange = (newUrl: string) => {
     setRobot((prev) => {
       if (!prev) return prev;
@@ -565,6 +572,11 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         recording_meta: { ...prev.recording_meta, url: newUrl },
       };
     });
+  };
+
+  const handleTargetUrlBlur = () => {
+    const current = getTargetUrl() || '';
+    handleTargetUrlChange(normalizeUrl(current));
   };
 
   const renderAllCredentialFields = () => {
@@ -1136,23 +1148,19 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
 
     return (
       <>
-        <Divider sx={{ my: 3 }} />
-        <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1 }}>
-          Replace Document
-        </Typography>
+        <Divider sx={{ my: 2 }} />
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           Current file: <strong>{currentFileName}</strong>
         </Typography>
         <Box
           sx={{
             border: '2px dashed',
-            borderColor: replacementFile ? '#ff00c3' : 'divider',
+            borderColor: 'rgba(52, 51, 52, 0.43)',
             borderRadius: 2,
             p: 3,
             mb: 2,
             textAlign: 'center',
             cursor: 'pointer',
-            '&:hover': { borderColor: '#ff00c3' },
           }}
           onClick={() => document.getElementById('doc-replace-input')?.click()}
         >
@@ -1164,12 +1172,12 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
             onChange={(e) => setReplacementFile(e.target.files?.[0] || null)}
           />
           {replacementFile ? (
-            <Typography variant="body2" color="#ff00c3" fontWeight={500}>
+            <Typography variant="body2" fontWeight={500}>
               📄 {replacementFile.name}
             </Typography>
           ) : (
             <>
-              <Typography variant="body2" fontWeight={500}>Click to upload a replacement PDF</Typography>
+              <Typography variant="body2" fontWeight={500}>Click to upload new PDF</Typography>
               <Typography variant="caption" color="text.secondary">Max file size: 10 MB</Typography>
             </>
           )}
@@ -1179,10 +1187,10 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
           disabled={!replacementFile || isReplacingFile}
           onClick={handleReplaceDocument}
           sx={{
-            borderColor: '#ff00c3',
-            color: '#ff00c3',
+            borderColor: 'divider',
+            color: 'text.primary',
             textTransform: 'none',
-            '&:hover': { borderColor: '#ff00c3', backgroundColor: 'rgba(255,0,195,0.04)' },
+            '&:hover': { borderColor: 'divider' },
           }}
           startIcon={isReplacingFile ? <CircularProgress size={16} color="inherit" /> : null}
         >
@@ -1230,7 +1238,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         {} as Record<string, CredentialInfo>
       );
 
-      const targetUrl = getTargetUrl();
+      const targetUrl = normalizeUrl(getTargetUrl() || '');
 
       let updatedWorkflow = robot.recording.workflow;
       if (robot.recording_meta.type === 'crawl') {
@@ -1345,12 +1353,13 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
                 style={{ marginBottom: "20px" }}
               />
 
-              {robot.recording_meta.type !== 'search' && (
+              {!['search', 'doc-parse', 'doc-extract'].includes(robot.recording_meta.type || '') && (
                 <TextField
                   label={t("robot_duplication.fields.target_url")}
                   key={t("robot_duplication.fields.target_url")}
                   value={getTargetUrl() || ""}
                   onChange={(e) => handleTargetUrlChange(e.target.value)}
+                  onBlur={handleTargetUrlBlur}
                   style={{ marginBottom: "20px" }}
                 />
               )}

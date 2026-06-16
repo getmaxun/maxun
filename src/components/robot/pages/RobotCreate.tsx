@@ -341,11 +341,21 @@ const RobotCreate: React.FC = () => {
   };
 
 
+  const normalizeUrl = (rawUrl: string): string => {
+    const trimmed = rawUrl.trim();
+    if (!trimmed) return trimmed;
+    if (!/^https?:\/\//i.test(trimmed)) return `https://${trimmed}`;
+    return trimmed;
+  };
+
   const handleStartRecording = async () => {
     if (!url.trim()) {
       notify('error', 'Please enter a valid URL');
       return;
     }
+
+    const normalizedUrl = normalizeUrl(url);
+    setUrl(normalizedUrl);
 
     setIsLoading(true);
 
@@ -365,11 +375,11 @@ const RobotCreate: React.FC = () => {
       }
 
       setBrowserId('new-recording');
-      setRecordingUrl(url);
+      setRecordingUrl(normalizedUrl);
 
       window.sessionStorage.setItem('browserId', 'new-recording');
-      window.sessionStorage.setItem('recordingUrl', url);
-      window.sessionStorage.setItem('initialUrl', url);
+      window.sessionStorage.setItem('recordingUrl', normalizedUrl);
+      window.sessionStorage.setItem('initialUrl', normalizedUrl);
       window.sessionStorage.setItem('needsLogin', needsLogin.toString());
 
       const sessionId = Date.now().toString();
@@ -431,10 +441,13 @@ const RobotCreate: React.FC = () => {
       return;
     }
 
+    const normalizedCrawlUrl = normalizeUrl(crawlUrl);
+    setCrawlUrl(normalizedCrawlUrl);
+
     setIsLoading(true);
     try {
       const result = await createCrawlRobot(
-        crawlUrl,
+        normalizedCrawlUrl,
         crawlRobotName,
         {
           mode: crawlMode,
@@ -746,6 +759,7 @@ const RobotCreate: React.FC = () => {
                       fullWidth
                       value={url}
                       onChange={(e) => setUrl(e.target.value)}
+                      onBlur={() => setUrl(normalizeUrl(url))}
                       label="Website URL (Optional)"
                     />
                   </Box>
@@ -846,6 +860,9 @@ const RobotCreate: React.FC = () => {
                         return;
                       }
 
+                      const normalizedUrl = normalizeUrl(url);
+                      setUrl(normalizedUrl);
+
                       const tempRobotId = `temp-${Date.now()}`;
                       const robotDisplayName = extractRobotName;
 
@@ -859,7 +876,7 @@ const RobotCreate: React.FC = () => {
                           pairs: 0,
                           params: [],
                           type: 'extract',
-                          url: url || '(auto-detecting...)',
+                          url: normalizedUrl || '(auto-detecting...)',
                         },
                         recording: { workflow: [] },
                         isLoading: true,
@@ -868,14 +885,14 @@ const RobotCreate: React.FC = () => {
 
                       addOptimisticRobot(optimisticRobot);
 
-                      notify('info', url.trim()
+                      notify('info', normalizedUrl
                         ? `Robot ${robotDisplayName} creation started`
                         : `Robot ${robotDisplayName} creation started (searching for website...)`);
                       navigate('/robots');
 
                       try {
                         const result = await createLLMRobot(
-                          url.trim() || undefined,
+                          normalizedUrl || undefined,
                           aiPrompt,
                           llmProvider,
                           llmModel.trim() || undefined,
@@ -959,6 +976,7 @@ const RobotCreate: React.FC = () => {
                       fullWidth
                       value={url}
                       onChange={(e) => setUrl(e.target.value)}
+                      onBlur={() => setUrl(normalizeUrl(url))}
                       label="Website URL"
                     />
                   </Box>
@@ -1020,6 +1038,7 @@ const RobotCreate: React.FC = () => {
                   fullWidth
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
+                  onBlur={() => setUrl(normalizeUrl(url))}
                   label="Website URL"
                   sx={{ mb: 2 }}
                 />
@@ -1179,11 +1198,13 @@ const RobotCreate: React.FC = () => {
                     notify('error', 'Please select at least one output format');
                     return;
                   }
+                  const normalizedUrl = normalizeUrl(url);
+                  setUrl(normalizedUrl);
                   setIsLoading(true);
                   try {
                     const hasPrompt = !!scrapePromptInstructions.trim();
                     const result = await createScrapeRobot(
-                      url,
+                      normalizedUrl,
                       scrapeRobotName,
                       outputFormats,
                       hasPrompt ? scrapePromptInstructions : undefined,
@@ -1258,6 +1279,7 @@ const RobotCreate: React.FC = () => {
                   fullWidth
                   value={crawlUrl}
                   onChange={(e) => setCrawlUrl(e.target.value)}
+                  onBlur={() => setCrawlUrl(normalizeUrl(crawlUrl))}
                   sx={{ mb: 2 }}
                 />
 

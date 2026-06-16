@@ -24,6 +24,29 @@
 <a href="https://trendshift.io/repositories/12113" target="_blank"><img src="https://trendshift.io/api/badge/repositories/12113" alt="getmaxun%2Fmaxun | Trendshift" style="width: 250px; height: 55px; margin-top: 10px;" width="250" height="55"/></a>
 </p>
 
+### Sponsors
+
+<table>
+<tr>
+<td width="35%" height="100">
+
+<a href="https://mangoproxy.com/?utm_source=github&utm_medium=partner&utm_campaign=getmaxun">
+  <img src="https://github.com/user-attachments/assets/326b5b8f-6a2c-4aa2-94c8-6a29ae23f2ac" alt="Sponsor Name" width="300" height="150">
+</a>
+
+</td>
+<td width="65%">
+
+#### <a href="https://mangoproxy.com/?utm_source=github&utm_medium=partner&utm_campaign=getmaxun">Mango Proxy</a>
+
+MangoProxy offers Residential, ISP, Datacenter, and Mobile Proxies in 200+ countries with HTTP(S)/SOCKS5 support and flexible IP management.
+<br />
+<b>Discount Code: MAXUN - 8% off Static ISP Proxies</b>
+</td>
+</tr>
+</table>
+
+
 ## What is Maxun?
 
 Maxun is an open-source no-code web data platform for turning the web into structured, reliable data.

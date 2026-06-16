@@ -747,6 +747,8 @@ router.post("/sdk/robots/:id/execute", requireAPIKey, async (req: AuthenticatedR
 
         let markdown: string | undefined = undefined;
         let html: string | undefined = undefined;
+        let summary: string | undefined = undefined;
+
         if (run.serializableOutput?.markdown && Array.isArray(run.serializableOutput.markdown)) {
             markdown = run.serializableOutput.markdown[0]?.content || undefined;
         }
@@ -758,6 +760,12 @@ router.post("/sdk/robots/:id/execute", requireAPIKey, async (req: AuthenticatedR
         }
         if (!html && scrapeOutput?.html && Array.isArray(scrapeOutput.html)) {
             html = scrapeOutput.html[0]?.content || undefined;
+        }
+        if (run.serializableOutput?.summary && Array.isArray(run.serializableOutput.summary)) {
+            summary = run.serializableOutput.summary[0]?.content || undefined;
+        }
+        if (!summary && scrapeOutput?.summary && Array.isArray(scrapeOutput.summary)) {
+            summary = scrapeOutput.summary[0]?.content || undefined;
         }
 
         const promptResultRaw = run.serializableOutput?.promptResult;
@@ -777,6 +785,7 @@ router.post("/sdk/robots/:id/execute", requireAPIKey, async (req: AuthenticatedR
                     text: text,
                     markdown: markdown,
                     html: html,
+                    summary: summary,
                     promptResult: promptResult
                 },
                 screenshots: Object.values(run.binaryOutput || {})

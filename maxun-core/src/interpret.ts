@@ -7,6 +7,7 @@ import {
   Where, What, PageState, Workflow, WorkflowFile,
   ParamType, SelectorArray, CustomFunctions,
 } from './types/workflow';
+import { HEAVY_RENDER_FORMATS } from './types/formats';
 
 import { operators, meta } from './types/logic';
 import { arrayToObject } from './utils/utils';
@@ -412,14 +413,12 @@ export default class Interpreter extends EventEmitter {
 
       if (s.action === 'scrape') {
         const formats: string[] = firstArg.formats ?? [];
-        const heavyFormats = ['markdown', 'html', 'text', 'screenshot-visible', 'screenshot-full'];
-        return formats.some((f: string) => heavyFormats.includes(f));
+        return formats.some((f: string) => (HEAVY_RENDER_FORMATS as readonly string[]).includes(f));
       }
 
       if (s.action === 'crawl' || s.action === 'search') {
         const outputFormats: string[] = (firstArg as any).outputFormats ?? [];
-        const heavyFormats = ['markdown', 'html', 'text', 'screenshot-visible', 'screenshot-full'];
-        return outputFormats.some((f: string) => heavyFormats.includes(f));
+        return outputFormats.some((f: string) => (HEAVY_RENDER_FORMATS as readonly string[]).includes(f));
       }
 
       return false;
@@ -2447,29 +2446,95 @@ export default class Interpreter extends EventEmitter {
           case 'clickLoadMore': {
             await scrapeCurrentPage();
             if (checkLimit()) return allResults;
-            
+
             let loadMoreCounter = 0;
+            const MAX_LOAD_MORE_ITERATIONS = 100;
+            const loadMoreStartTime = Date.now();
+            const MAX_LOAD_MORE_TIME = 30 * 60 * 1000;
+            let useScrollFallback = false;
+            let scrollFallbackUnchangedCount = 0;
             let previousResultCount = allResults.length;
             let noNewItemsCounter = 0;
             const MAX_NO_NEW_ITEMS = 5;
-            
+
             while (true) {
               if (this.isAborted) {
                 this.log('Workflow aborted during pagination loop', Level.WARN);
                 return allResults;
               }
 
-              // Find working button with retry mechanism
+              if (loadMoreCounter >= MAX_LOAD_MORE_ITERATIONS) {
+                await new Promise(resolve => setImmediate(resolve));
+              }
+
+              if (Date.now() - loadMoreStartTime > MAX_LOAD_MORE_TIME) {
+                debugLog('Max load more time exceeded, stopping pagination');
+                return allResults;
+              }
+
+              if (useScrollFallback) {
+                const prevCount = allResults.length;
+                const prevHeight = await page.evaluate(() =>
+                  Math.max(document.body.scrollHeight, document.documentElement.scrollHeight)
+                );
+                await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+                await page.waitForTimeout(1500);
+                await scrapeCurrentPage();
+                if (checkLimit()) return allResults;
+
+                const newHeight = await page.evaluate(() =>
+                  Math.max(document.body.scrollHeight, document.documentElement.scrollHeight)
+                );
+                const newItemsFound = allResults.length - prevCount;
+                const heightGrew = newHeight > prevHeight;
+
+                if (newItemsFound === 0 && !heightGrew) {
+                  scrollFallbackUnchangedCount++;
+                  debugLog(`Scroll fallback: no new items (${scrollFallbackUnchangedCount}/${MAX_UNCHANGED_RESULTS})`);
+                  if (scrollFallbackUnchangedCount >= MAX_UNCHANGED_RESULTS) {
+                    debugLog('Scroll fallback exhausted, stopping pagination');
+                    return allResults;
+                  }
+                } else {
+                  scrollFallbackUnchangedCount = 0;
+                }
+                loadMoreCounter++;
+                continue;
+              }
+
               const { button: loadMoreButton, workingSelector, updatedSelectors } = await findWorkingButton(availableSelectors);
 
               availableSelectors = updatedSelectors;
-              
+
               if (!workingSelector || !loadMoreButton) {
-                debugLog('No working Load More selector found after retries');
+                debugLog('No Load More button found, probing for scroll-based fallback...');
+                const prevCount = allResults.length;
+                const prevHeight = await page.evaluate(() =>
+                  Math.max(document.body.scrollHeight, document.documentElement.scrollHeight)
+                );
+                await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+                await page.waitForTimeout(2000);
+                await scrapeCurrentPage();
+
+                const newHeight = await page.evaluate(() =>
+                  Math.max(document.body.scrollHeight, document.documentElement.scrollHeight)
+                );
+                const scrollLoadedItems = allResults.length > prevCount;
+                const heightGrew = newHeight > prevHeight;
+
+                if (scrollLoadedItems || heightGrew) {
+                  debugLog('Hybrid pagination detected: Load More button gone but scroll loads content. Switching to scroll mode.');
+                  useScrollFallback = true;
+                  scrollFallbackUnchangedCount = 0;
+                  loadMoreCounter++;
+                  if (checkLimit()) return allResults;
+                  continue;
+                }
+
+                debugLog('No working Load More selector and scroll produced no new content, stopping');
                 return allResults;
               }
           
-              // Implement retry mechanism for clicking the button
               let retryCount = 0;
               let clickSuccess = false;
           

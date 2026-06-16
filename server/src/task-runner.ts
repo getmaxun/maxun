@@ -267,9 +267,37 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
             if (text) serializableOutput.text = [{ content: text }];
           }
 
-          if (formats.includes('markdown')) {
-            const markdown = await Promise.race([convertPageToMarkdown(url, currentPage), new Promise<never>((_, r) => setTimeout(() => r(new Error('timeout')), SCRAPE_TIMEOUT))]);
-            serializableOutput.markdown = [{ content: markdown }];
+          let markdown = '';
+          if (formats.includes('markdown') || formats.includes('summary')) {
+            try {
+              markdown = await Promise.race([convertPageToMarkdown(url, currentPage), new Promise<never>((_, r) => setTimeout(() => r(new Error('timeout')), SCRAPE_TIMEOUT))]);
+              if (markdown && markdown.trim().length > 0 && formats.includes('markdown')) {
+                serializableOutput.markdown = [{ content: markdown }];
+              }
+            } catch (error: any) {
+              logger.log('warn', `Markdown conversion failed for run ${data.runId}: ${error.message}`);
+            }
+          }
+
+          if (formats.includes('summary')) {
+            try {
+              if (!markdown) {
+                markdown = await Promise.race([convertPageToMarkdown(url, currentPage), new Promise<never>((_, r) => setTimeout(() => r(new Error('timeout')), SCRAPE_TIMEOUT))]);
+              }
+              if (markdown && markdown.trim().length > 0) {
+                const { summarizeMarkdown } = require('./utils/summarizer');
+                const llmConfig = {
+                  provider: ((recording.recording_meta as any).promptLlmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama',
+                  model: (recording.recording_meta as any).promptLlmModel as string | undefined,
+                  apiKey: (recording.recording_meta as any).promptLlmApiKey as string | undefined,
+                  baseUrl: (recording.recording_meta as any).promptLlmBaseUrl as string | undefined,
+                };
+                const summaryText = await summarizeMarkdown(markdown, llmConfig);
+                serializableOutput.summary = [{ content: summaryText }];
+              }
+            } catch (error: any) {
+              logger.log('warn', `Summary generation failed for run ${data.runId}: ${error.message}`);
+            }
           }
 
           if (formats.includes('html')) {
@@ -322,7 +350,12 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
           }
 
           try {
-            await sendWebhook(plainRun.robotMetaId, 'run_completed', { runId: data.runId, robotId: plainRun.robotMetaId, robotName: recording.recording_meta.name, status: 'success', finishedAt: new Date().toLocaleString() });
+            const webhookPayload: any = { runId: data.runId, robotId: plainRun.robotMetaId, robotName: recording.recording_meta.name, status: 'success', finishedAt: new Date().toLocaleString() };
+            if (serializableOutput.markdown) webhookPayload.markdown = serializableOutput.markdown[0]?.content || '';
+            if (serializableOutput.html) webhookPayload.html = serializableOutput.html[0]?.content || '';
+            if (serializableOutput.links) webhookPayload.links = serializableOutput.links;
+            if (serializableOutput.summary) webhookPayload.summary = serializableOutput.summary[0]?.content || '';
+            await sendWebhook(plainRun.robotMetaId, 'run_completed', webhookPayload);
           } catch (webhookError: any) {
             logger.log('warn', `Failed to send webhooks for run ${data.runId}: ${webhookError.message}`);
           }
@@ -406,6 +439,12 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
           categorizedOutput: { crawl: categorizedOutput.crawl as Record<string, any>, search: categorizedOutput.search as Record<string, any> },
           currentPage,
           initialBinaryOutput: binaryOutput,
+          llmConfig: {
+            provider: ((recording.recording_meta as any).promptLlmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama',
+            model: (recording.recording_meta as any).promptLlmModel as string | undefined,
+            apiKey: (recording.recording_meta as any).promptLlmApiKey as string | undefined,
+            baseUrl: (recording.recording_meta as any).promptLlmBaseUrl as string | undefined,
+          },
         });
 
         categorizedOutput.crawl = processedOutput.categorizedOutput.crawl;

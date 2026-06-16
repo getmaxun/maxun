@@ -168,6 +168,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   const [htmlContent, setHtmlContent] = useState<string>('');
   const [textContent, setTextContent] = useState<string>('');
   const [linksContent, setLinksContent] = useState<string[]>([]);
+  const [summaryContent, setSummaryContent] = useState<string>('');
   const [smartQueryResult, setSmartQueryResult] = useState<string>('');
 
   const [schemaData, setSchemaData] = useState<any[]>([]);
@@ -219,6 +220,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     setSmartQueryResult('');
     setTextContent('');
     setLinksContent([]);
+    setSummaryContent('');
 
     if (!row.serializableOutput) return;
 
@@ -254,6 +256,13 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
           typeof item === 'string' ? item : item?.url ?? ''
         ).filter(Boolean);
         if (urls.length > 0) setLinksContent(urls);
+      }
+
+      if (output?.summary && Array.isArray(output.summary)) {
+        const summaryData = output.summary[0];
+        if (summaryData?.content) {
+          setSummaryContent(summaryData.content);
+        }
       }
     };
 
@@ -313,7 +322,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
     if (!row.serializableOutput) return;
 
-    const modernKeys = ['scrapeSchema', 'scrapeList', 'crawl', 'search', 'markdown', 'html', 'textContent', 'text', 'scrapeDoc', 'links', 'promptResult'];
+    const modernKeys = ['scrapeSchema', 'scrapeList', 'crawl', 'search', 'markdown', 'html', 'textContent', 'text', 'scrapeDoc', 'links', 'summary', 'promptResult'];
     const hasModernData = modernKeys.some(key => row.serializableOutput[key]);
 
     const hasLegacySchema = row.serializableOutput.scrapeSchema && Array.isArray(row.serializableOutput.scrapeSchema);
@@ -1307,12 +1316,13 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   const hasHTML = htmlContent && htmlContent.length > 0;
   const hasTextFormat = textContent && textContent.length > 0;
   const hasLinks = linksContent && linksContent.length > 0;
+  const hasSummary = summaryContent && summaryContent.length > 0;
   const promptResultData = smartQueryResult || null;
   const hasPromptResult = !!promptResultData;
   const hasCrawlPageScreenshots = crawlData.some(group => Array.isArray(group) && group.some((item: any) => item?.screenshotVisible || item?.screenshotFullpage));
   const hasSearchResultScreenshots = searchData.some((item: any) => item?.screenshotVisible || item?.screenshotFullpage);
   const showCapturedScreenshotSection = hasScreenshots && !hasCrawlPageScreenshots && !hasSearchResultScreenshots;
-  const isExtractRobot = schemaData.length > 0 || listData.length > 0 || legacyData.length > 0 || (!hasMarkdown && !hasHTML && !hasTextFormat && !hasLinks && crawlData.length === 0 && searchData.length === 0);
+  const isExtractRobot = schemaData.length > 0 || listData.length > 0 || legacyData.length > 0 || (!hasMarkdown && !hasHTML && !hasTextFormat && !hasLinks && !hasSummary && crawlData.length === 0 && searchData.length === 0);
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -1347,7 +1357,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   </Button>
                 )}
             </>
-          ) : (!hasData && !hasScreenshots && !hasMarkdown && !hasHTML && !hasTextFormat && !hasLinks && !hasPromptResult ? (
+          ) : (!hasData && !hasScreenshots && !hasMarkdown && !hasHTML && !hasTextFormat && !hasLinks && !hasPromptResult && !hasSummary ? (
             <Box sx={{ p: 2 }}>
               <Typography paragraph>
                 {t('run_content.no_data_found', 'No data found. Need help?')}{" "}
@@ -1513,6 +1523,35 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                         sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
                       >
                         Download Links
+                      </Button>
+                    </Box>
+                  </AccordionDetails>
+                </Accordion>
+              )}
+
+              {hasSummary && crawlData.length === 0 && searchData.length === 0 && (
+                <Accordion defaultExpanded style={{ marginLeft: "-38px" }}>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <PsychologyIcon sx={{ mr: 1 }} />
+                      <Typography variant='subtitle1'>Summary</Typography>
+                    </Box>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Box sx={{ position: 'relative' }}>
+                      <Paper sx={{ p: 2, pr: '50px', maxHeight: '500px', overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
+                        <Typography component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: '14px', lineHeight: 1.6, m: 0, color: 'inherit' }}>
+                          {summaryContent}
+                        </Typography>
+                      </Paper>
+                      <CopyButton content={summaryContent} darkMode={darkMode} />
+                    </Box>
+                    <Box sx={{ mt: 2 }}>
+                      <Button
+                        onClick={() => downloadMarkdown(summaryContent, `${row.name || 'summary'}.md`)}
+                        sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
+                      >
+                        Download Summary
                       </Button>
                     </Box>
                   </AccordionDetails>
@@ -2107,6 +2146,43 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                           );
                         })()}
 
+                        {crawlData[0][currentCrawlIndex].summary && (
+                          <Accordion>
+                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <Typography variant='subtitle1'>
+                                  <PsychologyIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Summary
+                                </Typography>
+                              </Box>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                              <Box sx={{ position: 'relative' }}>
+                                <Paper sx={{ p: 2, pr: '64px', maxHeight: '500px', overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
+                                  <Typography component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: '14px', lineHeight: 1.6, m: 0 }}>
+                                    {typeof crawlData[0][currentCrawlIndex].summary === 'string'
+                                      ? crawlData[0][currentCrawlIndex].summary
+                                      : crawlData[0][currentCrawlIndex].summary?.content || ''}
+                                  </Typography>
+                                </Paper>
+                                <CopyButton content={typeof crawlData[0][currentCrawlIndex].summary === 'string' ? crawlData[0][currentCrawlIndex].summary : crawlData[0][currentCrawlIndex].summary?.content || ''} darkMode={darkMode} />
+                              </Box>
+                              <Box sx={{ mt: 1 }}>
+                                <Button
+                                  onClick={() => {
+                                    const pageUrl = crawlData[0][currentCrawlIndex]?.metadata?.url || '';
+                                    const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `page_${currentCrawlIndex + 1}`;
+                                    const content = typeof crawlData[0][currentCrawlIndex].summary === 'string' ? crawlData[0][currentCrawlIndex].summary : crawlData[0][currentCrawlIndex].summary?.content || '';
+                                    downloadMarkdown(content, `${baseFilename}_summary.md`);
+                                  }}
+                                  sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
+                                >
+                                  Download Summary
+                                </Button>
+                              </Box>
+                            </AccordionDetails>
+                          </Accordion>
+                        )}
+
                         {(crawlData[0][currentCrawlIndex].screenshotVisible || crawlData[0][currentCrawlIndex].screenshotFullpage) && (
                           <Accordion>
                             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -2496,6 +2572,46 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                 </Accordion>
                               );
                             })()}
+
+                            {searchData[currentSearchIndex]?.summary && (
+                              <Accordion>
+                                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <Typography variant='subtitle1'>
+                                      <PsychologyIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Summary
+                                    </Typography>
+                                  </Box>
+                                </AccordionSummary>
+                                <AccordionDetails>
+                                  <Box sx={{ position: 'relative' }}>
+                                    <Paper sx={{ p: 2, pr: '64px', maxHeight: '500px', overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
+                                      <Typography component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: '14px', lineHeight: 1.6, m: 0 }}>
+                                        {typeof searchData[currentSearchIndex].summary === 'string'
+                                          ? searchData[currentSearchIndex].summary
+                                          : searchData[currentSearchIndex].summary?.content || ''}
+                                      </Typography>
+                                    </Paper>
+                                    <CopyButton
+                                      content={typeof searchData[currentSearchIndex].summary === 'string' ? searchData[currentSearchIndex].summary : searchData[currentSearchIndex].summary?.content || ''}
+                                      darkMode={darkMode}
+                                    />
+                                  </Box>
+                                  <Box sx={{ mt: 1 }}>
+                                    <Button
+                                      onClick={() => {
+                                        const pageUrl = searchData[currentSearchIndex]?.url || searchData[currentSearchIndex]?.metadata?.url || '';
+                                        const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `result_${currentSearchIndex + 1}`;
+                                        const content = typeof searchData[currentSearchIndex].summary === 'string' ? searchData[currentSearchIndex].summary : searchData[currentSearchIndex].summary?.content || '';
+                                        downloadMarkdown(content, `${baseFilename}_summary.md`);
+                                      }}
+                                      sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
+                                    >
+                                      Download Summary
+                                    </Button>
+                                  </Box>
+                                </AccordionDetails>
+                              </Accordion>
+                            )}
 
                             {(searchData[currentSearchIndex].screenshotVisible || searchData[currentSearchIndex].screenshotFullpage) && (
                               <Accordion>

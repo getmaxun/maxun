@@ -96,17 +96,14 @@ const Register = () => {
         <img
           src="../src/assets/maxunlogo.png"
           alt="logo"
-          height={60}
-          width={70}
+          height={50}
+          width={60}
           style={{
-            marginBottom: 20,
+            marginBottom: 10,
             borderRadius: "20%",
             alignItems: "center",
           }}
         />
-        <Typography variant="h4" gutterBottom>
-          {t('register.title')}
-        </Typography>
         <TextField
           fullWidth
           label={t('register.email')}
