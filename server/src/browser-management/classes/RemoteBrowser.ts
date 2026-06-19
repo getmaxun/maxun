@@ -260,6 +260,13 @@ export class RemoteBrowser {
               }
 
               const currentUrl = page.url();
+
+              if (currentUrl.startsWith('chrome-error://') || currentUrl.startsWith('chrome://chromewebdata')) {
+                logger.warn(`[recording] Chrome error page detected at: ${currentUrl} — emitting browser-page-error`);
+                this.emitBrowserPageError(currentUrl, 'The page failed to load due to a network error. Please try again later.');
+                return;
+              }
+
               if (this.shouldEmitUrlChange(currentUrl)) {
                 this.lastEmittedUrl = currentUrl;
                 this.broadcast('urlChanged', { url: currentUrl, userId: this.userId });
@@ -836,6 +843,26 @@ export class RemoteBrowser {
       } finally {
         this.browser = null;
       }
+    }
+
+    /**
+     * Emit a browser-page-error event when a chrome error page is detected
+     * (e.g. chrome-error://chromewebdata from network failures).
+     * Also broadcasts urlChanged so the address bar reflects what happened.
+     */
+    public emitBrowserPageError(url: string, message: string): void {
+      try {
+        this.broadcast('urlChanged', { url, userId: this.userId });
+      } catch (e: any) {
+        logger.warn(`Failed to emit urlChanged for browser page error: ${e.message}`);
+      }
+
+      this.socket.emit('browser-page-error', {
+        url,
+        message,
+        userId: this.userId,
+        timestamp: Date.now(),
+      });
     }
 
     /**
