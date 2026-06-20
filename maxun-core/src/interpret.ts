@@ -443,7 +443,7 @@ export default class Interpreter extends EventEmitter {
 
   /**
    * Attaches a one-time set of listeners to a page that track how many XHR/fetch
-   * requests are currently in flight. Used by waitForDynamicStability's fallback
+   * requests are currently in flight. Used by waitForPageReady's fallback
    * path as a faster, more accurate readiness signal than a fixed network-quiet
    * window. Safe to call repeatedly — it's a no-op after the first call per page.
    */
@@ -569,7 +569,7 @@ export default class Interpreter extends EventEmitter {
    * requests (tracked by ensurePageListeners) instead of a fixed network-quiet
    * window and DOM-text-length polling — faster and more deterministic.
    */
-  private async waitForDynamicStability(page: Page, upcomingWorkflow: Workflow = []): Promise<void> {
+  private async waitForPageReady(page: Page, upcomingWorkflow: Workflow = []): Promise<void> {
     this.ensurePageListeners(page);
     const counter = this.pageRequestCounters.get(page)!;
     try {
@@ -708,7 +708,7 @@ export default class Interpreter extends EventEmitter {
           this.options.debugChannel.setActionType('scrape');
         }
 
-        await this.waitForDynamicStability(page, [{
+        await this.waitForPageReady(page, [{
           action: 'scrape',
           args: [selector]
         } as any]);
@@ -729,7 +729,7 @@ export default class Interpreter extends EventEmitter {
           this.options.debugChannel.setActionType('scrapeSchema');
         }
 
-        await this.waitForDynamicStability(page, [{
+        await this.waitForPageReady(page, [{
           action: 'scrapeSchema',
           args: [schema]
         } as any]);
@@ -1390,7 +1390,7 @@ export default class Interpreter extends EventEmitter {
                 throw new Error(`Navigation failed: ${err.message}`);
               });
 
-              await this.waitForDynamicStability(page, currentWorkflow || []);
+              await this.waitForPageReady(page, currentWorkflow || []);
               await this.dismissOverlays(page);
 
               const pageResult = await scrapePageContent(url);
@@ -1747,7 +1747,7 @@ export default class Interpreter extends EventEmitter {
                 this.log(`Failed to navigate to ${result.url}, skipping...`, Level.WARN);
               });
 
-              await this.waitForDynamicStability(page, currentWorkflow || []);
+              await this.waitForPageReady(page, currentWorkflow || []);
               await this.dismissOverlays(page);
 
               const pageData = await page.evaluate(() => {
@@ -1993,7 +1993,7 @@ export default class Interpreter extends EventEmitter {
             }
 
             if (needsDataSoon) {
-              await this.waitForDynamicStability(page, (currentWorkflow || []).slice(0, -1));
+              await this.waitForPageReady(page, (currentWorkflow || []).slice(0, -1));
             }
           } catch (error: any) {
             this.log(`goto failed: ${error.message}`, Level.WARN);
@@ -2022,11 +2022,11 @@ export default class Interpreter extends EventEmitter {
             await executeAction(invokee, methodName, args);
             
             if (needsDataSoon) {
-              await this.waitForDynamicStability(page, (currentWorkflow || []).slice(0, -1));
+              await this.waitForPageReady(page, (currentWorkflow || []).slice(0, -1));
             }
           } catch (error: any) {
             await executeAction(invokee, methodName, ['domcontentloaded', { timeout: 10000 }]);
-            await this.waitForDynamicStability(page, (currentWorkflow || []).slice(0, -1));
+            await this.waitForPageReady(page, (currentWorkflow || []).slice(0, -1));
           }
         } else if (methodName === 'click') {
           try {
@@ -2098,7 +2098,7 @@ export default class Interpreter extends EventEmitter {
           return;
         }
 
-        await this.waitForDynamicStability(page, [{
+        await this.waitForPageReady(page, [{
           action: 'scrapeList',
           args: [config]
         } as any]);
