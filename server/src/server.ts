@@ -18,7 +18,7 @@ import swaggerSpec from './swagger/config';
 import connectPgSimple from 'connect-pg-simple';
 import pg from 'pg';
 import session from 'express-session';
-import { processQueuedRuns, recoverOrphanedRuns } from './routes/storage';
+import { processQueuedRuns, recoverOrphanedRuns, recoverStuckRunningRuns } from './routes/storage';
 import { startWorkers, stopWorkers } from './task-runner';
 import { startGraphileWorkerUtils, stopGraphileWorkerUtils } from './storage/graphileWorker';
 import { startScheduleWorker, stopScheduleWorker } from './schedule-worker';
@@ -161,6 +161,15 @@ if (require.main === module) {
     browserPool.cleanupStaleBrowserSlots();
   }, 60000);
   serverIntervals.push(browserPoolCleanupInterval);
+
+  const stuckRunningRunsInterval = setInterval(async () => {
+    try {
+      await recoverStuckRunningRuns();
+    } catch (error: any) {
+      logger.log('error', `Error in recoverStuckRunningRuns interval: ${error.message}`);
+    }
+  }, 5 * 60 * 1000);
+  serverIntervals.push(stuckRunningRunsInterval);
 
   server.listen(SERVER_PORT, '0.0.0.0', async () => {
     try {

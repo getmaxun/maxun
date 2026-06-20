@@ -28,6 +28,63 @@ async function waitForStability(page: Page): Promise<void> {
   } catch {}
 }
 
+async function dismissOverlays(page: Page): Promise<void> {
+  try {
+    await page.keyboard.press('Escape').catch(() => {});
+    await new Promise(r => setTimeout(r, 400));
+
+    const clicked = await page.evaluate(() => {
+      function isVisible(el: Element): boolean {
+        const r = (el as HTMLElement).getBoundingClientRect();
+        if (r.width === 0 || r.height === 0) return false;
+        const s = window.getComputedStyle(el);
+        return s.display !== 'none' && s.visibility !== 'hidden' && s.opacity !== '0';
+      }
+
+      const SELECTORS = [
+        '[role="dialog"] [aria-label*="close" i]',
+        '[role="dialog"] [aria-label*="关闭"]',
+        '[role="alertdialog"] [aria-label*="close" i]',
+        '[role="alertdialog"] button',
+        '[class*="modal" i] [class*="close" i]',
+        '[class*="popup" i] [class*="close" i]',
+        '[class*="dialog" i] [class*="close" i]',
+        '[class*="overlay" i] [class*="close" i]',
+        '[class*="modal" i] [class*="dismiss" i]',
+        'button[aria-label*="close" i]',
+        'button[aria-label*="关闭"]',
+        'button[class*="close" i]',
+        '.close-button', '.btn-close', '.modal__close',
+      ];
+
+      for (const sel of SELECTORS) {
+        for (const el of Array.from(document.querySelectorAll(sel))) {
+          if (isVisible(el)) {
+            (el as HTMLElement).click();
+            return true;
+          }
+        }
+      }
+
+      const CLOSE_LABELS = new Set(['×', '✕', '✖', 'x', 'X', 'Close', 'close', '关闭', 'Dismiss', 'dismiss', 'Got it', '知道了', '我知道了']);
+      for (const el of Array.from(document.querySelectorAll('button, [role="button"]'))) {
+        const text = ((el as HTMLElement).innerText || '').trim();
+        const label = (el.getAttribute('aria-label') || '').trim();
+        if ((CLOSE_LABELS.has(text) || CLOSE_LABELS.has(label)) && isVisible(el)) {
+          (el as HTMLElement).click();
+          return true;
+        }
+      }
+
+      return false;
+    }).catch(() => false);
+
+    if (clicked) {
+      await new Promise(r => setTimeout(r, 700));
+    }
+  } catch {}
+}
+
 async function gotoWithFallback(page: any, url: string, forScreenshot = false) {
   try {
     const current = page.url();
@@ -57,6 +114,7 @@ export async function convertPageToMarkdown(url: string, page: Page): Promise<st
 
     await gotoWithFallback(page, url);
     await waitForStability(page);
+    await dismissOverlays(page);
 
     const cleanedHtml = await page.evaluate(() => {
       function flattenShadowRoots(root: Element | ShadowRoot) {
@@ -163,6 +221,7 @@ export async function convertPageToHTML(url: string, page: Page): Promise<string
 
     await gotoWithFallback(page, url);
     await waitForStability(page);
+    await dismissOverlays(page);
 
     const cleanedHtml = await page.evaluate(() => {
       function flattenShadowRoots(root: Element | ShadowRoot) {
@@ -250,6 +309,8 @@ export async function convertPageToText(url: string, page: Page): Promise<string
     logger.log('info', `[Scrape] Using existing page instance for text conversion of ${url}`);
 
     await gotoWithFallback(page, url);
+    await waitForStability(page);
+    await dismissOverlays(page);
 
     const text = await page.evaluate(() => {
       const body = document.body;
@@ -275,6 +336,7 @@ export async function convertPageToLinks(url: string, page: Page): Promise<strin
 
     await gotoWithFallback(page, url);
     await waitForStability(page);
+    await dismissOverlays(page);
 
     const links = await page.evaluate(() =>
       Array.from(document.querySelectorAll('a'))

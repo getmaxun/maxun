@@ -83,7 +83,9 @@ Rules:
 5. For dropdowns, use "select" not "click". For checkboxes/toggles, use "check" not "click".
 6. If a previous step shows "← FAILED", that action did not work — try a different approach.
 7. For ordinal/positional queries ("10th item", "first result", "last company"): use the screenshot to visually count and identify the item, then cross-reference with the page text to retrieve its full details. Return the result directly with {"action":"done","result":"..."}.
-8. Maximum ${MAX_STEPS} total steps.`;
+8. Maximum ${MAX_STEPS} total steps.
+9. "navigate" only works within the current site. If the target site is down, blocked, or doesn't have the requested content, do NOT try a different website — respond with {"action":"done","result":"..."} explaining the problem instead.
+10. If an action keeps failing or the page isn't changing (e.g. a blocked/verification screen), don't repeat it — respond with {"action":"done","result":"..."} describing what's blocking progress.`;
 
 function extractJson(content: string): AgentAction {
   const cleaned = content.trim();
@@ -483,7 +485,19 @@ function looksLikeCSSSelector(s: string): boolean {
   return /^[.#\[*]/.test(s) || /[\s>~+]/.test(s) || /:nth|:first|:last|:not\(/.test(s);
 }
 
-async function executeAction(page: Page, action: AgentAction): Promise<void> {
+/**
+ * Returns a rough "registrable domain" (last two labels of the hostname) used
+ * to decide whether a navigate action stays on the site the user configured.
+ * This is a heuristic (it doesn't know the public suffix list), but it's
+ * sufficient to tell "spf.zgj.sg.gov.cn" apart from "anjuke.com" or
+ * "soufun.com" while still allowing same-site subdomain navigation.
+ */
+function getRegistrableDomain(hostname: string): string {
+  const parts = hostname.toLowerCase().split('.').filter(Boolean);
+  return parts.slice(-2).join('.');
+}
+
+async function executeAction(page: Page, action: AgentAction, allowedDomain?: string): Promise<void> {
   switch (action.action) {
     case 'click': {
       const sel = action.selector;
@@ -512,6 +526,22 @@ async function executeAction(page: Page, action: AgentAction): Promise<void> {
     }
     case 'navigate': {
       if (!action.url) throw new Error('navigate: missing url');
+
+      if (allowedDomain) {
+        let targetDomain: string;
+        try {
+          targetDomain = getRegistrableDomain(new URL(action.url).hostname);
+        } catch {
+          throw new Error(`navigate: invalid URL "${action.url}"`);
+        }
+        if (targetDomain !== allowedDomain) {
+          throw new Error(
+            `navigate: blocked — "${action.url}" is on a different site ("${targetDomain}") than the configured target ("${allowedDomain}"). ` +
+            `Stay on the current site, or respond with {"action":"done","result":"..."} explaining what you found (or that the target site is unreachable).`
+          );
+        }
+      }
+
       await page.goto(action.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
       break;
     }
@@ -635,6 +665,18 @@ export async function executeBrowserAgent(
 
   logger.info('[BrowserAgent] Direct extraction insufficient — starting action loop');
 
+  let allowedDomain: string | undefined;
+  try {
+    allowedDomain = getRegistrableDomain(new URL(initialPageState.url).hostname);
+  } catch {
+    allowedDomain = undefined;
+  }
+
+  const actionSignatureCounts = new Map<string, number>();
+  const MAX_REPEATS_PER_ACTION = 3;
+  let success = true;
+  let stuckSignature: string | null = null;
+
   for (let step = 0; step < MAX_STEPS; step++) {
     try {
       const pageState = step === 0 ? initialPageState : await capturePageState(page);
@@ -659,7 +701,18 @@ export async function executeBrowserAgent(
         break;
       }
 
-      await executeAction(page, action);
+      const signature = `${action.action}:${action.selector || action.url || action.key || ''}`;
+      const repeatCount = (actionSignatureCounts.get(signature) || 0) + 1;
+      actionSignatureCounts.set(signature, repeatCount);
+
+      if (repeatCount >= MAX_REPEATS_PER_ACTION) {
+        agentStep.error = `Same action repeated ${repeatCount} times without progress — stopping to avoid an infinite loop`;
+        logger.warn(`[BrowserAgent] Loop detected on step ${step + 1}: "${signature}" attempted ${repeatCount} times. Stopping early.`);
+        stuckSignature = signature;
+        break;
+      }
+
+      await executeAction(page, action, allowedDomain);
       await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => { });
       await new Promise(resolve => setTimeout(resolve, 800));
 
@@ -673,14 +726,19 @@ export async function executeBrowserAgent(
 
       if (step === MAX_STEPS - 1) {
         finalResult = `Agent stopped after ${step + 1} steps. Last error: ${shortError}`;
+        success = false;
       }
     }
   }
 
-  if (!finalResult) {
+  if (stuckSignature) {
+    finalResult = `Agent stopped after ${steps.length} step(s): repeated the same action ("${stuckSignature}") without making progress. The page is likely blocked (e.g. an anti-bot check) or the requested content isn't reachable.`;
+    success = false;
+  } else if (!finalResult) {
     finalResult = `Agent completed ${steps.length} step(s) but did not return a final result.`;
+    success = false;
   }
 
   logger.info(`[BrowserAgent] Token usage — prompt: ${accTokens.promptTokens}, completion: ${accTokens.completionTokens}, total: ${accTokens.totalTokens}`);
-  return { result: finalResult, steps, success: true, tokenUsage: accTokens };
+  return { result: finalResult, steps, success, tokenUsage: accTokens };
 }
