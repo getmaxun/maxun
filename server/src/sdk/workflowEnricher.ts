@@ -1571,6 +1571,141 @@ Return ONLY the list name, nothing else:`;
   /**
    * Build workflow from LLM decision
    */
+  /**
+   * Verify that the extracted sample output actually matches what the user asked for.
+   * Called after fields are finalized but before the workflow is committed. If the
+   * extraction looks wrong (wrong group selected), this throws inside
+   * buildWorkflowFromLLMDecision so tryGroupCandidates falls back to the next candidate.
+   */
+  private static async verifyWorkflowOutput(
+    prompt: string,
+    sampleOutput: Record<string, string[]>,
+    llmConfig?: {
+      provider?: 'anthropic' | 'openai' | 'ollama';
+      model?: string;
+      apiKey?: string;
+      baseUrl?: string;
+    }
+  ): Promise<{ matches: boolean; confidence: number; reasoning: string }> {
+    const fallback = { matches: true, confidence: 0.5, reasoning: 'Verification skipped (LLM unavailable)' };
+
+    const fieldLines = Object.entries(sampleOutput)
+      .map(([field, samples]) => {
+        const preview = samples.slice(0, 3).map(s => `"${s.substring(0, 120)}"`).join(', ');
+        return `  ${field}: [${preview}]`;
+      })
+      .join('\n');
+
+    const systemPrompt = `You are a scraping verification assistant. The user wants to extract data from a website. You are given sample rows of what was actually extracted. Your job is to determine whether the extracted data matches the user's request.
+
+Be strict: if the samples look like navigation links, footer items, ads, or unrelated UI elements instead of the content the user asked for, answer false.
+Be lenient about field names — focus on the actual content values.
+
+Return ONLY a JSON object: {"matches": true/false, "confidence": 0.0-1.0, "reasoning": "one sentence"}`;
+
+    const userMessage = `User's request: "${prompt}"
+
+Sample extracted data (first 3 items per field):
+${fieldLines}
+
+Does this extraction match what the user asked for?`;
+
+    try {
+      const provider = llmConfig?.provider || 'ollama';
+      const axios = require('axios');
+
+      let llmResponse: string;
+
+      if (provider === 'ollama') {
+        const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+        const ollamaModel = llmConfig?.model || 'llama3.2-vision';
+
+        const jsonSchema = {
+          type: 'object',
+          required: ['matches'],
+          properties: {
+            matches: { type: 'boolean' },
+            confidence: { type: 'number' },
+            reasoning: { type: 'string' }
+          }
+        };
+
+        const response = await axios.post(`${ollamaBaseUrl}/api/chat`, {
+          model: ollamaModel,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMessage }
+          ],
+          stream: false,
+          format: jsonSchema,
+          options: { temperature: 0.1 }
+        });
+
+        llmResponse = response.data.message.content;
+
+      } else if (provider === 'anthropic') {
+        const anthropic = new Anthropic({
+          apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
+        });
+        const anthropicModel = llmConfig?.model || 'claude-3-5-sonnet-20241022';
+
+        const response = await anthropic.messages.create({
+          model: anthropicModel,
+          max_tokens: 256,
+          temperature: 0.1,
+          messages: [{ role: 'user', content: userMessage }],
+          system: systemPrompt
+        });
+
+        const textContent = response.content.find((c: any) => c.type === 'text');
+        llmResponse = textContent?.type === 'text' ? textContent.text : '';
+
+      } else if (provider === 'openai') {
+        const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
+        const openaiModel = llmConfig?.model || 'gpt-4o-mini';
+
+        const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
+          model: openaiModel,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMessage }
+          ],
+          max_tokens: 256,
+          temperature: 0.1,
+          response_format: { type: 'json_object' }
+        }, {
+          headers: {
+            'Authorization': `Bearer ${llmConfig?.apiKey || process.env.OPENAI_API_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        llmResponse = response.data.choices[0].message.content;
+
+      } else {
+        throw new Error(`Unsupported LLM provider: ${provider}`);
+      }
+
+      if (!llmResponse) return fallback;
+
+      let jsonStr = llmResponse.trim();
+      const jsonMatch = jsonStr.match(/```json\s*([\s\S]*?)\s*```/) || jsonStr.match(/```\s*([\s\S]*?)\s*```/);
+      if (jsonMatch) jsonStr = jsonMatch[1].trim();
+      const objectMatch = jsonStr.match(/\{[\s\S]*"matches"[\s\S]*\}/);
+      if (objectMatch) jsonStr = objectMatch[0];
+
+      const parsed = JSON.parse(jsonStr);
+      const matches = typeof parsed.matches === 'boolean' ? parsed.matches : true;
+      const confidence = typeof parsed.confidence === 'number' ? parsed.confidence : 0.5;
+      const reasoning = parsed.reasoning || '';
+      logger.info(`[WorkflowEnricher] Verification result: matches=${matches} confidence=${confidence} - ${reasoning}`);
+      return { matches, confidence, reasoning };
+    } catch (e: any) {
+      logger.warn(`[WorkflowEnricher] verifyWorkflowOutput failed entirely, skipping: ${e.message}`);
+      return fallback;
+    }
+  }
+
   private static async buildWorkflowFromLLMDecision(
     llmDecision: any,
     url: string,
@@ -1651,6 +1786,21 @@ Return ONLY the list name, nothing else:`;
         finalFields = filterResult.selectedFields;
       } else {
         logger.warn(`Low confidence (${filterResult.confidence}) or no fields selected. Using all detected fields as fallback.`);
+      }
+
+      if (prompt) {
+        const verificationSamples: Record<string, string[]> = {};
+        for (const fieldName of Object.keys(finalFields)) {
+          if (renamedSamples[fieldName]) {
+            verificationSamples[fieldName] = renamedSamples[fieldName];
+          }
+        }
+        if (Object.keys(verificationSamples).length > 0) {
+          const verification = await this.verifyWorkflowOutput(prompt, verificationSamples, llmConfig);
+          if (!verification.matches && verification.confidence >= 0.5) {
+            throw new Error(`WorkflowVerificationFailed: extracted content does not match user intent (${verification.reasoning})`);
+          }
+        }
       }
 
       const limit = llmDecision.limit || 100;
@@ -2217,6 +2367,515 @@ Select the BEST result index (0-${searchResults.length - 1}). Return JSON only.`
         confidence: 0.6,
         reasoning: 'Selected first search result (LLM selection failed)'
       };
+    }
+  }
+
+  /**
+   * Perform DuckDuckGo search and return up to maxResults results (with title/description),
+   * for use cases that need to choose among several candidates (e.g. multi-site extraction).
+   * This is a sibling of performDuckDuckGoSearch, which intentionally only returns the first result.
+   */
+  private static async performDuckDuckGoMultiSearch(
+    query: string,
+    page: any,
+    maxResults: number = 8
+  ): Promise<Array<{ url: string; title: string; description: string; position: number }>> {
+    logger.info(`[WorkflowEnricher] Multi-search DuckDuckGo for: "${query}"`);
+
+    try {
+      const searchUrl = `https://duckduckgo.com/?q=${encodeURIComponent(query)}`;
+      const initialDelay = 500 + Math.random() * 1000;
+      await new Promise(resolve => setTimeout(resolve, initialDelay));
+
+      await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.waitForLoadState('load', { timeout: 10000 }).catch(() => {
+        logger.warn('[WorkflowEnricher] Load state timeout, continuing anyway');
+      });
+
+      const pageLoadDelay = 2000 + Math.random() * 1500;
+      await new Promise(resolve => setTimeout(resolve, pageLoadDelay));
+
+      await page.waitForSelector('[data-testid="result"], .result', { timeout: 5000 }).catch(() => {
+        logger.warn('[WorkflowEnricher] DuckDuckGo results not found on initial wait');
+      });
+
+      const results = await page.evaluate((limit: number) => {
+        const selectors = [
+          '[data-testid="result"]',
+          'article[data-testid="result"]',
+          'li[data-layout="organic"]',
+          '.result',
+          'article[data-testid]'
+        ];
+
+        let allElements: Element[] = [];
+        for (const selector of selectors) {
+          const elements = Array.from(document.querySelectorAll(selector));
+          if (elements.length > 0) {
+            allElements = elements;
+            break;
+          }
+        }
+
+        const out: Array<{ url: string; title: string; description: string; position: number }> = [];
+
+        for (let i = 0; i < allElements.length && out.length < limit; i++) {
+          const element = allElements[i];
+          const titleEl = element.querySelector('h2, [data-testid="result-title-a"], h3, [data-testid="result-title"]');
+          let linkEl = titleEl?.querySelector('a[href]') as HTMLAnchorElement;
+          if (!linkEl) {
+            linkEl = element.querySelector('a[href]') as HTMLAnchorElement;
+          }
+          if (!linkEl || !linkEl.href) continue;
+
+          let actualUrl = linkEl.href;
+          if (actualUrl.includes('uddg=')) {
+            try {
+              const urlParams = new URLSearchParams(actualUrl.split('?')[1]);
+              const uddgUrl = urlParams.get('uddg');
+              if (uddgUrl) {
+                actualUrl = decodeURIComponent(uddgUrl);
+              }
+            } catch (e) { }
+          }
+          if (actualUrl.includes('duckduckgo.com')) continue;
+
+          const titleText = (titleEl?.textContent || linkEl.textContent || '').trim();
+          const descEl = element.querySelector('[data-testid="result-snippet"], .result__snippet');
+          const descriptionText = (descEl?.textContent || '').trim();
+
+          out.push({ url: actualUrl, title: titleText, description: descriptionText, position: out.length + 1 });
+        }
+
+        return out;
+      }, maxResults);
+
+      logger.info(`[WorkflowEnricher] Multi-search found ${results.length} results`);
+      return results;
+
+    } catch (error: any) {
+      logger.error(`[WorkflowEnricher] Multi-search failed: ${error.message}`);
+      return [];
+    }
+  }
+
+  /**
+   * LLM-based classifier: returns true when the prompt implies the user wants
+   * data gathered from MULTIPLE different websites (e.g. comparisons, rankings
+   * across vendors, research across sources) rather than one specific page.
+   * Uses the same provider pattern (ollama/anthropic/openai) as the rest of WorkflowEnricher.
+   */
+  static async isMultiSitePrompt(
+    prompt: string,
+    llmConfig?: {
+      provider?: 'anthropic' | 'openai' | 'ollama';
+      model?: string;
+      apiKey?: string;
+      baseUrl?: string;
+    }
+  ): Promise<boolean> {
+    const systemPrompt = `You decide whether a web scraping request needs data from MULTIPLE different websites or just ONE website.
+
+Answer ONLY with the JSON: {"multiSite": true} or {"multiSite": false}
+
+multiSite = true when:
+- User wants to compare products/tools/services across different vendors or providers
+- User wants a ranking or "top N" list that would span multiple review sites or vendor pages
+- User mentions research across the web, multiple sources, or different sites
+- The data naturally lives on many different domains (e.g. each tool has its own site)
+
+multiSite = false when:
+- User references a specific website, domain, or URL
+- The data lives on one page or one site (e.g. a directory, a marketplace, a single review page)
+- User says "from this site", "on this page", or names a specific platform`;
+
+    const userMessage = `Request: "${prompt}"\n\nJSON only:`;
+
+    try {
+      const provider = llmConfig?.provider || 'ollama';
+      const axios = require('axios');
+
+      let llmResponse: string;
+
+      if (provider === 'ollama') {
+        const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+        const ollamaModel = llmConfig?.model || 'llama3.2-vision';
+
+        const jsonSchema = {
+          type: 'object',
+          required: ['multiSite'],
+          properties: { multiSite: { type: 'boolean' } }
+        };
+
+        const response = await axios.post(`${ollamaBaseUrl}/api/chat`, {
+          model: ollamaModel,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMessage }
+          ],
+          stream: false,
+          format: jsonSchema,
+          options: { temperature: 0 }
+        });
+
+        llmResponse = response.data.message.content;
+
+      } else if (provider === 'anthropic') {
+        const anthropic = new Anthropic({
+          apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
+        });
+        const anthropicModel = llmConfig?.model || 'claude-3-5-sonnet-20241022';
+
+        const response = await anthropic.messages.create({
+          model: anthropicModel,
+          max_tokens: 20,
+          temperature: 0,
+          messages: [{ role: 'user', content: userMessage }],
+          system: systemPrompt
+        });
+
+        const textContent = response.content.find((c: any) => c.type === 'text');
+        llmResponse = textContent?.type === 'text' ? textContent.text : '';
+
+      } else if (provider === 'openai') {
+        const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
+        const openaiModel = llmConfig?.model || 'gpt-4o-mini';
+
+        const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
+          model: openaiModel,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMessage }
+          ],
+          max_tokens: 20,
+          temperature: 0,
+          response_format: { type: 'json_object' }
+        }, {
+          headers: {
+            'Authorization': `Bearer ${llmConfig?.apiKey || process.env.OPENAI_API_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        llmResponse = response.data.choices[0].message.content;
+
+      } else {
+        throw new Error(`Unsupported LLM provider: ${provider}`);
+      }
+
+      let jsonStr = llmResponse.trim();
+      const jsonMatch = jsonStr.match(/```json\s*([\s\S]*?)\s*```/) || jsonStr.match(/```\s*([\s\S]*?)\s*```/);
+      if (jsonMatch) jsonStr = jsonMatch[1].trim();
+      const objectMatch = jsonStr.match(/\{[\s\S]*"multiSite"[\s\S]*\}/);
+      if (objectMatch) jsonStr = objectMatch[0];
+
+      const parsed = JSON.parse(jsonStr);
+      if (typeof parsed?.multiSite === 'boolean') {
+        logger.info(`[WorkflowEnricher] isMultiSitePrompt: ${parsed.multiSite}`);
+        return parsed.multiSite;
+      }
+    } catch (e: any) {
+      logger.warn(`[WorkflowEnricher] isMultiSitePrompt failed, defaulting to false: ${e.message}`);
+    }
+
+    return false;
+  }
+
+  /**
+   * Ask the LLM to pick up to maxSites best URLs from search results, one per domain,
+   * all relevant to the user's prompt. Falls back to the top-N results if the LLM call fails.
+   */
+  private static async selectMultipleUrlsFromResults(
+    searchResults: Array<{ url: string; title: string; description: string; position: number }>,
+    userPrompt: string,
+    llmConfig: {
+      provider?: 'anthropic' | 'openai' | 'ollama';
+      model?: string;
+      apiKey?: string;
+      baseUrl?: string;
+    } | undefined,
+    maxSites: number = 4
+  ): Promise<Array<{ url: string; reasoning: string }>> {
+    const cap = Math.min(maxSites, searchResults.length);
+
+    const fallback = (): Array<{ url: string; reasoning: string }> => {
+      const seen = new Set<string>();
+      const out: Array<{ url: string; reasoning: string }> = [];
+      for (const r of searchResults) {
+        if (out.length >= cap) break;
+        try {
+          const domain = new URL(r.url).hostname;
+          if (!seen.has(domain)) { seen.add(domain); out.push({ url: r.url, reasoning: 'fallback selection' }); }
+        } catch { }
+      }
+      return out;
+    };
+
+    if (cap <= 1) return fallback();
+
+    const systemPrompt = `You are a multi-site URL selector. Given a list of search results and a user's data extraction goal, choose up to ${cap} BEST URLs that together give the most complete answer.
+
+RULES:
+1. Each selected URL must be from a DIFFERENT domain (one URL per domain).
+2. Prefer list/directory pages over individual item pages.
+3. Prefer official/authoritative sources.
+4. Only include URLs whose page content would directly answer the user's request.
+5. Return between 2 and ${cap} indices — only include fewer if fewer are truly relevant.
+
+Return ONLY valid JSON: {"selectedIndices": [0, 2, 5], "reasoning": "one-line explanation"}`;
+
+    const resultsDescription = searchResults
+      .map((r, i) => `[${i}] ${r.title} | ${r.url} | ${r.description}`)
+      .join('\n');
+
+    const userMessage = `User wants: "${userPrompt}"\n\nSearch results:\n${resultsDescription}\n\nSelect up to ${cap} indices. JSON only.`;
+
+    try {
+      const provider = llmConfig?.provider || 'ollama';
+      const axios = require('axios');
+
+      let llmResponse: string;
+
+      if (provider === 'ollama') {
+        const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+        const ollamaModel = llmConfig?.model || 'llama3.2-vision';
+
+        const jsonSchema = {
+          type: 'object',
+          required: ['selectedIndices'],
+          properties: {
+            selectedIndices: { type: 'array', items: { type: 'integer' } },
+            reasoning: { type: 'string' }
+          }
+        };
+
+        const response = await axios.post(`${ollamaBaseUrl}/api/chat`, {
+          model: ollamaModel,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMessage }
+          ],
+          stream: false,
+          format: jsonSchema,
+          options: { temperature: 0.1 }
+        });
+
+        llmResponse = response.data.message.content;
+
+      } else if (provider === 'anthropic') {
+        const anthropic = new Anthropic({
+          apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
+        });
+        const anthropicModel = llmConfig?.model || 'claude-3-5-sonnet-20241022';
+
+        const response = await anthropic.messages.create({
+          model: anthropicModel,
+          max_tokens: 256,
+          temperature: 0.1,
+          messages: [{ role: 'user', content: userMessage }],
+          system: systemPrompt
+        });
+
+        const textContent = response.content.find((c: any) => c.type === 'text');
+        llmResponse = textContent?.type === 'text' ? textContent.text : '';
+
+      } else if (provider === 'openai') {
+        const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
+        const openaiModel = llmConfig?.model || 'gpt-4o-mini';
+
+        const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
+          model: openaiModel,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMessage }
+          ],
+          max_tokens: 256,
+          temperature: 0.1,
+          response_format: { type: 'json_object' }
+        }, {
+          headers: {
+            'Authorization': `Bearer ${llmConfig?.apiKey || process.env.OPENAI_API_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        llmResponse = response.data.choices[0].message.content;
+
+      } else {
+        throw new Error(`Unsupported LLM provider: ${provider}`);
+      }
+
+      let jsonStr = llmResponse.trim();
+      const jsonMatch = jsonStr.match(/```json\s*([\s\S]*?)\s*```/) || jsonStr.match(/```\s*([\s\S]*?)\s*```/);
+      if (jsonMatch) jsonStr = jsonMatch[1].trim();
+      const objectMatch = jsonStr.match(/\{[\s\S]*"selectedIndices"[\s\S]*\}/);
+      if (objectMatch) jsonStr = objectMatch[0];
+
+      const parsed = JSON.parse(jsonStr);
+      if (!Array.isArray(parsed.selectedIndices) || parsed.selectedIndices.length === 0) return fallback();
+
+      const seen = new Set<string>();
+      const result: Array<{ url: string; reasoning: string }> = [];
+      for (const idx of parsed.selectedIndices) {
+        if (typeof idx !== 'number' || idx < 0 || idx >= searchResults.length) continue;
+        try {
+          const domain = new URL(searchResults[idx].url).hostname;
+          if (!seen.has(domain)) {
+            seen.add(domain);
+            result.push({ url: searchResults[idx].url, reasoning: parsed.reasoning || '' });
+          }
+        } catch { }
+      }
+
+      return result.length >= 2 ? result : fallback();
+    } catch (e: any) {
+      logger.warn(`[WorkflowEnricher] selectMultipleUrlsFromResults failed, using fallback: ${e.message}`);
+      return fallback();
+    }
+  }
+
+  /**
+   * Build a multi-site workflow from independently-generated single-site workflows.
+   * The interpreter processes pairs LIFO (last element first). To visit sites in order
+   * [0, 1, 2, ...], the array must be stored in reverse: the first site's pair at the
+   * highest index, the last site's pair at index 0.
+   */
+  private static buildMultiSiteWorkflow(
+    sites: Array<{ url: string; singleSiteWorkflow: any[] }>
+  ): any[] {
+    const pairs = sites.map(s => s.singleSiteWorkflow[0]);
+    return pairs.slice().reverse();
+  }
+
+  /**
+   * Research-mode entry point for prompts that span multiple websites: no URL required.
+   * 1. DuckDuckGo multi-search → select multiple relevant sites
+   * 2. For each site: group detection → LLM decision → workflow building (reusing the
+   *    existing single-site helpers, unchanged)
+   * 3. Stitch into a single sequential multi-site workflow
+   */
+  static async generateMultiSiteWorkflowFromSearch(
+    userPrompt: string,
+    userId: string,
+    llmConfig?: {
+      provider?: 'anthropic' | 'openai' | 'ollama';
+      model?: string;
+      apiKey?: string;
+      baseUrl?: string;
+    }
+  ): Promise<{ success: boolean; workflow?: any[]; url?: string; errors?: string[] }> {
+    let browserId: string | null = null;
+
+    try {
+      logger.info(`[WorkflowEnricher] generateMultiSiteWorkflowFromSearch — prompt: "${userPrompt}"`);
+
+      const { browserId: id, page } = await createRemoteBrowserForValidation(userId);
+      browserId = id;
+
+      const intent = await this.parseSearchIntent(userPrompt, llmConfig);
+      logger.info(`[WorkflowEnricher] Multi-site search query: "${intent.searchQuery}"`);
+
+      const searchResults = await this.performDuckDuckGoMultiSearch(intent.searchQuery, page);
+      if (searchResults.length === 0) {
+        await destroyRemoteBrowser(browserId, userId);
+        return { success: false, errors: [`No search results found for: "${intent.searchQuery}"`] };
+      }
+      logger.info(`[WorkflowEnricher] Multi-site: ${searchResults.length} search results`);
+
+      const selectedUrls = await this.selectMultipleUrlsFromResults(searchResults, userPrompt, llmConfig, 4);
+      if (selectedUrls.length === 0) {
+        await destroyRemoteBrowser(browserId, userId);
+        return { success: false, errors: ['Could not identify relevant URLs from search results'] };
+      }
+      logger.info(`[WorkflowEnricher] Multi-site: selected ${selectedUrls.length} URLs: ${selectedUrls.map(s => s.url).join(', ')}`);
+
+      const successfulSites: Array<{ url: string; singleSiteWorkflow: any[] }> = [];
+
+      for (const selected of selectedUrls) {
+        const siteUrl = selected.url;
+        const validator = new SelectorValidator();
+        try {
+          logger.info(`[WorkflowEnricher] Multi-site: processing ${siteUrl}`);
+          await validator.initialize(page, siteUrl);
+
+          const validatorPage = (validator as any).page;
+          const screenshotBuffer = await validatorPage.screenshot({ fullPage: true, type: 'jpeg', quality: 60 });
+          const elementGroups = await this.analyzePageGroups(validator);
+          const pageHTML = await validatorPage.content();
+
+          if (elementGroups.length === 0) {
+            logger.warn(`[WorkflowEnricher] Multi-site: no element groups on ${siteUrl}, skipping`);
+            await validator.close();
+            continue;
+          }
+
+          const screenshotBase64 = screenshotBuffer.toString('base64');
+          const llmDecision = await this.getLLMDecisionWithVision(
+            userPrompt,
+            screenshotBase64,
+            elementGroups,
+            pageHTML,
+            llmConfig
+          );
+
+          if (!llmDecision || (!llmDecision.itemSelector && !(llmDecision.candidates?.length))) {
+            logger.warn(`[WorkflowEnricher] Multi-site: no matching data on ${siteUrl}, skipping`);
+            await validator.close();
+            continue;
+          }
+
+          const siteWorkflow = await this.tryGroupCandidates(
+            llmDecision,
+            elementGroups,
+            siteUrl,
+            validator,
+            userPrompt,
+            llmConfig
+          );
+
+          await validator.close();
+
+          try {
+            const domain = new URL(siteUrl).hostname.replace(/^www\./, '');
+            for (const action of siteWorkflow[0].what) {
+              if (action.action === 'scrapeList' && action.name) {
+                action.name = `${action.name} (${domain})`;
+              }
+            }
+          } catch { }
+
+          successfulSites.push({ url: siteUrl, singleSiteWorkflow: siteWorkflow });
+          logger.info(`[WorkflowEnricher] Multi-site: succeeded for ${siteUrl}`);
+
+        } catch (siteError: any) {
+          logger.warn(`[WorkflowEnricher] Multi-site: failed for ${siteUrl} — ${siteError.message}`);
+          try { await validator.close(); } catch { }
+        }
+      }
+
+      await destroyRemoteBrowser(browserId, userId);
+      browserId = null;
+
+      if (successfulSites.length === 0) {
+        return { success: false, errors: ['Could not extract structured data from any of the found sites'] };
+      }
+
+      if (successfulSites.length === 1) {
+        logger.info('[WorkflowEnricher] Multi-site: only one site succeeded, returning as single-site result');
+        return { success: true, workflow: successfulSites[0].singleSiteWorkflow, url: successfulSites[0].url };
+      }
+
+      const multiSiteWorkflow = this.buildMultiSiteWorkflow(successfulSites);
+      logger.info(`[WorkflowEnricher] generateMultiSiteWorkflowFromSearch completed — ${successfulSites.length} sites`);
+
+      return { success: true, workflow: multiSiteWorkflow, url: successfulSites[0].url };
+
+    } catch (error: any) {
+      if (browserId) {
+        try { await destroyRemoteBrowser(browserId, userId); } catch { }
+      }
+      logger.error('[WorkflowEnricher] generateMultiSiteWorkflowFromSearch error:', error);
+      return { success: false, errors: [error.message] };
     }
   }
 }
