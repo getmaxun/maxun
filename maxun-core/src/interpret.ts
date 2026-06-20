@@ -2084,6 +2084,8 @@ export default class Interpreter extends EventEmitter {
     let previousHeight = 0;
     let scrapedItems: Set<string> = new Set<string>();
     let visitedUrls: Set<string> = new Set<string>();
+    let visitedSignatures: Set<string> = new Set<string>();
+    
     const MAX_RETRIES = 3;
     const RETRY_DELAY = 1000;
     const MAX_UNCHANGED_RESULTS = 5;
@@ -2467,6 +2469,9 @@ export default class Interpreter extends EventEmitter {
           
             const beforeSignature = await captureContentSignature();
             debugLog(`Before click: ${beforeSignature.itemCount} items`);
+            if (beforeSignature.firstItems) {
+              visitedSignatures.add(beforeSignature.firstItems);
+            }
           
             while (retryCount < MAX_RETRIES && !paginationSuccess) {
               try {
@@ -2515,18 +2520,24 @@ export default class Interpreter extends EventEmitter {
                   const newUrl = page.url();
                   const afterSignature = await captureContentSignature();
                   
-                  if (newUrl !== currentUrl) {
+                  if (newUrl !== currentUrl && !visitedUrls.has(newUrl)) {
                     debugLog(`URL changed to ${newUrl}`);
                     visitedUrls.add(newUrl);
-                    paginationSuccess = true;
-                  } 
-                  else if (afterSignature.firstItems !== beforeSignature.firstItems) {
-                    debugLog("Content changed without URL change");
+                    if (afterSignature.firstItems) visitedSignatures.add(afterSignature.firstItems);
                     paginationSuccess = true;
                   }
-                  else if (afterSignature.itemCount !== beforeSignature.itemCount) {
-                    debugLog(`Item count changed from ${beforeSignature.itemCount} to ${afterSignature.itemCount}`);
+                  else if (afterSignature.firstItems !== beforeSignature.firstItems && !visitedSignatures.has(afterSignature.firstItems)) {
+                    debugLog("Content changed without URL change");
+                    if (afterSignature.firstItems) visitedSignatures.add(afterSignature.firstItems);
                     paginationSuccess = true;
+                  }
+                  else if (afterSignature.itemCount !== beforeSignature.itemCount && !visitedSignatures.has(afterSignature.firstItems)) {
+                    debugLog(`Item count changed from ${beforeSignature.itemCount} to ${afterSignature.itemCount}`);
+                    if (afterSignature.firstItems) visitedSignatures.add(afterSignature.firstItems);
+                    paginationSuccess = true;
+                  }
+                  else {
+                    debugLog('Pagination appears to have cycled back to previously seen content/URL — treating as no progress');
                   }
                 }
               } catch (error: any) {
