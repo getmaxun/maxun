@@ -476,7 +476,6 @@ export class SelectorValidator {
             } catch { return []; }
           }
 
-          // Count list items (capped at 10 for speed)
           const listItems = evalXPath(listSelector).slice(0, 10);
           if (listItems.length === 0) return {};
 
@@ -485,7 +484,6 @@ export class SelectorValidator {
             if (!field?.selector) { rates[label] = 0; continue; }
             const isXPath = field.selector.startsWith('//') || field.selector.startsWith('(//');
             if (!isXPath) {
-              // CSS selector: check against each item
               let filled = 0;
               for (const item of listItems) {
                 try {
@@ -499,7 +497,6 @@ export class SelectorValidator {
               }
               rates[label] = filled / listItems.length;
             } else {
-              // XPath selector: evaluate from document root and count non-empty values
               const matched = evalXPath(field.selector);
               let filled = 0;
               for (const el of matched.slice(0, listItems.length)) {
@@ -510,7 +507,6 @@ export class SelectorValidator {
                   if (val.trim().length > 0) filled++;
                 } catch { }
               }
-              // Fill rate = non-empty matched elements / list item count
               rates[label] = matched.length === 0 ? 0 : filled / listItems.length;
             }
           }

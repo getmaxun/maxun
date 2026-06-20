@@ -570,16 +570,13 @@ export class WorkflowEnricher {
    */
   private static extractHtmlSnippet(rawHtml: string, maxChars = 3000): string {
     try {
-      // Remove script, style, svg, noscript blocks
       let cleaned = rawHtml
         .replace(/<script[\s\S]*?<\/script>/gi, '')
         .replace(/<style[\s\S]*?<\/style>/gi, '')
         .replace(/<svg[\s\S]*?<\/svg>/gi, '')
         .replace(/<noscript[\s\S]*?<\/noscript>/gi, '');
-      // Extract body content
       const bodyMatch = cleaned.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
       const body = bodyMatch ? bodyMatch[1] : cleaned;
-      // Collapse whitespace
       const collapsed = body.replace(/\s+/g, ' ').trim();
       return collapsed.length > maxChars
         ? collapsed.substring(0, maxChars) + '…[truncated]'
@@ -1683,7 +1680,7 @@ Return ONLY the list name, nothing else:`;
         logger.warn(`Low confidence (${filterResult.confidence}) or no fields selected. Using all detected fields as fallback.`);
       }
 
-      const MIN_FILL_RATE = 0; // Drop only fields that return nothing at all (completely broken selectors)
+      const MIN_FILL_RATE = 0;
       const fillRates = await validator.validateFieldFillRates(finalFields, autoDetectResult.listSelector || llmDecision.itemSelector);
       const validatedFields: Record<string, any> = {};
       const droppedFields: string[] = [];
