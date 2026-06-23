@@ -221,6 +221,7 @@ export const NavBar: React.FC<NavBarProps> = ({
             color="primary"
             variant="outlined"
             sx={{ marginTop: '10px' }}
+            size="small"
           />
         </div>
         {
