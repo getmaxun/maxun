@@ -489,7 +489,7 @@ const NavBarWrapper = styled.div<{ mode: 'light' | 'dark' }>`
 
 const ProjectName = styled.b<{ mode: 'light' | 'dark' }>`
   color: ${({ mode }) => (mode === 'dark' ? '#ffffff' : '#3f4853')};
-  font-size: 1.3em;
+  font-size: 1.2em;
 `;
 
 const NavBarRight = styled.div`
