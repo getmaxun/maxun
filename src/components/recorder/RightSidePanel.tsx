@@ -874,8 +874,8 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                   variant="outlined"
                   onClick={handleBackCaptureList}
                   sx={{
-                    color: '#ff00c3 !important',
-                    borderColor: '#ff00c3 !important',
+                    color: '#4b4848 !important',
+                    borderColor: '#858585 !important',
                     backgroundColor: 'whitesmoke !important',
                   }}
                 >
