@@ -1153,8 +1153,8 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                 color="error"
                 onClick={discardGetText}
                 sx={{
-                  color: '#ff00c3 !important',
-                  borderColor: '#ff00c3 !important',
+                  color: 'red !important',
+                  borderColor: 'red !important',
                   backgroundColor: 'whitesmoke !important',
                 }}
               >
