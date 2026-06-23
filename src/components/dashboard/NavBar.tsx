@@ -220,7 +220,7 @@ export const NavBar: React.FC<NavBarProps> = ({
             label={`${currentVersion}`}
             color="primary"
             variant="outlined"
-            sx={{ marginTop: '10px' }}
+            sx={{ marginTop: '15px' }}
             size="small"
           />
         </div>
