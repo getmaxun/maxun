@@ -134,6 +134,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
   const replayerRef = useRef<any>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isRendered, setIsRendered] = useState(false);
+  const [browserPageError, setBrowserPageError] = useState<{ message: string } | null>(null);
   const [lastMousePosition, setLastMousePosition] = useState({ x: 0, y: 0 });
   const [currentHighlight, setCurrentHighlight] = useState<{
     element: Element;
@@ -812,6 +813,9 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
     }
 
     const handleRRWebEvent = (event: any) => {
+      if (event.type === 2) {
+        setBrowserPageError(null);
+      }
       if (!replayerRef.current && event.type === 2) {
         const container = document.getElementById('mirror-container');
         if (!container) {
@@ -895,6 +899,36 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
     }
   }, [setupIframeInteractions]);
 
+  /**
+   * Listen for browser page errors (e.g. chrome-error://chromewebdata from network failures).
+   * When detected, clear the replayer and show an error overlay instead of a blank page.
+   */
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleBrowserPageError = (data: { url: string; message: string }) => {
+      if (replayerRef.current) {
+        try { replayerRef.current.pause(); } catch (_) {}
+        replayerRef.current = null;
+      }
+      const container = containerRef.current;
+      if (container) {
+        const replayerRoot = container.querySelector('#replayer-root') as HTMLElement;
+        if (replayerRoot) replayerRoot.innerHTML = '';
+      }
+      replayerIframeRef.current = null;
+
+      setBrowserPageError({ message: data.message || 'The page failed to load due to a network error. Please try again later.' });
+      setIsRendered(true);
+    };
+
+    socket.on('browser-page-error', handleBrowserPageError);
+
+    return () => {
+      socket.off('browser-page-error', handleBrowserPageError);
+    };
+  }, [socket]);
+
   return (
     <div
       id="mirror-container"
@@ -911,6 +945,95 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
       {!isRendered && (
         <DOMLoadingIndicator />
       )}
+      {browserPageError && (
+        <ChromeWebErrorOverlay
+          message={browserPageError.message}
+          onDismiss={() => setBrowserPageError(null)}
+        />
+      )}
+    </div>
+  );
+};
+
+const ChromeWebErrorOverlay: React.FC<{ message: string; onDismiss: () => void }> = ({
+  message,
+  onDismiss,
+}) => {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: "#f5f5f5",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexDirection: "column",
+        gap: "16px",
+        zIndex: 10000,
+        padding: "24px",
+      }}
+    >
+      <div
+        style={{
+          width: "56px",
+          height: "56px",
+          borderRadius: "50%",
+          background: "#fff0f9",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "28px",
+        }}
+      >
+        ⚠️
+      </div>
+
+      <div
+        style={{
+          fontSize: "18px",
+          fontWeight: "600",
+          color: "#222",
+          textAlign: "center",
+        }}
+      >
+        Page Failed to Load
+      </div>
+
+      <div
+        style={{
+          fontSize: "14px",
+          color: "#555",
+          textAlign: "center",
+          maxWidth: "360px",
+          lineHeight: "1.5",
+        }}
+      >
+        {message}
+      </div>
+
+      <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
+        <button
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent('maxun:trigger-discard'));
+          }}
+          style={{
+            padding: "8px 20px",
+            background: "#ff00c3",
+            color: "#fff",
+            border: "none",
+            borderRadius: "6px",
+            fontSize: "14px",
+            fontWeight: "500",
+            cursor: "pointer",
+          }}
+        >
+          Discard
+        </button>
+      </div>
     </div>
   );
 };
