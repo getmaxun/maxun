@@ -214,13 +214,14 @@ export const NavBar: React.FC<NavBarProps> = ({
           cursor: 'pointer'
         }}
           onClick={() => navigate('/')}>
-          <img src={MaxunLogo} width={48} height={40} style={{ borderRadius: '5px', margin: '5px 0px 5px 15px' }} />
+          <img src={MaxunLogo} width={46} height={39} style={{ borderRadius: '5px', margin: '5px 0px 5px 15px' }} />
           <div style={{ padding: '11px' }}><ProjectName mode={darkMode ? 'dark' : 'light'}>{t('navbar.project_name')}</ProjectName></div>
           <Chip
             label={`${currentVersion}`}
             color="primary"
             variant="outlined"
-            sx={{ marginTop: '10px' }}
+            sx={{ marginTop: '15px' }}
+            size="small"
           />
         </div>
         {
@@ -488,7 +489,7 @@ const NavBarWrapper = styled.div<{ mode: 'light' | 'dark' }>`
 
 const ProjectName = styled.b<{ mode: 'light' | 'dark' }>`
   color: ${({ mode }) => (mode === 'dark' ? '#ffffff' : '#3f4853')};
-  font-size: 1.3em;
+  font-size: 1.2em;
 `;
 
 const NavBarRight = styled.div`

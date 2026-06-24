@@ -57,6 +57,7 @@ interface LLMCallResult {
 
 const MAX_STEPS = 20;
 const LLM_TIMEOUT_MS = 30000;
+const MAX_COMPLETION_TOKENS = 2048;
 
 const SYSTEM_PROMPT = `You are a browser automation agent. You receive the visible page text, a list of interactive elements, and a screenshot.
 
@@ -83,25 +84,138 @@ Rules:
 5. For dropdowns, use "select" not "click". For checkboxes/toggles, use "check" not "click".
 6. If a previous step shows "← FAILED", that action did not work — try a different approach.
 7. For ordinal/positional queries ("10th item", "first result", "last company"): use the screenshot to visually count and identify the item, then cross-reference with the page text to retrieve its full details. Return the result directly with {"action":"done","result":"..."}.
-8. Maximum ${MAX_STEPS} total steps.
-9. "navigate" only works within the current site. If the target site is down, blocked, or doesn't have the requested content, do NOT try a different website — respond with {"action":"done","result":"..."} explaining the problem instead.
-10. If an action keeps failing or the page isn't changing (e.g. a blocked/verification screen), don't repeat it — respond with {"action":"done","result":"..."} describing what's blocking progress.`;
+8. "navigate" only works within the current site. If the target site is down, blocked, or doesn't have the requested content, do NOT try a different website — respond with {"action":"done","result":"..."} explaining the problem instead.
+9. If an action keeps failing or the page isn't changing (e.g. a blocked/verification screen), don't repeat it — respond with {"action":"done","result":"..."} describing what's blocking progress.
+10. The "result" value for {"action":"done",...} must always be plain text only — written as prose and/or simple "- " bullet lists. NEVER return JSON, objects, arrays, or code blocks as the result, and NEVER use markdown formatting (no "**", "#" headings, "---" separators, backticks, or any other markdown syntax) — write as if for a plain .txt file.
+11. Focus the result on the content the instruction asks about. Do not describe or list site navigation menus, header/footer links, language or region switchers, cookie banners, or other page chrome unless the instruction specifically asks for them.
+12. Maximum ${MAX_STEPS} total steps.`;
+
+function stripCodeFences(text: string): string {
+  return text.replace(/^```[a-zA-Z]*\n?/, '').replace(/```\s*$/, '').trim();
+}
+
+function humanizeKey(key: string): string {
+  return key
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function objectToReadableText(value: any, depth = 0): string {
+  const indent = '  '.repeat(depth);
+  if (value === null || value === undefined || value === '') return '';
+
+  if (Array.isArray(value)) {
+    const isPrimitiveArray = value.every(v => v === null || typeof v !== 'object');
+    if (isPrimitiveArray) {
+      return value.map(v => `${indent}- ${String(v)}`).join('\n');
+    }
+    return value.map(v => objectToReadableText(v, depth)).filter(Boolean).join('\n\n');
+  }
+
+  if (typeof value === 'object') {
+    return Object.entries(value)
+      .map(([k, v]) => {
+        if (v === null || v === undefined || v === '') return '';
+        const label = humanizeKey(k);
+        if (typeof v === 'object') {
+          const nested = objectToReadableText(v, depth + 1);
+          return nested ? `${indent}${label}:\n${nested}` : '';
+        }
+        return `${indent}${label}: ${String(v)}`;
+      })
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  return `${indent}${String(value)}`;
+}
+
+function stripMarkdownFormatting(text: string): string {
+  return text
+    .replace(/^[ \t]{0,3}#{1,6}\s*/gm, '')
+    .replace(/\*\*\*(.*?)\*\*\*/g, '$1')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/__(.*?)__/g, '$1')
+    .replace(/(^|[^*\w])\*(?!\*)([^*\n]+?)\*(?!\*)(?=[^*\w]|$)/g, '$1$2')
+    .replace(/```[a-zA-Z]*\n?/g, '')
+    .replace(/`([^`]*)`/g, '$1')
+    .replace(/^[ \t]*[-*_]{3,}[ \t]*$/gm, '')
+    .replace(/^[ \t]*[*+]\s+/gm, '- ')
+    .replace(/\[([^\]]+)\]\((?:[^)]+)\)/g, '$1')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/[ \t]+$/gm, '')
+    .trim();
+}
+
+function normalizeResult(parsed: AgentAction): AgentAction {
+  if (parsed.result !== undefined && typeof parsed.result !== 'string') {
+    parsed.result = objectToReadableText(parsed.result) || JSON.stringify(parsed.result, null, 2);
+  }
+  if (typeof parsed.result === 'string') {
+    parsed.result = stripMarkdownFormatting(parsed.result);
+  }
+  return parsed;
+}
+
+function unescapeJsonStringFragment(s: string): string {
+  let out = '';
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (c === '\\' && i + 1 < s.length) {
+      const next = s[i + 1];
+      switch (next) {
+        case 'n': out += '\n'; i++; continue;
+        case 't': out += '\t'; i++; continue;
+        case 'r': out += '\r'; i++; continue;
+        case '"': out += '"'; i++; continue;
+        case '\\': out += '\\'; i++; continue;
+        default: out += c; continue;
+      }
+    }
+    out += c;
+  }
+  return out;
+}
+
+function extractResultFallback(candidate: string): string | null {
+  const patterns = [
+    /"result"\s*:\s*"([\s\S]*)"\s*,\s*"action"\s*:\s*"done"\s*\}?\s*$/,
+    /"result"\s*:\s*"([\s\S]*)"\s*\}\s*$/,
+  ];
+  for (const re of patterns) {
+    const m = candidate.match(re);
+    if (m && m[1] !== undefined) {
+      return unescapeJsonStringFragment(m[1]);
+    }
+  }
+  return null;
+}
 
 function extractJson(content: string): AgentAction {
-  const cleaned = content.trim();
+  const cleaned = stripCodeFences(content.trim());
   const start = cleaned.indexOf('{');
   const end = cleaned.lastIndexOf('}');
   if (start === -1 || end === -1 || end <= start) {
-    return { action: 'done', result: cleaned || 'No result returned by LLM' };
+    return normalizeResult({ action: 'done', result: cleaned || 'No result returned by LLM' });
   }
+  const candidate = cleaned.substring(start, end + 1);
   try {
-    const parsed = JSON.parse(cleaned.substring(start, end + 1));
-    if (parsed.result !== undefined && typeof parsed.result !== 'string') {
-      parsed.result = JSON.stringify(parsed.result, null, 2);
-    }
-    return parsed;
+    const parsed = JSON.parse(candidate);
+    return normalizeResult(parsed);
   } catch {
-    return { action: 'done', result: cleaned };
+    try {
+      const repaired = candidate.replace(/,\s*([}\]])/g, '$1');
+      const parsed = JSON.parse(repaired);
+      return normalizeResult(parsed);
+    } catch {
+      const fallback = extractResultFallback(candidate);
+      if (fallback !== null) {
+        return normalizeResult({ action: 'done', result: fallback });
+      }
+      return normalizeResult({ action: 'done', result: cleaned });
+    }
   }
 }
 
@@ -291,7 +405,7 @@ async function callAnthropic(config: LLMConfig, messages: any[]): Promise<LLMCal
 
   const response = await anthropic.messages.create({
     model,
-    max_tokens: 256,
+    max_tokens: MAX_COMPLETION_TOKENS,
     system: systemMsg?.content || SYSTEM_PROMPT,
     messages: [{ role: 'user', content: anthropicContent }],
   });
@@ -318,7 +432,7 @@ async function callOpenAI(config: LLMConfig, messages: any[]): Promise<LLMCallRe
   try {
     const response = await axios.post(
       `${baseUrl}/chat/completions`,
-      { model, messages, max_tokens: 256, temperature: 0.1 },
+      { model, messages, max_tokens: MAX_COMPLETION_TOKENS, temperature: 0.1 },
       {
         headers: {
           'Authorization': `Bearer ${config.apiKey || process.env.OPENAI_API_KEY}`,
@@ -367,7 +481,7 @@ async function callOllama(config: LLMConfig, messages: any[]): Promise<LLMCallRe
   try {
     const response = await axios.post(
       `${baseUrl}/api/chat`,
-      { model, messages: ollamaMessages, stream: false, format: 'json', options: { temperature: 0.1, num_predict: 256 } },
+      { model, messages: ollamaMessages, stream: false, format: 'json', options: { temperature: 0.1, num_predict: MAX_COMPLETION_TOKENS } },
       { signal: controller.signal as any }
     );
 
@@ -418,7 +532,7 @@ async function callLLMRawText(messages: any[], config: LLMConfig): Promise<strin
       const userMsgs = messages.filter((m: any) => m.role !== 'system');
       const response = await anthropic.messages.create({
         model,
-        max_tokens: 512,
+        max_tokens: MAX_COMPLETION_TOKENS,
         system: systemMsg?.content,
         messages: userMsgs.map((m: any) => ({
           role: m.role,
@@ -442,7 +556,7 @@ async function callLLMRawText(messages: any[], config: LLMConfig): Promise<strin
       }));
       const response = await axios.post(
         `${baseUrl}/chat/completions`,
-        { model, messages: textMessages, max_tokens: 512, temperature: 0.1 },
+        { model, messages: textMessages, max_tokens: MAX_COMPLETION_TOKENS, temperature: 0.1 },
         {
           headers: {
             'Authorization': `Bearer ${config.apiKey || process.env.OPENAI_API_KEY}`,
@@ -616,6 +730,7 @@ ${pageState.pageText.substring(0, 12000)}
 Task: ${promptInstructions}
 
 If you can fulfil this task using only the page content above, start your response with "ANSWER:" followed by your answer.
+Write the answer as plain text only — prose and/or simple "- " bullet lists. Do not use JSON, objects, code blocks, or any markdown formatting (no "**", "#" headings, "---" separators, or backticks).
 If the task requires interacting with the page (clicking buttons, filling forms, navigating), respond with only the word "INTERACT".`,
     },
   ];
@@ -624,7 +739,7 @@ If the task requires interacting with the page (clicking buttons, filling forms,
   if (!raw) return null;
   const trimmed = raw.trim();
   if (trimmed.toUpperCase().startsWith('ANSWER:')) {
-    const answer = trimmed.substring(7).trim();
+    const answer = stripMarkdownFormatting(trimmed.substring(7).trim());
     if (answer.length > 0) {
       logger.info(`[BrowserAgent] Direct extraction succeeded: "${answer.substring(0, 200)}"`);
       return answer;
