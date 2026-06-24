@@ -7,7 +7,7 @@ import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
-import { memo, useCallback, useEffect, useMemo } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import { WorkflowFile } from "maxun-core";
 import SearchIcon from '@mui/icons-material/Search';
 import {
@@ -300,7 +300,7 @@ export const RecordingsTable = ({
             ...recording.recording_meta,
             content: recording.recording,
             parsedDate,
-            isLoading: recording.isLoading || false,
+            isLoading: recording.recording_meta?.status === 'creating' || recording.isLoading || false,
             isOptimistic: recording.isOptimistic || false
           };
         }
@@ -472,6 +472,32 @@ export const RecordingsTable = ({
       setRerenderRobots(false);
     }
   }, [rerenderRobots, setRerenderRobots, refetch]);
+
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    const hasCreating = (recordingsData as any[]).some(
+      (r: any) => r?.recording_meta?.status === 'creating'
+    );
+
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+
+    if (hasCreating) {
+      pollingRef.current = setInterval(() => {
+        refetch();
+      }, 8000);
+    }
+
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
+  }, [recordingsData, refetch]);
 
   function useDebounce<T>(value: T, delay: number): T {
     const [debouncedValue, setDebouncedValue] = React.useState<T>(value);
