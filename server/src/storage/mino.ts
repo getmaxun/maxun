@@ -166,9 +166,17 @@ class BinaryOutputService {
           { 'Content-Type': binaryData.mimeType || 'image/png' }
         );
 
-        const publicHost = process.env.MINIO_PUBLIC_HOST || 'http://localhost';
-        const publicPort = process.env.MINIO_PORT || '9000';
-        const publicUrl = `${publicHost}:${publicPort}/${this.bucketName}/${minioKey}`;
+        // Build the browser-facing object URL. Prefer a complete public base URL
+        // (MINIO_PUBLIC_URL) so deployments behind a reverse proxy or on a
+        // non-default public port are not forced onto the internal MinIO port —
+        // which produced unreachable "localhost:9000" links (#832). Falls back to
+        // the existing host:port composition for local/dev setups.
+        const publicBase = (
+          process.env.MINIO_PUBLIC_URL
+            ? process.env.MINIO_PUBLIC_URL
+            : `${process.env.MINIO_PUBLIC_HOST || 'http://localhost'}:${process.env.MINIO_PORT || '9000'}`
+        ).replace(/\/+$/, '');
+        const publicUrl = `${publicBase}/${this.bucketName}/${minioKey}`;
 
         uploadedBinaryOutput[key] = publicUrl;
 

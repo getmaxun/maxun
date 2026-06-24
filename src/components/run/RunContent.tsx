@@ -160,6 +160,90 @@ const CopyButton: React.FC<{ content: string; darkMode: boolean }> = ({ content,
   );
 };
 
+const stripCodeFences = (text: string): string => {
+  return text.trim().replace(/^```[a-zA-Z]*\n?/, '').replace(/```\s*$/, '').trim();
+};
+
+const humanizeKey = (key: string): string => {
+  return key
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+};
+
+const stripMarkdownFormatting = (text: string): string => {
+  return text
+    .replace(/^[ \t]{0,3}#{1,6}\s*/gm, '')
+    .replace(/\*\*\*(.*?)\*\*\*/g, '$1')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/__(.*?)__/g, '$1')
+    .replace(/(^|[^*\w])\*(?!\*)([^*\n]+?)\*(?!\*)(?=[^*\w]|$)/g, '$1$2')
+    .replace(/```[a-zA-Z]*\n?/g, '')
+    .replace(/`([^`]*)`/g, '$1')
+    .replace(/^[ \t]*[-*_]{3,}[ \t]*$/gm, '')
+    .replace(/^[ \t]*[*+]\s+/gm, '- ')
+    .replace(/\[([^\]]+)\]\((?:[^)]+)\)/g, '$1')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/[ \t]+$/gm, '')
+    .trim();
+};
+
+const objectToReadableText = (value: any, depth = 0): string => {
+  const indent = '  '.repeat(depth);
+  if (value === null || value === undefined || value === '') return '';
+
+  if (Array.isArray(value)) {
+    const isPrimitiveArray = value.every((v) => v === null || typeof v !== 'object');
+    if (isPrimitiveArray) {
+      return value.map((v) => `${indent}- ${String(v)}`).join('\n');
+    }
+    return value.map((v) => objectToReadableText(v, depth)).filter(Boolean).join('\n\n');
+  }
+
+  if (typeof value === 'object') {
+    return Object.entries(value)
+      .map(([k, v]) => {
+        if (v === null || v === undefined || v === '') return '';
+        const label = humanizeKey(k);
+        if (typeof v === 'object') {
+          const nested = objectToReadableText(v, depth + 1);
+          return nested ? `${indent}${label}:\n${nested}` : '';
+        }
+        return `${indent}${label}: ${String(v)}`;
+      })
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  return `${indent}${String(value)}`;
+};
+
+const formatAgentResultText = (content: string): string => {
+  const stripped = stripCodeFences(content);
+  try {
+    const json = JSON.parse(stripped);
+    if (json !== null && typeof json === 'object') {
+      const value = json.result !== undefined ? json.result : json;
+      const flattened = typeof value === 'string' ? value : objectToReadableText(value);
+      return stripMarkdownFormatting(flattened || stripped);
+    }
+    return stripMarkdownFormatting(stripped);
+  } catch {
+    return stripMarkdownFormatting(stripped);
+  }
+};
+
+const AgentResultView: React.FC<{ content: string; darkMode: boolean }> = ({ content }) => {
+  const text = React.useMemo(() => formatAgentResultText(content), [content]);
+
+  return (
+    <Typography component="div" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', fontSize: '14px', lineHeight: 1.7, m: 0, color: 'inherit' }}>
+      {text}
+    </Typography>
+  );
+};
+
 export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRef, abortRunHandler, workflowProgress }: RunContentProps) => {
   const { t } = useTranslation();
   const { darkMode } = useThemeMode();
@@ -1569,16 +1653,15 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   <AccordionDetails>
                     <Box sx={{ position: 'relative' }}>
                       <Paper sx={{ p: 2, maxHeight: '500px', overflow: 'auto', backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5' }}>
-                        <Typography component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: '14px', lineHeight: 1.6, m: 0, color: 'inherit' }}>
-                          {promptResultData}
-                        </Typography>
+                        <AgentResultView content={promptResultData} darkMode={darkMode} />
                       </Paper>
-                      <CopyButton content={promptResultData} darkMode={darkMode} />
+                      <CopyButton content={formatAgentResultText(promptResultData)} darkMode={darkMode} />
                     </Box>
                     <Box sx={{ mt: 2 }}>
                       <Button
                         onClick={() => {
-                          const blob = new Blob([promptResultData], { type: 'text/plain' });
+                          const text = formatAgentResultText(promptResultData);
+                          const blob = new Blob([text], { type: 'text/plain' });
                           const url = URL.createObjectURL(blob);
                           const a = document.createElement('a');
                           a.href = url;

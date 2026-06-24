@@ -19,6 +19,7 @@ interface RobotMeta {
   promptLlmModel?: string;
   promptLlmApiKey?: string;
   promptLlmBaseUrl?: string;
+  status?: 'creating' | 'ready' | 'failed';
 }
 
 interface RobotWorkflow {

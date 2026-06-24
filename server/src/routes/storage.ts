@@ -695,9 +695,6 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
       return res.status(409).json({ error: `A robot with the name "${finalRobotName}" already exists.` });
     }
 
-    let workflowResult: any;
-    let finalUrl: string;
-
     const llmConfig = {
       provider: llmProvider || 'ollama',
       model: llmModel,
@@ -740,7 +737,7 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
     const robotId = uuid();
     const currentTimestamp = new Date().toISOString();
 
-    const newRobot = await Robot.create({
+    const stubRobot = await Robot.create({
       id: uuid(),
       userId: req.user.id,
       recording_meta: {
@@ -748,13 +745,14 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
         id: robotId,
         createdAt: currentTimestamp,
         updatedAt: currentTimestamp,
-        pairs: normalizeWorkflowUrls(workflowResult.workflow).length,
+        pairs: 0,
         params: [],
         type: 'extract',
-        url: finalUrl,
+        url: url || '',
         isLLM: true,
+        status: 'creating',
       },
-      recording: { workflow: normalizeWorkflowUrls(workflowResult.workflow) },
+      recording: { workflow: [] },
       google_sheet_email: null,
       google_sheet_name: null,
       google_sheet_id: null,
@@ -763,19 +761,70 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
       schedule: null,
     });
 
-    logger.log('info', `LLM robot created with id: ${newRobot.id}`);
-    capture('maxun-oss-llm-robot-created', {
-      robot_meta: newRobot.recording_meta,
-      recording: newRobot.recording,
-      llm_provider: llmProvider || 'ollama',
-      prompt: prompt,
-      urlAutoDetected: !url,
-    });
+    logger.log('info', `LLM robot stub created with id: ${stubRobot.id}, starting workflow generation`);
 
-    return res.status(201).json({
-      message: 'LLM robot created successfully.',
-      robot: newRobot,
-    });
+    let workflowResult: any;
+    let finalUrl: string;
+
+    try {
+      if (url) {
+        logger.log('info', `Starting LLM workflow generation for provided URL: ${url}`);
+        workflowResult = await WorkflowEnricher.generateWorkflowFromPrompt(url, prompt, req.user.id, llmConfig);
+        finalUrl = workflowResult.url || url;
+      } else {
+        logger.log('info', `Starting LLM workflow generation with automatic URL detection for prompt: "${prompt}"`);
+        workflowResult = await WorkflowEnricher.generateWorkflowFromPromptWithSearch(prompt, req.user.id, llmConfig);
+        finalUrl = workflowResult.url || '';
+        if (finalUrl) {
+          logger.log('info', `Auto-detected URL: ${finalUrl}`);
+        }
+      }
+
+      if (finalUrl) {
+        finalUrl = normalizeRobotUrl(finalUrl);
+      }
+
+      if (!workflowResult.success || !workflowResult.workflow) {
+        logger.log('error', `Failed to generate workflow: ${JSON.stringify(workflowResult.errors)}`);
+        await stubRobot.destroy();
+        return res.status(400).json({
+          error: 'Failed to generate workflow from prompt',
+          details: workflowResult.errors
+        });
+      }
+
+      const normalizedWorkflow = normalizeWorkflowUrls(workflowResult.workflow);
+
+      await stubRobot.update({
+        recording_meta: {
+          ...stubRobot.recording_meta,
+          pairs: normalizedWorkflow.length,
+          url: finalUrl,
+          updatedAt: new Date().toISOString(),
+          status: 'ready',
+        },
+        recording: { workflow: normalizedWorkflow },
+      });
+
+      await stubRobot.reload();
+
+      logger.log('info', `LLM robot ready with id: ${stubRobot.id}`);
+      capture('maxun-oss-llm-robot-created', {
+        robot_meta: stubRobot.recording_meta,
+        recording: stubRobot.recording,
+        llm_provider: llmProvider || 'ollama',
+        prompt: prompt,
+        urlAutoDetected: !url,
+      });
+
+      return res.status(201).json({
+        message: 'LLM robot created successfully.',
+        robot: stubRobot,
+      });
+    } catch (llmError) {
+      try { await stubRobot.destroy(); } catch (_) {}
+      throw llmError;
+    }
   } catch (error: any) {
     if (error.name === 'SequelizeUniqueConstraintError' || error.parent?.code === '23505') {
       return res.status(409).json({ error: 'A robot with this name already exists.' });
