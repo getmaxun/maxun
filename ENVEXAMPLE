@@ -14,6 +14,10 @@ MINIO_PORT=9000                         # Port for MinIO (default: 9000)
 MINIO_CONSOLE_PORT=9001                 # Web UI Port for MinIO (default: 9001)
 MINIO_ACCESS_KEY=minio_access_key       # MinIO access key
 MINIO_SECRET_KEY=minio_secret_key       # MinIO secret key
+# Public base URL browsers use to reach stored screenshots/files. Set this when
+# MinIO is behind a reverse proxy or on a non-localhost/non-9000 public address,
+# e.g. https://storage.example.com (no internal port appended). Optional.
+# MINIO_PUBLIC_URL=https://storage.example.com
 REDIS_HOST=redis                        # Redis host in Docker
 REDIS_PORT=6379                         # Redis port (default: 6379)
 REDIS_PASSWORD=redis_password           # Redis password (This is optional. Needed to authenticate with a password-protected Redis instance; if not set, Redis will connect without authentication.)
