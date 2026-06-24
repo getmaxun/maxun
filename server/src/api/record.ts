@@ -949,7 +949,7 @@ async function executeRun(id: string, userId: string) {
                         };
                         logger.log('info', `Running smart query for API scrape run ${plainRun.runId}`);
                         const agentResult = await executeBrowserAgent(currentPage, promptInstructions, llmConfig);
-                        serializableOutput.promptResult = [{ content: agentResult.result, steps: agentResult.steps }];
+                        serializableOutput.promptResult = [{ content: agentResult.result, steps: agentResult.steps, success: agentResult.success }];
                         logger.log('info', `Smart query completed for API scrape run ${plainRun.runId}`);
                     } catch (agentErr: any) {
                         logger.log('warn', `Smart query failed for API scrape run ${plainRun.runId}: ${agentErr.message}`);

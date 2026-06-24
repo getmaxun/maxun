@@ -402,7 +402,7 @@ export class WorkflowEnricher {
       const axios = require('axios');
 
       const keywords = this.extractMeaningfulKeywords(prompt);
-      const { systemPrompt, userPrompt } = this.buildUnifiedPrompt(prompt, elementGroups, keywords);
+      const { systemPrompt, userPrompt } = this.buildUnifiedPrompt(prompt, elementGroups, keywords, pageHTML);
 
       let llmResponse: string;
 
@@ -564,10 +564,33 @@ export class WorkflowEnricher {
     }).filter(Boolean).join('\n');
   }
 
+  /**
+   * Strip scripts/styles and return a clean body HTML snippet capped at maxChars.
+   * Used to give the LLM actual DOM context beyond structural metadata.
+   */
+  private static extractHtmlSnippet(rawHtml: string, maxChars = 3000): string {
+    try {
+      let cleaned = rawHtml
+        .replace(/<script[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[\s\S]*?<\/style>/gi, '')
+        .replace(/<svg[\s\S]*?<\/svg>/gi, '')
+        .replace(/<noscript[\s\S]*?<\/noscript>/gi, '');
+      const bodyMatch = cleaned.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+      const body = bodyMatch ? bodyMatch[1] : cleaned;
+      const collapsed = body.replace(/\s+/g, ' ').trim();
+      return collapsed.length > maxChars
+        ? collapsed.substring(0, maxChars) + '…[truncated]'
+        : collapsed;
+    } catch {
+      return '';
+    }
+  }
+
   private static buildUnifiedPrompt(
     prompt: string,
     elementGroups: any[],
-    keywords: string[]
+    keywords: string[],
+    pageHTML?: string
   ): { systemPrompt: string; userPrompt: string } {
     const groupsText = this.buildUnifiedGroupDescription(elementGroups, keywords);
 
@@ -597,8 +620,12 @@ Reply with ONLY valid JSON. No markdown blocks, no extra text. Pick a best choic
 If only one group is viable, set "second" to the same number as "first" (or -1).
 If no group matches, set both to -1.`;
 
-    const userPrompt = `USER REQUEST: "${prompt}"
+    const htmlSection = pageHTML
+      ? `\nPAGE HTML EXCERPT (use to verify group signals and selectors):\n${WorkflowEnricher.extractHtmlSnippet(pageHTML)}\n`
+      : '';
 
+    const userPrompt = `USER REQUEST: "${prompt}"
+${htmlSection}
 GROUPS (format: INDEX: COUNT items |signals| (fields) [flags] - "sample content"):
 ${groupsText}
 
@@ -1788,6 +1815,27 @@ Does this extraction match what the user asked for?`;
         logger.warn(`Low confidence (${filterResult.confidence}) or no fields selected. Using all detected fields as fallback.`);
       }
 
+      const MIN_FILL_RATE = 0;
+      const fillRates = await validator.validateFieldFillRates(finalFields, autoDetectResult.listSelector || llmDecision.itemSelector);
+      const validatedFields: Record<string, any> = {};
+      const droppedFields: string[] = [];
+      for (const [label, fieldInfo] of Object.entries(finalFields)) {
+        const rate = fillRates[label];
+        if (rate !== undefined && rate <= MIN_FILL_RATE) {
+          droppedFields.push(`${label} (${Math.round(rate * 100)}% filled)`);
+        } else {
+          validatedFields[label] = fieldInfo;
+        }
+      }
+      if (droppedFields.length > 0) {
+        logger.warn(`[WorkflowEnricher] Dropped ${droppedFields.length} low-fill-rate fields: ${droppedFields.join(', ')}`);
+      }
+      if (Object.keys(validatedFields).length === 0) {
+        throw new Error('All fields returned empty values during selector re-validation — rejecting group');
+      }
+      finalFields = validatedFields;
+      logger.info(`[WorkflowEnricher] Selector re-validation passed: ${Object.keys(finalFields).length} fields retained`);
+      
       if (prompt) {
         const verificationSamples: Record<string, string[]> = {};
         for (const fieldName of Object.keys(finalFields)) {
