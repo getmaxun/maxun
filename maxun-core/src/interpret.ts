@@ -569,7 +569,9 @@ export default class Interpreter extends EventEmitter {
    * requests (tracked by ensurePageListeners) instead of a fixed network-quiet
    * window and DOM-text-length polling — faster and more deterministic.
    */
-  private async waitForPageReady(page: Page, upcomingWorkflow: Workflow = []): Promise<void> {
+  private static readonly PAGE_READY_TIMEOUT_MS = 15000;
+
+  private async waitForPageReady(page: Page, upcomingWorkflow: Workflow = [], contentSelector?: string | (string | undefined)[]): Promise<void> {
     this.ensurePageListeners(page);
     const counter = this.pageRequestCounters.get(page)!;
     try {
@@ -579,6 +581,9 @@ export default class Interpreter extends EventEmitter {
         const found = await page.waitForSelector(targetSelector, { timeout: 8000 }).catch(() => null);
         if (found) {
           await new Promise(resolve => setTimeout(resolve, 200));
+          if (contentSelector) {
+            await this.waitForContentSelector(page, contentSelector);
+          }
           return;
         }
       }
@@ -603,8 +608,86 @@ export default class Interpreter extends EventEmitter {
           setTimeout(resolve, 200);
         }
       })).catch(() => {});
+
+      if (contentSelector) {
+        await this.waitForContentSelector(page, contentSelector);
+      }
     } catch (e) {
     }
+  }
+
+  /**
+   * Polls the live DOM for one or more selectors until at least `minCount`
+   * matching elements exist AND that count has been stable (unchanged) for
+   * `stabilityWindowMs`, or until `timeoutMs` elapses — whichever comes first.
+   *
+   * Returns `true` if the content was found (and stable), `false` if the
+   * timeout elapsed first. Never throws.
+   */
+  private async waitForContentSelector(
+    page: Page,
+    selector: string | (string | undefined)[],
+    options: { timeoutMs?: number; minCount?: number; pollIntervalMs?: number; stabilityWindowMs?: number } = {}
+  ): Promise<boolean> {
+    const selectors = (Array.isArray(selector) ? selector : [selector])
+      .filter((s): s is string => typeof s === 'string' && s.trim() !== '');
+    if (selectors.length === 0) return true;
+
+    const timeoutMs = options.timeoutMs ?? Interpreter.PAGE_READY_TIMEOUT_MS;
+    const minCount = options.minCount ?? 1;
+    const pollIntervalMs = options.pollIntervalMs ?? 250;
+    const stabilityWindowMs = options.stabilityWindowMs ?? 400;
+    const deadline = Date.now() + timeoutMs;
+
+    const isXPathSelector = (sel: string): boolean =>
+      sel.startsWith('//') || sel.startsWith('./') || sel.includes('::') ||
+      sel.includes('contains(@') || sel.includes('@class=') || sel.includes('@id=');
+
+    const countForSelector = async (sel: string): Promise<number> => {
+      try {
+        if (isXPathSelector(sel)) {
+          return await page.evaluate((xp: string) => {
+            try {
+              const result = document.evaluate(xp, document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+              return result.snapshotLength;
+            } catch {
+              return 0;
+            }
+          }, sel);
+        }
+        return await page.evaluate((cssSel: string) => {
+          try {
+            return document.querySelectorAll(cssSel).length;
+          } catch {
+            return 0;
+          }
+        }, sel);
+      } catch {
+        return 0;
+      }
+    };
+
+    let lastCount = -1;
+    let stableSince = 0;
+
+    while (Date.now() < deadline) {
+      if (this.isAborted) return false;
+
+      const counts = await Promise.all(selectors.map(countForSelector));
+      const total = counts.reduce((a, b) => a + b, 0);
+
+      if (total >= minCount && total === lastCount) {
+        if (stableSince === 0) stableSince = Date.now();
+        if (Date.now() - stableSince >= stabilityWindowMs) return true;
+      } else {
+        lastCount = total;
+        stableSince = 0;
+      }
+
+      await new Promise((r) => setTimeout(r, pollIntervalMs));
+    }
+
+    return false;
   }
 
   /**
@@ -729,10 +812,14 @@ export default class Interpreter extends EventEmitter {
           this.options.debugChannel.setActionType('scrapeSchema');
         }
 
+        const schemaSelectors = Object.values(schema).flatMap((fieldConfig: any) => [
+          fieldConfig?.selector,
+          fieldConfig?.fallbackSelector,
+        ]);
         await this.waitForPageReady(page, [{
           action: 'scrapeSchema',
           args: [schema]
-        } as any]);
+        } as any], schemaSelectors);
 
         if (this.options.mode && this.options.mode === 'editor') {
           await this.options.serializableCallback({});
@@ -809,7 +896,7 @@ export default class Interpreter extends EventEmitter {
         });
       },
 
-      scrapeList: async (config: { listSelector: string, fields: any, limit?: number, pagination: any }, actionName: string = "") => {
+      scrapeList: async (config: { listSelector: string, fields: any, limit?: number, pagination: any, listFallbackSelector?: string }, actionName: string = "") => {
         if (this.isAborted) {
           this.log('Workflow aborted, stopping scrapeList', Level.WARN);
           return;
@@ -2055,11 +2142,12 @@ export default class Interpreter extends EventEmitter {
     }
   }
 
-  private async handlePagination(page: Page, config: { 
-    listSelector: string, 
-    fields: any, 
-    limit?: number, 
-    pagination: any 
+  private async handlePagination(page: Page, config: {
+    listSelector: string,
+    fields: any,
+    limit?: number,
+    pagination: any,
+    listFallbackSelector?: string
   }, providedActionName: string = "") {
     if (this.isAborted) {
       this.log('Workflow aborted, stopping pagination', Level.WARN);
@@ -2103,7 +2191,7 @@ export default class Interpreter extends EventEmitter {
         await this.waitForPageReady(page, [{
           action: 'scrapeList',
           args: [config]
-        } as any]);
+        } as any], [config.listSelector, config.listFallbackSelector]);
 
         const evaluationPromise = page.evaluate((cfg) => window.scrapeList(cfg), config);
         const timeoutPromise = new Promise<any[]>((_, reject) =>
