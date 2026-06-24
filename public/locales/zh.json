@@ -95,6 +95,7 @@
     "finishedAt": "结束时间",
     "delete": "删除",
     "settings": "设置",
+    "rerun": "重新运行",
     "search": "搜索运行记录...",
     "sort_tooltip": "点击排序",
     "placeholder": {
@@ -578,7 +579,8 @@
         "run_by_api": "由API运行",
         "run_type": "运行类型"
       }
-    }
+    },
+    "rerun": "重新运行"
   },
   "run_content": {
     "tabs": {

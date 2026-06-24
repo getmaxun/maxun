@@ -5,12 +5,13 @@ import { RunsTable } from "./RunsTable";
 interface RunsProps {
   currentInterpretationLog: string;
   abortRunHandler: (runId: string, robotName: string, browserId: string) => void;
+  rerunHandler: (robotMetaId: string, robotName: string, interpreterSettings: any) => void;
   runId: string;
   runningRecordingName: string;
 }
 
 export const Runs = (
-  { currentInterpretationLog, abortRunHandler, runId, runningRecordingName }: RunsProps) => {
+  { currentInterpretationLog, abortRunHandler, rerunHandler, runId, runningRecordingName }: RunsProps) => {
 
   return (
     <Grid container direction="column" sx={{ padding: '30px' }}>
@@ -18,6 +19,7 @@ export const Runs = (
         <RunsTable
           currentInterpretationLog={currentInterpretationLog}
           abortRunHandler={abortRunHandler}
+          rerunHandler={rerunHandler}
           runId={runId}
           runningRecordingName={runningRecordingName}
         />
