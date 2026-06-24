@@ -896,7 +896,7 @@ export default class Interpreter extends EventEmitter {
         });
       },
 
-      scrapeList: async (config: { listSelector: string, fields: any, limit?: number, pagination: any, listFallbackSelector?: string }, actionName: string = "") => {
+      scrapeList: async (config: { listSelector: string, fields: any, limit?: number, pagination: any }, actionName: string = "") => {
         if (this.isAborted) {
           this.log('Workflow aborted, stopping scrapeList', Level.WARN);
           return;
@@ -2146,8 +2146,7 @@ export default class Interpreter extends EventEmitter {
     listSelector: string,
     fields: any,
     limit?: number,
-    pagination: any,
-    listFallbackSelector?: string
+    pagination: any
   }, providedActionName: string = "") {
     if (this.isAborted) {
       this.log('Workflow aborted, stopping pagination', Level.WARN);
@@ -2191,7 +2190,7 @@ export default class Interpreter extends EventEmitter {
         await this.waitForPageReady(page, [{
           action: 'scrapeList',
           args: [config]
-        } as any], [config.listSelector, config.listFallbackSelector]);
+        } as any], [config.listSelector]);
 
         const evaluationPromise = page.evaluate((cfg) => window.scrapeList(cfg), config);
         const timeoutPromise = new Promise<any[]>((_, reject) =>
