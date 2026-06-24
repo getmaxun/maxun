@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/playwright:v1.57.0-jammy
+FROM node:20-slim AS builder
 
 WORKDIR /app
 
@@ -14,6 +14,22 @@ COPY browser/tsconfig.json ./
 
 # Build TypeScript
 RUN npm run build
+
+FROM node:20-slim AS runner
+
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+COPY browser/package*.json ./
+RUN npm install --omit=dev && npm cache clean --force
+
+RUN npx playwright install --with-deps chromium \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends curl \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /app/dist ./dist
 
 # Accept build arguments for ports (with defaults)
 ARG BROWSER_WS_PORT=3001
