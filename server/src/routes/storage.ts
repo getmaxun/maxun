@@ -710,38 +710,6 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
       baseUrl: llmBaseUrl
     };
 
-    if (url) {
-      logger.log('info', `Starting LLM workflow generation for provided URL: ${url}`);
-      workflowResult = await WorkflowEnricher.generateWorkflowFromPrompt(url, prompt, req.user.id, llmConfig);
-      finalUrl = workflowResult.url || url;
-    } else if (await WorkflowEnricher.isMultiSitePrompt(prompt, llmConfig)) {
-      logger.log('info', `Auto-detected multi-site prompt, starting multi-site workflow generation: "${prompt}"`);
-      workflowResult = await WorkflowEnricher.generateMultiSiteWorkflowFromSearch(prompt, req.user.id, llmConfig);
-      finalUrl = workflowResult.url || '';
-      if (finalUrl) {
-        logger.log('info', `Multi-site workflow primary URL: ${finalUrl}`);
-      }
-    } else {
-      logger.log('info', `Starting LLM workflow generation with automatic URL detection for prompt: "${prompt}"`);
-      workflowResult = await WorkflowEnricher.generateWorkflowFromPromptWithSearch(prompt, req.user.id, llmConfig);
-      finalUrl = workflowResult.url || '';
-      if (finalUrl) {
-        logger.log('info', `Auto-detected URL: ${finalUrl}`);
-      }
-    }
-
-    if (finalUrl) {
-      finalUrl = normalizeRobotUrl(finalUrl);
-    }
-
-    if (!workflowResult.success || !workflowResult.workflow) {
-      logger.log('error', `Failed to generate workflow: ${JSON.stringify(workflowResult.errors)}`);
-      return res.status(400).json({
-        error: 'Failed to generate workflow from prompt',
-        details: workflowResult.errors
-      });
-    }
-
     const robotId = uuid();
     const currentTimestamp = new Date().toISOString();
 
@@ -779,6 +747,13 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
         logger.log('info', `Starting LLM workflow generation for provided URL: ${url}`);
         workflowResult = await WorkflowEnricher.generateWorkflowFromPrompt(url, prompt, req.user.id, llmConfig);
         finalUrl = workflowResult.url || url;
+      } else if (await WorkflowEnricher.isMultiSitePrompt(prompt, llmConfig)) {
+        logger.log('info', `Auto-detected multi-site prompt, starting multi-site workflow generation: "${prompt}"`);
+        workflowResult = await WorkflowEnricher.generateMultiSiteWorkflowFromSearch(prompt, req.user.id, llmConfig);
+        finalUrl = workflowResult.url || '';
+        if (finalUrl) {
+          logger.log('info', `Multi-site workflow primary URL: ${finalUrl}`);
+        }
       } else {
         logger.log('info', `Starting LLM workflow generation with automatic URL detection for prompt: "${prompt}"`);
         workflowResult = await WorkflowEnricher.generateWorkflowFromPromptWithSearch(prompt, req.user.id, llmConfig);
