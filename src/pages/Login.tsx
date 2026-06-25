@@ -8,6 +8,7 @@ import { apiUrl } from "../apiConfig";
 import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
 import { useThemeMode } from "../context/theme-provider";
+import MaxunLogo from "../assets/maxunlogo.png";
 
 const Login = () => {
   const { t } = useTranslation();
@@ -99,7 +100,7 @@ const Login = () => {
           width: "100%",
         }}
       >
-        <img src="../src/assets/maxunlogo.png" alt="logo" height={50}
+        <img src={MaxunLogo} alt="logo" height={50}
           width={60} style={{ marginBottom: 10, borderRadius: "20%", alignItems: "center" }} />
         <TextField
           fullWidth
