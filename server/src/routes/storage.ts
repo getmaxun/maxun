@@ -17,10 +17,10 @@ import { WorkflowFile } from 'maxun-core';
 import { cancelScheduledWorkflow, scheduleWorkflow } from '../storage/schedule';
 import { addJob } from '../storage/graphileWorker';
 import { QUEUE_NAMES } from '../task-runner';
-import { io as serverIo } from '../server';
+import { io as serverIo, recentRecoveries } from '../server';
 import { WorkflowEnricher } from '../sdk/workflowEnricher';
 import sequelizeInstance from '../storage/db';
-import { Op } from 'sequelize';
+import { Op, literal } from 'sequelize';
 import {
   DEFAULT_OUTPUT_FORMATS,
   parseOutputFormats,
@@ -673,6 +673,14 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
       return res.status(400).json({ error: 'The "prompt" field is required.' });
     }
 
+    const trimmedPrompt = (prompt as string).trim();
+    if (trimmedPrompt.length < 15) {
+      return res.status(400).json({ error: 'Extraction prompt is too short. Please describe what you want to extract (e.g., "Extract company names and descriptions from the YC companies page").' });
+    }
+    if (/field_\d+/i.test(trimmedPrompt)) {
+      return res.status(400).json({ error: 'Extraction prompt looks like a template placeholder. Please replace it with a specific description of what you want to extract.' });
+    }
+
     if (!req.user) {
       return res.status(401).send({ error: 'Unauthorized' });
     }
@@ -695,9 +703,6 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
       return res.status(409).json({ error: `A robot with the name "${finalRobotName}" already exists.` });
     }
 
-    let workflowResult: any;
-    let finalUrl: string;
-
     const llmConfig = {
       provider: llmProvider || 'ollama',
       model: llmModel,
@@ -705,35 +710,10 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
       baseUrl: llmBaseUrl
     };
 
-    if (url) {
-      logger.log('info', `Starting LLM workflow generation for provided URL: ${url}`);
-      workflowResult = await WorkflowEnricher.generateWorkflowFromPrompt(url, prompt, req.user.id, llmConfig);
-      finalUrl = workflowResult.url || url;
-    } else {
-      logger.log('info', `Starting LLM workflow generation with automatic URL detection for prompt: "${prompt}"`);
-      workflowResult = await WorkflowEnricher.generateWorkflowFromPromptWithSearch(prompt, req.user.id, llmConfig);
-      finalUrl = workflowResult.url || '';
-      if (finalUrl) {
-        logger.log('info', `Auto-detected URL: ${finalUrl}`);
-      }
-    }
-
-    if (finalUrl) {
-      finalUrl = normalizeRobotUrl(finalUrl);
-    }
-
-    if (!workflowResult.success || !workflowResult.workflow) {
-      logger.log('error', `Failed to generate workflow: ${JSON.stringify(workflowResult.errors)}`);
-      return res.status(400).json({
-        error: 'Failed to generate workflow from prompt',
-        details: workflowResult.errors
-      });
-    }
-
     const robotId = uuid();
     const currentTimestamp = new Date().toISOString();
 
-    const newRobot = await Robot.create({
+    const stubRobot = await Robot.create({
       id: uuid(),
       userId: req.user.id,
       recording_meta: {
@@ -741,13 +721,14 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
         id: robotId,
         createdAt: currentTimestamp,
         updatedAt: currentTimestamp,
-        pairs: normalizeWorkflowUrls(workflowResult.workflow).length,
+        pairs: 0,
         params: [],
         type: 'extract',
-        url: finalUrl,
+        url: url || '',
         isLLM: true,
+        status: 'creating',
       },
-      recording: { workflow: normalizeWorkflowUrls(workflowResult.workflow) },
+      recording: { workflow: [] },
       google_sheet_email: null,
       google_sheet_name: null,
       google_sheet_id: null,
@@ -756,19 +737,77 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
       schedule: null,
     });
 
-    logger.log('info', `LLM robot created with id: ${newRobot.id}`);
-    capture('maxun-oss-llm-robot-created', {
-      robot_meta: newRobot.recording_meta,
-      recording: newRobot.recording,
-      llm_provider: llmProvider || 'ollama',
-      prompt: prompt,
-      urlAutoDetected: !url,
-    });
+    logger.log('info', `LLM robot stub created with id: ${stubRobot.id}, starting workflow generation`);
 
-    return res.status(201).json({
-      message: 'LLM robot created successfully.',
-      robot: newRobot,
-    });
+    let workflowResult: any;
+    let finalUrl: string;
+
+    try {
+      if (url) {
+        logger.log('info', `Starting LLM workflow generation for provided URL: ${url}`);
+        workflowResult = await WorkflowEnricher.generateWorkflowFromPrompt(url, prompt, req.user.id, llmConfig);
+        finalUrl = workflowResult.url || url;
+      } else if (await WorkflowEnricher.isMultiSitePrompt(prompt, llmConfig)) {
+        logger.log('info', `Auto-detected multi-site prompt, starting multi-site workflow generation: "${prompt}"`);
+        workflowResult = await WorkflowEnricher.generateMultiSiteWorkflowFromSearch(prompt, req.user.id, llmConfig);
+        finalUrl = workflowResult.url || '';
+        if (finalUrl) {
+          logger.log('info', `Multi-site workflow primary URL: ${finalUrl}`);
+        }
+      } else {
+        logger.log('info', `Starting LLM workflow generation with automatic URL detection for prompt: "${prompt}"`);
+        workflowResult = await WorkflowEnricher.generateWorkflowFromPromptWithSearch(prompt, req.user.id, llmConfig);
+        finalUrl = workflowResult.url || '';
+        if (finalUrl) {
+          logger.log('info', `Auto-detected URL: ${finalUrl}`);
+        }
+      }
+
+      if (finalUrl) {
+        finalUrl = normalizeRobotUrl(finalUrl);
+      }
+
+      if (!workflowResult.success || !workflowResult.workflow) {
+        logger.log('error', `Failed to generate workflow: ${JSON.stringify(workflowResult.errors)}`);
+        await stubRobot.destroy();
+        return res.status(400).json({
+          error: 'Failed to generate workflow from prompt',
+          details: workflowResult.errors
+        });
+      }
+
+      const normalizedWorkflow = normalizeWorkflowUrls(workflowResult.workflow);
+
+      await stubRobot.update({
+        recording_meta: {
+          ...stubRobot.recording_meta,
+          pairs: normalizedWorkflow.length,
+          url: finalUrl,
+          updatedAt: new Date().toISOString(),
+          status: 'ready',
+        },
+        recording: { workflow: normalizedWorkflow },
+      });
+
+      await stubRobot.reload();
+
+      logger.log('info', `LLM robot ready with id: ${stubRobot.id}`);
+      capture('maxun-oss-llm-robot-created', {
+        robot_meta: stubRobot.recording_meta,
+        recording: stubRobot.recording,
+        llm_provider: llmProvider || 'ollama',
+        prompt: prompt,
+        urlAutoDetected: !url,
+      });
+
+      return res.status(201).json({
+        message: 'LLM robot created successfully.',
+        robot: stubRobot,
+      });
+    } catch (llmError) {
+      try { await stubRobot.destroy(); } catch (_) {}
+      throw llmError;
+    }
   } catch (error: any) {
     if (error.name === 'SequelizeUniqueConstraintError' || error.parent?.code === '23505') {
       return res.status(409).json({ error: 'A robot with this name already exists.' });
@@ -1639,6 +1678,141 @@ export async function recoverOrphanedRuns() {
     logger.log('info', `Orphaned run recovery completed. Processed ${orphanedRuns.length} runs.`);
   } catch (error: any) {
     logger.log('error', `Failed to recover orphaned runs: ${error.message}`);
+  }
+}
+
+/**
+ * Threshold (in minutes) after which a run sitting in 'running' with no active
+ * browser session in this instance's pool is considered "stuck" and recovered.
+ * This is intentionally larger than the EXECUTE_RUN interpretation timeout
+ * plus the browser-acquisition wait, so that genuinely in-progress runs are
+ * never recovered prematurely.
+ */
+const STUCK_RUNNING_THRESHOLD_MINUTES = 16;
+
+/**
+ * Periodic watchdog for runs stuck in 'running'.
+ *
+ * Unlike {@link recoverOrphanedRuns} (which only runs once at server startup,
+ * when the in-memory browser pool is guaranteed to be empty), this function is
+ * intended to run on a recurring interval. It catches runs that never progress
+ * past 'running' because the job that was supposed to execute them was lost
+ * (e.g. an unhandled rejection, a dropped job notification, etc.) without
+ * requiring a server restart to recover them.
+ *
+ * A run is only touched if it has been 'running' for longer than
+ * {@link STUCK_RUNNING_THRESHOLD_MINUTES} AND this instance has no live browser
+ * for it in {@link browserPool} — i.e. it is not actively being processed here.
+ * Recovery here just sets status back to 'queued'; the existing processQueuedRuns
+ * poller (running every 5s) picks it back up — no separate re-enqueue call needed.
+ */
+export async function recoverStuckRunningRuns() {
+  try {
+    const stuckRuns = await Run.findAll({
+      attributes: { exclude: ['serializableOutput', 'binaryOutput'] },
+      where: {
+        [Op.and]: [
+          { status: 'running' },
+          literal(`
+            CASE
+              WHEN "startedAt" ~ '^[0-9]{4}-'
+              THEN "startedAt"::timestamptz
+              ELSE to_timestamp("startedAt", 'FMMM/FMDD/YYYY, FMHH12:MI:SS AM')
+            END < now() - interval '${STUCK_RUNNING_THRESHOLD_MINUTES} minutes'
+          `),
+        ],
+      },
+      order: [['startedAt', 'ASC']],
+    });
+
+    if (stuckRuns.length === 0) {
+      return;
+    }
+
+    logger.log('warn', `Found ${stuckRuns.length} run(s) stuck in 'running' for over ${STUCK_RUNNING_THRESHOLD_MINUTES} minutes`);
+
+    for (const run of stuckRuns) {
+      try {
+        const runData = run.toJSON();
+
+        const browser = browserPool.getRemoteBrowser(runData.browserId);
+        if (browser) {
+          logger.log('info', `Run ${runData.runId} still has an active browser session, not treating as stuck`);
+          continue;
+        }
+
+        logger.log('warn', `Run ${runData.runId} has been 'running' for over ${STUCK_RUNNING_THRESHOLD_MINUTES} minutes with no active browser session - recovering`);
+
+        const retryCount = runData.retryCount || 0;
+        let recoveredStatus: 'queued' | 'failed' = 'failed';
+
+        if (retryCount < 3 && runData.runByUserId) {
+          await run.update({
+            status: 'queued',
+            retryCount: retryCount + 1,
+            serializableOutput: {},
+            binaryOutput: {},
+            browserId: undefined,
+            log: runData.log
+              ? `${runData.log}\n[RETRY ${retryCount + 1}/3] Re-queuing - run was stuck in 'running' with no progress for over ${STUCK_RUNNING_THRESHOLD_MINUTES} minutes`
+              : `[RETRY ${retryCount + 1}/3] Re-queuing - run was stuck in 'running' with no progress for over ${STUCK_RUNNING_THRESHOLD_MINUTES} minutes`,
+          });
+
+          logger.log('info', `Re-queued stuck run ${runData.runId} for processing (retry ${retryCount + 1}/3)`);
+          recoveredStatus = 'queued';
+        } else {
+          const message = `Run timed out - stuck in 'running' for over ${STUCK_RUNNING_THRESHOLD_MINUTES} minutes with no active browser session (${retryCount >= 3 ? 'max retries exceeded' : 'missing user reference'}).`;
+
+          await run.update({
+            status: 'failed',
+            finishedAt: new Date().toLocaleString(),
+            log: runData.log ? `${runData.log}\n${message}` : message,
+          });
+          recoveredStatus = 'failed';
+        }
+
+        try {
+          if (runData.runByUserId) {
+            const recoveryData = {
+              runId: runData.runId,
+              robotMetaId: runData.robotMetaId,
+              status: recoveredStatus,
+              finishedAt: new Date().toLocaleString(),
+              recovered: true,
+              message: recoveredStatus === 'queued'
+                ? 'Run was stuck and has been automatically re-queued for retry'
+                : 'Run was stuck in running state and has been marked as failed',
+            };
+
+            const userId = runData.runByUserId.toString();
+            serverIo.of('/queued-run').to(`user-${userId}`).emit(
+              recoveredStatus === 'failed' ? 'run-completed' : 'run-recovered',
+              recoveryData
+            );
+
+            if (!recentRecoveries.has(userId)) {
+              recentRecoveries.set(userId, []);
+            }
+            recentRecoveries.get(userId)!.push(recoveryData);
+          }
+        } catch (socketError: any) {
+          logger.log('warn', `Failed to emit recovery notification for stuck run ${runData.runId}: ${socketError.message}`);
+        }
+
+        if (runData.browserId) {
+          try {
+            browserPool.deleteRemoteBrowser(runData.browserId);
+            logger.log('info', `Cleaned up stale browser reference: ${runData.browserId}`);
+          } catch (cleanupError: any) {
+            logger.log('warn', `Failed to cleanup browser reference ${runData.browserId}: ${cleanupError.message}`);
+          }
+        }
+      } catch (runError: any) {
+        logger.log('error', `Failed to recover stuck run ${run.runId}: ${runError.message}`);
+      }
+    }
+  } catch (error: any) {
+    logger.log('error', `Error in recoverStuckRunningRuns: ${error.message}`);
   }
 }
 

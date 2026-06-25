@@ -25,6 +25,7 @@
   ],
   "exclude": [
     "node_modules",
+    "src/mcp-worker.ts",
     "../src/components/**/*",  // Exclude frontend components
     "../src/pages/**/*",       // Exclude frontend pages
     "../src/app/**/*",          // Exclude other frontend-specific code

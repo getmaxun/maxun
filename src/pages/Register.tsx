@@ -8,6 +8,7 @@ import { apiUrl } from "../apiConfig";
 import { useThemeMode } from "../context/theme-provider";
 import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
+import MaxunLogo from "../assets/maxunlogo.png";
 
 const Register = () => {
   const { t } = useTranslation();
@@ -94,7 +95,7 @@ const Register = () => {
         }}
       >
         <img
-          src="../src/assets/maxunlogo.png"
+          src={MaxunLogo}
           alt="logo"
           height={50}
           width={60}

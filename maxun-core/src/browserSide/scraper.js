@@ -387,27 +387,29 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
 
     // If MBE approach didn't find all elements, try independent scraping
     if (mbeResults.some(result => Object.values(result).some(v => v === undefined))) {
-        // Fall back to independent scraping
-        const results = [];
         const foundElements = new Map();
 
-        // Find all elements for each selector
         Object.entries(lists).forEach(([key, config]) => {
-            const elements = findAllElements(config);
-            foundElements.set(key, elements);
+            foundElements.set(key, findAllElements(config));
         });
 
-        // Create result objects for each found element
-        foundElements.forEach((elements, key) => {
-            elements.forEach((element, index) => {
-                if (!results[index]) {
-                    results[index] = {};
-                }
-                results[index][key] = getElementValue(element, lists[key].attribute);
+        const lengths = {};
+        foundElements.forEach((elements, key) => { lengths[key] = elements.length; });
+        const rowCount = Math.max(...Object.values(lengths), 0);
+
+        const results = [];
+        for (let index = 0; index < rowCount; index++) {
+            const record = {};
+            foundElements.forEach((elements, key) => {
+                const element = elements[index];
+                record[key] = element ? getElementValue(element, lists[key].attribute) : undefined;
             });
-        });
+            if (Object.values(record).some(v => v !== undefined)) {
+                results.push(record);
+            }
+        }
 
-        return results.filter(result => Object.keys(result).length > 0);
+        return results;
     }
 
     return mbeResults;
@@ -1281,6 +1283,8 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
       containerIndex < containers.length;
       containerIndex++
     ) {
+      if (limit && tableData.length >= limit) break;
+
       const container = containers[containerIndex];
       const { tableFields } = containerFields[containerIndex];
 
@@ -1348,7 +1352,7 @@ function scrapableHeuristics(maxCountPerPage = 50, minArea = 20000, scrolls = 3,
 
           for (
             let rowIndex = 0;
-            rowIndex < Math.min(processedRows.length, limit);
+            rowIndex < Math.min(processedRows.length, limit) && (!limit || tableData.length < limit);
             rowIndex++
           ) {
             const record = {};

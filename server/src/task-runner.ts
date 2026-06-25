@@ -325,7 +325,7 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
               };
               await run.update({ log: 'Running smart query...' });
               const agentResult = await executeBrowserAgent(currentPage, promptInstructions, llmConfig);
-              serializableOutput.promptResult = [{ content: agentResult.result, steps: agentResult.steps }];
+              serializableOutput.promptResult = [{ content: agentResult.result, steps: agentResult.steps, success: agentResult.success }];
             } catch (agentError: any) {
               logger.log('warn', `Smart query failed for run ${data.runId}: ${agentError.message}`);
               serializableOutput.promptResult = [{ content: `Smart query failed: ${agentError.message}`, steps: [] }];

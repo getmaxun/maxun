@@ -1,28 +1,38 @@
-FROM node:20-slim
+FROM node:22 AS builder
 
-# Set working directory
 WORKDIR /app
 
+COPY package.backend.json ./package.json
 COPY .sequelizerc .sequelizerc
-
-# Install node dependencies
-COPY package*.json ./
-COPY src ./src
-COPY public ./public
-COPY server ./server
 COPY tsconfig.json ./
 COPY server/tsconfig.json ./server/
-# COPY server/start.sh ./
 
-# Install dependencies
+COPY server ./server
+COPY src ./src
+COPY public ./public
+
 RUN npm install --legacy-peer-deps
 
-# Build TypeScript server
-RUN npm run build:server
+RUN NODE_OPTIONS=--max-old-space-size=4096 npm run build:server
 
-# Expose backend port
+RUN npm prune --omit=dev --legacy-peer-deps
+
+RUN rm -rf node_modules/onnxruntime-node/bin/napi-v6/win32 \
+           node_modules/onnxruntime-node/bin/napi-v6/darwin
+
+FROM node:22-slim AS runner
+
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY package.backend.json ./package.json
+COPY .sequelizerc .sequelizerc
+
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/server ./server
+COPY --from=builder /app/public ./public
+
 EXPOSE ${BACKEND_PORT:-8080}
 
-# Run migrations & start backend using plain node
 CMD ["npm", "run", "server"]
 # CMD ["sh", "-c", "npm run migrate && npm run server"]

@@ -450,6 +450,78 @@ export class SelectorValidator {
   }
 
   /**
+   * Validate field selectors by checking how many list items return a non-empty value.
+   * Samples up to 10 list items for speed.
+   * Returns a fill-rate map { fieldName -> 0.0–1.0 }.
+   * Fields with fill rate < MIN_FILL_RATE should be discarded before saving the robot.
+   */
+  async validateFieldFillRates(
+    fields: Record<string, any>,
+    listSelector: string
+  ): Promise<Record<string, number>> {
+    if (!this.page) return {};
+
+    try {
+      const fillRates = await this.page.evaluate(
+        ({ fields, listSelector }: { fields: Record<string, any>; listSelector: string }) => {
+          function evalXPath(expr: string, contextNode: Document | Element = document): Element[] {
+            try {
+              const result = document.evaluate(
+                expr, contextNode, null,
+                XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null
+              );
+              return Array.from({ length: result.snapshotLength }, (_, i) =>
+                result.snapshotItem(i) as Element
+              );
+            } catch { return []; }
+          }
+
+          const listItems = evalXPath(listSelector).slice(0, 10);
+          if (listItems.length === 0) return {};
+
+          const rates: Record<string, number> = {};
+          for (const [label, field] of Object.entries(fields) as [string, any][]) {
+            if (!field?.selector) { rates[label] = 0; continue; }
+            const isXPath = field.selector.startsWith('//') || field.selector.startsWith('(//');
+            if (!isXPath) {
+              let filled = 0;
+              for (const item of listItems) {
+                try {
+                  const el = item.querySelector(field.selector);
+                  if (!el) continue;
+                  const val = field.attribute && field.attribute !== 'innerText' && field.attribute !== 'textContent'
+                    ? el.getAttribute(field.attribute) || ''
+                    : (el as HTMLElement).innerText || el.textContent || '';
+                  if (val.trim().length > 0) filled++;
+                } catch { }
+              }
+              rates[label] = filled / listItems.length;
+            } else {
+              const matched = evalXPath(field.selector);
+              let filled = 0;
+              for (const el of matched.slice(0, listItems.length)) {
+                try {
+                  const val = field.attribute && field.attribute !== 'innerText' && field.attribute !== 'textContent'
+                    ? el.getAttribute(field.attribute) || ''
+                    : (el as HTMLElement).innerText || el.textContent || '';
+                  if (val.trim().length > 0) filled++;
+                } catch { }
+              }
+              rates[label] = matched.length === 0 ? 0 : filled / listItems.length;
+            }
+          }
+          return rates;
+        },
+        { fields, listSelector }
+      );
+      return fillRates || {};
+    } catch (error: any) {
+      logger.warn('[SelectorValidator] validateFieldFillRates failed:', error.message);
+      return {};
+    }
+  }
+
+  /**
    * Test Load More button by clicking it and checking if content loads
    */
   private async testLoadMoreButton(buttonSelector: string, listSelector: string): Promise<boolean> {
