@@ -1,22 +1,28 @@
-FROM node:18-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
 COPY package.frontend.json ./package.json
 
-# Install dependencies
 RUN npm install --legacy-peer-deps || npm install --legacy-peer-deps
 
-# Copy frontend source code and config
 COPY src ./src
-COPY public ./public 
+COPY public ./public
 COPY index.html ./
 COPY vite.config.js ./
 COPY tsconfig.json ./
 
-# Expose the frontend port
+ENV VITE_BACKEND_URL=__VITE_BACKEND_URL__
+RUN npm run build
+
+FROM node:22-alpine AS runner
+
+WORKDIR /app
+
+RUN npm install -g serve
+
+COPY --from=builder /app/build ./build
+
 EXPOSE ${FRONTEND_PORT:-5173}
 
-# Start the frontend using the client script
-CMD ["npm", "run", "client", "--", "--host"]
+CMD ["sh", "-c", "BACKEND=\"${VITE_BACKEND_URL:-${BACKEND_URL:-http://localhost:8080}}\"; grep -rl '__VITE_BACKEND_URL__' build 2>/dev/null | xargs -r sed -i \"s|__VITE_BACKEND_URL__|${BACKEND}|g\"; exec serve -s build -l ${FRONTEND_PORT:-5173}"]
