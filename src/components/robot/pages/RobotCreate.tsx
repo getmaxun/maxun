@@ -1191,7 +1191,9 @@ const RobotCreate: React.FC = () => {
                       type="password"
                       value={scrapePromptLlmApiKey}
                       onChange={(e) => setScrapePromptLlmApiKey(e.target.value)}
-                      label="API Key (Optional if set in .env)"
+                      label="API Key"
+                      helperText="Required for summary output. Alternatively, set ANTHROPIC_API_KEY in your server .env."
+                      FormHelperTextProps={{ sx: { ml: 0.5 } }}
                       sx={{ mb: 2 }}
                     />
                   )}
@@ -1407,7 +1409,9 @@ const RobotCreate: React.FC = () => {
                         type="password"
                         value={crawlSummaryLlmApiKey}
                         onChange={(e) => setCrawlSummaryLlmApiKey(e.target.value)}
-                        label="API Key (Optional if set in .env)"
+                        label="API Key"
+                        helperText="Required for summary output. Alternatively, set ANTHROPIC_API_KEY in your server .env."
+                        FormHelperTextProps={{ sx: { ml: 0.5 } }}
                         sx={{ mb: 2 }}
                       />
                     )}
@@ -1710,7 +1714,9 @@ const RobotCreate: React.FC = () => {
                         type="password"
                         value={searchSummaryLlmApiKey}
                         onChange={(e) => setSearchSummaryLlmApiKey(e.target.value)}
-                        label="API Key (Optional if set in .env)"
+                        label="API Key"
+                        helperText="Required for summary output. Alternatively, set ANTHROPIC_API_KEY in your server .env."
+                        FormHelperTextProps={{ sx: { ml: 0.5 } }}
                         sx={{ mb: 2 }}
                       />
                     )}

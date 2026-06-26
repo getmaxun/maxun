@@ -1318,7 +1318,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
     const type = robot?.recording_meta?.type;
     if (!type) return false;
     if (robot?.recording_meta?.isLLM) return true;
-    if (type === 'scrape' && robot?.recording_meta?.promptInstructions) return true;
+    if (type === 'scrape' && (robot?.recording_meta?.promptInstructions || scrapeOutputFormats.includes('summary' as OutputFormats))) return true;
     if (type === 'crawl') return crawlOutputFormats.includes('summary' as OutputFormats);
     if (type === 'search') return searchOutputFormats.includes('summary' as OutputFormats);
     return false;
@@ -1342,7 +1342,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
                 setLlmProvider(p);
                 setLlmModel('');
                 setLlmApiKey('');
-                if (p === 'ollama') setLlmBaseUrl(OLLAMA_DEFAULT_BASE_URL);
+                if (p === 'ollama') setLlmBaseUrl('');
                 else if (p === 'openai') setLlmBaseUrl(getPreset(llmOpenAIPreset).baseUrl);
                 else setLlmBaseUrl('');
               }}
@@ -1474,8 +1474,10 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
     }
 
     if (shouldShowLlmConfig() && llmProvider !== 'ollama' && !llmApiKey.trim()) {
-      const previouslyHadNonOllamaKey = robot.recording_meta.promptLlmProvider && robot.recording_meta.promptLlmProvider !== 'ollama';
-      if (!previouslyHadNonOllamaKey) {
+      const originalProvider = robot.recording_meta.promptLlmProvider;
+      const providerChanged = originalProvider !== llmProvider;
+      const previouslyHadNonOllamaKey = originalProvider && originalProvider !== 'ollama';
+      if (!previouslyHadNonOllamaKey || providerChanged) {
         notify("error", `An API key is required when using ${llmProvider === 'anthropic' ? 'Anthropic' : 'an OpenAI-compatible'} provider`);
         return;
       }

@@ -34,6 +34,14 @@ import { createDocumentParseRobotRecord } from '../utils/document/createDocument
 
 export const router = Router();
 
+const sanitizeRobotMeta = (robot: any): any => {
+  const plain = typeof robot?.toJSON === 'function' ? robot.toJSON() : { ...robot };
+  if (plain.recording_meta?.promptLlmApiKey) {
+    delete plain.recording_meta.promptLlmApiKey;
+  }
+  return plain;
+};
+
 const pdfUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_FILE_SIZE_BYTES },
@@ -388,7 +396,8 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
     const { id } = req.params;
     const { name, limits, credentials, targetUrl, workflow: incomingWorkflow, formats, promptLlmProvider, promptLlmModel, promptLlmApiKey, promptLlmBaseUrl } = req.body;
 
-    if (!name && !limits && !credentials && !targetUrl && !incomingWorkflow && formats === undefined && !promptLlmProvider && !promptLlmModel && !promptLlmApiKey && !promptLlmBaseUrl) {
+    const hasLlmUpdate = 'promptLlmProvider' in req.body || 'promptLlmModel' in req.body || 'promptLlmApiKey' in req.body || 'promptLlmBaseUrl' in req.body;
+    if (!name && !limits && !credentials && !targetUrl && !incomingWorkflow && formats === undefined && !hasLlmUpdate) {
       return res.status(400).json({ error: 'Either "name", "limits", "credentials", "target_url", "workflow", "formats" or LLM config must be provided.' });
     }
 
@@ -540,7 +549,7 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
     const effectiveProvider = promptLlmProvider ?? robot.recording_meta?.promptLlmProvider;
     const robotType = robot.recording_meta?.type;
     if (
-      (robotType === 'crawl' || robotType === 'search') &&
+      (robotType === 'crawl' || robotType === 'search' || robotType === 'scrape') &&
       effectiveFormats.includes('summary' as OutputFormats) &&
       effectiveProvider && effectiveProvider !== 'ollama' &&
       !promptLlmApiKey &&
@@ -555,7 +564,9 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
     if (normalizedFormats !== undefined) updatedMeta.formats = normalizedFormats;
     if (promptLlmProvider !== undefined) updatedMeta.promptLlmProvider = promptLlmProvider || undefined;
     if (promptLlmModel !== undefined) updatedMeta.promptLlmModel = promptLlmModel || undefined;
-    if (promptLlmApiKey) updatedMeta.promptLlmApiKey = encrypt(promptLlmApiKey);
+    if ('promptLlmApiKey' in req.body) {
+      updatedMeta.promptLlmApiKey = promptLlmApiKey ? encrypt(promptLlmApiKey) : undefined;
+    }
     if (promptLlmBaseUrl !== undefined) updatedMeta.promptLlmBaseUrl = promptLlmBaseUrl || undefined;
 
     const updates: any = {
@@ -669,17 +680,18 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
     });
 
     logger.log('info', `Markdown robot created with id: ${newRobot.id}`);
+    const sanitizedScrape = sanitizeRobotMeta(newRobot);
     capture(
       'maxun-oss-robot-created',
       {
-        robot_meta: newRobot.recording_meta,
-        recording: newRobot.recording,
+        robot_meta: sanitizedScrape.recording_meta,
+        recording: sanitizedScrape.recording,
       }
     )
 
     return res.status(201).json({
       message: 'Markdown robot created successfully.',
-      robot: newRobot,
+      robot: sanitizedScrape,
     });
   } catch (error: any) {
     if (error.name === 'SequelizeUniqueConstraintError' || error.parent?.code === '23505') {
@@ -1964,6 +1976,7 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
     });
 
     logger.log('info', `Crawl robot created with id: ${newRobot.id}`);
+    const sanitizedCrawl = sanitizeRobotMeta(newRobot);
     capture('maxun-oss-robot-created', {
       userId: req.user.id.toString(),
       robotId: robotId,
@@ -1971,13 +1984,13 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
       url: normalizedUrl,
       robotType: 'crawl',
       crawlConfig: crawlConfig,
-      robot_meta: newRobot.recording_meta,
-      recording: newRobot.recording,
+      robot_meta: sanitizedCrawl.recording_meta,
+      recording: sanitizedCrawl.recording,
     });
 
     return res.status(201).json({
       message: 'Crawl robot created successfully.',
-      robot: newRobot,
+      robot: sanitizedCrawl,
     });
   } catch (error: any) {
     if (error.name === 'SequelizeUniqueConstraintError' || error.parent?.code === '23505') {
@@ -2090,6 +2103,7 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
     });
 
     logger.log('info', `Search robot created with id: ${newRobot.id}`);
+    const sanitizedSearch = sanitizeRobotMeta(newRobot);
     capture('maxun-oss-robot-created', {
       userId: req.user.id.toString(),
       robotId: robotId,
@@ -2098,13 +2112,13 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
       searchQuery: searchConfig.query,
       searchProvider: searchConfig.provider || 'duckduckgo',
       searchLimit: searchConfig.limit || 10,
-      robot_meta: newRobot.recording_meta,
-      recording: newRobot.recording,
+      robot_meta: sanitizedSearch.recording_meta,
+      recording: sanitizedSearch.recording,
     });
 
     return res.status(201).json({
       message: 'Search robot created successfully.',
-      robot: newRobot,
+      robot: sanitizedSearch,
     });
   } catch (error: any) {
     if (error.name === 'SequelizeUniqueConstraintError' || error.parent?.code === '23505') {

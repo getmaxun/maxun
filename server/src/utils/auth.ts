@@ -28,11 +28,9 @@ export const encrypt = (text: string): string => {
     const iv = crypto.randomBytes(ivLength);
     const algorithm = 'aes-256-cbc';
 
-    // Retrieve the encryption key or generate a new one if invalid or empty
-    let key = getEnvVariable('ENCRYPTION_KEY');
-    if (!key || key.length !== 64) { // aes-256-cbc requires a 256-bit key, which is 64 hex characters
-        console.warn('Invalid or missing ENCRYPTION_KEY, generating a new one.');
-        key = crypto.randomBytes(32).toString('hex'); // Generate a new 256-bit (32-byte) key
+    const key = getEnvVariable('ENCRYPTION_KEY');
+    if (!key || key.length !== 64) {
+        throw new Error('ENCRYPTION_KEY is missing or invalid. Set a 64-character hex string in your .env file.');
     }
     const keyBuffer = Buffer.from(key, 'hex');
 
@@ -46,11 +44,9 @@ export const decrypt = (encryptedText: string): string => {
     const [iv, encrypted] = encryptedText.split(':');
     const algorithm = "aes-256-cbc";
 
-    // Retrieve the encryption key or generate a new one if invalid or empty
-    let key = getEnvVariable('ENCRYPTION_KEY');
-    if (!key || key.length !== 64) { // aes-256-cbc requires a 256-bit key, which is 64 hex characters
-        console.warn('Invalid or missing ENCRYPTION_KEY, generating a new one.');
-        key = crypto.randomBytes(32).toString('hex'); // Generate a new 256-bit (32-byte) key
+    const key = getEnvVariable('ENCRYPTION_KEY');
+    if (!key || key.length !== 64) {
+        throw new Error('ENCRYPTION_KEY is missing or invalid. Set a 64-character hex string in your .env file.');
     }
     const keyBuffer = Buffer.from(key, 'hex');
 
@@ -58,4 +54,15 @@ export const decrypt = (encryptedText: string): string => {
     let decrypted = decipher.update(encrypted, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
     return decrypted;
+};
+
+export const safeDecrypt = (value: string): string => {
+    if (value.includes(':')) {
+        try {
+            return decrypt(value);
+        } catch {
+            return value;
+        }
+    }
+    return value;
 };
