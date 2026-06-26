@@ -179,7 +179,14 @@ router.get('/recordings', requireSignIn, async (req: AuthenticatedRequest, res) 
       return res.status(401).send({ error: 'Unauthorized' });
     }
     const data = await Robot.findAll({ where: { userId: req.user.id } });
-    return res.send(data);
+    const sanitized = data.map(robot => {
+      const plain = robot.toJSON() as any;
+      if (plain.recording_meta?.promptLlmApiKey) {
+        delete plain.recording_meta.promptLlmApiKey;
+      }
+      return plain;
+    });
+    return res.send(sanitized);
   } catch (e) {
     logger.log('info', 'Error while reading robots');
     return res.send(null);
@@ -204,6 +211,12 @@ router.get('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       data.recording.workflow = await processWorkflowActions(
         data.recording.workflow,
       );
+    }
+
+    if (data?.recording_meta) {
+      const meta = { ...(data.recording_meta as any) };
+      delete meta.promptLlmApiKey;
+      data.recording_meta = meta;
     }
 
     return res.send(data);
@@ -373,10 +386,10 @@ function handleWorkflowActions(workflow: any[], credentials: Credentials) {
 router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
-    const { name, limits, credentials, targetUrl, workflow: incomingWorkflow, formats } = req.body;
+    const { name, limits, credentials, targetUrl, workflow: incomingWorkflow, formats, promptLlmProvider, promptLlmModel, promptLlmApiKey, promptLlmBaseUrl } = req.body;
 
-    if (!name && !limits && !credentials && !targetUrl && !incomingWorkflow && formats === undefined) {
-      return res.status(400).json({ error: 'Either "name", "limits", "credentials", "target_url", "workflow" or "formats" must be provided.' });
+    if (!name && !limits && !credentials && !targetUrl && !incomingWorkflow && formats === undefined && !promptLlmProvider && !promptLlmModel && !promptLlmApiKey && !promptLlmBaseUrl) {
+      return res.status(400).json({ error: 'Either "name", "limits", "credentials", "target_url", "workflow", "formats" or LLM config must be provided.' });
     }
 
     const robot = await Robot.findOne({ where: { 'recording_meta.id': id, userId: req.user!.id } });
@@ -523,10 +536,27 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       }
     }
 
+    const effectiveFormats = normalizedFormats ?? (robot.recording_meta?.formats || []);
+    const effectiveProvider = promptLlmProvider ?? robot.recording_meta?.promptLlmProvider;
+    const robotType = robot.recording_meta?.type;
+    if (
+      (robotType === 'crawl' || robotType === 'search') &&
+      effectiveFormats.includes('summary' as OutputFormats) &&
+      effectiveProvider && effectiveProvider !== 'ollama' &&
+      !promptLlmApiKey &&
+      !(robot.recording_meta as any).promptLlmApiKey
+    ) {
+      return res.status(400).json({ error: 'An API key is required when using a non-Ollama LLM provider for summary output.' });
+    }
+
     let updatedMeta = { ...robot.recording_meta };
     if (trimmedName) updatedMeta.name = trimmedName;
     if (targetUrl) updatedMeta.url = normalizeRobotUrl(targetUrl);
     if (normalizedFormats !== undefined) updatedMeta.formats = normalizedFormats;
+    if (promptLlmProvider !== undefined) updatedMeta.promptLlmProvider = promptLlmProvider || undefined;
+    if (promptLlmModel !== undefined) updatedMeta.promptLlmModel = promptLlmModel || undefined;
+    if (promptLlmApiKey) updatedMeta.promptLlmApiKey = encrypt(promptLlmApiKey);
+    if (promptLlmBaseUrl !== undefined) updatedMeta.promptLlmBaseUrl = promptLlmBaseUrl || undefined;
 
     const updates: any = {
       recording: { ...robot.recording, workflow: normalizeWorkflowUrls(workflow) },
@@ -599,6 +629,10 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
       return res.status(409).json({ error: `A robot with the name "${robotName}" already exists.` });
     }
 
+    if (finalFormats.includes('summary' as OutputFormats) && promptLlmProvider && promptLlmProvider !== 'ollama' && !promptLlmApiKey) {
+      return res.status(400).json({ error: 'An API key is required when using a non-Ollama LLM provider for summary output.' });
+    }
+
     if (scrapeFormats.length === 0 && formats !== undefined) {
       return res.status(400).json({ error: 'At least one output format must be selected.' });
     }
@@ -622,7 +656,7 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
         ...(promptInstructions ? { promptInstructions: String(promptInstructions).substring(0, 1000) } : {}),
         ...(promptLlmProvider ? { promptLlmProvider } : {}),
         ...(promptLlmModel ? { promptLlmModel } : {}),
-        ...(promptLlmApiKey ? { promptLlmApiKey } : {}),
+        ...(promptLlmApiKey ? { promptLlmApiKey: encrypt(promptLlmApiKey) } : {}),
         ...(promptLlmBaseUrl ? { promptLlmBaseUrl } : {}),
       },
       recording: { workflow: [] },
@@ -1823,7 +1857,7 @@ export async function recoverStuckRunningRuns() {
  */
 router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
-    const { url, name, crawlConfig, formats } = req.body;
+    const { url, name, crawlConfig, formats, promptLlmProvider, promptLlmModel, promptLlmApiKey, promptLlmBaseUrl } = req.body;
 
     if (!url || !crawlConfig) {
       return res.status(400).json({ error: 'URL and crawl configuration are required.' });
@@ -1861,6 +1895,10 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
       ? requestedFormats
       : [...DEFAULT_OUTPUT_FORMATS];
 
+    if (crawlFormats.includes('summary' as OutputFormats) && promptLlmProvider && promptLlmProvider !== 'ollama' && !promptLlmApiKey) {
+      return res.status(400).json({ error: 'An API key is required when using a non-Ollama LLM provider for summary output.' });
+    }
+
     const currentTimestamp = new Date().toLocaleString('en-US');
     const robotId = uuid();
 
@@ -1877,6 +1915,10 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
         type: 'crawl',
         url: normalizedUrl,
         formats: crawlFormats,
+        ...(promptLlmProvider ? { promptLlmProvider } : {}),
+        ...(promptLlmModel ? { promptLlmModel } : {}),
+        ...(promptLlmApiKey ? { promptLlmApiKey: encrypt(promptLlmApiKey) } : {}),
+        ...(promptLlmBaseUrl ? { promptLlmBaseUrl } : {}),
       },
       recording: {
         workflow: [
@@ -1958,7 +2000,7 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
  */
 router.post('/recordings/search', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
-    const { searchConfig, name, formats } = req.body;
+    const { searchConfig, name, formats, promptLlmProvider, promptLlmModel, promptLlmApiKey, promptLlmBaseUrl } = req.body;
 
     if (!searchConfig || !searchConfig.query) {
       return res.status(400).json({ error: 'Search configuration with query is required.' });
@@ -1996,6 +2038,10 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
       searchFormats = requestedFormats.length > 0 ? requestedFormats : [...DEFAULT_OUTPUT_FORMATS];
     }
 
+    if (searchFormats.includes('summary' as OutputFormats) && promptLlmProvider && promptLlmProvider !== 'ollama' && !promptLlmApiKey) {
+      return res.status(400).json({ error: 'An API key is required when using a non-Ollama LLM provider for summary output.' });
+    }
+
     const currentTimestamp = new Date().toLocaleString('en-US');
     const robotId = uuid();
 
@@ -2011,6 +2057,10 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
         params: [],
         type: 'search',
         formats: searchFormats,
+        ...(promptLlmProvider ? { promptLlmProvider } : {}),
+        ...(promptLlmModel ? { promptLlmModel } : {}),
+        ...(promptLlmApiKey ? { promptLlmApiKey: encrypt(promptLlmApiKey) } : {}),
+        ...(promptLlmBaseUrl ? { promptLlmBaseUrl } : {}),
       },
       recording: {
         workflow: [

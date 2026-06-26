@@ -13,6 +13,7 @@ import Robot from './models/Robot';
 import { browserPool } from './server';
 import { Page } from 'playwright-core';
 import { capture } from './utils/analytics';
+import { decrypt } from './utils/auth';
 import { addGoogleSheetUpdateTask, processGoogleSheetUpdates } from './workflow-management/integrations/gsheet';
 import { addAirtableUpdateTask, processAirtableUpdates } from './workflow-management/integrations/airtable';
 import { io as serverIo } from './server';
@@ -289,7 +290,7 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
                 const llmConfig = {
                   provider: ((recording.recording_meta as any).promptLlmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama',
                   model: (recording.recording_meta as any).promptLlmModel as string | undefined,
-                  apiKey: (recording.recording_meta as any).promptLlmApiKey as string | undefined,
+                  apiKey: (recording.recording_meta as any).promptLlmApiKey ? decrypt((recording.recording_meta as any).promptLlmApiKey) : undefined,
                   baseUrl: (recording.recording_meta as any).promptLlmBaseUrl as string | undefined,
                 };
                 const summaryText = await summarizeMarkdown(markdown, llmConfig);
@@ -320,7 +321,7 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
               const llmConfig = {
                 provider: ((recording.recording_meta as any).promptLlmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama',
                 model: (recording.recording_meta as any).promptLlmModel as string | undefined,
-                apiKey: (recording.recording_meta as any).promptLlmApiKey as string | undefined,
+                apiKey: (recording.recording_meta as any).promptLlmApiKey ? decrypt((recording.recording_meta as any).promptLlmApiKey) : undefined,
                 baseUrl: (recording.recording_meta as any).promptLlmBaseUrl as string | undefined,
               };
               await run.update({ log: 'Running smart query...' });
@@ -442,7 +443,7 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
           llmConfig: {
             provider: ((recording.recording_meta as any).promptLlmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama',
             model: (recording.recording_meta as any).promptLlmModel as string | undefined,
-            apiKey: (recording.recording_meta as any).promptLlmApiKey as string | undefined,
+            apiKey: (recording.recording_meta as any).promptLlmApiKey ? decrypt((recording.recording_meta as any).promptLlmApiKey) : undefined,
             baseUrl: (recording.recording_meta as any).promptLlmBaseUrl as string | undefined,
           },
         });

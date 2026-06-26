@@ -16,6 +16,7 @@ import { addAirtableUpdateTask, airtableUpdateTasks, processAirtableUpdates } fr
 import { convertPageToMarkdown, convertPageToHTML, convertPageToLinks, convertPageToScreenshot, convertPageToText } from "../../markdownify/scrape";
 import { executeBrowserAgent } from "../../sdk/browserAgent";
 import { processRobotOutputFormats } from "../../utils/output-post-processor";
+import { decrypt } from "../../utils/auth";
 import { getInterpretationFailureReason, hasExpectedRobotOutput } from "../../utils/output-validation";
 import { addJob } from '../../storage/graphileWorker';
 import { QUEUE_NAMES } from '../../task-runner';
@@ -376,7 +377,7 @@ async function executeRun(id: string, userId: string) {
               const llmConfig = {
                 provider: ((recording.recording_meta as any).promptLlmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama',
                 model: (recording.recording_meta as any).promptLlmModel as string | undefined,
-                apiKey: (recording.recording_meta as any).promptLlmApiKey as string | undefined,
+                apiKey: (recording.recording_meta as any).promptLlmApiKey ? decrypt((recording.recording_meta as any).promptLlmApiKey) : undefined,
                 baseUrl: (recording.recording_meta as any).promptLlmBaseUrl as string | undefined,
               };
               const summaryText = await summarizeMarkdown(markdown, llmConfig);
@@ -416,7 +417,7 @@ async function executeRun(id: string, userId: string) {
             const llmConfig = {
               provider: ((recording.recording_meta as any).promptLlmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama',
               model: (recording.recording_meta as any).promptLlmModel as string | undefined,
-              apiKey: (recording.recording_meta as any).promptLlmApiKey as string | undefined,
+              apiKey: (recording.recording_meta as any).promptLlmApiKey ? decrypt((recording.recording_meta as any).promptLlmApiKey) : undefined,
               baseUrl: (recording.recording_meta as any).promptLlmBaseUrl as string | undefined,
             };
             logger.log('info', `Running smart query for scheduled scrape run ${plainRun.runId}`);
@@ -618,7 +619,7 @@ async function executeRun(id: string, userId: string) {
         llmConfig: {
           provider: ((recording.recording_meta as any).promptLlmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama',
           model: (recording.recording_meta as any).promptLlmModel as string | undefined,
-          apiKey: (recording.recording_meta as any).promptLlmApiKey as string | undefined,
+          apiKey: (recording.recording_meta as any).promptLlmApiKey ? decrypt((recording.recording_meta as any).promptLlmApiKey) : undefined,
           baseUrl: (recording.recording_meta as any).promptLlmBaseUrl as string | undefined,
         },
       });
