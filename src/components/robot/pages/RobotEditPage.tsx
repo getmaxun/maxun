@@ -30,6 +30,93 @@ import {
   OutputFormats,
 } from "../../../constants/outputFormats";
 
+type LlmProvider = 'anthropic' | 'openai' | 'ollama';
+type OpenAICompatiblePresetId = 'openai' | 'qianfan' | 'openrouter' | 'deepseek' | 'custom';
+
+interface OpenAICompatiblePreset {
+  label: string;
+  baseUrl: string;
+  baseUrlPlaceholder: string;
+  baseUrlHelperText: string;
+  modelPlaceholder: string;
+  modelHelperText: string;
+  apiKeyPlaceholder: string;
+  apiKeyHelperText: string;
+}
+
+const OLLAMA_DEFAULT_BASE_URL = 'http://localhost:11434';
+const OLLAMA_DOCKER_HINT = 'Defaults to http://localhost:11434. Use http://host.docker.internal:11434 if running via Docker';
+const DEFAULT_OPENAI_COMPATIBLE_PRESET_ID: OpenAICompatiblePresetId = 'openai';
+
+const OPENAI_COMPATIBLE_PRESETS: Record<OpenAICompatiblePresetId, OpenAICompatiblePreset> = {
+  openai: {
+    label: 'OpenAI',
+    baseUrl: 'https://api.openai.com/v1',
+    baseUrlPlaceholder: 'https://api.openai.com/v1',
+    baseUrlHelperText: 'Override only if your OpenAI-compatible endpoint is different.',
+    modelPlaceholder: 'e.g. gpt-4o',
+    modelHelperText: "Use an OpenAI model, or leave blank to use Maxun's default.",
+    apiKeyPlaceholder: 'OpenAI API key',
+    apiKeyHelperText: 'Use an OpenAI API key. If blank, Maxun falls back to OPENAI_API_KEY on the server.',
+  },
+  qianfan: {
+    label: 'Qianfan / ERNIE',
+    baseUrl: 'https://qianfan.baidubce.com/v2',
+    baseUrlPlaceholder: 'https://qianfan.baidubce.com/v2',
+    baseUrlHelperText: 'Use the Qianfan OpenAI-compatible endpoint, or override it for your account.',
+    modelPlaceholder: 'e.g. ernie-4.5-turbo-128k',
+    modelHelperText: 'Enter an ERNIE model available in your Qianfan account.',
+    apiKeyPlaceholder: 'Qianfan API key',
+    apiKeyHelperText: 'Use a Qianfan API key. If blank, Maxun falls back to OPENAI_API_KEY on the server.',
+  },
+  openrouter: {
+    label: 'OpenRouter',
+    baseUrl: 'https://openrouter.ai/api/v1',
+    baseUrlPlaceholder: 'https://openrouter.ai/api/v1',
+    baseUrlHelperText: 'Use the OpenRouter OpenAI-compatible endpoint, or override it for your account.',
+    modelPlaceholder: 'e.g. openai/gpt-4o-mini',
+    modelHelperText: 'Enter an OpenRouter model id from your enabled models.',
+    apiKeyPlaceholder: 'OpenRouter API key',
+    apiKeyHelperText: 'Use an OpenRouter API key. If blank, Maxun falls back to OPENAI_API_KEY on the server.',
+  },
+  deepseek: {
+    label: 'DeepSeek',
+    baseUrl: 'https://api.deepseek.com',
+    baseUrlPlaceholder: 'https://api.deepseek.com',
+    baseUrlHelperText: 'Use the DeepSeek OpenAI-compatible endpoint, or override it for your account.',
+    modelPlaceholder: 'e.g. deepseek-v4-flash',
+    modelHelperText: 'Enter a DeepSeek model, for example deepseek-v4-flash.',
+    apiKeyPlaceholder: 'DeepSeek API key',
+    apiKeyHelperText: 'Use a DeepSeek API key. If blank, Maxun falls back to OPENAI_API_KEY on the server.',
+  },
+  custom: {
+    label: 'Custom',
+    baseUrl: '',
+    baseUrlPlaceholder: 'https://api.example.com/v1',
+    baseUrlHelperText: 'Enter your provider OpenAI-compatible base URL.',
+    modelPlaceholder: 'e.g. provider-model-name',
+    modelHelperText: 'Enter the model name expected by your provider.',
+    apiKeyPlaceholder: 'Provider API key',
+    apiKeyHelperText: 'Use the API key for your OpenAI-compatible provider.',
+  },
+};
+
+const OPENAI_COMPATIBLE_PRESET_IDS: OpenAICompatiblePresetId[] = ['openai', 'qianfan', 'openrouter', 'deepseek', 'custom'];
+
+const getPreset = (id: OpenAICompatiblePresetId) => OPENAI_COMPATIBLE_PRESETS[id];
+
+const getModelPlaceholder = (provider: LlmProvider, presetId: OpenAICompatiblePresetId) => {
+  if (provider === 'ollama') return 'e.g. llama3.2-vision';
+  if (provider === 'anthropic') return 'e.g. claude-sonnet-4-6';
+  return getPreset(presetId).modelPlaceholder;
+};
+
+const getModelHelperText = (provider: LlmProvider, presetId: OpenAICompatiblePresetId) => {
+  if (provider === 'ollama') return 'Leave blank to use default: llama3.2-vision';
+  if (provider === 'anthropic') return 'Leave blank to use default: claude-sonnet-4-6';
+  return getPreset(presetId).modelHelperText;
+};
+
 interface RobotMeta {
   name: string;
   id: string;
@@ -42,6 +129,11 @@ interface RobotMeta {
   url?: string;
   formats?: OutputFormats[];
   isLLM?: boolean;
+  promptInstructions?: string;
+  promptLlmProvider?: LlmProvider;
+  promptLlmModel?: string;
+  promptLlmApiKey?: string;
+  promptLlmBaseUrl?: string;
 }
 
 interface RobotWorkflow {
@@ -157,6 +249,13 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
   const [replacementFile, setReplacementFile] = useState<File | null>(null);
   const [isReplacingFile, setIsReplacingFile] = useState(false);
 
+  const [llmProvider, setLlmProvider] = useState<LlmProvider>('ollama');
+  const [llmOpenAIPreset, setLlmOpenAIPreset] = useState<OpenAICompatiblePresetId>(DEFAULT_OPENAI_COMPATIBLE_PRESET_ID);
+  const [llmModel, setLlmModel] = useState('');
+  const [llmApiKey, setLlmApiKey] = useState('');
+  const [llmBaseUrl, setLlmBaseUrl] = useState('');
+  const [showLlmApiKey, setShowLlmApiKey] = useState(false);
+
   const isEmailPattern = (value: string): boolean => {
     return value.includes("@");
   };
@@ -196,6 +295,8 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
   }, []);
 
   useEffect(() => {
+    if (!robot) return;
+
     if (robot?.recording?.workflow) {
       const extractedCredentials = extractInitialCredentials(
         robot.recording.workflow
@@ -245,6 +346,19 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         );
       }
     }
+
+    const meta = robot.recording_meta;
+    if (meta?.promptLlmProvider) {
+      setLlmProvider(meta.promptLlmProvider);
+      if (meta.promptLlmProvider === 'openai') {
+        setLlmOpenAIPreset(DEFAULT_OPENAI_COMPATIBLE_PRESET_ID);
+        setLlmBaseUrl(meta.promptLlmBaseUrl || getPreset(DEFAULT_OPENAI_COMPATIBLE_PRESET_ID).baseUrl);
+      } else if (meta.promptLlmProvider === 'ollama') {
+        setLlmBaseUrl(meta.promptLlmBaseUrl || '');
+      }
+    }
+    if (meta?.promptLlmModel) setLlmModel(meta.promptLlmModel);
+    if (meta?.promptLlmApiKey) setLlmApiKey(meta.promptLlmApiKey);
   }, [robot]);
 
   const findScrapeListLimits = (workflow: WhereWhatPair[]) => {
@@ -259,7 +373,6 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
           action.args &&
           action.args.length > 0
         ) {
-          // Check if first argument has a limit property
           const arg = action.args[0];
           if (arg && typeof arg === "object" && "limit" in arg) {
             limits.push({
@@ -331,7 +444,6 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
 
         const selector = action.args[0];
 
-        // Handle full word type actions first
         if (
           action.action === "type" &&
           action.args?.length >= 2 &&
@@ -348,7 +460,6 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
           continue;
         }
 
-        // Handle character-by-character sequences (both type and press)
         if (
           (action.action === "type" || action.action === "press") &&
           action.args?.length >= 2 &&
@@ -544,7 +655,6 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         updatedWorkflow[pairIndex].what.length > actionIndex
       ) {
         const action = { ...updatedWorkflow[pairIndex].what[actionIndex] };
-        // update the standard name field
         action.name = newName;
 
         updatedWorkflow[pairIndex].what[actionIndex] = action;
@@ -886,6 +996,8 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
           style={{ marginBottom: "20px" }}
         />
 
+        {renderLlmConfigFields()}
+
         <Button
           onClick={() => setShowCrawlAdvanced(!showCrawlAdvanced)}
           sx={{
@@ -1090,6 +1202,8 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
             <MenuItem value="year">Past Year</MenuItem>
           </Select>
         </FormControl>
+
+        {renderLlmConfigFields()}
       </>
     );
   };
@@ -1200,6 +1314,148 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
     );
   };
 
+  const shouldShowLlmConfig = () => {
+    const type = robot?.recording_meta?.type;
+    if (!type) return false;
+    if (robot?.recording_meta?.isLLM) return true;
+    if (type === 'scrape' && (robot?.recording_meta?.promptInstructions || scrapeOutputFormats.includes('summary' as OutputFormats))) return true;
+    if (type === 'crawl') return crawlOutputFormats.includes('summary' as OutputFormats);
+    if (type === 'search') return searchOutputFormats.includes('summary' as OutputFormats);
+    return false;
+  };
+
+  const renderLlmConfigFields = () => {
+    if (!shouldShowLlmConfig()) return null;
+
+    const preset = getPreset(llmOpenAIPreset);
+
+    return (
+      <>
+        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+          <FormControl sx={{ flex: 1 }}>
+            <InputLabel>LLM Provider</InputLabel>
+            <Select
+              value={llmProvider}
+              label="LLM Provider"
+              onChange={(e) => {
+                const p = e.target.value as LlmProvider;
+                setLlmProvider(p);
+                setLlmModel('');
+                setLlmApiKey('');
+                if (p === 'ollama') setLlmBaseUrl('');
+                else if (p === 'openai') setLlmBaseUrl(getPreset(llmOpenAIPreset).baseUrl);
+                else setLlmBaseUrl('');
+              }}
+            >
+              <MenuItem value="ollama">Ollama (Local)</MenuItem>
+              <MenuItem value="anthropic">Anthropic (Claude)</MenuItem>
+              <MenuItem value="openai">OpenAI-compatible</MenuItem>
+            </Select>
+          </FormControl>
+
+          <TextField
+            sx={{ flex: 1 }}
+            value={llmModel}
+            label="Model"
+            placeholder={getModelPlaceholder(llmProvider, llmOpenAIPreset)}
+            helperText={getModelHelperText(llmProvider, llmOpenAIPreset)}
+            onChange={(e) => setLlmModel(e.target.value)}
+            FormHelperTextProps={{ sx: { ml: 0.5 } }}
+          />
+        </Box>
+
+        {llmProvider === 'openai' && (
+          <>
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>OpenAI-compatible Preset</InputLabel>
+              <Select
+                value={llmOpenAIPreset}
+                label="OpenAI-compatible Preset"
+                onChange={(e) => {
+                  const id = e.target.value as OpenAICompatiblePresetId;
+                  setLlmOpenAIPreset(id);
+                  setLlmModel('');
+                  setLlmBaseUrl(getPreset(id).baseUrl);
+                  setLlmApiKey('');
+                }}
+              >
+                {OPENAI_COMPATIBLE_PRESET_IDS.map((id) => (
+                  <MenuItem key={id} value={id}>{OPENAI_COMPATIBLE_PRESETS[id].label}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <TextField
+              placeholder={preset.baseUrlPlaceholder}
+              fullWidth
+              value={llmBaseUrl}
+              onChange={(e) => setLlmBaseUrl(e.target.value)}
+              label="Base URL"
+              helperText={preset.baseUrlHelperText}
+              sx={{ mb: 2 }}
+              FormHelperTextProps={{ sx: { ml: 0.5 } }}
+            />
+
+            <TextField
+              placeholder={preset.apiKeyPlaceholder}
+              fullWidth
+              type={showLlmApiKey ? 'text' : 'password'}
+              value={llmApiKey}
+              onChange={(e) => setLlmApiKey(e.target.value)}
+              label="API Key"
+              helperText={preset.apiKeyHelperText}
+              sx={{ mb: 2 }}
+              FormHelperTextProps={{ sx: { ml: 0.5 } }}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton onClick={() => setShowLlmApiKey(p => !p)} edge="end">
+                      {showLlmApiKey ? <Visibility /> : <VisibilityOff />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </>
+        )}
+
+        {llmProvider === 'anthropic' && (
+          <TextField
+            placeholder="Anthropic API key"
+            fullWidth
+            type={showLlmApiKey ? 'text' : 'password'}
+            value={llmApiKey}
+            onChange={(e) => setLlmApiKey(e.target.value)}
+            label="API Key (Optional if set in .env)"
+            sx={{ mb: 2 }}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton onClick={() => setShowLlmApiKey(p => !p)} edge="end">
+                    {showLlmApiKey ? <Visibility /> : <VisibilityOff />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
+        )}
+
+        {llmProvider === 'ollama' && (
+          <TextField
+            placeholder={OLLAMA_DEFAULT_BASE_URL}
+            fullWidth
+            value={llmBaseUrl}
+            onChange={(e) => setLlmBaseUrl(e.target.value)}
+            label="Ollama Base URL (Optional)"
+            helperText={OLLAMA_DOCKER_HINT}
+            sx={{ mb: 2 }}
+            FormHelperTextProps={{ sx: { ml: 0.5 } }}
+          />
+        )}
+      </>
+    );
+  };
+
   const handleSave = async () => {
     if (!robot) return;
 
@@ -1215,6 +1471,16 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
     ) {
       notify("error", "Please select at least one output format");
       return;
+    }
+
+    if (shouldShowLlmConfig() && llmProvider !== 'ollama' && !llmApiKey.trim()) {
+      const originalProvider = robot.recording_meta.promptLlmProvider;
+      const providerChanged = originalProvider !== llmProvider;
+      const previouslyHadNonOllamaKey = originalProvider && originalProvider !== 'ollama';
+      if (!previouslyHadNonOllamaKey || providerChanged) {
+        notify("error", `An API key is required when using ${llmProvider === 'anthropic' ? 'Anthropic' : 'an OpenAI-compatible'} provider`);
+        return;
+      }
     }
 
     const type = robot.recording_meta.type;
@@ -1302,6 +1568,13 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
               : undefined,
       };
 
+      if (shouldShowLlmConfig()) {
+        payload.promptLlmProvider = llmProvider;
+        payload.promptLlmModel = llmModel.trim() || undefined;
+        payload.promptLlmApiKey = llmApiKey || undefined;
+        payload.promptLlmBaseUrl = llmBaseUrl.trim() || undefined;
+      }
+
       const success = await updateRecording(robot.recording_meta.id, payload);
 
       if (success) {
@@ -1371,6 +1644,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
               {renderScrapeListLimitFields()}
               {renderActionNameFields()}
               {renderAllCredentialFields()}
+              {robot?.recording_meta?.type !== 'crawl' && robot?.recording_meta?.type !== 'search' && renderLlmConfigFields()}
               {renderDocumentFileSection()}
             </>
           )}

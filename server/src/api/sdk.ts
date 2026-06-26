@@ -15,6 +15,7 @@ import { capture } from "../utils/analytics";
 import { handleRunRecording } from "./record";
 import { WorkflowEnricher } from "../sdk/workflowEnricher";
 import { cancelScheduledWorkflow, scheduleWorkflow } from '../storage/schedule';
+import { encrypt } from '../utils/auth';
 import { computeNextRun } from "../utils/schedule";
 import moment from 'moment-timezone';
 import {
@@ -286,7 +287,7 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
             ...(promptInstructionsForMeta ? { promptInstructions: promptInstructionsForMeta } : {}),
             ...((workflowFile.meta as any).promptLlmProvider ? { promptLlmProvider: (workflowFile.meta as any).promptLlmProvider } : {}),
             ...((workflowFile.meta as any).promptLlmModel ? { promptLlmModel: (workflowFile.meta as any).promptLlmModel } : {}),
-            ...((workflowFile.meta as any).promptLlmApiKey ? { promptLlmApiKey: (workflowFile.meta as any).promptLlmApiKey } : {}),
+            ...((workflowFile.meta as any).promptLlmApiKey ? { promptLlmApiKey: encrypt((workflowFile.meta as any).promptLlmApiKey) } : {}),
             ...((workflowFile.meta as any).promptLlmBaseUrl ? { promptLlmBaseUrl: (workflowFile.meta as any).promptLlmBaseUrl } : {}),
         };
 
