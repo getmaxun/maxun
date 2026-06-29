@@ -874,8 +874,8 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                   variant="outlined"
                   onClick={handleBackCaptureList}
                   sx={{
-                    color: '#ff00c3 !important',
-                    borderColor: '#ff00c3 !important',
+                    color: '#4b4848 !important',
+                    borderColor: '#858585 !important',
                     backgroundColor: 'whitesmoke !important',
                   }}
                 >
@@ -1153,8 +1153,8 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                 color="error"
                 onClick={discardGetText}
                 sx={{
-                  color: '#ff00c3 !important',
-                  borderColor: '#ff00c3 !important',
+                  color: 'red !important',
+                  borderColor: 'red !important',
                   backgroundColor: 'whitesmoke !important',
                 }}
               >
@@ -1180,8 +1180,8 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                 setActiveAction('none');
               }}
               sx={{
-                color: '#ff00c3 !important',
-                borderColor: '#ff00c3 !important',
+                color: 'red !important',
+                borderColor: 'red !important',
                 backgroundColor: 'whitesmoke !important',
               }}
             >

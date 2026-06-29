@@ -89,6 +89,8 @@ export default class Interpreter extends EventEmitter {
 
   private scrapeListCounter: number = 0;
 
+  private pageRequestCounters = new WeakMap<Page, { pending: number }>();
+
   private totalActions: number = 0;
 
   private executedActions: number = 0;
@@ -406,7 +408,6 @@ export default class Interpreter extends EventEmitter {
   private blockNeedsVisualRender(steps: What[]): boolean {
     return steps.some((s) => {
       if (s.action === 'screenshot') return true;
-      if (s.action === 'scrapeList' || s.action === 'scrapeSchema') return true;
 
       const firstArg = Array.isArray(s.args) ? s.args[0] : s.args;
       if (!firstArg || typeof firstArg !== 'object') return false;
@@ -441,26 +442,30 @@ export default class Interpreter extends EventEmitter {
   }
 
   /**
-   * Helper to wait for a "Network Quiet Window" (no meaningful activity for X ms).
+   * Attaches a one-time set of listeners to a page that track how many XHR/fetch
+   * requests are currently in flight. Used by waitForPageReady's fallback
+   * path as a faster, more accurate readiness signal than a fixed network-quiet
+   * window. Safe to call repeatedly — it's a no-op after the first call per page.
    */
-  private async waitForNetworkQuiet(page: Page, timeout: number = 4000, quietWindow: number = 600): Promise<void> {
-    let lastRequestTime = Date.now();
-    const onRequest = () => { lastRequestTime = Date.now(); };
-    page.on('request', onRequest);
-    page.on('requestfinished', onRequest);
-    page.on('requestfailed', onRequest);
-    try {
-      const checkInterval = 100;
-      const start = Date.now();
-      while (Date.now() - start < timeout) {
-        if (Date.now() - lastRequestTime > quietWindow) return;
-        await new Promise(r => setTimeout(r, checkInterval));
+  private ensurePageListeners(page: Page): void {
+    if (this.pageRequestCounters.has(page)) return;
+    const counter = { pending: 0 };
+    this.pageRequestCounters.set(page, counter);
+    page.on('request', (req) => {
+      if (req.resourceType() === 'xhr' || req.resourceType() === 'fetch') {
+        counter.pending++;
       }
-    } finally {
-      page.off('request', onRequest);
-      page.off('requestfinished', onRequest);
-      page.off('requestfailed', onRequest);
-    }
+    });
+    page.on('requestfinished', (req) => {
+      if (req.resourceType() === 'xhr' || req.resourceType() === 'fetch') {
+        counter.pending = Math.max(0, counter.pending - 1);
+      }
+    });
+    page.on('requestfailed', (req) => {
+      if (req.resourceType() === 'xhr' || req.resourceType() === 'fetch') {
+        counter.pending = Math.max(0, counter.pending - 1);
+      }
+    });
   }
 
   /**
@@ -489,6 +494,59 @@ export default class Interpreter extends EventEmitter {
   }
 
   /**
+   * Best-effort overlay/modal dismissal. Called before reading page content in the
+   * crawl and search-scrape robot types (which have no recorded close-button clicks).
+   * Silently swallows all errors so it can never break a run.
+   */
+  private async dismissOverlays(page: Page): Promise<void> {
+    try {
+      await page.keyboard.press('Escape').catch(() => {});
+      await new Promise(r => setTimeout(r, 400));
+      const clicked = await page.evaluate(() => {
+        function isVisible(el: Element): boolean {
+          const rect = (el as HTMLElement).getBoundingClientRect();
+          if (rect.width === 0 || rect.height === 0) return false;
+          const style = window.getComputedStyle(el);
+          return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+        }
+        const SELECTORS = [
+          '[role="dialog"] [aria-label*="close" i]',
+          '[role="dialog"] [aria-label*="关闭"]',
+          '[role="alertdialog"] [aria-label*="close" i]',
+          '[role="alertdialog"] button',
+          '[class*="modal" i] [class*="close" i]',
+          '[class*="popup" i] [class*="close" i]',
+          '[class*="dialog" i] [class*="close" i]',
+          '[class*="overlay" i] [class*="close" i]',
+          '[class*="modal" i] [class*="dismiss" i]',
+          'button[aria-label*="close" i]',
+          'button[aria-label*="关闭"]',
+          'button[class*="close" i]',
+          '.close-button', '.btn-close', '.modal__close',
+        ];
+        for (const sel of SELECTORS) {
+          try {
+            const el = document.querySelector(sel);
+            if (el && isVisible(el)) { (el as HTMLElement).click(); return true; }
+          } catch {}
+        }
+
+        const CLOSE_LABELS = new Set(['×','✕','✖','x','X','Close','close','关闭','Dismiss','dismiss','Got it','知道了','我知道了']);
+        const candidates = Array.from(document.querySelectorAll('button, [role="button"], a[href="#"]'));
+        for (const el of candidates) {
+          const text = (el as HTMLElement).innerText?.trim() || el.getAttribute('aria-label') || '';
+          if (CLOSE_LABELS.has(text) && isVisible(el)) {
+            (el as HTMLElement).click();
+            return true;
+          }
+        }
+        return false;
+      }).catch(() => false);
+      if (clicked) await new Promise(r => setTimeout(r, 700));
+    } catch {}
+  }
+
+  /**
    * Function to wait for images to load.
    */
   private async waitForImagesLoaded(page: Page): Promise<void> {
@@ -498,44 +556,138 @@ export default class Interpreter extends EventEmitter {
     ).catch(() => {});
   }
 
-  private async waitForDynamicStability(page: Page, upcomingWorkflow: Workflow = []): Promise<void> {
+  /**
+   * Waits for the page to be ready for extraction/scraping.
+   *
+   * Fast path: if the upcoming workflow names a specific extraction selector,
+   * wait for that selector directly — this is the most accurate and usually the
+   * quickest signal available, and is unique to this interpreter (mx-cloud's own
+   * copy of this lookup was unused dead code).
+   *
+   * Fallback path: when no target selector is known (or it doesn't show up in
+   * time), wait via requestIdleCallback plus a live count of in-flight XHR/fetch
+   * requests (tracked by ensurePageListeners) instead of a fixed network-quiet
+   * window and DOM-text-length polling — faster and more deterministic.
+   */
+  private static readonly PAGE_READY_TIMEOUT_MS = 15000;
+
+  private async waitForPageReady(page: Page, upcomingWorkflow: Workflow = [], contentSelector?: string | (string | undefined)[]): Promise<void> {
+    this.ensurePageListeners(page);
+    const counter = this.pageRequestCounters.get(page)!;
     try {
       const targetSelector = this.getUpcomingExtractionSelector(upcomingWorkflow);
-
-      const signals: Promise<any>[] = [
-        this.waitForNetworkQuiet(page, 10000, 1000),
-        page.evaluate(async () => {
-          let lastLen = 0;
-          let stableIterations = 0;
-
-          for (let i = 0; i < 60; i++) {
-            const currentLen = document.body.innerText.length;
-            if (currentLen > 200 && currentLen === lastLen) {
-              stableIterations++;
-            } else {
-              stableIterations = 0;
-            }
-            if (stableIterations >= 8) return true;
-            lastLen = currentLen;
-            await new Promise(r => setTimeout(r, 100));
-          }
-          return false;
-        }).catch(() => {}),
-        new Promise(resolve => setTimeout(resolve, 10000))
-      ];
 
       if (targetSelector) {
         const found = await page.waitForSelector(targetSelector, { timeout: 8000 }).catch(() => null);
         if (found) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise(resolve => setTimeout(resolve, 200));
+          if (contentSelector) {
+            await this.waitForContentSelector(page, contentSelector);
+          }
           return;
         }
       }
 
-      await Promise.race(signals);
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await page.evaluate(() => new Promise<void>((resolve) => {
+        if ('requestIdleCallback' in window) {
+          (window as any).requestIdleCallback(() => resolve(), { timeout: 3000 });
+        } else {
+          setTimeout(resolve, 300);
+        }
+      })).catch(() => {});
+
+      const deadline = Date.now() + 8000;
+      while (counter.pending > 0 && Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 50));
+      }
+
+      await page.evaluate(() => new Promise<void>((resolve) => {
+        if ('requestIdleCallback' in window) {
+          (window as any).requestIdleCallback(() => resolve(), { timeout: 2000 });
+        } else {
+          setTimeout(resolve, 200);
+        }
+      })).catch(() => {});
+
+      if (contentSelector) {
+        await this.waitForContentSelector(page, contentSelector);
+      }
     } catch (e) {
     }
+  }
+
+  /**
+   * Polls the live DOM for one or more selectors until at least `minCount`
+   * matching elements exist AND that count has been stable (unchanged) for
+   * `stabilityWindowMs`, or until `timeoutMs` elapses — whichever comes first.
+   *
+   * Returns `true` if the content was found (and stable), `false` if the
+   * timeout elapsed first. Never throws.
+   */
+  private async waitForContentSelector(
+    page: Page,
+    selector: string | (string | undefined)[],
+    options: { timeoutMs?: number; minCount?: number; pollIntervalMs?: number; stabilityWindowMs?: number } = {}
+  ): Promise<boolean> {
+    const selectors = (Array.isArray(selector) ? selector : [selector])
+      .filter((s): s is string => typeof s === 'string' && s.trim() !== '');
+    if (selectors.length === 0) return true;
+
+    const timeoutMs = options.timeoutMs ?? Interpreter.PAGE_READY_TIMEOUT_MS;
+    const minCount = options.minCount ?? 1;
+    const pollIntervalMs = options.pollIntervalMs ?? 250;
+    const stabilityWindowMs = options.stabilityWindowMs ?? 400;
+    const deadline = Date.now() + timeoutMs;
+
+    const isXPathSelector = (sel: string): boolean =>
+      sel.startsWith('//') || sel.startsWith('./') || sel.includes('::') ||
+      sel.includes('contains(@') || sel.includes('@class=') || sel.includes('@id=');
+
+    const countForSelector = async (sel: string): Promise<number> => {
+      try {
+        if (isXPathSelector(sel)) {
+          return await page.evaluate((xp: string) => {
+            try {
+              const result = document.evaluate(xp, document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+              return result.snapshotLength;
+            } catch {
+              return 0;
+            }
+          }, sel);
+        }
+        return await page.evaluate((cssSel: string) => {
+          try {
+            return document.querySelectorAll(cssSel).length;
+          } catch {
+            return 0;
+          }
+        }, sel);
+      } catch {
+        return 0;
+      }
+    };
+
+    let lastCount = -1;
+    let stableSince = 0;
+
+    while (Date.now() < deadline) {
+      if (this.isAborted) return false;
+
+      const counts = await Promise.all(selectors.map(countForSelector));
+      const total = counts.reduce((a, b) => a + b, 0);
+
+      if (total >= minCount && total === lastCount) {
+        if (stableSince === 0) stableSince = Date.now();
+        if (Date.now() - stableSince >= stabilityWindowMs) return true;
+      } else {
+        lastCount = total;
+        stableSince = 0;
+      }
+
+      await new Promise((r) => setTimeout(r, pollIntervalMs));
+    }
+
+    return false;
   }
 
   /**
@@ -639,7 +791,7 @@ export default class Interpreter extends EventEmitter {
           this.options.debugChannel.setActionType('scrape');
         }
 
-        await this.waitForDynamicStability(page, [{
+        await this.waitForPageReady(page, [{
           action: 'scrape',
           args: [selector]
         } as any]);
@@ -660,10 +812,14 @@ export default class Interpreter extends EventEmitter {
           this.options.debugChannel.setActionType('scrapeSchema');
         }
 
-        await this.waitForDynamicStability(page, [{
+        const schemaSelectors = Object.values(schema).flatMap((fieldConfig: any) => [
+          fieldConfig?.selector,
+          fieldConfig?.fallbackSelector,
+        ]);
+        await this.waitForPageReady(page, [{
           action: 'scrapeSchema',
           args: [schema]
-        } as any]);
+        } as any], schemaSelectors);
 
         if (this.options.mode && this.options.mode === 'editor') {
           await this.options.serializableCallback({});
@@ -766,14 +922,23 @@ export default class Interpreter extends EventEmitter {
           let paginationUsed = false;
 
           if (!config.pagination) {
-            scrapeResults = await page.evaluate((cfg) => {
-              try {
-                return window.scrapeList(cfg);
-              } catch (error: any) {
-                console.warn('ScrapeList evaluation failed:', error.message);
-                return [];
+            const SCRAPE_RETRIES = 2;
+            const SCRAPE_RETRY_DELAY = 500;
+            for (let attempt = 0; attempt <= SCRAPE_RETRIES; attempt++) {
+              scrapeResults = await page.evaluate((cfg) => {
+                try {
+                  return window.scrapeList(cfg);
+                } catch (error: any) {
+                  console.warn('ScrapeList evaluation failed:', error.message);
+                  return [];
+                }
+              }, config);
+              if (scrapeResults.length > 0) break;
+              if (attempt < SCRAPE_RETRIES) {
+                this.log(`ScrapeList returned empty on attempt ${attempt + 1}, retrying in ${SCRAPE_RETRY_DELAY}ms...`, Level.WARN);
+                await new Promise(r => setTimeout(r, SCRAPE_RETRY_DELAY));
               }
-            }, config);
+            }
           } else {
             paginationUsed = true;
             scrapeResults = await this.handlePagination(page, config, actionName);
@@ -1312,7 +1477,8 @@ export default class Interpreter extends EventEmitter {
                 throw new Error(`Navigation failed: ${err.message}`);
               });
 
-              await this.waitForDynamicStability(page, currentWorkflow || []);
+              await this.waitForPageReady(page, currentWorkflow || []);
+              await this.dismissOverlays(page);
 
               const pageResult = await scrapePageContent(url);
               pageResult.metadata.depth = depth;
@@ -1668,7 +1834,8 @@ export default class Interpreter extends EventEmitter {
                 this.log(`Failed to navigate to ${result.url}, skipping...`, Level.WARN);
               });
 
-              await this.waitForDynamicStability(page, currentWorkflow || []);
+              await this.waitForPageReady(page, currentWorkflow || []);
+              await this.dismissOverlays(page);
 
               const pageData = await page.evaluate(() => {
                 const getMeta = (name: string) => {
@@ -1887,10 +2054,33 @@ export default class Interpreter extends EventEmitter {
             }
             if (!existingOpts.timeout) existingOpts.timeout = 15000;
 
-            await executeAction(invokee, methodName, [url, existingOpts]);
-            
+            try {
+              await executeAction(invokee, methodName, [url, existingOpts]);
+            } catch (gotoError: any) {
+              const TRANSIENT_GOTO_ERROR_PATTERNS = [
+                'ERR_NAME_NOT_RESOLVED',
+                'ERR_CONNECTION_REFUSED',
+                'ERR_CONNECTION_TIMED_OUT',
+                'ERR_CONNECTION_CLOSED',
+                'ERR_CONNECTION_RESET',
+                'ERR_INTERNET_DISCONNECTED',
+                'ERR_ADDRESS_UNREACHABLE',
+                'ERR_PROXY_CONNECTION_FAILED',
+                'ERR_TUNNEL_CONNECTION_FAILED',
+                'ERR_NETWORK_CHANGED',
+              ];
+              const isTransient = TRANSIENT_GOTO_ERROR_PATTERNS.some(pattern => gotoError.message?.includes(pattern));
+              if (isTransient) {
+                this.log(`goto failed: ${gotoError.message} — retrying once after backoff`, Level.WARN);
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                await executeAction(invokee, methodName, [url, existingOpts]);
+              } else {
+                throw gotoError;
+              }
+            }
+
             if (needsDataSoon) {
-              await this.waitForDynamicStability(page, (currentWorkflow || []).slice(0, -1));
+              await this.waitForPageReady(page, (currentWorkflow || []).slice(0, -1));
             }
           } catch (error: any) {
             this.log(`goto failed: ${error.message}`, Level.WARN);
@@ -1919,11 +2109,11 @@ export default class Interpreter extends EventEmitter {
             await executeAction(invokee, methodName, args);
             
             if (needsDataSoon) {
-              await this.waitForDynamicStability(page, (currentWorkflow || []).slice(0, -1));
+              await this.waitForPageReady(page, (currentWorkflow || []).slice(0, -1));
             }
           } catch (error: any) {
             await executeAction(invokee, methodName, ['domcontentloaded', { timeout: 10000 }]);
-            await this.waitForDynamicStability(page, (currentWorkflow || []).slice(0, -1));
+            await this.waitForPageReady(page, (currentWorkflow || []).slice(0, -1));
           }
         } else if (methodName === 'click') {
           try {
@@ -1952,11 +2142,11 @@ export default class Interpreter extends EventEmitter {
     }
   }
 
-  private async handlePagination(page: Page, config: { 
-    listSelector: string, 
-    fields: any, 
-    limit?: number, 
-    pagination: any 
+  private async handlePagination(page: Page, config: {
+    listSelector: string,
+    fields: any,
+    limit?: number,
+    pagination: any
   }, providedActionName: string = "") {
     if (this.isAborted) {
       this.log('Workflow aborted, stopping pagination', Level.WARN);
@@ -1981,6 +2171,8 @@ export default class Interpreter extends EventEmitter {
     let previousHeight = 0;
     let scrapedItems: Set<string> = new Set<string>();
     let visitedUrls: Set<string> = new Set<string>();
+    let visitedSignatures: Set<string> = new Set<string>();
+    
     const MAX_RETRIES = 3;
     const RETRY_DELAY = 1000;
     const MAX_UNCHANGED_RESULTS = 5;
@@ -1995,10 +2187,10 @@ export default class Interpreter extends EventEmitter {
           return;
         }
 
-        await this.waitForDynamicStability(page, [{
+        await this.waitForPageReady(page, [{
           action: 'scrapeList',
           args: [config]
-        } as any]);
+        } as any], [config.listSelector]);
 
         const evaluationPromise = page.evaluate((cfg) => window.scrapeList(cfg), config);
         const timeoutPromise = new Promise<any[]>((_, reject) =>
@@ -2012,8 +2204,12 @@ export default class Interpreter extends EventEmitter {
           debugLog(`Page evaluation failed: ${error.message}`);
           return;
         }
+        const sortedKeys = results.length > 0 ? Object.keys(results[0]).sort() : [];
         const newResults = results.filter(item => {
-            const uniqueKey = JSON.stringify(item);
+            const uniqueKey = sortedKeys.map(k => {
+              const v = (item as any)[k];
+              return v == null ? '' : (typeof v === 'object' ? JSON.stringify(v) : String(v));
+            }).join('\x00');
             if (scrapedItems.has(uniqueKey)) return false;
             scrapedItems.add(uniqueKey);
             return true;
@@ -2360,6 +2556,9 @@ export default class Interpreter extends EventEmitter {
           
             const beforeSignature = await captureContentSignature();
             debugLog(`Before click: ${beforeSignature.itemCount} items`);
+            if (beforeSignature.firstItems) {
+              visitedSignatures.add(beforeSignature.firstItems);
+            }
           
             while (retryCount < MAX_RETRIES && !paginationSuccess) {
               try {
@@ -2408,18 +2607,24 @@ export default class Interpreter extends EventEmitter {
                   const newUrl = page.url();
                   const afterSignature = await captureContentSignature();
                   
-                  if (newUrl !== currentUrl) {
+                  if (newUrl !== currentUrl && !visitedUrls.has(newUrl)) {
                     debugLog(`URL changed to ${newUrl}`);
                     visitedUrls.add(newUrl);
-                    paginationSuccess = true;
-                  } 
-                  else if (afterSignature.firstItems !== beforeSignature.firstItems) {
-                    debugLog("Content changed without URL change");
+                    if (afterSignature.firstItems) visitedSignatures.add(afterSignature.firstItems);
                     paginationSuccess = true;
                   }
-                  else if (afterSignature.itemCount !== beforeSignature.itemCount) {
-                    debugLog(`Item count changed from ${beforeSignature.itemCount} to ${afterSignature.itemCount}`);
+                  else if (afterSignature.firstItems !== beforeSignature.firstItems && !visitedSignatures.has(afterSignature.firstItems)) {
+                    debugLog("Content changed without URL change");
+                    if (afterSignature.firstItems) visitedSignatures.add(afterSignature.firstItems);
                     paginationSuccess = true;
+                  }
+                  else if (afterSignature.itemCount !== beforeSignature.itemCount && !visitedSignatures.has(afterSignature.firstItems)) {
+                    debugLog(`Item count changed from ${beforeSignature.itemCount} to ${afterSignature.itemCount}`);
+                    if (afterSignature.firstItems) visitedSignatures.add(afterSignature.firstItems);
+                    paginationSuccess = true;
+                  }
+                  else {
+                    debugLog('Pagination appears to have cycled back to previously seen content/URL — treating as no progress');
                   }
                 }
               } catch (error: any) {

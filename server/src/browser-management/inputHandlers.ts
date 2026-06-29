@@ -311,7 +311,15 @@ const handleChangeUrl = async (activeBrowser: RemoteBrowser, page: Page, url: st
 
             try {
                 await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
-                await page.waitForTimeout(500); 
+
+                const finalUrl = page.url();
+                if (finalUrl.startsWith('chrome-error://') || finalUrl.startsWith('chrome://chromewebdata')) {
+                  logger.warn(`Navigation to ${url} silently landed on chrome error page: ${finalUrl}`);
+                  activeBrowser.emitBrowserPageError(url, 'The page failed to load due to a network error. Please try again later.');
+                  return;
+                }
+
+                await page.waitForTimeout(500);
                 logger.log("debug", `Went to ${url}`);
             } catch (e) {
                 const { message } = e as Error;
