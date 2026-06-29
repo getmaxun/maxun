@@ -1309,6 +1309,8 @@ export default class Interpreter extends EventEmitter {
               const elementsWithMxId = document.querySelectorAll('[data-mx-id]');
               elementsWithMxId.forEach(el => el.removeAttribute('data-mx-id'));
 
+              document.querySelectorAll("input[type='hidden']").forEach(el => el.remove());
+
               const html = document.documentElement.outerHTML;
               const links = Array.from(document.querySelectorAll('a')).map(a => a.href);
               const allMetadata = getAllMeta();
@@ -1861,6 +1863,8 @@ export default class Interpreter extends EventEmitter {
 
                 const elementsWithMxId = document.querySelectorAll('[data-mx-id]');
                 elementsWithMxId.forEach(el => el.removeAttribute('data-mx-id'));
+
+                document.querySelectorAll("input[type='hidden']").forEach(el => el.remove());
 
                 const html = document.documentElement.outerHTML;
                 const links = Array.from(document.querySelectorAll('a')).map(a => a.href);

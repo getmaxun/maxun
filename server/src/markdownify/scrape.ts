@@ -181,7 +181,8 @@ export async function convertPageToMarkdown(url: string, page: Page): Promise<st
         "meta",
         "iframe",
         "object",
-        "embed"
+        "embed",
+        "input[type='hidden']"
       ];
 
       selectors.forEach(sel => {
@@ -277,7 +278,8 @@ export async function convertPageToHTML(url: string, page: Page): Promise<string
         "meta",
         "iframe",
         "object",
-        "embed"
+        "embed",
+        "input[type='hidden']"
       ];
 
       selectors.forEach(sel => {
