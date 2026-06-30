@@ -2,29 +2,48 @@ import { Page } from "playwright-core";
 import { parseMarkdown } from "./markdown";
 import logger from "../logger";
 
-async function waitForStability(page: Page): Promise<void> {
+const pageRequestCounters = new WeakMap<Page, { pending: number }>();
+
+function ensurePageListeners(page: Page): { pending: number } {
+  if (pageRequestCounters.has(page)) return pageRequestCounters.get(page)!;
+  const counter = { pending: 0 };
+  pageRequestCounters.set(page, counter);
+  page.on('request', (req) => {
+    if (req.resourceType() === 'xhr' || req.resourceType() === 'fetch') counter.pending++;
+  });
+  page.on('requestfinished', (req) => {
+    if (req.resourceType() === 'xhr' || req.resourceType() === 'fetch') counter.pending = Math.max(0, counter.pending - 1);
+  });
+  page.on('requestfailed', (req) => {
+    if (req.resourceType() === 'xhr' || req.resourceType() === 'fetch') counter.pending = Math.max(0, counter.pending - 1);
+  });
+  return counter;
+}
+
+async function waitForPageReady(page: Page): Promise<void> {
   try {
-    await Promise.race([
-      page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {}),
-      page.evaluate(async () => {
-        let lastLen = 0;
-        let stableIterations = 0;
-        for (let i = 0; i < 60; i++) {
-          const currentLen = document.body?.innerText?.length ?? 0;
-          if (currentLen > 200 && currentLen === lastLen) {
-            stableIterations++;
-          } else {
-            stableIterations = 0;
-          }
-          if (stableIterations >= 8) return true;
-          lastLen = currentLen;
-          await new Promise(r => setTimeout(r, 100));
-        }
-        return false;
-      }).catch(() => {}),
-      new Promise(resolve => setTimeout(resolve, 10000))
-    ]);
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    const counter = ensurePageListeners(page);
+
+    await page.evaluate(() => new Promise<void>((resolve) => {
+      if ('requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(() => resolve(), { timeout: 3000 });
+      } else {
+        setTimeout(resolve, 300);
+      }
+    })).catch(() => {});
+
+    const deadline = Date.now() + 8000;
+    while (counter.pending > 0 && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 50));
+    }
+
+    await page.evaluate(() => new Promise<void>((resolve) => {
+      if ('requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(() => resolve(), { timeout: 2000 });
+      } else {
+        setTimeout(resolve, 200);
+      }
+    })).catch(() => {});
   } catch {}
 }
 
@@ -113,7 +132,7 @@ export async function convertPageToMarkdown(url: string, page: Page): Promise<st
     logger.log('info', `[Scrape] Using existing page instance for markdown conversion of ${url}`);
 
     await gotoWithFallback(page, url);
-    await waitForStability(page);
+    await waitForPageReady(page);
     await dismissOverlays(page);
 
     const cleanedHtml = await page.evaluate(() => {
@@ -220,7 +239,7 @@ export async function convertPageToHTML(url: string, page: Page): Promise<string
     logger.log('info', `[Scrape] Using existing page instance for HTML conversion of ${url}`);
 
     await gotoWithFallback(page, url);
-    await waitForStability(page);
+    await waitForPageReady(page);
     await dismissOverlays(page);
 
     const cleanedHtml = await page.evaluate(() => {
@@ -309,7 +328,7 @@ export async function convertPageToText(url: string, page: Page): Promise<string
     logger.log('info', `[Scrape] Using existing page instance for text conversion of ${url}`);
 
     await gotoWithFallback(page, url);
-    await waitForStability(page);
+    await waitForPageReady(page);
     await dismissOverlays(page);
 
     const text = await page.evaluate(() => {
@@ -335,7 +354,7 @@ export async function convertPageToLinks(url: string, page: Page): Promise<strin
     logger.log('info', `Extracting links from ${url}`);
 
     await gotoWithFallback(page, url);
-    await waitForStability(page);
+    await waitForPageReady(page);
     await dismissOverlays(page);
 
     const links = await page.evaluate(() =>
@@ -363,7 +382,7 @@ export async function convertPageToScreenshot(url: string, page: Page, fullPage:
     logger.log('info', `[Scrape] Taking ${screenshotType} screenshot of ${url}`);
 
     await gotoWithFallback(page, url, true);
-    await waitForStability(page);
+    await waitForPageReady(page);
     await page.waitForFunction(
       () => Array.from(document.images).every(img => img.complete),
       { timeout: 5000 }
