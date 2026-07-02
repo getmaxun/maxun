@@ -54,7 +54,7 @@ RapidProxy is a residential proxy platform with 90M+ real IPs across 200+ countr
 #### <a href="https://mangoproxy.com/?utm_source=github&utm_medium=partner&utm_campaign=getmaxun">Mango Proxy</a>
 MangoProxy offers Residential, ISP, Datacenter, and Mobile Proxies in 200+ countries with HTTP(S)/SOCKS5 support and flexible IP management.
 <br />
-<b>Discount Code: MAXUN - 8% off Static ISP Proxies</b>
+<b>Discount Code: `MAXUN` - 8% off Static ISP Proxies</b>
 </td>
 </tr>
 </table>
