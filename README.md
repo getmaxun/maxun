@@ -41,6 +41,7 @@ RapidProxy is a residential proxy platform with 90M+ real IPs across 200+ countr
 <br />
 <b>Discount Code: `RAPID10` to get 10% off.</b>
 </td>
+</tr>
 
 <tr>
 <td width="30%" height="100">
