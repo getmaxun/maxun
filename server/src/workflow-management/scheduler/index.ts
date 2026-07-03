@@ -12,7 +12,7 @@ import { capture } from "../../utils/analytics";
 import { WorkflowFile } from "maxun-core";
 import { Page } from "playwright-core";
 import { sendWebhook } from "../../routes/webhook";
-import { addAirtableUpdateTask, airtableUpdateTasks, processAirtableUpdates } from "../integrations/airtable";
+import { addAirtableUpdateTask, processAirtableUpdates } from "../integrations/airtable";
 import { convertPageToMarkdown, convertPageToHTML, convertPageToLinks, convertPageToScreenshot, convertPageToText } from "../../markdownify/scrape";
 import { executeBrowserAgent } from "../../sdk/browserAgent";
 import { processRobotOutputFormats } from "../../utils/output-post-processor";
