@@ -3,7 +3,7 @@ import { io, Socket } from "socket.io-client";
 import { createRemoteBrowserForRun, destroyRemoteBrowser } from '../../browser-management/controller';
 import logger from '../../logger';
 import { browserPool, io as serverIo } from "../../server";
-import { addGoogleSheetUpdateTask, googleSheetUpdateTasks, processGoogleSheetUpdates } from "../integrations/gsheet";
+import { addGoogleSheetUpdateTask, processGoogleSheetUpdates } from "../integrations/gsheet";
 import Robot from "../../models/Robot";
 import Run from "../../models/Run";
 import { getDecryptedProxyConfig } from "../../routes/proxy";
