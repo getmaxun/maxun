@@ -10,7 +10,7 @@ import { RobotIntegrationPage } from "./pages/RobotIntegrationPage";
 import { RobotSettingsPage } from "./pages/RobotSettingsPage";
 import { RobotEditPage } from "./pages/RobotEditPage";
 import { RobotDuplicatePage } from "./pages/RobotDuplicatePage";
-import { useNavigate, useLocation, useParams } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useGlobalInfoStore } from "../../context/globalInfo";
 import { useTranslation } from "react-i18next";
 
