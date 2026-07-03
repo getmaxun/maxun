@@ -291,6 +291,42 @@ const onChangeUrl = async (url: string, userId: string) => {
 }
 
 /**
+ * Schemes that {@link handleChangeUrl} is allowed to navigate to.
+ *
+ * The recording browser is a shared, privileged worker: it has network access to
+ * the internal environment (Playwright runs on the server) and its DOM is
+ * scraped back into the run output. Any client that can reach the
+ * `input:url` socket event could otherwise coerce the worker into fetching
+ * `file:///etc/passwd`, `chrome://gpu`, `data:text/html,...`, `javascript:...`
+ * or arbitrary internal HTTP endpoints, and exfiltrate the response through
+ * subsequent scrape steps.
+ *
+ * We use the WHATWG URL parser so that only well-formed absolute URLs with an
+ * explicit http/https scheme are accepted; relative paths, opaque schemes and
+ * malformed input are all rejected.
+ */
+const ALLOWED_NAVIGATION_PROTOCOLS: readonly string[] = ['http:', 'https:'];
+
+/**
+ * Validates a user-supplied navigation target and returns the parsed URL if it
+ * is safe to hand to `page.goto`. Returns `null` for any input that is
+ * malformed or uses a disallowed scheme (e.g. `file:`, `chrome:`, `about:`,
+ * `data:`, `javascript:`, `ftp:`, ...).
+ */
+const parseNavigationUrl = (url: string): URL | null => {
+    let parsed: URL;
+    try {
+        parsed = new URL(url);
+    } catch {
+        return null;
+    }
+    if (!ALLOWED_NAVIGATION_PROTOCOLS.includes(parsed.protocol)) {
+        return null;
+    }
+    return parsed;
+};
+
+/**
  * An url change event handler.
  * Navigates the page to the given url and generates data for the workflow.
  * @param activeBrowser - the active remote browser {@link RemoteBrowser}
@@ -306,6 +342,24 @@ const handleChangeUrl = async (activeBrowser: RemoteBrowser, page: Page, url: st
         }
 
         if (url) {
+            // Only http(s) URLs are safe to navigate to. Reject any other
+            // scheme (file:, chrome:, about:, data:, javascript:, ftp:, ...)
+            // before touching the workflow generator or Playwright, so that a
+            // malicious recording client cannot read local files or reach
+            // internal services through the shared browser worker.
+            const parsed = parseNavigationUrl(url);
+            if (!parsed) {
+                logger.log(
+                    "warn",
+                    `Rejected change url event: only http(s) URLs are allowed`,
+                );
+                activeBrowser.emitBrowserPageError(
+                    url,
+                    'Only http(s) URLs are allowed.',
+                );
+                return;
+            }
+
             const generator = activeBrowser.generator;
             await generator.onChangeUrl(url, page);
 
