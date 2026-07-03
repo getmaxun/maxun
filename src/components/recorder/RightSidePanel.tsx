@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { generateUUID } from '../../helpers/uuid';
-import { Button, Paper, Box, TextField, IconButton, Tooltip } from "@mui/material";
+import { Button, Paper, Box, TextField } from "@mui/material";
 import { WorkflowFile } from "maxun-core";
 import Typography from "@mui/material/Typography";
 import { useGlobalInfoStore } from "../../context/globalInfo";
