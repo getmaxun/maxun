@@ -1,7 +1,7 @@
 import React, { useCallback, useContext, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MainMenu } from "../components/dashboard/MainMenu";
-import { Stack, Box } from "@mui/material";
+import { Box } from "@mui/material";
 import { Recordings } from "../components/robot/Recordings";
 import { Runs } from "../components/run/Runs";
 import ProxyForm from '../components/proxy/ProxyForm';
