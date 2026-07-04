@@ -437,7 +437,6 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
           robotType,
           outputFormats,
           categorizedOutput: { crawl: categorizedOutput.crawl as Record<string, any>, search: categorizedOutput.search as Record<string, any> },
-          currentPage,
           initialBinaryOutput: binaryOutput,
           llmConfig: {
             provider: ((recording.recording_meta as any).promptLlmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama',

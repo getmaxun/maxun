@@ -82,7 +82,7 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string) {
       startedAt: new Date().toLocaleString(),
       finishedAt: '',
       browserId,
-      interpreterSettings: { maxConcurrency: 1, maxRepeats: 1, debug: true, ...(isDocRobot && { robotType }) },
+      interpreterSettings: { maxConcurrency: 1, maxRepeats: 1, debug: true, formats: (recording.recording_meta as any).formats, ...(isDocRobot && { robotType }) },
       log: '',
       runId,
       runByScheduleId: uuid(),
@@ -613,7 +613,6 @@ async function executeRun(id: string, userId: string) {
           crawl: categorizedOutput.crawl as Record<string, any>,
           search: categorizedOutput.search as Record<string, any>,
         },
-        currentPage,
         initialBinaryOutput: binaryOutput,
         llmConfig: {
           provider: ((recording.recording_meta as any).promptLlmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama',

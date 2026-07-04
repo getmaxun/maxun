@@ -43,6 +43,12 @@ interface InterpreterOptions {
   binaryCallback: (output: any, mimeType: string) => (void | Promise<void>);
   debug: boolean;
   type?: 'extract' | 'scrape' | 'crawl' | 'search' | 'doc-extract' | 'doc-parse';
+  /**
+   * This outputs the user's pereference for screenshooting a website
+   * This let's the crawl/search capture the screenshot during the first pass instead
+   * of having to go and revisit every page afterwards (#1105). This reduces our 2N scan time.
+   */
+  formats?: string[];
   debugChannel: Partial<{
     activeId: (id: number) => void,
     debugMessage: (msg: string) => void,
@@ -424,6 +430,57 @@ export default class Interpreter extends EventEmitter {
 
       return false;
     });
+  }
+
+  /**
+   * If user selected either screenshot-visible or screenshot-fullpage output format,
+   * this returns true.
+   */
+  private screenshotFormatsRequested(): boolean {
+    const formats = this.options.formats ?? [];
+    return formats.includes('screenshot-visible') || formats.includes('screenshot-fullpage');
+  }
+
+  private async captureScreenshotsForCurrentPage(
+    page: Page,
+    keyPrefix: 'crawl' | 'search',
+    pageNumber: number,
+  ): Promise<{ screenshotVisible?: string; screenshotFullpage?: string }> {
+    const keys: { screenshotVisible?: string; screenshotFullpage?: string } = {};
+    if (!this.screenshotFormatsRequested()) return keys;
+
+    const formats = this.options.formats ?? [];
+    await this.waitForImagesLoaded(page);
+
+    if (formats.includes('screenshot-visible')) {
+      try {
+        const buffer = await page.screenshot({ type: 'png' });
+        const key = `${keyPrefix}-${pageNumber}-screenshot-visible`;
+        await this.options.binaryCallback(
+          { name: key, data: buffer, mimeType: 'image/png' },
+          'image/png',
+        );
+        keys.screenshotVisible = key;
+      } catch (error: any) {
+        this.log(`Failed to capture visible screenshot of ${page.url()}: ${error.message}`, Level.WARN);
+      }
+    }
+
+    if (formats.includes('screenshot-fullpage')) {
+      try {
+        const buffer = await page.screenshot({ type: 'png', fullPage: true });
+        const key = `${keyPrefix}-${pageNumber}-screenshot-fullpage`;
+        await this.options.binaryCallback(
+          { name: key, data: buffer, mimeType: 'image/png' },
+          'image/png',
+        );
+        keys.screenshotFullpage = key;
+      } catch (error: any) {
+        this.log(`Failed to capture full-page screenshot of ${page.url()}: ${error.message}`, Level.WARN);
+      }
+    }
+
+    return keys;
   }
 
   /**
@@ -1471,7 +1528,7 @@ export default class Interpreter extends EventEmitter {
               }
 
               await page.goto(url, {
-                waitUntil: this.getNavigationWaitStrategy(),
+                waitUntil: this.getNavigationWaitStrategy(this.screenshotFormatsRequested() || undefined),
                 timeout: 30000
               }).catch((err) => {
                 throw new Error(`Navigation failed: ${err.message}`);
@@ -1483,6 +1540,12 @@ export default class Interpreter extends EventEmitter {
               const pageResult = await scrapePageContent(url);
               pageResult.metadata.depth = depth;
               crawlResults.push(pageResult);
+
+              // Screenshots are taken here instead of 2N after every crawl (#1105).
+              Object.assign(
+                pageResult,
+                await this.captureScreenshotsForCurrentPage(page, 'crawl', crawlResults.length),
+              );
 
               this.log(`✓ Scraped ${url} (${pageResult.wordCount} words, depth ${depth})`, Level.LOG);
 
@@ -1828,7 +1891,7 @@ export default class Interpreter extends EventEmitter {
               this.log(`[${i + 1}/${searchResults.length}] Scraping: ${result.url}`, Level.LOG);
 
               await page.goto(result.url, {
-                waitUntil: this.getNavigationWaitStrategy(),
+                waitUntil: this.getNavigationWaitStrategy(this.screenshotFormatsRequested() || undefined),
                 timeout: 30000
               }).catch(() => {
                 this.log(`Failed to navigate to ${result.url}, skipping...`, Level.WARN);
@@ -1883,7 +1946,7 @@ export default class Interpreter extends EventEmitter {
                 };
               });
 
-              scrapedResults.push({
+              const scrapedEntry = {
                 searchResult: {
                   query: searchConfig.query,
                   position: result.position,
@@ -1900,7 +1963,14 @@ export default class Interpreter extends EventEmitter {
                 links: pageData.links,
                 wordCount: pageData.wordCount,
                 scrapedAt: new Date().toISOString()
-              });
+              };
+              scrapedResults.push(scrapedEntry);
+
+              // Screenshots are taken here instead of 2N after every crawl (#1105).
+              Object.assign(
+                scrapedEntry,
+                await this.captureScreenshotsForCurrentPage(page, 'search', i + 1),
+              );
 
               this.log(`✓ Scraped ${result.url} (${pageData.wordCount} words)`, Level.LOG);
 

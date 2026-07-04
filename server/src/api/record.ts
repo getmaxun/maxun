@@ -1150,7 +1150,6 @@ async function executeRun(id: string, userId: string) {
                         crawl: categorizedOutput.crawl as Record<string, any>,
                         search: categorizedOutput.search as Record<string, any>,
                     },
-                    currentPage,
                     initialBinaryOutput: postBinaryOutput,
                     llmConfig,
                 });
