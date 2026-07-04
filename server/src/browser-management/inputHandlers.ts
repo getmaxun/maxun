@@ -293,17 +293,23 @@ const onChangeUrl = async (url: string, userId: string) => {
 /**
  * Schemes that {@link handleChangeUrl} is allowed to navigate to.
  *
- * The recording browser is a shared, privileged worker: it has network access to
- * the internal environment (Playwright runs on the server) and its DOM is
- * scraped back into the run output. Any client that can reach the
- * `input:url` socket event could otherwise coerce the worker into fetching
- * `file:///etc/passwd`, `chrome://gpu`, `data:text/html,...`, `javascript:...`
- * or arbitrary internal HTTP endpoints, and exfiltrate the response through
- * subsequent scrape steps.
+ * The recording browser is a shared, privileged worker: Playwright runs on the
+ * server and its DOM is scraped back into the run output, so any client that
+ * can reach the `input:url` socket event could otherwise coerce the worker
+ * into loading non-network URIs such as `file:///etc/passwd`, `chrome://gpu`,
+ * `data:text/html,...` or `javascript:...` and exfiltrate the response
+ * through subsequent scrape steps.
  *
- * We use the WHATWG URL parser so that only well-formed absolute URLs with an
- * explicit http/https scheme are accepted; relative paths, opaque schemes and
- * malformed input are all rejected.
+ * This constant, together with {@link parseNavigationUrl}, performs *scheme
+ * validation only* via the WHATWG URL parser: only well-formed absolute URLs
+ * with an explicit `http:` or `https:` scheme are accepted; relative paths,
+ * opaque schemes and malformed input are rejected.
+ *
+ * Limitations: this check does **not** mitigate internal-host SSRF. HTTP(S)
+ * requests to `http://localhost`, `http://127.0.0.1`, `http://[::1]`,
+ * `http://169.254.169.254` (cloud metadata), RFC1918 ranges, `.internal`
+ * hostnames, etc. still pass. If host/IP-range filtering is required it must
+ * be added separately in the `input:url` handling path.
  */
 const ALLOWED_NAVIGATION_PROTOCOLS: readonly string[] = ['http:', 'https:'];
 
