@@ -450,7 +450,14 @@ export default class Interpreter extends EventEmitter {
     if (!this.screenshotFormatsRequested()) return keys;
 
     const formats = this.options.formats ?? [];
+
+    // Bounded, non-fatal render-readiness before screenshotting.
+    // A capped networkidle race lets never-idle pages (chat/ads/websockets) settle
+    // without hanging navigation; timeouts here are swallowed, never fatal. Navigation
+    // stays on the fast domcontentloaded path (see the crawl/search goto calls).
+    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
     await this.waitForImagesLoaded(page);
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     if (formats.includes('screenshot-visible')) {
       try {
@@ -1528,7 +1535,7 @@ export default class Interpreter extends EventEmitter {
               }
 
               await page.goto(url, {
-                waitUntil: this.getNavigationWaitStrategy(this.screenshotFormatsRequested() || undefined),
+                waitUntil: this.getNavigationWaitStrategy(),
                 timeout: 30000
               }).catch((err) => {
                 throw new Error(`Navigation failed: ${err.message}`);
@@ -1891,7 +1898,7 @@ export default class Interpreter extends EventEmitter {
               this.log(`[${i + 1}/${searchResults.length}] Scraping: ${result.url}`, Level.LOG);
 
               await page.goto(result.url, {
-                waitUntil: this.getNavigationWaitStrategy(this.screenshotFormatsRequested() || undefined),
+                waitUntil: this.getNavigationWaitStrategy(),
                 timeout: 30000
               }).catch(() => {
                 this.log(`Failed to navigate to ${result.url}, skipping...`, Level.WARN);
