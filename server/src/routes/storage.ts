@@ -1051,6 +1051,19 @@ router.put('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res) =>
       return res.status(404).send({ error: 'Recording not found' });
     }
 
+    // Validate formats once before persisting; a malformed value (e.g. an object)
+    // would otherwise reach the interpreter and break formats.includes(...).
+    let interpreterFormats = (recording.recording_meta as any).formats;
+    if (req.body?.formats !== undefined) {
+      const { validFormats, invalidFormats } = parseOutputFormats(req.body.formats);
+      if (invalidFormats.length > 0) {
+        return res.status(400).json({
+          error: `Invalid formats: ${invalidFormats.map(String).join(', ')}`,
+        });
+      }
+      interpreterFormats = validFormats;
+    }
+
     // Generate runId first
     const runId = uuid();
     
@@ -1081,8 +1094,8 @@ router.put('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res) =>
           robotMetaId: recording.recording_meta.id,
           startedAt: new Date().toLocaleString(),
           finishedAt: '',
-          browserId: browserId, 
-          interpreterSettings: { ...req.body, formats: req.body?.formats ?? (recording.recording_meta as any).formats },
+          browserId: browserId,
+          interpreterSettings: { ...req.body, formats: interpreterFormats },
           log: '',
           runId,
           runByUserId: req.user.id,
@@ -1147,7 +1160,7 @@ router.put('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res) =>
         startedAt: new Date().toLocaleString(),
         finishedAt: '',
         browserId,
-        interpreterSettings: { ...req.body, formats: req.body?.formats ?? (recording.recording_meta as any).formats },
+        interpreterSettings: { ...req.body, formats: interpreterFormats },
         log: 'Run queued - waiting for available browser slot',
         runId,
         runByUserId: req.user.id,

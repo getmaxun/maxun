@@ -391,14 +391,16 @@ export default class Interpreter extends EventEmitter {
    * Returns the optimal Playwright `waitUntil` navigation strategy based on
    * whether the current operation requires visual rendering.
    *
-   * - `'networkidle'`            — used when screenshots are requested; waits for all
-   *                         sub-resources so the page renders correctly.
+   * - `'networkidle'`            — used when `visualRenderRequired` (extract mode) is set;
+   *                         waits for all sub-resources so the page renders correctly.
+   *                         Screenshot capture during crawl/search handles its own
+   *                         networkidle wait separately, in captureScreenshotsForCurrentPage.
    * - `'domcontentloaded'` — used for all DOM-only operations (scraping, crawling,
    *                         extraction, search); skips stylesheet/image loading for
    *                         maximum speed.
    *
-   * @param blockOverride Pass `true` when the caller will take a screenshot
-   *                          or requires styled layout. Defaults to `false`.
+   * @param blockOverride Pass `true` to force a fully-rendered wait regardless of
+   *                          `visualRenderRequired`. Defaults to `false`.
    */
   private getNavigationWaitStrategy(
     blockOverride?: boolean
@@ -1900,8 +1902,8 @@ export default class Interpreter extends EventEmitter {
               await page.goto(result.url, {
                 waitUntil: this.getNavigationWaitStrategy(),
                 timeout: 30000
-              }).catch(() => {
-                this.log(`Failed to navigate to ${result.url}, skipping...`, Level.WARN);
+              }).catch((err) => {
+                throw new Error(`Navigation failed: ${err.message}`);
               });
 
               await this.waitForPageReady(page, currentWorkflow || []);

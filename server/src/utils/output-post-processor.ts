@@ -23,7 +23,7 @@ interface ProcessRobotOutputResult {
 
 /**
  * Screenshots are captured by the interpreter during the scraping pass itself,
- * scraping pass itself, so no page is ever revisited here (see issue #1105).
+ * so no page is ever revisited here (see issue #1105).
  */
 export async function processRobotOutputFormats(
   params: ProcessRobotOutputParams
