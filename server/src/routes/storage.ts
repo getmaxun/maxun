@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import logger from "../logger";
-import { createRemoteBrowserForRun, destroyRemoteBrowser, getActiveBrowserIdByState } from "../browser-management/controller";
+import { createRemoteBrowserForRun, destroyRemoteBrowser } from "../browser-management/controller";
 import { browserPool } from "../server";
 import { v4 as uuid } from "uuid";
 import moment from 'moment-timezone';

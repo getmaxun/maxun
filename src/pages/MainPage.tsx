@@ -1,13 +1,13 @@
 import React, { useCallback, useContext, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MainMenu } from "../components/dashboard/MainMenu";
-import { Stack, Box } from "@mui/material";
+import { Box } from "@mui/material";
 import { Recordings } from "../components/robot/Recordings";
 import { Runs } from "../components/run/Runs";
 import ProxyForm from '../components/proxy/ProxyForm';
 import ApiKey from '../components/api/ApiKey';
 import { useGlobalInfoStore, useCacheInvalidation } from "../context/globalInfo";
-import { createAndRunRecording, createRunForStoredRecording, CreateRunResponseWithQueue, interpretStoredRecording, notifyAboutAbort, scheduleStoredRecording } from "../api/storage";
+import { createAndRunRecording, CreateRunResponseWithQueue, interpretStoredRecording, notifyAboutAbort, scheduleStoredRecording } from "../api/storage";
 import { io, Socket } from "socket.io-client";
 import { stopRecording } from "../api/recording";
 import { RunSettings } from "../components/run/RunSettings";
