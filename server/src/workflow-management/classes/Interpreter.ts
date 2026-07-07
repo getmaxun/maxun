@@ -508,7 +508,7 @@ export class WorkflowInterpreter {
 
     this.addToPersistenceBatch(actionType, data, listIndex, true);
 
-    if (actionType === 'scrapeSchema' || this.persistenceBuffer.length >= this.BATCH_SIZE) {
+    if (actionType === 'scrapeSchema' || actionType === 'crawl' || actionType === 'search' || this.persistenceBuffer.length >= this.BATCH_SIZE) {
       await this.flushPersistenceBuffer();
     } else {
       this.scheduleBatchFlush();
