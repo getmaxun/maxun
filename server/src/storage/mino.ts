@@ -91,7 +91,53 @@ class BinaryOutputService {
   }
 
   /**
+   * Uploads a single binary item to MinIO and returns its public URL.
+   * Never throws: a null return lets callers fall back to keeping the
+   * base64 payload, which the end-of-run bulk upload will retry.
+   * @param runId - The run ID used to namespace the object key.
+   * @param key - The binary output key (also the object name within the run).
+   * @param data - The raw binary data to upload.
+   * @param mimeType - The MIME type of the data (defaults to image/png).
+   * @returns The public URL of the uploaded object, or null on failure.
+   */
+  async uploadBinaryOutputItem(runId: string, key: string, data: Buffer, mimeType?: string): Promise<string | null> {
+    try {
+      await fixMinioBucketConfiguration(this.bucketName);
+
+      const minioKey = `${runId}/${encodeURIComponent(key.trim().replace(/\s+/g, '_'))}`;
+
+      console.log(`Uploading to bucket ${this.bucketName} with key ${minioKey}`);
+
+      await minioClient.putObject(
+        this.bucketName,
+        minioKey,
+        data,
+        data.length,
+        { 'Content-Type': mimeType || 'image/png' }
+      );
+
+      // Build the browser-facing object URL. Prefer a complete public base URL
+      // (MINIO_PUBLIC_URL) so deployments behind a reverse proxy or on a
+      // non-default public port are not forced onto the internal MinIO port —
+      // which produced unreachable "localhost:9000" links (#832). Falls back to
+      // the existing host:port composition for local/dev setups.
+      const publicBase = (
+        process.env.MINIO_PUBLIC_URL
+          ? process.env.MINIO_PUBLIC_URL
+          : `${process.env.MINIO_PUBLIC_HOST || 'http://localhost'}:${process.env.MINIO_PORT || '9000'}`
+      ).replace(/\/+$/, '');
+
+      return `${publicBase}/${this.bucketName}/${minioKey}`;
+    } catch (error) {
+      console.error(`❌ Error uploading key ${key} to MinIO:`, error);
+      return null;
+    }
+  }
+
+  /**
    * Uploads binary data to Minio and stores references in PostgreSQL.
+   * Entries that are already public URLs (uploaded per-page during the run)
+   * are preserved as-is, making this call idempotent for them.
    * @param run - The run object representing the current process.
    * @param binaryOutput - The binary output object containing data to upload.
    * @returns A map of Minio URLs pointing to the uploaded binary data.
@@ -109,6 +155,18 @@ class BinaryOutputService {
       }
 
       console.log(`Processing binary output key: ${key}`);
+
+      // Entries uploaded per-page during the run are already public URLs —
+      // pass them through untouched, so the run.update below (a full replace
+      // of run.binaryOutput) cannot wipe them.
+      if (typeof binaryData === 'string' && /^https?:\/\//.test(binaryData)) {
+        uploadedBinaryOutput[key] = binaryData;
+        continue;
+      }
+      if (binaryData && typeof binaryData.data === 'string' && /^https?:\/\//.test(binaryData.data)) {
+        uploadedBinaryOutput[key] = binaryData.data;
+        continue;
+      }
 
       // Convert binary data to Buffer (handles base64, data URI, and old Buffer format)
       let bufferData: Buffer | null = null;
@@ -151,38 +209,10 @@ class BinaryOutputService {
         continue;
       }
 
-      try {
-        await fixMinioBucketConfiguration(this.bucketName);
-
-        const minioKey = `${plainRun.runId}/${encodeURIComponent(key.trim().replace(/\s+/g, '_'))}`;
-
-        console.log(`Uploading to bucket ${this.bucketName} with key ${minioKey}`);
-
-        await minioClient.putObject(
-          this.bucketName,
-          minioKey,
-          bufferData,
-          bufferData.length,
-          { 'Content-Type': binaryData.mimeType || 'image/png' }
-        );
-
-        // Build the browser-facing object URL. Prefer a complete public base URL
-        // (MINIO_PUBLIC_URL) so deployments behind a reverse proxy or on a
-        // non-default public port are not forced onto the internal MinIO port —
-        // which produced unreachable "localhost:9000" links (#832). Falls back to
-        // the existing host:port composition for local/dev setups.
-        const publicBase = (
-          process.env.MINIO_PUBLIC_URL
-            ? process.env.MINIO_PUBLIC_URL
-            : `${process.env.MINIO_PUBLIC_HOST || 'http://localhost'}:${process.env.MINIO_PORT || '9000'}`
-        ).replace(/\/+$/, '');
-        const publicUrl = `${publicBase}/${this.bucketName}/${minioKey}`;
-
+      const publicUrl = await this.uploadBinaryOutputItem(plainRun.runId, key, bufferData, binaryData.mimeType);
+      if (publicUrl) {
         uploadedBinaryOutput[key] = publicUrl;
-
         console.log(`✅ Uploaded and stored: ${publicUrl}`);
-      } catch (error) {
-        console.error(`❌ Error uploading key ${key} to MinIO:`, error);
       }
     }
 
