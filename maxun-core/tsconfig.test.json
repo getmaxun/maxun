@@ -4,5 +4,6 @@
     "types": ["node", "jest"],
     "strict": false,
     "noImplicitAny": false
-  }
+  },
+  "exclude": []
 }
