@@ -7,8 +7,6 @@ import { decrypt } from "../../utils/auth";
 import Run from "../../models/Run";
 import { BinaryOutputService } from "../../storage/mino";
 
-const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
-
 /**
  * Decrypts any encrypted inputs in the workflow. If checkLimit is true, it will also handle the limit validation for scrapeList action.
  * @param workflow The workflow to decrypt.
@@ -725,6 +723,7 @@ export class WorkflowInterpreter {
           // blobs never accumulate in memory or in run.binaryOutput. On upload
           // failure the item keeps its base64 payload, which the end-of-run
           // bulk upload retries.
+          const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
           const uploadedUrl = this.currentRunId
             ? await binaryOutputService.uploadBinaryOutputItem(this.currentRunId, uniqueName, data, mimeType)
             : null;

@@ -38,6 +38,26 @@ async function fixMinioBucketConfiguration(bucketName: string) {
   }
 }
 
+/**
+ * Bucket existence/policy is external, process-global state, so the check only
+ * needs to succeed once per bucket per process. The in-flight promise is cached
+ * so concurrent first uploads share a single check; a failed check is evicted
+ * so the next upload retries instead of caching the failure.
+ */
+const bucketConfigPromises = new Map<string, Promise<void>>();
+
+function ensureBucketConfigured(bucketName: string): Promise<void> {
+  let promise = bucketConfigPromises.get(bucketName);
+  if (!promise) {
+    promise = fixMinioBucketConfiguration(bucketName).catch((error) => {
+      bucketConfigPromises.delete(bucketName);
+      throw error;
+    });
+    bucketConfigPromises.set(bucketName, promise);
+  }
+  return promise;
+}
+
 minioClient.bucketExists('maxun-test')
   .then((exists) => {
     if (exists) {
@@ -102,7 +122,7 @@ class BinaryOutputService {
    */
   async uploadBinaryOutputItem(runId: string, key: string, data: Buffer, mimeType?: string): Promise<string | null> {
     try {
-      await fixMinioBucketConfiguration(this.bucketName);
+      await ensureBucketConfigured(this.bucketName);
 
       const minioKey = `${runId}/${encodeURIComponent(key.trim().replace(/\s+/g, '_'))}`;
 
