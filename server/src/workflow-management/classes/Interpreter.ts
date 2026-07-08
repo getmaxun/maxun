@@ -154,6 +154,17 @@ export class WorkflowInterpreter {
   private persistenceRetryCount = 0;
 
   /**
+   * Tracks, per crawl/search action name, how many result items have already been sent for
+   * persistence. maxun-core's per-page callback always delivers the FULL cumulative array (so
+   * the in-memory cache and socket broadcast below stay simple), but persisting the full array
+   * on every single page write is O(n^2) total bytes over a run (page 1 re-sent on every write
+   * after it). This lets us slice off just the new items before they reach the persistence
+   * buffer / Postgres, while everything else keeps behaving exactly as before. Keyed by
+   * `${actionType}:${actionName}` and reset per-run in clearState().
+   */
+  private lastPersistedResultCount: Record<string, number> = {};
+
+  /**
    * An array of id's of the pairs from the workflow that are about to be paused.
    * As "breakpoints".
    * @private
@@ -447,6 +458,7 @@ export class WorkflowInterpreter {
     this.persistenceBuffer = [];
     this.persistenceInProgress = false;
     this.persistenceRetryCount = 0;
+    this.lastPersistedResultCount = {};
   }
 
   /**
@@ -494,6 +506,89 @@ export class WorkflowInterpreter {
     this.usedActionNames.add(uniqueName);
     return uniqueName;
   };
+
+  /**
+   * crawl/search deliver the full cumulative snapshot on every page so the in-memory cache and
+   * socket broadcast can stay simple, but persisting that full snapshot on every single page
+   * write would resend every prior page again and again (O(n^2) bytes over a run, and crawl
+   * pages can carry full HTML). Slice off just the items that haven't been persisted yet for
+   * this action, tracked via `lastPersistedResultCount` (reset per-run in clearState()).
+   *
+   * Exported as its own method (rather than inlined in the serializableCallback closure) so it
+   * can be unit tested directly without needing to drive a full interpreter run.
+   * @private
+   */
+  private computeCrawlSearchPersistDelta(
+    typeKey: string,
+    actionName: string,
+    processedData: any
+  ): { dataToPersist: any; skip: boolean } {
+    if (typeKey !== "crawl" && typeKey !== "search") {
+      return { dataToPersist: processedData, skip: false };
+    }
+
+    const countKey = `${typeKey}:${actionName}`;
+    const isFirstPersistForAction = !(countKey in this.lastPersistedResultCount);
+    const priorCount = this.lastPersistedResultCount[countKey] || 0;
+
+    if (typeKey === "crawl") {
+      const fullList: any[] = Array.isArray(processedData) ? processedData : [];
+      const deltaList = fullList.slice(priorCount);
+      this.lastPersistedResultCount[countKey] = fullList.length;
+      // Skip only a redundant repeat call with nothing new — always persist the first call for
+      // this action, even with an empty result set, so the DB still records that the action ran
+      // (matching pre-existing behavior for a legitimately-empty crawl rather than silently
+      // leaving serializableOutput untouched).
+      return { dataToPersist: deltaList, skip: !isFirstPersistForAction && deltaList.length === 0 };
+    }
+
+    const fullResults: any[] = Array.isArray(processedData?.results) ? processedData.results : [];
+    const deltaResults = fullResults.slice(priorCount);
+    this.lastPersistedResultCount[countKey] = fullResults.length;
+    const dataToPersist = { ...processedData, results: deltaResults };
+    return { dataToPersist, skip: !isFirstPersistForAction && deltaResults.length === 0 };
+  }
+
+  /**
+   * Merges a crawl delta (new pages only, from computeCrawlSearchPersistDelta) into the
+   * existing persisted crawl output by appending rather than overwriting, so a page already
+   * written to Postgres is never re-sent or dropped by a later write.
+   * @private
+   */
+  private mergeCrawlDelta(current: Record<string, any>, deltaData: Record<string, any>): Record<string, any> {
+    const merged = (current && typeof current === 'object') ? { ...current } : {};
+    for (const [key, val] of Object.entries(deltaData || {})) {
+      const existing = Array.isArray(merged[key]) ? merged[key] : [];
+      const delta = Array.isArray(val) ? val : [];
+      merged[key] = existing.concat(delta);
+    }
+    return merged;
+  }
+
+  /**
+   * Same delta-append idea as mergeCrawlDelta, but the growing part is nested under `.results` -
+   * append that while refreshing the surrounding metadata (query, provider, filters, mode,
+   * searchedAt) to the latest values, and recompute resultsCount from the merged array rather
+   * than trusting a stale cumulative count.
+   * @private
+   */
+  private mergeSearchDelta(current: Record<string, any>, deltaData: Record<string, any>): Record<string, any> {
+    const merged = (current && typeof current === 'object') ? { ...current } : {};
+    for (const [key, val] of Object.entries(deltaData || {})) {
+      const incoming = (val && typeof val === 'object') ? val as Record<string, any> : {};
+      const existingEntry = (merged[key] && typeof merged[key] === 'object') ? merged[key] : {};
+      const existingResults = Array.isArray(existingEntry.results) ? existingEntry.results : [];
+      const incomingResults = Array.isArray(incoming.results) ? incoming.results : [];
+      const mergedResults = existingResults.concat(incomingResults);
+      merged[key] = {
+        ...existingEntry,
+        ...incoming,
+        results: mergedResults,
+        resultsCount: mergedResults.length,
+      };
+    }
+    return merged;
+  }
 
   /**
    * Persists extracted data to database with intelligent batching for performance
@@ -699,9 +794,13 @@ export class WorkflowInterpreter {
 
           this.serializableDataByType[typeKey][actionName] = processedData;
 
-          await this.persistDataToDatabase(typeKey, {
-            [actionName]: processedData,
-          });
+          const { dataToPersist, skip } = this.computeCrawlSearchPersistDelta(typeKey, actionName, processedData);
+
+          if (!skip) {
+            await this.persistDataToDatabase(typeKey, {
+              [actionName]: dataToPersist,
+            });
+          }
 
           this.broadcastToNamespace("serializableCallback", {
             type: typeKey,
@@ -905,16 +1004,13 @@ export class WorkflowInterpreter {
             mergeLists(currentSerializableOutput.scrapeList, item.data);
             hasUpdates = true;
           } else if (item.actionType === 'crawl') {
-            currentSerializableOutput.crawl = { 
-              ...(currentSerializableOutput.crawl || {}), 
-              ...item.data 
-            };
+            // item.data holds only the NEW pages since the last persist (see
+            // computeCrawlSearchPersistDelta) - append rather than overwrite, so a page already
+            // written to Postgres is never re-sent or dropped by a later write.
+            currentSerializableOutput.crawl = this.mergeCrawlDelta(currentSerializableOutput.crawl, item.data);
             hasUpdates = true;
           } else if (item.actionType === 'search') {
-            currentSerializableOutput.search = { 
-              ...(currentSerializableOutput.search || {}), 
-              ...item.data 
-            };
+            currentSerializableOutput.search = this.mergeSearchDelta(currentSerializableOutput.search, item.data);
             hasUpdates = true;
           }
         }
