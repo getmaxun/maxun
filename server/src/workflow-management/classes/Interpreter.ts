@@ -5,6 +5,7 @@ import { Page } from "playwright-core";
 import { InterpreterSettings } from "../../types";
 import { decrypt } from "../../utils/auth";
 import Run from "../../models/Run";
+import { BinaryOutputService } from "../../storage/mino";
 
 /**
  * Decrypts any encrypted inputs in the workflow. If checkLimit is true, it will also handle the limit validation for scrapeList action.
@@ -544,9 +545,14 @@ export class WorkflowInterpreter {
         uniqueName = `${baseName} (${counter++})`;
       }
 
+      // Screenshots already uploaded to MinIO arrive here as public URLs —
+      // store the plain string so the mid-run DB shape matches the final
+      // uploaded shape.
+      const isUploadedUrl = /^https?:\/\//.test(binaryItem.data);
+
       const updatedBinaryOutput = {
         ...currentBinaryOutput,
-        [uniqueName]: binaryItem,
+        [uniqueName]: isUploadedUrl ? binaryItem.data : binaryItem,
       };
 
       await run.update({
@@ -710,13 +716,22 @@ export class WorkflowInterpreter {
         try {
           const { name, data, mimeType } = payload;
 
-          const base64Data = data.toString("base64");
           const uniqueName = this.getUniqueActionName('screenshot', name);
+
+          // Upload each screenshot to MinIO as soon as it is captured, so page
+          // N's screenshot is stored before page N+1 is scraped and base64
+          // blobs never accumulate in memory or in run.binaryOutput. On upload
+          // failure the item keeps its base64 payload, which the end-of-run
+          // bulk upload retries.
+          const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
+          const uploadedUrl = this.currentRunId
+            ? await binaryOutputService.uploadBinaryOutputItem(this.currentRunId, uniqueName, data, mimeType)
+            : null;
 
           const binaryItem = {
             name: uniqueName,
             mimeType,
-            data: base64Data
+            data: uploadedUrl ?? data.toString("base64")
           };
 
           this.binaryData.push(binaryItem);
@@ -725,7 +740,7 @@ export class WorkflowInterpreter {
 
           this.broadcastToNamespace("binaryCallback", {
             name: uniqueName,
-            data: base64Data,
+            data: binaryItem.data,
             mimeType
           });
         } catch (err: any) {
