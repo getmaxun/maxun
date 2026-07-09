@@ -233,6 +233,9 @@ class BinaryOutputService {
       if (publicUrl) {
         uploadedBinaryOutput[key] = publicUrl;
         console.log(`✅ Uploaded and stored: ${publicUrl}`);
+      } else {
+        // Keep the base64 entry rather than dropping it, so run.update doesn't remove it
+        uploadedBinaryOutput[key] = binaryData;
       }
     }
 
