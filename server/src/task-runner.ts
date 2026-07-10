@@ -21,7 +21,7 @@ import { BinaryOutputService } from './storage/mino';
 import { convertPageToMarkdown, convertPageToHTML, convertPageToLinks, convertPageToScreenshot, convertPageToText } from './markdownify/scrape';
 import { executeBrowserAgent } from './sdk/browserAgent';
 import { processRobotOutputFormats } from './utils/output-post-processor';
-import { getInterpretationFailureReason, hasExpectedRobotOutput } from './utils/output-validation';
+import { getInterpretationFailureReason, hasExpectedRobotOutput, flushReloadAndCheckPartialOutput } from './utils/output-validation';
 import { handleRunRecording } from './workflow-management/scheduler';
 import dotenv from 'dotenv';
 
@@ -515,19 +515,7 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
       let partialDataExtracted = false;
 
       try {
-        // The interpreter's persistence buffer flushes crawl/search/scrapeList/scrapeSchema
-        // progress through a separate Run instance (Interpreter.ts's flushPersistenceBuffer), so
-        // this `run` object — fetched once at the top of processRunExecution — can be stale by
-        // the time we get here. Reload before inspecting serializableOutput/binaryOutput so a
-        // killed/timed-out run's already-flushed partial data isn't missed.
-        await run.reload();
-
-        const hasData = (run.serializableOutput && (
-          (run.serializableOutput.scrapeSchema && run.serializableOutput.scrapeSchema.length > 0) ||
-          (run.serializableOutput.scrapeList && run.serializableOutput.scrapeList.length > 0) ||
-          (run.serializableOutput.crawl && Object.keys(run.serializableOutput.crawl).length > 0) ||
-          (run.serializableOutput.search && Object.keys(run.serializableOutput.search).length > 0))) ||
-          (run.binaryOutput && Object.keys(run.binaryOutput).length > 0);
+        const hasData = await flushReloadAndCheckPartialOutput(run, browser);
         if (hasData) {
           await triggerIntegrationUpdates((run as any).toJSON().runId, (run as any).toJSON().robotMetaId);
           partialDataExtracted = true;
@@ -604,19 +592,7 @@ async function abortRun(runId: string, userId: string): Promise<void> {
     let browser;
     try { browser = browserPool.getRemoteBrowser(plainRun.browserId); } catch { browser = null; }
 
-    // The interpreter's persistence buffer flushes crawl/search/scrapeList/scrapeSchema progress
-    // through a separate Run instance (Interpreter.ts's flushPersistenceBuffer), so this `run`
-    // object — fetched at the top of this function — can be stale relative to the latest
-    // in-flight flush. Reload before inspecting serializableOutput/binaryOutput so an aborted
-    // run's already-flushed partial data isn't missed or misreported.
-    try { await run.reload(); } catch (_) {}
-
-    const hasData = (run.serializableOutput && (
-      (run.serializableOutput.scrapeSchema && run.serializableOutput.scrapeSchema.length > 0) ||
-      (run.serializableOutput.scrapeList && run.serializableOutput.scrapeList.length > 0) ||
-      (run.serializableOutput.crawl && Object.keys(run.serializableOutput.crawl).length > 0) ||
-      (run.serializableOutput.search && Object.keys(run.serializableOutput.search).length > 0))) ||
-      (run.binaryOutput && Object.keys(run.binaryOutput).length > 0);
+    const hasData = await flushReloadAndCheckPartialOutput(run, browser);
 
     if (!browser) {
       await run.update({ status: 'aborted', finishedAt: new Date().toLocaleString(), log: 'Aborted: Browser not found or already closed', isPartial: hasData });
