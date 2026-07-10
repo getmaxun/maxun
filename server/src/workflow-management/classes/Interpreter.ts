@@ -1052,6 +1052,23 @@ export class WorkflowInterpreter {
       } else {
         logger.log('error', `Max persistence retries exceeded for run ${this.currentRunId}, dropping ${batchToProcess.length} items`);
         this.persistenceRetryCount = 0;
+
+        // computeCrawlSearchPersistDelta advances the crawl/search cursor as soon as a delta is
+        // computed, before this write is confirmed. Roll it back for whatever's being dropped
+        // here so the next page's delta re-includes this data instead of the cursor treating it
+        // as already persisted and permanently skipping it.
+        for (const item of batchToProcess) {
+          if (item.actionType !== 'crawl' && item.actionType !== 'search') continue;
+          for (const [actionName, value] of Object.entries(item.data || {})) {
+            const droppedCount = item.actionType === 'crawl'
+              ? (Array.isArray(value) ? value.length : 0)
+              : (Array.isArray((value as any)?.results) ? (value as any).results.length : 0);
+            if (droppedCount > 0) {
+              const countKey = `${item.actionType}:${actionName}`;
+              this.lastPersistedResultCount[countKey] = Math.max(0, (this.lastPersistedResultCount[countKey] || 0) - droppedCount);
+            }
+          }
+        }
       }
     } finally {
       this.persistenceInProgress = false;

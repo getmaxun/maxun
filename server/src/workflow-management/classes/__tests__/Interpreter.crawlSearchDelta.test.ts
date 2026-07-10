@@ -13,6 +13,12 @@ jest.mock('../../../models/Run', () => ({ __esModule: true, default: {} }));
 // Interpreter.ts imports BinaryOutputService for the per-page screenshot upload path (#1105) -
 // mock it so importing the module under test doesn't attempt a real MinIO connection.
 jest.mock('../../../storage/mino', () => ({ BinaryOutputService: jest.fn() }));
+// flushPersistenceBuffer lazily requires storage/db for its transaction - mock it so the
+// retry-exhaustion tests below can force every write to fail without a real Postgres connection.
+jest.mock('../../../storage/db', () => ({
+  __esModule: true,
+  default: { transaction: jest.fn().mockRejectedValue(new Error('db unavailable')) },
+}));
 
 import { WorkflowInterpreter } from '../Interpreter';
 import type { Socket } from 'socket.io';
@@ -155,5 +161,60 @@ describe('computeCrawlSearchPersistDelta + mergeCrawlDelta end-to-end', () => {
 
     expect(dbState.crawl['Crawl Results']).toEqual(cumulative);
     expect(dbState.crawl['Crawl Results']).toHaveLength(10);
+  });
+});
+
+describe('flushPersistenceBuffer retry-exhaustion rollback', () => {
+  // A failed flush schedules a real backoff retry via setTimeout (Interpreter.ts's
+  // persistenceRetryTimer/persistenceTimer). These tests drive the retry-exhaustion path by
+  // calling flushPersistenceBuffer directly instead of waiting on those timers, so clearState()
+  // cancels whatever's still pending afterwards rather than leaking real timers past the test.
+  let interp: any;
+
+  afterEach(async () => {
+    await interp?.clearState();
+  });
+
+  it('rolls back the crawl delta cursor when a write is dropped after max retries, so the next page recovers the lost data', async () => {
+    interp = createInterpreter();
+    interp.setRunId('test-run-id');
+
+    const call1 = interp.computeCrawlSearchPersistDelta('crawl', 'Crawl Results', [{ url: 'p1' }]);
+    expect(call1.skip).toBe(false);
+
+    // sequelize.transaction always rejects (mocked above), so this drives every retry attempt
+    // through the failure branch. MAX_PERSISTENCE_RETRIES is 3, so it takes 1 initial attempt +
+    // 3 manual retries to exhaust the budget and hit the "dropping N items" branch.
+    await interp.persistDataToDatabase('crawl', { 'Crawl Results': call1.dataToPersist });
+    await interp.flushPersistenceBuffer();
+    await interp.flushPersistenceBuffer();
+    await interp.flushPersistenceBuffer();
+
+    // The dropped page was never actually written - the next page's delta must include it again
+    // instead of the cursor treating it as already persisted.
+    const call2 = interp.computeCrawlSearchPersistDelta('crawl', 'Crawl Results', [{ url: 'p1' }, { url: 'p2' }]);
+    expect(call2.skip).toBe(false);
+    expect(call2.dataToPersist).toEqual([{ url: 'p1' }, { url: 'p2' }]);
+  });
+
+  it('rolls back the search delta cursor the same way', async () => {
+    interp = createInterpreter();
+    interp.setRunId('test-run-id');
+
+    const call1 = interp.computeCrawlSearchPersistDelta('search', 'Search Results', {
+      query: 'q', provider: 'duckduckgo', mode: 'scrape', results: [{ url: 's1' }], resultsCount: 1, searchedAt: 't1',
+    });
+    expect(call1.skip).toBe(false);
+
+    await interp.persistDataToDatabase('search', { 'Search Results': call1.dataToPersist });
+    await interp.flushPersistenceBuffer();
+    await interp.flushPersistenceBuffer();
+    await interp.flushPersistenceBuffer();
+
+    const call2 = interp.computeCrawlSearchPersistDelta('search', 'Search Results', {
+      query: 'q', provider: 'duckduckgo', mode: 'scrape', results: [{ url: 's1' }, { url: 's2' }], resultsCount: 2, searchedAt: 't2',
+    });
+    expect(call2.skip).toBe(false);
+    expect(call2.dataToPersist.results).toEqual([{ url: 's1' }, { url: 's2' }]);
   });
 });
