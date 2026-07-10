@@ -143,6 +143,34 @@ describe('mergeSearchDelta', () => {
     expect(state['Search Results'].resultsCount).toBe(2);
     expect(state['Search Results'].searchedAt).toBe('t2');
   });
+
+  it('appends a delta onto an empty/missing existing state', () => {
+    const interp = createInterpreter();
+    const merged = interp.mergeSearchDelta(undefined, {
+      'Search Results': { query: 'q', provider: 'duckduckgo', mode: 'scrape', results: [{ url: 's1' }], resultsCount: 1, searchedAt: 't1' },
+    });
+    expect(merged).toEqual({
+      'Search Results': { query: 'q', provider: 'duckduckgo', mode: 'scrape', results: [{ url: 's1' }], resultsCount: 1, searchedAt: 't1' },
+    });
+  });
+
+  it('does not mutate the previous state or delta inputs in place', () => {
+    const interp = createInterpreter();
+    const original = {
+      'Search Results': { query: 'q', provider: 'duckduckgo', mode: 'scrape', results: [{ url: 's1' }], resultsCount: 1, searchedAt: 't1' },
+    };
+    const delta = {
+      'Search Results': { query: 'q', provider: 'duckduckgo', mode: 'scrape', results: [{ url: 's2' }], resultsCount: 1, searchedAt: 't2' },
+    };
+    const originalSnapshot = JSON.parse(JSON.stringify(original));
+    const deltaSnapshot = JSON.parse(JSON.stringify(delta));
+
+    const merged = interp.mergeSearchDelta(original, delta);
+
+    expect(original).toEqual(originalSnapshot);
+    expect(delta).toEqual(deltaSnapshot);
+    expect(merged['Search Results'].results).toEqual([{ url: 's1' }, { url: 's2' }]);
+  });
 });
 
 describe('computeCrawlSearchPersistDelta + mergeCrawlDelta end-to-end', () => {
