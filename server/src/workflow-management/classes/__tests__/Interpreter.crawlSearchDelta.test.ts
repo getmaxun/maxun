@@ -10,6 +10,9 @@
  * so this logic can be verified directly without driving a full interpreter run.
  */
 jest.mock('../../../models/Run', () => ({ __esModule: true, default: {} }));
+// Interpreter.ts imports BinaryOutputService for the per-page screenshot upload path (#1105) -
+// mock it so importing the module under test doesn't attempt a real MinIO connection.
+jest.mock('../../../storage/mino', () => ({ BinaryOutputService: jest.fn() }));
 
 import { WorkflowInterpreter } from '../Interpreter';
 import type { Socket } from 'socket.io';
