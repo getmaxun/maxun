@@ -517,8 +517,8 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
       try {
         const hasData = await flushReloadAndCheckPartialOutput(run, browser);
         if (hasData) {
-          await triggerIntegrationUpdates((run as any).toJSON().runId, (run as any).toJSON().robotMetaId);
           partialDataExtracted = true;
+          await triggerIntegrationUpdates((run as any).toJSON().runId, (run as any).toJSON().robotMetaId);
         }
       } catch (_) {}
 
