@@ -10,7 +10,7 @@ i18n
   .init({
     fallbackLng: 'en',
     debug: import.meta.env.DEV,
-    supportedLngs: ['en', 'es', 'ja', 'zh','de', 'tr', 'ko'],
+    supportedLngs: ['en', 'es', 'ja', 'zh', 'de', 'tr', 'ko'],
     interpolation: {
       escapeValue: false, // React already escapes
     },
