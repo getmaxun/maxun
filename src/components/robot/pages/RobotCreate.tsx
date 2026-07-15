@@ -356,8 +356,27 @@ const RobotCreate: React.FC = () => {
   const normalizeUrl = (rawUrl: string): string => {
     const trimmed = rawUrl.trim();
     if (!trimmed) return trimmed;
-    if (!/^https?:\/\//i.test(trimmed)) return `https://${trimmed}`;
-    return trimmed;
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed)) return trimmed;
+    if (/^[a-z][a-z0-9+.-]*\/\/\//i.test(trimmed)) return trimmed;
+    return `https://${trimmed}`;
+  };
+
+  const isValidUrl = (rawUrl: string): boolean => {
+    const trimmed = rawUrl.trim();
+    if (!trimmed) return false;
+    try {
+      const parsed = new URL(trimmed);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+      if (!parsed.hostname) return false;
+      const isPlausibleHost = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/i.test(parsed.hostname)
+        || parsed.hostname === 'localhost'
+        || /^\d{1,3}(\.\d{1,3}){3}$/.test(parsed.hostname)
+        || /^\[[0-9a-f:]+\]$/i.test(parsed.hostname);
+      return isPlausibleHost;
+    } catch {
+      return false;
+    }
   };
 
   const handleStartRecording = async () => {
@@ -368,6 +387,11 @@ const RobotCreate: React.FC = () => {
 
     const normalizedUrl = normalizeUrl(url);
     setUrl(normalizedUrl);
+
+    if (!isValidUrl(normalizedUrl)) {
+      notify('error', 'Please enter a valid URL (e.g. https://example.com)');
+      return;
+    }
 
     setIsLoading(true);
 
@@ -457,6 +481,11 @@ const RobotCreate: React.FC = () => {
 
     const normalizedCrawlUrl = normalizeUrl(crawlUrl);
     setCrawlUrl(normalizedCrawlUrl);
+
+    if (!isValidUrl(normalizedCrawlUrl)) {
+      notify('error', 'Please enter a valid URL (e.g. https://example.com)');
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -1231,6 +1260,10 @@ const RobotCreate: React.FC = () => {
                   }
                   const normalizedUrl = normalizeUrl(url);
                   setUrl(normalizedUrl);
+                  if (!isValidUrl(normalizedUrl)) {
+                    notify('error', 'Please enter a valid URL (e.g. https://example.com)');
+                    return;
+                  }
                   setIsLoading(true);
                   try {
                     const hasPrompt = !!scrapePromptInstructions.trim();
