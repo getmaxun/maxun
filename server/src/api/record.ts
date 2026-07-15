@@ -27,9 +27,23 @@ import { QUEUE_NAMES } from '../task-runner';
 const router = Router();
 
 const normalizeRobotUrl = (rawUrl: string): string => {
-    const normalizedUrl = new URL(rawUrl.trim());
+    let normalizedUrl: URL;
+    try {
+        normalizedUrl = new URL(rawUrl.trim());
+    } catch {
+        throw new Error(`"${rawUrl.trim()}" is not a valid URL. Provide a full web address like https://example.com`);
+    }
     if (!['http:', 'https:'].includes(normalizedUrl.protocol)) {
-        throw new Error('Invalid URL protocol');
+        throw new Error(`Unsupported URL protocol "${normalizedUrl.protocol}//" — only http and https are supported. Local file paths cannot be scraped.`);
+    }
+
+    const hostname = normalizedUrl.hostname;
+    const isPlausibleHost = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(hostname)
+        || hostname === 'localhost'
+        || /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname)
+        || /^\[[0-9a-f:]+\]$/i.test(hostname);
+    if (!isPlausibleHost) {
+        throw new Error(`"${hostname}" is not a reachable hostname. Provide a full web address like https://example.com`);
     }
 
     normalizedUrl.search = normalizedUrl.searchParams.toString();
@@ -1677,19 +1691,11 @@ router.post("/robots/:id/duplicate", requireAPIKey, async (req: Request, res: Re
         let normalizedTargetUrl: string;
         try {
             normalizedTargetUrl = normalizeRobotUrl(targetUrl);
-            const parsed = new URL(normalizedTargetUrl);
-            if (!['http:', 'https:'].includes(parsed.protocol)) {
-                return res.status(400).json({
-                    statusCode: 400,
-                    messageCode: "bad_request",
-                    message: 'The "targetUrl" must use http or https protocol.',
-                });
-            }
-        } catch {
+        } catch (err) {
             return res.status(400).json({
                 statusCode: 400,
                 messageCode: "bad_request",
-                message: 'The "targetUrl" must be a valid URL.',
+                message: `Invalid "targetUrl": ${err instanceof Error ? err.message : 'must be a valid URL'}`,
             });
         }
 
