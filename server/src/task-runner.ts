@@ -21,7 +21,7 @@ import { BinaryOutputService } from './storage/mino';
 import { convertPageToMarkdown, convertPageToHTML, convertPageToLinks, convertPageToScreenshot, convertPageToText } from './markdownify/scrape';
 import { executeBrowserAgent } from './sdk/browserAgent';
 import { processRobotOutputFormats } from './utils/output-post-processor';
-import { getInterpretationFailureReason, hasExpectedRobotOutput } from './utils/output-validation';
+import { getInterpretationFailureReason, hasExpectedRobotOutput, flushReloadAndCheckPartialOutput } from './utils/output-validation';
 import { handleRunRecording } from './workflow-management/scheduler';
 import dotenv from 'dotenv';
 
@@ -515,19 +515,14 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
       let partialDataExtracted = false;
 
       try {
-        const hasData = (run.serializableOutput && (
-          (run.serializableOutput.scrapeSchema && run.serializableOutput.scrapeSchema.length > 0) ||
-          (run.serializableOutput.scrapeList && run.serializableOutput.scrapeList.length > 0) ||
-          (run.serializableOutput.crawl && Object.keys(run.serializableOutput.crawl).length > 0) ||
-          (run.serializableOutput.search && Object.keys(run.serializableOutput.search).length > 0))) ||
-          (run.binaryOutput && Object.keys(run.binaryOutput).length > 0);
+        const hasData = await flushReloadAndCheckPartialOutput(run, browser);
         if (hasData) {
-          await triggerIntegrationUpdates((run as any).toJSON().runId, (run as any).toJSON().robotMetaId);
           partialDataExtracted = true;
+          await triggerIntegrationUpdates((run as any).toJSON().runId, (run as any).toJSON().robotMetaId);
         }
       } catch (_) {}
 
-      await run.update({ status: 'failed', finishedAt: new Date().toLocaleString(), log: `Failed: ${executionError.message}` });
+      await run.update({ status: 'failed', finishedAt: new Date().toLocaleString(), log: `Failed: ${executionError.message}`, isPartial: partialDataExtracted });
 
       const plainRun = (run as any).toJSON();
       const recording = await Robot.findOne({ where: { 'recording_meta.id': run.robotMetaId }, raw: true });
@@ -597,18 +592,16 @@ async function abortRun(runId: string, userId: string): Promise<void> {
     let browser;
     try { browser = browserPool.getRemoteBrowser(plainRun.browserId); } catch { browser = null; }
 
+    const hasData = await flushReloadAndCheckPartialOutput(run, browser);
+
     if (!browser) {
-      await run.update({ status: 'aborted', finishedAt: new Date().toLocaleString(), log: 'Aborted: Browser not found or already closed' });
+      await run.update({ status: 'aborted', finishedAt: new Date().toLocaleString(), log: 'Aborted: Browser not found or already closed', isPartial: hasData });
+      if (hasData) await triggerIntegrationUpdates(runId, plainRun.robotMetaId);
       try { serverIo.of(plainRun.browserId).emit('run-aborted', { runId, robotName, status: 'aborted', finishedAt: new Date().toLocaleString() }); } catch (_) {}
       return;
     }
 
-    await run.update({ status: 'aborted', finishedAt: new Date().toLocaleString(), log: 'Run aborted by user' });
-
-    const hasData = (run.serializableOutput && (
-      (run.serializableOutput.scrapeSchema && run.serializableOutput.scrapeSchema.length > 0) ||
-      (run.serializableOutput.scrapeList && run.serializableOutput.scrapeList.length > 0))) ||
-      (run.binaryOutput && Object.keys(run.binaryOutput).length > 0);
+    await run.update({ status: 'aborted', finishedAt: new Date().toLocaleString(), log: 'Run aborted by user', isPartial: hasData });
 
     if (hasData) await triggerIntegrationUpdates(runId, plainRun.robotMetaId);
 

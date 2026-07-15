@@ -1519,6 +1519,27 @@ export default class Interpreter extends EventEmitter {
 
           let processedCount = 0;
 
+          const crawlActionType = "crawl";
+          const crawlActionName = "Crawl Results";
+
+          if (!this.serializableDataByType[crawlActionType]) {
+            this.serializableDataByType[crawlActionType] = {};
+          }
+
+          // Persists the crawl progress captured so far. Called after every page (success or
+          // failure) so a killed/timed-out/aborted run never loses pages already scraped —
+          // previously this only ran once, after the whole while-loop finished.
+          const persistCrawlProgress = async () => {
+            this.serializableDataByType[crawlActionType][crawlActionName] = crawlResults;
+
+            await this.options.serializableCallback({
+              scrapeList: this.serializableDataByType['scrapeList'] || {},
+              scrapeSchema: this.serializableDataByType['scrapeSchema'] || {},
+              crawl: this.serializableDataByType['crawl'] || {},
+              search: this.serializableDataByType['search'] || {}
+            });
+          };
+
           while (crawlQueue.length > 0 && crawlResults.length < crawlConfig.limit) {
             if (this.isAborted) {
               this.log('Workflow aborted during crawl', Level.WARN);
@@ -1555,6 +1576,10 @@ export default class Interpreter extends EventEmitter {
                 pageResult,
                 await this.captureScreenshotsForCurrentPage(page, 'crawl', crawlResults.length),
               );
+              // Persist after the screenshot keys are attached, so the delta this call sends
+              // already includes screenshotVisible/screenshotFullpage for this page instead of
+              // silently dropping them (this per-page delta is never re-sent once persisted).
+              await persistCrawlProgress();
 
               this.log(`✓ Scraped ${url} (${pageResult.wordCount} words, depth ${depth})`, Level.LOG);
 
@@ -1590,29 +1615,13 @@ export default class Interpreter extends EventEmitter {
                 error: error.message,
                 scrapedAt: new Date().toISOString()
               });
+              await persistCrawlProgress();
             }
           }
 
           this.log(`Crawl completed: ${crawlResults.length} pages scraped (${processedCount} URLs processed, ${visitedUrls.size} URLs discovered)`, Level.LOG);
 
-          const actionType = "crawl";
-          const actionName = "Crawl Results";
-
-          if (!this.serializableDataByType[actionType]) {
-            this.serializableDataByType[actionType] = {};
-          }
-          if (!this.serializableDataByType[actionType][actionName]) {
-            this.serializableDataByType[actionType][actionName] = [];
-          }
-
-          this.serializableDataByType[actionType][actionName] = crawlResults;
-
-          await this.options.serializableCallback({
-            scrapeList: this.serializableDataByType['scrapeList'] || {},
-            scrapeSchema: this.serializableDataByType['scrapeSchema'] || {},
-            crawl: this.serializableDataByType['crawl'] || {},
-            search: this.serializableDataByType['search'] || {}
-          });
+          await persistCrawlProgress();
 
         } catch (error: any) {
           this.log(`Crawl action failed: ${error.message}`, Level.ERROR);
@@ -1892,9 +1901,43 @@ export default class Interpreter extends EventEmitter {
           }
 
           this.log(`Starting to scrape content from ${searchResults.length} search results...`, Level.LOG);
-          const scrapedResults = [];
+          const scrapedResults: any[] = [];
+
+          const searchActionType = "search";
+          const searchActionName = "Search Results";
+
+          if (!this.serializableDataByType[searchActionType]) {
+            this.serializableDataByType[searchActionType] = {};
+          }
+
+          // Persists the search-scrape progress captured so far. Called after every result page
+          // (success or failure) so a killed/timed-out/aborted run never loses pages already
+          // scraped — previously this only ran once, after the whole for-loop finished.
+          const persistSearchProgress = async () => {
+            this.serializableDataByType[searchActionType][searchActionName] = {
+              query: searchConfig.query,
+              provider: searchConfig.provider,
+              filters: searchConfig.filters || {},
+              mode: searchConfig.mode,
+              resultsCount: scrapedResults.length,
+              results: scrapedResults,
+              searchedAt: new Date().toISOString()
+            };
+
+            await this.options.serializableCallback({
+              scrapeList: this.serializableDataByType['scrapeList'] || {},
+              scrapeSchema: this.serializableDataByType['scrapeSchema'] || {},
+              crawl: this.serializableDataByType['crawl'] || {},
+              search: this.serializableDataByType['search'] || {}
+            });
+          };
 
           for (let i = 0; i < searchResults.length; i++) {
+            if (this.isAborted) {
+              this.log('Workflow aborted during search scrape', Level.WARN);
+              break;
+            }
+
             const result = searchResults[i];
             try {
               this.log(`[${i + 1}/${searchResults.length}] Scraping: ${result.url}`, Level.LOG);
@@ -1980,6 +2023,10 @@ export default class Interpreter extends EventEmitter {
                 scrapedEntry,
                 await this.captureScreenshotsForCurrentPage(page, 'search', i + 1),
               );
+              // Persist after the screenshot keys are attached, so the delta this call sends
+              // already includes screenshotVisible/screenshotFullpage for this page instead of
+              // silently dropping them (this per-page delta is never re-sent once persisted).
+              await persistSearchProgress();
 
               this.log(`✓ Scraped ${result.url} (${pageData.wordCount} words)`, Level.LOG);
 
@@ -1996,39 +2043,13 @@ export default class Interpreter extends EventEmitter {
                 error: error.message,
                 scrapedAt: new Date().toISOString()
               });
+              await persistSearchProgress();
             }
           }
 
           this.log(`Successfully scraped ${scrapedResults.length} search results`, Level.LOG);
 
-          const actionType = "search";
-          const actionName = "Search Results";
-
-          if (!this.serializableDataByType[actionType]) {
-            this.serializableDataByType[actionType] = {};
-          }
-          if (!this.serializableDataByType[actionType][actionName]) {
-            this.serializableDataByType[actionType][actionName] = {};
-          }
-
-          const searchData = {
-            query: searchConfig.query,
-            provider: searchConfig.provider,
-            filters: searchConfig.filters || {},
-            mode: searchConfig.mode,
-            resultsCount: scrapedResults.length,
-            results: scrapedResults,
-            searchedAt: new Date().toISOString()
-          };
-
-          this.serializableDataByType[actionType][actionName] = searchData;
-
-          await this.options.serializableCallback({
-            scrapeList: this.serializableDataByType['scrapeList'] || {},
-            scrapeSchema: this.serializableDataByType['scrapeSchema'] || {},
-            crawl: this.serializableDataByType['crawl'] || {},
-            search: this.serializableDataByType['search'] || {}
-          });
+          await persistSearchProgress();
 
         } catch (error: any) {
           this.log(`Search action failed: ${error.message}`, Level.ERROR);

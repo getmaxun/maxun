@@ -253,10 +253,11 @@ router.get(('/recordings/:id/runs'), requireSignIn, async (req: AuthenticatedReq
   }
 })
 
-function formatRunResponse(run: any) {
+export function formatRunResponse(run: any) {
   const formattedRun = {
     id: run.id,
     status: run.status,
+    isPartial: !!run.isPartial,
     name: run.name,
     robotId: run.robotMetaId, // Renaming robotMetaId to robotId
     startedAt: run.startedAt,
