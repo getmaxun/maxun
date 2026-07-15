@@ -59,8 +59,22 @@ export const RobotDuplicatePage = ({ handleStart }: RobotDuplicatePageProps) => 
   const normalizeUrl = (rawUrl: string): string => {
     const trimmed = rawUrl.trim();
     if (!trimmed) return trimmed;
-    if (!/^https?:\/\//i.test(trimmed)) return `https://${trimmed}`;
-    return trimmed;
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed)) return trimmed;
+    if (/^[a-z][a-z0-9+.-]*\/\/\//i.test(trimmed)) return trimmed;
+    return `https://${trimmed}`;
+  };
+
+  const isNavigableUrl = (rawUrl: string): boolean => {
+    try {
+      const parsed = new URL(rawUrl);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+      return /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(parsed.hostname)
+        || parsed.hostname === 'localhost'
+        || /^\d{1,3}(\.\d{1,3}){3}$/.test(parsed.hostname);
+    } catch {
+      return false;
+    }
   };
 
   const handleSave = async () => {
@@ -74,6 +88,11 @@ export const RobotDuplicatePage = ({ handleStart }: RobotDuplicatePageProps) => 
 
     if (!newName.trim()) {
       notify("error", t("robot_duplication.notifications.name_required"));
+      return;
+    }
+
+    if (!isNavigableUrl(normalizedUrl)) {
+      notify("error", t("robot_duplication.notifications.url_invalid", "Please enter a valid website URL (e.g. https://example.com)"));
       return;
     }
 

@@ -356,8 +356,10 @@ const RobotCreate: React.FC = () => {
   const normalizeUrl = (rawUrl: string): string => {
     const trimmed = rawUrl.trim();
     if (!trimmed) return trimmed;
-    if (!/^https?:\/\//i.test(trimmed)) return `https://${trimmed}`;
-    return trimmed;
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed)) return trimmed;
+    if (/^[a-z][a-z0-9+.-]*\/\/\//i.test(trimmed)) return trimmed;
+    return `https://${trimmed}`;
   };
 
   const handleStartRecording = async () => {
