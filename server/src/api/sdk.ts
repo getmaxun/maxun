@@ -66,9 +66,23 @@ const normalizeUrl = (raw: string): string => {
 };
 
 const normalizeRobotUrl = (rawUrl: string): string => {
-    const normalizedUrl = new URL(rawUrl.trim());
+    let normalizedUrl: URL;
+    try {
+        normalizedUrl = new URL(rawUrl.trim());
+    } catch {
+        throw new Error(`"${rawUrl.trim()}" is not a valid URL. Provide a full web address like https://example.com`);
+    }
     if (!['http:', 'https:'].includes(normalizedUrl.protocol)) {
-        throw new Error('Invalid URL protocol');
+        throw new Error(`Unsupported URL protocol "${normalizedUrl.protocol}//" — only http and https are supported. Local file paths cannot be scraped.`);
+    }
+
+    const hostname = normalizedUrl.hostname;
+    const isPlausibleHost = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(hostname)
+        || hostname === 'localhost'
+        || /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname)
+        || /^\[[0-9a-f:]+\]$/i.test(hostname);
+    if (!isPlausibleHost) {
+        throw new Error(`"${hostname}" is not a reachable hostname. Provide a full web address like https://example.com`);
     }
 
     normalizedUrl.search = normalizedUrl.searchParams.toString();
@@ -195,9 +209,9 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
 
             try {
                 extractedUrl = normalizeRobotUrl(extractedUrl);
-            } catch {
+            } catch (err) {
                 return res.status(400).json({
-                    error: "Invalid URL format"
+                    error: `Invalid URL: ${err instanceof Error ? err.message : 'malformed URL'}`
                 });
             }
         } else {
@@ -427,9 +441,9 @@ router.put("/sdk/robots/:id", requireAPIKey, async (req: AuthenticatedRequest, r
             if (updates.meta.url) {
                 try {
                     normalizedMetaUrl = normalizeRobotUrl(updates.meta.url);
-                } catch {
+                } catch (err) {
                     return res.status(400).json({
-                        error: "Invalid URL format"
+                        error: `Invalid URL: ${err instanceof Error ? err.message : 'malformed URL'}`
                     });
                 }
             }
@@ -1010,9 +1024,9 @@ router.post("/sdk/robots/:id/duplicate", requireAPIKey, async (req: Authenticate
                     error: "The \"targetUrl\" must use http or https protocol."
                 });
             }
-        } catch {
+        } catch (err) {
             return res.status(400).json({
-                error: "The \"targetUrl\" must be a valid URL."
+                error:  `Invalid URL: ${err instanceof Error ? err.message : 'malformed URL'}`
             });
         }
 
@@ -1128,7 +1142,7 @@ router.post("/sdk/crawl", requireAPIKey, async (req: AuthenticatedRequest, res: 
             normalizedUrl = normalizeRobotUrl(url);
         } catch (err) {
             return res.status(400).json({
-                error: "Invalid URL format"
+                error: `Invalid URL: ${err instanceof Error ? err.message : 'malformed URL'}`
             });
         }
 
