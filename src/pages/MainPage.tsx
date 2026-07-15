@@ -166,6 +166,8 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
       invalidateRuns();
       const { browserId, runId, robotMetaId, queued } = response;
 
+      const resolvedRobotMetaId = robotMetaId || runningRecordingId;
+
       if (!runId && !queued) {
         notify('error', t('main_page.notifications.run_start_failed', { name: runningRecordingName }));
         setContent('robots');
@@ -181,8 +183,8 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
 
       updateOptimisticRun(realRun, optimisticRun.runId);
 
-      setIds({ browserId, runId, robotMetaId });
-      navigate(`/runs/${robotMetaId}/run/${runId}`);
+      setIds({ browserId, runId, robotMetaId: resolvedRobotMetaId });
+      navigate(`/runs/${resolvedRobotMetaId}/run/${runId}`);
             
       if (queued) {
         setQueuedRuns(prev => new Set([...prev, runId]));
