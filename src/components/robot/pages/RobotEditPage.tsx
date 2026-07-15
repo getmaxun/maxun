@@ -1475,9 +1475,11 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
 
     if (shouldShowLlmConfig() && llmProvider !== 'ollama' && !llmApiKey.trim()) {
       const originalProvider = robot.recording_meta.promptLlmProvider;
+      const originalBaseUrl = robot.recording_meta.promptLlmBaseUrl || '';
       const providerChanged = originalProvider !== llmProvider;
+      const baseUrlChanged = (llmBaseUrl || '') !== originalBaseUrl;
       const previouslyHadNonOllamaKey = originalProvider && originalProvider !== 'ollama';
-      if (!previouslyHadNonOllamaKey || providerChanged) {
+      if (!previouslyHadNonOllamaKey || providerChanged || baseUrlChanged) {
         notify("error", `An API key is required when using ${llmProvider === 'anthropic' ? 'Anthropic' : 'an OpenAI-compatible'} provider`);
         return;
       }
