@@ -263,7 +263,7 @@ const RobotCreate: React.FC = () => {
   const [scrapePromptOpenAICompatiblePreset, setScrapePromptOpenAICompatiblePreset] = useState<OpenAICompatiblePresetId>(DEFAULT_OPENAI_COMPATIBLE_PRESET_ID);
   const [scrapePromptLlmModel, setScrapePromptLlmModel] = useState('');
   const [scrapePromptLlmApiKey, setScrapePromptLlmApiKey] = useState('');
-  const [scrapePromptLlmBaseUrl, setScrapePromptLlmBaseUrl] = useState(OLLAMA_DEFAULT_BASE_URL);
+  const [scrapePromptLlmBaseUrl, setScrapePromptLlmBaseUrl] = useState('');
   const [aiRobotName, setAiRobotName] = useState('');
 
   const [crawlRobotName, setCrawlRobotName] = useState('');
@@ -288,6 +288,18 @@ const RobotCreate: React.FC = () => {
   const [crawlOutputFormats, setCrawlOutputFormats] = useState<OutputFormats[]>(DEFAULT_OUTPUT_FORMATS);
   const [searchOutputFormats, setSearchOutputFormats] = useState<OutputFormats[]>(DEFAULT_OUTPUT_FORMATS);
 
+  const [crawlSummaryLlmProvider, setCrawlSummaryLlmProvider] = useState<LlmProvider>('ollama');
+  const [crawlSummaryOpenAIPreset, setCrawlSummaryOpenAIPreset] = useState<OpenAICompatiblePresetId>(DEFAULT_OPENAI_COMPATIBLE_PRESET_ID);
+  const [crawlSummaryLlmModel, setCrawlSummaryLlmModel] = useState('');
+  const [crawlSummaryLlmApiKey, setCrawlSummaryLlmApiKey] = useState('');
+  const [crawlSummaryLlmBaseUrl, setCrawlSummaryLlmBaseUrl] = useState('');
+
+  const [searchSummaryLlmProvider, setSearchSummaryLlmProvider] = useState<LlmProvider>('ollama');
+  const [searchSummaryOpenAIPreset, setSearchSummaryOpenAIPreset] = useState<OpenAICompatiblePresetId>(DEFAULT_OPENAI_COMPATIBLE_PRESET_ID);
+  const [searchSummaryLlmModel, setSearchSummaryLlmModel] = useState('');
+  const [searchSummaryLlmApiKey, setSearchSummaryLlmApiKey] = useState('');
+  const [searchSummaryLlmBaseUrl, setSearchSummaryLlmBaseUrl] = useState('');
+
   const [documentFile, setDocumentFile] = useState<File | null>(null);
   const [documentPrompt, setDocumentPrompt] = useState('');
   const [documentRobotName, setDocumentRobotName] = useState('');
@@ -308,7 +320,7 @@ const RobotCreate: React.FC = () => {
   };
 
   const getBaseUrlForProvider = (provider: LlmProvider, presetId: OpenAICompatiblePresetId) => {
-    if (provider === 'ollama') return OLLAMA_DEFAULT_BASE_URL;
+    if (provider === 'ollama') return '';
     if (provider === 'openai') return getOpenAICompatiblePreset(presetId).baseUrl;
     return '';
   };
@@ -389,7 +401,6 @@ const RobotCreate: React.FC = () => {
       window.open(`/recording-setup?session=${sessionId}`, '_blank');
       window.sessionStorage.setItem('nextTabIsRecording', 'true');
 
-      // Reset loading state immediately after opening new tab
       setIsLoading(false);
       navigate('/robots');
     } catch (error) {
@@ -408,7 +419,6 @@ const RobotCreate: React.FC = () => {
     setWarningModalOpen(false);
     setIsLoading(false);
 
-    // Continue with the original Recording logic
     setBrowserId('new-recording');
     setRecordingUrl(url);
 
@@ -440,6 +450,10 @@ const RobotCreate: React.FC = () => {
       notify('error', 'Please select at least one output format');
       return;
     }
+    if (crawlOutputFormats.includes('summary' as OutputFormats) && crawlSummaryLlmProvider !== 'ollama' && !crawlSummaryLlmApiKey.trim()) {
+      notify('error', `An API key is required when using ${crawlSummaryLlmProvider === 'anthropic' ? 'Anthropic' : 'an OpenAI-compatible'} provider for summaries`);
+      return;
+    }
 
     const normalizedCrawlUrl = normalizeUrl(crawlUrl);
     setCrawlUrl(normalizedCrawlUrl);
@@ -459,7 +473,11 @@ const RobotCreate: React.FC = () => {
           followLinks: crawlFollowLinks,
           respectRobots: crawlRespectRobots
         },
-        crawlOutputFormats
+        crawlOutputFormats,
+        crawlOutputFormats.includes('summary' as OutputFormats) ? crawlSummaryLlmProvider : undefined,
+        crawlOutputFormats.includes('summary' as OutputFormats) ? crawlSummaryLlmModel.trim() || undefined : undefined,
+        crawlOutputFormats.includes('summary' as OutputFormats) && crawlSummaryLlmProvider !== 'ollama' ? crawlSummaryLlmApiKey || undefined : undefined,
+        crawlOutputFormats.includes('summary' as OutputFormats) ? crawlSummaryLlmBaseUrl.trim() || undefined : undefined
       );
       setIsLoading(false);
       if (result) {
@@ -488,6 +506,10 @@ const RobotCreate: React.FC = () => {
       notify('error', 'Please select at least one output format');
       return;
     }
+    if (searchMode === 'scrape' && searchOutputFormats.includes('summary' as OutputFormats) && searchSummaryLlmProvider !== 'ollama' && !searchSummaryLlmApiKey.trim()) {
+      notify('error', `An API key is required when using ${searchSummaryLlmProvider === 'anthropic' ? 'Anthropic' : 'an OpenAI-compatible'} provider for summaries`);
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -504,7 +526,11 @@ const RobotCreate: React.FC = () => {
           },
           mode: searchMode
         },
-        formatsForRequest
+        formatsForRequest,
+        searchMode === 'scrape' && searchOutputFormats.includes('summary' as OutputFormats) ? searchSummaryLlmProvider : undefined,
+        searchMode === 'scrape' && searchOutputFormats.includes('summary' as OutputFormats) ? searchSummaryLlmModel.trim() || undefined : undefined,
+        searchMode === 'scrape' && searchOutputFormats.includes('summary' as OutputFormats) && searchSummaryLlmProvider !== 'ollama' ? searchSummaryLlmApiKey || undefined : undefined,
+        searchMode === 'scrape' && searchOutputFormats.includes('summary' as OutputFormats) ? searchSummaryLlmBaseUrl.trim() || undefined : undefined
       );
       setIsLoading(false);
       if (result) {
@@ -832,12 +858,14 @@ const RobotCreate: React.FC = () => {
                   {llmProvider === 'ollama' && (
                     <Box sx={{ mb: 3 }}>
                       <TextField
-                        placeholder="http://localhost:11434"
+                        placeholder={OLLAMA_DEFAULT_BASE_URL}
                         variant="outlined"
                         fullWidth
                         value={llmBaseUrl}
                         onChange={(e) => setLlmBaseUrl(e.target.value)}
                         label="Ollama Base URL (Optional)"
+                        helperText="Defaults to http://localhost:11434. Use http://host.docker.internal:11434 if running via Docker"
+                        FormHelperTextProps={{ sx: { ml: 0.5 } }}
                       />
                     </Box>
                   )}
@@ -846,7 +874,6 @@ const RobotCreate: React.FC = () => {
                     variant="contained"
                     fullWidth
                     onClick={async () => {
-                      // URL is optional for AI mode - it will auto-search if not provided
                       if (!extractRobotName.trim()) {
                         notify('error', 'Please enter a robot name');
                         return;
@@ -1164,19 +1191,23 @@ const RobotCreate: React.FC = () => {
                       type="password"
                       value={scrapePromptLlmApiKey}
                       onChange={(e) => setScrapePromptLlmApiKey(e.target.value)}
-                      label="API Key (Optional if set in .env)"
+                      label="API Key"
+                      helperText="Required for summary output. Alternatively, set ANTHROPIC_API_KEY in your server .env."
+                      FormHelperTextProps={{ sx: { ml: 0.5 } }}
                       sx={{ mb: 2 }}
                     />
                   )}
                   {scrapePromptLlmProvider === 'ollama' && (
                     <TextField
-                      placeholder="http://localhost:11434"
+                      placeholder={OLLAMA_DEFAULT_BASE_URL}
                       variant="outlined"
                       fullWidth
                       value={scrapePromptLlmBaseUrl}
                       onChange={(e) => setScrapePromptLlmBaseUrl(e.target.value)}
-                      label="Ollama Base URL"
+                      label="Ollama Base URL (Optional)"
+                      helperText="Defaults to http://localhost:11434. Use http://host.docker.internal:11434 if running via Docker"
                       sx={{ mb: 2 }}
+                      FormHelperTextProps={{ sx: { ml: 0.5 } }}
                     />
                   )}
                 </Box>
@@ -1203,15 +1234,16 @@ const RobotCreate: React.FC = () => {
                   setIsLoading(true);
                   try {
                     const hasPrompt = !!scrapePromptInstructions.trim();
+                    const needsLlm = hasPrompt || outputFormats.includes('summary');
                     const result = await createScrapeRobot(
                       normalizedUrl,
                       scrapeRobotName,
                       outputFormats,
                       hasPrompt ? scrapePromptInstructions : undefined,
-                      hasPrompt ? scrapePromptLlmProvider : undefined,
-                      hasPrompt ? scrapePromptLlmModel.trim() || undefined : undefined,
-                      hasPrompt && scrapePromptLlmProvider !== 'ollama' ? scrapePromptLlmApiKey || undefined : undefined,
-                      hasPrompt && scrapePromptLlmProvider !== 'anthropic' ? scrapePromptLlmBaseUrl || undefined : undefined,
+                      needsLlm ? scrapePromptLlmProvider : undefined,
+                      needsLlm ? scrapePromptLlmModel.trim() || undefined : undefined,
+                      needsLlm && scrapePromptLlmProvider !== 'ollama' ? scrapePromptLlmApiKey || undefined : undefined,
+                      needsLlm && scrapePromptLlmProvider !== 'anthropic' ? scrapePromptLlmBaseUrl || undefined : undefined,
                     );
                     setIsLoading(false);
                     if (result) {
@@ -1318,6 +1350,85 @@ const RobotCreate: React.FC = () => {
                     </Select>
                   </FormControl>
                 </Box>
+
+                {crawlOutputFormats.includes('summary' as OutputFormats) && (
+                <Box sx={{ width: '100%', mb: 2 }}>
+                    <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                      <FormControl sx={{ flex: 1 }}>
+                        <InputLabel>Summary LLM Provider</InputLabel>
+                        <Select
+                          value={crawlSummaryLlmProvider}
+                          label="Summary LLM Provider"
+                          onChange={(e) => {
+                            applyLlmProvider(
+                              e.target.value as LlmProvider,
+                              crawlSummaryOpenAIPreset,
+                              setCrawlSummaryLlmProvider,
+                              setCrawlSummaryLlmModel,
+                              setCrawlSummaryLlmBaseUrl,
+                              setCrawlSummaryLlmApiKey
+                            );
+                          }}
+                        >
+                          <MenuItem value="ollama">Ollama (Local)</MenuItem>
+                          <MenuItem value="anthropic">Anthropic (Claude)</MenuItem>
+                          <MenuItem value="openai">OpenAI-compatible</MenuItem>
+                        </Select>
+                      </FormControl>
+                      <TextField
+                        sx={{ flex: 1 }}
+                        value={crawlSummaryLlmModel}
+                        label="Model"
+                        placeholder={getModelPlaceholder(crawlSummaryLlmProvider, crawlSummaryOpenAIPreset)}
+                        helperText={getModelHelperText(crawlSummaryLlmProvider, crawlSummaryOpenAIPreset)}
+                        onChange={(e) => setCrawlSummaryLlmModel(e.target.value)}
+                        FormHelperTextProps={{ sx: { ml: 0.5 } }}
+                      />
+                    </Box>
+                    {crawlSummaryLlmProvider === 'openai' && (
+                      <OpenAICompatiblePresetFields
+                        presetId={crawlSummaryOpenAIPreset}
+                        onPresetChange={(id) => applyOpenAICompatiblePreset(
+                          id,
+                          setCrawlSummaryOpenAIPreset,
+                          setCrawlSummaryLlmModel,
+                          setCrawlSummaryLlmBaseUrl,
+                          setCrawlSummaryLlmApiKey
+                        )}
+                        baseUrl={crawlSummaryLlmBaseUrl}
+                        onBaseUrlChange={setCrawlSummaryLlmBaseUrl}
+                        apiKey={crawlSummaryLlmApiKey}
+                        onApiKeyChange={setCrawlSummaryLlmApiKey}
+                        bottomMargin={2}
+                      />
+                    )}
+                    {crawlSummaryLlmProvider === 'anthropic' && (
+                      <TextField
+                        placeholder="Anthropic API key"
+                        fullWidth
+                        type="password"
+                        value={crawlSummaryLlmApiKey}
+                        onChange={(e) => setCrawlSummaryLlmApiKey(e.target.value)}
+                        label="API Key"
+                        helperText="Required for summary output. Alternatively, set ANTHROPIC_API_KEY in your server .env."
+                        FormHelperTextProps={{ sx: { ml: 0.5 } }}
+                        sx={{ mb: 2 }}
+                      />
+                    )}
+                    {crawlSummaryLlmProvider === 'ollama' && (
+                      <TextField
+                        fullWidth
+                        value={crawlSummaryLlmBaseUrl}
+                        onChange={(e) => setCrawlSummaryLlmBaseUrl(e.target.value)}
+                        label="Ollama Base URL (Optional)"
+                        placeholder={OLLAMA_DEFAULT_BASE_URL}
+                        helperText="Defaults to http://localhost:11434. Use http://host.docker.internal:11434 if running via Docker"
+                        sx={{ mb: 2 }}
+                        FormHelperTextProps={{ sx: { ml: 0.5 } }}
+                      />
+                    )}
+                  </Box>
+                )}
 
                 <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start', mb: 2 }}>
                   <Button
@@ -1543,7 +1654,88 @@ const RobotCreate: React.FC = () => {
                       </Select>
                     </FormControl>
                   </Box>
-                ) : (
+                ) : null}
+
+                {searchMode === 'scrape' && searchOutputFormats.includes('summary' as OutputFormats) && (
+                  <Box sx={{ width: '100%', mb: 2 }}>
+                    <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                      <FormControl sx={{ flex: 1 }}>
+                        <InputLabel>Summary LLM Provider</InputLabel>
+                        <Select
+                          value={searchSummaryLlmProvider}
+                          label="Summary LLM Provider"
+                          onChange={(e) => {
+                            applyLlmProvider(
+                              e.target.value as LlmProvider,
+                              searchSummaryOpenAIPreset,
+                              setSearchSummaryLlmProvider,
+                              setSearchSummaryLlmModel,
+                              setSearchSummaryLlmBaseUrl,
+                              setSearchSummaryLlmApiKey
+                            );
+                          }}
+                        >
+                          <MenuItem value="ollama">Ollama (Local)</MenuItem>
+                          <MenuItem value="anthropic">Anthropic (Claude)</MenuItem>
+                          <MenuItem value="openai">OpenAI-compatible</MenuItem>
+                        </Select>
+                      </FormControl>
+                      <TextField
+                        sx={{ flex: 1 }}
+                        value={searchSummaryLlmModel}
+                        label="Model"
+                        placeholder={getModelPlaceholder(searchSummaryLlmProvider, searchSummaryOpenAIPreset)}
+                        helperText={getModelHelperText(searchSummaryLlmProvider, searchSummaryOpenAIPreset)}
+                        onChange={(e) => setSearchSummaryLlmModel(e.target.value)}
+                        FormHelperTextProps={{ sx: { ml: 0.5 } }}
+                      />
+                    </Box>
+                    {searchSummaryLlmProvider === 'openai' && (
+                      <OpenAICompatiblePresetFields
+                        presetId={searchSummaryOpenAIPreset}
+                        onPresetChange={(id) => applyOpenAICompatiblePreset(
+                          id,
+                          setSearchSummaryOpenAIPreset,
+                          setSearchSummaryLlmModel,
+                          setSearchSummaryLlmBaseUrl,
+                          setSearchSummaryLlmApiKey
+                        )}
+                        baseUrl={searchSummaryLlmBaseUrl}
+                        onBaseUrlChange={setSearchSummaryLlmBaseUrl}
+                        apiKey={searchSummaryLlmApiKey}
+                        onApiKeyChange={setSearchSummaryLlmApiKey}
+                        bottomMargin={2}
+                      />
+                    )}
+                    {searchSummaryLlmProvider === 'anthropic' && (
+                      <TextField
+                        placeholder="Anthropic API key"
+                        fullWidth
+                        type="password"
+                        value={searchSummaryLlmApiKey}
+                        onChange={(e) => setSearchSummaryLlmApiKey(e.target.value)}
+                        label="API Key"
+                        helperText="Required for summary output. Alternatively, set ANTHROPIC_API_KEY in your server .env."
+                        FormHelperTextProps={{ sx: { ml: 0.5 } }}
+                        sx={{ mb: 2 }}
+                      />
+                    )}
+                    {searchSummaryLlmProvider === 'ollama' && (
+                      <TextField
+                        fullWidth
+                        value={searchSummaryLlmBaseUrl}
+                        onChange={(e) => setSearchSummaryLlmBaseUrl(e.target.value)}
+                        label="Ollama Base URL (Optional)"
+                        placeholder={OLLAMA_DEFAULT_BASE_URL}
+                        helperText="Defaults to http://localhost:11434. Use http://host.docker.internal:11434 if running via Docker"
+                        sx={{ mb: 2 }}
+                        FormHelperTextProps={{ sx: { ml: 0.5 } }}
+                      />
+                    )}
+                  </Box>
+                )}
+
+                {searchMode === 'discover' && (
                   <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start', mb: 2, alignItems: 'center' }}>
                     <Typography variant="body2" color="text.secondary">
                       Output formats are only available in "Extract Data from Results" mode
@@ -1754,12 +1946,14 @@ const RobotCreate: React.FC = () => {
 
                     {documentLlmProvider === 'ollama' && (
                       <TextField
-                        label="Ollama Base URL"
+                        label="Ollama Base URL (Optional)"
                         fullWidth
                         value={documentLlmBaseUrl}
                         onChange={(e) => setDocumentLlmBaseUrl(e.target.value)}
-                        placeholder="http://localhost:11434"
+                        placeholder={OLLAMA_DEFAULT_BASE_URL}
+                        helperText="Defaults to http://localhost:11434. Use http://host.docker.internal:11434 if running via Docker"
                         sx={{ mb: 3 }}
+                        FormHelperTextProps={{ sx: { ml: 0.5 } }}
                       />
                     )}
                   </>
