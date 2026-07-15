@@ -23,13 +23,15 @@ export const comparePassword = (password: string, hash: string): Promise<boolean
     return bcrypt.compare(password, hash);
 };
 
+const HEX_64_RE = /^[0-9a-fA-F]{64}$/;
+
 export const encrypt = (text: string): string => {
     const ivLength = 16;
     const iv = crypto.randomBytes(ivLength);
     const algorithm = 'aes-256-cbc';
 
     const key = getEnvVariable('ENCRYPTION_KEY');
-    if (!key || key.length !== 64) {
+    if (!key || !HEX_64_RE.test(key)) {
         throw new Error('ENCRYPTION_KEY is missing or invalid. Set a 64-character hex string in your .env file.');
     }
     const keyBuffer = Buffer.from(key, 'hex');
@@ -45,7 +47,7 @@ export const decrypt = (encryptedText: string): string => {
     const algorithm = "aes-256-cbc";
 
     const key = getEnvVariable('ENCRYPTION_KEY');
-    if (!key || key.length !== 64) {
+    if (!key || !HEX_64_RE.test(key)) {
         throw new Error('ENCRYPTION_KEY is missing or invalid. Set a 64-character hex string in your .env file.');
     }
     const keyBuffer = Buffer.from(key, 'hex');
@@ -58,11 +60,7 @@ export const decrypt = (encryptedText: string): string => {
 
 export const safeDecrypt = (value: string): string => {
     if (value.includes(':')) {
-        try {
-            return decrypt(value);
-        } catch {
-            return value;
-        }
+        return decrypt(value);
     }
     return value;
 };
