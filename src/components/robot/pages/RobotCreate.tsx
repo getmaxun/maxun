@@ -365,12 +365,11 @@ const RobotCreate: React.FC = () => {
   const isValidUrl = (rawUrl: string): boolean => {
     const trimmed = rawUrl.trim();
     if (!trimmed) return false;
-    if ((trimmed.match(/https?:\/\//gi) ?? []).length > 1) return false;
     try {
       const parsed = new URL(trimmed);
       if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
       if (!parsed.hostname) return false;
-      const isPlausibleHost = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(parsed.hostname)
+      const isPlausibleHost = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/i.test(parsed.hostname)
         || parsed.hostname === 'localhost'
         || /^\d{1,3}(\.\d{1,3}){3}$/.test(parsed.hostname)
         || /^\[[0-9a-f:]+\]$/i.test(parsed.hostname);
