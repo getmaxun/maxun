@@ -1,4 +1,4 @@
-import React, { FC, useState } from 'react';
+import React, { useState } from 'react';
 import { InterpretationButtons } from "../run/InterpretationButtons";
 import { useSocketStore } from "../../context/socket";
 

@@ -1,13 +1,13 @@
 import React, { useCallback, useContext, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MainMenu } from "../components/dashboard/MainMenu";
-import { Stack, Box } from "@mui/material";
+import { Box } from "@mui/material";
 import { Recordings } from "../components/robot/Recordings";
 import { Runs } from "../components/run/Runs";
 import ProxyForm from '../components/proxy/ProxyForm';
 import ApiKey from '../components/api/ApiKey';
 import { useGlobalInfoStore, useCacheInvalidation } from "../context/globalInfo";
-import { createAndRunRecording, createRunForStoredRecording, CreateRunResponseWithQueue, interpretStoredRecording, notifyAboutAbort, scheduleStoredRecording } from "../api/storage";
+import { createAndRunRecording, CreateRunResponseWithQueue, interpretStoredRecording, notifyAboutAbort, scheduleStoredRecording } from "../api/storage";
 import { io, Socket } from "socket.io-client";
 import { stopRecording } from "../api/recording";
 import { RunSettings } from "../components/run/RunSettings";
@@ -166,6 +166,8 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
       invalidateRuns();
       const { browserId, runId, robotMetaId, queued } = response;
 
+      const resolvedRobotMetaId = robotMetaId || runningRecordingId;
+
       if (!runId && !queued) {
         notify('error', t('main_page.notifications.run_start_failed', { name: runningRecordingName }));
         setContent('robots');
@@ -181,8 +183,8 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
 
       updateOptimisticRun(realRun, optimisticRun.runId);
 
-      setIds({ browserId, runId, robotMetaId });
-      navigate(`/runs/${robotMetaId}/run/${runId}`);
+      setIds({ browserId, runId, robotMetaId: resolvedRobotMetaId });
+      navigate(`/runs/${resolvedRobotMetaId}/run/${runId}`);
             
       if (queued) {
         setQueuedRuns(prev => new Set([...prev, runId]));

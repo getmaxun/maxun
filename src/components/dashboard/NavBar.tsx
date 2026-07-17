@@ -359,6 +359,14 @@ export const NavBar: React.FC<NavBarProps> = ({
                       </MenuItem>
                       <MenuItem
                         onClick={() => {
+                          changeLanguage("ko");
+                          handleMenuClose();
+                        }}
+                      >
+                        한국어
+                      </MenuItem>
+                      <MenuItem
+                        onClick={() => {
                           window.open('https://docs.maxun.dev/development/i18n', '_blank');
                           handleMenuClose();
                         }}
@@ -460,6 +468,14 @@ export const NavBar: React.FC<NavBarProps> = ({
                   }}
                 >
                   Türkçe
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    changeLanguage("ko");
+                    handleMenuClose();
+                  }}
+                >
+                  한국어
                 </MenuItem>
                 <MenuItem
                   onClick={() => {

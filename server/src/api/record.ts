@@ -17,6 +17,7 @@ import { addGoogleSheetUpdateTask, processGoogleSheetUpdates } from "../workflow
 import { addAirtableUpdateTask, processAirtableUpdates } from "../workflow-management/integrations/airtable";
 import { sendWebhook } from "../routes/webhook";
 import { convertPageToHTML, convertPageToLinks, convertPageToMarkdown, convertPageToScreenshot, convertPageToText } from '../markdownify/scrape';
+import { safeDecrypt } from '../utils/auth';
 import { executeBrowserAgent } from '../sdk/browserAgent';
 import { OutputFormats } from '../constants/output-formats';
 import { processRobotOutputFormats } from '../utils/output-post-processor';
@@ -26,9 +27,23 @@ import { QUEUE_NAMES } from '../task-runner';
 const router = Router();
 
 const normalizeRobotUrl = (rawUrl: string): string => {
-    const normalizedUrl = new URL(rawUrl.trim());
+    let normalizedUrl: URL;
+    try {
+        normalizedUrl = new URL(rawUrl.trim());
+    } catch {
+        throw new Error(`"${rawUrl.trim()}" is not a valid URL. Provide a full web address like https://example.com`);
+    }
     if (!['http:', 'https:'].includes(normalizedUrl.protocol)) {
-        throw new Error('Invalid URL protocol');
+        throw new Error(`Unsupported URL protocol "${normalizedUrl.protocol}//" — only http and https are supported. Local file paths cannot be scraped.`);
+    }
+
+    const hostname = normalizedUrl.hostname;
+    const isPlausibleHost = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(hostname)
+        || hostname === 'localhost'
+        || /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname)
+        || /^\[[0-9a-f:]+\]$/i.test(hostname);
+    if (!isPlausibleHost) {
+        throw new Error(`"${hostname}" is not a reachable hostname. Provide a full web address like https://example.com`);
     }
 
     normalizedUrl.search = normalizedUrl.searchParams.toString();
@@ -898,7 +913,7 @@ async function executeRun(id: string, userId: string) {
                             const llmConfig = {
                                 provider: ((recording.recording_meta as any).promptLlmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama',
                                 model: (recording.recording_meta as any).promptLlmModel as string | undefined,
-                                apiKey: (recording.recording_meta as any).promptLlmApiKey as string | undefined,
+                                apiKey: (recording.recording_meta as any).promptLlmApiKey ? safeDecrypt((recording.recording_meta as any).promptLlmApiKey) : undefined,
                                 baseUrl: (recording.recording_meta as any).promptLlmBaseUrl as string | undefined,
                             };
                             const summaryText = await summarizeMarkdown(markdown, llmConfig);
@@ -944,7 +959,7 @@ async function executeRun(id: string, userId: string) {
                         const llmConfig = {
                             provider: ((recording.recording_meta as any).promptLlmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama',
                             model: (recording.recording_meta as any).promptLlmModel as string | undefined,
-                            apiKey: (recording.recording_meta as any).promptLlmApiKey as string | undefined,
+                            apiKey: (recording.recording_meta as any).promptLlmApiKey ? safeDecrypt((recording.recording_meta as any).promptLlmApiKey) : undefined,
                             baseUrl: (recording.recording_meta as any).promptLlmBaseUrl as string | undefined,
                         };
                         logger.log('info', `Running smart query for API scrape run ${plainRun.runId}`);
@@ -1139,7 +1154,7 @@ async function executeRun(id: string, userId: string) {
             const llmConfig = {
                 provider: ((recording.recording_meta as any).promptLlmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama',
                 model: (recording.recording_meta as any).promptLlmModel as string | undefined,
-                apiKey: (recording.recording_meta as any).promptLlmApiKey as string | undefined,
+                apiKey: (recording.recording_meta as any).promptLlmApiKey ? safeDecrypt((recording.recording_meta as any).promptLlmApiKey) : undefined,
                 baseUrl: (recording.recording_meta as any).promptLlmBaseUrl as string | undefined,
             };
             try {
@@ -1150,7 +1165,6 @@ async function executeRun(id: string, userId: string) {
                         crawl: categorizedOutput.crawl as Record<string, any>,
                         search: categorizedOutput.search as Record<string, any>,
                     },
-                    currentPage,
                     initialBinaryOutput: postBinaryOutput,
                     llmConfig,
                 });
@@ -1677,19 +1691,11 @@ router.post("/robots/:id/duplicate", requireAPIKey, async (req: Request, res: Re
         let normalizedTargetUrl: string;
         try {
             normalizedTargetUrl = normalizeRobotUrl(targetUrl);
-            const parsed = new URL(normalizedTargetUrl);
-            if (!['http:', 'https:'].includes(parsed.protocol)) {
-                return res.status(400).json({
-                    statusCode: 400,
-                    messageCode: "bad_request",
-                    message: 'The "targetUrl" must use http or https protocol.',
-                });
-            }
-        } catch {
+        } catch (err) {
             return res.status(400).json({
                 statusCode: 400,
                 messageCode: "bad_request",
-                message: 'The "targetUrl" must be a valid URL.',
+                message: `Invalid "targetUrl": ${err instanceof Error ? err.message : 'must be a valid URL'}`,
             });
         }
 

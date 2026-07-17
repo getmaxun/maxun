@@ -3,7 +3,7 @@ import { io, Socket } from "socket.io-client";
 import { createRemoteBrowserForRun, destroyRemoteBrowser } from '../../browser-management/controller';
 import logger from '../../logger';
 import { browserPool, io as serverIo } from "../../server";
-import { addGoogleSheetUpdateTask, googleSheetUpdateTasks, processGoogleSheetUpdates } from "../integrations/gsheet";
+import { addGoogleSheetUpdateTask, processGoogleSheetUpdates } from "../integrations/gsheet";
 import Robot from "../../models/Robot";
 import Run from "../../models/Run";
 import { getDecryptedProxyConfig } from "../../routes/proxy";
@@ -12,10 +12,11 @@ import { capture } from "../../utils/analytics";
 import { WorkflowFile } from "maxun-core";
 import { Page } from "playwright-core";
 import { sendWebhook } from "../../routes/webhook";
-import { addAirtableUpdateTask, airtableUpdateTasks, processAirtableUpdates } from "../integrations/airtable";
+import { addAirtableUpdateTask, processAirtableUpdates } from "../integrations/airtable";
 import { convertPageToMarkdown, convertPageToHTML, convertPageToLinks, convertPageToScreenshot, convertPageToText } from "../../markdownify/scrape";
 import { executeBrowserAgent } from "../../sdk/browserAgent";
 import { processRobotOutputFormats } from "../../utils/output-post-processor";
+import { safeDecrypt } from "../../utils/auth";
 import { getInterpretationFailureReason, hasExpectedRobotOutput } from "../../utils/output-validation";
 import { addJob } from '../../storage/graphileWorker';
 import { QUEUE_NAMES } from '../../task-runner';
@@ -82,7 +83,7 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string) {
       startedAt: new Date().toLocaleString(),
       finishedAt: '',
       browserId,
-      interpreterSettings: { maxConcurrency: 1, maxRepeats: 1, debug: true, ...(isDocRobot && { robotType }) },
+      interpreterSettings: { maxConcurrency: 1, maxRepeats: 1, debug: true, formats: (recording.recording_meta as any).formats, ...(isDocRobot && { robotType }) },
       log: '',
       runId,
       runByScheduleId: uuid(),
@@ -376,7 +377,7 @@ async function executeRun(id: string, userId: string) {
               const llmConfig = {
                 provider: ((recording.recording_meta as any).promptLlmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama',
                 model: (recording.recording_meta as any).promptLlmModel as string | undefined,
-                apiKey: (recording.recording_meta as any).promptLlmApiKey as string | undefined,
+                apiKey: (recording.recording_meta as any).promptLlmApiKey ? safeDecrypt((recording.recording_meta as any).promptLlmApiKey) : undefined,
                 baseUrl: (recording.recording_meta as any).promptLlmBaseUrl as string | undefined,
               };
               const summaryText = await summarizeMarkdown(markdown, llmConfig);
@@ -416,7 +417,7 @@ async function executeRun(id: string, userId: string) {
             const llmConfig = {
               provider: ((recording.recording_meta as any).promptLlmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama',
               model: (recording.recording_meta as any).promptLlmModel as string | undefined,
-              apiKey: (recording.recording_meta as any).promptLlmApiKey as string | undefined,
+              apiKey: (recording.recording_meta as any).promptLlmApiKey ? safeDecrypt((recording.recording_meta as any).promptLlmApiKey) : undefined,
               baseUrl: (recording.recording_meta as any).promptLlmBaseUrl as string | undefined,
             };
             logger.log('info', `Running smart query for scheduled scrape run ${plainRun.runId}`);
@@ -613,12 +614,11 @@ async function executeRun(id: string, userId: string) {
           crawl: categorizedOutput.crawl as Record<string, any>,
           search: categorizedOutput.search as Record<string, any>,
         },
-        currentPage,
         initialBinaryOutput: binaryOutput,
         llmConfig: {
           provider: ((recording.recording_meta as any).promptLlmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama',
           model: (recording.recording_meta as any).promptLlmModel as string | undefined,
-          apiKey: (recording.recording_meta as any).promptLlmApiKey as string | undefined,
+          apiKey: (recording.recording_meta as any).promptLlmApiKey ? safeDecrypt((recording.recording_meta as any).promptLlmApiKey) : undefined,
           baseUrl: (recording.recording_meta as any).promptLlmBaseUrl as string | undefined,
         },
       });

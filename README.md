@@ -115,7 +115,7 @@ Learn more <a href="https://docs.maxun.dev/robot/search/search-introduction">her
 ## Quick Start
 
 ### Getting Started
-The simplest & fastest way to get started is to use the hosted version: https://app.maxun.dev. You can self-host if you prefer!
+The simplest & fastest way to get started is to use the hosted version: https://app.maxun.dev.
 
 ### Installation
 Maxun can run locally with or without Docker
@@ -125,10 +125,9 @@ Maxun can run locally with or without Docker
 4. [SDK](https://github.com/getmaxun/node-sdk)
 
 ### Upgrading & Self Hosting
-1. [Self Host Maxun With Docker & Portainer](https://docs.maxun.dev/self-host)
+1. [Self Host Maxun With Docker](https://docs.maxun.dev/self-host)
 2. [Upgrade Maxun With Docker Compose Setup](https://docs.maxun.dev/installation/upgrade#upgrading-with-docker-compose)
 3. [Upgrade Maxun Without Docker Compose Setup](https://docs.maxun.dev/installation/upgrade#upgrading-with-local-setup)
-4. [Self Host With Neon](https://docs.maxun.dev/self-host/neon)
 
 ## Features
 
