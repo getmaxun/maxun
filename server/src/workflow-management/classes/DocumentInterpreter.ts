@@ -72,7 +72,7 @@ const normalizeWhitespace = (value: string): string =>
   value.replace(/\r/g, '\n').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
 
 const cleanText = (value: string): string =>
-  normalizeWhitespace(value.replace(//g, ''));
+  normalizeWhitespace(value.replace(/\0/g, ''));
 
 const OCR_ASCII_NOISE_THRESHOLD = 0.80;
 
@@ -1134,61 +1134,61 @@ export class DocumentInterpreter {
   }
 
   private static async parseCSV(buffer: Buffer): Promise<ParsedDocument> {
-  const workbook = XLSX.read(buffer, { type: 'buffer' });
-  const sheetName = workbook.SheetNames[0];
-  const sheet = workbook.Sheets[sheetName];
+    const workbook = XLSX.read(buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
 
-  if (!sheet) {
+    if (!sheet) {
+      return {
+        text: '',
+        pageCount: 1,
+        pages: [{ pageNumber: 1, text: '' }],
+        tables: [],
+      };
+    }
+
+    const rows = XLSX.utils.sheet_to_json<any[]>(sheet, {
+      header: 1,
+      blankrows: false,
+      defval: '',
+    });
+
+    const normalizedRows = rows
+      .filter((row): row is any[] => Array.isArray(row))
+      .map((row: any[]) =>
+        row.map((cell: any) => {
+          if (cell === undefined || cell === null) {
+            return '';
+          }
+          if (cell instanceof Date) {
+            return cell.toISOString();
+          }
+          if (typeof cell === 'number' || typeof cell === 'boolean') {
+            return String(cell);
+          }
+          return String(cell).trim();
+        })
+      )
+      .filter((row: any[]) => row.some((cell: any) => cell !== ''));
+
+    if (normalizedRows.length === 0) {
+      return {
+        text: '',
+        pageCount: 1,
+        pages: [{ pageNumber: 1, text: '' }],
+        tables: [],
+      };
+    }
+
+    const sheetText = normalizedRows.map((row) => row.join('\t')).join('\n');
+    const text = cleanText(sheetText);
+
     return {
-      text: '',
+      text,
       pageCount: 1,
-      pages: [{ pageNumber: 1, text: '' }],
-      tables: [],
+      pages: [{ pageNumber: 1, text }],
+      tables: [normalizedRows],
     };
-  }
-
-  const rows = XLSX.utils.sheet_to_json<any[]>(sheet, {
-    header: 1,
-    blankrows: false,
-    defval: '',
-  });
-
-  const normalizedRows = rows
-    .filter((row): row is any[] => Array.isArray(row))
-    .map((row: any[]) =>
-      row.map((cell: any) => {
-        if (cell === undefined || cell === null) {
-          return '';
-        }
-        if (cell instanceof Date) {
-          return cell.toISOString();
-        }
-        if (typeof cell === 'number' || typeof cell === 'boolean') {
-          return String(cell);
-        }
-        return String(cell).trim();
-      })
-    )
-    .filter((row: any[]) => row.some((cell: any) => cell !== ''));
-
-  if (normalizedRows.length === 0) {
-    return {
-      text: '',
-      pageCount: 1,
-      pages: [{ pageNumber: 1, text: '' }],
-      tables: [],
-    };
-  }
-
-  const sheetText = normalizedRows.map((row) => row.join('\t')).join('\n');
-  const text = cleanText(sheetText);
-
-  return {
-    text,
-    pageCount: 1,
-    pages: [{ pageNumber: 1, text }],
-    tables: [normalizedRows],
-  };
 }
 
   private static buildSchemaPrompt(
