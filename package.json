@@ -87,7 +87,8 @@
     "uuid": "^14.0.0",
     "uuidv4": "^6.2.12",
     "web-vitals": "^2.1.4",
-    "winston": "^3.5.1"
+    "winston": "^3.5.1",
+    "xlsx": "^0.18.5"
   },
   "scripts": {
     "start": "npm run build:server && concurrently -k \"npm run server\" \"npm run client\"",
