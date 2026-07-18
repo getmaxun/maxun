@@ -8,6 +8,7 @@ export interface InterpreterSettings {
     maxConcurrency: number;
     maxRepeats: number;
     debug: boolean;
+    formats?: string[];
     params?: any;
 }
 

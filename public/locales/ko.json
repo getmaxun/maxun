@@ -1,0 +1,654 @@
+{
+  "login": {
+    "title": "Maxun에 오신 것을 환영합니다",
+    "email": "업무용 이메일 입력",
+    "password": "비밀번호",
+    "button": "로그인",
+    "loading": "로딩 중",
+    "register_prompt": "계정이 없으신가요?",
+    "register_link": "회원가입",
+    "welcome_notification": "Maxun에 오신 것을 환영합니다!",
+    "validation": {
+      "required_fields": "이메일과 비밀번호를 입력해야 합니다",
+      "password_length": "비밀번호는 최소 6자 이상이어야 합니다"
+    },
+    "error": {
+      "user_not_found": "존재하지 않는 사용자입니다",
+      "invalid_credentials": "이메일 또는 비밀번호가 올바르지 않습니다",
+      "server_error": "로그인에 실패했습니다. 나중에 다시 시도해 주세요",
+      "generic": "오류가 발생했습니다. 다시 시도해 주세요"
+    }
+  },
+  "register": {
+    "title": "계정 만들기",
+    "email": "업무용 이메일 입력",
+    "password": "비밀번호",
+    "button": "회원가입",
+    "loading": "로딩 중",
+    "register_prompt": "이미 계정이 있으신가요?",
+    "login_link": "로그인",
+    "welcome_notification": "Maxun에 오신 것을 환영합니다!",
+    "validation": {
+      "email_required": "이메일을 입력해야 합니다",
+      "password_requirements": "비밀번호는 최소 6자 이상이어야 합니다"
+    },
+    "error": {
+      "user_exists": "이미 해당 이메일로 가입된 사용자가 있습니다",
+      "creation_failed": "계정을 생성할 수 없습니다",
+      "server_error": "서버 오류가 발생했습니다",
+      "generic": "회원가입에 실패했습니다. 다시 시도해 주세요"
+    }
+  },
+  "recordingtable": {
+    "run": "실행",
+    "name": "이름",
+    "schedule": "예약",
+    "integrate": "연동",
+    "settings": "설정",
+    "options": "옵션",
+    "heading": "내 로봇",
+    "new": "로봇 만들기",
+    "search_criteria": "검색 조건을 조정해 보세요",
+    "placeholder": {
+      "title": "시작할 준비가 되었습니다",
+      "body": "생성한 로봇이 여기에 표시됩니다. 시작하려면 \"로봇 만들기\"를 클릭하세요!",
+      "search": "검색 결과와 일치하는 로봇이 없습니다"
+    },
+    "modal": {
+      "title": "URL 입력",
+      "login_title": "이 웹사이트에 로그인이 필요한가요?",
+      "label": "URL",
+      "button": "녹화 시작"
+    },
+    "warning_modal": {
+      "title": "활성 브라우저가 감지되었습니다",
+      "message": "이미 실행 중인 브라우저 녹화 세션이 있습니다. 이를 취소하고 새 녹화를 시작하시겠습니까?",
+      "discard_and_create": "취소하고 새로 만들기",
+      "cancel": "취소"
+    },
+    "retrain": "재학습",
+    "edit": "수정",
+    "delete": "삭제",
+    "duplicate": "복제",
+    "search": "로봇 검색...",
+    "notifications": {
+      "delete_warning": "이 로봇에는 연결된 실행 기록이 있습니다. 로봇을 삭제하려면 먼저 실행 기록을 삭제하세요",
+      "delete_success": "로봇이 삭제되었습니다",
+      "auth_success": "로봇 인증에 성공했습니다",
+      "browser_limit_warning": "원격 브라우저가 현재 사용 중입니다. 몇 분 후 다시 시도해 주세요"
+    }
+  },
+  "mainmenu": {
+    "recordings": "로봇",
+    "runs": "실행",
+    "proxy": "프록시",
+    "apikey": "API 키",
+    "feedback": "Maxun Cloud 가입하기",
+    "apidocs": "웹사이트를 API로"
+  },
+  "runstable": {
+    "runs": "전체 실행",
+    "runStatus": "상태",
+    "runName": "이름",
+    "name": "이름",
+    "startedAt": "시작 시각",
+    "finishedAt": "종료 시각",
+    "delete": "삭제",
+    "settings": "설정",
+    "search": "실행 검색...",
+    "sort_tooltip": "클릭하여 정렬",
+    "placeholder": {
+      "title": "실행 기록이 없습니다",
+      "body": "로봇 실행 기록이 여기에 표시됩니다. 로봇이 활성화되면 실행 기록이 이곳에 기록됩니다.",
+      "search": "검색 결과와 일치하는 실행 기록이 없습니다"
+    },
+    "notifications": {
+      "no_runs": "실행 기록을 찾을 수 없습니다. 다시 시도해 주세요.",
+      "delete_success": "실행 기록이 삭제되었습니다"
+    }
+  },
+  "proxy": {
+    "title": "프록시 설정",
+    "tab_standard": "표준 프록시",
+    "tab_rotation": "자동 프록시 로테이션",
+    "server_url": "프록시 서버 URL",
+    "server_url_helper": "모든 로봇에 사용할 프록시입니다. HTTP 및 SOCKS 프록시를 지원합니다. 예: http://myproxy.com:3128 또는 socks5://myproxy.com:3128. myproxy.com:3128과 같은 축약 형식은 HTTP 프록시로 간주됩니다.",
+    "requires_auth": "인증이 필요한가요?",
+    "username": "사용자 이름",
+    "password": "비밀번호",
+    "add_proxy": "프록시 추가",
+    "test_proxy": "프록시 테스트",
+    "remove_proxy": "프록시 제거",
+    "table": {
+      "proxy_url": "프록시 URL",
+      "requires_auth": "인증 필요"
+    },
+    "coming_soon": "출시 예정 - 오픈소스(기본 로테이션) 및 클라우드(고급 로테이션)에서 제공됩니다. 인프라를 직접 관리하고 싶지 않다면 클라우드 대기자 명단에 등록하여 얼리 액세스를 받아보세요.",
+    "join_waitlist": "Maxun Cloud 대기자 명단 등록",
+    "alert": {
+      "title": "프록시에 사용자 이름과 비밀번호가 필요한 경우, 반드시 프록시 URL과 별도로 입력하세요.",
+      "right_way": "올바른 방법",
+      "wrong_way": "잘못된 방법",
+      "proxy_url": "프록시 URL:",
+      "username": "사용자 이름:",
+      "password": "비밀번호:"
+    },
+    "notifications": {
+      "config_success": "프록시 설정이 성공적으로 저장되었습니다",
+      "config_error": "프록시 설정 저장에 실패했습니다. 다시 시도해 주세요.",
+      "test_success": "프록시 설정이 정상적으로 작동합니다",
+      "test_error": "프록시 설정 테스트에 실패했습니다. 다시 시도해 주세요.",
+      "fetch_success": "프록시 설정을 성공적으로 불러왔습니다",
+      "remove_success": "프록시 설정이 제거되었습니다",
+      "remove_error": "프록시 설정 제거에 실패했습니다. 다시 시도해 주세요."
+    }
+  },
+  "apikey": {
+    "title": "API 키 관리",
+    "default_name": "Maxun API 키",
+    "table": {
+      "name": "API 키 이름",
+      "key": "API 키",
+      "actions": "작업"
+    },
+    "actions": {
+      "copy": "복사",
+      "show": "표시",
+      "hide": "숨기기",
+      "delete": "삭제"
+    },
+    "no_key_message": "아직 생성된 API 키가 없습니다.",
+    "generate_button": "API 키 생성",
+    "notifications": {
+      "fetch_error": "API 키를 불러오지 못했습니다 - {{error}}",
+      "generate_success": "API 키가 성공적으로 생성되었습니다",
+      "generate_error": "API 키 생성에 실패했습니다 - {{error}}",
+      "delete_success": "API 키가 삭제되었습니다",
+      "delete_error": "API 키 삭제에 실패했습니다 - {{error}}",
+      "copy_success": "API 키가 복사되었습니다"
+    }
+  },
+  "action_description": {
+    "text": {
+      "title": "텍스트 캡처",
+      "description": "추출하려는 텍스트 위에 마우스를 올린 후 클릭하여 선택하세요"
+    },
+    "screenshot": {
+      "title": "스크린샷 캡처",
+      "description": "현재 페이지의 일부 또는 전체 스크린샷을 캡처합니다."
+    },
+    "list": {
+      "title": "목록 캡처",
+      "description": "추출하려는 목록 위에 마우스를 올리세요. 목록을 선택하면 그 안의 모든 텍스트 위에 마우스를 올릴 수 있습니다. 클릭하여 선택하세요."
+    },
+    "default": {
+      "title": "어떤 데이터를 추출하시겠습니까?",
+      "description": "로봇은 하나 또는 여러 작업을 수행할 수 있습니다. 아래 옵션 중에서 선택하세요."
+    },
+    "list_stages": {
+      "initial": "추출할 목록과 그 안의 텍스트를 선택하세요",
+      "pagination": "로봇이 나머지 목록을 캡처하는 방식을 선택하세요",
+      "limit": "추출할 항목 수를 선택하세요",
+      "complete": "캡처가 완료되었습니다"
+    },
+    "actions": {
+      "text": "텍스트 캡처",
+      "list": "목록 캡처",
+      "screenshot": "스크린샷 캡처"
+    }
+  },
+  "right_panel": {
+    "buttons": {
+      "capture_list": "목록 캡처",
+      "capture_text": "텍스트 캡처",
+      "capture_screenshot": "스크린샷 캡처",
+      "confirm": "확인",
+      "discard": "취소",
+      "confirm_capture": "캡처 확인",
+      "confirm_pagination": "확인",
+      "confirm_limit": "확인",
+      "confirm_reset": "확인",
+      "finish_capture": "캡처 완료",
+      "back": "뒤로",
+      "reset": "녹화 다시 시작",
+      "finish": "완료",
+      "cancel": "취소",
+      "delete": "삭제"
+    },
+    "screenshot": {
+      "capture_fullpage": "전체 페이지 캡처",
+      "capture_visible": "보이는 부분 캡처",
+      "display_fullpage": "전체 페이지 스크린샷 찍기",
+      "display_visible": "보이는 부분 스크린샷 찍기"
+    },
+    "pagination": {
+      "title": "페이지에서 다음 목록 항목을 어떻게 찾을까요?",
+      "click_next": "다음 페이지로 이동하려면 '다음'을 클릭하세요",
+      "click_load_more": "더 많은 항목을 불러오려면 '더 보기'를 클릭하세요",
+      "scroll_down": "아래로 스크롤하여 더 많은 항목을 불러오세요",
+      "scroll_up": "위로 스크롤하여 더 많은 항목을 불러오세요",
+      "none": "더 이상 불러올 항목이 없습니다"
+    },
+    "limit": {
+      "title": "추출할 최대 행 수는 얼마입니까?",
+      "custom": "직접 입력",
+      "enter_number": "숫자 입력"
+    },
+    "fields": {
+      "label": "라벨",
+      "data": "데이터",
+      "field_label": "필드 라벨",
+      "field_data": "필드 데이터"
+    },
+    "messages": {
+      "list_selected": "목록이 성공적으로 선택되었습니다",
+      "list_empty": "목록이 선택되었습니다. 목록 안의 필드를 선택하세요."
+    },
+    "errors": {
+      "select_pagination": "페이지네이션 유형을 선택하세요.",
+      "select_pagination_element": "먼저 페이지네이션 요소를 선택하세요.",
+      "select_limit": "제한 값을 선택하거나 직접 입력하세요.",
+      "invalid_limit": "유효한 제한 값을 입력하세요.",
+      "confirm_text_fields": "모든 텍스트 필드를 확인하세요",
+      "unable_create_settings": "목록 설정을 생성할 수 없습니다. 목록에 대한 필드가 정의되어 있는지 확인하세요.",
+      "capture_text_discarded": "텍스트 캡처가 취소되었습니다",
+      "capture_list_discarded": "목록 캡처가 취소되었습니다",
+      "label_required": "라벨은 비워둘 수 없습니다",
+      "duplicate_label": "이미 존재하는 라벨입니다. 고유한 라벨을 사용하세요.",
+      "no_text_captured": "확인하기 전에 텍스트 요소를 강조 표시하여 선택하세요.",
+      "capture_list_first": "먼저 목록 위에 마우스를 올리고 그 안의 텍스트 필드를 선택하세요",
+      "confirm_all_list_fields": "계속하기 전에 캡처된 모든 목록 필드를 확인하세요"
+    },
+    "tooltips": {
+      "capture_list_first": "먼저 목록 위에 마우스를 올리고 그 안의 텍스트 필드를 선택하세요",
+      "confirm_all_list_fields": "계속하기 전에 캡처된 모든 목록 필드를 확인하세요"
+    }
+  },
+  "save_recording": {
+    "title": "로봇 저장",
+    "robot_name": "이름",
+    "buttons": {
+      "save": "저장",
+      "confirm": "확인"
+    },
+    "notifications": {
+      "save_success": "로봇이 저장되었습니다",
+      "retrain_success": "로봇이 재학습되었습니다",
+      "save_error": "로봇 저장 중 오류가 발생했습니다"
+    },
+    "errors": {
+      "user_not_logged": "로그인되어 있지 않습니다. 녹화를 저장할 수 없습니다.",
+      "exists_warning": "이 이름의 로봇이 이미 존재합니다. 로봇을 덮어쓸지 확인해 주세요.",
+      "name_exists": "이 이름의 로봇이 이미 존재합니다. 다른 이름을 선택하세요.",
+      "no_actions_performed": "로봇을 저장할 수 없습니다. 저장하기 전에 최소 하나의 캡처 작업을 수행하세요."
+    },
+    "tooltips": {
+      "saving": "워크플로를 최적화하고 저장하는 중"
+    }
+  },
+  "browser_recording": {
+    "modal": {
+      "confirm_discard": "녹화를 취소하시겠습니까?",
+      "confirm_reset": "녹화를 다시 시작하시겠습니까?",
+      "reset_warning": "현재 세션의 모든 이전 캡처가 삭제됩니다. 동일한 웹사이트에 대해 녹화 세션이 다시 시작됩니다."
+    },
+    "notifications": {
+      "terminated": "현재 녹화가 종료되었습니다",
+      "environment_reset": "브라우저 환경이 초기화되었습니다",
+      "reset_successful": "모든 캡처가 초기화되어 처음 상태로 돌아갔습니다",
+      "timeout_discarded": "녹화 세션이 10분 후 시간 초과되어 자동으로 취소되었습니다."
+    }
+  },
+  "interpretation_log": {
+    "titles": {
+      "output_preview": "출력 데이터 미리보기",
+      "screenshot": "스크린샷"
+    },
+    "messages": {
+      "additional_rows": "녹화를 완료하면 추가 데이터 행이 추출됩니다.",
+      "successful_training": "로봇이 작업을 수행하도록 성공적으로 학습되었습니다! 아래 버튼을 클릭하여 로봇이 추출할 데이터를 미리 확인하세요.",
+      "no_selection": "아직 추출할 항목을 선택하지 않으신 것 같습니다. 선택하면 로봇이 여기에 선택 항목의 미리보기를 표시합니다."
+    },
+    "data_sections": {
+      "binary_received": "---------- 바이너리 출력 데이터 수신 ----------",
+      "serializable_received": "---------- 직렬화 가능한 출력 데이터 수신 ----------",
+      "mimetype": "mimetype: ",
+      "image_below": "이미지는 아래에 표시됩니다:",
+      "separator": "--------------------------------------------------"
+    },
+    "notifications": {
+      "reset_success": "출력 미리보기가 초기화되었습니다"
+    }
+  },
+  "interpretation_buttons": {
+    "buttons": {
+      "preview": "출력 데이터 미리보기 가져오기",
+      "reset": "초기화",
+      "yes": "예",
+      "no": "아니오"
+    },
+    "messages": {
+      "extracting": "데이터 추출 중...잠시만 기다려 주세요",
+      "restart_required": "녹화를 업데이트한 후 해석을 다시 시작하세요",
+      "run_finished": "실행 완료",
+      "run_failed": "실행을 시작하지 못했습니다"
+    },
+    "modal": {
+      "use_previous": "이 작업을 수행하기 위한 조건으로 이전 선택을 사용하시겠습니까?",
+      "previous_action": "이전 작업: ",
+      "element_text": "다음 텍스트를 가진 요소에서 "
+    },
+    "notifications": {
+      "reset_success": "출력 미리보기가 초기화되었습니다"
+    }
+  },
+  "recording_page": {
+    "loader": {
+      "browser_startup": "브라우저를 실행하는 중입니다...잠시만 기다려 주세요"
+    }
+  },
+  "integration_settings": {
+    "title": "연동 설정",
+    "descriptions": {
+      "authenticated_as": "{{email}}(으)로 인증됨"
+    },
+    "buttons": {
+      "submit": "제출",
+      "remove_integration": "연동 제거"
+    },
+    "google": {
+      "title": "Google 시트와 연동",
+      "descriptions": {
+        "sync_info": "이 옵션을 활성화하면 이 로봇이 작업을 성공적으로 실행할 때마다 캡처된 데이터가 Google 시트에 추가됩니다.",
+        "authenticated_as": "{{email}}(으)로 인증됨"
+      },
+      "alerts": {
+        "success": {
+          "title": "Google 시트가 성공적으로 연동되었습니다.",
+          "content": "이 로봇이 실행에 성공할 때마다 캡처된 데이터가 {{sheetName}} Google 시트에 추가됩니다. 데이터 업데이트는",
+          "here": "여기서",
+          "note": "참고:",
+          "sync_limitation": "Google 시트 연동 이전에 추출된 데이터는 동기화되지 않습니다. 연동 이후에 추출된 데이터만 동기화됩니다."
+        }
+      },
+      "buttons": {
+        "authenticate": "Google로 인증",
+        "fetch_sheets": "Google 스프레드시트 가져오기",
+        "remove_integration": "연동 제거",
+        "submit": "제출"
+      },
+      "fields": {
+        "select_sheet": "Google 시트 선택",
+        "selected_sheet": "선택된 시트: {{name}} (ID: {{id}})"
+      },
+      "errors": {
+        "auth_error": "Google 인증 중 오류가 발생했습니다",
+        "fetch_error": "스프레드시트 파일을 가져오는 중 오류가 발생했습니다: {{message}}",
+        "update_error": "Google 시트 ID를 업데이트하는 중 오류가 발생했습니다: {{message}}",
+        "remove_error": "Google 시트 연동을 제거하는 중 오류가 발생했습니다: {{message}}"
+      },
+      "notifications": {
+        "sheet_selected": "Google 시트가 선택되었습니다",
+        "integration_removed": "Google 시트 연동이 제거되었습니다"
+      }
+    },
+    "airtable": {
+      "title": "Airtable과 연동",
+      "descriptions": {
+        "sync_info": "이 옵션을 활성화하면 이 로봇이 작업을 성공적으로 실행할 때마다 캡처된 데이터가 Airtable Base에 추가됩니다.",
+        "authenticated_as": "Airtable 인증에 성공했습니다. 이제 연동할 Base와 Table을 선택할 수 있습니다."
+      },
+      "alerts": {
+        "success": {
+          "title": "Airtable Base가 성공적으로 연동되었습니다",
+          "content": "이 로봇이 실행에 성공할 때마다 캡처된 데이터가 {{baseName}} Base의 {{tableName}} Table에 추가됩니다. 업데이트는",
+          "here": "여기서",
+          "note": "참고:",
+          "sync_limitation": "연동 이후에 캡처된 데이터만 Airtable에 동기화됩니다."
+        }
+      },
+      "buttons": {
+        "authenticate": "Airtable과 연결",
+        "fetch_bases": "Airtable Base 가져오기",
+        "fetch_tables": "Airtable Table 가져오기",
+        "remove_integration": "연동 제거",
+        "submit": "Base와 Table 선택"
+      },
+      "fields": {
+        "select_base": "Airtable Base 선택",
+        "select_table": "Airtable Table 선택",
+        "selected_base": "선택된 Base: {{name}}",
+        "selected_table": "선택된 Table: {{name}}"
+      },
+      "errors": {
+        "auth_error": "Airtable 인증 중 오류가 발생했습니다",
+        "fetch_error": "Airtable Base를 가져오는 중 오류가 발생했습니다: {{message}}",
+        "fetch_tables_error": "Airtable Table을 가져오는 중 오류가 발생했습니다: {{message}}",
+        "update_error": "Airtable Base를 업데이트하는 중 오류가 발생했습니다: {{message}}",
+        "remove_error": "Airtable 연동을 제거하는 중 오류가 발생했습니다: {{message}}"
+      },
+      "notifications": {
+        "base_selected": "Airtable Base가 선택되었습니다",
+        "table_selected": "Airtable Table이 선택되었습니다",
+        "integration_removed": "Airtable 연동이 제거되었습니다"
+      }
+    }
+  },
+  "robot_duplication": {
+    "title": "로봇 복제",
+    "descriptions": {
+      "purpose": "로봇 복제는 동일한 구조를 가진 페이지에서 데이터를 추출할 때 유용합니다.",
+      "example": "예시: <0>{{url1}}</0>에 대한 로봇을 만들었다면, 처음부터 다시 학습시키지 않고 이를 복제하여 <1>{{url2}}</1>와 같은 유사한 페이지를 스크랩할 수 있습니다.",
+      "warning": "⚠️ 새 페이지가 원본 페이지와 동일한 구조인지 확인하세요."
+    },
+    "fields": {
+      "target_url": "대상 URL",
+      "new_name": "로봇 이름"
+    },
+    "buttons": {
+      "duplicate": "로봇 복제",
+      "cancel": "취소"
+    },
+    "notifications": {
+      "robot_not_found": "로봇 정보를 찾을 수 없습니다. 다시 시도해 주세요.",
+      "url_required": "대상 URL을 입력해야 합니다.",
+      "name_required": "로봇 이름을 입력해야 합니다.",
+      "duplicate_success": "로봇이 복제되었습니다.",
+      "duplicate_error": "대상 URL 업데이트에 실패했습니다. 다시 시도해 주세요.",
+      "unknown_error": "대상 URL을 업데이트하는 중 오류가 발생했습니다."
+    }
+  },
+  "robot_settings": {
+    "title": "로봇 설정",
+    "target_url": "대상 URL",
+    "robot_id": "로봇 ID",
+    "robot_limit": "로봇 제한",
+    "created_by_user": "생성한 사용자",
+    "created_at": "로봇 생성 시각",
+    "errors": {
+      "robot_not_found": "로봇 정보를 찾을 수 없습니다. 다시 시도해 주세요."
+    },
+    "buttons": {
+      "close": "닫기"
+    }
+  },
+  "robot_edit": {
+    "title": "로봇 수정",
+    "change_name": "이름",
+    "robot_limit": "로봇 제한",
+    "save": "변경 사항 저장",
+    "cancel": "취소",
+    "notifications": {
+      "update_success": "로봇이 업데이트되었습니다.",
+      "update_failed": "로봇 업데이트에 실패했습니다. 다시 시도해 주세요.",
+      "update_error": "로봇을 업데이트하는 중 오류가 발생했습니다."
+    }
+  },
+  "schedule_settings": {
+    "title": "예약 설정",
+    "run_every": "실행 주기",
+    "start_from": "시작 시점",
+    "on_day": "날짜",
+    "at_around": "대략 시각",
+    "timezone": "시간대",
+    "buttons": {
+      "delete_schedule": "예약 삭제",
+      "save_schedule": "예약 저장",
+      "cancel": "취소"
+    },
+    "labels": {
+      "in_between": "사이",
+      "run_once_every": "실행 주기",
+      "start_from_label": "시작 시점",
+      "on_day_of_month": "매월 날짜",
+      "on_day": {
+        "st": "일",
+        "nd": "일",
+        "rd": "일",
+        "th": "일"
+      }
+    }
+  },
+  "main_page": {
+    "notifications": {
+      "interpretation_success": "로봇 {{name}}의 해석이 완료되었습니다",
+      "interpretation_failed": "로봇 {{name}}의 해석에 실패했습니다",
+      "run_started": "로봇 실행 중: {{name}}",
+      "run_start_failed": "로봇 실행에 실패했습니다: {{name}}",
+      "schedule_success": "로봇 {{name}}이(가) 예약되었습니다",
+      "schedule_failed": "로봇 {{name}} 예약에 실패했습니다",
+      "abort_success": "로봇 {{name}}의 해석이 중단되었습니다",
+      "abort_failed": "로봇 {{name}}의 해석 중단에 실패했습니다",
+      "abort_initiated": "로봇 {{name}}의 해석을 중단하는 중입니다"
+    },
+    "menu": {
+      "recordings": "로봇",
+      "runs": "실행",
+      "proxy": "프록시",
+      "apikey": "API 키"
+    }
+  },
+  "browser_window": {
+    "attribute_modal": {
+      "title": "속성 선택",
+      "notifications": {
+        "list_select_success": "목록이 선택되었습니다. 추출할 텍스트 데이터를 선택하세요.",
+        "pagination_select_success": "페이지네이션 요소가 선택되었습니다."
+      }
+    },
+    "attribute_options": {
+      "anchor": {
+        "text": "텍스트: {{text}}",
+        "url": "URL: {{url}}"
+      },
+      "image": {
+        "alt_text": "대체 텍스트: {{altText}}",
+        "image_url": "이미지 URL: {{imageUrl}}"
+      },
+      "default": {
+        "text": "텍스트: {{text}}"
+      }
+    }
+  },
+  "runs_table": {
+    "run_type_chips": {
+      "manual_run": "수동",
+      "scheduled_run": "예약됨",
+      "api": "API",
+      "sdk": "SDK",
+      "mcp": "MCP",
+      "cli": "CLI",
+      "unknown_run_type": "알 수 없는 실행 유형"
+    },
+    "run_status_chips": {
+      "success": "성공",
+      "running": "실행 중",
+      "scheduled": "예약됨",
+      "queued": "대기 중",
+      "failed": "실패",
+      "aborted": "중단됨"
+    },
+    "run_settings_modal": {
+      "title": "실행 설정",
+      "labels": {
+        "run_id": "실행 ID",
+        "run_by_user": "실행한 사용자",
+        "run_by_schedule": "예약 ID로 실행",
+        "run_by_api": "API로 실행",
+        "run_type": "실행 유형"
+      }
+    }
+  },
+  "run_content": {
+    "tabs": {
+      "output_data": "출력 데이터",
+      "log": "로그"
+    },
+    "buttons": {
+      "stop": "중지"
+    },
+    "loading": "데이터 추출 중...",
+    "empty_output": "사용 가능한 출력 데이터가 없습니다",
+    "captured_data": {
+      "title": "캡처된 데이터",
+      "download_csv": "CSV 다운로드",
+      "view_full": "전체 데이터 보기",
+      "items": "개 항목",
+      "schema_title": "캡처된 텍스트",
+      "list_title": "캡처된 목록"
+    },
+    "captured_screenshot": {
+      "title": "캡처된 스크린샷",
+      "download": "다운로드",
+      "render_failed": "스크린샷 렌더링에 실패했습니다"
+    }
+  },
+  "navbar": {
+    "project_name": "Maxun",
+    "notifications": {
+      "success": {
+        "logout": "로그아웃되었습니다"
+      },
+      "errors": {
+        "logout": {
+          "unauthorized": "이 작업을 수행할 권한이 없습니다",
+          "server": "로그아웃 중 서버 오류가 발생했습니다",
+          "network": "로그아웃 중 네트워크 오류가 발생했습니다",
+          "unknown": "로그아웃 중 예기치 않은 오류가 발생했습니다"
+        }
+      }
+    },
+    "upgrade": {
+      "button": "업그레이드",
+      "modal": {
+        "up_to_date": "🎉 최신 버전을 사용 중입니다!",
+        "new_version_available": "새 버전을 사용할 수 있습니다: {{version}}. 버그 수정, 개선 사항 및 새로운 기능을 위해 최신 버전으로 업그레이드하세요!",
+        "view_updates": "새로운 업데이트 전체 보기",
+        "view_updates_link": "여기",
+        "tabs": {
+          "manual_setup": "수동 설치 업그레이드",
+          "docker_setup": "Docker Compose 설치 업그레이드"
+        }
+      }
+    },
+    "menu_items": {
+      "logout": "로그아웃",
+      "discord": "Discord",
+      "youtube": "YouTube",
+      "twitter": "Twitter (X)",
+      "language": "언어"
+    },
+    "recording": {
+      "discard": "취소"
+    }
+  },
+  "language_menu": {
+    "en": "영어",
+    "es": "스페인어",
+    "ja": "일본어",
+    "zh": "중국어",
+    "de": "독일어",
+    "tr": "터키어",
+    "ko": "한국어"
+  }
+}

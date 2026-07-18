@@ -1,3 +1,66 @@
+/**
+ * True if a run's serializableOutput/binaryOutput has anything worth surfacing as partial data.
+ * scrapeSchema/scrapeList/crawl/search are all stored as plain objects keyed by action name
+ * (never arrays - Interpreter.ts's flushPersistenceBuffer explicitly normalizes them to `{}` if
+ * they're ever caught as arrays), so every field here must be checked with
+ * `Object.keys(...).length`, not `.length` (which is `undefined` on a plain object, so a
+ * `.length > 0` check silently never matches).
+ */
+export function hasPartialOutput(
+  serializableOutput?: Record<string, any> | null,
+  binaryOutput?: Record<string, any> | null
+): boolean {
+  const hasKeyedData = (value: any): boolean =>
+    !!value && typeof value === 'object' && Object.keys(value).length > 0;
+
+  return (
+    (!!serializableOutput && (
+      hasKeyedData(serializableOutput.scrapeSchema) ||
+      hasKeyedData(serializableOutput.scrapeList) ||
+      hasKeyedData(serializableOutput.crawl) ||
+      hasKeyedData(serializableOutput.search)
+    )) ||
+    hasKeyedData(binaryOutput)
+  );
+}
+
+export interface RunLike {
+  reload: () => Promise<any>;
+  serializableOutput?: Record<string, any> | null;
+  binaryOutput?: Record<string, any> | null;
+}
+
+export interface BrowserLike {
+  interpreter?: {
+    flushPersistenceBuffer: () => Promise<void>;
+  } | null;
+}
+
+/**
+ * Forces any still-buffered persistence writes out (scrapeList isn't on the interpreter's
+ * immediate-flush allowlist, so it can sit debounced for up to 3s/5 items), reloads the run to
+ * pick up the freshest serializableOutput/binaryOutput, and reports whether there's partial
+ * output worth surfacing. Both the flush and the reload swallow their own errors - a failure
+ * there just means falling back to whatever was already loaded on `run`, rather than blocking
+ * the failure/abort path that calls this.
+ */
+export async function flushReloadAndCheckPartialOutput(
+  run: RunLike,
+  browser?: BrowserLike | null
+): Promise<boolean> {
+  try {
+    if (browser && browser.interpreter) {
+      await browser.interpreter.flushPersistenceBuffer();
+    }
+  } catch (_) {}
+
+  try {
+    await run.reload();
+  } catch (_) {}
+
+  return hasPartialOutput(run.serializableOutput, run.binaryOutput);
+}
+
 const SEARCH_OR_CRAWL_ERROR_MARKERS = [
   'Search execution error:',
   'Search action failed:',
