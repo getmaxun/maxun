@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import logger from "../logger";
-import { createRemoteBrowserForRun, destroyRemoteBrowser, getActiveBrowserIdByState } from "../browser-management/controller";
+import { createRemoteBrowserForRun, destroyRemoteBrowser } from "../browser-management/controller";
 import { browserPool } from "../server";
 import { v4 as uuid } from "uuid";
 import moment from 'moment-timezone';
@@ -34,6 +34,14 @@ import { createDocumentParseRobotRecord } from '../utils/document/createDocument
 
 export const router = Router();
 
+const sanitizeRobotMeta = (robot: any): any => {
+  const plain = typeof robot?.toJSON === 'function' ? robot.toJSON() : { ...robot };
+  if (plain.recording_meta?.promptLlmApiKey) {
+    delete plain.recording_meta.promptLlmApiKey;
+  }
+  return plain;
+};
+
 const pdfUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_FILE_SIZE_BYTES },
@@ -54,9 +62,23 @@ const pdfUpload = multer({
 });
 
 const normalizeRobotUrl = (rawUrl: string): string => {
-  const normalizedUrl = new URL(rawUrl.trim());
+  let normalizedUrl: URL;
+  try {
+    normalizedUrl = new URL(rawUrl.trim());
+  } catch {
+    throw new Error(`"${rawUrl.trim()}" is not a valid URL. Provide a full web address like https://example.com`);
+  }
   if (!['http:', 'https:'].includes(normalizedUrl.protocol)) {
-    throw new Error('Invalid URL protocol');
+    throw new Error(`Unsupported URL protocol "${normalizedUrl.protocol}//" — only http and https are supported. Local file paths cannot be scraped.`);
+  }
+
+  const hostname = normalizedUrl.hostname;
+  const isPlausibleHost = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(hostname)
+    || hostname === 'localhost'
+    || /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname)
+    || /^\[[0-9a-f:]+\]$/i.test(hostname);
+  if (!isPlausibleHost) {
+    throw new Error(`"${hostname}" is not a reachable hostname. Provide a full web address like https://example.com`);
   }
 
   normalizedUrl.search = normalizedUrl.searchParams.toString();
@@ -186,7 +208,14 @@ router.get('/recordings', requireSignIn, async (req: AuthenticatedRequest, res) 
       return res.status(401).send({ error: 'Unauthorized' });
     }
     const data = await Robot.findAll({ where: { userId: req.user.id } });
-    return res.send(data);
+    const sanitized = data.map(robot => {
+      const plain = robot.toJSON() as any;
+      if (plain.recording_meta?.promptLlmApiKey) {
+        delete plain.recording_meta.promptLlmApiKey;
+      }
+      return plain;
+    });
+    return res.send(sanitized);
   } catch (e) {
     logger.log('info', 'Error while reading robots');
     return res.send(null);
@@ -211,6 +240,12 @@ router.get('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       data.recording.workflow = await processWorkflowActions(
         data.recording.workflow,
       );
+    }
+
+    if (data?.recording_meta) {
+      const meta = { ...(data.recording_meta as any) };
+      delete meta.promptLlmApiKey;
+      data.recording_meta = meta;
     }
 
     return res.send(data);
@@ -260,10 +295,11 @@ router.get(('/recordings/:id/runs'), requireSignIn, async (req: AuthenticatedReq
   }
 })
 
-function formatRunResponse(run: any) {
+export function formatRunResponse(run: any) {
   const formattedRun = {
     id: run.id,
     status: run.status,
+    isPartial: !!run.isPartial,
     name: run.name,
     robotId: run.robotMetaId, // Renaming robotMetaId to robotId
     startedAt: run.startedAt,
@@ -380,10 +416,11 @@ function handleWorkflowActions(workflow: any[], credentials: Credentials) {
 router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
-    const { name, limits, credentials, targetUrl, workflow: incomingWorkflow, formats } = req.body;
+    const { name, limits, credentials, targetUrl, workflow: incomingWorkflow, formats, promptLlmProvider, promptLlmModel, promptLlmApiKey, promptLlmBaseUrl } = req.body;
 
-    if (!name && !limits && !credentials && !targetUrl && !incomingWorkflow && formats === undefined) {
-      return res.status(400).json({ error: 'Either "name", "limits", "credentials", "target_url", "workflow" or "formats" must be provided.' });
+    const hasLlmUpdate = 'promptLlmProvider' in req.body || 'promptLlmModel' in req.body || 'promptLlmApiKey' in req.body || 'promptLlmBaseUrl' in req.body;
+    if (!name && !limits && !credentials && !targetUrl && !incomingWorkflow && formats === undefined && !hasLlmUpdate) {
+      return res.status(400).json({ error: 'Either "name", "limits", "credentials", "target_url", "workflow", "formats" or LLM config must be provided.' });
     }
 
     const robot = await Robot.findOne({ where: { 'recording_meta.id': id, userId: req.user!.id } });
@@ -530,10 +567,29 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       }
     }
 
+    const effectiveFormats = normalizedFormats ?? (robot.recording_meta?.formats || []);
+    const effectiveProvider = promptLlmProvider ?? robot.recording_meta?.promptLlmProvider;
+    const robotType = robot.recording_meta?.type;
+    if (
+      (robotType === 'crawl' || robotType === 'search' || robotType === 'scrape') &&
+      effectiveFormats.includes('summary' as OutputFormats) &&
+      effectiveProvider && effectiveProvider !== 'ollama' &&
+      !promptLlmApiKey &&
+      !(robot.recording_meta as any).promptLlmApiKey
+    ) {
+      return res.status(400).json({ error: 'An API key is required when using a non-Ollama LLM provider for summary output.' });
+    }
+
     let updatedMeta = { ...robot.recording_meta };
     if (trimmedName) updatedMeta.name = trimmedName;
     if (targetUrl) updatedMeta.url = normalizeRobotUrl(targetUrl);
     if (normalizedFormats !== undefined) updatedMeta.formats = normalizedFormats;
+    if (promptLlmProvider !== undefined) updatedMeta.promptLlmProvider = promptLlmProvider || undefined;
+    if (promptLlmModel !== undefined) updatedMeta.promptLlmModel = promptLlmModel || undefined;
+    if ('promptLlmApiKey' in req.body) {
+      updatedMeta.promptLlmApiKey = promptLlmApiKey ? encrypt(promptLlmApiKey) : undefined;
+    }
+    if (promptLlmBaseUrl !== undefined) updatedMeta.promptLlmBaseUrl = promptLlmBaseUrl || undefined;
 
     const updates: any = {
       recording: { ...robot.recording, workflow: normalizeWorkflowUrls(workflow) },
@@ -581,7 +637,7 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
     try {
       normalizedUrl = normalizeRobotUrl(url);
     } catch (err) {
-      return res.status(400).json({ error: 'Invalid URL format' });
+      return res.status(400).json({ error:  `Invalid URL: ${err instanceof Error ? err.message : 'malformed URL'}` });
     }
 
     const { validFormats: scrapeFormats, invalidFormats } = parseOutputFormats(
@@ -604,6 +660,10 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
 
     if (await isRobotNameTaken(robotName, req.user.id)) {
       return res.status(409).json({ error: `A robot with the name "${robotName}" already exists.` });
+    }
+
+    if (finalFormats.includes('summary' as OutputFormats) && promptLlmProvider && promptLlmProvider !== 'ollama' && !promptLlmApiKey) {
+      return res.status(400).json({ error: 'An API key is required when using a non-Ollama LLM provider for summary output.' });
     }
 
     if (scrapeFormats.length === 0 && formats !== undefined) {
@@ -629,7 +689,7 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
         ...(promptInstructions ? { promptInstructions: String(promptInstructions).substring(0, 1000) } : {}),
         ...(promptLlmProvider ? { promptLlmProvider } : {}),
         ...(promptLlmModel ? { promptLlmModel } : {}),
-        ...(promptLlmApiKey ? { promptLlmApiKey } : {}),
+        ...(promptLlmApiKey ? { promptLlmApiKey: encrypt(promptLlmApiKey) } : {}),
         ...(promptLlmBaseUrl ? { promptLlmBaseUrl } : {}),
       },
       recording: { workflow: [] },
@@ -642,17 +702,18 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
     });
 
     logger.log('info', `Markdown robot created with id: ${newRobot.id}`);
+    const sanitizedScrape = sanitizeRobotMeta(newRobot);
     capture(
       'maxun-oss-robot-created',
       {
-        robot_meta: newRobot.recording_meta,
-        recording: newRobot.recording,
+        robot_meta: sanitizedScrape.recording_meta,
+        recording: sanitizedScrape.recording,
       }
     )
 
     return res.status(201).json({
       message: 'Markdown robot created successfully.',
-      robot: newRobot,
+      robot: sanitizedScrape,
     });
   } catch (error: any) {
     if (error.name === 'SequelizeUniqueConstraintError' || error.parent?.code === '23505') {
@@ -1058,6 +1119,19 @@ router.put('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res) =>
       return res.status(404).send({ error: 'Recording not found' });
     }
 
+    // Validate formats once before persisting; a malformed value (e.g. an object)
+    // would otherwise reach the interpreter and break formats.includes(...).
+    let interpreterFormats = (recording.recording_meta as any).formats;
+    if (req.body?.formats !== undefined) {
+      const { validFormats, invalidFormats } = parseOutputFormats(req.body.formats);
+      if (invalidFormats.length > 0) {
+        return res.status(400).json({
+          error: `Invalid formats: ${invalidFormats.map(String).join(', ')}`,
+        });
+      }
+      interpreterFormats = validFormats;
+    }
+
     // Generate runId first
     const runId = uuid();
     
@@ -1088,8 +1162,8 @@ router.put('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res) =>
           robotMetaId: recording.recording_meta.id,
           startedAt: new Date().toLocaleString(),
           finishedAt: '',
-          browserId: browserId, 
-          interpreterSettings: req.body,
+          browserId: browserId,
+          interpreterSettings: { ...req.body, formats: interpreterFormats },
           log: '',
           runId,
           runByUserId: req.user.id,
@@ -1154,7 +1228,7 @@ router.put('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res) =>
         startedAt: new Date().toLocaleString(),
         finishedAt: '',
         browserId,
-        interpreterSettings: req.body,
+        interpreterSettings: { ...req.body, formats: interpreterFormats },
         log: 'Run queued - waiting for available browser slot',
         runId,
         runByUserId: req.user.id,
@@ -1830,7 +1904,7 @@ export async function recoverStuckRunningRuns() {
  */
 router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
-    const { url, name, crawlConfig, formats } = req.body;
+    const { url, name, crawlConfig, formats, promptLlmProvider, promptLlmModel, promptLlmApiKey, promptLlmBaseUrl } = req.body;
 
     if (!url || !crawlConfig) {
       return res.status(400).json({ error: 'URL and crawl configuration are required.' });
@@ -1844,7 +1918,7 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
     try {
       normalizedUrl = normalizeRobotUrl(url);
     } catch (err) {
-      return res.status(400).json({ error: 'Invalid URL format' });
+      return res.status(400).json({ error: `Invalid URL: ${err instanceof Error ? err.message : 'malformed URL'}` });
     }
 
     const robotName = (typeof name === 'string' ? name.trim() : '') || `Crawl Robot - ${new URL(normalizedUrl).hostname}`;
@@ -1868,6 +1942,10 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
       ? requestedFormats
       : [...DEFAULT_OUTPUT_FORMATS];
 
+    if (crawlFormats.includes('summary' as OutputFormats) && promptLlmProvider && promptLlmProvider !== 'ollama' && !promptLlmApiKey) {
+      return res.status(400).json({ error: 'An API key is required when using a non-Ollama LLM provider for summary output.' });
+    }
+
     const currentTimestamp = new Date().toLocaleString('en-US');
     const robotId = uuid();
 
@@ -1884,6 +1962,10 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
         type: 'crawl',
         url: normalizedUrl,
         formats: crawlFormats,
+        ...(promptLlmProvider ? { promptLlmProvider } : {}),
+        ...(promptLlmModel ? { promptLlmModel } : {}),
+        ...(promptLlmApiKey ? { promptLlmApiKey: encrypt(promptLlmApiKey) } : {}),
+        ...(promptLlmBaseUrl ? { promptLlmBaseUrl } : {}),
       },
       recording: {
         workflow: [
@@ -1929,6 +2011,7 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
     });
 
     logger.log('info', `Crawl robot created with id: ${newRobot.id}`);
+    const sanitizedCrawl = sanitizeRobotMeta(newRobot);
     capture('maxun-oss-robot-created', {
       userId: req.user.id.toString(),
       robotId: robotId,
@@ -1936,13 +2019,13 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
       url: normalizedUrl,
       robotType: 'crawl',
       crawlConfig: crawlConfig,
-      robot_meta: newRobot.recording_meta,
-      recording: newRobot.recording,
+      robot_meta: sanitizedCrawl.recording_meta,
+      recording: sanitizedCrawl.recording,
     });
 
     return res.status(201).json({
       message: 'Crawl robot created successfully.',
-      robot: newRobot,
+      robot: sanitizedCrawl,
     });
   } catch (error: any) {
     if (error.name === 'SequelizeUniqueConstraintError' || error.parent?.code === '23505') {
@@ -1965,7 +2048,7 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
  */
 router.post('/recordings/search', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
-    const { searchConfig, name, formats } = req.body;
+    const { searchConfig, name, formats, promptLlmProvider, promptLlmModel, promptLlmApiKey, promptLlmBaseUrl } = req.body;
 
     if (!searchConfig || !searchConfig.query) {
       return res.status(400).json({ error: 'Search configuration with query is required.' });
@@ -2003,6 +2086,10 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
       searchFormats = requestedFormats.length > 0 ? requestedFormats : [...DEFAULT_OUTPUT_FORMATS];
     }
 
+    if (searchFormats.includes('summary' as OutputFormats) && promptLlmProvider && promptLlmProvider !== 'ollama' && !promptLlmApiKey) {
+      return res.status(400).json({ error: 'An API key is required when using a non-Ollama LLM provider for summary output.' });
+    }
+
     const currentTimestamp = new Date().toLocaleString('en-US');
     const robotId = uuid();
 
@@ -2018,6 +2105,10 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
         params: [],
         type: 'search',
         formats: searchFormats,
+        ...(promptLlmProvider ? { promptLlmProvider } : {}),
+        ...(promptLlmModel ? { promptLlmModel } : {}),
+        ...(promptLlmApiKey ? { promptLlmApiKey: encrypt(promptLlmApiKey) } : {}),
+        ...(promptLlmBaseUrl ? { promptLlmBaseUrl } : {}),
       },
       recording: {
         workflow: [
@@ -2047,6 +2138,7 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
     });
 
     logger.log('info', `Search robot created with id: ${newRobot.id}`);
+    const sanitizedSearch = sanitizeRobotMeta(newRobot);
     capture('maxun-oss-robot-created', {
       userId: req.user.id.toString(),
       robotId: robotId,
@@ -2055,13 +2147,13 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
       searchQuery: searchConfig.query,
       searchProvider: searchConfig.provider || 'duckduckgo',
       searchLimit: searchConfig.limit || 10,
-      robot_meta: newRobot.recording_meta,
-      recording: newRobot.recording,
+      robot_meta: sanitizedSearch.recording_meta,
+      recording: sanitizedSearch.recording,
     });
 
     return res.status(201).json({
       message: 'Search robot created successfully.',
-      robot: newRobot,
+      robot: sanitizedSearch,
     });
   } catch (error: any) {
     if (error.name === 'SequelizeUniqueConstraintError' || error.parent?.code === '23505') {
