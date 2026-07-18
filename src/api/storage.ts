@@ -112,13 +112,17 @@ export const createLLMRobot = async (
   }
 };
 
-export const updateRecording = async (id: string, data: { 
-  name?: string; 
+export const updateRecording = async (id: string, data: {
+  name?: string;
   limits?: Array<{pairIndex: number, actionIndex: number, argIndex: number, limit: number}>;
-  credentials?: Credentials; 
+  credentials?: Credentials;
   targetUrl?: string;
   workflow?: any[];
   formats?: OutputFormats[];
+  promptLlmProvider?: 'anthropic' | 'openai' | 'ollama';
+  promptLlmModel?: string;
+  promptLlmApiKey?: string;
+  promptLlmBaseUrl?: string;
 }): Promise<boolean> => {
   try {
     const response = await axios.put(`${apiUrl}/storage/recordings/${id}`, data);
@@ -390,7 +394,11 @@ export const createCrawlRobot = async (
     followLinks: boolean;
     respectRobots: boolean;
   },
-  formats: string[] = ['markdown']
+  formats: string[] = ['markdown'],
+  promptLlmProvider?: 'anthropic' | 'openai' | 'ollama',
+  promptLlmModel?: string,
+  promptLlmApiKey?: string,
+  promptLlmBaseUrl?: string
 ): Promise<any> => {
   try {
     const response = await axios.post(
@@ -400,6 +408,10 @@ export const createCrawlRobot = async (
         name,
         crawlConfig,
         formats,
+        ...(promptLlmProvider ? { promptLlmProvider } : {}),
+        ...(promptLlmModel ? { promptLlmModel } : {}),
+        ...(promptLlmApiKey ? { promptLlmApiKey } : {}),
+        ...(promptLlmBaseUrl ? { promptLlmBaseUrl } : {}),
       },
       {
         headers: { 'Content-Type': 'application/json' },
@@ -563,7 +575,11 @@ export const createSearchRobot = async (
     };
     mode: 'discover' | 'scrape';
   },
-  formats?: OutputFormats[]
+  formats?: OutputFormats[],
+  promptLlmProvider?: 'anthropic' | 'openai' | 'ollama',
+  promptLlmModel?: string,
+  promptLlmApiKey?: string,
+  promptLlmBaseUrl?: string
 ): Promise<any> => {
   try {
     const response = await axios.post(
@@ -572,6 +588,10 @@ export const createSearchRobot = async (
         name,
         searchConfig,
         formats: formats || [],
+        ...(promptLlmProvider ? { promptLlmProvider } : {}),
+        ...(promptLlmModel ? { promptLlmModel } : {}),
+        ...(promptLlmApiKey ? { promptLlmApiKey } : {}),
+        ...(promptLlmBaseUrl ? { promptLlmBaseUrl } : {}),
       },
       {
         headers: { 'Content-Type': 'application/json' },

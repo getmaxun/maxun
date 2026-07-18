@@ -4,7 +4,6 @@ import { BrowserContent } from "../components/browser/BrowserContent";
 import { InterpretationLog } from "../components/run/InterpretationLog";
 import { startRecording, getActiveBrowserId } from "../api/recording";
 import { RightSidePanel } from "../components/recorder/RightSidePanel";
-import { Loader } from "../components/ui/Loader";
 import { useSocketStore } from "../context/socket";
 import { useBrowserDimensionsStore } from "../context/browserDimensions";
 import { ActionProvider } from "../context/browserActions"

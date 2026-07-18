@@ -5,6 +5,7 @@ import { Page } from "playwright-core";
 import { InterpreterSettings } from "../../types";
 import { decrypt } from "../../utils/auth";
 import Run from "../../models/Run";
+import { BinaryOutputService } from "../../storage/mino";
 
 /**
  * Decrypts any encrypted inputs in the workflow. If checkLimit is true, it will also handle the limit validation for scrapeList action.
@@ -151,6 +152,17 @@ export class WorkflowInterpreter {
   private readonly MAX_PERSISTENCE_RETRIES = 3;
   private persistenceInProgress = false;
   private persistenceRetryCount = 0;
+
+  /**
+   * Tracks, per crawl/search action name, how many result items have already been sent for
+   * persistence. maxun-core's per-page callback always delivers the FULL cumulative array (so
+   * the in-memory cache and socket broadcast below stay simple), but persisting the full array
+   * on every single page write is O(n^2) total bytes over a run (page 1 re-sent on every write
+   * after it). This lets us slice off just the new items before they reach the persistence
+   * buffer / Postgres, while everything else keeps behaving exactly as before. Keyed by
+   * `${actionType}:${actionName}` and reset per-run in clearState().
+   */
+  private lastPersistedResultCount: Record<string, number> = {};
 
   /**
    * An array of id's of the pairs from the workflow that are about to be paused.
@@ -446,6 +458,7 @@ export class WorkflowInterpreter {
     this.persistenceBuffer = [];
     this.persistenceInProgress = false;
     this.persistenceRetryCount = 0;
+    this.lastPersistedResultCount = {};
   }
 
   /**
@@ -495,6 +508,89 @@ export class WorkflowInterpreter {
   };
 
   /**
+   * crawl/search deliver the full cumulative snapshot on every page so the in-memory cache and
+   * socket broadcast can stay simple, but persisting that full snapshot on every single page
+   * write would resend every prior page again and again (O(n^2) bytes over a run, and crawl
+   * pages can carry full HTML). Slice off just the items that haven't been persisted yet for
+   * this action, tracked via `lastPersistedResultCount` (reset per-run in clearState()).
+   *
+   * Exported as its own method (rather than inlined in the serializableCallback closure) so it
+   * can be unit tested directly without needing to drive a full interpreter run.
+   * @private
+   */
+  private computeCrawlSearchPersistDelta(
+    typeKey: string,
+    actionName: string,
+    processedData: any
+  ): { dataToPersist: any; skip: boolean } {
+    if (typeKey !== "crawl" && typeKey !== "search") {
+      return { dataToPersist: processedData, skip: false };
+    }
+
+    const countKey = `${typeKey}:${actionName}`;
+    const isFirstPersistForAction = !(countKey in this.lastPersistedResultCount);
+    const priorCount = this.lastPersistedResultCount[countKey] || 0;
+
+    if (typeKey === "crawl") {
+      const fullList: any[] = Array.isArray(processedData) ? processedData : [];
+      const deltaList = fullList.slice(priorCount);
+      this.lastPersistedResultCount[countKey] = fullList.length;
+      // Skip only a redundant repeat call with nothing new — always persist the first call for
+      // this action, even with an empty result set, so the DB still records that the action ran
+      // (matching pre-existing behavior for a legitimately-empty crawl rather than silently
+      // leaving serializableOutput untouched).
+      return { dataToPersist: deltaList, skip: !isFirstPersistForAction && deltaList.length === 0 };
+    }
+
+    const fullResults: any[] = Array.isArray(processedData?.results) ? processedData.results : [];
+    const deltaResults = fullResults.slice(priorCount);
+    this.lastPersistedResultCount[countKey] = fullResults.length;
+    const dataToPersist = { ...processedData, results: deltaResults };
+    return { dataToPersist, skip: !isFirstPersistForAction && deltaResults.length === 0 };
+  }
+
+  /**
+   * Merges a crawl delta (new pages only, from computeCrawlSearchPersistDelta) into the
+   * existing persisted crawl output by appending rather than overwriting, so a page already
+   * written to Postgres is never re-sent or dropped by a later write.
+   * @private
+   */
+  private mergeCrawlDelta(current: Record<string, any>, deltaData: Record<string, any>): Record<string, any> {
+    const merged = (current && typeof current === 'object') ? { ...current } : {};
+    for (const [key, val] of Object.entries(deltaData || {})) {
+      const existing = Array.isArray(merged[key]) ? merged[key] : [];
+      const delta = Array.isArray(val) ? val : [];
+      merged[key] = existing.concat(delta);
+    }
+    return merged;
+  }
+
+  /**
+   * Same delta-append idea as mergeCrawlDelta, but the growing part is nested under `.results` -
+   * append that while refreshing the surrounding metadata (query, provider, filters, mode,
+   * searchedAt) to the latest values, and recompute resultsCount from the merged array rather
+   * than trusting a stale cumulative count.
+   * @private
+   */
+  private mergeSearchDelta(current: Record<string, any>, deltaData: Record<string, any>): Record<string, any> {
+    const merged = (current && typeof current === 'object') ? { ...current } : {};
+    for (const [key, val] of Object.entries(deltaData || {})) {
+      const incoming = (val && typeof val === 'object') ? val as Record<string, any> : {};
+      const existingEntry = (merged[key] && typeof merged[key] === 'object') ? merged[key] : {};
+      const existingResults = Array.isArray(existingEntry.results) ? existingEntry.results : [];
+      const incomingResults = Array.isArray(incoming.results) ? incoming.results : [];
+      const mergedResults = existingResults.concat(incomingResults);
+      merged[key] = {
+        ...existingEntry,
+        ...incoming,
+        results: mergedResults,
+        resultsCount: mergedResults.length,
+      };
+    }
+    return merged;
+  }
+
+  /**
    * Persists extracted data to database with intelligent batching for performance
    * Falls back to immediate persistence for critical operations
    * @private
@@ -507,7 +603,7 @@ export class WorkflowInterpreter {
 
     this.addToPersistenceBatch(actionType, data, listIndex, true);
 
-    if (actionType === 'scrapeSchema' || this.persistenceBuffer.length >= this.BATCH_SIZE) {
+    if (actionType === 'scrapeSchema' || actionType === 'crawl' || actionType === 'search' || this.persistenceBuffer.length >= this.BATCH_SIZE) {
       await this.flushPersistenceBuffer();
     } else {
       this.scheduleBatchFlush();
@@ -544,9 +640,14 @@ export class WorkflowInterpreter {
         uniqueName = `${baseName} (${counter++})`;
       }
 
+      // Screenshots already uploaded to MinIO arrive here as public URLs —
+      // store the plain string so the mid-run DB shape matches the final
+      // uploaded shape.
+      const isUploadedUrl = /^https?:\/\//.test(binaryItem.data);
+
       const updatedBinaryOutput = {
         ...currentBinaryOutput,
-        [uniqueName]: binaryItem,
+        [uniqueName]: isUploadedUrl ? binaryItem.data : binaryItem,
       };
 
       await run.update({
@@ -693,9 +794,13 @@ export class WorkflowInterpreter {
 
           this.serializableDataByType[typeKey][actionName] = processedData;
 
-          await this.persistDataToDatabase(typeKey, {
-            [actionName]: processedData,
-          });
+          const { dataToPersist, skip } = this.computeCrawlSearchPersistDelta(typeKey, actionName, processedData);
+
+          if (!skip) {
+            await this.persistDataToDatabase(typeKey, {
+              [actionName]: dataToPersist,
+            });
+          }
 
           this.broadcastToNamespace("serializableCallback", {
             type: typeKey,
@@ -710,13 +815,22 @@ export class WorkflowInterpreter {
         try {
           const { name, data, mimeType } = payload;
 
-          const base64Data = data.toString("base64");
           const uniqueName = this.getUniqueActionName('screenshot', name);
+
+          // Upload each screenshot to MinIO as soon as it is captured, so page
+          // N's screenshot is stored before page N+1 is scraped and base64
+          // blobs never accumulate in memory or in run.binaryOutput. On upload
+          // failure the item keeps its base64 payload, which the end-of-run
+          // bulk upload retries.
+          const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
+          const uploadedUrl = this.currentRunId
+            ? await binaryOutputService.uploadBinaryOutputItem(this.currentRunId, uniqueName, data, mimeType)
+            : null;
 
           const binaryItem = {
             name: uniqueName,
             mimeType,
-            data: base64Data
+            data: uploadedUrl ?? data.toString("base64")
           };
 
           this.binaryData.push(binaryItem);
@@ -725,7 +839,7 @@ export class WorkflowInterpreter {
 
           this.broadcastToNamespace("binaryCallback", {
             name: uniqueName,
-            data: base64Data,
+            data: binaryItem.data,
             mimeType
           });
         } catch (err: any) {
@@ -890,16 +1004,13 @@ export class WorkflowInterpreter {
             mergeLists(currentSerializableOutput.scrapeList, item.data);
             hasUpdates = true;
           } else if (item.actionType === 'crawl') {
-            currentSerializableOutput.crawl = { 
-              ...(currentSerializableOutput.crawl || {}), 
-              ...item.data 
-            };
+            // item.data holds only the NEW pages since the last persist (see
+            // computeCrawlSearchPersistDelta) - append rather than overwrite, so a page already
+            // written to Postgres is never re-sent or dropped by a later write.
+            currentSerializableOutput.crawl = this.mergeCrawlDelta(currentSerializableOutput.crawl, item.data);
             hasUpdates = true;
           } else if (item.actionType === 'search') {
-            currentSerializableOutput.search = { 
-              ...(currentSerializableOutput.search || {}), 
-              ...item.data 
-            };
+            currentSerializableOutput.search = this.mergeSearchDelta(currentSerializableOutput.search, item.data);
             hasUpdates = true;
           }
         }
@@ -941,6 +1052,23 @@ export class WorkflowInterpreter {
       } else {
         logger.log('error', `Max persistence retries exceeded for run ${this.currentRunId}, dropping ${batchToProcess.length} items`);
         this.persistenceRetryCount = 0;
+
+        // computeCrawlSearchPersistDelta advances the crawl/search cursor as soon as a delta is
+        // computed, before this write is confirmed. Roll it back for whatever's being dropped
+        // here so the next page's delta re-includes this data instead of the cursor treating it
+        // as already persisted and permanently skipping it.
+        for (const item of batchToProcess) {
+          if (item.actionType !== 'crawl' && item.actionType !== 'search') continue;
+          for (const [actionName, value] of Object.entries(item.data || {})) {
+            const droppedCount = item.actionType === 'crawl'
+              ? (Array.isArray(value) ? value.length : 0)
+              : (Array.isArray((value as any)?.results) ? (value as any).results.length : 0);
+            if (droppedCount > 0) {
+              const countKey = `${item.actionType}:${actionName}`;
+              this.lastPersistedResultCount[countKey] = Math.max(0, (this.lastPersistedResultCount[countKey] || 0) - droppedCount);
+            }
+          }
+        }
       }
     } finally {
       this.persistenceInProgress = false;

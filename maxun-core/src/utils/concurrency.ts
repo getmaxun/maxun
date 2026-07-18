@@ -46,7 +46,7 @@ export default class Concurrency {
       job().then(() => {
         // console.debug("Job finished, running the next waiting job...");
         this.runNextJob();
-      }).catch((error) => {
+      }).catch((error: any) => {
         const normalizedError = error instanceof Error ? error : new Error(String(error));
         console.error(`Job failed with error: ${normalizedError.message}`);
         if (!this.firstError) {
