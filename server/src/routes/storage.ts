@@ -42,7 +42,7 @@ const sanitizeRobotMeta = (robot: any): any => {
   return plain;
 };
 
-const pdfUpload = multer({
+const uploadFile = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_FILE_SIZE_BYTES },
   fileFilter: (_req, file, cb) => {
@@ -2177,7 +2177,7 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
 router.post(
   '/recordings/document',
   requireSignIn,
-  pdfUpload.single('file'),
+  uploadFile.single('file'),
   async (req: AuthenticatedRequest, res) => {
     try {
       if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
@@ -2235,7 +2235,7 @@ router.post(
 router.post(
   '/recordings/document-parse',
   requireSignIn,
-  pdfUpload.single('file'),
+  uploadFile.single('file'),
   async (req: AuthenticatedRequest, res) => {
     try {
       if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
@@ -2402,7 +2402,7 @@ router.post('/runs/document-parse-run/:id', requireSignIn, async (req: Authentic
 router.put(
   '/recordings/:id/document',
   requireSignIn,
-  pdfUpload.single('file'),
+  uploadFile.single('file'),
   async (req: AuthenticatedRequest, res) => {
     try {
       if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
