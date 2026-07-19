@@ -11,9 +11,6 @@
 </h2>
 
 <p align="center">
-✨ The unified open-source no-code platform for real-time web scraping, crawling, search and AI data extraction ✨
-
-<p align="center">
     <a href="https://app.maxun.dev/?ref=ghread"><b>Go To App</b></a> •
     <a href="https://docs.maxun.dev/?ref=ghread"><b>Documentation</b></a> •
     <a href="https://www.maxun.dev/?ref=ghread"><b>Website</b></a> •
@@ -21,9 +18,28 @@
     <a href="https://www.youtube.com/@MaxunOSS?ref=ghread"><b>Watch Tutorials</b></a>
     <br />
     <br />
-<a href="https://trendshift.io/repositories/12113" target="_blank"><img src="https://trendshift.io/api/badge/repositories/12113" alt="getmaxun%2Fmaxun | Trendshift" style="width: 250px; height: 55px; margin-top: 10px;" width="250" height="55"/></a>
-</p>
 
+    <a href="https://trendshift.io/repositories/12113" target="_blank">
+        <img src="https://trendshift.io/api/badge/repositories/12113"
+             alt="getmaxun/maxun | Trendshift"
+             width="250"
+             height="55"/>
+    </a>
+
+    <br />
+    <br />
+
+    <a href="https://hvtracker.net/agents/maxun/">
+        <img src="https://hvtracker.net/badge/maxun.svg"
+             alt="HVTrust Score"/>
+    </a>
+
+    <a href="https://hvtracker.net/agents/maxun/">
+        <img src="https://hvtracker.net/badge/maxun-grade.svg"
+             alt="HVTracker Evidence Grade"/>
+    </a>
+
+</p>
 ### Sponsors
 
 <table>
