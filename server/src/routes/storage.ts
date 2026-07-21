@@ -4,13 +4,11 @@ import logger from "../logger";
 import { createRemoteBrowserForRun, destroyRemoteBrowser } from "../browser-management/controller";
 import { browserPool } from "../server";
 import { v4 as uuid } from "uuid";
-import moment from 'moment-timezone';
-import cron from 'node-cron';
 import { requireSignIn } from '../middlewares/auth';
 import Robot from '../models/Robot';
 import Run from '../models/Run';
 import { AuthenticatedRequest } from './record';
-import { computeNextRun } from '../utils/schedule';
+import { computeNextRun, buildCronExpression, ScheduleValidationError } from '../utils/schedule';
 import { capture } from "../utils/analytics";
 import { encrypt, decrypt } from '../utils/auth';
 import { WorkflowFile } from 'maxun-core';
@@ -1349,62 +1347,17 @@ router.put('/schedule/:id/', requireSignIn, async (req: AuthenticatedRequest, re
       return res.status(404).json({ error: 'Robot not found' });
     }
 
-    // Validate required parameters
-    if (!runEvery || !runEveryUnit || !startFrom || !atTimeStart || !atTimeEnd || !timezone) {
-      return res.status(400).json({ error: 'Missing required parameters' });
-    }
-
-    // Validate time zone
-    if (!moment.tz.zone(timezone)) {
-      return res.status(400).json({ error: 'Invalid timezone' });
-    }
-
-    // Validate and parse start and end times
-    const [startHours, startMinutes] = atTimeStart.split(':').map(Number);
-    const [endHours, endMinutes] = atTimeEnd.split(':').map(Number);
-
-    if (isNaN(startHours) || isNaN(startMinutes) || isNaN(endHours) || isNaN(endMinutes) ||
-      startHours < 0 || startHours > 23 || startMinutes < 0 || startMinutes > 59 ||
-      endHours < 0 || endHours > 23 || endMinutes < 0 || endMinutes > 59) {
-      return res.status(400).json({ error: 'Invalid time format' });
-    }
-
-    const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
-    if (!days.includes(startFrom)) {
-      return res.status(400).json({ error: 'Invalid start day' });
-    }
-
-    // Build cron expression based on run frequency and starting day
-    let cronExpression;
-    const dayIndex = days.indexOf(startFrom);
-
-    switch (runEveryUnit) {
-      case 'MINUTES':
-        cronExpression = `*/${runEvery} * * * *`;
-        break;
-      case 'HOURS':
-        cronExpression = `${startMinutes} */${runEvery} * * *`;
-        break;
-      case 'DAYS':
-        cronExpression = `${startMinutes} ${startHours} */${runEvery} * *`;
-        break;
-      case 'WEEKS':
-        cronExpression = `${startMinutes} ${startHours} * * ${dayIndex}`;
-        break;
-      case 'MONTHS':
-        // todo: handle leap year
-        cronExpression = `${startMinutes} ${startHours} ${dayOfMonth} */${runEvery} *`;
-        if (startFrom !== 'SUNDAY') {
-          cronExpression += ` ${dayIndex}`;
-        }
-        break;
-      default:
-        return res.status(400).json({ error: 'Invalid runEveryUnit' });
-    }
-
-    // Validate cron expression
-    if (!cronExpression || !cron.validate(cronExpression)) {
-      return res.status(400).json({ error: 'Invalid cron expression generated' });
+    // Validate inputs and build the cron expression (shared with the API route)
+    let cronExpression: string;
+    try {
+      ({ cronExpression } = buildCronExpression({
+        runEvery, runEveryUnit, startFrom, atTimeStart, atTimeEnd, timezone, dayOfMonth,
+      }));
+    } catch (validationError) {
+      if (validationError instanceof ScheduleValidationError) {
+        return res.status(400).json({ error: validationError.message });
+      }
+      throw validationError;
     }
 
     try {
