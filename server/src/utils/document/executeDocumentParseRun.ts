@@ -4,6 +4,7 @@ import { getDocumentFromMinio } from '../../storage/mino';
 import { sendWebhook } from '../../routes/webhook';
 import logger from '../../logger';
 import { OutputFormats } from '../../constants/output-formats';
+import { getMimeTypeFromKey } from '../../constants/document-types';
 
 export async function executeDocumentParseRun(
   recording: any,
@@ -21,7 +22,12 @@ export async function executeDocumentParseRun(
 
   try {
     const pdfBuffer = await getDocumentFromMinio(robotRecording.documentKey);
-    const result = await DocumentInterpreter.parse(pdfBuffer, outputFormats);
+    const mimeType = getMimeTypeFromKey(robotRecording.documentKey);
+    const result = await DocumentInterpreter.parse(
+      pdfBuffer,
+      outputFormats,
+      mimeType,
+    );
 
     const serializableOutput: Record<string, any> = {};
     if (result.markdown !== undefined) serializableOutput.markdown = [{ content: result.markdown }];

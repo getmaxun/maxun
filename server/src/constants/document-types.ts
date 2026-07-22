@@ -31,3 +31,8 @@ export const DOCUMENT_EXT_TO_MIME: Record<string, DocumentMimeType> =
       mime as DocumentMimeType,
     ]),
   );
+
+export function getMimeTypeFromKey(key: string): DocumentMimeType | undefined {
+  const ext = key.split('.').pop() || '';
+  return DOCUMENT_EXT_TO_MIME[ext];
+}
