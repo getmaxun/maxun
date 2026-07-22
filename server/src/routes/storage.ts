@@ -34,7 +34,7 @@ import { createDocumentParseRobotRecord } from '../utils/document/createDocument
 
 export const router = Router();
 
-const pdfUpload = multer({
+const pdfUpload = multer({                      // PDF upload method
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_FILE_SIZE_BYTES },
   fileFilter: (_req, file, cb) => {
@@ -2072,7 +2072,7 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
 
 /**
  * POST endpoint for creating a document extraction robot (doc-extract).
- * Accepts a PDF upload and an extraction prompt. Uses the configured LLM to generate
+ * Accepts a PDF upload and an extraction prompt. Uses the configured LLM to generate   
  * an extraction schema and stores the document in MinIO.
  */
 router.post(
@@ -2130,7 +2130,7 @@ router.post(
 
 /**
  * POST endpoint for creating a document parse robot (doc-parse).
- * Accepts a PDF upload and output format list. Parses the document immediately and
+ * Accepts a PDF upload and output format list. Parses the document immediately and   
  * stores both the document and parsed output in MinIO / database.
  */
 router.post(

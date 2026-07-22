@@ -1167,7 +1167,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
           <input
             id="doc-replace-input"
             type="file"
-            accept="application/pdf"
+            accept="application/pdf, image/jpeg, image/png"    
             style={{ display: 'none' }}
             onChange={(e) => setReplacementFile(e.target.files?.[0] || null)}
           />
@@ -1177,7 +1177,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
             </Typography>
           ) : (
             <>
-              <Typography variant="body2" fontWeight={500}>Click to upload new PDF</Typography>
+              <Typography variant="body2" fontWeight={500}>Click to upload new PDF, JPEG, or PNG</Typography>
               <Typography variant="caption" color="text.secondary">Max file size: 10 MB</Typography>
             </>
           )}
