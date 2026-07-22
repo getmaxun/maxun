@@ -31,6 +31,7 @@ import {
 import {
   isDocumentMimeType,
   DOCUMENT_MIME_TYPES,
+  DocumentMimeType,
 } from '../constants/document-types';
 import { MAX_FILE_SIZE_BYTES } from '../workflow-management/classes/DocumentInterpreter';
 import { createDocumentRobotRecord } from '../utils/document/createDocumentRobotRecord';
@@ -2304,6 +2305,7 @@ router.post(
         robotName: finalName,
         outputFormats,
         userId: req.user.id,
+        mimeType: file.mimetype as DocumentMimeType,
       });
 
       capture('maxun-oss-robot-created', {
@@ -2475,7 +2477,7 @@ router.put(
       if (!documentKey)
         return res.status(400).json({ error: 'Robot has no document key.' });
 
-      await uploadDocumentToMinio(documentKey, file.buffer);
+      await uploadDocumentToMinio(documentKey, file.buffer, 'application/pdf');
 
       const updatedRecording: any = {
         ...(robot.recording as any),

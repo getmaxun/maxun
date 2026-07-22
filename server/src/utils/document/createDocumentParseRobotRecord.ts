@@ -4,6 +4,10 @@ import { DocumentInterpreter, ParsedOutput } from '../../workflow-management/cla
 import { uploadDocumentToMinio } from '../../storage/mino';
 import logger from '../../logger';
 import { OutputFormats } from '../../constants/output-formats';
+import {
+  DOCUMENT_MIME_TO_EXT,
+  DocumentMimeType,
+} from '../../constants/document-types';
 
 export interface CreateDocumentParseRobotParams {
   pdfBuffer: Buffer;
@@ -11,6 +15,7 @@ export interface CreateDocumentParseRobotParams {
   robotName: string;
   outputFormats: OutputFormats[];
   userId: number;
+  mimeType: DocumentMimeType;
 }
 
 export interface CreateDocumentParseRobotResult {
@@ -21,15 +26,26 @@ export interface CreateDocumentParseRobotResult {
 export async function createDocumentParseRobotRecord(
   params: CreateDocumentParseRobotParams
 ): Promise<CreateDocumentParseRobotResult> {
-  const { pdfBuffer, originalFileName, robotName, outputFormats, userId } = params;
+  const {
+    pdfBuffer,
+    originalFileName,
+    robotName,
+    outputFormats,
+    userId,
+    mimeType,
+  } = params;
 
-  const parsedOutput = await DocumentInterpreter.parse(pdfBuffer, outputFormats);
+  const parsedOutput = await DocumentInterpreter.parse(
+    pdfBuffer,
+    outputFormats,
+    mimeType,
+  );
 
   const robotId = uuid();
   const now = new Date().toISOString();
-  const documentKey = `documents/${robotId}/document.pdf`;
+  const documentKey = `documents/${robotId}/document.${DOCUMENT_MIME_TO_EXT[mimeType]}`;
 
-  await uploadDocumentToMinio(documentKey, pdfBuffer);
+  await uploadDocumentToMinio(documentKey, pdfBuffer, mimeType);
 
   const robot = await Robot.create({
     id: uuid(),

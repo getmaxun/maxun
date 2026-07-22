@@ -53,7 +53,7 @@ export async function createDocumentRobotRecord(
   const finalName = robotName?.trim() || `Document: ${prompt.substring(0, 50)}`;
   const documentKey = `documents/${robotId}/document.pdf`;
 
-  await uploadDocumentToMinio(documentKey, pdfBuffer);
+  await uploadDocumentToMinio(documentKey, pdfBuffer, 'application/pdf');
 
   const robot = await Robot.create({
     id: uuid(),

@@ -290,10 +290,14 @@ class BinaryOutputService {
 
 const DOCUMENT_BUCKET = process.env.DOCUMENT_BUCKET_NAME || 'maxun-documents';
 
-export async function uploadDocumentToMinio(key: string, data: Buffer): Promise<void> {
+export async function uploadDocumentToMinio(
+  key: string,
+  data: Buffer,
+  contentType: string,
+): Promise<void> {
   await fixMinioBucketConfiguration(DOCUMENT_BUCKET);
   await minioClient.putObject(DOCUMENT_BUCKET, key, data, data.length, {
-    'Content-Type': 'application/pdf',
+    'Content-Type': contentType,
   });
 }
 
