@@ -34,14 +34,23 @@ import { createDocumentParseRobotRecord } from '../utils/document/createDocument
 
 export const router = Router();
 
-const pdfUpload = multer({                      // PDF upload method
+const sanitizeRobotMeta = (robot: any): any => {
+  const plain = typeof robot?.toJSON === 'function' ? robot.toJSON() : { ...robot };
+  if (plain.recording_meta?.promptLlmApiKey) {
+    delete plain.recording_meta.promptLlmApiKey;
+  }
+  return plain;
+};
+
+const pdfUpload = multer({                      
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_FILE_SIZE_BYTES },
   fileFilter: (_req, file, cb) => {
-    if (file.mimetype === 'application/pdf') {
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+    if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Only PDF files are allowed'));
+      cb(new Error('Only PDF, JPEG, and PNG files are allowed'));
     }
   },
 });
