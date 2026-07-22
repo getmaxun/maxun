@@ -28,6 +28,10 @@ import {
   SCRAPE_OUTPUT_FORMAT_OPTIONS,
   OutputFormats,
 } from '../constants/output-formats';
+import {
+  isDocumentMimeType,
+  DOCUMENT_MIME_TYPES,
+} from '../constants/document-types';
 import { MAX_FILE_SIZE_BYTES } from '../workflow-management/classes/DocumentInterpreter';
 import { createDocumentRobotRecord } from '../utils/document/createDocumentRobotRecord';
 import { createDocumentParseRobotRecord } from '../utils/document/createDocumentParseRobotRecord';
@@ -46,13 +50,27 @@ const pdfUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_FILE_SIZE_BYTES },
   fileFilter: (_req, file, cb) => {
-    if (file.mimetype === 'application/pdf') {
+    if (isDocumentMimeType(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Only PDF files are allowed'));
+      cb(
+        new Error(
+          `Unsupported file type. Allowed: ${DOCUMENT_MIME_TYPES.join(', ')}`,
+        ),
+      );
     }
   },
 });
+
+const uploadDocument = (req: any, res: any, next: any) => {
+  pdfUpload.single('file')(req, res, (err: any) => {
+    if (err)
+      return res
+        .status(400)
+        .json({ error: err.message || 'Invalid file upload.' });
+    next();
+  });
+};
 
 const normalizeRobotUrl = (rawUrl: string): string => {
   let normalizedUrl: URL;
@@ -2170,22 +2188,30 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
 router.post(
   '/recordings/document',
   requireSignIn,
-  pdfUpload.single('file'),
+  uploadDocument,
   async (req: AuthenticatedRequest, res) => {
     try {
       if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
 
       const file = (req as any).file as Express.Multer.File | undefined;
-      if (!file) return res.status(400).json({ error: 'A PDF file is required.' });
+      if (!file)
+        return res.status(400).json({ error: 'A PDF file is required.' });
 
-      const { prompt, name, llmProvider, llmModel, llmApiKey, llmBaseUrl } = req.body;
+      const { prompt, name, llmProvider, llmModel, llmApiKey, llmBaseUrl } =
+        req.body;
       if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
-        return res.status(400).json({ error: 'The "prompt" field is required.' });
+        return res
+          .status(400)
+          .json({ error: 'The "prompt" field is required.' });
       }
 
-      const finalName = (typeof name === 'string' ? name.trim() : '') || `Document: ${prompt.substring(0, 50)}`;
+      const finalName =
+        (typeof name === 'string' ? name.trim() : '') ||
+        `Document: ${prompt.substring(0, 50)}`;
       if (await isRobotNameTaken(finalName, req.user.id)) {
-        return res.status(409).json({ error: `A robot with the name "${finalName}" already exists.` });
+        return res.status(409).json({
+          error: `A robot with the name "${finalName}" already exists.`,
+        });
       }
 
       const { robot, extractionSchema } = await createDocumentRobotRecord({
@@ -2193,7 +2219,11 @@ router.post(
         originalFileName: file.originalname,
         prompt: prompt.trim(),
         robotName: finalName,
-        llmProvider: llmProvider as 'anthropic' | 'openai' | 'ollama' | undefined,
+        llmProvider: llmProvider as
+          | 'anthropic'
+          | 'openai'
+          | 'ollama'
+          | undefined,
         llmModel: typeof llmModel === 'string' ? llmModel : undefined,
         llmApiKey: typeof llmApiKey === 'string' ? llmApiKey : undefined,
         llmBaseUrl: typeof llmBaseUrl === 'string' ? llmBaseUrl : undefined,
@@ -2211,13 +2241,20 @@ router.post(
         extractionSchema,
       });
     } catch (error: any) {
-      if (error.name === 'SequelizeUniqueConstraintError' || error.parent?.code === '23505') {
-        return res.status(409).json({ error: 'A robot with this name already exists.' });
+      if (
+        error.name === 'SequelizeUniqueConstraintError' ||
+        error.parent?.code === '23505'
+      ) {
+        return res
+          .status(409)
+          .json({ error: 'A robot with this name already exists.' });
       }
-      logger.error(`Error creating document extraction robot: ${error.message}`);
+      logger.error(
+        `Error creating document extraction robot: ${error.message}`,
+      );
       return res.status(500).json({ error: error.message });
     }
-  }
+  },
 );
 
 /**
@@ -2228,25 +2265,37 @@ router.post(
 router.post(
   '/recordings/document-parse',
   requireSignIn,
-  pdfUpload.single('file'),
+  uploadDocument,
   async (req: AuthenticatedRequest, res) => {
     try {
       if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
 
       const file = (req as any).file as Express.Multer.File | undefined;
-      if (!file) return res.status(400).json({ error: 'A PDF file is required.' });
+      if (!file)
+        return res.status(400).json({ error: 'A PDF file is required.' });
 
       const { name, formats } = req.body;
 
       const DOC_PARSE_FORMATS: OutputFormats[] = ['markdown', 'html', 'links'];
-      const rawFormats = Array.isArray(formats) ? formats : (typeof formats === 'string' ? [formats] : []);
-      const outputFormats: OutputFormats[] = rawFormats.length > 0
-        ? rawFormats.filter((f: string) => DOC_PARSE_FORMATS.includes(f as OutputFormats))
-        : DOC_PARSE_FORMATS;
+      const rawFormats = Array.isArray(formats)
+        ? formats
+        : typeof formats === 'string'
+          ? [formats]
+          : [];
+      const outputFormats: OutputFormats[] =
+        rawFormats.length > 0
+          ? rawFormats.filter((f: string) =>
+              DOC_PARSE_FORMATS.includes(f as OutputFormats),
+            )
+          : DOC_PARSE_FORMATS;
 
-      const finalName = (typeof name === 'string' ? name.trim() : '') || `Doc Parse: ${file.originalname}`;
+      const finalName =
+        (typeof name === 'string' ? name.trim() : '') ||
+        `Doc Parse: ${file.originalname}`;
       if (await isRobotNameTaken(finalName, req.user.id)) {
-        return res.status(409).json({ error: `A robot with the name "${finalName}" already exists.` });
+        return res.status(409).json({
+          error: `A robot with the name "${finalName}" already exists.`,
+        });
       }
 
       const { robot, parsedOutput } = await createDocumentParseRobotRecord({
@@ -2268,13 +2317,18 @@ router.post(
         parsedOutput,
       });
     } catch (error: any) {
-      if (error.name === 'SequelizeUniqueConstraintError' || error.parent?.code === '23505') {
-        return res.status(409).json({ error: 'A robot with this name already exists.' });
+      if (
+        error.name === 'SequelizeUniqueConstraintError' ||
+        error.parent?.code === '23505'
+      ) {
+        return res
+          .status(409)
+          .json({ error: 'A robot with this name already exists.' });
       }
       logger.error(`Error creating document parse robot: ${error.message}`);
       return res.status(500).json({ error: error.message });
     }
-  }
+  },
 );
 
 /**
@@ -2395,25 +2449,31 @@ router.post('/runs/document-parse-run/:id', requireSignIn, async (req: Authentic
 router.put(
   '/recordings/:id/document',
   requireSignIn,
-  pdfUpload.single('file'),
+  uploadDocument,
   async (req: AuthenticatedRequest, res) => {
     try {
       if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
 
       const file = (req as any).file as Express.Multer.File | undefined;
-      if (!file) return res.status(400).json({ error: 'A PDF file is required.' });
+      if (!file)
+        return res.status(400).json({ error: 'A PDF file is required.' });
 
-      const robot = await Robot.findOne({ where: { 'recording_meta.id': req.params.id, userId: req.user.id } });
+      const robot = await Robot.findOne({
+        where: { 'recording_meta.id': req.params.id, userId: req.user.id },
+      });
       if (!robot) return res.status(404).json({ error: 'Robot not found.' });
 
       const robotType = robot.recording_meta.type;
       if (robotType !== 'doc-extract' && robotType !== 'doc-parse') {
-        return res.status(400).json({ error: 'Robot is not a document robot.' });
+        return res
+          .status(400)
+          .json({ error: 'Robot is not a document robot.' });
       }
 
       const { uploadDocumentToMinio } = await import('../storage/mino');
       const documentKey = (robot.recording as any).documentKey;
-      if (!documentKey) return res.status(400).json({ error: 'Robot has no document key.' });
+      if (!documentKey)
+        return res.status(400).json({ error: 'Robot has no document key.' });
 
       await uploadDocumentToMinio(documentKey, file.buffer);
 
@@ -2425,12 +2485,14 @@ router.put(
       await robot.update({ recording: updatedRecording });
 
       logger.log('info', `Replaced document for robot ${req.params.id}`);
-      return res.status(200).json({ message: 'Document replaced successfully.' });
+      return res
+        .status(200)
+        .json({ message: 'Document replaced successfully.' });
     } catch (error: any) {
       logger.error(`Error replacing document: ${error.message}`);
       return res.status(500).json({ error: error.message });
     }
-  }
+  },
 );
 
 export { processQueuedRuns };
