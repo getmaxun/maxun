@@ -26,20 +26,9 @@ export interface CreateDocumentParseRobotResult {
 export async function createDocumentParseRobotRecord(
   params: CreateDocumentParseRobotParams
 ): Promise<CreateDocumentParseRobotResult> {
-  const {
-    pdfBuffer,
-    originalFileName,
-    robotName,
-    outputFormats,
-    userId,
-    mimeType,
-  } = params;
+  const { pdfBuffer, originalFileName, robotName, outputFormats, userId, mimeType } = params;
 
-  const parsedOutput = await DocumentInterpreter.parse(
-    pdfBuffer,
-    outputFormats,
-    mimeType,
-  );
+  const parsedOutput = await DocumentInterpreter.parse(pdfBuffer, outputFormats, mimeType);
 
   const robotId = uuid();
   const now = new Date().toISOString();

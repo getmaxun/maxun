@@ -23,11 +23,7 @@ export async function executeDocumentParseRun(
   try {
     const pdfBuffer = await getDocumentFromMinio(robotRecording.documentKey);
     const mimeType = getMimeTypeFromKey(robotRecording.documentKey);
-    const result = await DocumentInterpreter.parse(
-      pdfBuffer,
-      outputFormats,
-      mimeType,
-    );
+    const result = await DocumentInterpreter.parse(pdfBuffer, outputFormats, mimeType);
 
     const serializableOutput: Record<string, any> = {};
     if (result.markdown !== undefined) serializableOutput.markdown = [{ content: result.markdown }];
