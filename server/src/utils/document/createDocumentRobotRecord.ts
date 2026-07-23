@@ -1,3 +1,4 @@
+import path from 'path';
 import { v4 as uuid } from 'uuid';
 import Robot from '../../models/Robot';
 import { DocumentInterpreter, LLMConfig } from '../../workflow-management/classes/DocumentInterpreter';
@@ -44,14 +45,15 @@ export async function createDocumentRobotRecord(
   };
 
   const { text: sampleText } = await DocumentInterpreter.extractTextFromPDF(pdfBuffer);
-  if (!sampleText) throw new Error('Could not extract text from PDF');
+  if (!sampleText) throw new Error('Could not extract text from document');
 
   const extractionSchema = await DocumentInterpreter.generateExtractionSchema(prompt, sampleText, llmConfig);
 
   const robotId = uuid();
   const now = new Date().toISOString();
   const finalName = robotName?.trim() || `Document: ${prompt.substring(0, 50)}`;
-  const documentKey = `documents/${robotId}/document.pdf`;
+  const ext = path.extname(originalFileName) || '.pdf';
+  const documentKey = `documents/${robotId}/document${ext}`;
 
   await uploadDocumentToMinio(documentKey, pdfBuffer);
 
