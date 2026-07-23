@@ -4,10 +4,12 @@ import { DocumentInterpreter, ParsedOutput } from '../../workflow-management/cla
 import { uploadDocumentToMinio } from '../../storage/mino';
 import logger from '../../logger';
 import { OutputFormats } from '../../constants/output-formats';
+import { getDocumentExtensionForMimeType } from './documentFile';
 
 export interface CreateDocumentParseRobotParams {
-  pdfBuffer: Buffer;
+  documentBuffer: Buffer;
   originalFileName: string;
+  documentMimeType: string;
   robotName: string;
   outputFormats: OutputFormats[];
   userId: number;
@@ -21,15 +23,16 @@ export interface CreateDocumentParseRobotResult {
 export async function createDocumentParseRobotRecord(
   params: CreateDocumentParseRobotParams
 ): Promise<CreateDocumentParseRobotResult> {
-  const { pdfBuffer, originalFileName, robotName, outputFormats, userId } = params;
+  const { documentBuffer, originalFileName, documentMimeType, robotName, outputFormats, userId } = params;
 
-  const parsedOutput = await DocumentInterpreter.parse(pdfBuffer, outputFormats);
+  const parsedOutput = await DocumentInterpreter.parse(documentBuffer, outputFormats, documentMimeType);
 
   const robotId = uuid();
   const now = new Date().toISOString();
-  const documentKey = `documents/${robotId}/document.pdf`;
+  const documentExtension = getDocumentExtensionForMimeType(documentMimeType);
+  const documentKey = `documents/${robotId}/document${documentExtension}`;
 
-  await uploadDocumentToMinio(documentKey, pdfBuffer);
+  await uploadDocumentToMinio(documentKey, documentBuffer, documentMimeType);
 
   const robot = await Robot.create({
     id: uuid(),
@@ -47,6 +50,7 @@ export async function createDocumentParseRobotRecord(
       workflow: [],
       outputFormats,
       documentKey,
+      documentMimeType,
       documentFileName: originalFileName,
       parsedOutput,
     },

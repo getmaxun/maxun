@@ -3,6 +3,7 @@ import { DocumentInterpreter, LLMConfig } from '../../workflow-management/classe
 import { getDocumentFromMinio } from '../../storage/mino';
 import { sendWebhook } from '../../routes/webhook';
 import logger from '../../logger';
+import { PDF_MIME_TYPE } from './documentFile';
 
 export async function executeDocumentRun(
   recording: any,
@@ -23,13 +24,15 @@ export async function executeDocumentRun(
   };
 
   try {
-    const pdfBuffer = await getDocumentFromMinio(robotRecording.documentKey);
+    const documentBuffer = await getDocumentFromMinio(robotRecording.documentKey);
+    const documentMimeType = robotRecording.documentMimeType || PDF_MIME_TYPE;
 
     const result = await DocumentInterpreter.extractData(
-      pdfBuffer,
+      documentBuffer,
       robotRecording.prompt || '',
       robotRecording.extractionSchema || {},
-      llmConfig
+      llmConfig,
+      documentMimeType
     );
 
     const serializableOutput = {
