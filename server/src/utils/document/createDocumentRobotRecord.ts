@@ -44,7 +44,7 @@ export async function createDocumentRobotRecord(
     baseUrl: llmBaseUrl,
   };
 
-  const { text: sampleText } = await DocumentInterpreter.extractTextFromPDF(pdfBuffer);
+  const { text: sampleText } = await DocumentInterpreter.extractText(pdfBuffer);
   if (!sampleText) throw new Error('Could not extract text from document');
 
   const extractionSchema = await DocumentInterpreter.generateExtractionSchema(prompt, sampleText, llmConfig);
