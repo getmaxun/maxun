@@ -244,30 +244,6 @@ const ProxyForm: React.FC = () => {
                         </Box>
                    )}
             </Box>
-         
-            <Box sx={{
-                flex: 1,
-                minWidth: 0,
-                maxWidth: 600,
-                mt: 4
-            }}>
-                <Alert severity="info" sx={{ height: 'auto', minHeight: 255 }}>
-                    <AlertTitle>{t('proxy.alert.title')}</AlertTitle>
-                    <br />
-                    <b>{t('proxy.alert.right_way')}</b>
-                    <br />
-                    {t('proxy.alert.proxy_url')} http://proxy.com:1337
-                    <br />
-                    {t('proxy.alert.username')} myusername
-                    <br />
-                    {t('proxy.alert.password')} mypassword
-                    <br />
-                    <br />
-                    <b>{t('proxy.alert.wrong_way')}</b>
-                    <br />
-                    {t('proxy.alert.proxy_url')} http://myusername:mypassword@proxy.com:1337
-                </Alert>
-            </Box>
         </Box>
     );
 };
