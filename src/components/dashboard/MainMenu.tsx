@@ -134,9 +134,19 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             indicatorColor="primary"
             orientation="vertical"
             sx={{
-              alignItems: 'flex-start',
-              '& .MuiTabs-indicator': { display: 'none' },
-              paddingTop: '0.5rem'
+              alignItems: "flex-start",
+              pt: 0.5,
+              "& .MuiTabs-indicator": {
+                display: "none",
+              },
+              "& .MuiTab-root": {
+                justifyContent: "flex-start",
+                textAlign: "left",
+                fontSize: 15,
+              },
+              "& .MuiTab-iconWrapper, & .MuiTab-icon": {
+                fontSize: 20,
+              },
             }}
           >
             <Tab
