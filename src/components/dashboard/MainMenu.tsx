@@ -85,7 +85,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
       backgroundColor: theme.palette.mode === 'light' ? '#f5f5f5' : 'inherit',
     },
     "& .MuiButton-startIcon .MuiSvgIcon-root": {
-      fontSize: 16,
+      fontSize: 17,
     },
   };
 
