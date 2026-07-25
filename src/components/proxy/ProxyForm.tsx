@@ -197,7 +197,7 @@ const ProxyForm: React.FC = () => {
                                     }
                                 />
                                 <a
-                                    href="https://docs.maxun.dev/byop"
+                                    href="https://docs.maxun.dev/byop#authenticated-proxies"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     style={{ fontSize: '0.8rem', color: '#ff00c3', textDecoration: 'none', marginLeft: '3.6px' }}
