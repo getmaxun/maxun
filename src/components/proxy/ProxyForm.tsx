@@ -202,7 +202,7 @@ const ProxyForm: React.FC = () => {
                                     rel="noopener noreferrer"
                                     style={{ fontSize: '0.8rem', color: '#ff00c3', textDecoration: 'none', marginLeft: '3.6px' }}
                                 >
-                                    Learn how to configure authenticated proxies.
+                                    Learn how to configure authenticated proxies here.
                                 </a>
                             </Box>
                             <Box sx={{ mb: 2 }}>
