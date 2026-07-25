@@ -152,26 +152,26 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             <Tab
               value="robots"
               label={t('mainmenu.recordings')}
-              icon={<AutoAwesome sx={{ fontSize: 20 }} />}
+              icon={<AutoAwesome />}
               iconPosition="start"
               disableRipple={true}
               sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '15px' }}
               onClick={handleRobotsClick} />
             <Tab value="runs"
               label={t('mainmenu.runs')}
-              icon={<PlayArrow sx={{ fontSize: 20 }} />}
+              icon={<PlayArrow />}
               iconPosition="start"
               disableRipple={true}
               sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '15px' }} />
             <Tab value="proxy"
               label={t('mainmenu.proxy')}
-              icon={<Usb sx={{ fontSize: 20 }} />}
+              icon={<Usb />}
               iconPosition="start"
               disableRipple={true}
               sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '15px' }} />
             <Tab value="apikey"
               label={t('mainmenu.apikey')}
-              icon={<VpnKey sx={{ fontSize: 20 }} />}
+              icon={<VpnKey />}
               iconPosition="start"
               disableRipple={true}
               sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '15px' }} />
