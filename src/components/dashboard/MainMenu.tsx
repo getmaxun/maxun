@@ -171,7 +171,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             <Button
               onClick={() => setDocModalOpen(true)}
               sx={buttonStyles}
-              startIcon={<Description sx={{ fontSize: 20 }} />}
+              startIcon={<Description />}
             >
               Documentation
             </Button>
@@ -217,24 +217,24 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               href='https://app.maxun.dev/'
               target="_blank"
               rel="noopener noreferrer"
-              sx={buttonStyles} startIcon={<CloudQueue sx={{ fontSize: 16 }} />}>
+              sx={buttonStyles} startIcon={<CloudQueue />}>
               Join Maxun Cloud
             </Button>
             <Button
               href='https://docs.maxun.dev/category/sdk'
               target="_blank"
               rel="noopener noreferrer"
-              sx={buttonStyles} startIcon={<ArrowForwardIos sx={{ fontSize: 20 }} />}>
+              sx={buttonStyles} startIcon={<ArrowForwardIos  />}>
               SDK
             </Button>
             <Button
               href='https://docs.maxun.dev/category/cli'
               target="_blank"
               rel="noopener noreferrer"
-              sx={buttonStyles} startIcon={<Terminal sx={{ fontSize: 20 }} />}>
+              sx={buttonStyles} startIcon={<Terminal />}>
               CLI
             </Button>
-            <Button onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite sx={{ fontSize: 16 }} />}>
+            <Button onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite  />}>
               Sponsor Us
             </Button>
           </Box>
