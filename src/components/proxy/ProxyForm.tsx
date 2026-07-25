@@ -196,8 +196,13 @@ const ProxyForm: React.FC = () => {
                                         </span>
                                     }
                                 />
-                                <a href="https://docs.maxun.dev/byop" target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.875rem', color: '#ff00c3', textDecoration: 'none' }}>
-                                    Learn how to configure authenticated proxies here.
+                                <a
+                                    href="https://docs.maxun.dev/byop"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{ fontSize: '0.8rem', color: '#ff00c3', textDecoration: 'none', marginLeft: '3.6px' }}
+                                >
+                                    Learn how to configure authenticated proxies.
                                 </a>
                             </Box>
                             <Box sx={{ mb: 2 }}>
@@ -245,7 +250,7 @@ const ProxyForm: React.FC = () => {
                                 {t('proxy.add_proxy')}
                             </Button>
                         </Box>
-                   )}
+                    )}
             </Box>
         </Box>
     );
