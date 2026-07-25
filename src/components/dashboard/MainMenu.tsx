@@ -85,8 +85,8 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
       backgroundColor: theme.palette.mode === 'light' ? '#f5f5f5' : 'inherit',
     },
     "& .MuiButton-startIcon .MuiSvgIcon-root": {
-    fontSize: 16,
-  },
+      fontSize: 16,
+    },
   };
 
   const starButtonStyles = {
@@ -224,7 +224,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               href='https://docs.maxun.dev/category/sdk'
               target="_blank"
               rel="noopener noreferrer"
-              sx={buttonStyles} startIcon={<ArrowForwardIos  />}>
+              sx={buttonStyles} startIcon={<ArrowForwardIos />}>
               SDK
             </Button>
             <Button
@@ -234,7 +234,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               sx={buttonStyles} startIcon={<Terminal />}>
               CLI
             </Button>
-            <Button onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite  />}>
+            <Button onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite />}>
               Sponsor Us
             </Button>
           </Box>
