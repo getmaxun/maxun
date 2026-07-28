@@ -88,7 +88,7 @@
     "uuidv4": "^6.2.12",
     "web-vitals": "^2.1.4",
     "winston": "^3.5.1",
-    "xlsx": "^0.18.5"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "scripts": {
     "start": "npm run build:server && concurrently -k \"npm run server\" \"npm run client\"",
