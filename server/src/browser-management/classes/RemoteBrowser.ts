@@ -485,6 +485,9 @@ export class RemoteBrowser {
           this.isDOMStreamingActive = true;
           this.emitLoadingProgress(80, 0);
           this.setupScrollEventListener();
+        } else if (rrwebStatus.error === 'already recording') {
+          logger.debug('[rrweb] Recording already active, skipping duplicate initialization');
+          this.isDOMStreamingActive = true;
         } else {
           logger.error(`Failed to initialize rrweb recording: ${rrwebStatus.error}`);
         }
