@@ -43,14 +43,21 @@ const sanitizeRobotMeta = (robot: any): any => {
   return plain;
 };
 
-const pdfUpload = multer({
+const uploadFile = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_FILE_SIZE_BYTES },
   fileFilter: (_req, file, cb) => {
-    if (file.mimetype === 'application/pdf') {
+    const allowedMimeTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/csv',
+      'application/csv',
+    ];
+
+    if (allowedMimeTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Only PDF files are allowed'));
+      cb(new Error('Only PDF, XLSX, and CSV files are allowed'));
     }
   },
 });
@@ -2171,7 +2178,7 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
 router.post(
   '/recordings/document',
   requireSignIn,
-  pdfUpload.single('file'),
+  uploadFile.single('file'),
   async (req: AuthenticatedRequest, res) => {
     try {
       if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
@@ -2229,7 +2236,7 @@ router.post(
 router.post(
   '/recordings/document-parse',
   requireSignIn,
-  pdfUpload.single('file'),
+  uploadFile.single('file'),
   async (req: AuthenticatedRequest, res) => {
     try {
       if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
@@ -2416,7 +2423,7 @@ router.post('/runs/document-parse-run/:id', requireSignIn, async (req: Authentic
 router.put(
   '/recordings/:id/document',
   requireSignIn,
-  pdfUpload.single('file'),
+  uploadFile.single('file'),
   async (req: AuthenticatedRequest, res) => {
     try {
       if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
