@@ -37,6 +37,8 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.3",
+    "@types/js-cookie": "^3.0.6",
+    "@types/styled-components": "^5.1.23",
     "concurrently": "^7.0.0",
     "cross-env": "^7.0.3",
     "esbuild": "0.28.1",

@@ -40,6 +40,7 @@
     "moment-timezone": "0.5.48",
     "multer": "2.1.1",
     "node-cron": "3.0.3",
+    "node-fetch": "2.7.0",
     "canvas": "3.2.3",
     "mupdf": "1.27.0",
     "pdf-parse": "2.4.5",
@@ -83,7 +84,7 @@
     "@types/turndown": "5.0.6",
     "ajv": "8.17.1",
     "concurrently": "7.6.0",
-    "esbuild": "0.25.11",
+    "esbuild": "0.28.1",
     "nodemon": "2.0.22",
     "ts-node": "10.9.2"
   },
