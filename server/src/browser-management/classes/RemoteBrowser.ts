@@ -214,16 +214,15 @@ export class RemoteBrowser {
         options: Parameters<Page['goto']>[1] = {},
     ): Promise<Response | null> {
         const normalizedTarget = this.normalizeUrl(url);
-        const currentUrl = page.url();
-
-        if (currentUrl && this.normalizeUrl(currentUrl) === normalizedTarget) {
-            logger.debug(`Skipping duplicate navigation to ${url}`);
-            return null;
-        }
 
         const runNavigation = async (): Promise<Response | null> => {
             if (page.isClosed()) {
                 throw new Error('Cannot navigate: page is closed');
+            }
+
+            if (this.normalizeUrl(page.url()) === normalizedTarget) {
+                logger.debug(`Skipping duplicate navigation to ${url}`);
+                return null;
             }
 
             this.navigationVersion++;
