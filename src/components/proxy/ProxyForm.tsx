@@ -196,6 +196,14 @@ const ProxyForm: React.FC = () => {
                                         </span>
                                     }
                                 />
+                                <a
+                                    href="https://docs.maxun.dev/byop#authenticated-proxies"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{ fontSize: '0.8rem', color: '#ff00c3', textDecoration: 'none', marginLeft: '3.6px' }}
+                                >
+                                    Learn how to configure authenticated proxies here.
+                                </a>
                             </Box>
                             <Box sx={{ mb: 2 }}>
                                 <FormControlLabel
@@ -242,31 +250,7 @@ const ProxyForm: React.FC = () => {
                                 {t('proxy.add_proxy')}
                             </Button>
                         </Box>
-                   )}
-            </Box>
-         
-            <Box sx={{
-                flex: 1,
-                minWidth: 0,
-                maxWidth: 600,
-                mt: 4
-            }}>
-                <Alert severity="info" sx={{ height: 'auto', minHeight: 255 }}>
-                    <AlertTitle>{t('proxy.alert.title')}</AlertTitle>
-                    <br />
-                    <b>{t('proxy.alert.right_way')}</b>
-                    <br />
-                    {t('proxy.alert.proxy_url')} http://proxy.com:1337
-                    <br />
-                    {t('proxy.alert.username')} myusername
-                    <br />
-                    {t('proxy.alert.password')} mypassword
-                    <br />
-                    <br />
-                    <b>{t('proxy.alert.wrong_way')}</b>
-                    <br />
-                    {t('proxy.alert.proxy_url')} http://myusername:mypassword@proxy.com:1337
-                </Alert>
+                    )}
             </Box>
         </Box>
     );
