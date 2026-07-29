@@ -2,7 +2,8 @@ import {
     Page,
     Browser,
     CDPSession,
-    BrowserContext
+    BrowserContext,
+    Response
 } from 'playwright-core';
 import { Socket } from "socket.io";
 import { PlaywrightBlocker } from '@cliqz/adblocker-playwright';
@@ -86,6 +87,8 @@ export class RemoteBrowser {
     private userId: string;
 
     private lastEmittedUrl: string | null = null;
+    private navigationVersion = 0;
+    private navigationQueue: Promise<unknown> = Promise.resolve();
 
     /**
      * {@link WorkflowGenerator} instance specific to the remote browser.
@@ -197,6 +200,41 @@ export class RemoteBrowser {
         return normalizedNew !== normalizedLast;
     }
 
+    private isNavigationContextError(error: any): boolean {
+        const message = error?.message || '';
+        return message.includes('Execution context was destroyed') ||
+            message.includes('Cannot find context with specified id') ||
+            message.includes('Target closed') ||
+            message.includes('Navigation failed because page was closed');
+    }
+
+    public async navigateTo(
+        page: Page,
+        url: string,
+        options: Parameters<Page['goto']>[1] = {},
+    ): Promise<Response | null> {
+        const normalizedTarget = this.normalizeUrl(url);
+        const currentUrl = page.url();
+
+        if (currentUrl && this.normalizeUrl(currentUrl) === normalizedTarget) {
+            logger.debug(`Skipping duplicate navigation to ${url}`);
+            return null;
+        }
+
+        const runNavigation = async (): Promise<Response | null> => {
+            if (page.isClosed()) {
+                throw new Error('Cannot navigate: page is closed');
+            }
+
+            this.navigationVersion++;
+            return page.goto(url, options);
+        };
+
+        const navigation = this.navigationQueue.then(runNavigation, runNavigation);
+        this.navigationQueue = navigation.catch(() => {});
+        return navigation;
+    }
+
     /**
      * Broadcasts an event to all clients connected to this browser's namespace.
      * Falls back to direct socket emit if namespace is unavailable.
@@ -276,12 +314,22 @@ export class RemoteBrowser {
                 if (window.rrweb && window.isRecording) {
                   window.isRecording = false;
                 }
-              }).catch(() => {});
+              }).catch((error: any) => {
+                if (!this.isNavigationContextError(error)) {
+                  logger.warn(`[rrweb] Failed to stop previous recording: ${error?.message}`);
+                }
+              });
 
               if (this.isRecordingMode && !page.isClosed()) {
+                const navigationVersion = this.navigationVersion;
                 await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {
                   logger.warn('[rrweb] Network idle timeout on navigation, proceeding with rrweb initialization');
                 });
+
+                if (navigationVersion !== this.navigationVersion || page.isClosed()) {
+                  logger.debug('[rrweb] Skipping stale recording initialization after newer navigation');
+                  return;
+                }
 
                 await this.initializeRRWebRecording(page).catch((error: any) => {
                   logger.warn(`[rrweb] Failed to initialize recording on navigation: ${error?.message}`);
@@ -297,6 +345,7 @@ export class RemoteBrowser {
             try {
               const injectScript = async (): Promise<boolean> => {
                   try {
+                      const navigationVersion = this.navigationVersion;
                       await page.waitForLoadState('networkidle', { timeout: 5000 });
 
                       if (page.isClosed()) {
@@ -304,9 +353,18 @@ export class RemoteBrowser {
                         return false;
                       }
 
+                      if (navigationVersion !== this.navigationVersion) {
+                        logger.debug('Skipping stale script injection after newer navigation');
+                        return false;
+                      }
+
                       await page.evaluate(getInjectableScript());
                       return true;
                   } catch (error: any) {
+                      if (this.isNavigationContextError(error)) {
+                        logger.log('debug', `Script injection skipped after navigation changed: ${error.message}`);
+                        return false;
+                      }
                       logger.log('warn', `Script injection attempt failed: ${error.message}`);
                       return false;
                   }
@@ -334,8 +392,14 @@ export class RemoteBrowser {
       try {
         const rrwebJsPath = require.resolve('rrweb/dist/rrweb.min.js');
         const rrwebScriptContent = readFileSync(rrwebJsPath, 'utf8');
+        const navigationVersion = this.navigationVersion;
 
         await page.context().addInitScript(rrwebScriptContent);
+
+        if (navigationVersion !== this.navigationVersion || page.isClosed()) {
+          logger.debug('[rrweb] Skipping stale script injection before evaluate');
+          return;
+        }
 
         await page.evaluate((scriptContent) => {
           if (typeof window.rrweb === 'undefined') {
@@ -346,6 +410,11 @@ export class RemoteBrowser {
             }
           }
         }, rrwebScriptContent);
+
+        if (navigationVersion !== this.navigationVersion || page.isClosed()) {
+          logger.debug('[rrweb] Skipping stale recording initialization after script injection');
+          return;
+        }
 
         const rrwebLoaded = await page.evaluate(() => typeof window.rrweb !== 'undefined');
         if (rrwebLoaded) {
@@ -420,6 +489,10 @@ export class RemoteBrowser {
           logger.error(`Failed to initialize rrweb recording: ${rrwebStatus.error}`);
         }
       } catch (error: any) {
+        if (this.isNavigationContextError(error)) {
+          logger.debug(`[rrweb] Initialization skipped after navigation changed: ${error.message}`);
+          return;
+        }
         logger.error(`Failed to initialize rrweb recording: ${error.message}`);
       }
     }
