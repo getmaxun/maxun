@@ -31,6 +31,7 @@ import {
 import { MAX_FILE_SIZE_BYTES } from '../workflow-management/classes/DocumentInterpreter';
 import { createDocumentRobotRecord } from '../utils/document/createDocumentRobotRecord';
 import { createDocumentParseRobotRecord } from '../utils/document/createDocumentParseRobotRecord';
+import { normalizeDocumentMimeType } from '../utils/document/documentFile';
 
 export const router = Router();
 
@@ -42,21 +43,14 @@ const sanitizeRobotMeta = (robot: any): any => {
   return plain;
 };
 
-const uploadFile = multer({
+const documentUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_FILE_SIZE_BYTES },
   fileFilter: (_req, file, cb) => {
-    const allowedMimeTypes = [
-      'application/pdf',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'text/csv',
-      'application/csv',
-    ];
-
-    if (allowedMimeTypes.includes(file.mimetype)) {
+    if (normalizeDocumentMimeType(file.mimetype, file.originalname)) {
       cb(null, true);
     } else {
-      cb(new Error('Only PDF, XLSX, and CSV files are allowed'));
+      cb(new Error('Only PDF, DOCX, XLSX, and CSV files are allowed'));
     }
   },
 });
@@ -2171,19 +2165,21 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
 
 /**
  * POST endpoint for creating a document extraction robot (doc-extract).
- * Accepts a PDF upload and an extraction prompt. Uses the configured LLM to generate
+ * Accepts a PDF or DOCX upload and an extraction prompt. Uses the configured LLM to generate
  * an extraction schema and stores the document in MinIO.
  */
 router.post(
   '/recordings/document',
   requireSignIn,
-  uploadFile.single('file'),
+  documentUpload.single('file'),
   async (req: AuthenticatedRequest, res) => {
     try {
       if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
 
       const file = (req as any).file as Express.Multer.File | undefined;
-      if (!file) return res.status(400).json({ error: 'A PDF file is required.' });
+      if (!file) return res.status(400).json({ error: 'A PDF or DOCX file is required.' });
+      const documentMimeType = normalizeDocumentMimeType(file.mimetype, file.originalname);
+      if (!documentMimeType) return res.status(400).json({ error: 'Only PDF and DOCX files are allowed.' });
 
       const { prompt, name, llmProvider, llmModel, llmApiKey, llmBaseUrl } = req.body;
       if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
@@ -2196,8 +2192,9 @@ router.post(
       }
 
       const { robot, extractionSchema } = await createDocumentRobotRecord({
-        pdfBuffer: file.buffer,
+        documentBuffer: file.buffer,
         originalFileName: file.originalname,
+        documentMimeType,
         prompt: prompt.trim(),
         robotName: finalName,
         llmProvider: llmProvider as 'anthropic' | 'openai' | 'ollama' | undefined,
@@ -2229,19 +2226,21 @@ router.post(
 
 /**
  * POST endpoint for creating a document parse robot (doc-parse).
- * Accepts a PDF upload and output format list. Parses the document immediately and
+ * Accepts a PDF or DOCX upload and output format list. Parses the document immediately and
  * stores both the document and parsed output in MinIO / database.
  */
 router.post(
   '/recordings/document-parse',
   requireSignIn,
-  uploadFile.single('file'),
+  documentUpload.single('file'),
   async (req: AuthenticatedRequest, res) => {
     try {
       if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
 
       const file = (req as any).file as Express.Multer.File | undefined;
-      if (!file) return res.status(400).json({ error: 'A PDF file is required.' });
+      if (!file) return res.status(400).json({ error: 'A PDF or DOCX file is required.' });
+      const documentMimeType = normalizeDocumentMimeType(file.mimetype, file.originalname);
+      if (!documentMimeType) return res.status(400).json({ error: 'Only PDF and DOCX files are allowed.' });
 
       const { name, formats } = req.body;
 
@@ -2257,8 +2256,9 @@ router.post(
       }
 
       const { robot, parsedOutput } = await createDocumentParseRobotRecord({
-        pdfBuffer: file.buffer,
+        documentBuffer: file.buffer,
         originalFileName: file.originalname,
+        documentMimeType,
         robotName: finalName,
         outputFormats,
         userId: req.user.id,
@@ -2397,18 +2397,20 @@ router.post('/runs/document-parse-run/:id', requireSignIn, async (req: Authentic
 });
 
 /**
- * PUT endpoint to replace the PDF document for an existing doc-extract or doc-parse robot.
+ * PUT endpoint to replace the document for an existing doc-extract or doc-parse robot.
  */
 router.put(
   '/recordings/:id/document',
   requireSignIn,
-  uploadFile.single('file'),
+  documentUpload.single('file'),
   async (req: AuthenticatedRequest, res) => {
     try {
       if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
 
       const file = (req as any).file as Express.Multer.File | undefined;
-      if (!file) return res.status(400).json({ error: 'A PDF file is required.' });
+      if (!file) return res.status(400).json({ error: 'A PDF or DOCX file is required.' });
+      const documentMimeType = normalizeDocumentMimeType(file.mimetype, file.originalname);
+      if (!documentMimeType) return res.status(400).json({ error: 'Only PDF and DOCX files are allowed.' });
 
       const robot = await Robot.findOne({ where: { 'recording_meta.id': req.params.id, userId: req.user.id } });
       if (!robot) return res.status(404).json({ error: 'Robot not found.' });
@@ -2422,11 +2424,12 @@ router.put(
       const documentKey = (robot.recording as any).documentKey;
       if (!documentKey) return res.status(400).json({ error: 'Robot has no document key.' });
 
-      await uploadDocumentToMinio(documentKey, file.buffer);
+      await uploadDocumentToMinio(documentKey, file.buffer, documentMimeType);
 
       const updatedRecording: any = {
         ...(robot.recording as any),
         documentFileName: file.originalname,
+        documentMimeType,
       };
 
       await robot.update({ recording: updatedRecording });
