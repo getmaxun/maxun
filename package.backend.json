@@ -65,6 +65,7 @@
     "cross-env": "7.0.3",
     "sequelize-cli": "6.6.3",
     "@modelcontextprotocol/sdk": "1.17.5",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "3.25.76"
   },
   "devDependencies": {
