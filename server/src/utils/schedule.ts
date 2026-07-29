@@ -75,16 +75,40 @@ export function buildCronExpression(input: ScheduleInput): { cronExpression: str
     throw new ScheduleValidationError('startFrom', 'Invalid start day');
   }
 
+  // For sub-daily units, atTimeStart/atTimeEnd bound an "in between" window
+  // (see the dashboard schedule UI), so the end must be strictly after the start.
+  if (runEveryUnit === 'MINUTES' || runEveryUnit === 'HOURS') {
+    if (endHours * 60 + endMinutes <= startHours * 60 + startMinutes) {
+      throw new ScheduleValidationError('atTimeEnd', 'End time must be after start time');
+    }
+    // An hourly interval needs the window to cross an hour boundary; a same-hour
+    // window can't produce a valid hour range for the cron step.
+    if (runEveryUnit === 'HOURS' && startHours === endHours) {
+      throw new ScheduleValidationError('atTimeEnd', 'Hourly schedules need a window spanning at least one hour');
+    }
+  }
+
+  // cron has no field for multi-week intervals; a day-of-week field can only
+  // say "every week on day X", so reject anything the schedule can't honor.
+  if (runEveryUnit === 'WEEKS' && runEvery > 1) {
+    throw new ScheduleValidationError('runEvery', 'Weekly schedules only support an interval of 1');
+  }
+
+  const dom = Number(dayOfMonth);
+  if (runEveryUnit === 'MONTHS' && (!dayOfMonth || !Number.isInteger(dom) || dom < 1 || dom > 31)) {
+    throw new ScheduleValidationError('dayOfMonth', 'Invalid day of month');
+  }
+
   // Build cron expression based on run frequency and starting day
   let cronExpression: string | undefined;
   const dayIndex = DAYS.indexOf(startFrom);
 
   switch (runEveryUnit) {
     case 'MINUTES':
-      cronExpression = `*/${runEvery} * * * *`;
+      cronExpression = `*/${runEvery} ${startHours}-${endHours} * * *`;
       break;
     case 'HOURS':
-      cronExpression = `${startMinutes} */${runEvery} * * *`;
+      cronExpression = `${startMinutes} ${startHours}-${endHours}/${runEvery} * * *`;
       break;
     case 'DAYS':
       cronExpression = `${startMinutes} ${startHours} */${runEvery} * *`;
@@ -94,10 +118,7 @@ export function buildCronExpression(input: ScheduleInput): { cronExpression: str
       break;
     case 'MONTHS':
       // todo: handle leap year
-      cronExpression = `${startMinutes} ${startHours} ${dayOfMonth} */${runEvery} *`;
-      if (startFrom !== 'SUNDAY') {
-        cronExpression += ` ${dayIndex}`;
-      }
+      cronExpression = `${startMinutes} ${startHours} ${dom} */${runEvery} *`;
       break;
     default:
       throw new ScheduleValidationError('runEveryUnit', 'Invalid runEveryUnit');
