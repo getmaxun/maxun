@@ -27,6 +27,11 @@ declare global {
   }
 }
 
+interface PageNavigationState {
+    version: number;
+    queue: Promise<unknown>;
+}
+
 // const MEMORY_CONFIG = {
 //     gcInterval: 20000,
 //     maxHeapSize: 1536 * 1024 * 1024,
@@ -87,8 +92,7 @@ export class RemoteBrowser {
     private userId: string;
 
     private lastEmittedUrl: string | null = null;
-    private navigationVersion = 0;
-    private navigationQueue: Promise<unknown> = Promise.resolve();
+    private pageNavigationStates = new WeakMap<Page, PageNavigationState>();
 
     /**
      * {@link WorkflowGenerator} instance specific to the remote browser.
@@ -208,12 +212,22 @@ export class RemoteBrowser {
             message.includes('Navigation failed because page was closed');
     }
 
+    private getPageNavigationState(page: Page): PageNavigationState {
+        let state = this.pageNavigationStates.get(page);
+        if (!state) {
+            state = { version: 0, queue: Promise.resolve() };
+            this.pageNavigationStates.set(page, state);
+        }
+        return state;
+    }
+
     public async navigateTo(
         page: Page,
         url: string,
         options: Parameters<Page['goto']>[1] = {},
     ): Promise<Response | null> {
         const normalizedTarget = this.normalizeUrl(url);
+        const navigationState = this.getPageNavigationState(page);
 
         const runNavigation = async (): Promise<Response | null> => {
             if (page.isClosed()) {
@@ -225,12 +239,12 @@ export class RemoteBrowser {
                 return null;
             }
 
-            this.navigationVersion++;
+            navigationState.version++;
             return page.goto(url, options);
         };
 
-        const navigation = this.navigationQueue.then(runNavigation, runNavigation);
-        this.navigationQueue = navigation.catch(() => {});
+        const navigation = navigationState.queue.then(runNavigation, runNavigation);
+        navigationState.queue = navigation.catch(() => {});
         return navigation;
     }
 
@@ -320,12 +334,13 @@ export class RemoteBrowser {
               });
 
               if (this.isRecordingMode && !page.isClosed()) {
-                const navigationVersion = this.navigationVersion;
+                const navigationState = this.getPageNavigationState(page);
+                const navigationVersion = navigationState.version;
                 await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {
                   logger.warn('[rrweb] Network idle timeout on navigation, proceeding with rrweb initialization');
                 });
 
-                if (navigationVersion !== this.navigationVersion || page.isClosed()) {
+                if (navigationVersion !== navigationState.version || page.isClosed()) {
                   logger.debug('[rrweb] Skipping stale recording initialization after newer navigation');
                   return;
                 }
@@ -344,7 +359,8 @@ export class RemoteBrowser {
             try {
               const injectScript = async (): Promise<boolean> => {
                   try {
-                      const navigationVersion = this.navigationVersion;
+                      const navigationState = this.getPageNavigationState(page);
+                      const navigationVersion = navigationState.version;
                       await page.waitForLoadState('networkidle', { timeout: 5000 });
 
                       if (page.isClosed()) {
@@ -352,7 +368,7 @@ export class RemoteBrowser {
                         return false;
                       }
 
-                      if (navigationVersion !== this.navigationVersion) {
+                      if (navigationVersion !== navigationState.version) {
                         logger.debug('Skipping stale script injection after newer navigation');
                         return false;
                       }
@@ -391,11 +407,12 @@ export class RemoteBrowser {
       try {
         const rrwebJsPath = require.resolve('rrweb/dist/rrweb.min.js');
         const rrwebScriptContent = readFileSync(rrwebJsPath, 'utf8');
-        const navigationVersion = this.navigationVersion;
+        const navigationState = this.getPageNavigationState(page);
+        const navigationVersion = navigationState.version;
 
         await page.context().addInitScript(rrwebScriptContent);
 
-        if (navigationVersion !== this.navigationVersion || page.isClosed()) {
+        if (navigationVersion !== navigationState.version || page.isClosed()) {
           logger.debug('[rrweb] Skipping stale script injection before evaluate');
           return;
         }
@@ -410,7 +427,7 @@ export class RemoteBrowser {
           }
         }, rrwebScriptContent);
 
-        if (navigationVersion !== this.navigationVersion || page.isClosed()) {
+        if (navigationVersion !== navigationState.version || page.isClosed()) {
           logger.debug('[rrweb] Skipping stale recording initialization after script injection');
           return;
         }
