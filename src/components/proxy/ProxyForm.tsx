@@ -172,6 +172,19 @@ const ProxyForm: React.FC = () => {
                 <Typography variant="h6" gutterBottom component="div">
                     {t('proxy.title')}
                 </Typography>
+                 {recommendedProxiesAvailable && (
+                                    <>
+                                        <br />
+                                        <a
+                                            href={RECOMMENDED_PROXIES_URL}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            style={{ color: '#ff00c3', textDecoration: 'none', marginLeft: '3.6px' }}
+                                        >
+                                            Check out our recommended proxy providers with discounts specific for Maxun!
+                                        </a>
+                                    </>
+                                )}
                 {
                     isProxyConfigured ? (
                         <Box sx={{ width: '100%', mt: 3 }}>
@@ -223,19 +236,6 @@ const ProxyForm: React.FC = () => {
                                 >
                                     Learn how to configure authenticated proxies here.
                                 </a>
-                                {recommendedProxiesAvailable && (
-                                    <>
-                                        <br />
-                                        <a
-                                            href={RECOMMENDED_PROXIES_URL}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            style={{ fontSize: '0.8rem', color: '#ff00c3', textDecoration: 'none', marginLeft: '3.6px' }}
-                                        >
-                                            See recommended proxy providers.
-                                        </a>
-                                    </>
-                                )}
                             </Box>
                             <Box sx={{ mb: 2 }}>
                                 <FormControlLabel
