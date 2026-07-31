@@ -5,7 +5,7 @@
  */
 
 import { Page } from 'playwright-core';
-import { resolveLlmModel } from '../utils/llmModels';
+import { resolveLlmModel } from '../utils/llm-models';
 import Anthropic from '@anthropic-ai/sdk';
 import axios from 'axios';
 import logger from '../logger';

@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { resolveLlmModel } from './llmModels';
+import { resolveLlmModel } from './llm-models';
 import axios from 'axios';
 import logger from '../logger';
 import { LLMConfig } from '../sdk/browserAgent';

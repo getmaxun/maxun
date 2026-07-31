@@ -4,7 +4,7 @@
  */
 
 import { SelectorValidator } from './selectorValidator';
-import { resolveLlmModel } from '../utils/llmModels';
+import { resolveLlmModel } from '../utils/llm-models';
 import { createRemoteBrowserForValidation, destroyRemoteBrowser } from '../browser-management/controller';
 import logger from '../logger';
 import { v4 as uuid } from 'uuid';

@@ -18,11 +18,14 @@ export type LlmProviderName = 'anthropic' | 'openai' | 'ollama';
  * text and screenshot work. Ollama is split because its vision and text models
  * are separate downloads and an operator may only have pulled one.
  */
+/**
+ * Each provider's balanced tier rather than its flagship. These are defaults
+ * for operators who did not pick a model and who pay for their own inference,
+ * so the cheaper tier is the respectful choice: Opus 5 and Fable 5 cost 1.7x
+ * and 3.3x more per token than Sonnet 5, and gpt-5.6-sol 2.5x more than terra.
+ */
 export const DEFAULT_LLM_MODELS: Record<LlmProviderName, string> = {
-  // Anthropic's balanced tier: "the best combination of speed and intelligence".
-  // Opus 5 and Fable 5 sit above it but cost 1.7x and 3.3x more per token.
   anthropic: 'claude-sonnet-5',
-  // OpenAI's balanced tier, chosen over gpt-5.6-sol on the same cost reasoning.
   openai: 'gpt-5.6-terra',
   ollama: 'llama3.2-vision',
 };
