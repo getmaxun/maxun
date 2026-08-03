@@ -30,6 +30,7 @@ import {
 import { MAX_FILE_SIZE_BYTES } from '../workflow-management/classes/DocumentInterpreter';
 import { createDocumentRobotRecord } from '../utils/document/createDocumentRobotRecord';
 import { createDocumentParseRobotRecord } from '../utils/document/createDocumentParseRobotRecord';
+import { validateRequiredLlmConfig, formatsRequireLlm, readLlmConfig } from '../utils/llm-config-validation';
 
 export const router = Router();
 
@@ -553,16 +554,22 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
     }
 
     const effectiveFormats = normalizedFormats ?? (robot.recording_meta?.formats || []);
-    const effectiveProvider = promptLlmProvider ?? robot.recording_meta?.promptLlmProvider;
     const robotType = robot.recording_meta?.type;
-    if (
-      (robotType === 'crawl' || robotType === 'search' || robotType === 'scrape') &&
-      effectiveFormats.includes('summary' as OutputFormats) &&
-      effectiveProvider && effectiveProvider !== 'ollama' &&
-      !promptLlmApiKey &&
-      !(robot.recording_meta as any).promptLlmApiKey
-    ) {
-      return res.status(400).json({ error: 'An API key is required when using a non-Ollama LLM provider for summary output.' });
+
+    if ((robotType === 'crawl' || robotType === 'search' || robotType === 'scrape') && formatsRequireLlm(effectiveFormats)) {
+      const storedMeta = robot.recording_meta as any;
+      const llmValidationError = validateRequiredLlmConfig(
+        {
+          provider: promptLlmProvider ?? storedMeta?.promptLlmProvider,
+          model: promptLlmModel ?? storedMeta?.promptLlmModel,
+          apiKey: promptLlmApiKey ?? storedMeta?.promptLlmApiKey,
+          baseUrl: promptLlmBaseUrl ?? storedMeta?.promptLlmBaseUrl,
+        },
+        'The "summary" output format'
+      );
+      if (llmValidationError) {
+        return res.status(400).json(llmValidationError);
+      }
     }
 
     let updatedMeta = { ...robot.recording_meta };
@@ -647,8 +654,16 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
       return res.status(409).json({ error: `A robot with the name "${robotName}" already exists.` });
     }
 
-    if (finalFormats.includes('summary' as OutputFormats) && promptLlmProvider && promptLlmProvider !== 'ollama' && !promptLlmApiKey) {
-      return res.status(400).json({ error: 'An API key is required when using a non-Ollama LLM provider for summary output.' });
+    if (formatsRequireLlm(finalFormats) || Boolean(promptInstructions)) {
+      const llmValidationError = validateRequiredLlmConfig(
+        readLlmConfig(req.body),
+        promptInstructions
+          ? 'The "summary" output format and Smart Query'
+          : 'The "summary" output format'
+      );
+      if (llmValidationError) {
+        return res.status(400).json(llmValidationError);
+      }
     }
 
     if (scrapeFormats.length === 0 && formats !== undefined) {
@@ -1850,8 +1865,14 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
       ? requestedFormats
       : [...DEFAULT_OUTPUT_FORMATS];
 
-    if (crawlFormats.includes('summary' as OutputFormats) && promptLlmProvider && promptLlmProvider !== 'ollama' && !promptLlmApiKey) {
-      return res.status(400).json({ error: 'An API key is required when using a non-Ollama LLM provider for summary output.' });
+    if (formatsRequireLlm(crawlFormats)) {
+      const llmValidationError = validateRequiredLlmConfig(
+        readLlmConfig(req.body),
+        'The "summary" output format'
+      );
+      if (llmValidationError) {
+        return res.status(400).json(llmValidationError);
+      }
     }
 
     const currentTimestamp = new Date().toLocaleString('en-US');
@@ -1994,8 +2015,14 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
       searchFormats = requestedFormats.length > 0 ? requestedFormats : [...DEFAULT_OUTPUT_FORMATS];
     }
 
-    if (searchFormats.includes('summary' as OutputFormats) && promptLlmProvider && promptLlmProvider !== 'ollama' && !promptLlmApiKey) {
-      return res.status(400).json({ error: 'An API key is required when using a non-Ollama LLM provider for summary output.' });
+    if (formatsRequireLlm(searchFormats)) {
+      const llmValidationError = validateRequiredLlmConfig(
+        readLlmConfig(req.body),
+        'The "summary" output format'
+      );
+      if (llmValidationError) {
+        return res.status(400).json(llmValidationError);
+      }
     }
 
     const currentTimestamp = new Date().toLocaleString('en-US');
@@ -2096,6 +2123,19 @@ router.post(
       const { prompt, name, llmProvider, llmModel, llmApiKey, llmBaseUrl } = req.body;
       if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
         return res.status(400).json({ error: 'The "prompt" field is required.' });
+      }
+
+      /**
+       * Schema generation and every subsequent extraction run go through an
+       * LLM, so the configuration is required at creation time rather than
+       * defaulted to a local Ollama that may not be running.
+       */
+      const llmValidationError = validateRequiredLlmConfig(
+        { provider: llmProvider, model: llmModel, apiKey: llmApiKey, baseUrl: llmBaseUrl },
+        'Creating a document extract robot'
+      );
+      if (llmValidationError) {
+        return res.status(400).json(llmValidationError);
       }
 
       const finalName = (typeof name === 'string' ? name.trim() : '') || `Document: ${prompt.substring(0, 50)}`;

@@ -4,6 +4,7 @@
  */
 
 import { SelectorValidator } from './selectorValidator';
+import { resolveLlmModel } from '../utils/llm-models';
 import { createRemoteBrowserForValidation, destroyRemoteBrowser } from '../browser-management/controller';
 import logger from '../logger';
 import { v4 as uuid } from 'uuid';
@@ -408,7 +409,7 @@ export class WorkflowEnricher {
 
       if (provider === 'ollama') {
         const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-        const ollamaModel = llmConfig?.model || 'llama3.2-vision';
+        const ollamaModel = resolveLlmModel(llmConfig?.model, 'ollama');
 
         const response = await axios.post(`${ollamaBaseUrl}/api/chat`, {
           model: ollamaModel,
@@ -427,7 +428,7 @@ export class WorkflowEnricher {
         const anthropic = new Anthropic({
           apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
         });
-        const anthropicModel = llmConfig?.model || 'claude-3-5-sonnet-20241022';
+        const anthropicModel = resolveLlmModel(llmConfig?.model, 'anthropic');
 
         const response = await anthropic.messages.create({
           model: anthropicModel,
@@ -447,7 +448,7 @@ export class WorkflowEnricher {
 
       } else if (provider === 'openai') {
         const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
-        const openaiModel = llmConfig?.model || 'gpt-4-vision-preview';
+        const openaiModel = resolveLlmModel(llmConfig?.model, 'openai');
 
         const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
           model: openaiModel,
@@ -949,7 +950,7 @@ Return a JSON object with this exact structure:
 
       if (provider === 'ollama') {
         const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-        const ollamaModel = llmConfig?.model || 'llama3.2-vision';
+        const ollamaModel = resolveLlmModel(llmConfig?.model, 'ollama');
 
         logger.info(`Using Ollama at ${ollamaBaseUrl} with model ${ollamaModel}`);
 
@@ -1005,7 +1006,7 @@ Return a JSON object with this exact structure:
         const anthropic = new Anthropic({
           apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
         });
-        const anthropicModel = llmConfig?.model || 'claude-3-5-sonnet-20241022';
+        const anthropicModel = resolveLlmModel(llmConfig?.model, 'anthropic');
 
         const response = await anthropic.messages.create({
           model: anthropicModel,
@@ -1023,7 +1024,7 @@ Return a JSON object with this exact structure:
 
       } else if (provider === 'openai') {
         const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
-        const openaiModel = llmConfig?.model || 'gpt-4o-mini';
+        const openaiModel = resolveLlmModel(llmConfig?.model, 'openai');
 
         const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
           model: openaiModel,
@@ -1167,7 +1168,7 @@ Rules:
 
       if (provider === 'ollama') {
         const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-        const ollamaModel = llmConfig?.model || 'llama3.2-vision';
+        const ollamaModel = resolveLlmModel(llmConfig?.model, 'ollama');
 
         const jsonSchema = {
           type: 'object',
@@ -1217,7 +1218,7 @@ Rules:
         const anthropic = new Anthropic({
           apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
         });
-        const anthropicModel = llmConfig?.model || 'claude-3-5-sonnet-20241022';
+        const anthropicModel = resolveLlmModel(llmConfig?.model, 'anthropic');
 
         const response = await anthropic.messages.create({
           model: anthropicModel,
@@ -1235,7 +1236,7 @@ Rules:
 
       } else if (provider === 'openai') {
         const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
-        const openaiModel = llmConfig?.model || 'gpt-4o-mini';
+        const openaiModel = resolveLlmModel(llmConfig?.model, 'openai');
 
         const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
           model: openaiModel,
@@ -1458,7 +1459,7 @@ Return ONLY the list name, nothing else:`;
 
       if (provider === 'ollama') {
         const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-        const ollamaModel = llmConfig?.model || 'llama3.2-vision';
+        const ollamaModel = resolveLlmModel(llmConfig?.model, 'ollama');
 
         try {
           const response = await axios.post(`${ollamaBaseUrl}/api/chat`, {
@@ -1491,7 +1492,7 @@ Return ONLY the list name, nothing else:`;
         const anthropic = new Anthropic({
           apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
         });
-        const anthropicModel = llmConfig?.model || 'claude-3-5-sonnet-20241022';
+        const anthropicModel = resolveLlmModel(llmConfig?.model, 'anthropic');
 
         const response = await anthropic.messages.create({
           model: anthropicModel,
@@ -1509,7 +1510,7 @@ Return ONLY the list name, nothing else:`;
 
       } else if (provider === 'openai') {
         const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
-        const openaiModel = llmConfig?.model || 'gpt-4o-mini';
+        const openaiModel = resolveLlmModel(llmConfig?.model, 'openai');
 
         const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
           model: openaiModel,
@@ -1645,7 +1646,7 @@ Does this extraction match what the user asked for?`;
 
       if (provider === 'ollama') {
         const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-        const ollamaModel = llmConfig?.model || 'llama3.2-vision';
+        const ollamaModel = resolveLlmModel(llmConfig?.model, 'ollama');
 
         const jsonSchema = {
           type: 'object',
@@ -1674,7 +1675,7 @@ Does this extraction match what the user asked for?`;
         const anthropic = new Anthropic({
           apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
         });
-        const anthropicModel = llmConfig?.model || 'claude-3-5-sonnet-20241022';
+        const anthropicModel = resolveLlmModel(llmConfig?.model, 'anthropic');
 
         const response = await anthropic.messages.create({
           model: anthropicModel,
@@ -1689,7 +1690,7 @@ Does this extraction match what the user asked for?`;
 
       } else if (provider === 'openai') {
         const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
-        const openaiModel = llmConfig?.model || 'gpt-4o-mini';
+        const openaiModel = resolveLlmModel(llmConfig?.model, 'openai');
 
         const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
           model: openaiModel,
@@ -2042,7 +2043,7 @@ Extract the search query, extraction goal, and limit. Return JSON only.`;
 
       if (provider === 'ollama') {
         const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-        const ollamaModel = llmConfig?.model || 'llama3.2-vision';
+        const ollamaModel = resolveLlmModel(llmConfig?.model, 'ollama');
 
         const jsonSchema = {
           type: 'object',
@@ -2071,7 +2072,7 @@ Extract the search query, extraction goal, and limit. Return JSON only.`;
         const anthropic = new Anthropic({
           apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
         });
-        const anthropicModel = llmConfig?.model || 'claude-3-5-sonnet-20241022';
+        const anthropicModel = resolveLlmModel(llmConfig?.model, 'anthropic');
 
         const response = await anthropic.messages.create({
           model: anthropicModel,
@@ -2086,7 +2087,7 @@ Extract the search query, extraction goal, and limit. Return JSON only.`;
 
       } else if (provider === 'openai') {
         const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
-        const openaiModel = llmConfig?.model || 'gpt-4o-mini';
+        const openaiModel = resolveLlmModel(llmConfig?.model, 'openai');
 
         const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
           model: openaiModel,
@@ -2313,7 +2314,7 @@ Select the BEST result index (0-${searchResults.length - 1}). Return JSON only.`
 
       if (provider === 'ollama') {
         const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-        const ollamaModel = llmConfig?.model || 'llama3.2-vision';
+        const ollamaModel = resolveLlmModel(llmConfig?.model, 'ollama');
 
         const jsonSchema = {
           type: 'object',
@@ -2342,7 +2343,7 @@ Select the BEST result index (0-${searchResults.length - 1}). Return JSON only.`
         const anthropic = new Anthropic({
           apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
         });
-        const anthropicModel = llmConfig?.model || 'claude-3-5-sonnet-20241022';
+        const anthropicModel = resolveLlmModel(llmConfig?.model, 'anthropic');
 
         const response = await anthropic.messages.create({
           model: anthropicModel,
@@ -2357,7 +2358,7 @@ Select the BEST result index (0-${searchResults.length - 1}). Return JSON only.`
 
       } else if (provider === 'openai') {
         const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
-        const openaiModel = llmConfig?.model || 'gpt-4o-mini';
+        const openaiModel = resolveLlmModel(llmConfig?.model, 'openai');
 
         const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
           model: openaiModel,
@@ -2547,7 +2548,7 @@ multiSite = false when:
 
       if (provider === 'ollama') {
         const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-        const ollamaModel = llmConfig?.model || 'llama3.2-vision';
+        const ollamaModel = resolveLlmModel(llmConfig?.model, 'ollama');
 
         const jsonSchema = {
           type: 'object',
@@ -2572,7 +2573,7 @@ multiSite = false when:
         const anthropic = new Anthropic({
           apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
         });
-        const anthropicModel = llmConfig?.model || 'claude-3-5-sonnet-20241022';
+        const anthropicModel = resolveLlmModel(llmConfig?.model, 'anthropic');
 
         const response = await anthropic.messages.create({
           model: anthropicModel,
@@ -2587,7 +2588,7 @@ multiSite = false when:
 
       } else if (provider === 'openai') {
         const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
-        const openaiModel = llmConfig?.model || 'gpt-4o-mini';
+        const openaiModel = resolveLlmModel(llmConfig?.model, 'openai');
 
         const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
           model: openaiModel,
@@ -2686,7 +2687,7 @@ Return ONLY valid JSON: {"selectedIndices": [0, 2, 5], "reasoning": "one-line ex
 
       if (provider === 'ollama') {
         const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-        const ollamaModel = llmConfig?.model || 'llama3.2-vision';
+        const ollamaModel = resolveLlmModel(llmConfig?.model, 'ollama');
 
         const jsonSchema = {
           type: 'object',
@@ -2714,7 +2715,7 @@ Return ONLY valid JSON: {"selectedIndices": [0, 2, 5], "reasoning": "one-line ex
         const anthropic = new Anthropic({
           apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
         });
-        const anthropicModel = llmConfig?.model || 'claude-3-5-sonnet-20241022';
+        const anthropicModel = resolveLlmModel(llmConfig?.model, 'anthropic');
 
         const response = await anthropic.messages.create({
           model: anthropicModel,
@@ -2729,7 +2730,7 @@ Return ONLY valid JSON: {"selectedIndices": [0, 2, 5], "reasoning": "one-line ex
 
       } else if (provider === 'openai') {
         const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
-        const openaiModel = llmConfig?.model || 'gpt-4o-mini';
+        const openaiModel = resolveLlmModel(llmConfig?.model, 'openai');
 
         const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
           model: openaiModel,

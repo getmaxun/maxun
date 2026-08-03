@@ -26,6 +26,11 @@ import {
 } from '../constants/output-formats';
 import sequelizeInstance from '../storage/db';
 import { Op } from 'sequelize';
+import { validateRequiredLlmConfig, formatsRequireLlm, readLlmConfig, toPromptLlmMeta } from '../utils/llm-config-validation';
+import multer from 'multer';
+import { MAX_FILE_SIZE_BYTES } from '../workflow-management/classes/DocumentInterpreter';
+import { createDocumentRobotRecord } from '../utils/document/createDocumentRobotRecord';
+import { createDocumentParseRobotRecord } from '../utils/document/createDocumentParseRobotRecord';
 
 const router = Router();
 
@@ -287,6 +292,22 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
             ? ((workflowFile.meta as any).promptInstructions || (workflowFile.meta as any).smartQueries || (workflowFile.meta as any).smart_queries) as string | undefined
             : undefined;
 
+        const robotLlmConfig = readLlmConfig(workflowFile.meta);
+        const needsLlmForSummary = formatsRequireLlm(normalizedFormats);
+        const needsLlmForSmartQuery = Boolean(promptInstructionsForMeta);
+        if (needsLlmForSummary || needsLlmForSmartQuery) {
+            const reason = needsLlmForSummary && needsLlmForSmartQuery
+                ? 'The "summary" output format and Smart Query'
+                : needsLlmForSummary
+                    ? 'The "summary" output format'
+                    : 'Smart Query (promptInstructions)';
+
+            const llmValidationError = validateRequiredLlmConfig(robotLlmConfig, reason);
+            if (llmValidationError) {
+                return res.status(400).json(llmValidationError);
+            }
+        }
+
         const robotMeta: any = {
             name: workflowFile.meta.name,
             id: metaId,
@@ -299,10 +320,7 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
             formats: normalizedFormats,
             isLLM: (workflowFile.meta as any).isLLM,
             ...(promptInstructionsForMeta ? { promptInstructions: promptInstructionsForMeta } : {}),
-            ...((workflowFile.meta as any).promptLlmProvider ? { promptLlmProvider: (workflowFile.meta as any).promptLlmProvider } : {}),
-            ...((workflowFile.meta as any).promptLlmModel ? { promptLlmModel: (workflowFile.meta as any).promptLlmModel } : {}),
-            ...((workflowFile.meta as any).promptLlmApiKey ? { promptLlmApiKey: encrypt((workflowFile.meta as any).promptLlmApiKey) } : {}),
-            ...((workflowFile.meta as any).promptLlmBaseUrl ? { promptLlmBaseUrl: (workflowFile.meta as any).promptLlmBaseUrl } : {}),
+            ...toPromptLlmMeta(robotLlmConfig, encrypt),
         };
 
         const robot = await Robot.create({
@@ -1100,6 +1118,7 @@ router.post("/sdk/crawl", requireAPIKey, async (req: AuthenticatedRequest, res: 
     try {
         const user = req.user;
         const { url, name, crawlConfig, formats } = req.body;
+        const llmConfigInput = readLlmConfig(req.body);
 
         if (!url || !crawlConfig) {
             return res.status(400).json({
@@ -1129,10 +1148,19 @@ router.post("/sdk/crawl", requireAPIKey, async (req: AuthenticatedRequest, res: 
             });
         }
 
-        // Crawl always needs formats; use defaults even if explicit empty array is provided
-        const crawlFormats: OutputFormats[] = requestedFormats.length > 0 
-            ? requestedFormats 
+        const crawlFormats: OutputFormats[] = requestedFormats.length > 0
+            ? requestedFormats
             : [...DEFAULT_OUTPUT_FORMATS];
+
+        if (formatsRequireLlm(crawlFormats)) {
+            const llmValidationError = validateRequiredLlmConfig(
+                llmConfigInput,
+                'The "summary" output format'
+            );
+            if (llmValidationError) {
+                return res.status(400).json(llmValidationError);
+            }
+        }
 
         const robotName = name || `Crawl Robot - ${new URL(normalizedUrl).hostname}`;
         const robotId = uuid();
@@ -1171,6 +1199,7 @@ router.post("/sdk/crawl", requireAPIKey, async (req: AuthenticatedRequest, res: 
                 type: 'crawl',
                 url: normalizedUrl,
                 formats: crawlFormats,
+                ...toPromptLlmMeta(llmConfigInput, encrypt),
             },
             recording: {
                 workflow: [
@@ -1237,6 +1266,7 @@ router.post("/sdk/search", requireAPIKey, async (req: AuthenticatedRequest, res:
     try {
         const user = req.user;
         const { name, searchConfig, formats } = req.body;
+        const llmConfigInput = readLlmConfig(req.body);
 
         if (!searchConfig) {
             return res.status(400).json({
@@ -1279,6 +1309,16 @@ router.post("/sdk/search", requireAPIKey, async (req: AuthenticatedRequest, res:
             searchConfig.mode = 'scrape';
         }
 
+        if (formatsRequireLlm(searchFormats) || formatsRequireLlm(searchConfig.outputFormats)) {
+            const llmValidationError = validateRequiredLlmConfig(
+                llmConfigInput,
+                'The "summary" output format'
+            );
+            if (llmValidationError) {
+                return res.status(400).json(llmValidationError);
+            }
+        }
+
         const robotName = name || `Search Robot - ${searchConfig.query}`;
         const robotId = uuid();
         const metaId = uuid();
@@ -1295,6 +1335,7 @@ router.post("/sdk/search", requireAPIKey, async (req: AuthenticatedRequest, res:
                 params: [],
                 type: 'search',
                 formats: searchFormats,
+                ...toPromptLlmMeta(llmConfigInput, encrypt),
             },
             recording: {
                 workflow: [
@@ -1355,6 +1396,14 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
             return res.status(400).json({
                 error: "Prompt is required"
             });
+        }
+
+        const llmValidationError = validateRequiredLlmConfig(
+            readLlmConfig(req.body),
+            'Creating an LLM extract robot'
+        );
+        if (llmValidationError) {
+            return res.status(400).json(llmValidationError);
         }
 
         if (url) {
@@ -1468,6 +1517,172 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
         logger.error("[SDK] Error in LLM extraction:", error);
         return res.status(500).json({
             error: "Failed to perform LLM extraction",
+            message: error.message
+        });
+    }
+});
+
+/**
+ * Uploads for the document endpoints
+ */
+const documentUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: MAX_FILE_SIZE_BYTES },
+    fileFilter: (_req, file, cb) => {
+        const allowedMimeTypes = [
+            'application/pdf',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'text/csv',
+            'application/csv',
+        ];
+        if (allowedMimeTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only PDF, XLSX, and CSV files are allowed'));
+        }
+    },
+});
+
+const DOC_PARSE_FORMATS: OutputFormats[] = ['markdown', 'html', 'links'];
+
+/**
+ * Create a document extraction robot from an uploaded file
+ * POST /api/sdk/robots/document
+ */
+router.post("/sdk/robots/document", requireAPIKey, documentUpload.single('file'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const user = req.user;
+        if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+        const file = (req as any).file as Express.Multer.File | undefined;
+        if (!file) return res.status(400).json({ error: 'A PDF file is required' });
+
+        const prompt: string = (req.body.prompt || '').trim();
+        if (!prompt) return res.status(400).json({ error: 'prompt is required' });
+
+        const llmConfigInput = readLlmConfig(req.body);
+        const llmValidationError = validateRequiredLlmConfig(
+            llmConfigInput,
+            'Creating a document extract robot'
+        );
+        if (llmValidationError) {
+            return res.status(400).json(llmValidationError);
+        }
+
+        const robotName = (typeof req.body.robotName === 'string' ? req.body.robotName.trim() : '')
+            || `Document: ${prompt.substring(0, 50)}`;
+
+        const existingRobot = await findExistingRobotByName(robotName, user.id);
+        if (existingRobot) {
+            return res.status(409).json({
+                error: `A robot named "${robotName}" already exists. Please choose a different name.`
+            });
+        }
+
+        const { robot, extractionSchema } = await createDocumentRobotRecord({
+            pdfBuffer: file.buffer,
+            originalFileName: file.originalname,
+            prompt,
+            robotName,
+            llmProvider: llmConfigInput.provider as 'anthropic' | 'openai' | 'ollama' | undefined,
+            llmModel: typeof llmConfigInput.model === 'string' ? llmConfigInput.model : undefined,
+            llmApiKey: typeof llmConfigInput.apiKey === 'string' ? llmConfigInput.apiKey : undefined,
+            llmBaseUrl: typeof llmConfigInput.baseUrl === 'string' ? llmConfigInput.baseUrl : undefined,
+            userId: user.id,
+        });
+
+        logger.info(`[SDK] Document robot created: ${robot.recording_meta?.id}`);
+
+        capture('maxun-oss-robot-created', {
+            robot_meta: robot.recording_meta,
+            robot_type: 'doc-extract',
+        });
+
+        return res.status(201).json({
+            success: true,
+            data: robot,
+            extractionSchema,
+        });
+    } catch (error: any) {
+        if (error.name === 'SequelizeUniqueConstraintError' || error.parent?.code === '23505') {
+            return res.status(409).json({ error: 'A robot with this name already exists.' });
+        }
+        logger.error(`[SDK] Error creating document robot: ${error.message}`);
+        return res.status(500).json({
+            error: 'Failed to create document robot',
+            message: error.message
+        });
+    }
+});
+
+/**
+ * Create a document parse robot from an uploaded file
+ * POST /api/sdk/robots/document-parse
+ *
+ * Parsing converts the document to markdown/html/links without an LLM, so no
+ * model configuration is required.
+ */
+router.post("/sdk/robots/document-parse", requireAPIKey, documentUpload.single('file'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const user = req.user;
+        if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+        const file = (req as any).file as Express.Multer.File | undefined;
+        if (!file) return res.status(400).json({ error: 'A PDF file is required' });
+
+        const rawFormats = req.body['outputFormats[]'] ?? req.body.outputFormats ?? req.body.formats;
+        const requestedFormats: string[] = Array.isArray(rawFormats)
+            ? rawFormats
+            : (typeof rawFormats === 'string' ? [rawFormats] : []);
+
+        const invalidFormats = requestedFormats.filter((f) => !DOC_PARSE_FORMATS.includes(f as OutputFormats));
+        if (invalidFormats.length > 0) {
+            return res.status(400).json({
+                error: `Invalid formats: ${invalidFormats.join(', ')}. Document parse supports: ${DOC_PARSE_FORMATS.join(', ')}.`
+            });
+        }
+
+        const outputFormats: OutputFormats[] = requestedFormats.length > 0
+            ? (requestedFormats as OutputFormats[])
+            : [...DOC_PARSE_FORMATS];
+
+        const robotName = (typeof req.body.robotName === 'string' ? req.body.robotName.trim() : '')
+            || `Doc Parse: ${file.originalname}`;
+
+        const existingRobot = await findExistingRobotByName(robotName, user.id);
+        if (existingRobot) {
+            return res.status(409).json({
+                error: `A robot named "${robotName}" already exists. Please choose a different name.`
+            });
+        }
+
+        const { robot, parsedOutput } = await createDocumentParseRobotRecord({
+            pdfBuffer: file.buffer,
+            originalFileName: file.originalname,
+            robotName,
+            outputFormats,
+            userId: user.id,
+        });
+
+        logger.info(`[SDK] Document parse robot created: ${robot.recording_meta?.id}`);
+
+        capture('maxun-oss-robot-created', {
+            robot_meta: robot.recording_meta,
+            robot_type: 'doc-parse',
+        });
+
+        return res.status(201).json({
+            success: true,
+            data: robot,
+            parsedOutput,
+        });
+    } catch (error: any) {
+        if (error.name === 'SequelizeUniqueConstraintError' || error.parent?.code === '23505') {
+            return res.status(409).json({ error: 'A robot with this name already exists.' });
+        }
+        logger.error(`[SDK] Error creating document parse robot: ${error.message}`);
+        return res.status(500).json({
+            error: 'Failed to create document parse robot',
             message: error.message
         });
     }

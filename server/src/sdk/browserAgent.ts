@@ -5,6 +5,7 @@
  */
 
 import { Page } from 'playwright-core';
+import { resolveLlmModel } from '../utils/llm-models';
 import Anthropic from '@anthropic-ai/sdk';
 import axios from 'axios';
 import logger from '../logger';
@@ -383,7 +384,7 @@ What is the next action? Respond with JSON only.`;
 
 async function callAnthropic(config: LLMConfig, messages: any[]): Promise<LLMCallResult> {
   const anthropic = new Anthropic({ apiKey: config.apiKey || process.env.ANTHROPIC_API_KEY });
-  const model = config.model || 'claude-sonnet-4-6';
+  const model = resolveLlmModel(config.model, config.provider);
 
   const systemMsg = messages.find((m: any) => m.role === 'system');
   const userMsg = messages.find((m: any) => m.role === 'user');
@@ -424,7 +425,7 @@ async function callAnthropic(config: LLMConfig, messages: any[]): Promise<LLMCal
 
 async function callOpenAI(config: LLMConfig, messages: any[]): Promise<LLMCallResult> {
   const baseUrl = config.baseUrl || 'https://api.openai.com/v1';
-  const model = config.model || 'gpt-4o';
+  const model = resolveLlmModel(config.model, config.provider);
 
   const controller = new AbortController();
   const tid = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
@@ -456,7 +457,7 @@ async function callOpenAI(config: LLMConfig, messages: any[]): Promise<LLMCallRe
 
 async function callOllama(config: LLMConfig, messages: any[]): Promise<LLMCallResult> {
   const baseUrl = config.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-  const model = config.model || 'llama3.2-vision';
+  const model = resolveLlmModel(config.model, config.provider);
 
   const ollamaMessages = messages.map((m: any) => {
     const images = Array.isArray(m.content)
@@ -527,7 +528,7 @@ async function callLLMRawText(messages: any[], config: LLMConfig): Promise<strin
 
     if (provider === 'anthropic') {
       const anthropic = new Anthropic({ apiKey: config.apiKey || process.env.ANTHROPIC_API_KEY });
-      const model = config.model || 'claude-sonnet-4-6';
+      const model = resolveLlmModel(config.model, config.provider);
       const systemMsg = messages.find((m: any) => m.role === 'system');
       const userMsgs = messages.filter((m: any) => m.role !== 'system');
       const response = await anthropic.messages.create({
@@ -545,7 +546,7 @@ async function callLLMRawText(messages: any[], config: LLMConfig): Promise<strin
 
     if (provider === 'openai') {
       const baseUrl = config.baseUrl || 'https://api.openai.com/v1';
-      const model = config.model || 'gpt-4o';
+      const model = resolveLlmModel(config.model, config.provider);
       const textMessages = messages.map((m: any) => ({
         role: m.role,
         content: typeof m.content === 'string'
@@ -569,7 +570,7 @@ async function callLLMRawText(messages: any[], config: LLMConfig): Promise<strin
 
     if (provider === 'ollama') {
       const baseUrl = config.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-      const model = config.model || 'llama3.2-vision';
+      const model = resolveLlmModel(config.model, config.provider);
       const textMessages = messages.map((m: any) => ({
         role: m.role,
         content: typeof m.content === 'string' ? m.content : '',

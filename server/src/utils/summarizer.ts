@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { resolveLlmModel } from './llm-models';
 import axios from 'axios';
 import logger from '../logger';
 import { LLMConfig } from '../sdk/browserAgent';
@@ -64,7 +65,7 @@ export async function summarizeMarkdown(markdown: string, llmConfig?: LLMConfig)
 
   if (provider === 'anthropic') {
     const anthropic = new Anthropic({ apiKey: config.apiKey || process.env.ANTHROPIC_API_KEY });
-    const model = config.model || 'claude-haiku-4-5-20251001';
+    const model = resolveLlmModel(config.model, config.provider);
     logger.info(`[Summarizer] Using Anthropic (${model})`);
 
     const response = await anthropic.messages.create({
@@ -83,7 +84,7 @@ export async function summarizeMarkdown(markdown: string, llmConfig?: LLMConfig)
 
   if (provider === 'openai') {
     const baseUrl = config.baseUrl || 'https://api.openai.com/v1';
-    const model = config.model || 'gpt-4o-mini';
+    const model = resolveLlmModel(config.model, config.provider);
     logger.info(`[Summarizer] Using OpenAI-compatible at ${baseUrl} (${model})`);
 
     const response = await axios.post(
@@ -114,7 +115,7 @@ export async function summarizeMarkdown(markdown: string, llmConfig?: LLMConfig)
 
   if (provider === 'ollama') {
     const baseUrl = config.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-    const model = config.model || 'llama3.2';
+    const model = resolveLlmModel(config.model, config.provider);
     logger.info(`[Summarizer] Using Ollama at ${baseUrl} (${model})`);
 
     const controller = new AbortController();
