@@ -24,6 +24,7 @@ import {
   parseOutputFormats,
   SEARCH_SCRAPE_OUTPUT_FORMAT_OPTIONS,
   SCRAPE_OUTPUT_FORMAT_OPTIONS,
+  DOC_PARSE_OUTPUT_FORMAT_OPTIONS,
   OutputFormats,
 } from '../constants/output-formats';
 import { MAX_FILE_SIZE_BYTES } from '../workflow-management/classes/DocumentInterpreter';
@@ -2150,13 +2151,29 @@ router.post(
       const file = (req as any).file as Express.Multer.File | undefined;
       if (!file) return res.status(400).json({ error: 'A PDF file is required.' });
 
-      const { name, formats } = req.body;
+      const { name, formats, llmProvider, llmModel, llmApiKey, llmBaseUrl } = req.body;
 
-      const DOC_PARSE_FORMATS: OutputFormats[] = ['markdown', 'html', 'links'];
       const rawFormats = Array.isArray(formats) ? formats : (typeof formats === 'string' ? [formats] : []);
-      const outputFormats: OutputFormats[] = rawFormats.length > 0
-        ? rawFormats.filter((f: string) => DOC_PARSE_FORMATS.includes(f as OutputFormats))
-        : DOC_PARSE_FORMATS;
+      const requestedFormats = rawFormats.filter((f: string) =>
+        DOC_PARSE_OUTPUT_FORMAT_OPTIONS.includes(f as OutputFormats)
+      ) as OutputFormats[];
+      const outputFormats: OutputFormats[] = requestedFormats.length > 0
+        ? requestedFormats
+        : DOC_PARSE_OUTPUT_FORMAT_OPTIONS.filter((f) => f !== 'summary');
+
+      // Summaries need a working LLM. Ollama runs locally and needs no key, but the
+      // hosted providers do — fail early rather than parsing the PDF and then dying.
+      const summaryProvider = (llmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama';
+      if (outputFormats.includes('summary') && summaryProvider !== 'ollama') {
+        const envKey = summaryProvider === 'anthropic'
+          ? process.env.ANTHROPIC_API_KEY
+          : process.env.OPENAI_API_KEY;
+        if (!llmApiKey && !envKey) {
+          return res.status(400).json({
+            error: `An API key is required to generate summaries with ${summaryProvider === 'anthropic' ? 'Anthropic' : 'an OpenAI-compatible provider'}.`,
+          });
+        }
+      }
 
       const finalName = (typeof name === 'string' ? name.trim() : '') || `Doc Parse: ${file.originalname}`;
       if (await isRobotNameTaken(finalName, req.user.id)) {
@@ -2169,6 +2186,10 @@ router.post(
         robotName: finalName,
         outputFormats,
         userId: req.user.id,
+        llmProvider: summaryProvider,
+        llmModel: llmModel || undefined,
+        llmApiKey: llmApiKey || undefined,
+        llmBaseUrl: llmBaseUrl || undefined,
       });
 
       capture('maxun-oss-robot-created', {
