@@ -357,7 +357,7 @@ const ThemeModeProvider = ({ children }: { children: React.ReactNode }) => {
   return (
     <ThemeModeContext.Provider value={{ toggleTheme, darkMode }}>
       <ThemeProvider theme={darkMode ? darkTheme : lightTheme}>
-        <CssBaseline />
+        <CssBaseline enableColorScheme />
         {children}
       </ThemeProvider>
     </ThemeModeContext.Provider>
