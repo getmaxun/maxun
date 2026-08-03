@@ -20,6 +20,8 @@ const MAX_TOKENS = 1500;
 function cleanOutput(text: string): string {
   let out = text.trim();
 
+  out = out.replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/<\/?think>/gi, '').trim();
+
   // Strip code fences
   const fenceMatch = out.match(/^```(?:markdown)?\r?\n([\s\S]*?)```\s*$/);
   if (fenceMatch) {
@@ -128,6 +130,7 @@ export async function summarizeMarkdown(markdown: string, llmConfig?: LLMConfig)
             { role: 'user', content: userPrompt },
           ],
           stream: false,
+          think: false,
           options: { temperature: 0.1, num_predict: MAX_TOKENS },
         },
         { signal: controller.signal as any }

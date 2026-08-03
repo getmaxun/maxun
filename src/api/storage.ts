@@ -473,13 +473,21 @@ export const createDocumentExtractRobot = async (
 export const createDocumentParseRobot = async (
   file: File,
   robotName: string,
-  outputFormats: string[]
+  outputFormats: string[],
+  llmProvider?: string,
+  llmModel?: string,
+  llmApiKey?: string,
+  llmBaseUrl?: string
 ): Promise<any> => {
   try {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('name', robotName);
     outputFormats.forEach((fmt) => formData.append('formats', fmt));
+    if (llmProvider) formData.append('llmProvider', llmProvider);
+    if (llmModel) formData.append('llmModel', llmModel);
+    if (llmApiKey) formData.append('llmApiKey', llmApiKey);
+    if (llmBaseUrl) formData.append('llmBaseUrl', llmBaseUrl);
 
     const response = await axios.post(
       `${apiUrl}/storage/recordings/document-parse`,
