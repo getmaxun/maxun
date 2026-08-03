@@ -151,11 +151,7 @@ const formatRecording = (recordingData: any) => {
  */
 router.get("/robots", requireAPIKey, async (req: Request, res: Response) => {
     try {
-        const authenticatedReq = req as AuthenticatedRequest;
-        if (!authenticatedReq.user) {
-            return res.status(401).json({ statusCode: 401, messageCode: 'error', message: 'Unauthorized' });
-        }
-        const robots = await Robot.findAll({ where: { userId: authenticatedReq.user.id }, raw: true });
+        const robots = await Robot.findAll({ raw: true });
         const formattedRecordings = robots.map(formatRecording);
 
         const response = {
@@ -259,14 +255,9 @@ const formatRecordingById = (recordingData: any) => {
  */
 router.get("/robots/:id", requireAPIKey, async (req: Request, res: Response) => {
     try {
-        const authenticatedReq = req as AuthenticatedRequest;
-        if (!authenticatedReq.user) {
-            return res.status(401).json({ statusCode: 401, messageCode: 'error', message: 'Unauthorized' });
-        }
         const robot = await Robot.findOne({
             where: {
-                'recording_meta.id': req.params.id,
-                userId: authenticatedReq.user.id,
+                'recording_meta.id': req.params.id
             },
             raw: true
         });
@@ -355,14 +346,6 @@ router.get("/robots/:id", requireAPIKey, async (req: Request, res: Response) => 
  */
 router.get("/robots/:id/runs",requireAPIKey, async (req: Request, res: Response) => {
     try {
-        const authenticatedReq = req as AuthenticatedRequest;
-        if (!authenticatedReq.user) {
-            return res.status(401).json({ statusCode: 401, messageCode: 'error', message: 'Unauthorized' });
-        }
-        const robot = await Robot.findOne({ where: { 'recording_meta.id': req.params.id, userId: authenticatedReq.user.id } });
-        if (!robot) {
-            return res.status(404).json({ statusCode: 404, messageCode: 'not_found', message: 'Robot not found' });
-        }
         const runs = await Run.findAll({
             where: {
                 robotMetaId: req.params.id
@@ -532,14 +515,6 @@ function formatRunResponse(run: any) {
  */
 router.get("/robots/:id/runs/:runId", requireAPIKey, async (req: Request, res: Response) => {
     try {
-        const authenticatedReq = req as AuthenticatedRequest;
-        if (!authenticatedReq.user) {
-            return res.status(401).json({ statusCode: 401, messageCode: 'error', message: 'Unauthorized' });
-        }
-        const robot = await Robot.findOne({ where: { 'recording_meta.id': req.params.id, userId: authenticatedReq.user.id } });
-        if (!robot) {
-            return res.status(404).json({ statusCode: 404, messageCode: 'not_found', message: `Robot with ID "${req.params.id}" not found.` });
-        }
         const run = await Run.findOne({
             where: {
                 runId: req.params.runId,
@@ -569,8 +544,7 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string, runSou
     try {
         const recording = await Robot.findOne({
             where: {
-                'recording_meta.id': id,
-                userId: userId,
+                'recording_meta.id': id
             },
             raw: true
         });
@@ -1674,10 +1648,6 @@ router.post("/robots/:id/runs", requireAPIKey, async (req: AuthenticatedRequest,
  */
 router.post("/robots/:id/duplicate", requireAPIKey, async (req: Request, res: Response) => {
     try {
-        const authenticatedReq = req as AuthenticatedRequest;
-        if (!authenticatedReq.user) {
-            return res.status(401).json({ statusCode: 401, messageCode: 'error', message: 'Unauthorized' });
-        }
         const { id } = req.params;
         const { targetUrl } = req.body;
 
@@ -1701,7 +1671,7 @@ router.post("/robots/:id/duplicate", requireAPIKey, async (req: Request, res: Re
         }
 
         const originalRobot = await Robot.findOne({
-            where: { 'recording_meta.id': id, userId: authenticatedReq.user!.id },
+            where: { 'recording_meta.id': id },
         });
 
         if (!originalRobot) {
@@ -1874,8 +1844,7 @@ router.post("/robots/:id/schedule", requireAPIKey, async (req: Request, res: Res
 
         const { id } = req.params;
 
-        // Ownership lookup FIRST — never leak or touch another user's robot.
-        const robot = await Robot.findOne({ where: { 'recording_meta.id': id, userId: authenticatedReq.user.id } });
+        const robot = await Robot.findOne({ where: { 'recording_meta.id': id } });
         if (!robot) {
             return res.status(404).json({
                 statusCode: 404,
@@ -1931,7 +1900,7 @@ router.post("/robots/:id/schedule", requireAPIKey, async (req: Request, res: Res
 
         logger.log('info', `Scheduled robot ${id} via API (cron: ${cronExpression}, tz: ${timezone}, next: ${nextRunAt})`);
 
-        const updatedRobot = await Robot.findOne({ where: { 'recording_meta.id': id, userId: authenticatedReq.user.id }, raw: true });
+        const updatedRobot = await Robot.findOne({ where: { 'recording_meta.id': id }, raw: true });
 
         return res.status(200).json({
             statusCode: 200,
@@ -1982,7 +1951,7 @@ router.get("/robots/:id/schedule", requireAPIKey, async (req: Request, res: Resp
 
         const { id } = req.params;
 
-        const robot = await Robot.findOne({ where: { 'recording_meta.id': id, userId: authenticatedReq.user.id }, raw: true });
+        const robot = await Robot.findOne({ where: { 'recording_meta.id': id }, raw: true });
         if (!robot) {
             return res.status(404).json({
                 statusCode: 404,
@@ -2040,9 +2009,7 @@ router.delete("/robots/:id/schedule", requireAPIKey, async (req: Request, res: R
 
         const { id } = req.params;
 
-        // Scoped lookup FIRST; setting schedule: null removes the robot from the
-        // scheduler's `schedule <> null` poll filter. No unscoped helper needed.
-        const robot = await Robot.findOne({ where: { 'recording_meta.id': id, userId: authenticatedReq.user.id } });
+        const robot = await Robot.findOne({ where: { 'recording_meta.id': id } });
         if (!robot) {
             return res.status(404).json({
                 statusCode: 404,

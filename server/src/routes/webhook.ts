@@ -7,7 +7,7 @@ import { v4 as uuid } from "uuid";
 export const router = Router();
 
 interface AuthenticatedRequest extends Request {
-    user?: { id: number | string };
+    user?: { id: string };
 }
 
 interface WebhookConfig {
@@ -71,7 +71,7 @@ router.post('/add', requireSignIn, async (req: Request, res: Response) => {
             return res.status(400).json({ ok: false, error: 'Invalid webhook URL format' });
         }
 
-        const robot = await Robot.findOne({ where: { 'recording_meta.id': robotId, userId: authenticatedReq.user!.id } });
+        const robot = await Robot.findOne({ where: { 'recording_meta.id': robotId } });
 
         if (!robot) {
             return res.status(404).json({ ok: false, error: 'Robot not found' });
@@ -133,7 +133,7 @@ router.post('/update', requireSignIn, async (req: Request, res: Response) => {
             }
         }
 
-        const robot = await Robot.findOne({ where: { 'recording_meta.id': robotId, userId: authenticatedReq.user!.id } });
+        const robot = await Robot.findOne({ where: { 'recording_meta.id': robotId } });
 
         if (!robot) {
             return res.status(404).json({ ok: false, error: 'Robot not found' });
@@ -191,7 +191,7 @@ router.post('/remove', requireSignIn, async (req: Request, res: Response) => {
             return res.status(400).json({ ok: false, error: 'Webhook ID and robot ID are required' });
         }
 
-        const robot = await Robot.findOne({ where: { 'recording_meta.id': robotId, userId: authenticatedReq.user!.id } });
+        const robot = await Robot.findOne({ where: { 'recording_meta.id': robotId } });
 
         if (!robot) {
             return res.status(404).json({ ok: false, error: 'Robot not found' });
@@ -229,7 +229,7 @@ router.get('/list/:robotId', requireSignIn, async (req: Request, res: Response) 
         }
 
         const robot = await Robot.findOne({
-            where: { 'recording_meta.id': robotId, userId: authenticatedReq.user!.id },
+            where: { 'recording_meta.id': robotId },
             attributes: ['webhooks']
         });
 
@@ -263,7 +263,7 @@ router.post('/test', requireSignIn, async (req: Request, res: Response) => {
             return res.status(400).json({ ok: false, error: 'Webhook configuration and robot ID are required' });
         }
 
-        const robot = await Robot.findOne({ where: { 'recording_meta.id': robotId, userId: authenticatedReq.user!.id } });
+        const robot = await Robot.findOne({ where: { 'recording_meta.id': robotId } });
 
         if (!robot) {
             return res.status(404).json({ ok: false, error: 'Robot not found' });
@@ -474,7 +474,7 @@ router.delete('/clear/:robotId', requireSignIn, async (req: Request, res: Respon
             return res.status(401).json({ ok: false, error: 'Unauthorized' });
         }
 
-        const robot = await Robot.findOne({ where: { 'recording_meta.id': robotId, userId: authenticatedReq.user!.id } });
+        const robot = await Robot.findOne({ where: { 'recording_meta.id': robotId } });
 
         if (!robot) {
             return res.status(404).json({ ok: false, error: 'Robot not found' });

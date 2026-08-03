@@ -200,12 +200,9 @@ router.all('/', requireSignIn, (req, res, next) => {
 /**
  * GET endpoint for getting an array of all stored recordings.
  */
-router.get('/recordings', requireSignIn, async (req: AuthenticatedRequest, res) => {
+router.get('/recordings', requireSignIn, async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).send({ error: 'Unauthorized' });
-    }
-    const data = await Robot.findAll({ where: { userId: req.user.id } });
+    const data = await Robot.findAll();
     const sanitized = data.map(robot => {
       const plain = robot.toJSON() as any;
       if (plain.recording_meta?.promptLlmApiKey) {
@@ -223,13 +220,10 @@ router.get('/recordings', requireSignIn, async (req: AuthenticatedRequest, res) 
 /**
  * GET endpoint for getting a recording.
  */
-router.get('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
+router.get('/recordings/:id', requireSignIn, async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).send({ error: 'Unauthorized' });
-    }
     const data = await Robot.findOne({
-      where: { 'recording_meta.id': req.params.id, userId: req.user.id },
+      where: { 'recording_meta.id': req.params.id },
       raw: true
     }
     );
@@ -253,16 +247,8 @@ router.get('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
   }
 })
 
-router.get(('/recordings/:id/runs'), requireSignIn, async (req: AuthenticatedRequest, res) => {
+router.get(('/recordings/:id/runs'), requireSignIn, async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ statusCode: 401, messageCode: 'error', message: 'Unauthorized' });
-    }
-    // Verify robot belongs to calling user before returning its runs
-    const robot = await Robot.findOne({ where: { 'recording_meta.id': req.params.id, userId: req.user.id } });
-    if (!robot) {
-      return res.status(404).json({ statusCode: 404, messageCode: 'error', message: 'Robot not found' });
-    }
     const runs = await Run.findAll({
       where: {
         robotMetaId: req.params.id
@@ -421,7 +407,7 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       return res.status(400).json({ error: 'Either "name", "limits", "credentials", "target_url", "workflow", "formats" or LLM config must be provided.' });
     }
 
-    const robot = await Robot.findOne({ where: { 'recording_meta.id': id, userId: req.user!.id } });
+    const robot = await Robot.findOne({ where: { 'recording_meta.id': id } });
     if (!robot) {
       return res.status(404).json({ error: 'Robot not found.' });
     }
@@ -595,7 +581,7 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
     };
 
     await Robot.update(updates, {
-      where: { 'recording_meta.id': id, userId: req.user!.id }
+      where: { 'recording_meta.id': id }
     });
 
     logger.log('info', `Robot with ID ${id} was updated successfully.`);
@@ -897,7 +883,7 @@ router.delete('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest
   }
   try {
     await Robot.destroy({
-      where: { 'recording_meta.id': req.params.id, userId: req.user.id }
+      where: { 'recording_meta.id': req.params.id }
     });
     capture(
       'maxun-oss-robot-deleted',
@@ -939,7 +925,7 @@ router.post('/recordings/:id/duplicate', requireSignIn, async (req: Authenticate
     }
 
     const originalRobot = await Robot.findOne({
-      where: { 'recording_meta.id': id, userId: req.user!.id },
+      where: { 'recording_meta.id': id },
     });
 
     if (!originalRobot) {
@@ -1038,17 +1024,9 @@ router.post('/recordings/:id/duplicate', requireSignIn, async (req: Authenticate
 /**
  * GET endpoint for getting an array of runs from the storage.
  */
-router.get('/runs', requireSignIn, async (req: AuthenticatedRequest, res) => {
+router.get('/runs', requireSignIn, async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).send({ error: 'Unauthorized' });
-    }
-    const userRobotIds = (
-      await Robot.findAll({ where: { userId: req.user.id }, attributes: ['id'], raw: true })
-    ).map((r) => r.id);
-
     const data = await Run.findAll({
-      where: { robotId: { [Op.in]: userRobotIds } },
       attributes: {
         exclude: ['serializableOutput', 'binaryOutput']
       }
@@ -1068,14 +1046,6 @@ router.delete('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res)
     return res.status(401).send({ error: 'Unauthorized' });
   }
   try {
-    const run = await Run.findOne({ where: { runId: req.params.id } });
-    if (!run) {
-      return res.send(true); // Already gone — idempotent
-    }
-    const robot = await Robot.findOne({ where: { 'recording_meta.id': run.robotMetaId, userId: req.user.id } });
-    if (!robot) {
-      return res.status(404).send({ error: 'Run not found' });
-    }
     await Run.destroy({ where: { runId: req.params.id } });
     capture(
       'maxun-oss-run-deleted',
@@ -1107,8 +1077,7 @@ router.put('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res) =>
 
     const recording = await Robot.findOne({
       where: {
-        'recording_meta.id': req.params.id,
-        userId: req.user.id,
+        'recording_meta.id': req.params.id
       },
       raw: true
     });
@@ -1251,17 +1220,10 @@ router.put('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res) =>
 /**
  * GET endpoint for getting a run from the storage.
  */
-router.get('/runs/run/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
+router.get('/runs/run/:id', requireSignIn, async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).send({ error: 'Unauthorized' });
-    }
     const run = await Run.findOne({ where: { runId: req.params.id }, raw: true });
     if (!run) {
-      return res.status(404).send(null);
-    }
-    const robot = await Robot.findOne({ where: { 'recording_meta.id': run.robotMetaId, userId: req.user.id } });
-    if (!robot) {
       return res.status(404).send(null);
     }
     return res.send(run);
@@ -1297,7 +1259,7 @@ router.post('/runs/run/:id', requireSignIn, async (req: AuthenticatedRequest, re
 
     const plainRun = run.toJSON();
 
-    const recording = await Robot.findOne({ where: { 'recording_meta.id': plainRun.robotMetaId, userId: req.user.id }, raw: true });
+    const recording = await Robot.findOne({ where: { 'recording_meta.id': plainRun.robotMetaId }, raw: true });
     if (!recording) {
       return res.status(404).send(false);
     }
@@ -1345,11 +1307,7 @@ router.put('/schedule/:id/', requireSignIn, async (req: AuthenticatedRequest, re
     const { id } = req.params;
     const { runEvery, runEveryUnit, startFrom, dayOfMonth, atTimeStart, atTimeEnd, timezone } = req.body;
 
-    if (!req.user) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const robot = await Robot.findOne({ where: { 'recording_meta.id': id, userId: req.user.id } });
+    const robot = await Robot.findOne({ where: { 'recording_meta.id': id } });
     if (!robot) {
       return res.status(404).json({ error: 'Robot not found' });
     }
@@ -1365,6 +1323,10 @@ router.put('/schedule/:id/', requireSignIn, async (req: AuthenticatedRequest, re
         return res.status(400).json({ error: validationError.message });
       }
       throw validationError;
+    }
+
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     try {
@@ -1402,7 +1364,7 @@ router.put('/schedule/:id/', requireSignIn, async (req: AuthenticatedRequest, re
     )
 
     // Fetch updated schedule details after setting it
-    const updatedRobot = await Robot.findOne({ where: { 'recording_meta.id': id, userId: req.user.id } });
+    const updatedRobot = await Robot.findOne({ where: { 'recording_meta.id': id } });
 
     res.status(200).json({
       message: 'success',
@@ -1416,12 +1378,9 @@ router.put('/schedule/:id/', requireSignIn, async (req: AuthenticatedRequest, re
 
 
 // Endpoint to get schedule details
-router.get('/schedule/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
+router.get('/schedule/:id', requireSignIn, async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-    const robot = await Robot.findOne({ where: { 'recording_meta.id': req.params.id, userId: req.user.id }, raw: true });
+    const robot = await Robot.findOne({ where: { 'recording_meta.id': req.params.id }, raw: true });
 
     if (!robot) {
       return res.status(404).json({ error: 'Robot not found' });
@@ -1446,7 +1405,7 @@ router.delete('/schedule/:id', requireSignIn, async (req: AuthenticatedRequest, 
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const robot = await Robot.findOne({ where: { 'recording_meta.id': id, userId: req.user.id } });
+    const robot = await Robot.findOne({ where: { 'recording_meta.id': id } });
     if (!robot) {
       return res.status(404).json({ error: 'Robot not found' });
     }
@@ -1491,11 +1450,6 @@ router.post('/runs/abort/:id', requireSignIn, async (req: AuthenticatedRequest, 
     const run = await Run.findOne({ where: { runId: req.params.id } });
 
     if (!run) {
-      return res.status(404).send({ error: 'Run not found' });
-    }
-
-    const robot = await Robot.findOne({ where: { 'recording_meta.id': run.robotMetaId, userId: req.user.id } });
-    if (!robot) {
       return res.status(404).send({ error: 'Run not found' });
     }
 
@@ -2245,7 +2199,7 @@ router.post('/runs/document-run/:id', requireSignIn, async (req: AuthenticatedRe
   try {
     if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
 
-    const recording = await Robot.findOne({ where: { 'recording_meta.id': req.params.id, userId: req.user.id }, raw: true });
+    const recording = await Robot.findOne({ where: { 'recording_meta.id': req.params.id }, raw: true });
     if (!recording) return res.status(404).json({ error: 'Robot not found.' });
     if (recording.recording_meta.type !== 'doc-extract') {
       return res.status(400).json({ error: 'Robot is not a document extraction robot.' });
@@ -2301,7 +2255,7 @@ router.post('/runs/document-parse-run/:id', requireSignIn, async (req: Authentic
   try {
     if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
 
-    const recording = await Robot.findOne({ where: { 'recording_meta.id': req.params.id, userId: req.user.id }, raw: true });
+    const recording = await Robot.findOne({ where: { 'recording_meta.id': req.params.id }, raw: true });
     if (!recording) return res.status(404).json({ error: 'Robot not found.' });
     if (recording.recording_meta.type !== 'doc-parse') {
       return res.status(400).json({ error: 'Robot is not a document parse robot.' });
@@ -2363,7 +2317,7 @@ router.put(
       const file = (req as any).file as Express.Multer.File | undefined;
       if (!file) return res.status(400).json({ error: 'A PDF file is required.' });
 
-      const robot = await Robot.findOne({ where: { 'recording_meta.id': req.params.id, userId: req.user.id } });
+      const robot = await Robot.findOne({ where: { 'recording_meta.id': req.params.id } });
       if (!robot) return res.status(404).json({ error: 'Robot not found.' });
 
       const robotType = robot.recording_meta.type;
