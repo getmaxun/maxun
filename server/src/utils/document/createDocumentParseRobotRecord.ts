@@ -1,3 +1,4 @@
+import path from 'path';
 import { v4 as uuid } from 'uuid';
 import Robot from '../../models/Robot';
 import { DocumentInterpreter, ParsedOutput } from '../../workflow-management/classes/DocumentInterpreter';
@@ -27,7 +28,8 @@ export async function createDocumentParseRobotRecord(
 
   const robotId = uuid();
   const now = new Date().toISOString();
-  const documentKey = `documents/${robotId}/document.pdf`;
+  const extension = path.extname(originalFileName || '').toLowerCase() || '.pdf';
+  const documentKey = `documents/${robotId}/document${extension}`;
 
   await uploadDocumentToMinio(documentKey, pdfBuffer);
 
