@@ -65,13 +65,13 @@ The most reliable proxy provider for web scrapping with the Highest Quality IP o
 
 <tr>
 <td width="30%" height="100">
-<a href="www.novada.com/?github-maxun">
+<a href="https://www.novada.com/?github-maxun">
   <img src="https://github.com/user-attachments/assets/68262e31-639a-4d36-a281-e50b68fcdc92" alt="Novada" width="300" height="150">
 </a>
 </td>
 <td width="70%">
 
-#### <a href="www.novada.com/?github-maxun">Novada</a>
+#### <a href="https://www.novada.com/?github-maxun">Novada</a>
 
 Novada provides high-quality residential proxies and a powerful Scraper API for reliable web data collection at scale. Access real residential IPs worldwide, reduce blocks, and collect the data your scraping workflows need.
 <br />
