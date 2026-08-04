@@ -370,7 +370,7 @@ const handleChangeUrl = async (activeBrowser: RemoteBrowser, page: Page, url: st
             await generator.onChangeUrl(url, page);
 
             try {
-                await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
+                await activeBrowser.navigateTo(page, url, { waitUntil: "domcontentloaded", timeout: 30000 });
 
                 const finalUrl = page.url();
                 if (finalUrl.startsWith('chrome-error://') || finalUrl.startsWith('chrome://chromewebdata')) {

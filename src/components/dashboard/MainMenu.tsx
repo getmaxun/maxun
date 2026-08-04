@@ -84,6 +84,9 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
       color: theme.palette.mode === 'light' ? '#6C6C6C' : 'inherit',
       backgroundColor: theme.palette.mode === 'light' ? '#f5f5f5' : 'inherit',
     },
+    "& .MuiButton-startIcon .MuiSvgIcon-root": {
+      fontSize: 17.5,
+    },
   };
 
   const starButtonStyles = {
@@ -131,34 +134,44 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             indicatorColor="primary"
             orientation="vertical"
             sx={{
-              alignItems: 'flex-start',
-              '& .MuiTabs-indicator': { display: 'none' },
-              paddingTop: '0.5rem'
+              alignItems: "flex-start",
+              pt: 0.5,
+              "& .MuiTabs-indicator": {
+                display: "none",
+              },
+              "& .MuiTab-root": {
+                justifyContent: "flex-start",
+                textAlign: "left",
+                fontSize: 15,
+              },
+              "& .MuiTab-iconWrapper, & .MuiTab-icon": {
+                fontSize: 20,
+              },
             }}
           >
             <Tab
               value="robots"
               label={t('mainmenu.recordings')}
-              icon={<AutoAwesome sx={{ fontSize: 20 }} />}
+              icon={<AutoAwesome />}
               iconPosition="start"
               disableRipple={true}
               sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '15px' }}
               onClick={handleRobotsClick} />
             <Tab value="runs"
               label={t('mainmenu.runs')}
-              icon={<PlayArrow sx={{ fontSize: 20 }} />}
+              icon={<PlayArrow />}
               iconPosition="start"
               disableRipple={true}
               sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '15px' }} />
             <Tab value="proxy"
               label={t('mainmenu.proxy')}
-              icon={<Usb sx={{ fontSize: 20 }} />}
+              icon={<Usb />}
               iconPosition="start"
               disableRipple={true}
               sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '15px' }} />
             <Tab value="apikey"
               label={t('mainmenu.apikey')}
-              icon={<VpnKey sx={{ fontSize: 20 }} />}
+              icon={<VpnKey />}
               iconPosition="start"
               disableRipple={true}
               sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '15px' }} />
@@ -168,7 +181,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             <Button
               onClick={() => setDocModalOpen(true)}
               sx={buttonStyles}
-              startIcon={<Description sx={{ fontSize: 20 }} />}
+              startIcon={<Description />}
             >
               Documentation
             </Button>
@@ -214,24 +227,24 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               href='https://app.maxun.dev/'
               target="_blank"
               rel="noopener noreferrer"
-              sx={buttonStyles} startIcon={<CloudQueue sx={{ fontSize: 16 }} />}>
+              sx={buttonStyles} startIcon={<CloudQueue />}>
               Join Maxun Cloud
             </Button>
             <Button
               href='https://docs.maxun.dev/category/sdk'
               target="_blank"
               rel="noopener noreferrer"
-              sx={buttonStyles} startIcon={<ArrowForwardIos sx={{ fontSize: 20 }} />}>
+              sx={buttonStyles} startIcon={<ArrowForwardIos />}>
               SDK
             </Button>
             <Button
               href='https://docs.maxun.dev/category/cli'
               target="_blank"
               rel="noopener noreferrer"
-              sx={buttonStyles} startIcon={<Terminal sx={{ fontSize: 20 }} />}>
+              sx={buttonStyles} startIcon={<Terminal />}>
               CLI
             </Button>
-            <Button onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite sx={{ fontSize: 16 }} />}>
+            <Button onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite />}>
               Sponsor Us
             </Button>
           </Box>
