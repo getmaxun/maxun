@@ -24,8 +24,24 @@
 <a href="https://trendshift.io/repositories/12113" target="_blank"><img src="https://trendshift.io/api/badge/repositories/12113" alt="getmaxun%2Fmaxun | Trendshift" style="width: 250px; height: 55px; margin-top: 10px;" width="250" height="55"/></a>
 </p>
 
+
 ### Sponsors
 <table>
+<tr>
+<td width="30%" height="100">
+<a href="https://www.ipcook.com/?ref=githubmaxun&utm_source=github&utm_medium=referral&utm_campaign=maxun">
+  <img src="https://github.com/user-attachments/assets/b0fba023-a858-4e99-aa28-07754dce67b5" alt="IPCook" width="400" height="150">
+</a>
+</td>
+<td width="70%">
+
+#### <a href="https://www.ipcook.com/?ref=githubmaxun&utm_source=github&utm_medium=referral&utm_campaign=maxun">IPCook</a>
+
+IPcook provides 55M+ real residential IPs across 185+ countries and regions, delivering fast and reliable proxy solutions for web scraping, automation, and data collection. 99.99% uptime, average response times under 0.5s, and 100,000 concurrency at max. Start with a [FREE 100MB Trial](https://www.ipcook.com/?ref=githubmaxun&utm_source=github&utm_medium=referral&utm_campaign=maxun) to experience IPcook’s proxy service.
+<br />
+<b>Discount Code: `WELCOME20` - Get 20% off your first purchase.</b>
+</td>
+</tr>
 <tr>
 <td width="35%" height="100">
 <a href="https://go.nodemaven.com/maxunreadme">
