@@ -29,7 +29,7 @@
 <tr>
 <td width="35%" height="100">
 <a href="https://go.nodemaven.com/maxunreadme">
-  <img src="https://github.com/user-attachments/assets/264331ac-d7f4-4001-bc64-1662b11577b9" alt="Nodemaven" width="300" height="150">
+  <img src="https://github.com/user-attachments/assets/264331ac-d7f4-4001-bc64-1662b11577b9" alt="Nodemaven" width="400" height="150">
 </a>
 </td>
 <td width="70%">
