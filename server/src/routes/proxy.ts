@@ -95,10 +95,14 @@ router.get('/test', requireSignIn, async (req: Request, res: Response) => {
             });
 
             const page = await context.newPage();
-            await page.goto('https://example.com', {
+            const response = await page.goto('https://example.com', {
                 waitUntil: 'domcontentloaded',
                 timeout: 30000,
             });
+
+            if (!response || !response.ok()) {
+                throw new Error(`Proxy test failed with status ${response?.status() || 'unknown'}`);
+            }
 
             res.status(200).send({ success: true });
         } finally {
