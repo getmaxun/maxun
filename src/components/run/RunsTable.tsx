@@ -66,6 +66,7 @@ export interface Data {
   interpreterSettings: RunSettings;
   serializableOutput: any;
   binaryOutput: any;
+  hasChanges?: boolean;
 }
 
 interface RunsTableProps {
@@ -312,7 +313,11 @@ export const RunsTable: React.FC<RunsTableProps> = ({
           setRerenderRuns(true);
           
           if (data.status === 'success') {
-            notify('success', t('main_page.notifications.interpretation_success', { name: data.robotName || name }));
+            if (data.hasChanges) {
+              notify('info', t('main_page.notifications.interpretation_changes_detected', { name: data.robotName || name, defaultValue: 'Changes detected since the last run' }));
+            } else {
+              notify('success', t('main_page.notifications.interpretation_success', { name: data.robotName || name }));
+            }
           } else {
             notify('error', t('main_page.notifications.interpretation_failed', { name: data.robotName || name }));
           }
