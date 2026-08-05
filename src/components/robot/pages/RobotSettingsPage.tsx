@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { TextField, Box } from "@mui/material";
+import { TextField, Box, Checkbox, FormControlLabel, Typography, CircularProgress } from "@mui/material";
 import { useGlobalInfoStore } from "../../../context/globalInfo";
-import { getStoredRecording } from "../../../api/storage";
+import { getStoredRecording, updateRecording } from "../../../api/storage";
 import { WhereWhatPair } from "maxun-core";
 import { getUserById } from "../../../api/auth";
 import { RobotConfigPage } from "./RobotConfigPage";
@@ -20,6 +20,7 @@ interface RobotMeta {
   url?: string;
   formats?: OutputFormats[];
   isLLM?: boolean;
+  compareRuns?: boolean;
 }
 
 interface RobotWorkflow {
@@ -68,6 +69,8 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
   const location = useLocation();
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [robot, setRobot] = useState<RobotSettings | null>(null);
+  const [compareRuns, setCompareRuns] = useState(false);
+  const [savingCompareRuns, setSavingCompareRuns] = useState(false);
   const { recordingId, notify } = useGlobalInfoStore();
 
   useEffect(() => {
@@ -79,6 +82,7 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
       try {
         const robot = await getStoredRecording(recordingId);
         setRobot(robot);
+        setCompareRuns(!!robot?.recording_meta?.compareRuns);
       } catch (error) {
         notify("error", t("robot_settings.errors.robot_not_found"));
       }
@@ -98,6 +102,27 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
     }
 
     return url;
+  };
+  
+  const handleCompareRunsToggle = async (checked: boolean) => {
+    if (!robot || savingCompareRuns) return;
+
+    const previousValue = compareRuns;
+    setCompareRuns(checked);
+    setSavingCompareRuns(true);
+
+    try {
+      const success = await updateRecording(robot.recording_meta.id, { compareRuns: checked });
+      if (!success) {
+        throw new Error("Update returned falsy");
+      }
+    } catch (error) {
+      console.error("Failed to update compareRuns:", error);
+      notify("error", t("robot_settings.errors.update_failed"));
+      setCompareRuns(previousValue);
+    } finally {
+      setSavingCompareRuns(false);
+    }
   };
 
   useEffect(() => {
@@ -197,6 +222,28 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
                 }}
                 style={{ marginBottom: "20px" }}
               />
+              {robot.recording_meta.type === 'scrape' && (
+                <Box style={{ marginBottom: "20px" }}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={compareRuns}
+                        disabled={savingCompareRuns}
+                        onChange={(e) => handleCompareRunsToggle(e.target.checked)}
+                      />
+                    }
+                    label={
+                      <Box style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span>Compare most recent run to previous run</span>
+                        {savingCompareRuns && <CircularProgress size={14} />}
+                      </Box>
+                    }
+                  />
+                  <Typography variant="caption" color="text.secondary" style={{ display: "block" }}>
+                    When enabled, each new run will be automatically diffed against the previous one.
+                  </Typography>
+                </Box>
+              )}
             </>
           )}
         </Box>
