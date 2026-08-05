@@ -198,6 +198,15 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                 return (
                   <TableCell key={column.id} align={column.align}>
                     {row.status === 'success' && <Chip label={t('runs_table.run_status_chips.success')} color="success" variant="outlined" />}
+                    {row.status === 'success' && row.hasChanges && (
+                      <Chip
+                        label={t('runs_table.run_diff.changed_chip', { defaultValue: 'Changed' })}
+                        color="info"
+                        variant="outlined"
+                        size="small"
+                        sx={{ ml: 1, cursor: 'pointer' }}
+                      />
+                    )}
                     {row.status === 'running' && <Chip label={t('runs_table.run_status_chips.running')} color="warning" variant="outlined" />}
                     {row.status === 'scheduled' && <Chip label={t('runs_table.run_status_chips.scheduled')} variant="outlined" />}
                     {row.status === 'queued' && <Chip label={t('runs_table.run_status_chips.queued')} variant="outlined" />}
