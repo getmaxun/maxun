@@ -30,12 +30,12 @@
 <tr>
 <td width="30%" height="100">
 <a href="https://www.ipcook.com/?ref=githubmaxun&utm_source=github&utm_medium=referral&utm_campaign=maxun">
-  <img src="https://github.com/user-attachments/assets/b0fba023-a858-4e99-aa28-07754dce67b5" alt="IPCook" width="400" height="150">
+  <img src="https://github.com/user-attachments/assets/b0fba023-a858-4e99-aa28-07754dce67b5" alt="IPcook" width="400" height="150">
 </a>
 </td>
 <td width="70%">
 
-#### <a href="https://www.ipcook.com/?ref=githubmaxun&utm_source=github&utm_medium=referral&utm_campaign=maxun">IPCook</a>
+#### <a href="https://www.ipcook.com/?ref=githubmaxun&utm_source=github&utm_medium=referral&utm_campaign=maxun">IPcook</a>
 
 IPcook provides 55M+ real residential IPs across 185+ countries and regions, delivering fast and reliable proxy solutions for web scraping, automation, and data collection. 99.99% uptime, average response times under 0.5s, and 100,000 concurrency at max. Start with a [FREE 100MB Trial](https://www.ipcook.com/?ref=githubmaxun&utm_source=github&utm_medium=referral&utm_campaign=maxun) to experience IPcook’s proxy service.
 <br />
