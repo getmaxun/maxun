@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import * as React from "react";
 import TableRow from "@mui/material/TableRow";
 import TableCell from "@mui/material/TableCell";
@@ -11,13 +11,14 @@ import {
 } from "@mui/material";
 import { Button } from "@mui/material";
 import { DeleteForever, KeyboardArrowDown, KeyboardArrowUp, Settings } from "@mui/icons-material";
-import { deleteRunFromStorage, getStoredRun } from "../../api/storage";
+import { deleteRunFromStorage, getStoredRun, getRunDiff, RunDiffResponse } from "../../api/storage";
 import { columns, Data } from "./RunsTable";
 import { RunContent } from "./RunContent";
 import { getUserById } from "../../api/auth";
 import { useTranslation } from "react-i18next";
-import { useTheme } from "@mui/material/styles";
+import { useTheme, alpha } from "@mui/material/styles";
 import { getOrCreateBrowserSocket, releaseBrowserSocket } from "../../utils/browserSocket";
+import { diffLines, Change } from "diff";
 
 interface RunTypeChipProps {
   runByUserId?: string;
@@ -58,6 +59,29 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [runDetails, setRunDetails] = useState<Data>(row);
   const [isLoadingRunDetails, setIsLoadingRunDetails] = useState(false);
+  const [diffOpen, setDiffOpen] = useState(false);
+  const [diffData, setDiffData] = useState<RunDiffResponse | null>(null);
+  const [isDiffLoading, setIsDiffLoading] = useState(false);
+
+  const handleOpenDiff = async () => {
+    setDiffOpen(true);
+    setIsDiffLoading(true);
+    const data = await getRunDiff(row.runId);
+    setDiffData(data);
+    setIsDiffLoading(false);
+  };
+
+  const handleCloseDiff = () => {
+    setDiffOpen(false);
+    setDiffData(null);
+  };
+
+  const diffParts = useMemo<Change[]>(() => {
+    if (!diffData) return [];
+    return diffLines(diffData.previousText, diffData.currentText, { ignoreWhitespace: true });
+  }, [diffData]);
+
+  const hasDiff = diffParts.some((part) => part.added || part.removed);
   const runByLabel = row.runByScheduleId
     ? `${row.runByScheduleId}`
     : row.runByUserId
@@ -204,6 +228,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                         color="info"
                         variant="outlined"
                         size="small"
+                        onClick={handleOpenDiff}
                         sx={{ ml: 1, cursor: 'pointer' }}
                       />
                     )}
