@@ -30,6 +30,13 @@ export const SEARCH_SCRAPE_OUTPUT_FORMAT_OPTIONS: OutputFormats[] = [
   'screenshot-fullpage'
 ];
 
+export const DOC_PARSE_OUTPUT_FORMAT_OPTIONS: OutputFormats[] = [
+  'markdown',
+  'html',
+  'links',
+  'summary'
+];
+
 const OUTPUT_FORMAT_SET = new Set<string>(OUTPUT_FORMAT_OPTIONS as readonly string[]);
 
 export const DEFAULT_OUTPUT_FORMATS: OutputFormats[] = ['markdown'];

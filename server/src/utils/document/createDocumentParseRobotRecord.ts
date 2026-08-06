@@ -1,7 +1,8 @@
 import { v4 as uuid } from 'uuid';
 import Robot from '../../models/Robot';
-import { DocumentInterpreter, ParsedOutput } from '../../workflow-management/classes/DocumentInterpreter';
+import { DocumentInterpreter, LLMConfig, ParsedOutput } from '../../workflow-management/classes/DocumentInterpreter';
 import { uploadDocumentToMinio } from '../../storage/mino';
+import { encrypt } from '../auth';
 import logger from '../../logger';
 import { OutputFormats } from '../../constants/output-formats';
 import { getDocumentExtensionForMimeType } from './documentFile';
@@ -13,6 +14,11 @@ export interface CreateDocumentParseRobotParams {
   robotName: string;
   outputFormats: OutputFormats[];
   userId: number;
+  /** Only used when 'summary' is among the requested output formats. */
+  llmProvider?: LLMConfig['provider'];
+  llmModel?: string;
+  llmApiKey?: string;
+  llmBaseUrl?: string;
 }
 
 export interface CreateDocumentParseRobotResult {
@@ -23,9 +29,27 @@ export interface CreateDocumentParseRobotResult {
 export async function createDocumentParseRobotRecord(
   params: CreateDocumentParseRobotParams
 ): Promise<CreateDocumentParseRobotResult> {
-  const { documentBuffer, originalFileName, documentMimeType, robotName, outputFormats, userId } = params;
+  const {
+    documentBuffer,
+    originalFileName,
+    documentMimeType,
+    robotName,
+    outputFormats,
+    userId,
+    llmProvider,
+    llmModel,
+    llmApiKey,
+    llmBaseUrl,
+  } = params;
 
-  const parsedOutput = await DocumentInterpreter.parse(documentBuffer, outputFormats, documentMimeType);
+  const llmConfig: LLMConfig = {
+    provider: llmProvider || 'ollama',
+    model: llmModel,
+    apiKey: llmApiKey,
+    baseUrl: llmBaseUrl,
+  };
+
+  const parsedOutput = await DocumentInterpreter.parse(documentBuffer, outputFormats, documentMimeType, llmConfig);
 
   const robotId = uuid();
   const now = new Date().toISOString();
@@ -53,6 +77,10 @@ export async function createDocumentParseRobotRecord(
       documentMimeType,
       documentFileName: originalFileName,
       parsedOutput,
+      llmProvider: llmProvider || 'ollama',
+      llmModel: llmModel || null,
+      llmApiKey: llmApiKey ? encrypt(llmApiKey) : null,
+      llmBaseUrl: llmBaseUrl || null,
     },
   } as any);
 

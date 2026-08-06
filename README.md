@@ -24,41 +24,75 @@
 <a href="https://trendshift.io/repositories/12113" target="_blank"><img src="https://trendshift.io/api/badge/repositories/12113" alt="getmaxun%2Fmaxun | Trendshift" style="width: 250px; height: 55px; margin-top: 10px;" width="250" height="55"/></a>
 </p>
 
-### Sponsors
 
+### Sponsors
 <table>
 <tr>
 <td width="30%" height="100">
-<a href="https://www.rapidproxy.io/?ref=maxun">
-  <img src="https://github.com/user-attachments/assets/ccf7c59c-f4ed-4181-9706-6389d7e00f76" alt="Rapid Proxy" width="300" height="150">
+<a href="https://www.ipcook.com/?ref=githubmaxun&utm_source=github&utm_medium=referral&utm_campaign=maxun">
+  <img src="https://github.com/user-attachments/assets/b0fba023-a858-4e99-aa28-07754dce67b5" alt="IPcook" width="400" height="150">
 </a>
 </td>
 <td width="70%">
 
-#### <a href="https://www.rapidproxy.io/?ref=maxun">RapidProxy</a>
+#### <a href="https://www.ipcook.com/?ref=githubmaxun&utm_source=github&utm_medium=referral&utm_campaign=maxun">IPcook</a>
 
-RapidProxy is a residential proxy platform with 90M+ real IPs across 200+ countries. It supports rotation, geo-targeting, and high concurrency to improve scraping success and reduce bans. [Start your free trial](https://www.rapidproxy.io/?ref=maxun) today!
+IPcook provides 55M+ real residential IPs across 185+ countries and regions, delivering fast and reliable proxy solutions for web scraping, automation, and data collection. 99.99% uptime, average response times under 0.5s, and 100,000 concurrency at max. Start with a [FREE 100MB Trial](https://www.ipcook.com/?ref=githubmaxun&utm_source=github&utm_medium=referral&utm_campaign=maxun) to experience IPcook’s proxy service.
 <br />
-<b>Discount Code: `RAPID10` to get 10% off.</b>
+<b>Discount Code: `WELCOME20` - Get 20% off your first purchase.</b>
+</td>
+</tr>
+<tr>
+<td width="35%" height="100">
+<a href="https://go.nodemaven.com/maxunreadme">
+  <img src="https://github.com/user-attachments/assets/264331ac-d7f4-4001-bc64-1662b11577b9" alt="Nodemaven" width="400" height="150">
+</a>
+</td>
+<td width="70%">
+
+#### <a href="https://go.nodemaven.com/maxunreadme">Nodemaven</a>
+
+The most reliable proxy provider for web scrapping with the Highest Quality IP on the market. Why [Nodemaven](https://go.nodemaven.com/maxunreadme)?
+- 99.9% uptime
+- Sticky sessions up to 7 days
+- IP filtering: all proxies have fraud score <97%
+- No KYC required
+- Cashback on traffic - burn GB and earn up to 10% back
+
+<b>Discount Code: `MAXUN35` - 35% off to Mobile and Residential Proxies. `MAXUN40` - 40% off to ISP (Static) Proxies.</b>
 </td>
 </tr>
 
 <tr>
 <td width="30%" height="100">
-<a href="https://mangoproxy.com/?utm_source=github&utm_medium=partner&utm_campaign=getmaxun">
-  <img src="https://github.com/user-attachments/assets/326b5b8f-6a2c-4aa2-94c8-6a29ae23f2ac" alt="Mango Proxy" width="300" height="150">
+<a href="https://www.novada.com/?github-maxun">
+  <img src="https://github.com/user-attachments/assets/68262e31-639a-4d36-a281-e50b68fcdc92" alt="Novada" width="300" height="150">
 </a>
 </td>
 <td width="70%">
-    
-#### <a href="https://mangoproxy.com/?utm_source=github&utm_medium=partner&utm_campaign=getmaxun">Mango Proxy</a>
-MangoProxy offers Residential, ISP, Datacenter, and Mobile Proxies in 200+ countries with HTTP(S)/SOCKS5 support and flexible IP management.
+
+#### <a href="https://www.novada.com/?github-maxun">Novada</a>
+
+Novada provides high-quality residential proxies and a powerful Scraper API for reliable web data collection at scale. Access real residential IPs worldwide, reduce blocks, and collect the data your scraping workflows need.
 <br />
-<b>Discount Code: `MAXUN` - 8% off Static ISP Proxies</b>
+<b>Discount Code: `GitNOVADA` - Get 20% off Rotating Residential Proxies and Scraping solutions.</b>
+</td>
+</tr>
+
+<tr>
+<td width="30%" height="100">
+<a href="https://www.testmuai.com/?utm_medium=sponsor&utm_source=maxun">
+  <img src="https://github.com/user-attachments/assets/6c96005b-85df-43e0-9b63-96aaca676c11" alt="TestMu AI" width="300" height="150">
+</a>
+</td>
+<td width="70%">
+
+#### <a href="https://www.testmuai.com/?utm_medium=sponsor&utm_source=maxun">TestMu AI</a>
+
+TestMu AI is the Native AI-Agentic Cloud Platform to Supercharge Quality Engineering. Test Intelligently and Ship Faster.
 </td>
 </tr>
 </table>
-
 
 ## What is Maxun?
 
