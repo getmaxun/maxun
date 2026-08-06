@@ -9,6 +9,7 @@ import {
 } from './browser-management/controller';
 import { WorkflowFile } from 'maxun-core';
 import Run from './models/Run';
+import { Op } from 'sequelize';
 import Robot from './models/Robot';
 import { browserPool } from './server';
 import { Page } from 'playwright-core';
@@ -334,6 +335,34 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
           }
 
           await run.update({ status: 'success', finishedAt: new Date().toLocaleString(), log: `${formats.join(', ').toUpperCase()} conversion completed successfully`, serializableOutput, binaryOutput });
+
+          // Compare text comparison when robot's metadata has compareRuns enabled and when the current run produced a text output
+          if ((recording.recording_meta as any).compareRuns && serializableOutput.text) {
+            try {
+              // finding previous successful run
+              const previousRun = await Run.findOne({
+                where: { robotMetaId: plainRun.robotMetaId, status: 'success', runId: { [Op.ne]: data.runId } },
+                order: [['finishedAt', 'DESC']],
+              });
+
+              if (previousRun) {
+                // extract previous text
+                const previousText = previousRun.serializableOutput?.text?.[0]?.content;
+                // extract current text
+                const currentText = serializableOutput.text[0]?.content;
+                // compare the 2 strings
+                const hasChanged = previousText !== undefined && previousText !== currentText;
+
+                // when the text changed, update the current run's database record
+                if (hasChanged) {
+                  await run.update({ hasChanges: true });
+                  logger.log('info', `Run ${data.runId} has changes compared to previous run ${previousRun.runId}`);
+                }
+              }
+            } catch (compareError: any) {
+              logger.log('warn', `Run comparison failed for run ${data.runId}: ${compareError.message}`);
+            }
+          }
 
           let uploadedBinaryOutput: Record<string, string> = {};
           if (Object.keys(binaryOutput).length > 0) {
