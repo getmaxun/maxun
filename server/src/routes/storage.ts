@@ -402,10 +402,10 @@ function handleWorkflowActions(workflow: any[], credentials: Credentials) {
 router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
-    const { name, limits, credentials, targetUrl, workflow: incomingWorkflow, formats, promptLlmProvider, promptLlmModel, promptLlmApiKey, promptLlmBaseUrl } = req.body;
+    const { name, limits, credentials, targetUrl, workflow: incomingWorkflow, formats, compareRuns, promptLlmProvider, promptLlmModel, promptLlmApiKey, promptLlmBaseUrl } = req.body;
 
     const hasLlmUpdate = 'promptLlmProvider' in req.body || 'promptLlmModel' in req.body || 'promptLlmApiKey' in req.body || 'promptLlmBaseUrl' in req.body;
-    if (!name && !limits && !credentials && !targetUrl && !incomingWorkflow && formats === undefined && !hasLlmUpdate) {
+    if (!name && !limits && !credentials && !targetUrl && !incomingWorkflow && formats === undefined && compareRuns === undefined && !hasLlmUpdate) {
       return res.status(400).json({ error: 'Either "name", "limits", "credentials", "target_url", "workflow", "formats" or LLM config must be provided.' });
     }
 
@@ -576,6 +576,7 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
     if (trimmedName) updatedMeta.name = trimmedName;
     if (targetUrl) updatedMeta.url = normalizeRobotUrl(targetUrl);
     if (normalizedFormats !== undefined) updatedMeta.formats = normalizedFormats;
+    if (compareRuns !== undefined) updatedMeta.compareRuns = !!compareRuns;
     if (promptLlmProvider !== undefined) updatedMeta.promptLlmProvider = promptLlmProvider || undefined;
     if (promptLlmModel !== undefined) updatedMeta.promptLlmModel = promptLlmModel || undefined;
     if ('promptLlmApiKey' in req.body) {
@@ -1247,6 +1248,52 @@ router.get('/runs/run/:id', requireSignIn, async (req, res) => {
     const { message } = e as Error;
     logger.log('error', `Error ${message} while reading a run with id: ${req.params.id}.json`);
     return res.send(null);
+  }
+});
+
+// Get endpoint to fetch the text diff between a run and the previous successful run.
+router.get('/runs/:id/diff', requireSignIn, async (req: AuthenticatedRequest, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+
+    const run = await Run.findOne({ where: { runId: req.params.id } });
+    if (!run) {
+      return res.status(404).json({ error: 'Run not found' });
+    }
+
+    const robot = await Robot.findOne({ where: { 'recording_meta.id': run.robotMetaId, userId: req.user.id } });
+    if (!robot) {
+      return res.status(404).json({ error: 'Run not found' });
+    }
+
+    const previousRun = await Run.findOne({
+      where: {
+        robotMetaId: run.robotMetaId,
+        status: 'success',
+        runId: { [Op.ne]: run.runId },
+      },
+      order: [['finishedAt', 'DESC']],
+    });
+
+    if (!previousRun) {
+      return res.status(404).json({ error: 'No previous run to compare against' });
+    }
+
+    const currentText = (run.serializableOutput as any)?.text?.[0]?.content || '';
+    const previousText = (previousRun.serializableOutput as any)?.text?.[0]?.content || '';
+
+    return res.json({
+      currentRunId: run.runId,
+      previousRunId: previousRun.runId,
+      currentText,
+      previousText,
+    });
+  } catch (e) {
+    const { message } = e as Error;
+    logger.log('error', `Error fetching diff for run ${req.params.id}: ${message}`);
+    return res.status(500).json({ error: 'Failed to compute diff' });
   }
 });
 
