@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { TextField, Box } from "@mui/material";
+import { TextField, Box, Checkbox, FormControlLabel } from "@mui/material";
 import { useGlobalInfoStore } from "../../../context/globalInfo";
-import { getStoredRecording } from "../../../api/storage";
+import { getStoredRecording, updateRecording } from "../../../api/storage";
 import { WhereWhatPair } from "maxun-core";
 import { getUserById } from "../../../api/auth";
 import { RobotConfigPage } from "./RobotConfigPage";
@@ -20,6 +20,7 @@ interface RobotMeta {
   url?: string;
   formats?: OutputFormats[];
   isLLM?: boolean;
+  compareRuns?: boolean;
 }
 
 interface RobotWorkflow {
@@ -68,6 +69,7 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
   const location = useLocation();
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [robot, setRobot] = useState<RobotSettings | null>(null);
+  const [compareRuns, setCompareRuns] = useState(false);
   const { recordingId, notify } = useGlobalInfoStore();
 
   useEffect(() => {
@@ -79,6 +81,7 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
       try {
         const robot = await getStoredRecording(recordingId);
         setRobot(robot);
+        setCompareRuns(!!robot?.recording_meta?.compareRuns);
       } catch (error) {
         notify("error", t("robot_settings.errors.robot_not_found"));
       }
@@ -98,6 +101,16 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
     }
 
     return url;
+  };
+  
+  const handleCompareRunsToggle = async (checked: boolean) => {
+    if (!robot) return;
+    setCompareRuns(checked);
+    const success = await updateRecording(robot.recording_meta.id, { compareRuns: checked });
+    if (!success) {
+      notify("error", t("robot_settings.errors.update_failed"));
+      setCompareRuns(!checked);
+    }
   };
 
   useEffect(() => {
@@ -197,6 +210,18 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
                 }}
                 style={{ marginBottom: "20px" }}
               />
+              {robot.recording_meta.type === 'scrape' && (
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={compareRuns}
+                      onChange={(e) => handleCompareRunsToggle(e.target.checked)}
+                    />
+                  }
+                  label="Compare most recent run to previous run"
+                  style={{ marginBottom: "20px" }}
+                />
+              )}
             </>
           )}
         </Box>
