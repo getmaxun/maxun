@@ -402,10 +402,10 @@ function handleWorkflowActions(workflow: any[], credentials: Credentials) {
 router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
-    const { name, limits, credentials, targetUrl, workflow: incomingWorkflow, formats, promptLlmProvider, promptLlmModel, promptLlmApiKey, promptLlmBaseUrl } = req.body;
+    const { name, limits, credentials, targetUrl, workflow: incomingWorkflow, formats, compareRuns, promptLlmProvider, promptLlmModel, promptLlmApiKey, promptLlmBaseUrl } = req.body;
 
     const hasLlmUpdate = 'promptLlmProvider' in req.body || 'promptLlmModel' in req.body || 'promptLlmApiKey' in req.body || 'promptLlmBaseUrl' in req.body;
-    if (!name && !limits && !credentials && !targetUrl && !incomingWorkflow && formats === undefined && !hasLlmUpdate) {
+    if (!name && !limits && !credentials && !targetUrl && !incomingWorkflow && formats === undefined && compareRuns === undefined && !hasLlmUpdate) {
       return res.status(400).json({ error: 'Either "name", "limits", "credentials", "target_url", "workflow", "formats" or LLM config must be provided.' });
     }
 
@@ -576,6 +576,7 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
     if (trimmedName) updatedMeta.name = trimmedName;
     if (targetUrl) updatedMeta.url = normalizeRobotUrl(targetUrl);
     if (normalizedFormats !== undefined) updatedMeta.formats = normalizedFormats;
+    if (compareRuns !== undefined) updatedMeta.compareRuns = !!compareRuns;
     if (promptLlmProvider !== undefined) updatedMeta.promptLlmProvider = promptLlmProvider || undefined;
     if (promptLlmModel !== undefined) updatedMeta.promptLlmModel = promptLlmModel || undefined;
     if ('promptLlmApiKey' in req.body) {
