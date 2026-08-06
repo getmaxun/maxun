@@ -78,8 +78,21 @@ Novada provides high-quality residential proxies and a powerful Scraper API for 
 <b>Discount Code: `GitNOVADA` - Get 20% off Rotating Residential Proxies and Scraping solutions.</b>
 </td>
 </tr>
-</table>
 
+<tr>
+<td width="30%" height="100">
+<a href="https://www.testmuai.com/?utm_medium=sponsor&utm_source=maxun">
+  <img src="https://github.com/user-attachments/assets/6c96005b-85df-43e0-9b63-96aaca676c11" alt="TestMu AI" width="300" height="150">
+</a>
+</td>
+<td width="70%">
+
+#### <a href="https://www.testmuai.com/?utm_medium=sponsor&utm_source=maxun">TestMu AI</a>
+
+TestMu AI is the Native AI-Agentic Cloud Platform to Supercharge Quality Engineering. Test Intelligently and Ship Faster.
+</td>
+</tr>
+</table>
 
 ## What is Maxun?
 
