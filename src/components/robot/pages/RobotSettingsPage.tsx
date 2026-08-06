@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { TextField, Box, Checkbox, FormControlLabel, Typography, CircularProgress } from "@mui/material";
+import { TextField, Box, Checkbox, FormControlLabel } from "@mui/material";
 import { useGlobalInfoStore } from "../../../context/globalInfo";
 import { getStoredRecording, updateRecording } from "../../../api/storage";
 import { WhereWhatPair } from "maxun-core";
@@ -70,7 +70,6 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [robot, setRobot] = useState<RobotSettings | null>(null);
   const [compareRuns, setCompareRuns] = useState(false);
-  const [savingCompareRuns, setSavingCompareRuns] = useState(false);
   const { recordingId, notify } = useGlobalInfoStore();
 
   useEffect(() => {
@@ -105,23 +104,12 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
   };
   
   const handleCompareRunsToggle = async (checked: boolean) => {
-    if (!robot || savingCompareRuns) return;
-
-    const previousValue = compareRuns;
+    if (!robot) return;
     setCompareRuns(checked);
-    setSavingCompareRuns(true);
-
-    try {
-      const success = await updateRecording(robot.recording_meta.id, { compareRuns: checked });
-      if (!success) {
-        throw new Error("Update returned falsy");
-      }
-    } catch (error) {
-      console.error("Failed to update compareRuns:", error);
+    const success = await updateRecording(robot.recording_meta.id, { compareRuns: checked });
+    if (!success) {
       notify("error", t("robot_settings.errors.update_failed"));
-      setCompareRuns(previousValue);
-    } finally {
-      setSavingCompareRuns(false);
+      setCompareRuns(!checked);
     }
   };
 
@@ -223,26 +211,16 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
                 style={{ marginBottom: "20px" }}
               />
               {robot.recording_meta.type === 'scrape' && (
-                <Box style={{ marginBottom: "20px" }}>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={compareRuns}
-                        disabled={savingCompareRuns}
-                        onChange={(e) => handleCompareRunsToggle(e.target.checked)}
-                      />
-                    }
-                    label={
-                      <Box style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <span>Compare most recent run to previous run</span>
-                        {savingCompareRuns && <CircularProgress size={14} />}
-                      </Box>
-                    }
-                  />
-                  <Typography variant="caption" color="text.secondary" style={{ display: "block" }}>
-                    When enabled, each new run will be automatically diffed against the previous one.
-                  </Typography>
-                </Box>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={compareRuns}
+                      onChange={(e) => handleCompareRunsToggle(e.target.checked)}
+                    />
+                  }
+                  label="Compare most recent run to previous run"
+                  style={{ marginBottom: "20px" }}
+                />
               )}
             </>
           )}
