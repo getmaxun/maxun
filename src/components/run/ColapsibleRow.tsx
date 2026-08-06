@@ -397,6 +397,59 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Dialog open={diffOpen} onClose={handleCloseDiff} maxWidth="lg" fullWidth>
+        <DialogTitle sx={{ textAlign: 'center' }}>
+          {t('runs_table.run_diff.title', { defaultValue: 'Changes vs Previous Run' })}
+        </DialogTitle>
+        <DialogContent>
+          {isDiffLoading ? (
+            <Box display="flex" justifyContent="center" py={4}>
+              <CircularProgress size={24} />
+            </Box>
+          ) : !diffData ? (
+            <DialogContentText>
+              {t('runs_table.run_diff.no_previous_run', { defaultValue: 'No previous run found to compare against.' })}
+            </DialogContentText>
+          ) : !hasDiff ? (
+            <DialogContentText>
+              {t('runs_table.run_diff.no_changes', { defaultValue: 'No differences found between these runs.' })}
+            </DialogContentText>
+          ) : (
+            <Box sx={{ display: 'flex', gap: 2, maxHeight: '60vh' }}>
+              <Box sx={{ flex: 1, overflow: 'auto' }}>
+                <Typography variant="subtitle2" align="center" gutterBottom>
+                  {t('runs_table.run_diff.previous_run', { defaultValue: 'Previous Run' })}
+                </Typography>
+                <Box component="pre" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: 13, m: 0 }}>
+                  {diffParts.map((part, i) => part.added ? null : (
+                    <Box key={i} component="span" sx={{ display: 'block', backgroundColor: part.removed ? alpha(theme.palette.error.main, 0.12) : 'transparent' }}>
+                      {part.value}
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+              <Box sx={{ flex: 1, overflow: 'auto' }}>
+                <Typography variant="subtitle2" align="center" gutterBottom>
+                  {t('runs_table.run_diff.current_run', { defaultValue: 'Current Run' })}
+                </Typography>
+                <Box component="pre" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: 13, m: 0 }}>
+                  {diffParts.map((part, i) => part.removed ? null : (
+                    <Box key={i} component="span" sx={{ display: 'block', backgroundColor: part.added ? alpha(theme.palette.success.main, 0.12) : 'transparent' }}>
+                      {part.value}
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDiff}>
+            {t('runs_table.run_diff.close', { defaultValue: 'Close' })}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </React.Fragment>
   );
 }
