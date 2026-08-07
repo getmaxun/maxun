@@ -346,12 +346,13 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
               });
 
               if (previousRun) {
+                const normalize = (s: string) => s.replace(/\s+/g, ' ').trim();
                 // extract previous text
                 const previousText = previousRun.serializableOutput?.text?.[0]?.content;
                 // extract current text
                 const currentText = serializableOutput.text[0]?.content;
                 // compare the 2 strings
-                const hasChanged = previousText !== undefined && previousText !== currentText;
+                const hasChanged = previousText !== undefined && normalize(previousText) !== normalize(currentText || '');
 
                 // when the text changed, update the current run's database record
                 if (hasChanged) {
