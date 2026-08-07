@@ -1543,7 +1543,7 @@ const documentUpload = multer({
     },
 });
 
-const DOC_PARSE_FORMATS: OutputFormats[] = ['markdown', 'html', 'links'];
+const DOC_PARSE_FORMATS: OutputFormats[] = ['markdown', 'html', 'links', 'summary'];
 
 /**
  * Create a document extraction robot from an uploaded file
@@ -1646,6 +1646,17 @@ router.post("/sdk/robots/document-parse", requireAPIKey, documentUpload.single('
             ? (requestedFormats as OutputFormats[])
             : [...DOC_PARSE_FORMATS];
 
+        const llmConfigInput = readLlmConfig(req.body);
+        if (formatsRequireLlm(outputFormats)) {
+            const llmValidationError = validateRequiredLlmConfig(
+                llmConfigInput,
+                'The "summary" output format'
+            );
+            if (llmValidationError) {
+                return res.status(400).json(llmValidationError);
+            }
+        }
+
         const robotName = (typeof req.body.robotName === 'string' ? req.body.robotName.trim() : '')
             || `Doc Parse: ${file.originalname}`;
 
@@ -1656,12 +1667,16 @@ router.post("/sdk/robots/document-parse", requireAPIKey, documentUpload.single('
             });
         }
 
-        const { robot, parsedOutput } = await createDocumentParseRobotRecord({
+        const { robot } = await createDocumentParseRobotRecord({
             pdfBuffer: file.buffer,
             originalFileName: file.originalname,
             robotName,
             outputFormats,
             userId: user.id,
+            llmProvider: llmConfigInput.provider as 'anthropic' | 'openai' | 'ollama' | undefined,
+            llmModel: typeof llmConfigInput.model === 'string' ? llmConfigInput.model : undefined,
+            llmApiKey: typeof llmConfigInput.apiKey === 'string' ? llmConfigInput.apiKey : undefined,
+            llmBaseUrl: typeof llmConfigInput.baseUrl === 'string' ? llmConfigInput.baseUrl : undefined,
         });
 
         logger.info(`[SDK] Document parse robot created: ${robot.recording_meta?.id}`);
@@ -1674,7 +1689,6 @@ router.post("/sdk/robots/document-parse", requireAPIKey, documentUpload.single('
         return res.status(201).json({
             success: true,
             data: robot,
-            parsedOutput,
         });
     } catch (error: any) {
         if (error.name === 'SequelizeUniqueConstraintError' || error.parent?.code === '23505') {

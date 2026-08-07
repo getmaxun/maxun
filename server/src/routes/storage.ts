@@ -2220,7 +2220,7 @@ router.post(
         return res.status(409).json({ error: `A robot with the name "${finalName}" already exists.` });
       }
 
-      const { robot, parsedOutput } = await createDocumentParseRobotRecord({
+      const { robot } = await createDocumentParseRobotRecord({
         pdfBuffer: file.buffer,
         originalFileName: file.originalname,
         robotName: finalName,
@@ -2240,7 +2240,6 @@ router.post(
       return res.status(201).json({
         message: 'Document parse robot created successfully.',
         robot,
-        parsedOutput,
       });
     } catch (error: any) {
       if (error.name === 'SequelizeUniqueConstraintError' || error.parent?.code === '23505') {
