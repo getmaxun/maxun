@@ -2240,7 +2240,6 @@ router.post(
       return res.status(201).json({
         message: 'Document parse robot created successfully.',
         robot,
-        parsedOutput,
       });
     } catch (error: any) {
       if (error.name === 'SequelizeUniqueConstraintError' || error.parent?.code === '23505') {
