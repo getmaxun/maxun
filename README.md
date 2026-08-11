@@ -66,7 +66,7 @@ The most reliable proxy provider for web scrapping with the Highest Quality IP o
 <tr>
 <td width="30%" height="100">
 <a href="https://www.novada.com/?github-maxun">
-  <img src="https://github.com/user-attachments/assets/68262e31-639a-4d36-a281-e50b68fcdc92" alt="Novada" width="300" height="150">
+  <img src="https://github.com/user-attachments/assets/68262e31-639a-4d36-a281-e50b68fcdc92" alt="Novada"  width="350" height="150">
 </a>
 </td>
 <td width="70%">
@@ -97,7 +97,7 @@ CoreClaw — Production-ready Web Data APIs for AI agents and developers. Extrac
 <tr>
 <td width="30%" height="100">
 <a href="https://www.testmuai.com/?utm_medium=sponsor&utm_source=maxun">
-  <img src="https://github.com/user-attachments/assets/6c96005b-85df-43e0-9b63-96aaca676c11" alt="TestMu AI" width="300" height="150">
+  <img src="https://github.com/user-attachments/assets/6c96005b-85df-43e0-9b63-96aaca676c11" alt="TestMu AI"  width="350" height="150">
 </a>
 </td>
 <td width="70%">
