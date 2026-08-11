@@ -31,6 +31,7 @@ import multer from 'multer';
 import { MAX_FILE_SIZE_BYTES } from '../workflow-management/classes/DocumentInterpreter';
 import { createDocumentRobotRecord } from '../utils/document/createDocumentRobotRecord';
 import { createDocumentParseRobotRecord } from '../utils/document/createDocumentParseRobotRecord';
+import { normalizeDocumentMimeType, PDF_MIME_TYPE } from '../utils/document/documentFile';
 
 const router = Router();
 
@@ -1580,7 +1581,8 @@ router.post("/sdk/robots/document", requireAPIKey, documentUpload.single('file')
         }
 
         const { robot, extractionSchema } = await createDocumentRobotRecord({
-            pdfBuffer: file.buffer,
+            documentBuffer: file.buffer,
+            documentMimeType: normalizeDocumentMimeType(file.mimetype, file.originalname) || PDF_MIME_TYPE,
             originalFileName: file.originalname,
             prompt,
             robotName,
@@ -1667,8 +1669,9 @@ router.post("/sdk/robots/document-parse", requireAPIKey, documentUpload.single('
             });
         }
 
-        const { robot } = await createDocumentParseRobotRecord({
-            pdfBuffer: file.buffer,
+        const { robot, parsedOutput } = await createDocumentParseRobotRecord({
+            documentBuffer: file.buffer,
+            documentMimeType: normalizeDocumentMimeType(file.mimetype, file.originalname) || PDF_MIME_TYPE,
             originalFileName: file.originalname,
             robotName,
             outputFormats,

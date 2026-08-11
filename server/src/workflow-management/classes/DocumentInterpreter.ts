@@ -2,10 +2,13 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import Anthropic from '@anthropic-ai/sdk';
+import mammoth from 'mammoth';
 import { PDFParse } from 'pdf-parse';
 import type { PaddleOcrResult } from 'ppu-paddle-ocr';
 import logger from '../../logger';
 import { OutputFormats } from '../../constants/output-formats';
+import { parseMarkdown } from '../../markdownify/markdown';
+import { DOCX_MIME_TYPE, PDF_MIME_TYPE, XLSX_MIME_TYPE, CSV_MIME_TYPE } from '../../utils/document/documentFile';
 
 import * as XLSX from 'xlsx';
 
@@ -47,6 +50,7 @@ interface ParsedDocument {
   pageCount: number;
   pages: ParsedPage[];
   tables: string[][][];
+  sourceHtml?: string;
 }
 
 interface ExtractionResult {
@@ -1389,6 +1393,22 @@ export class DocumentInterpreter {
     };
   }
 
+  private static async parseDOCX(buffer: Buffer): Promise<ParsedDocument> {
+    const [rawTextResult, htmlResult] = await Promise.all([
+      mammoth.extractRawText({ buffer }),
+      mammoth.convertToHtml({ buffer }),
+    ]);
+
+    const text = cleanText(rawTextResult.value || '');
+    return {
+      text,
+      pageCount: 1,
+      pages: [{ pageNumber: 1, text }],
+      tables: [],
+      sourceHtml: (htmlResult.value || '').trim(),
+    };
+  }
+
   private static buildSchemaPrompt(
     prompt: string,
     sampleText: string
@@ -1472,8 +1492,8 @@ export class DocumentInterpreter {
     return { systemPrompt, userPrompt };
   }
 
-  static async extractText(buffer: Buffer): Promise<{ text: string; pageCount: number }> {
-    const parsed = await this.parseDocument(buffer);
+  static async extractText(buffer: Buffer, documentMimeType: string = PDF_MIME_TYPE): Promise<{ text: string; pageCount: number }> {
+    const parsed = await this.parseDocument(buffer, documentMimeType);
     return { text: parsed.text, pageCount: parsed.pageCount };
   }
 
@@ -1517,37 +1537,27 @@ export class DocumentInterpreter {
     }
   }
 
-  private static async parseDocument(buffer: Buffer): Promise<ParsedDocument> {
-    const signature = buffer.subarray(0, 8).toString('latin1');
-    const textPreview = buffer.subarray(0, 2048).toString('utf8');
-
-    const isPdf = signature.startsWith('%PDF');
-    const isXlsx =
-      buffer.length >= 4 &&
-      buffer[0] === 0x50 &&
-      buffer[1] === 0x4b &&
-      buffer[2] === 0x03 &&
-      buffer[3] === 0x04;
-    const isCsv = !isPdf && !isXlsx && /[\r\n,]/.test(textPreview);
-
-    if (isPdf) {
-      return this.parsePDF(buffer);
-    } else if (isXlsx) {
-      return this.parseXLSX(buffer);
-    } else if (isCsv) {
-      return this.parseCSV(buffer);
-    } else {
-      return this.parsePDF(buffer);
+  private static async parseDocument(buffer: Buffer, documentMimeType: string = PDF_MIME_TYPE): Promise<ParsedDocument> {
+    if (documentMimeType === DOCX_MIME_TYPE) {
+      return this.parseDOCX(buffer);
     }
+    if (documentMimeType === XLSX_MIME_TYPE) {
+      return this.parseXLSX(buffer);
+    }
+    if (documentMimeType === CSV_MIME_TYPE) {
+      return this.parseCSV(buffer);
+    }
+    return this.parsePDF(buffer);
   }
 
   static async extractData(
     buffer: Buffer,
     prompt: string,
     extractionSchema: Record<string, any>,
-    llmConfig?: LLMConfig
+    llmConfig?: LLMConfig,
+    documentMimeType: string = PDF_MIME_TYPE
   ): Promise<ExtractionResult> {
-    const parsedDocument = await this.parseDocument(buffer);
+    const parsedDocument = await this.parseDocument(buffer, documentMimeType);
     const schema = sanitizeSchema(extractionSchema, prompt);
     const chunks = buildChunks(parsedDocument.pages);
 
@@ -1587,7 +1597,11 @@ export class DocumentInterpreter {
     };
   }
 
-  private static toMarkdown(doc: ParsedDocument): string {
+  private static async toMarkdown(doc: ParsedDocument): Promise<string> {
+    if (doc.sourceHtml) {
+      return parseMarkdown(doc.sourceHtml);
+    }
+
     const parts: string[] = [];
 
     for (const page of doc.pages) {
@@ -1611,6 +1625,8 @@ export class DocumentInterpreter {
   }
 
   private static toHtml(doc: ParsedDocument): string {
+    if (doc.sourceHtml) return doc.sourceHtml;
+
     const parts: string[] = ['<article>'];
 
     for (const page of doc.pages) {
@@ -1640,26 +1656,36 @@ export class DocumentInterpreter {
     return parts.join('\n');
   }
 
-  private static extractLinks(text: string): string[] {
+  private static extractLinks(text: string, sourceHtml?: string): string[] {
     const urlPattern = /https?:\/\/[^\s<>"')\]]+/g;
     const raw = text.match(urlPattern) || [];
-    return [...new Set(raw.map((url) => url.replace(/[.,;:!?]+$/, '')))];
+    const htmlLinks = sourceHtml
+      ? Array.from(sourceHtml.matchAll(/href\s*=\s*["']([^"']+)["']/gi))
+          .map((match) => match[1])
+          .filter((href) => /^https?:\/\//i.test(href))
+      : [];
+
+    return [...new Set([
+      ...raw.map((url) => url.replace(/[.,;:!?]+$/, '')),
+      ...htmlLinks,
+    ])];
   }
 
   static async parse(
     buffer: Buffer,
     outputFormats: OutputFormats[],
+    documentMimeType: string = PDF_MIME_TYPE,
     llmConfig?: LLMConfig
   ): Promise<ParsedOutput> {
-    const parsed = await this.parseDocument(buffer);
+    const parsed = await this.parseDocument(buffer, documentMimeType);
     const result: ParsedOutput = { pageCount: parsed.pageCount };
 
-    if (outputFormats.includes('markdown')) result.markdown = this.toMarkdown(parsed);
+    if (outputFormats.includes('markdown')) result.markdown = await this.toMarkdown(parsed);
     if (outputFormats.includes('html')) result.html = this.toHtml(parsed);
-    if (outputFormats.includes('links')) result.links = this.extractLinks(parsed.text);
+    if (outputFormats.includes('links')) result.links = this.extractLinks(parsed.text, parsed.sourceHtml);
 
     if (outputFormats.includes('summary')) {
-      const documentText = result.markdown || this.toMarkdown(parsed);
+      const documentText = result.markdown || await this.toMarkdown(parsed);
       if (documentText.trim()) {
         try {
           const { summarizeMarkdown } = require('../../utils/summarizer');

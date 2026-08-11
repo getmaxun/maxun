@@ -1,15 +1,16 @@
-import path from 'path';
 import { v4 as uuid } from 'uuid';
 import Robot from '../../models/Robot';
-import { LLMConfig } from '../../workflow-management/classes/DocumentInterpreter';
+import { DocumentInterpreter, LLMConfig, ParsedOutput } from '../../workflow-management/classes/DocumentInterpreter';
 import { uploadDocumentToMinio } from '../../storage/mino';
 import { encrypt } from '../auth';
 import logger from '../../logger';
 import { OutputFormats } from '../../constants/output-formats';
+import { getDocumentExtensionForMimeType } from './documentFile';
 
 export interface CreateDocumentParseRobotParams {
-  pdfBuffer: Buffer;
+  documentBuffer: Buffer;
   originalFileName: string;
+  documentMimeType: string;
   robotName: string;
   outputFormats: OutputFormats[];
   userId: number;
@@ -22,14 +23,16 @@ export interface CreateDocumentParseRobotParams {
 
 export interface CreateDocumentParseRobotResult {
   robot: any;
+  parsedOutput: ParsedOutput;
 }
 
 export async function createDocumentParseRobotRecord(
   params: CreateDocumentParseRobotParams
 ): Promise<CreateDocumentParseRobotResult> {
   const {
-    pdfBuffer,
+    documentBuffer,
     originalFileName,
+    documentMimeType,
     robotName,
     outputFormats,
     userId,
@@ -39,12 +42,21 @@ export async function createDocumentParseRobotRecord(
     llmBaseUrl,
   } = params;
 
+  const llmConfig: LLMConfig = {
+    provider: llmProvider || 'ollama',
+    model: llmModel,
+    apiKey: llmApiKey,
+    baseUrl: llmBaseUrl,
+  };
+
+  const parsedOutput = await DocumentInterpreter.parse(documentBuffer, outputFormats, documentMimeType, llmConfig);
+
   const robotId = uuid();
   const now = new Date().toISOString();
-  const extension = path.extname(originalFileName || '').toLowerCase() || '.pdf';
-  const documentKey = `documents/${robotId}/document${extension}`;
+  const documentExtension = getDocumentExtensionForMimeType(documentMimeType);
+  const documentKey = `documents/${robotId}/document${documentExtension}`;
 
-  await uploadDocumentToMinio(documentKey, pdfBuffer);
+  await uploadDocumentToMinio(documentKey, documentBuffer, documentMimeType);
 
   const robot = await Robot.create({
     id: uuid(),
@@ -62,7 +74,9 @@ export async function createDocumentParseRobotRecord(
       workflow: [],
       outputFormats,
       documentKey,
+      documentMimeType,
       documentFileName: originalFileName,
+      parsedOutput,
       llmProvider: llmProvider || 'ollama',
       llmModel: llmModel || null,
       llmApiKey: llmApiKey ? encrypt(llmApiKey) : null,
@@ -71,5 +85,5 @@ export async function createDocumentParseRobotRecord(
   } as any);
 
   logger.info(`[document-parse robot] Created robot ${robotId} for user ${userId}`);
-  return { robot };
+  return { robot, parsedOutput };
 }
