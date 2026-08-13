@@ -6,6 +6,7 @@ import { browserPool, io as serverIo } from "../../server";
 import { addGoogleSheetUpdateTask, processGoogleSheetUpdates } from "../integrations/gsheet";
 import Robot from "../../models/Robot";
 import Run from "../../models/Run";
+import { Op } from 'sequelize';
 import { getDecryptedProxyConfig } from "../../routes/proxy";
 import { BinaryOutputService } from "../../storage/mino";
 import { capture } from "../../utils/analytics";
@@ -441,6 +442,29 @@ async function executeRun(id: string, userId: string) {
           binaryOutput,
         });
 
+        if ((recording.recording_meta as any).compareRuns && serializableOutput.text) {
+          try {
+            const normalize = (s: string) => s.replace(/\s+/g, ' ').trim();
+            const previousRun = await Run.findOne({
+              where: { robotMetaId: plainRun.robotMetaId, status: 'success', runId: { [Op.ne]: plainRun.runId } },
+              order: [['finishedAt', 'DESC']],
+            });
+
+            if (previousRun) {
+              const previousText = previousRun.serializableOutput?.text?.[0]?.content;
+              const currentText = serializableOutput.text[0]?.content;
+              const hasChanged = previousText !== undefined && normalize(previousText) !== normalize(currentText || '');
+
+              if (hasChanged) {
+                await run.update({ hasChanges: true });
+                logger.log('info', `Scheduled run ${plainRun.runId} has changes compared to previous run ${previousRun.runId}`);
+              }
+            }
+          } catch (compareError: any) {
+            logger.log('warn', `Run comparison failed for scheduled run ${plainRun.runId}: ${compareError.message}`);
+          }
+        }
+
         let uploadedBinaryOutput: Record<string, string> = {};
         if (Object.keys(binaryOutput).length > 0) {
           const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
@@ -457,7 +481,8 @@ async function executeRun(id: string, userId: string) {
             robotMetaId: plainRun.robotMetaId,
             robotName: recording.recording_meta.name,
             status: 'success',
-            finishedAt: new Date().toLocaleString()
+            finishedAt: new Date().toLocaleString(),
+            hasChanges: !!run.hasChanges,
           };
 
           serverIo.of(plainRun.browserId).emit('run-completed', completionData);

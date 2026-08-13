@@ -119,6 +119,7 @@ export const updateRecording = async (id: string, data: {
   targetUrl?: string;
   workflow?: any[];
   formats?: OutputFormats[];
+  compareRuns?: boolean;
   promptLlmProvider?: 'anthropic' | 'openai' | 'ollama';
   promptLlmModel?: string;
   promptLlmApiKey?: string;
@@ -168,6 +169,24 @@ export const getStoredRun = async (id: string): Promise<any | null> => {
     }
   } catch (error: any) {
     console.log(error);
+    return null;
+  }
+};
+
+export interface RunDiffResponse {
+  currentRunId: string;
+  previousRunId: string;
+  currentText: string;
+  previousText: string;
+}
+
+export const getRunDiff = async (id: string): Promise<RunDiffResponse | null> => {
+  try {
+    const response = await axios.get(`${apiUrl}/storage/runs/${id}/diff`);
+    if (response.status === 200) {return response.data;}
+    else {throw new Error(`Couldn't retrieve diff for run ${id}`);}
+  }
+  catch (error: any) {console.log(error);
     return null;
   }
 };

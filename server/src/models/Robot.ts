@@ -13,6 +13,7 @@ interface RobotMeta {
   type?: 'extract' | 'scrape' | 'crawl' | 'search' | 'doc-extract' | 'doc-parse';
   url?: string;
   formats?: OutputFormats[];
+  compareRuns?: boolean;
   isLLM?: boolean;
   promptInstructions?: string;
   promptLlmProvider?: 'anthropic' | 'openai' | 'ollama';

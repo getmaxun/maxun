@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import * as React from "react";
 import TableRow from "@mui/material/TableRow";
 import TableCell from "@mui/material/TableCell";
@@ -11,13 +11,14 @@ import {
 } from "@mui/material";
 import { Button } from "@mui/material";
 import { DeleteForever, KeyboardArrowDown, KeyboardArrowUp, Settings } from "@mui/icons-material";
-import { deleteRunFromStorage, getStoredRun } from "../../api/storage";
+import { deleteRunFromStorage, getStoredRun, getRunDiff, RunDiffResponse } from "../../api/storage";
 import { columns, Data } from "./RunsTable";
 import { RunContent } from "./RunContent";
 import { getUserById } from "../../api/auth";
 import { useTranslation } from "react-i18next";
-import { useTheme } from "@mui/material/styles";
+import { useTheme, alpha } from "@mui/material/styles";
 import { getOrCreateBrowserSocket, releaseBrowserSocket } from "../../utils/browserSocket";
+import { diffLines, Change } from "diff";
 
 interface RunTypeChipProps {
   runByUserId?: string;
@@ -58,6 +59,29 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [runDetails, setRunDetails] = useState<Data>(row);
   const [isLoadingRunDetails, setIsLoadingRunDetails] = useState(false);
+  const [diffOpen, setDiffOpen] = useState(false);
+  const [diffData, setDiffData] = useState<RunDiffResponse | null>(null);
+  const [isDiffLoading, setIsDiffLoading] = useState(false);
+
+  const handleOpenDiff = async () => {
+    setDiffOpen(true);
+    setIsDiffLoading(true);
+    const data = await getRunDiff(row.runId);
+    setDiffData(data);
+    setIsDiffLoading(false);
+  };
+
+  const handleCloseDiff = () => {
+    setDiffOpen(false);
+    setDiffData(null);
+  };
+
+  const diffParts = useMemo<Change[]>(() => {
+    if (!diffData) return [];
+    return diffLines(diffData.previousText, diffData.currentText, { ignoreWhitespace: true });
+  }, [diffData]);
+
+  const hasDiff = diffParts.some((part) => part.added || part.removed);
   const runByLabel = row.runByScheduleId
     ? `${row.runByScheduleId}`
     : row.runByUserId
@@ -198,6 +222,16 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                 return (
                   <TableCell key={column.id} align={column.align}>
                     {row.status === 'success' && <Chip label={t('runs_table.run_status_chips.success')} color="success" variant="outlined" />}
+                    {row.status === 'success' && row.hasChanges && (
+                      <Chip
+                        label={t('runs_table.run_diff.changed_chip', { defaultValue: 'Changed' })}
+                        color="info"
+                        variant="outlined"
+                        size="small"
+                        onClick={handleOpenDiff}
+                        sx={{ ml: 1, cursor: 'pointer' }}
+                      />
+                    )}
                     {row.status === 'running' && <Chip label={t('runs_table.run_status_chips.running')} color="warning" variant="outlined" />}
                     {row.status === 'scheduled' && <Chip label={t('runs_table.run_status_chips.scheduled')} variant="outlined" />}
                     {row.status === 'queued' && <Chip label={t('runs_table.run_status_chips.queued')} variant="outlined" />}
@@ -360,6 +394,59 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
             color="error"
           >
             {t('common.delete', { defaultValue: 'Delete' })}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={diffOpen} onClose={handleCloseDiff} maxWidth="lg" fullWidth>
+        <DialogTitle sx={{ textAlign: 'center' }}>
+          {t('runs_table.run_diff.title', { defaultValue: 'Changes vs Previous Run' })}
+        </DialogTitle>
+        <DialogContent>
+          {isDiffLoading ? (
+            <Box display="flex" justifyContent="center" py={4}>
+              <CircularProgress size={24} />
+            </Box>
+          ) : !diffData ? (
+            <DialogContentText>
+              {t('runs_table.run_diff.no_previous_run', { defaultValue: 'No previous run found to compare against.' })}
+            </DialogContentText>
+          ) : !hasDiff ? (
+            <DialogContentText>
+              {t('runs_table.run_diff.no_changes', { defaultValue: 'No differences found between these runs.' })}
+            </DialogContentText>
+          ) : (
+            <Box sx={{ display: 'flex', gap: 2, maxHeight: '60vh' }}>
+              <Box sx={{ flex: 1, overflow: 'auto' }}>
+                <Typography variant="subtitle2" align="center" gutterBottom>
+                  {t('runs_table.run_diff.previous_run', { defaultValue: 'Previous Run' })}
+                </Typography>
+                <Box component="pre" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: 13, m: 0 }}>
+                  {diffParts.map((part, i) => part.added ? null : (
+                    <Box key={i} component="span" sx={{ display: 'block', backgroundColor: part.removed ? alpha(theme.palette.error.main, 0.12) : 'transparent' }}>
+                      {part.value}
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+              <Box sx={{ flex: 1, overflow: 'auto' }}>
+                <Typography variant="subtitle2" align="center" gutterBottom>
+                  {t('runs_table.run_diff.current_run', { defaultValue: 'Current Run' })}
+                </Typography>
+                <Box component="pre" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: 13, m: 0 }}>
+                  {diffParts.map((part, i) => part.removed ? null : (
+                    <Box key={i} component="span" sx={{ display: 'block', backgroundColor: part.added ? alpha(theme.palette.success.main, 0.12) : 'transparent' }}>
+                      {part.value}
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDiff}>
+            {t('runs_table.run_diff.close', { defaultValue: 'Close' })}
           </Button>
         </DialogActions>
       </Dialog>
