@@ -557,6 +557,7 @@ async function executeRun(id: string, userId: string) {
       }
     }
 
+    await run.update({ status: 'running' });
     plainRun.status = 'running';
 
     try {
