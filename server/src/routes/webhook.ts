@@ -123,7 +123,7 @@ router.post('/update', requireSignIn, async (req: Request, res: Response) => {
             return res.status(400).json({ ok: false, error: 'Webhook configuration, webhook ID, and robot ID are required' });
         }
 
-        if (webhook.url) {
+        if ('url' in webhook) {
             const urlCheck = await validateWebhookUrl(webhook.url);
             if (!urlCheck.safe) {
                 return res.status(400).json({ ok: false, error: urlCheck.reason || 'Invalid webhook URL' });
