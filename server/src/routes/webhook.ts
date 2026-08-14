@@ -3,6 +3,7 @@ import Robot from '../models/Robot';
 import { requireSignIn } from '../middlewares/auth';
 import axios from 'axios';
 import { v4 as uuid } from "uuid";
+import { validateWebhookUrl, WEBHOOK_REQUEST_OPTIONS } from '../utils/webhook-url';
 
 export const router = Router();
 
@@ -64,11 +65,9 @@ router.post('/add', requireSignIn, async (req: Request, res: Response) => {
             return res.status(400).json({ ok: false, error: 'Webhook URL is required' });
         }
 
-        // Validate URL format
-        try {
-            new URL(webhook.url);
-        } catch (error) {
-            return res.status(400).json({ ok: false, error: 'Invalid webhook URL format' });
+        const urlCheck = await validateWebhookUrl(webhook.url);
+        if (!urlCheck.safe) {
+            return res.status(400).json({ ok: false, error: urlCheck.reason || 'Invalid webhook URL' });
         }
 
         const robot = await Robot.findOne({ where: { 'recording_meta.id': robotId } });
@@ -124,12 +123,10 @@ router.post('/update', requireSignIn, async (req: Request, res: Response) => {
             return res.status(400).json({ ok: false, error: 'Webhook configuration, webhook ID, and robot ID are required' });
         }
 
-        // Validate URL format if provided
         if (webhook.url) {
-            try {
-                new URL(webhook.url);
-            } catch (error) {
-                return res.status(400).json({ ok: false, error: 'Invalid webhook URL format' });
+            const urlCheck = await validateWebhookUrl(webhook.url);
+            if (!urlCheck.safe) {
+                return res.status(400).json({ ok: false, error: urlCheck.reason || 'Invalid webhook URL' });
             }
         }
 
@@ -263,6 +260,15 @@ router.post('/test', requireSignIn, async (req: Request, res: Response) => {
             return res.status(400).json({ ok: false, error: 'Webhook configuration and robot ID are required' });
         }
 
+        if (!webhook.url) {
+            return res.status(400).json({ ok: false, error: 'Webhook URL is required' });
+        }
+
+        const urlCheck = await validateWebhookUrl(webhook.url);
+        if (!urlCheck.safe) {
+            return res.status(400).json({ ok: false, error: urlCheck.reason || 'Invalid webhook URL' });
+        }
+
         const robot = await Robot.findOne({ where: { 'recording_meta.id': robotId } });
 
         if (!robot) {
@@ -356,8 +362,9 @@ router.post('/test', requireSignIn, async (req: Request, res: Response) => {
         await updateWebhookLastCalled(robotId, webhook.id);
 
         const response = await axios.post(webhook.url, testPayload, {
+            ...WEBHOOK_REQUEST_OPTIONS,
             timeout: (webhook.timeout || 30) * 1000,
-            validateStatus: (status) => status < 500 
+            validateStatus: (status) => status < 500
         });
 
         const success = response.status >= 200 && response.status < 300;
@@ -440,9 +447,16 @@ const sendWebhookWithRetry = async (robotId: string, webhook: WebhookConfig, pay
     const timeout = webhook.timeout || 30;
 
     try {
+        const urlCheck = await validateWebhookUrl(webhook.url);
+        if (!urlCheck.safe) {
+            console.error(`Webhook ${webhook.url} refused: ${urlCheck.reason}`);
+            return;
+        }
+
         await updateWebhookLastCalled(robotId, webhook.id);
 
         const response = await axios.post(webhook.url, payload, {
+            ...WEBHOOK_REQUEST_OPTIONS,
             timeout: timeout * 1000,
             validateStatus: (status) => status >= 200 && status < 300
         });
