@@ -207,3 +207,23 @@ export const selectBestUrlTool: Tool = {
     required: ['selectedIndex', 'confidence', 'reasoning'],
   },
 };
+
+/**
+ * Used by isMultiSitePrompt to classify whether a scraping request needs
+ * data from multiple different websites/domains, versus a single site.
+ */
+export const classifyMultiSitePromptTool: Tool = {
+  name: 'classify_multi_site_prompt',
+  description:
+    'Classify whether a web scraping request needs data gathered from multiple different websites/domains, versus a single specific website.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      multiSite: {
+        type: 'boolean',
+        description: 'True if the request implies multiple websites/domains; false for a single site.',
+      },
+    },
+    required: ['multiSite'],
+  },
+};

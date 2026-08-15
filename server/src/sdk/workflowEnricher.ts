@@ -13,7 +13,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { resolveOpenAiApiKey } from '../utils/llm-endpoint';
 import { LLM_AGENTS, guardLlmBaseUrl } from '../utils/llm-endpoint';
 import { callAnthropicWithTool } from './anthropicToolHelper';
-import { selectGroupCandidatesTool, assignFieldLabelsTool, filterFieldsByIntentTool, setListNameTool, verifyExtractionMatchTool, parseSearchIntentTool, selectBestUrlTool } from './anthropicTools';
+import { selectGroupCandidatesTool, assignFieldLabelsTool, filterFieldsByIntentTool, setListNameTool, verifyExtractionMatchTool, parseSearchIntentTool, selectBestUrlTool, classifyMultiSitePromptTool } from './anthropicTools';
 
 interface SimplifiedAction {
   action: string | typeof Symbol.asyncDispose;
@@ -2633,21 +2633,28 @@ multiSite = false when:
         llmResponse = response.data.message.content;
 
       } else if (provider === 'anthropic') {
-        const anthropic = new Anthropic({
-          apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
-        });
         const anthropicModel = resolveLlmModel(llmConfig?.model, 'anthropic');
 
-        const response = await anthropic.messages.create({
+        const decision = await callAnthropicWithTool<any>({
+          apiKey: llmConfig?.apiKey,
           model: anthropicModel,
-          max_tokens: 20,
+          maxTokens: 20,
           temperature: 0,
-          messages: [{ role: 'user', content: userMessage }],
-          system: systemPrompt
+          system: systemPrompt,
+          userMessage: userMessage,
+          tool: classifyMultiSitePromptTool,
         });
 
-        const textContent = response.content.find((c: any) => c.type === 'text');
-        llmResponse = textContent?.type === 'text' ? textContent.text : '';
+        if (typeof decision?.multiSite === 'boolean') {
+          logger.info(`[WorkflowEnricher] isMultiSitePrompt: ${decision.multiSite}`);
+          return decision.multiSite;
+        }
+
+        // Response received but not a valid boolean shape - fall through to
+        // the same silent `return false` the ollama/openai paths use below.
+        // Deliberately no log here, matching the original's silence for
+        // this specific case (only actual exceptions log, via the catch).
+        return false;
 
       } else if (provider === 'openai') {
         const openaiBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || 'https://api.openai.com/v1');
