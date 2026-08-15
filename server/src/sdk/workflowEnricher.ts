@@ -447,6 +447,18 @@ export class WorkflowEnricher {
           tool: selectGroupCandidatesTool,
         });
 
+        if (typeof decision.first !== 'number' || typeof decision.second !== 'number') {
+          throw new Error('Invalid response: first and second must be numbers');
+        }
+
+        if (typeof decision.reason !== 'string') {
+          throw new Error('Invalid response: reason must be a string');
+        }
+
+        if (decision.limit !== null && decision.limit !== undefined && typeof decision.limit !== 'number') {
+          throw new Error('Invalid response: limit must be a number or null');
+        }
+
         const limit = decision.limit || this.extractLimitFromPrompt(prompt) || null;
         const parsed = WorkflowEnricher.parseGroupCandidates(decision, elementGroups, limit);
         return WorkflowEnricher.buildDecisionFromCandidates(parsed.candidates, parsed.reasoning, limit);
@@ -1258,9 +1270,14 @@ Rules:
           throw new Error('Invalid response: confidence must be a number between 0 and 1');
         }
 
-        const filteredFields: Record<string, any> = {};
+        const filteredFields: Record<string, any> = Object.create(null);
         for (const fieldName of decision.selectedFields) {
-          if (labeledFields[fieldName]) {
+          if (
+            fieldName !== '__proto__' &&
+            fieldName !== 'constructor' &&
+            fieldName !== 'prototype' &&
+            Object.hasOwn(labeledFields, fieldName)
+          ) {
             filteredFields[fieldName] = labeledFields[fieldName];
           } else {
             logger.warn(`LLM selected field "${fieldName}" but it doesn't exist in labeled fields`);
@@ -2132,7 +2149,7 @@ Extract the search query, extraction goal, and limit. Return JSON only.`;
         if (
           typeof intent.searchQuery !== 'string' || intent.searchQuery.trim() === '' ||
           typeof intent.extractionGoal !== 'string' || intent.extractionGoal.trim() === '' ||
-          (intent.limit !== undefined && intent.limit !== null && (typeof intent.limit !== 'number' || !Number.isInteger(intent.limit)))
+          (intent.limit !== undefined && intent.limit !== null && (typeof intent.limit !== 'number' || !Number.isSafeInteger(intent.limit) || intent.limit <= 0))
         ) {
           throw new Error('Invalid intent parsing response - missing required fields');
         }
@@ -2188,7 +2205,7 @@ Extract the search query, extraction goal, and limit. Return JSON only.`;
       if (
         typeof intent.searchQuery !== 'string' || intent.searchQuery.trim() === '' ||
         typeof intent.extractionGoal !== 'string' || intent.extractionGoal.trim() === '' ||
-        (intent.limit !== undefined && intent.limit !== null && (typeof intent.limit !== 'number' || !Number.isInteger(intent.limit)))
+        (intent.limit !== undefined && intent.limit !== null && (typeof intent.limit !== 'number' || !Number.isSafeInteger(intent.limit) || intent.limit <= 0))
       ) {
         throw new Error('Invalid intent parsing response - missing required fields');
       }
