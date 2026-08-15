@@ -13,7 +13,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { resolveOpenAiApiKey } from '../utils/llm-endpoint';
 import { LLM_AGENTS, guardLlmBaseUrl } from '../utils/llm-endpoint';
 import { callAnthropicWithTool } from './anthropicToolHelper';
-import { selectGroupCandidatesTool, assignFieldLabelsTool, filterFieldsByIntentTool, setListNameTool } from './anthropicTools';
+import { selectGroupCandidatesTool, assignFieldLabelsTool, filterFieldsByIntentTool, setListNameTool, verifyExtractionMatchTool } from './anthropicTools';
 
 interface SimplifiedAction {
   action: string | typeof Symbol.asyncDispose;
@@ -1714,21 +1714,23 @@ Does this extraction match what the user asked for?`;
         llmResponse = response.data.message.content;
 
       } else if (provider === 'anthropic') {
-        const anthropic = new Anthropic({
-          apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
-        });
         const anthropicModel = resolveLlmModel(llmConfig?.model, 'anthropic');
 
-        const response = await anthropic.messages.create({
+        const decision = await callAnthropicWithTool<any>({
+          apiKey: llmConfig?.apiKey,
           model: anthropicModel,
-          max_tokens: 256,
+          maxTokens: 256,
           temperature: 0.1,
-          messages: [{ role: 'user', content: userMessage }],
-          system: systemPrompt
+          system: systemPrompt,
+          userMessage: userMessage,
+          tool: verifyExtractionMatchTool,
         });
 
-        const textContent = response.content.find((c: any) => c.type === 'text');
-        llmResponse = textContent?.type === 'text' ? textContent.text : '';
+        const matches = typeof decision.matches === 'boolean' ? decision.matches : true;
+        const confidence = typeof decision.confidence === 'number' ? decision.confidence : 0.5;
+        const reasoning = decision.reasoning || '';
+        logger.info(`[WorkflowEnricher] Verification result: matches=${matches} confidence=${confidence} - ${reasoning}`);
+        return { matches, confidence, reasoning };
 
       } else if (provider === 'openai') {
         const openaiBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || 'https://api.openai.com/v1');

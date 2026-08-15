@@ -114,3 +114,36 @@ export const setListNameTool: Tool = {
     required: ['listName'],
   },
 };
+
+/**
+ * Used by verifyWorkflowOutput to judge whether sample extracted rows
+ * actually match the user's request, versus being navigation/footer/ad/UI
+ * noise. required intentionally lists only 'matches' - matching the sibling
+ * Ollama jsonSchema exactly - because the call site treats confidence and
+ * reasoning as optional-with-defaults (typeof-guarded), not hard
+ * requirements.
+ */
+export const verifyExtractionMatchTool: Tool = {
+  name: 'verify_extraction_match',
+  description:
+    'Judge whether sample rows of extracted webpage data actually match what the user asked to scrape, versus being navigation/footer/ad/UI noise.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      matches: {
+        type: 'boolean',
+        description: 'True if the extracted samples match the user\'s request.',
+      },
+      confidence: {
+        type: 'number',
+        minimum: 0,
+        maximum: 1,
+      },
+      reasoning: {
+        type: 'string',
+        description: 'One sentence explaining the judgment.',
+      },
+    },
+    required: ['matches'],
+  },
+};
