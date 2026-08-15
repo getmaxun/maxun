@@ -13,7 +13,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { resolveOpenAiApiKey } from '../utils/llm-endpoint';
 import { LLM_AGENTS, guardLlmBaseUrl } from '../utils/llm-endpoint';
 import { callAnthropicWithTool } from './anthropicToolHelper';
-import { selectGroupCandidatesTool, assignFieldLabelsTool, filterFieldsByIntentTool } from './anthropicTools';
+import { selectGroupCandidatesTool, assignFieldLabelsTool, filterFieldsByIntentTool, setListNameTool } from './anthropicTools';
 
 interface SimplifiedAction {
   action: string | typeof Symbol.asyncDispose;
@@ -1533,24 +1533,21 @@ Return ONLY the list name, nothing else:`;
           return 'List 1';
         }
       } else if (provider === 'anthropic') {
-        const anthropic = new Anthropic({
-          apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
-        });
         const anthropicModel = resolveLlmModel(llmConfig?.model, 'anthropic');
 
-        const response = await anthropic.messages.create({
+        const decision = await callAnthropicWithTool<{ listName: string }>({
+          apiKey: llmConfig?.apiKey,
           model: anthropicModel,
-          max_tokens: 20,
+          maxTokens: 80, // was 20 - a JSON-wrapped {"listName": "..."} tool call needs
+                         // headroom beyond the prior bare-text budget, especially for
+                         // names near the 50-char validation ceiling below.
           temperature: 0.1,
-          messages: [{
-            role: 'user',
-            content: userPrompt
-          }],
-          system: systemPrompt
+          system: systemPrompt,
+          userMessage: userPrompt,
+          tool: setListNameTool,
         });
 
-        const textContent = response.content.find((c: any) => c.type === 'text');
-        llmResponse = textContent?.type === 'text' ? textContent.text : '';
+        llmResponse = decision.listName;
 
       } else if (provider === 'openai') {
         const openaiBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || 'https://api.openai.com/v1');

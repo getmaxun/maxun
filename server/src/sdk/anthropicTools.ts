@@ -92,3 +92,25 @@ export const filterFieldsByIntentTool: Tool = {
     required: ['selectedFields', 'confidence', 'reasoning'],
   },
 };
+
+/**
+ * Used by generateListName to produce a concise, Title Case name for a
+ * scraped data list. This is the only one of the tool-migrated call sites
+ * that replaces a free-text completion (not a JSON-shaped one) - the model
+ * previously replied with bare text like "Product Listings", not JSON.
+ */
+export const setListNameTool: Tool = {
+  name: 'set_list_name',
+  description:
+    'Provide a concise, descriptive, Title Case name (1-3 words) for a scraped data list, based on the user\'s request and the detected fields.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      listName: {
+        type: 'string',
+        description: 'The list name in Title Case, 1-3 words, no quotes or punctuation.',
+      },
+    },
+    required: ['listName'],
+  },
+};
