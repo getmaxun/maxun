@@ -9,7 +9,6 @@ import { createRemoteBrowserForValidation, destroyRemoteBrowser } from '../brows
 import logger from '../logger';
 import { v4 as uuid } from 'uuid';
 import { encrypt } from '../utils/auth';
-import Anthropic from '@anthropic-ai/sdk';
 import { resolveOpenAiApiKey } from '../utils/llm-endpoint';
 import { LLM_AGENTS, guardLlmBaseUrl } from '../utils/llm-endpoint';
 import { callAnthropicWithTool } from './anthropicToolHelper';
