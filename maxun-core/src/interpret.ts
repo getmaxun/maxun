@@ -3223,6 +3223,7 @@ export default class Interpreter extends EventEmitter {
    */
   public async run(page: Page, params?: ParamType): Promise<void> {
     this.log('Starting the workflow.', Level.LOG);
+    this.isAborted = false;
     const context = page.context();
 
     page.setDefaultNavigationTimeout(100000);
@@ -3294,8 +3295,9 @@ export default class Interpreter extends EventEmitter {
       this.namedResults = {};
       this.serializableDataByType = { scrapeList: {}, scrapeSchema: {}, crawl: {}, search: {} };
 
-      // Reset state
-      this.isAborted = false;
+      // Reset state (isAborted is intentionally NOT reset here — it must
+      // remain true so that in-flight crawl loops see the abort flag and exit.
+      // It is reset at the start of run() instead.)
       this.initializedWorkflow = null;
 
       this.log('Interpreter cleanup completed', Level.DEBUG);
