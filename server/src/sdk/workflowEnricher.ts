@@ -13,7 +13,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { resolveOpenAiApiKey } from '../utils/llm-endpoint';
 import { LLM_AGENTS, guardLlmBaseUrl } from '../utils/llm-endpoint';
 import { callAnthropicWithTool } from './anthropicToolHelper';
-import { selectGroupCandidatesTool, assignFieldLabelsTool, filterFieldsByIntentTool, setListNameTool, verifyExtractionMatchTool, parseSearchIntentTool, selectBestUrlTool, classifyMultiSitePromptTool } from './anthropicTools';
+import { selectGroupCandidatesTool, assignFieldLabelsTool, filterFieldsByIntentTool, setListNameTool, verifyExtractionMatchTool, parseSearchIntentTool, selectBestUrlTool, classifyMultiSitePromptTool, selectMultipleUrlsTool } from './anthropicTools';
 
 interface SimplifiedAction {
   action: string | typeof Symbol.asyncDispose;
@@ -2783,21 +2783,34 @@ Return ONLY valid JSON: {"selectedIndices": [0, 2, 5], "reasoning": "one-line ex
         llmResponse = response.data.message.content;
 
       } else if (provider === 'anthropic') {
-        const anthropic = new Anthropic({
-          apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
-        });
         const anthropicModel = resolveLlmModel(llmConfig?.model, 'anthropic');
 
-        const response = await anthropic.messages.create({
+        const decision = await callAnthropicWithTool<any>({
+          apiKey: llmConfig?.apiKey,
           model: anthropicModel,
-          max_tokens: 256,
+          maxTokens: 256,
           temperature: 0.1,
-          messages: [{ role: 'user', content: userMessage }],
-          system: systemPrompt
+          system: systemPrompt,
+          userMessage: userMessage,
+          tool: selectMultipleUrlsTool,
         });
 
-        const textContent = response.content.find((c: any) => c.type === 'text');
-        llmResponse = textContent?.type === 'text' ? textContent.text : '';
+        if (!Array.isArray(decision.selectedIndices) || decision.selectedIndices.length === 0) return fallback();
+
+        const seen = new Set<string>();
+        const result: Array<{ url: string; reasoning: string }> = [];
+        for (const idx of decision.selectedIndices) {
+          if (typeof idx !== 'number' || idx < 0 || idx >= searchResults.length) continue;
+          try {
+            const domain = new URL(searchResults[idx].url).hostname;
+            if (!seen.has(domain)) {
+              seen.add(domain);
+              result.push({ url: searchResults[idx].url, reasoning: decision.reasoning || '' });
+            }
+          } catch { }
+        }
+
+        return result.length >= 2 ? result : fallback();
 
       } else if (provider === 'openai') {
         const openaiBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || 'https://api.openai.com/v1');

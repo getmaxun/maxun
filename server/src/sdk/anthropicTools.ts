@@ -227,3 +227,29 @@ export const classifyMultiSitePromptTool: Tool = {
     required: ['multiSite'],
   },
 };
+
+/**
+ * Used by selectMultipleUrlsFromResults to choose up to N search result
+ * indices, each from a different domain, that together best satisfy a
+ * multi-site data extraction request.
+ */
+export const selectMultipleUrlsTool: Tool = {
+  name: 'select_multiple_urls',
+  description:
+    'Select up to N search result indices, each from a different domain, that together best satisfy a multi-site data extraction request.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      selectedIndices: {
+        type: 'array',
+        items: { type: 'integer' },
+        description: 'Indices of the selected search results, one per domain.',
+      },
+      reasoning: {
+        type: 'string',
+        description: 'One-line explanation of the selection.',
+      },
+    },
+    required: ['selectedIndices'],
+  },
+};
