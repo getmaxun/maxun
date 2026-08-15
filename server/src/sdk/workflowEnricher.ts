@@ -12,6 +12,8 @@ import { encrypt } from '../utils/auth';
 import Anthropic from '@anthropic-ai/sdk';
 import { resolveOpenAiApiKey } from '../utils/llm-endpoint';
 import { LLM_AGENTS, guardLlmBaseUrl } from '../utils/llm-endpoint';
+import { callAnthropicWithTool } from './anthropicToolHelper';
+import { selectGroupCandidatesTool } from './anthropicTools';
 
 interface SimplifiedAction {
   action: string | typeof Symbol.asyncDispose;
@@ -427,26 +429,28 @@ export class WorkflowEnricher {
         llmResponse = response.data.message.content;
 
       } else if (provider === 'anthropic') {
-        const anthropic = new Anthropic({
-          apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
-        });
         const anthropicModel = resolveLlmModel(llmConfig?.model, 'anthropic');
 
-        const response = await anthropic.messages.create({
+        const decision = await callAnthropicWithTool<{
+          first: number;
+          second: number;
+          reason: string;
+          limit: number | null;
+        }>({
+          apiKey: llmConfig?.apiKey,
           model: anthropicModel,
-          max_tokens: 1024,
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'image', source: { type: 'base64', media_type: 'image/png', data: screenshotBase64 } },
-              { type: 'text', text: userPrompt }
-            ]
-          }],
-          system: systemPrompt
+          maxTokens: 1024,
+          system: systemPrompt,
+          userMessage: [
+            { type: 'image', source: { type: 'base64', media_type: 'image/png', data: screenshotBase64 } },
+            { type: 'text', text: userPrompt }
+          ],
+          tool: selectGroupCandidatesTool,
         });
 
-        const textContent = response.content.find((c: any) => c.type === 'text');
-        llmResponse = textContent?.type === 'text' ? textContent.text : '';
+        const limit = decision.limit || this.extractLimitFromPrompt(prompt) || null;
+        const parsed = WorkflowEnricher.parseGroupCandidates(decision, elementGroups, limit);
+        return WorkflowEnricher.buildDecisionFromCandidates(parsed.candidates, parsed.reasoning, limit);
 
       } else if (provider === 'openai') {
         const openaiBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || 'https://api.openai.com/v1');
