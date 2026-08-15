@@ -178,3 +178,32 @@ export const parseSearchIntentTool: Tool = {
     required: ['searchQuery', 'extractionGoal'],
   },
 };
+
+/**
+ * Used by selectBestUrlFromResults to pick the single best search result
+ * index most likely to contain the data the user wants.
+ */
+export const selectBestUrlTool: Tool = {
+  name: 'select_best_url',
+  description:
+    'Select the single best search result index that is most likely to contain the data the user wants to extract.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      selectedIndex: {
+        type: 'integer',
+        description: 'Index of the best search result (0-based).',
+      },
+      confidence: {
+        type: 'number',
+        minimum: 0,
+        maximum: 1,
+      },
+      reasoning: {
+        type: 'string',
+        description: 'Brief explanation for the choice.',
+      },
+    },
+    required: ['selectedIndex', 'confidence', 'reasoning'],
+  },
+};

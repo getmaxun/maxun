@@ -13,7 +13,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { resolveOpenAiApiKey } from '../utils/llm-endpoint';
 import { LLM_AGENTS, guardLlmBaseUrl } from '../utils/llm-endpoint';
 import { callAnthropicWithTool } from './anthropicToolHelper';
-import { selectGroupCandidatesTool, assignFieldLabelsTool, filterFieldsByIntentTool, setListNameTool, verifyExtractionMatchTool, parseSearchIntentTool } from './anthropicTools';
+import { selectGroupCandidatesTool, assignFieldLabelsTool, filterFieldsByIntentTool, setListNameTool, verifyExtractionMatchTool, parseSearchIntentTool, selectBestUrlTool } from './anthropicTools';
 
 interface SimplifiedAction {
   action: string | typeof Symbol.asyncDispose;
@@ -2396,21 +2396,27 @@ Select the BEST result index (0-${searchResults.length - 1}). Return JSON only.`
         llmResponse = response.data.message.content;
 
       } else if (provider === 'anthropic') {
-        const anthropic = new Anthropic({
-          apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
-        });
         const anthropicModel = resolveLlmModel(llmConfig?.model, 'anthropic');
 
-        const response = await anthropic.messages.create({
+        const decision = await callAnthropicWithTool<any>({
+          apiKey: llmConfig?.apiKey,
           model: anthropicModel,
-          max_tokens: 256,
+          maxTokens: 256,
           temperature: 0.1,
-          messages: [{ role: 'user', content: userMessage }],
-          system: systemPrompt
+          system: systemPrompt,
+          userMessage: userMessage,
+          tool: selectBestUrlTool,
         });
 
-        const textContent = response.content.find((c: any) => c.type === 'text');
-        llmResponse = textContent?.type === 'text' ? textContent.text : '';
+        if (decision.selectedIndex === undefined || decision.selectedIndex < 0 || decision.selectedIndex >= searchResults.length) {
+          throw new Error(`Invalid selectedIndex: ${decision.selectedIndex}`);
+        }
+
+        return {
+          url: searchResults[decision.selectedIndex].url,
+          confidence: decision.confidence || 0.5,
+          reasoning: decision.reasoning || 'No reasoning provided'
+        };
 
       } else if (provider === 'openai') {
         const openaiBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || 'https://api.openai.com/v1');
