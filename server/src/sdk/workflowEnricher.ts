@@ -13,7 +13,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { resolveOpenAiApiKey } from '../utils/llm-endpoint';
 import { LLM_AGENTS, guardLlmBaseUrl } from '../utils/llm-endpoint';
 import { callAnthropicWithTool } from './anthropicToolHelper';
-import { selectGroupCandidatesTool } from './anthropicTools';
+import { selectGroupCandidatesTool, assignFieldLabelsTool } from './anthropicTools';
 
 interface SimplifiedAction {
   action: string | typeof Symbol.asyncDispose;
@@ -1010,24 +1010,40 @@ Return a JSON object with this exact structure:
         }
 
       } else if (provider === 'anthropic') {
-        const anthropic = new Anthropic({
-          apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
-        });
         const anthropicModel = resolveLlmModel(llmConfig?.model, 'anthropic');
 
-        const response = await anthropic.messages.create({
+        const decision = await callAnthropicWithTool<any>({
+          apiKey: llmConfig?.apiKey,
           model: anthropicModel,
-          max_tokens: 2048,
+          maxTokens: 2048,
           temperature: 0.1,
-          messages: [{
-            role: 'user',
-            content: userPrompt
-          }],
-          system: systemPrompt
+          system: systemPrompt,
+          userMessage: userPrompt,
+          tool: assignFieldLabelsTool,
         });
 
-        const textContent = response.content.find((c: any) => c.type === 'text');
-        llmResponse = textContent?.type === 'text' ? textContent.text : '';
+        let labelMapping: Record<string, string>;
+        if (decision.fieldLabels) {
+          labelMapping = decision.fieldLabels;
+        } else {
+          labelMapping = decision;
+        }
+
+        const missingLabels: string[] = [];
+        Object.keys(fieldSamplesBatch).forEach(genericLabel => {
+          if (!labelMapping[genericLabel]) {
+            missingLabels.push(genericLabel);
+          }
+        });
+
+        if (missingLabels.length > 0) {
+          logger.warn(`LLM did not provide labels for: ${missingLabels.join(', ')}`);
+          missingLabels.forEach(label => {
+            labelMapping[label] = label;
+          });
+        }
+
+        return labelMapping;
 
       } else if (provider === 'openai') {
         const openaiBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || 'https://api.openai.com/v1');
