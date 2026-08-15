@@ -147,3 +147,34 @@ export const verifyExtractionMatchTool: Tool = {
     required: ['matches'],
   },
 };
+
+/**
+ * Used by parseSearchIntent to extract a web search query, the extraction
+ * goal, and an optional item-count limit from a natural-language request.
+ * required intentionally lists only searchQuery/extractionGoal - matching
+ * the sibling Ollama jsonSchema exactly - limit stays optional since the
+ * call site treats an absent key and an explicit null identically.
+ */
+export const parseSearchIntentTool: Tool = {
+  name: 'parse_search_intent',
+  description:
+    'Extract a web search query, the extraction goal, and an optional item-count limit from a natural-language data extraction request.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      searchQuery: {
+        type: 'string',
+        description: 'The website/page to search for, suitable as a web search query.',
+      },
+      extractionGoal: {
+        type: 'string',
+        description: 'What data the user wants to extract.',
+      },
+      limit: {
+        type: ['integer', 'null'],
+        description: 'Item-count limit if specified, otherwise null.',
+      },
+    },
+    required: ['searchQuery', 'extractionGoal'],
+  },
+};
