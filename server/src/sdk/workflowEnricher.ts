@@ -441,7 +441,7 @@ export class WorkflowEnricher {
           maxTokens: 1024,
           system: systemPrompt,
           userMessage: [
-            { type: 'image', source: { type: 'base64', media_type: 'image/png', data: screenshotBase64 } },
+            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: screenshotBase64 } },
             { type: 'text', text: userPrompt }
           ],
           tool: selectGroupCandidatesTool,
@@ -2129,7 +2129,11 @@ Extract the search query, extraction goal, and limit. Return JSON only.`;
           tool: parseSearchIntentTool,
         });
 
-        if (!intent.searchQuery || !intent.extractionGoal) {
+        if (
+          typeof intent.searchQuery !== 'string' || intent.searchQuery.trim() === '' ||
+          typeof intent.extractionGoal !== 'string' || intent.extractionGoal.trim() === '' ||
+          (intent.limit !== undefined && intent.limit !== null && (typeof intent.limit !== 'number' || !Number.isInteger(intent.limit)))
+        ) {
           throw new Error('Invalid intent parsing response - missing required fields');
         }
 
@@ -2181,7 +2185,11 @@ Extract the search query, extraction goal, and limit. Return JSON only.`;
 
       const intent = JSON.parse(jsonStr);
 
-      if (!intent.searchQuery || !intent.extractionGoal) {
+      if (
+        typeof intent.searchQuery !== 'string' || intent.searchQuery.trim() === '' ||
+        typeof intent.extractionGoal !== 'string' || intent.extractionGoal.trim() === '' ||
+        (intent.limit !== undefined && intent.limit !== null && (typeof intent.limit !== 'number' || !Number.isInteger(intent.limit)))
+      ) {
         throw new Error('Invalid intent parsing response - missing required fields');
       }
 
@@ -2799,6 +2807,7 @@ Return ONLY valid JSON: {"selectedIndices": [0, 2, 5], "reasoning": "one-line ex
         const seen = new Set<string>();
         const result: Array<{ url: string; reasoning: string }> = [];
         for (const idx of decision.selectedIndices) {
+          if (result.length >= cap) break;
           if (typeof idx !== 'number' || idx < 0 || idx >= searchResults.length) continue;
           try {
             const domain = new URL(searchResults[idx].url).hostname;
