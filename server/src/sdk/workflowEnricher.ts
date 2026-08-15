@@ -13,7 +13,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { resolveOpenAiApiKey } from '../utils/llm-endpoint';
 import { LLM_AGENTS, guardLlmBaseUrl } from '../utils/llm-endpoint';
 import { callAnthropicWithTool } from './anthropicToolHelper';
-import { selectGroupCandidatesTool, assignFieldLabelsTool } from './anthropicTools';
+import { selectGroupCandidatesTool, assignFieldLabelsTool, filterFieldsByIntentTool } from './anthropicTools';
 
 interface SimplifiedAction {
   action: string | typeof Symbol.asyncDispose;
@@ -1239,24 +1239,43 @@ Rules:
         llmResponse = response.data.message.content;
 
       } else if (provider === 'anthropic') {
-        const anthropic = new Anthropic({
-          apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
-        });
         const anthropicModel = resolveLlmModel(llmConfig?.model, 'anthropic');
 
-        const response = await anthropic.messages.create({
+        const decision = await callAnthropicWithTool<any>({
+          apiKey: llmConfig?.apiKey,
           model: anthropicModel,
-          max_tokens: 1024,
+          maxTokens: 1024,
           temperature: 0.1,
-          messages: [{
-            role: 'user',
-            content: userPrompt
-          }],
-          system: systemPrompt
+          system: systemPrompt,
+          userMessage: userPrompt,
+          tool: filterFieldsByIntentTool,
         });
 
-        const textContent = response.content.find((c: any) => c.type === 'text');
-        llmResponse = textContent?.type === 'text' ? textContent.text : '';
+        if (!Array.isArray(decision.selectedFields)) {
+          throw new Error('Invalid response: selectedFields must be an array');
+        }
+
+        if (typeof decision.confidence !== 'number' || decision.confidence < 0 || decision.confidence > 1) {
+          throw new Error('Invalid response: confidence must be a number between 0 and 1');
+        }
+
+        const filteredFields: Record<string, any> = {};
+        for (const fieldName of decision.selectedFields) {
+          if (labeledFields[fieldName]) {
+            filteredFields[fieldName] = labeledFields[fieldName];
+          } else {
+            logger.warn(`LLM selected field "${fieldName}" but it doesn't exist in labeled fields`);
+          }
+        }
+
+        const needsUserConfirmation = decision.confidence < 0.8 || Object.keys(filteredFields).length === 0;
+
+        return {
+          selectedFields: filteredFields,
+          confidence: decision.confidence,
+          reasoning: decision.reasoning || 'No reasoning provided',
+          needsUserConfirmation
+        };
 
       } else if (provider === 'openai') {
         const openaiBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || 'https://api.openai.com/v1');

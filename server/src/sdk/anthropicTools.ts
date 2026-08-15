@@ -61,3 +61,34 @@ export const assignFieldLabelsTool: Tool = {
     required: ['fieldLabels'],
   },
 };
+
+/**
+ * Used by filterFieldsByIntent to select only the labeled fields that match
+ * the user's data-extraction intent, with a confidence score.
+ */
+export const filterFieldsByIntentTool: Tool = {
+  name: 'filter_fields_by_intent',
+  description:
+    'Select only the labeled fields that match the user\'s data-extraction intent, with a confidence score for the match.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      selectedFields: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Field names that match the user\'s intent.',
+      },
+      confidence: {
+        type: 'number',
+        minimum: 0,
+        maximum: 1,
+        description: '1.0 = exact match, 0.8+ = semantic match, <0.7 = uncertain.',
+      },
+      reasoning: {
+        type: 'string',
+        description: 'Which keywords from the request matched which fields.',
+      },
+    },
+    required: ['selectedFields', 'confidence', 'reasoning'],
+  },
+};
