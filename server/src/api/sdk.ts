@@ -26,6 +26,9 @@ import {
 } from '../constants/output-formats';
 import sequelizeInstance from '../storage/db';
 import { Op } from 'sequelize';
+import {normalizeRobotUrl,normalizeWorkflowUrls,applyWorkflowLimits } from '../utils/robot-updates';
+
+
 
 const router = Router();
 
@@ -65,79 +68,9 @@ const normalizeUrl = (raw: string): string => {
     }
 };
 
-const normalizeRobotUrl = (rawUrl: string): string => {
-    let normalizedUrl: URL;
-    try {
-        normalizedUrl = new URL(rawUrl.trim());
-    } catch {
-        throw new Error(`"${rawUrl.trim()}" is not a valid URL. Provide a full web address like https://example.com`);
-    }
-    if (!['http:', 'https:'].includes(normalizedUrl.protocol)) {
-        throw new Error(`Unsupported URL protocol "${normalizedUrl.protocol}//" — only http and https are supported. Local file paths cannot be scraped.`);
-    }
 
-    const hostname = normalizedUrl.hostname;
-    const isPlausibleHost = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(hostname)
-        || hostname === 'localhost'
-        || /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname)
-        || /^\[[0-9a-f:]+\]$/i.test(hostname);
-    if (!isPlausibleHost) {
-        throw new Error(`"${hostname}" is not a reachable hostname. Provide a full web address like https://example.com`);
-    }
 
-    normalizedUrl.search = normalizedUrl.searchParams.toString();
-    return normalizedUrl.toString();
-};
 
-const normalizeWorkflowUrls = (workflow: any[] = []): any[] =>
-    workflow.map((pair: any) => ({
-        ...pair,
-        where: pair?.where
-            ? {
-                ...pair.where,
-                ...(typeof pair.where.url === 'string' && pair.where.url !== 'about:blank'
-                    ? { url: normalizeRobotUrl(pair.where.url) }
-                    : {}),
-            }
-            : pair?.where,
-        what: Array.isArray(pair?.what)
-            ? pair.what.map((action: any) => {
-                if (
-                    action.action === 'goto' &&
-                    Array.isArray(action.args) &&
-                    typeof action.args[0] === 'string' &&
-                    action.args[0] !== 'about:blank'
-                ) {
-                    return {
-                        ...action,
-                        args: [normalizeRobotUrl(action.args[0]), ...action.args.slice(1)],
-                    };
-                }
-
-                if (
-                    (action.action === 'scrape' || action.action === 'crawl') &&
-                    Array.isArray(action.args) &&
-                    action.args[0] &&
-                    typeof action.args[0] === 'object' &&
-                    typeof action.args[0].url === 'string' &&
-                    action.args[0].url !== 'about:blank'
-                ) {
-                    return {
-                        ...action,
-                        args: [
-                            {
-                                ...action.args[0],
-                                url: normalizeRobotUrl(action.args[0].url),
-                            },
-                            ...action.args.slice(1),
-                        ],
-                    };
-                }
-
-                return action;
-            })
-            : pair?.what,
-    }));
 
 /**
  * Get the status of the authenticated user
@@ -490,20 +423,13 @@ router.put("/sdk/robots/:id", requireAPIKey, async (req: AuthenticatedRequest, r
          * value it already had.
          */
         if (Array.isArray(updates.limits) && updates.limits.length > 0) {
-            for (const { pairIndex, actionIndex, argIndex, limit } of updates.limits) {
-                if (!Number.isInteger(limit) || limit < 1) {
-                    return res.status(400).json({ error: `Invalid limit: ${limit}. Must be a positive integer.` });
-                }
-
-                const arg = workflow[pairIndex]?.what?.[actionIndex]?.args?.[argIndex];
-                if (!arg || typeof arg !== 'object') {
-                    return res.status(400).json({
-                        error: `No action argument at pair ${pairIndex}, action ${actionIndex}, arg ${argIndex}.`
-                    });
-                }
-
-                (arg as { limit: number }).limit = limit;
+            try {
+                applyWorkflowLimits(workflow, updates.limits);
                 workflowTouched = true;
+            } catch (error) {
+                return res.status(400).json({
+                    error: error instanceof Error ? error.message : 'Invalid limit update',
+                });
             }
         }
 
