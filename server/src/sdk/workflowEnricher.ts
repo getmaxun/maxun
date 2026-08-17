@@ -10,6 +10,8 @@ import logger from '../logger';
 import { v4 as uuid } from 'uuid';
 import { encrypt } from '../utils/auth';
 import Anthropic from '@anthropic-ai/sdk';
+import { resolveOpenAiApiKey } from '../utils/llm-endpoint';
+import { LLM_AGENTS, guardLlmBaseUrl } from '../utils/llm-endpoint';
 
 interface SimplifiedAction {
   action: string | typeof Symbol.asyncDispose;
@@ -408,7 +410,7 @@ export class WorkflowEnricher {
       let llmResponse: string;
 
       if (provider === 'ollama') {
-        const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+        const ollamaBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434');
         const ollamaModel = resolveLlmModel(llmConfig?.model, 'ollama');
 
         const response = await axios.post(`${ollamaBaseUrl}/api/chat`, {
@@ -420,7 +422,7 @@ export class WorkflowEnricher {
           stream: false,
           format: 'json',
           options: { temperature: 0.1 }
-        });
+        }, LLM_AGENTS);
 
         llmResponse = response.data.message.content;
 
@@ -447,7 +449,7 @@ export class WorkflowEnricher {
         llmResponse = textContent?.type === 'text' ? textContent.text : '';
 
       } else if (provider === 'openai') {
-        const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
+        const openaiBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || 'https://api.openai.com/v1');
         const openaiModel = resolveLlmModel(llmConfig?.model, 'openai');
 
         const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
@@ -463,9 +465,10 @@ export class WorkflowEnricher {
           temperature: 0.1
         }, {
           headers: {
-            'Authorization': `Bearer ${llmConfig?.apiKey || process.env.OPENAI_API_KEY}`,
+            'Authorization': `Bearer ${resolveOpenAiApiKey(llmConfig?.apiKey, llmConfig?.baseUrl)}`,
             'Content-Type': 'application/json'
-          }
+          },
+          ...LLM_AGENTS,
         });
 
         llmResponse = response.data.choices[0].message.content;
@@ -949,7 +952,7 @@ Return a JSON object with this exact structure:
       let llmResponse: string;
 
       if (provider === 'ollama') {
-        const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+        const ollamaBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434');
         const ollamaModel = resolveLlmModel(llmConfig?.model, 'ollama');
 
         logger.info(`Using Ollama at ${ollamaBaseUrl} with model ${ollamaModel}`);
@@ -990,7 +993,7 @@ Return a JSON object with this exact structure:
               temperature: 0.1,
               top_p: 0.9
             }
-          });
+          }, LLM_AGENTS);
 
           llmResponse = response.data.message.content;
         } catch (ollamaError: any) {
@@ -1023,7 +1026,7 @@ Return a JSON object with this exact structure:
         llmResponse = textContent?.type === 'text' ? textContent.text : '';
 
       } else if (provider === 'openai') {
-        const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
+        const openaiBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || 'https://api.openai.com/v1');
         const openaiModel = resolveLlmModel(llmConfig?.model, 'openai');
 
         const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
@@ -1043,9 +1046,10 @@ Return a JSON object with this exact structure:
           response_format: { type: 'json_object' }
         }, {
           headers: {
-            'Authorization': `Bearer ${llmConfig?.apiKey || process.env.OPENAI_API_KEY}`,
+            'Authorization': `Bearer ${resolveOpenAiApiKey(llmConfig?.apiKey, llmConfig?.baseUrl)}`,
             'Content-Type': 'application/json'
-          }
+          },
+          ...LLM_AGENTS,
         });
 
         llmResponse = response.data.choices[0].message.content;
@@ -1167,7 +1171,7 @@ Rules:
       let llmResponse: string;
 
       if (provider === 'ollama') {
-        const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+        const ollamaBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434');
         const ollamaModel = resolveLlmModel(llmConfig?.model, 'ollama');
 
         const jsonSchema = {
@@ -1210,7 +1214,7 @@ Rules:
             temperature: 0.1,
             top_p: 0.9
           }
-        });
+        }, LLM_AGENTS);
 
         llmResponse = response.data.message.content;
 
@@ -1235,7 +1239,7 @@ Rules:
         llmResponse = textContent?.type === 'text' ? textContent.text : '';
 
       } else if (provider === 'openai') {
-        const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
+        const openaiBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || 'https://api.openai.com/v1');
         const openaiModel = resolveLlmModel(llmConfig?.model, 'openai');
 
         const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
@@ -1255,9 +1259,10 @@ Rules:
           response_format: { type: 'json_object' }
         }, {
           headers: {
-            'Authorization': `Bearer ${llmConfig?.apiKey || process.env.OPENAI_API_KEY}`,
+            'Authorization': `Bearer ${resolveOpenAiApiKey(llmConfig?.apiKey, llmConfig?.baseUrl)}`,
             'Content-Type': 'application/json'
-          }
+          },
+          ...LLM_AGENTS,
         });
 
         llmResponse = response.data.choices[0].message.content;
@@ -1458,7 +1463,7 @@ Return ONLY the list name, nothing else:`;
       let llmResponse: string;
 
       if (provider === 'ollama') {
-        const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+        const ollamaBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434');
         const ollamaModel = resolveLlmModel(llmConfig?.model, 'ollama');
 
         try {
@@ -1480,7 +1485,7 @@ Return ONLY the list name, nothing else:`;
               top_p: 0.9,
               num_predict: 20
             }
-          });
+          }, LLM_AGENTS);
 
           llmResponse = response.data.message.content;
         } catch (ollamaError: any) {
@@ -1509,7 +1514,7 @@ Return ONLY the list name, nothing else:`;
         llmResponse = textContent?.type === 'text' ? textContent.text : '';
 
       } else if (provider === 'openai') {
-        const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
+        const openaiBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || 'https://api.openai.com/v1');
         const openaiModel = resolveLlmModel(llmConfig?.model, 'openai');
 
         const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
@@ -1528,9 +1533,10 @@ Return ONLY the list name, nothing else:`;
           temperature: 0.1
         }, {
           headers: {
-            'Authorization': `Bearer ${llmConfig?.apiKey || process.env.OPENAI_API_KEY}`,
+            'Authorization': `Bearer ${resolveOpenAiApiKey(llmConfig?.apiKey, llmConfig?.baseUrl)}`,
             'Content-Type': 'application/json'
-          }
+          },
+          ...LLM_AGENTS,
         });
 
         llmResponse = response.data.choices[0].message.content;
@@ -1645,7 +1651,7 @@ Does this extraction match what the user asked for?`;
       let llmResponse: string;
 
       if (provider === 'ollama') {
-        const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+        const ollamaBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434');
         const ollamaModel = resolveLlmModel(llmConfig?.model, 'ollama');
 
         const jsonSchema = {
@@ -1667,7 +1673,7 @@ Does this extraction match what the user asked for?`;
           stream: false,
           format: jsonSchema,
           options: { temperature: 0.1 }
-        });
+        }, LLM_AGENTS);
 
         llmResponse = response.data.message.content;
 
@@ -1689,7 +1695,7 @@ Does this extraction match what the user asked for?`;
         llmResponse = textContent?.type === 'text' ? textContent.text : '';
 
       } else if (provider === 'openai') {
-        const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
+        const openaiBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || 'https://api.openai.com/v1');
         const openaiModel = resolveLlmModel(llmConfig?.model, 'openai');
 
         const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
@@ -1703,9 +1709,10 @@ Does this extraction match what the user asked for?`;
           response_format: { type: 'json_object' }
         }, {
           headers: {
-            'Authorization': `Bearer ${llmConfig?.apiKey || process.env.OPENAI_API_KEY}`,
+            'Authorization': `Bearer ${resolveOpenAiApiKey(llmConfig?.apiKey, llmConfig?.baseUrl)}`,
             'Content-Type': 'application/json'
-          }
+          },
+          ...LLM_AGENTS,
         });
 
         llmResponse = response.data.choices[0].message.content;
@@ -2042,7 +2049,7 @@ Extract the search query, extraction goal, and limit. Return JSON only.`;
       let llmResponse: string;
 
       if (provider === 'ollama') {
-        const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+        const ollamaBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434');
         const ollamaModel = resolveLlmModel(llmConfig?.model, 'ollama');
 
         const jsonSchema = {
@@ -2064,7 +2071,7 @@ Extract the search query, extraction goal, and limit. Return JSON only.`;
           stream: false,
           format: jsonSchema,
           options: { temperature: 0.1 }
-        });
+        }, LLM_AGENTS);
 
         llmResponse = response.data.message.content;
 
@@ -2086,7 +2093,7 @@ Extract the search query, extraction goal, and limit. Return JSON only.`;
         llmResponse = textContent?.type === 'text' ? textContent.text : '';
 
       } else if (provider === 'openai') {
-        const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
+        const openaiBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || 'https://api.openai.com/v1');
         const openaiModel = resolveLlmModel(llmConfig?.model, 'openai');
 
         const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
@@ -2100,9 +2107,10 @@ Extract the search query, extraction goal, and limit. Return JSON only.`;
           response_format: { type: 'json_object' }
         }, {
           headers: {
-            'Authorization': `Bearer ${llmConfig?.apiKey || process.env.OPENAI_API_KEY}`,
+            'Authorization': `Bearer ${resolveOpenAiApiKey(llmConfig?.apiKey, llmConfig?.baseUrl)}`,
             'Content-Type': 'application/json'
-          }
+          },
+          ...LLM_AGENTS,
         });
 
         llmResponse = response.data.choices[0].message.content;
@@ -2313,7 +2321,7 @@ Select the BEST result index (0-${searchResults.length - 1}). Return JSON only.`
       let llmResponse: string;
 
       if (provider === 'ollama') {
-        const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+        const ollamaBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434');
         const ollamaModel = resolveLlmModel(llmConfig?.model, 'ollama');
 
         const jsonSchema = {
@@ -2335,7 +2343,7 @@ Select the BEST result index (0-${searchResults.length - 1}). Return JSON only.`
           stream: false,
           format: jsonSchema,
           options: { temperature: 0.1 }
-        });
+        }, LLM_AGENTS);
 
         llmResponse = response.data.message.content;
 
@@ -2357,7 +2365,7 @@ Select the BEST result index (0-${searchResults.length - 1}). Return JSON only.`
         llmResponse = textContent?.type === 'text' ? textContent.text : '';
 
       } else if (provider === 'openai') {
-        const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
+        const openaiBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || 'https://api.openai.com/v1');
         const openaiModel = resolveLlmModel(llmConfig?.model, 'openai');
 
         const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
@@ -2371,9 +2379,10 @@ Select the BEST result index (0-${searchResults.length - 1}). Return JSON only.`
           response_format: { type: 'json_object' }
         }, {
           headers: {
-            'Authorization': `Bearer ${llmConfig?.apiKey || process.env.OPENAI_API_KEY}`,
+            'Authorization': `Bearer ${resolveOpenAiApiKey(llmConfig?.apiKey, llmConfig?.baseUrl)}`,
             'Content-Type': 'application/json'
-          }
+          },
+          ...LLM_AGENTS,
         });
 
         llmResponse = response.data.choices[0].message.content;
@@ -2547,7 +2556,7 @@ multiSite = false when:
       let llmResponse: string;
 
       if (provider === 'ollama') {
-        const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+        const ollamaBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434');
         const ollamaModel = resolveLlmModel(llmConfig?.model, 'ollama');
 
         const jsonSchema = {
@@ -2565,7 +2574,7 @@ multiSite = false when:
           stream: false,
           format: jsonSchema,
           options: { temperature: 0 }
-        });
+        }, LLM_AGENTS);
 
         llmResponse = response.data.message.content;
 
@@ -2587,7 +2596,7 @@ multiSite = false when:
         llmResponse = textContent?.type === 'text' ? textContent.text : '';
 
       } else if (provider === 'openai') {
-        const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
+        const openaiBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || 'https://api.openai.com/v1');
         const openaiModel = resolveLlmModel(llmConfig?.model, 'openai');
 
         const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
@@ -2601,9 +2610,10 @@ multiSite = false when:
           response_format: { type: 'json_object' }
         }, {
           headers: {
-            'Authorization': `Bearer ${llmConfig?.apiKey || process.env.OPENAI_API_KEY}`,
+            'Authorization': `Bearer ${resolveOpenAiApiKey(llmConfig?.apiKey, llmConfig?.baseUrl)}`,
             'Content-Type': 'application/json'
-          }
+          },
+          ...LLM_AGENTS,
         });
 
         llmResponse = response.data.choices[0].message.content;
@@ -2686,7 +2696,7 @@ Return ONLY valid JSON: {"selectedIndices": [0, 2, 5], "reasoning": "one-line ex
       let llmResponse: string;
 
       if (provider === 'ollama') {
-        const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+        const ollamaBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434');
         const ollamaModel = resolveLlmModel(llmConfig?.model, 'ollama');
 
         const jsonSchema = {
@@ -2707,7 +2717,7 @@ Return ONLY valid JSON: {"selectedIndices": [0, 2, 5], "reasoning": "one-line ex
           stream: false,
           format: jsonSchema,
           options: { temperature: 0.1 }
-        });
+        }, LLM_AGENTS);
 
         llmResponse = response.data.message.content;
 
@@ -2729,7 +2739,7 @@ Return ONLY valid JSON: {"selectedIndices": [0, 2, 5], "reasoning": "one-line ex
         llmResponse = textContent?.type === 'text' ? textContent.text : '';
 
       } else if (provider === 'openai') {
-        const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
+        const openaiBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || 'https://api.openai.com/v1');
         const openaiModel = resolveLlmModel(llmConfig?.model, 'openai');
 
         const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
@@ -2743,9 +2753,10 @@ Return ONLY valid JSON: {"selectedIndices": [0, 2, 5], "reasoning": "one-line ex
           response_format: { type: 'json_object' }
         }, {
           headers: {
-            'Authorization': `Bearer ${llmConfig?.apiKey || process.env.OPENAI_API_KEY}`,
+            'Authorization': `Bearer ${resolveOpenAiApiKey(llmConfig?.apiKey, llmConfig?.baseUrl)}`,
             'Content-Type': 'application/json'
-          }
+          },
+          ...LLM_AGENTS,
         });
 
         llmResponse = response.data.choices[0].message.content;
