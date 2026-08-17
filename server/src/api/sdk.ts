@@ -497,12 +497,38 @@ router.put("/sdk/robots/:id", requireAPIKey, async (req: AuthenticatedRequest, r
          * survives whatever those wrote. Anything not named here keeps the
          * value it already had.
          */
-        if (Array.isArray(updates.limits) && updates.limits.length > 0) {
-            for (const { pairIndex, actionIndex, argIndex, limit } of updates.limits) {
-                if (!Number.isInteger(limit) || limit < 1) {
-                    return res.status(400).json({ error: `Invalid limit: ${limit}. Must be a positive integer.` });
+        if (updates.limits !== undefined) {
+            if (!Array.isArray(updates.limits)) {
+                return res.status(400).json({ error: '"limits" must be an array.' });
+            }
+
+            // Validate the whole payload before applying any of it, so a
+            // malformed entry cannot throw mid-loop or leave the workflow
+            // half-patched.
+            for (let i = 0; i < updates.limits.length; i++) {
+                const entry = updates.limits[i];
+
+                if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+                    return res.status(400).json({ error: `limits[${i}] must be an object.` });
                 }
 
+                for (const field of ['pairIndex', 'actionIndex', 'argIndex']) {
+                    const value = entry[field];
+                    if (!Number.isInteger(value) || value < 0) {
+                        return res.status(400).json({
+                            error: `limits[${i}].${field} must be a non-negative integer.`
+                        });
+                    }
+                }
+
+                if (!Number.isInteger(entry.limit) || entry.limit < 1) {
+                    return res.status(400).json({
+                        error: `limits[${i}].limit must be a positive integer.`
+                    });
+                }
+            }
+
+            for (const { pairIndex, actionIndex, argIndex, limit } of updates.limits) {
                 const arg = workflow[pairIndex]?.what?.[actionIndex]?.args?.[argIndex];
                 if (!arg || typeof arg !== 'object') {
                     return res.status(400).json({
