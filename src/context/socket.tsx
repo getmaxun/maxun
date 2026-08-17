@@ -38,7 +38,8 @@ export const SocketProvider = ({ children }: { children: JSX.Element }) => {
     const socket =
       io(`${SERVER_ENDPOINT}/${id}`, {
         transports: ["websocket", "polling"],
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
+        withCredentials: true
       });
 
     socket.on('connect', () => console.log('connected to socket'));
@@ -57,6 +58,7 @@ export const SocketProvider = ({ children }: { children: JSX.Element }) => {
     const newQueueSocket = io(`${SERVER_ENDPOINT}/queued-run`, {
       transports: ["websocket", "polling"],
       rejectUnauthorized: false,
+      withCredentials: true,
       query: { userId }
     });
 

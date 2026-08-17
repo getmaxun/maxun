@@ -93,7 +93,8 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
       
       const abortSocket = io(`${apiUrl}/${browserId}`, {
         transports: ["websocket", "polling"],
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
+        withCredentials: true
       });
       
       abortSocket.on('run-aborted', (abortData) => {
@@ -192,7 +193,8 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
       } else if (browserId) {
         const socket = io(`${apiUrl}/${browserId}`, {
           transports: ["websocket", "polling"],
-          rejectUnauthorized: false
+          rejectUnauthorized: false,
+          withCredentials: true
         });
         
         setSockets(sockets => [...sockets, socket]);
