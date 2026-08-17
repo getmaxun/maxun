@@ -848,9 +848,9 @@ class DocumentLLMClient {
     userPrompt: string,
     config: LLMConfig
   ): Promise<ProviderResult> {
-    await assertLlmBaseUrlAllowed(config.baseUrl);
-
     const baseUrl = config.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+    await assertLlmBaseUrlAllowed(baseUrl);
+
     const model = config.model || process.env.OLLAMA_DEFAULT_MODEL || 'llama3.2:latest';
 
     const controller = new AbortController();
@@ -860,6 +860,7 @@ class DocumentLLMClient {
       const response = await fetch(`${baseUrl}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        redirect: 'error',
         signal: controller.signal,
         body: JSON.stringify({
           model,
@@ -894,12 +895,11 @@ class DocumentLLMClient {
     userPrompt: string,
     config: LLMConfig
   ): Promise<ProviderResult> {
-    await assertLlmBaseUrlAllowed(config.baseUrl);
-
     const apiKey = resolveOpenAiApiKey(config.apiKey, config.baseUrl);
     if (!apiKey && !config.baseUrl) throw new Error('OpenAI API key not configured');
 
     const baseUrl = config.baseUrl || 'https://api.openai.com/v1';
+    await assertLlmBaseUrlAllowed(baseUrl);
     const model = config.model || 'gpt-4o-mini';
 
     const requestOpenAI = async (useJsonMode: boolean): Promise<Response> => {
@@ -923,6 +923,7 @@ class DocumentLLMClient {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
+        redirect: 'error',
         body: JSON.stringify(body),
       });
     };

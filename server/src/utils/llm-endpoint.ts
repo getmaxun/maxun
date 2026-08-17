@@ -110,6 +110,11 @@ export const LLM_AGENTS = {
 /**
  * Pre-flight check for the fetch-based callers, which cannot take an agent and
  * so have no connection-time check to fall back on.
+ *
+ * Callers pass the fully resolved base URL, not the caller-supplied one, so an
+ * environment fallback is checked too. A name that fails to resolve is refused
+ * rather than allowed through: letting it pass would hand the decision to
+ * whatever the request itself resolves later.
  */
 export async function assertLlmBaseUrlAllowed(baseUrl?: unknown): Promise<void> {
   const target = normalize(baseUrl);
@@ -130,7 +135,11 @@ export async function assertLlmBaseUrlAllowed(baseUrl?: unknown): Promise<void> 
       ? [hostname]
       : (await dnsPromises.lookup(hostname, { all: true })).map((r) => r.address);
   } catch {
-    return;
+    throw new Error(`Could not resolve LLM base URL host (${hostname})`);
+  }
+
+  if (addresses.length === 0) {
+    throw new Error(`Could not resolve LLM base URL host (${hostname})`);
   }
 
   const blocked = addresses.find(isLinkLocalIp);
