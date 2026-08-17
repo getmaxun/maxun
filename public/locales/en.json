@@ -95,6 +95,7 @@
       "finishedAt":"Finished At",
       "delete":"Delete",
       "settings":"Settings",
+      "rerun":"Re-run",
       "search":"Search Runs...",
       "sort_tooltip": "Click to sort",
       "placeholder": {
@@ -577,7 +578,8 @@
           "run_by_api": "Run by API",
           "run_type": "Run Type"
         }
-      }
+      },
+      "rerun": "Re-run"
     },
     "run_content": {
       "tabs": {

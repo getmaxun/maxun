@@ -95,6 +95,7 @@
         "finishedAt": "終了日時",
         "delete": "削除",
         "settings": "設定",
+        "rerun": "再実行",
         "search": "実行を検索...",
         "sort_tooltip": "クリックして並べ替え",
         "placeholder": {
@@ -578,7 +579,8 @@
                 "run_by_api": "APIによる実行",
                 "run_type": "実行タイプ"
             }
-        }
+        },
+        "rerun": "再実行"
     },
     "run_content": {
         "tabs": {
