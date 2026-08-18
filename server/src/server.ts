@@ -23,6 +23,7 @@ import { startWorkers, stopWorkers } from './task-runner';
 import { startGraphileWorkerUtils, stopGraphileWorkerUtils } from './storage/graphileWorker';
 import { startScheduleWorker, stopScheduleWorker } from './schedule-worker';
 import Run from './models/Run';
+import { authenticateSocket } from './socket-connection/socketAuth';
 
 const normalizeOrigin = (urlString?: string): string => {
   if (!urlString) return 'http://localhost:5173';
@@ -107,6 +108,11 @@ export let io = new Server(server, {
   cors: CORS_CONFIG
 });
 
+io.use(authenticateSocket);
+io.on('new_namespace', (namespace) => {
+  namespace.use(authenticateSocket);
+});
+
 /**
  * {@link BrowserPool} globally exported singleton instance for managing browsers.
  */
@@ -186,7 +192,7 @@ if (require.main === module) {
       await startScheduleWorker();
 
       io.of('/queued-run').on('connection', (socket) => {
-        const userId = socket.handshake.query.userId as string;
+        const userId = socket.data.userId as string;
 
         if (userId) {
           socket.join(`user-${userId}`);
