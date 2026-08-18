@@ -3222,8 +3222,11 @@ export default class Interpreter extends EventEmitter {
    *  for the `{$param: nameofparam}` fields.
    */
   public async run(page: Page, params?: ParamType): Promise<void> {
-    this.log('Starting the workflow.', Level.LOG);
+    if (this.stopper) {
+      throw new Error('This Interpreter is already running a workflow. To run another workflow, please, spawn another Interpreter.');
+    }
     this.isAborted = false;
+    this.log('Starting the workflow.', Level.LOG);
     const context = page.context();
 
     page.setDefaultNavigationTimeout(100000);
@@ -3238,9 +3241,6 @@ export default class Interpreter extends EventEmitter {
         if (contextOptions.proxy.username) {
             this.log(`Proxy authenticated...`);
         }
-    }
-    if (this.stopper) {
-      throw new Error('This Interpreter is already running a workflow. To run another workflow, please, spawn another Interpreter.');
     }
     /**
      * `this.workflow` with the parameters initialized.
