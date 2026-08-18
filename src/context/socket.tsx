@@ -9,7 +9,7 @@ interface SocketState {
   queueSocket: Socket | null;
   id: string;
   setId: (id: string) => void;
-  connectToQueueSocket: (userId: string, onRunCompleted?: (data: any) => void, onRunStarted?: (data: any) => void, onRunRecovered?: (data: any) => void, onRunScheduled?: (data: any) => void) => void;
+  connectToQueueSocket: (onRunCompleted?: (data: any) => void, onRunStarted?: (data: any) => void, onRunRecovered?: (data: any) => void, onRunScheduled?: (data: any) => void) => void;
   disconnectQueueSocket: () => void;
 };
 
@@ -49,7 +49,7 @@ export const SocketProvider = ({ children }: { children: JSX.Element }) => {
     setActiveId(id);
   }, [setSocket]);
 
-  const connectToQueueSocket = useCallback((userId: string, onRunCompleted?: (data: any) => void, onRunStarted?: (data: any) => void, onRunRecovered?: (data: any) => void, onRunScheduled?: (data: any) => void) => {
+  const connectToQueueSocket = useCallback((onRunCompleted?: (data: any) => void, onRunStarted?: (data: any) => void, onRunRecovered?: (data: any) => void, onRunScheduled?: (data: any) => void) => {
     runCompletedCallbackRef.current = onRunCompleted || null;
     runStartedCallbackRef.current = onRunStarted || null;
     runRecoveredCallbackRef.current = onRunRecovered || null;
@@ -58,12 +58,11 @@ export const SocketProvider = ({ children }: { children: JSX.Element }) => {
     const newQueueSocket = io(`${SERVER_ENDPOINT}/queued-run`, {
       transports: ["websocket", "polling"],
       rejectUnauthorized: false,
-      withCredentials: true,
-      query: { userId }
+      withCredentials: true
     });
 
     newQueueSocket.on('connect', () => {
-      console.log('Queue socket connected for user:', userId);
+      console.log('Queue socket connected');
     });
 
     newQueueSocket.on('connect_error', (error) => {

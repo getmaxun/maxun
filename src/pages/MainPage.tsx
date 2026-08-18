@@ -312,7 +312,7 @@ export const MainPage = ({ handleEditRecording, initialContent }: MainPageProps)
         invalidateRuns();
       };
       
-      connectToQueueSocket(user.id, handleRunCompleted, handleRunStarted, handleRunRecovered, handleRunScheduled);
+      connectToQueueSocket(handleRunCompleted, handleRunStarted, handleRunRecovered, handleRunScheduled);
       
       return () => {
         console.log('Disconnecting persistent queue socket for user:', user.id);
