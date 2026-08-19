@@ -2,15 +2,18 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.addColumn('run', 'isPartial', {
-      type: Sequelize.BOOLEAN,
-      allowNull: true,
-      defaultValue: false,
-      comment: 'True when a failed/aborted run still has partial serializableOutput/binaryOutput worth surfacing'
-    });
+    const tableInfo = await queryInterface.describeTable('run');
+    if (!tableInfo.isPartial) {
+      await queryInterface.addColumn('run', 'isPartial', {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      });
+    }
   },
 
-  async down(queryInterface, Sequelize) {
-    await queryInterface.removeColumn('run', 'isPartial');
-  }
+  async down(queryInterface) {
+    const tableInfo = await queryInterface.describeTable('run');
+    if (tableInfo.isPartial) await queryInterface.removeColumn('run', 'isPartial');
+  },
 };

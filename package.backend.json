@@ -93,6 +93,7 @@
   "scripts": {
     "build": "tsc -p server/tsconfig.json",
     "build:server": "tsc -p server/tsconfig.json",
+    "prepare-schema": "node server/dist/server/src/db/prepareSchema.js",
     "server": "cross-env NODE_OPTIONS='--max-old-space-size=4096' node server/dist/server/src/server.js",
     "migrate": "sequelize-cli db:migrate",
     "migrate:undo": "sequelize-cli db:migrate:undo",
