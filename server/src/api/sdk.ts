@@ -1530,16 +1530,10 @@ const documentUpload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: MAX_FILE_SIZE_BYTES },
     fileFilter: (_req, file, cb) => {
-        const allowedMimeTypes = [
-            'application/pdf',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'text/csv',
-            'application/csv',
-        ];
-        if (allowedMimeTypes.includes(file.mimetype)) {
+        if (normalizeDocumentMimeType(file.mimetype, file.originalname)) {
             cb(null, true);
         } else {
-            cb(new Error('Only PDF, XLSX, and CSV files are allowed'));
+            cb(new Error('Only PDF, DOCX, XLSX, CSV, JPG, and PNG files are allowed'));
         }
     },
 });
