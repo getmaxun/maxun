@@ -13,6 +13,7 @@ export type ControlErrorCode =
   | 'control_expired'
   | 'stale_control'
   | 'command_replay'
+  | 'observation_required'
   | 'invalid_control';
 
 export class ControlLeaseError extends Error {
@@ -35,6 +36,8 @@ export interface ControlLeaseResult {
   readonly expiresAt: string;
   readonly heartbeatAt: string;
   readonly existing: boolean;
+  readonly observationEpoch: number;
+  readonly observationReady: boolean;
 }
 
 export interface ControlCommandInput {
@@ -75,6 +78,8 @@ function leaseResult(lease: ControlLease, existing: boolean): ControlLeaseResult
     expiresAt: lease.expiresAt.toISOString(),
     heartbeatAt: lease.heartbeatAt.toISOString(),
     existing,
+    observationEpoch: lease.controlEpoch,
+    observationReady: lease.observationReady,
   };
 }
 
@@ -121,6 +126,7 @@ export async function acquireControl(
         expiresAt,
         heartbeatAt: now,
         active: true,
+        observationReady: normalized.actor === 'agent' ? false : true,
       }, { transaction });
       return leaseResult(current, false);
     }
@@ -133,6 +139,7 @@ export async function acquireControl(
         expiresAt,
         heartbeatAt: now,
         active: true,
+        observationReady: normalized.actor === 'agent' ? false : true,
       }, { transaction });
       return leaseResult(current, false);
     }
@@ -145,6 +152,7 @@ export async function acquireControl(
       actor: normalized.actor,
       controlEpoch: 1,
       active: true,
+      observationReady: true,
       expiresAt,
       heartbeatAt: now,
     }, { transaction });
@@ -178,7 +186,43 @@ export async function requireControlLease(
       actor: current.actor,
     });
   }
+  if (normalized.actor === 'agent' && !current.observationReady) {
+    throw new ControlLeaseError('observation_required', 'A fresh browser observation is required before agent control resumes', {
+      controlEpoch: current.controlEpoch,
+      actor: current.actor,
+    });
+  }
   return leaseResult(current, true);
+}
+
+/** Mark the post-handoff full snapshot as the current agent observation. */
+export async function acknowledgeControlObservation(
+  userId: number,
+  input: { browserSessionId: unknown; ownerSessionId: unknown; actor: unknown; controlEpoch: unknown },
+): Promise<ControlLeaseResult> {
+  const normalized = normalizeLeaseInput(input);
+  const controlEpoch = assertEpoch(input.controlEpoch);
+  if (normalized.actor !== 'agent') throw new ControlLeaseError('invalid_control', 'Only agent control can acknowledge an observation');
+  await requireResourceClaim(userId, {
+    resourceType: 'browser',
+    resourceId: normalized.browserSessionId,
+    ownerSessionId: normalized.ownerSessionId,
+  });
+  return sequelize.transaction(async transaction => {
+    const lease = await ControlLease.findOne({
+      where: { userId, browserSessionId: normalized.browserSessionId },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+    if (!lease || !lease.active || lease.ownerSessionId !== normalized.ownerSessionId || lease.actor !== 'agent' || lease.controlEpoch !== controlEpoch) {
+      throw new ControlLeaseError('stale_control', 'Control observation acknowledgement is stale', {
+        controlEpoch: lease?.controlEpoch,
+        actor: lease?.actor,
+      });
+    }
+    await lease.update({ observationReady: true }, { transaction });
+    return leaseResult(lease, true);
+  });
 }
 
 /** Extend a live lease without changing its epoch. */

@@ -84,7 +84,7 @@ export async function claimResource(
 /** Release is idempotent for an already released row but rejects stale epochs. */
 export async function requireResourceClaim(
   userId: number,
-  input: { resourceType: unknown; resourceId: unknown; ownerSessionId: unknown },
+  input: { resourceType: unknown; resourceId: unknown; ownerSessionId: unknown; epoch?: unknown },
 ): Promise<{ epoch: number }> {
   const normalized = normalizeInput(input);
   const current = await ResourceClaim.findOne({
@@ -92,6 +92,15 @@ export async function requireResourceClaim(
   });
   if (!current || !current.active || current.ownerSessionId !== normalized.ownerSessionId) {
     throw new ResourceClaimError('claim_conflict', 'Maxun resource requires an explicit claim by this Harness session');
+  }
+  if (input.epoch !== undefined && (typeof input.epoch !== 'number' || !Number.isSafeInteger(input.epoch) || input.epoch < 1)) {
+    throw new ResourceClaimError('invalid_claim', 'epoch must be a positive integer');
+  }
+  if (input.epoch !== undefined && current.epoch !== input.epoch) {
+    throw new ResourceClaimError('claim_conflict', 'Maxun resource claim epoch is stale', {
+      ownerSessionId: current.ownerSessionId,
+      epoch: current.epoch,
+    });
   }
   return { epoch: current.epoch };
 }

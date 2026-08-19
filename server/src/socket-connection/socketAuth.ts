@@ -16,6 +16,10 @@ export interface MaxunControlCapability {
   readonly actor: ControlActor;
 }
 
+export interface MaxunInternalRunCapability {
+  readonly browserId: string;
+}
+
 /**
  * Reads the session JWT from the handshake cookie header.
  *
@@ -105,6 +109,12 @@ export const authenticateSocket = async (socket: Socket, next: (err?: Error) => 
           return;
         }
         socket.data.maxunStreamCapability = { browserId, ownerSessionId, epoch } satisfies MaxunStreamCapability;
+      } else if (decoded.purpose === 'maxun-internal-run') {
+        if (typeof decoded.browserId !== 'string' || decoded.browserId !== namespaceBrowserId) {
+          next(new Error('Unauthorized'));
+          return;
+        }
+        socket.data.maxunInternalRunCapability = { browserId: decoded.browserId } satisfies MaxunInternalRunCapability;
       } else if (decoded.purpose === 'maxun-browser-control') {
         const controlEpoch = typeof decoded.controlEpoch === 'number' ? decoded.controlEpoch : NaN;
         const actor = decoded.actor === 'agent' || decoded.actor === 'human' ? decoded.actor : null;

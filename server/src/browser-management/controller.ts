@@ -17,6 +17,7 @@ import {
   normalizeControlCommand,
 } from '../sdk/browserControl';
 import logger from "../logger";
+import { sanitizeBrowserUrl } from '../sdk/urlPrivacy';
 
 const RECORDING_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 const recordingTimeouts = new Map<string, NodeJS.Timeout>();
@@ -291,7 +292,7 @@ export const canCreateBrowserInState = (userId: string, state?: "recording" | "r
  * @category  BrowserManagement-Controller
  */
 export const getRemoteBrowserCurrentUrl = (id: string, userId: string): string | undefined => {
-  return browserPool.getRemoteBrowser(id)?.getCurrentPage()?.url();
+  return sanitizeBrowserUrl(browserPool.getRemoteBrowser(id)?.getCurrentPage()?.url()) ?? undefined;
 };
 
 /** Return the process-local browser slot status for an authenticated owner. */
@@ -480,7 +481,15 @@ const initializeBrowserAsync = async (id: string, userId: string, enableLiveStre
         }
         const streamCapability = socket.data.maxunStreamCapability as { browserId?: string } | undefined;
         const controlCapability = socket.data.maxunControlCapability as { browserId?: string } | undefined;
-        if ((streamCapability && streamCapability.browserId !== id) || (controlCapability && controlCapability.browserId !== id)) {
+        const internalRunCapability = socket.data.maxunInternalRunCapability as { browserId?: string } | undefined;
+        if (enableLiveStream && !streamCapability && !controlCapability) {
+          logger.log('warn', `Rejected generic mutating socket ${socket.id} for Harness browser ${id}`);
+          socket.disconnect(true);
+          return;
+        }
+        if ((streamCapability && streamCapability.browserId !== id)
+          || (controlCapability && controlCapability.browserId !== id)
+          || (internalRunCapability && internalRunCapability.browserId !== id)) {
           logger.log('warn', `Rejected browser socket ${socket.id}: capability does not match browser ${id}`);
           socket.disconnect(true);
           return;

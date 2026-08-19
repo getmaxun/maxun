@@ -152,6 +152,7 @@ app.get('/', function (req, res) {
 });
 
 if (require.main === module) {
+  if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is required for authenticated Maxun socket capabilities');
   const serverIntervals: NodeJS.Timeout[] = [];
 
   const processQueuedRunsInterval = setInterval(async () => {

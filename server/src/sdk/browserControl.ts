@@ -9,6 +9,7 @@ import {
   type ControlLeaseResult,
   type ControlCommandInput,
 } from './controlLease';
+import { sanitizeBrowserUrl } from './urlPrivacy';
 
 export interface BrowserControlExecution extends RemoteBrowserControlResult {
   readonly commandId: string;
@@ -47,9 +48,9 @@ const queueKey = (userId: number, browserSessionId: string): string => `${userId
 const commandKey = (userId: number, browserSessionId: string, commandId: string): string => `${queueKey(userId, browserSessionId)}:${commandId}`;
 
 /**
- * Serialize mutating commands per browser. The lease is rechecked after a
- * queued command reaches the head, so a handoff cannot release a stale queued
- * click/type/navigation into Playwright.
+ * Serialize mutating commands per browser. A command is registered as
+ * cancellable before lease admission and the lease is fenced again immediately
+ * before dispatch, so handoff can abort an admitted command before Playwright.
  */
 export async function executeBrowserControlCommand(
   userId: number,
@@ -63,18 +64,23 @@ export async function executeBrowserControlCommand(
   let run!: Promise<BrowserControlExecution>;
   run = previous.catch(() => undefined).then(async () => {
     if (signal.aborted) throw new Error('Control command cancelled before queue admission');
-    await beginControlCommand(userId, input);
     const controller = new AbortController();
     const combinedController = new AbortController();
     const forwardAbort = () => combinedController.abort(signal.reason);
     const forwardInternalAbort = () => combinedController.abort(controller.signal.reason);
+    const activeKey = commandKey(userId, input.browserSessionId, input.commandId);
     signal.addEventListener('abort', forwardAbort, { once: true });
     controller.signal.addEventListener('abort', forwardInternalAbort, { once: true });
-    const combined = combinedController.signal;
-    const activeKey = commandKey(userId, input.browserSessionId, input.commandId);
     activeCommands.set(activeKey, controller);
+    let admitted = false;
     try {
-      const result = await browser.executeControlCommand(command, combined);
+      await beginControlCommand(userId, input);
+      admitted = true;
+      // This is the dispatch fence. Handoff/release locks and advances the
+      // lease epoch; no await occurs between this check and the browser call.
+      await requireControlLease(userId, input);
+      if (combinedController.signal.aborted) throw new Error('Control command cancelled before dispatch');
+      const result = await browser.executeControlCommand(command, combinedController.signal);
       await finishControlCommand(userId, input.browserSessionId, input.commandId, 'completed');
       return {
         ...result,
@@ -84,9 +90,9 @@ export async function executeBrowserControlCommand(
         observedAt: Date.now(),
       };
     } catch (error) {
-      // A cancellation after dispatch cannot know whether Playwright applied the
-      // action before the abort reached the browser, so durable status is unknown.
-      await finishControlCommand(userId, input.browserSessionId, input.commandId, 'unknown');
+      // A cancellation after admission cannot know whether Playwright applied
+      // the action before the abort reached the browser, so status is unknown.
+      if (admitted) await finishControlCommand(userId, input.browserSessionId, input.commandId, 'unknown');
       throw error;
     } finally {
       signal.removeEventListener('abort', forwardAbort);
@@ -130,7 +136,7 @@ export function controlObservation(
   return {
     browserSessionId,
     browserStatus,
-    currentUrl,
+    currentUrl: sanitizeBrowserUrl(currentUrl),
     controlActor: lease.actor,
     controlEpoch: lease.controlEpoch,
     observedAt: Date.now(),

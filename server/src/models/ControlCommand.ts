@@ -57,6 +57,10 @@ ControlCommand.init(
   {
     sequelize,
     tableName: 'maxun_control_command',
+    indexes: [
+      { unique: true, fields: ['userId', 'browserSessionId', 'commandId'], name: 'maxun_control_command_replay_unique' },
+      { fields: ['userId', 'browserSessionId', 'controlEpoch'], name: 'maxun_control_command_epoch_idx' },
+    ],
     timestamps: true,
   },
 );

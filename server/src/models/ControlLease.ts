@@ -11,6 +11,7 @@ export interface ControlLeaseAttributes {
   actor: ControlActor;
   controlEpoch: number;
   active: boolean;
+  observationReady: boolean;
   expiresAt: Date;
   heartbeatAt: Date;
   createdAt: Date;
@@ -27,6 +28,7 @@ class ControlLease extends Model<ControlLeaseAttributes, ControlLeaseCreationAtt
   public actor!: ControlActor;
   public controlEpoch!: number;
   public active!: boolean;
+  public observationReady!: boolean;
   public expiresAt!: Date;
   public heartbeatAt!: Date;
   public createdAt!: Date;
@@ -42,6 +44,7 @@ ControlLease.init(
     actor: { type: DataTypes.STRING(16), allowNull: false },
     controlEpoch: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
     active: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+    observationReady: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
     expiresAt: { type: DataTypes.DATE, allowNull: false },
     heartbeatAt: { type: DataTypes.DATE, allowNull: false },
     createdAt: { type: DataTypes.DATE, allowNull: false },
@@ -50,6 +53,10 @@ ControlLease.init(
   {
     sequelize,
     tableName: 'maxun_control_lease',
+    indexes: [
+      { unique: true, fields: ['userId', 'browserSessionId'], name: 'maxun_control_lease_browser_unique' },
+      { fields: ['userId', 'ownerSessionId'], name: 'maxun_control_lease_owner_idx' },
+    ],
     timestamps: true,
   },
 );

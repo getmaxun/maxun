@@ -173,9 +173,19 @@ export async function persistNativeRobot(options: PersistNativeRobotOptions): Pr
     const sameDescription = description === undefined || (meta as any).description === description;
     const sameUrl = normalizeUrl(meta.url || '') === normalizeUrl(url);
     if (sameDescription && sameUrl) {
+      const now = new Date().toISOString();
+      await existingRobot.update({
+        recording: { workflow },
+        recording_meta: {
+          ...meta,
+          name,
+          pairs: workflow.length,
+          updatedAt: now,
+        },
+      });
       return {
         robot: existingRobot,
-        workflow: existingRobot.recording?.workflow || [],
+        workflow,
         existing: true,
       };
     }

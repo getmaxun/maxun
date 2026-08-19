@@ -1412,9 +1412,13 @@ export async function handleRunRecording(id: string, userId: string, runSource: 
 
         const CONNECTION_TIMEOUT = 30000;
 
-        const internalToken = process.env.JWT_SECRET
-            ? jwt.sign({ id: userId }, process.env.JWT_SECRET)
-            : undefined;
+        const jwtSecret = process.env.JWT_SECRET;
+        if (!jwtSecret) throw new Error('JWT_SECRET is required for internal browser run sockets');
+        const internalToken = jwt.sign({
+            id: userId,
+            purpose: 'maxun-internal-run',
+            browserId,
+        }, jwtSecret, { expiresIn: '60s' });
 
         socket = io(`${process.env.BACKEND_URL ? process.env.BACKEND_URL : 'http://localhost:8080'}/${browserId}`, {
             transports: ['websocket'],

@@ -9,7 +9,7 @@ import { Socket } from "socket.io";
 import { PlaywrightBlocker } from '@cliqz/adblocker-playwright';
 import fetch from 'cross-fetch';
 import logger from '../../logger';
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { dirname, join } from "path";
 import { InterpreterSettings } from "../../types";
 import { WorkflowGenerator } from "../../workflow-management/classes/Generator";
@@ -19,6 +19,7 @@ import { getInjectableScript } from 'idcac-playwright';
 import { FingerprintInjector } from "fingerprint-injector";
 import { FingerprintGenerator } from "fingerprint-generator";
 import { connectToRemoteBrowser } from '../browserConnection';
+import { sanitizeBrowserUrl } from '../../sdk/urlPrivacy';
 
 const RRWEB_MASK_TEXT_SELECTOR = [
   '[data-sensitive]',
@@ -444,7 +445,21 @@ export class RemoteBrowser {
       try {
         const rrwebEntryPath = require.resolve('rrweb');
         const rrwebPackageRoot = dirname(dirname(rrwebEntryPath));
-        const rrwebJsPath = join(rrwebPackageRoot, 'umd', 'rrweb.min.js');
+        // rrweb 2.0.0-alpha.4 (the backend image pin) ships its browser
+        // bundle under dist/rrweb.min.js, while newer releases expose a UMD
+        // bundle under umd/. Resolve the installed package layout instead of
+        // assuming the development dependency's file tree.
+        const rrwebCandidates = [
+          join(rrwebPackageRoot, 'umd', 'rrweb.min.js'),
+          join(rrwebPackageRoot, 'dist', 'rrweb.umd.min.cjs'),
+          join(rrwebPackageRoot, 'dist', 'rrweb-all.min.js'),
+          join(rrwebPackageRoot, 'dist', 'rrweb.min.js'),
+          join(rrwebPackageRoot, 'dist', 'rrweb.js'),
+        ];
+        const rrwebJsPath = rrwebCandidates.find(existsSync);
+        if (!rrwebJsPath) {
+          throw new Error(`Unable to locate a browser rrweb bundle under ${rrwebPackageRoot}`);
+        }
         const rrwebScriptContent = readFileSync(rrwebJsPath, 'utf8');
         const navigationState = this.getPageNavigationState(page);
         const navigationVersion = navigationState.version;
@@ -776,6 +791,13 @@ export class RemoteBrowser {
       if (!this.currentPage || this.currentPage.isClosed()) {
         throw new Error('No active page available');
       }
+      const sensitiveLocators = [
+        this.currentPage.locator('input'),
+        this.currentPage.locator('textarea'),
+        this.currentPage.locator('[contenteditable="true"]'),
+        this.currentPage.locator('iframe'),
+        this.currentPage.locator('[data-sensitive], [data-private], .rr-mask'),
+      ];
       return this.currentPage.screenshot({
         fullPage: settings.fullPage,
         type: settings.type || 'png',
@@ -783,6 +805,8 @@ export class RemoteBrowser {
         animations: settings.animations || 'allow',
         caret: settings.caret || 'hide',
         scale: settings.scale || 'device',
+        mask: sensitiveLocators,
+        maskColor: '#000000',
       });
     };
 
@@ -1056,10 +1080,9 @@ export class RemoteBrowser {
       if (!page || page.isClosed()) throw new Error('Browser page is unavailable');
       if (signal.aborted) throw new Error('Control command cancelled before dispatch');
 
-      const abortInterpreter = () => {
-        void this.interpreter.stopInterpretation().catch(() => undefined);
+      const throwIfAborted = () => {
+        if (signal.aborted) throw new Error('Control command cancelled');
       };
-      signal.addEventListener('abort', abortInterpreter, { once: true });
       let recorded = false;
       try {
         switch (command.kind) {
@@ -1068,6 +1091,7 @@ export class RemoteBrowser {
             if (!coordinates || !Number.isFinite(coordinates.x) || !Number.isFinite(coordinates.y)) {
               throw new Error('click requires finite coordinates');
             }
+            throwIfAborted();
             await page.mouse.click(coordinates.x, coordinates.y);
             if (command.mode === 'record') {
               await this.generator.onClick(coordinates, page);
@@ -1078,12 +1102,13 @@ export class RemoteBrowser {
           case 'key': {
             const key = typeof command.key === 'string' ? command.key.trim() : '';
             if (!key || key.length > 100) throw new Error('key must be a non-empty short string');
+            throwIfAborted();
             await page.keyboard.press(key);
             if (command.mode === 'record' && command.selector) {
               await this.generator.onDOMKeyboardAction(page, {
                 selector: command.selector,
                 key,
-                url: page.url(),
+                url: sanitizeBrowserUrl(page.url()) ?? '',
                 userId: this.userId,
               });
               recorded = true;
@@ -1093,6 +1118,7 @@ export class RemoteBrowser {
           case 'type': {
             if (command.mode !== 'assist') throw new Error('text entry is transient assist-only work');
             if (typeof command.text !== 'string' || command.text.length > 16_384) throw new Error('text is invalid');
+            throwIfAborted();
             await page.keyboard.insertText(command.text);
             break;
           }
@@ -1101,9 +1127,10 @@ export class RemoteBrowser {
             const target = new URL(command.url);
             if (target.protocol !== 'http:' && target.protocol !== 'https:') throw new Error('Only http(s) URLs are allowed');
             if (command.mode === 'record') {
-              await this.generator.onChangeUrl(target.toString(), page);
+              await this.generator.onChangeUrl(sanitizeBrowserUrl(target.toString()) ?? target.origin + target.pathname, page);
               recorded = true;
             }
+            throwIfAborted();
             await this.navigateTo(page, target.toString(), { waitUntil: 'domcontentloaded', timeout: 30_000 });
             break;
           }
@@ -1111,22 +1138,28 @@ export class RemoteBrowser {
             const x = Number(command.coordinates?.x ?? 0);
             const y = Number(command.coordinates?.y ?? 0);
             if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error('scroll requires finite deltas');
+            throwIfAborted();
             await page.mouse.wheel(x, y);
             break;
           }
           case 'refresh':
+            throwIfAborted();
             await page.reload({ waitUntil: 'domcontentloaded', timeout: 30_000 });
             break;
           case 'pause':
+            throwIfAborted();
             this.interpreter.pauseInterpretation();
             break;
           case 'resume':
+            throwIfAborted();
             this.interpreter.resumeInterpretation();
             break;
           case 'step':
+            throwIfAborted();
             this.interpreter.stepInterpretation();
             break;
           case 'abort':
+            throwIfAborted();
             await this.interpreter.stopInterpretation();
             break;
           default:
@@ -1137,10 +1170,9 @@ export class RemoteBrowser {
           applied: true,
           recorded,
           browserStatus: 'active',
-          currentUrl: page.url() || null,
+          currentUrl: sanitizeBrowserUrl(page.url()),
         };
       } finally {
-        signal.removeEventListener('abort', abortInterpreter);
       }
     };
 

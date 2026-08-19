@@ -44,6 +44,7 @@ import { claimResource, releaseResource, requireResourceClaim, ResourceClaimErro
 import { createDocumentRobotRecord } from '../utils/document/createDocumentRobotRecord';
 import { createDocumentParseRobotRecord } from '../utils/document/createDocumentParseRobotRecord';
 import {
+    acknowledgeControlObservation,
     acquireControl,
     getControlCommandStatus,
     heartbeatControl,
@@ -61,6 +62,7 @@ import {
 } from '../sdk/browserControl';
 import type { ControlCommandMode } from '../models/ControlCommand';
 import type { ControlCommandKind } from '../browser-management/classes/RemoteBrowser';
+import { sanitizeBrowserUrl } from '../sdk/urlPrivacy';
 import { normalizeDocumentMimeType, PDF_MIME_TYPE } from '../utils/document/documentFile';
 import {
     createLlmRobot,
@@ -303,7 +305,7 @@ const CONTROL_MODES: readonly ControlCommandMode[] = ['assist', 'record'];
 
 const controlErrorStatus = (code: ControlLeaseError['code']): number => {
     if (code === 'control_conflict') return 409;
-    if (code === 'stale_control' || code === 'control_expired' || code === 'command_replay') return 409;
+    if (code === 'stale_control' || code === 'control_expired' || code === 'command_replay' || code === 'observation_required') return 409;
     return 400;
 };
 
@@ -361,10 +363,25 @@ router.post('/sdk/browser-sessions/:id/control/acquire', requireAPIKey, async (r
                 ...token,
                 streamUrl: (process.env.MAXUN_BROWSER_STREAM_URL || `${req.protocol}://${req.get('host')}`).replace(/\/api\/?$/, ''),
                 serviceInstanceId: getServiceInstanceId(),
-                currentUrl: getRemoteBrowserCurrentUrl(browserSessionId, String(req.user!.id)) || null,
+                currentUrl: sanitizeBrowserUrl(getRemoteBrowserCurrentUrl(browserSessionId, String(req.user!.id))) || null,
                 browserStatus: getRemoteBrowserStatus(browserSessionId) === 'failed' ? 'gone' : 'active',
             },
         });
+    } catch (error: unknown) {
+        return sendControlError(res, error);
+    }
+});
+
+/** Acknowledge the fresh rrweb full snapshot required after agent takeover. */
+router.post('/sdk/browser-sessions/:id/control/observation/ack', requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const lease = await acknowledgeControlObservation(Number(req.user!.id), {
+            browserSessionId: req.params.id,
+            ownerSessionId: req.body?.ownerSessionId,
+            actor: req.body?.actor,
+            controlEpoch: req.body?.controlEpoch,
+        });
+        return res.status(200).json({ success: true, data: lease });
     } catch (error: unknown) {
         return sendControlError(res, error);
     }
@@ -538,9 +555,12 @@ router.post('/sdk/browser-sessions/:id/screenshot', requireAPIKey, async (req: A
         if (getRemoteBrowserOwner(browserSessionId) !== String(req.user!.id)) {
             return res.status(404).json({ error: 'Browser session not found', code: 'resource_not_found' });
         }
-        await requireResourceClaim(Number(req.user!.id), {
-            resourceType: 'browser', resourceId: browserSessionId, ownerSessionId,
+        const claim = await requireResourceClaim(Number(req.user!.id), {
+            resourceType: 'browser', resourceId: browserSessionId, ownerSessionId, epoch,
         });
+        if (claim.epoch !== epoch) {
+            return res.status(409).json({ error: 'Browser resource claim is stale', code: 'stale_claim', epoch: claim.epoch });
+        }
         const browser = getRemoteBrowserStatus(browserSessionId) === 'ready'
             ? getRemoteBrowser(browserSessionId, String(req.user!.id))
             : undefined;
@@ -586,7 +606,7 @@ router.get('/sdk/browser-sessions/:id', requireAPIKey, async (req: Authenticated
             serviceInstanceId: getServiceInstanceId(),
             browserStatus: status === 'failed' ? 'gone' : 'active',
             status,
-            currentUrl: getRemoteBrowserCurrentUrl(browserSessionId, String(req.user!.id)) || null,
+            currentUrl: sanitizeBrowserUrl(getRemoteBrowserCurrentUrl(browserSessionId, String(req.user!.id))) || null,
         },
     });
 });
