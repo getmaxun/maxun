@@ -2662,7 +2662,7 @@ multiSite = false when:
         const decision = await callAnthropicWithTool<any>({
           apiKey: llmConfig?.apiKey,
           model: anthropicModel,
-          maxTokens: 20,
+          maxTokens: 80,
           temperature: 0,
           system: systemPrompt,
           userMessage: userMessage,
