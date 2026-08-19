@@ -6,9 +6,16 @@ import { Socket } from "socket.io";
 import { v4 as uuid } from "uuid";
 import { Page } from "playwright-core";
 import { createSocketConnection, createSocketConnectionForRun } from "../socket-connection/connection";
+import { socketOwns } from "../socket-connection/socketAuth";
 import { io, browserPool } from "../server";
 import { RemoteBrowser } from "./classes/RemoteBrowser";
 import { RemoteBrowserOptions } from "../types";
+import { ControlLeaseError, heartbeatControl, releaseControl, type ControlActor } from '../sdk/controlLease';
+import {
+  cancelBrowserControlCommands,
+  executeBrowserControlCommand,
+  normalizeControlCommand,
+} from '../sdk/browserControl';
 import logger from "../logger";
 
 const RECORDING_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
@@ -111,7 +118,7 @@ export const initializeRemoteBrowserForRecording = (userId: string, mode: string
  * @returns string Browser ID
  * @category BrowserManagement-Controller
  */
-export const createRemoteBrowserForRun = (userId: string): string => {
+export const createRemoteBrowserForRun = (userId: string, enableLiveStream: boolean = false): string => {
   if (!userId) {
     logger.log('error', 'createRemoteBrowserForRun: Missing required parameter userId');
     throw new Error('userId is required');
@@ -127,7 +134,7 @@ export const createRemoteBrowserForRun = (userId: string): string => {
 
   logger.log('info', `createRemoteBrowserForRun: Reserved slot ${id} for user ${userId}`);
 
-  initializeBrowserAsync(id, userId)
+  initializeBrowserAsync(id, userId, enableLiveStream)
     .catch((error: any) => {
       logger.log('error', `Unhandled error in initializeBrowserAsync for browser ${id}: ${error.message}`);
       browserPool.failBrowserSlot(id);
@@ -153,6 +160,11 @@ export const clearRecordingTimeout = (id: string): void => {
 };
 
 export const destroyRemoteBrowser = async (id: string, userId: string): Promise<boolean> => {
+  const owner = browserPool.getUserForBrowser(id);
+  if (owner && owner !== String(userId)) {
+    logger.log('warn', `Refusing to destroy browser ${id} for non-owner user ${userId}`);
+    return false;
+  }
   clearRecordingTimeout(id);
 
   const DESTROY_TIMEOUT = 30000;
@@ -161,7 +173,13 @@ export const destroyRemoteBrowser = async (id: string, userId: string): Promise<
     try {
       const browserSession = browserPool.getRemoteBrowser(id);
       if (!browserSession) {
-        logger.log('info', `Browser with id: ${id} not found, may have already been destroyed`);
+        // Reserved and failed slots intentionally have no RemoteBrowser object;
+        // release them from the pool as well so an explicit owner release cannot
+        // leave an orphaned reconnect target until the stale-slot sweeper runs.
+        const deleted = browserPool.deleteRemoteBrowser(id);
+        logger.log('info', deleted
+          ? `Removed browser slot ${id} without an initialized session`
+          : `Browser with id: ${id} not found, may have already been destroyed`);
         return true;
       }
 
@@ -276,6 +294,20 @@ export const getRemoteBrowserCurrentUrl = (id: string, userId: string): string |
   return browserPool.getRemoteBrowser(id)?.getCurrentPage()?.url();
 };
 
+/** Return the process-local browser slot status for an authenticated owner. */
+export const getRemoteBrowserStatus = (id: string): 'reserved' | 'initializing' | 'ready' | 'failed' | null => (
+  browserPool.getBrowserStatus(id)
+);
+
+/** Return the process-local owner of a browser slot, or null when it is gone. */
+export const getRemoteBrowserOwner = (id: string): string | null => browserPool.getUserForBrowser(id);
+
+/** Return a remote browser only to its authenticated owner. */
+export const getRemoteBrowser = (id: string, userId: string): RemoteBrowser | undefined => {
+  if (getRemoteBrowserOwner(id) !== String(userId)) return undefined;
+  return browserPool.getRemoteBrowser(id);
+};
+
 /**
  * Returns the array of tab strings from a remote browser if exists in the browser pool.
  * @param id instance id of the remote browser
@@ -330,23 +362,142 @@ export const stopRunningInterpretation = async (userId: string) => {
   }
 };
 
-const initializeBrowserAsync = async (id: string, userId: string) => {
+const attachControlSocket = (browserSession: RemoteBrowser, socket: Socket, userId: string, browserId: string): void => {
+  const activeControllers = new Map<string, AbortController>();
+  socket.removeAllListeners('control-command');
+  socket.removeAllListeners('control-cancel');
+  socket.removeAllListeners('control-heartbeat');
+  socket.removeAllListeners('control-release');
+
+  const capability = () => socket.data.maxunControlCapability as {
+    browserId?: string;
+    ownerSessionId?: string;
+    controlEpoch?: number;
+    actor?: ControlActor;
+  } | undefined;
+
+  socket.on('control-command', async (payload: any) => {
+    const current = capability();
+    const commandId = typeof payload?.commandId === 'string' ? payload.commandId.trim() : '';
+    const controlEpoch = current?.controlEpoch;
+    if (!current || current.browserId !== browserId || !current.ownerSessionId || !Number.isSafeInteger(controlEpoch) || !current.actor || !commandId) {
+      socket.emit('control-result', { commandId, success: false, code: 'stale_control' });
+      return;
+    }
+    if (commandId.length > 255) {
+      socket.emit('control-result', { commandId, success: false, code: 'invalid_control' });
+      return;
+    }
+    try {
+      const command = normalizeControlCommand(payload);
+      const abort = new AbortController();
+      activeControllers.set(commandId, abort);
+      const result = await executeBrowserControlCommand(Number(userId), browserSession, {
+        browserSessionId: browserId,
+        ownerSessionId: current.ownerSessionId,
+        actor: current.actor,
+        controlEpoch: controlEpoch as number,
+        commandId,
+        commandType: command.kind,
+        mode: command.mode,
+      }, command, abort.signal);
+      socket.emit('control-result', { commandId, success: true, data: result });
+    } catch (error: unknown) {
+      if (error instanceof ControlLeaseError) {
+        socket.emit('control-result', { commandId, success: false, code: error.code });
+      } else {
+        socket.emit('control-result', { commandId, success: false, code: 'control_command_failed' });
+      }
+    } finally {
+      activeControllers.delete(commandId);
+    }
+  });
+
+  socket.on('control-cancel', (payload: { commandId?: string }) => {
+    const commandId = typeof payload?.commandId === 'string' ? payload.commandId : '';
+    activeControllers.get(commandId)?.abort(new Error('control command cancelled'));
+  });
+
+  socket.on('control-heartbeat', async () => {
+    const current = capability();
+    if (!current?.ownerSessionId || !current.actor || !Number.isSafeInteger(current.controlEpoch)) {
+      socket.emit('control-status', { success: false, code: 'stale_control' });
+      return;
+    }
+    try {
+      const lease = await heartbeatControl(Number(userId), {
+        browserSessionId: browserId,
+        ownerSessionId: current.ownerSessionId,
+        actor: current.actor,
+        controlEpoch: current.controlEpoch,
+      });
+      socket.emit('control-status', { success: true, data: lease });
+    } catch (error: unknown) {
+      socket.emit('control-status', { success: false, code: error instanceof ControlLeaseError ? error.code : 'control_internal_error' });
+    }
+  });
+
+  socket.on('control-release', async () => {
+    const current = capability();
+    if (!current?.ownerSessionId || !current.actor || !Number.isSafeInteger(current.controlEpoch)) {
+      socket.emit('control-status', { success: false, code: 'stale_control' });
+      return;
+    }
+    try {
+      const released = await releaseControl(Number(userId), {
+        browserSessionId: browserId,
+        ownerSessionId: current.ownerSessionId,
+        actor: current.actor,
+        controlEpoch: current.controlEpoch,
+      });
+      cancelBrowserControlCommands(Number(userId), browserId);
+      socket.emit('control-status', { success: true, data: released });
+    } catch (error: unknown) {
+      socket.emit('control-status', { success: false, code: error instanceof ControlLeaseError ? error.code : 'control_internal_error' });
+    }
+  });
+
+  socket.on('disconnect', () => {
+    for (const controller of activeControllers.values()) controller.abort(new Error('control socket disconnected'));
+    cancelBrowserControlCommands(Number(userId), browserId);
+  });
+};
+
+const initializeBrowserAsync = async (id: string, userId: string, enableLiveStream: boolean = false) => {
   try {
     const namespace = io.of(id);
     let clientConnected = false;
     let connectionTimeout: NodeJS.Timeout;
-    
+    let browserSession: RemoteBrowser | undefined;
+
     const waitForConnection = new Promise<Socket | null>((resolve) => {
       let initialResolved = false;
       namespace.on('connection', (socket: Socket) => {
+        if (!socketOwns(socket, userId)) {
+          logger.log('warn', `Rejected socket ${socket.id}: does not own browser ${id}`);
+          socket.disconnect(true);
+          return;
+        }
+        const streamCapability = socket.data.maxunStreamCapability as { browserId?: string } | undefined;
+        const controlCapability = socket.data.maxunControlCapability as { browserId?: string } | undefined;
+        if ((streamCapability && streamCapability.browserId !== id) || (controlCapability && controlCapability.browserId !== id)) {
+          logger.log('warn', `Rejected browser socket ${socket.id}: capability does not match browser ${id}`);
+          socket.disconnect(true);
+          return;
+        }
         if (!initialResolved) {
           initialResolved = true;
           clientConnected = true;
           clearTimeout(connectionTimeout);
           logger.log('info', `Frontend connected to browser ${id} via socket ${socket.id}`);
           resolve(socket);
-        } else {
+        } else if (browserSession) {
+          if (streamCapability) browserSession.updateStreamSocket(socket);
+          else if (controlCapability) attachControlSocket(browserSession, socket, userId, id);
+          else browserSession.updateSocket(socket);
           logger.log('debug', `Additional frontend socket ${socket.id} joined browser ${id} namespace (shared connection)`);
+        } else {
+          logger.log('debug', `Additional frontend socket ${socket.id} joined browser ${id} namespace before initialization`);
         }
       });
       
@@ -391,11 +542,9 @@ const initializeBrowserAsync = async (id: string, userId: string) => {
     const socket = await connectWithRetry(3);
     
     try {
-      let browserSession: RemoteBrowser;
-      
       if (socket) {
         logger.log('info', `Using real socket for browser ${id}`);
-        browserSession = new RemoteBrowser(socket, userId, id);
+        browserSession = new RemoteBrowser(socket, userId, id, enableLiveStream);
       } else {
         logger.log('info', `Using dummy socket for browser ${id}`);
         const dummySocket = {
@@ -403,6 +552,8 @@ const initializeBrowserAsync = async (id: string, userId: string) => {
             logger.log('debug', `Browser ${id} dummy socket emitted ${event}:`, data);
           },
           on: () => {},
+          off: () => {},
+          removeAllListeners: () => {},
           id: `dummy-${id}`,
           nsp: {
             emit: (event: string, ...args: any[]) => {
@@ -411,7 +562,7 @@ const initializeBrowserAsync = async (id: string, userId: string) => {
           },
         } as any;
         
-        browserSession = new RemoteBrowser(dummySocket, userId, id);
+        browserSession = new RemoteBrowser(dummySocket, userId, id, enableLiveStream);
       }
 
       logger.log('debug', `Starting browser initialization for ${id}`);
@@ -450,6 +601,9 @@ const initializeBrowserAsync = async (id: string, userId: string) => {
       await new Promise(resolve => setTimeout(resolve, 500));
       
       if (socket) {
+        const initialControl = socket.data.maxunControlCapability as { browserId?: string } | undefined;
+        if (initialControl) attachControlSocket(browserSession, socket, userId, id);
+        else if (enableLiveStream) browserSession.updateStreamSocket(socket);
         socket.emit('ready-for-run');
       } else {
         setTimeout(async () => {

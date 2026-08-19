@@ -10,6 +10,7 @@ import { PlaywrightBlocker } from '@cliqz/adblocker-playwright';
 import fetch from 'cross-fetch';
 import logger from '../../logger';
 import { readFileSync } from "fs";
+import { dirname, join } from "path";
 import { InterpreterSettings } from "../../types";
 import { WorkflowGenerator } from "../../workflow-management/classes/Generator";
 import { WorkflowInterpreter } from "../../workflow-management/classes/Interpreter";
@@ -19,10 +20,22 @@ import { FingerprintInjector } from "fingerprint-injector";
 import { FingerprintGenerator } from "fingerprint-generator";
 import { connectToRemoteBrowser } from '../browserConnection';
 
+const RRWEB_MASK_TEXT_SELECTOR = [
+  '[data-sensitive]',
+  '[data-private]',
+  '[autocomplete="current-password"]',
+  '[autocomplete="new-password"]',
+  '[autocomplete="cc-number"]',
+  '[autocomplete="cc-csc"]',
+  '[autocomplete="cc-exp"]',
+  '.rr-mask',
+].join(', ');
+
 declare global {
   interface Window {
     rrweb?: any;
     isRecording?: boolean;
+    rrwebRecordHandle?: { takeFullSnapshot?: () => void };
     emitEventToBackend?: (event: any) => Promise<void>;
   }
 }
@@ -30,6 +43,28 @@ declare global {
 interface PageNavigationState {
     version: number;
     queue: Promise<unknown>;
+}
+
+export type ControlCommandKind = 'click' | 'key' | 'type' | 'navigate' | 'scroll' | 'refresh' | 'pause' | 'resume' | 'step' | 'abort';
+export type ControlCommandMode = 'assist' | 'record';
+
+export interface RemoteBrowserControlCommand {
+    readonly kind: ControlCommandKind;
+    readonly mode: ControlCommandMode;
+    readonly coordinates?: { x: number; y: number };
+    readonly key?: string;
+    /** Human-entered text is intentionally never logged or persisted. */
+    readonly text?: string;
+    readonly url?: string;
+    /** Server-owned selector used only for an explicit recorded key action. */
+    readonly selector?: string;
+}
+
+export interface RemoteBrowserControlResult {
+    readonly applied: boolean;
+    readonly recorded: boolean;
+    readonly browserStatus: 'active' | 'gone';
+    readonly currentUrl: string | null;
 }
 
 // const MEMORY_CONFIG = {
@@ -90,6 +125,7 @@ export class RemoteBrowser {
      * @private
      */
     private userId: string;
+    private poolId: string;
 
     private lastEmittedUrl: string | null = null;
     private pageNavigationStates = new WeakMap<Page, PageNavigationState>();
@@ -125,6 +161,7 @@ export class RemoteBrowser {
     public constructor(socket: Socket, userId: string, poolId: string, isRecordingMode: boolean = false) {
         this.socket = socket;
         this.userId = userId;
+        this.poolId = poolId;
         this.interpreter = new WorkflowInterpreter(socket);
         this.generator = new WorkflowGenerator(socket, poolId);
         this.isRecordingMode = isRecordingMode;
@@ -405,7 +442,9 @@ export class RemoteBrowser {
       }
 
       try {
-        const rrwebJsPath = require.resolve('rrweb/dist/rrweb.min.js');
+        const rrwebEntryPath = require.resolve('rrweb');
+        const rrwebPackageRoot = dirname(dirname(rrwebEntryPath));
+        const rrwebJsPath = join(rrwebPackageRoot, 'umd', 'rrweb.min.js');
         const rrwebScriptContent = readFileSync(rrwebJsPath, 'utf8');
         const navigationState = this.getPageNavigationState(page);
         const navigationVersion = navigationState.version;
@@ -448,6 +487,9 @@ export class RemoteBrowser {
           await page.exposeFunction('emitEventToBackend', (event: any) => {
             this.socket.emit('rrweb-event', event);
 
+            if (event.type === 2) {
+              logger.debug(`[rrweb] Full snapshot emitted for browser ${this.poolId} via socket ${this.socket.id}`);
+            }
             if (event.type === 2 && !hasEmittedFullSnapshot) {
               hasEmittedFullSnapshot = true;
               this.emitLoadingProgress(100, 0);
@@ -456,7 +498,7 @@ export class RemoteBrowser {
           });
         }
 
-        const rrwebStatus = await page.evaluate(() => {
+        const rrwebStatus = await page.evaluate((maskTextSelector) => {
           if (!window.rrweb) {
             console.error('[rrweb] window.rrweb is not defined!');
             return { success: false, error: 'window.rrweb is not defined' };
@@ -475,7 +517,15 @@ export class RemoteBrowser {
                   window.emitEventToBackend(event).catch(() => { });
                 }
               },
-              maskAllInputs: false,
+              // Goal 4 privacy boundary: inputs are masked by default and
+              // explicitly marked sensitive text is masked in rrweb snapshots
+              // and mutation events before they leave Maxun.
+              maskAllInputs: true,
+              maskTextSelector,
+              // Iframe srcdoc attributes can contain raw secrets before the
+              // nested document serializer applies text masking. Block the
+              // iframe subtree entirely for the read-only stream.
+              blockSelector: 'iframe',
               recordCanvas: false,
               sampling: {
                 mousemove: false,
@@ -495,7 +545,7 @@ export class RemoteBrowser {
             console.error('[rrweb] Failed to start recording:', error);
             return { success: false, error: error.message };
           }
-        });
+        }, RRWEB_MASK_TEXT_SELECTOR);
 
         if (rrwebStatus.success) {
           this.isDOMStreamingActive = true;
@@ -711,9 +761,33 @@ export class RemoteBrowser {
     };
 
     /**
-     * Captures a screenshot directly without running the workflow interpreter
-     * @param settings Screenshot settings containing fullPage, type, etc.
-     * @returns Promise<void>
+     * Captures a screenshot directly without running the workflow interpreter.
+     * The returned bytes are for an authenticated ephemeral SDK response; they
+     * are never appended to the Harness session or model transcript.
+     */
+    public captureCurrentScreenshot = async (settings: {
+      fullPage: boolean;
+      type: 'png' | 'jpeg';
+      timeout?: number;
+      animations?: 'disabled' | 'allow';
+      caret?: 'hide' | 'initial';
+      scale?: 'css' | 'device';
+    }): Promise<Buffer> => {
+      if (!this.currentPage || this.currentPage.isClosed()) {
+        throw new Error('No active page available');
+      }
+      return this.currentPage.screenshot({
+        fullPage: settings.fullPage,
+        type: settings.type || 'png',
+        timeout: settings.timeout || 30000,
+        animations: settings.animations || 'allow',
+        caret: settings.caret || 'hide',
+        scale: settings.scale || 'device',
+      });
+    };
+
+    /**
+     * Captures a screenshot and preserves the existing editor socket events.
      */
     public captureDirectScreenshot = async (settings: {
       fullPage: boolean;
@@ -723,38 +797,17 @@ export class RemoteBrowser {
       caret?: 'hide' | 'initial';
       scale?: 'css' | 'device';
     }): Promise<void> => {
-      if (!this.currentPage) {
-        logger.error("No current page available for screenshot");
-        this.socket.emit('screenshotError', {
-          userId: this.userId,
-          error: 'No active page available'
-        });
-        return;
-      }
-
       try {
         this.socket.emit('screenshotCaptureStarted', {
           userId: this.userId,
           fullPage: settings.fullPage
         });
-
-        const screenshotBuffer = await this.currentPage.screenshot({
-          fullPage: settings.fullPage,
-          type: settings.type || 'png',
-          timeout: settings.timeout || 30000,
-          animations: settings.animations || 'allow',
-          caret: settings.caret || 'hide',
-          scale: settings.scale || 'device'
-        });
-
-        const base64Data = screenshotBuffer.toString('base64');
+        const screenshotBuffer = await this.captureCurrentScreenshot(settings);
         const mimeType = `image/${settings.type || 'png'}`;
-        const dataUrl = `data:${mimeType};base64,${base64Data}`;
-
         this.socket.emit('directScreenshotCaptured', {
           userId: this.userId,
-          screenshot: dataUrl,
-          mimeType: mimeType,
+          screenshot: `data:${mimeType};base64,${screenshotBuffer.toString('base64')}`,
+          mimeType,
           fullPage: settings.fullPage,
           timestamp: Date.now()
         });
@@ -778,6 +831,7 @@ export class RemoteBrowser {
         this.socket.removeAllListeners('addTab');
         this.socket.removeAllListeners('closeTab');
         this.socket.removeAllListeners('dom:scroll');
+        this.socket.removeAllListeners('request-refresh');
 
         logger.debug(`Removed all socket listeners for user ${this.userId}`);
       } catch (error: any) {
@@ -973,6 +1027,137 @@ export class RemoteBrowser {
         if (this.isDOMStreamingActive) {
           this.setupScrollEventListener();
         }
+    };
+
+    /**
+     * Reattach a read-only Goal 4 stream socket without installing editor,
+     * navigation, scroll, or other browser-mutating handlers.
+     */
+    public updateStreamSocket = (socket: Socket): void => {
+        logger.debug(`[rrweb] Stream socket attached for browser ${this.poolId}: ${socket.id}`);
+        this.socket = socket;
+        socket.removeAllListeners('request-refresh');
+        socket.on('request-refresh', () => {
+          void this.requestStreamRefresh();
+        });
+    };
+
+    /**
+     * Execute one server-authorized human/agent command. The caller validates
+     * the control lease and replay identity before reaching this method.
+     * Text is used only in memory for the Playwright action and is never logged,
+     * emitted, or added to the generated workflow.
+     */
+    public executeControlCommand = async (
+      command: RemoteBrowserControlCommand,
+      signal: AbortSignal,
+    ): Promise<RemoteBrowserControlResult> => {
+      const page = this.currentPage;
+      if (!page || page.isClosed()) throw new Error('Browser page is unavailable');
+      if (signal.aborted) throw new Error('Control command cancelled before dispatch');
+
+      const abortInterpreter = () => {
+        void this.interpreter.stopInterpretation().catch(() => undefined);
+      };
+      signal.addEventListener('abort', abortInterpreter, { once: true });
+      let recorded = false;
+      try {
+        switch (command.kind) {
+          case 'click': {
+            const coordinates = command.coordinates;
+            if (!coordinates || !Number.isFinite(coordinates.x) || !Number.isFinite(coordinates.y)) {
+              throw new Error('click requires finite coordinates');
+            }
+            await page.mouse.click(coordinates.x, coordinates.y);
+            if (command.mode === 'record') {
+              await this.generator.onClick(coordinates, page);
+              recorded = true;
+            }
+            break;
+          }
+          case 'key': {
+            const key = typeof command.key === 'string' ? command.key.trim() : '';
+            if (!key || key.length > 100) throw new Error('key must be a non-empty short string');
+            await page.keyboard.press(key);
+            if (command.mode === 'record' && command.selector) {
+              await this.generator.onDOMKeyboardAction(page, {
+                selector: command.selector,
+                key,
+                url: page.url(),
+                userId: this.userId,
+              });
+              recorded = true;
+            }
+            break;
+          }
+          case 'type': {
+            if (command.mode !== 'assist') throw new Error('text entry is transient assist-only work');
+            if (typeof command.text !== 'string' || command.text.length > 16_384) throw new Error('text is invalid');
+            await page.keyboard.insertText(command.text);
+            break;
+          }
+          case 'navigate': {
+            if (typeof command.url !== 'string') throw new Error('navigate requires a URL');
+            const target = new URL(command.url);
+            if (target.protocol !== 'http:' && target.protocol !== 'https:') throw new Error('Only http(s) URLs are allowed');
+            if (command.mode === 'record') {
+              await this.generator.onChangeUrl(target.toString(), page);
+              recorded = true;
+            }
+            await this.navigateTo(page, target.toString(), { waitUntil: 'domcontentloaded', timeout: 30_000 });
+            break;
+          }
+          case 'scroll': {
+            const x = Number(command.coordinates?.x ?? 0);
+            const y = Number(command.coordinates?.y ?? 0);
+            if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error('scroll requires finite deltas');
+            await page.mouse.wheel(x, y);
+            break;
+          }
+          case 'refresh':
+            await page.reload({ waitUntil: 'domcontentloaded', timeout: 30_000 });
+            break;
+          case 'pause':
+            this.interpreter.pauseInterpretation();
+            break;
+          case 'resume':
+            this.interpreter.resumeInterpretation();
+            break;
+          case 'step':
+            this.interpreter.stepInterpretation();
+            break;
+          case 'abort':
+            await this.interpreter.stopInterpretation();
+            break;
+          default:
+            throw new Error('Unsupported control command');
+        }
+        if (signal.aborted) throw new Error('Control command cancelled after dispatch');
+        return {
+          applied: true,
+          recorded,
+          browserStatus: 'active',
+          currentUrl: page.url() || null,
+        };
+      } finally {
+        signal.removeEventListener('abort', abortInterpreter);
+      }
+    };
+
+    /** Ask rrweb to emit a fresh full snapshot to the ephemeral namespace. */
+    public requestStreamRefresh = async (): Promise<void> => {
+        if (!this.isRecordingMode || !this.currentPage || this.currentPage.isClosed()) {
+          logger.debug(`[rrweb] Refresh ignored for browser ${this.poolId}: recording=${this.isRecordingMode}`);
+          return;
+        }
+        logger.debug(`[rrweb] Refresh requested for browser ${this.poolId}`);
+        await this.currentPage.evaluate(() => {
+          if (window.rrwebRecordHandle?.takeFullSnapshot) {
+            window.rrwebRecordHandle.takeFullSnapshot();
+          } else {
+            window.rrweb?.record?.takeFullSnapshot?.();
+          }
+        }).catch(() => undefined);
     };
 
     /**

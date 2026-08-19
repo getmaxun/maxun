@@ -17,6 +17,7 @@ import { addJob } from '../storage/graphileWorker';
 import { QUEUE_NAMES } from '../task-runner';
 import { io as serverIo, recentRecoveries } from '../server';
 import { WorkflowEnricher } from '../sdk/workflowEnricher';
+import { createLlmRobot, LlmRobotError } from '../sdk/llmRobot';
 import sequelizeInstance from '../storage/db';
 import { Op, literal } from 'sequelize';
 import {
@@ -759,6 +760,38 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
     const finalRobotName = (typeof robotName === 'string' ? robotName.trim() : '') || `LLM Extract: ${prompt.substring(0, 50)}`;
     if (!finalRobotName) {
       return res.status(400).json({ error: 'Robot name cannot be empty.' });
+    }
+
+    if (url) {
+      const llmConfig = {
+        provider: llmProvider || 'ollama',
+        model: llmModel,
+        apiKey: llmApiKey,
+        baseUrl: llmBaseUrl,
+      };
+      const llmValidationError = validateRequiredLlmConfig(llmConfig, 'Creating an LLM extract robot');
+      if (llmValidationError) return res.status(400).json(llmValidationError);
+
+      try {
+        const result = await createLlmRobot({
+          url,
+          prompt,
+          userId: req.user.id,
+          robotName: finalRobotName,
+          llmConfig,
+        });
+        const robot = sanitizeRobotMeta(result.robot);
+        return res.status(result.existing ? 200 : 201).json({
+          message: result.existing ? 'Existing LLM robot returned.' : 'LLM robot created successfully.',
+          robot,
+        });
+      } catch (error: unknown) {
+        if (error instanceof LlmRobotError) {
+          const status = error.code === 'robot_name_conflict' ? 409 : error.code === 'invalid_url' ? 400 : 422;
+          return res.status(status).json({ error: error.message, code: error.code, details: error.details });
+        }
+        throw error;
+      }
     }
 
     if (await isRobotNameTaken(finalRobotName, req.user.id)) {

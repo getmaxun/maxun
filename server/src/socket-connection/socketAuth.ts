@@ -1,5 +1,20 @@
-import { verify } from 'jsonwebtoken';
+import { verify, type JwtPayload } from 'jsonwebtoken';
 import { Socket } from 'socket.io';
+import { requireResourceClaim } from '../sdk/resourceClaims';
+import { requireControlLease, type ControlActor } from '../sdk/controlLease';
+
+export interface MaxunStreamCapability {
+  readonly browserId: string;
+  readonly ownerSessionId: string;
+  readonly epoch: number;
+}
+
+export interface MaxunControlCapability {
+  readonly browserId: string;
+  readonly ownerSessionId: string;
+  readonly controlEpoch: number;
+  readonly actor: ControlActor;
+}
 
 /**
  * Reads the session JWT from the handshake cookie header.
@@ -38,7 +53,7 @@ const readTokenFromCookieHeader = (cookieHeader?: string): string | null => {
  * The verified id is stored on `socket.data.userId`; nothing downstream should
  * take a user id from client-supplied handshake data.
  */
-export const authenticateSocket = (socket: Socket, next: (err?: Error) => void): void => {
+export const authenticateSocket = async (socket: Socket, next: (err?: Error) => void): Promise<void> => {
   const suppliedToken = socket.handshake.auth && (socket.handshake.auth as any).token;
   const token = suppliedToken || readTokenFromCookieHeader(socket.handshake.headers.cookie);
 
@@ -54,12 +69,65 @@ export const authenticateSocket = (socket: Socket, next: (err?: Error) => void):
   }
 
   try {
-    const decoded = verify(token, secret) as any;
-    const userId = decoded && (decoded.id ?? decoded.userId);
+    const decoded = verify(token, secret) as JwtPayload & Record<string, unknown>;
+    const userId = decoded && (decoded.id ?? decoded.userId ?? decoded.sub);
 
     if (userId === undefined || userId === null || userId === '') {
       next(new Error('Unauthorized'));
       return;
+    }
+
+    if (decoded.purpose !== undefined) {
+      const browserId = typeof decoded.browserId === 'string' ? decoded.browserId : '';
+      const ownerSessionId = typeof decoded.ownerSessionId === 'string' ? decoded.ownerSessionId : '';
+      const namespaceBrowserId = socket.nsp.name.replace(/^\//, '');
+      if (!browserId || !ownerSessionId || namespaceBrowserId !== browserId) {
+        next(new Error('Unauthorized'));
+        return;
+      }
+
+      if (decoded.purpose === 'maxun-browser-stream') {
+        const epoch = typeof decoded.epoch === 'number' ? decoded.epoch : NaN;
+        if (!Number.isSafeInteger(epoch) || epoch < 1) {
+          next(new Error('Unauthorized'));
+          return;
+        }
+        try {
+          const claim = await requireResourceClaim(Number(userId), {
+            resourceType: 'browser', resourceId: browserId, ownerSessionId,
+          });
+          if (claim.epoch !== epoch) {
+            next(new Error('Unauthorized'));
+            return;
+          }
+        } catch {
+          next(new Error('Unauthorized'));
+          return;
+        }
+        socket.data.maxunStreamCapability = { browserId, ownerSessionId, epoch } satisfies MaxunStreamCapability;
+      } else if (decoded.purpose === 'maxun-browser-control') {
+        const controlEpoch = typeof decoded.controlEpoch === 'number' ? decoded.controlEpoch : NaN;
+        const actor = decoded.actor === 'agent' || decoded.actor === 'human' ? decoded.actor : null;
+        if (!actor || !Number.isSafeInteger(controlEpoch) || controlEpoch < 1) {
+          next(new Error('Unauthorized'));
+          return;
+        }
+        try {
+          await requireControlLease(Number(userId), {
+            browserSessionId: browserId,
+            ownerSessionId,
+            actor,
+            controlEpoch,
+          });
+        } catch {
+          next(new Error('Unauthorized'));
+          return;
+        }
+        socket.data.maxunControlCapability = { browserId, ownerSessionId, controlEpoch, actor } satisfies MaxunControlCapability;
+      } else {
+        next(new Error('Unauthorized'));
+        return;
+      }
     }
 
     socket.data.userId = String(userId);

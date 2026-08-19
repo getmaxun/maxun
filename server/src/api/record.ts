@@ -8,6 +8,7 @@ import { createRemoteBrowserForRun, destroyRemoteBrowser } from "../browser-mana
 import logger from "../logger";
 import { browserPool, io as serverIo } from "../server";
 import { io, Socket } from "socket.io-client";
+import jwt from "jsonwebtoken";
 import { BinaryOutputService } from "../storage/mino";
 import { AuthenticatedRequest } from "../routes/record"
 import {capture} from "../utils/analytics";
@@ -1411,10 +1412,15 @@ export async function handleRunRecording(id: string, userId: string, runSource: 
 
         const CONNECTION_TIMEOUT = 30000;
 
+        const internalToken = process.env.JWT_SECRET
+            ? jwt.sign({ id: userId }, process.env.JWT_SECRET)
+            : undefined;
+
         socket = io(`${process.env.BACKEND_URL ? process.env.BACKEND_URL : 'http://localhost:8080'}/${browserId}`, {
             transports: ['websocket'],
             rejectUnauthorized: false,
             timeout: CONNECTION_TIMEOUT,
+            ...(internalToken ? { auth: { token: internalToken } } : {}),
         });
 
         const readyHandler = () => readyForRunHandler(browserId, newRunId, userId, socket!);

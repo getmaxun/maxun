@@ -7,12 +7,21 @@
 import { Router, Request, Response } from 'express';
 import { requireAPIKey } from "../middlewares/api";
 import Robot from "../models/Robot";
+import RecorderDraft from "../models/RecorderDraft";
 import Run from "../models/Run";
 import { v4 as uuid } from 'uuid';
 import { WorkflowFile } from "maxun-core";
 import logger from "../logger";
 import { capture } from "../utils/analytics";
 import { handleRunRecording } from "./record";
+import {
+    createRemoteBrowserForRun,
+    destroyRemoteBrowser,
+    getRemoteBrowser,
+    getRemoteBrowserCurrentUrl,
+    getRemoteBrowserOwner,
+    getRemoteBrowserStatus,
+} from '../browser-management/controller';
 import { WorkflowEnricher } from "../sdk/workflowEnricher";
 import { cancelScheduledWorkflow, scheduleWorkflow } from '../storage/schedule';
 import { encrypt } from '../utils/auth';
@@ -28,10 +37,48 @@ import sequelizeInstance from '../storage/db';
 import { Op } from 'sequelize';
 import { validateRequiredLlmConfig, formatsRequireLlm, readLlmConfig, toPromptLlmMeta } from '../utils/llm-config-validation';
 import multer from 'multer';
+import jwt from 'jsonwebtoken';
 import { MAX_FILE_SIZE_BYTES } from '../workflow-management/classes/DocumentInterpreter';
+import { getServiceInstanceId } from '../sdk/serviceIdentity';
+import { claimResource, releaseResource, requireResourceClaim, ResourceClaimError } from '../sdk/resourceClaims';
 import { createDocumentRobotRecord } from '../utils/document/createDocumentRobotRecord';
 import { createDocumentParseRobotRecord } from '../utils/document/createDocumentParseRobotRecord';
+import {
+    acquireControl,
+    getControlCommandStatus,
+    heartbeatControl,
+    releaseControl,
+    requireControlLease,
+    ControlLeaseError,
+    type ControlActor,
+} from '../sdk/controlLease';
+import {
+    abortWhenRequestCloses,
+    cancelBrowserControlCommand,
+    cancelBrowserControlCommands,
+    executeBrowserControlCommand,
+    normalizeControlCommand,
+} from '../sdk/browserControl';
+import type { ControlCommandMode } from '../models/ControlCommand';
+import type { ControlCommandKind } from '../browser-management/classes/RemoteBrowser';
 import { normalizeDocumentMimeType, PDF_MIME_TYPE } from '../utils/document/documentFile';
+import {
+    createLlmRobot,
+    getTrustedAgentLlmConfig,
+    LlmRobotError,
+    summarizeListWorkflow,
+} from '../sdk/llmRobot';
+import {
+    compileRecorderDraft,
+    createRecorderDraft,
+    RecorderDraftError,
+    serializeRecorderDraft,
+    selectRecorderDraftList,
+    previewRecorderDraft,
+    updateRecorderDraftField,
+    updateRecorderDraftOptions,
+    validateRecorderDraft,
+} from '../sdk/recorderDraft';
 
 const router = Router();
 
@@ -155,7 +202,8 @@ router.get("/sdk/status", requireAPIKey, async (req: AuthenticatedRequest, res: 
         return res.status(200).json({
             email: user.email,
             plan: 'OSS',
-            credits: 999999
+            credits: 999999,
+            serviceInstanceId: getServiceInstanceId(),
         });
     } catch (error: any) {
         logger.error("Error getting status:", error);
@@ -163,6 +211,402 @@ router.get("/sdk/status", requireAPIKey, async (req: AuthenticatedRequest, res: 
             error: "Failed to get status",
             message: error.message
         });
+    }
+});
+
+const resourceClaimErrorStatus = (code: ResourceClaimError['code']): number => (
+    code === 'claim_conflict' ? 409 : 400
+);
+
+const sendResourceClaimError = (res: Response, error: unknown) => {
+    if (error instanceof ResourceClaimError) {
+        return res.status(resourceClaimErrorStatus(error.code)).json({
+            error: error.message,
+            code: error.code,
+            ...(error.details ? { details: error.details } : {}),
+        });
+    }
+    logger.error(`[SDK] Resource claim error: ${error instanceof Error ? error.message : 'unknown error'}`);
+    return res.status(500).json({ error: 'Resource claim operation failed', code: 'internal_error' });
+};
+
+/** Explicitly claim one authenticated Maxun draft or browser for one Harness session. */
+router.post('/sdk/correlation/claims', requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const resourceType = req.body?.resourceType;
+        const resourceId = req.body?.resourceId;
+        const ownerSessionId = req.body?.ownerSessionId;
+        if (resourceType === 'draft') {
+            const draft = await RecorderDraft.findOne({ where: { id: resourceId, userId: Number(req.user!.id) } });
+            if (!draft) return res.status(404).json({ error: 'Recorder draft not found', code: 'resource_not_found' });
+        } else if (resourceType === 'browser') {
+            if (getRemoteBrowserOwner(String(resourceId)) !== String(req.user!.id)) {
+                return res.status(404).json({ error: 'Browser session not found', code: 'resource_not_found' });
+            }
+        }
+        const claim = await claimResource(Number(req.user!.id), { resourceType, resourceId, ownerSessionId });
+        return res.status(claim.existing ? 200 : 201).json({
+            success: true,
+            data: { ...claim, serviceInstanceId: getServiceInstanceId() },
+        });
+    } catch (error: unknown) {
+        return sendResourceClaimError(res, error);
+    }
+});
+
+/** Release a claim only from its owning Harness session and epoch. */
+router.delete('/sdk/correlation/claims', requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        await releaseResource(Number(req.user!.id), {
+            resourceType: req.body?.resourceType,
+            resourceId: req.body?.resourceId,
+            ownerSessionId: req.body?.ownerSessionId,
+            epoch: req.body?.epoch,
+        });
+        return res.status(204).send();
+    } catch (error: unknown) {
+        return sendResourceClaimError(res, error);
+    }
+});
+
+/** Reserve a Maxun browser slot for an explicitly owned Harness session. */
+router.post('/sdk/browser-sessions', requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    const ownerSessionId = typeof req.body?.ownerSessionId === 'string' ? req.body.ownerSessionId.trim() : '';
+    if (!ownerSessionId) return res.status(400).json({ error: 'ownerSessionId is required', code: 'invalid_claim' });
+    let browserSessionId: string | undefined;
+    try {
+        browserSessionId = createRemoteBrowserForRun(String(req.user!.id), true);
+        const claim = await claimResource(Number(req.user!.id), {
+            resourceType: 'browser', resourceId: browserSessionId, ownerSessionId,
+        });
+        return res.status(201).json({
+            success: true,
+            data: {
+                browserSessionId,
+                serviceInstanceId: getServiceInstanceId(),
+                browserStatus: 'active',
+                status: 'reserved',
+                ownerSessionId: claim.ownerSessionId,
+                epoch: claim.epoch,
+            },
+        });
+    } catch (error: unknown) {
+        if (browserSessionId) await destroyRemoteBrowser(browserSessionId, String(req.user!.id)).catch(() => undefined);
+        return sendResourceClaimError(res, error);
+    }
+});
+
+const CONTROL_CAPABILITY_TTL_SECONDS = 5 * 60;
+const CONTROL_ACTORS: readonly ControlActor[] = ['agent', 'human'];
+const CONTROL_COMMANDS: readonly ControlCommandKind[] = ['click', 'key', 'type', 'navigate', 'scroll', 'refresh', 'pause', 'resume', 'step', 'abort'];
+const CONTROL_MODES: readonly ControlCommandMode[] = ['assist', 'record'];
+
+const controlErrorStatus = (code: ControlLeaseError['code']): number => {
+    if (code === 'control_conflict') return 409;
+    if (code === 'stale_control' || code === 'control_expired' || code === 'command_replay') return 409;
+    return 400;
+};
+
+const sendControlError = (res: Response, error: unknown) => {
+    if (error instanceof ResourceClaimError) return sendResourceClaimError(res, error);
+    if (error instanceof ControlLeaseError) {
+        return res.status(controlErrorStatus(error.code)).json({
+            error: error.message,
+            code: error.code,
+            ...(error.details ? { details: error.details } : {}),
+        });
+    }
+    logger.error(`[SDK] Browser control error: ${error instanceof Error ? error.message : 'unknown error'}`);
+    return res.status(500).json({ error: 'Browser control operation failed', code: 'control_internal_error' });
+};
+
+const controlCapability = (req: AuthenticatedRequest, browserSessionId: string, lease: {
+    ownerSessionId: string;
+    actor: ControlActor;
+    controlEpoch: number;
+}) => {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) throw new ControlLeaseError('invalid_control', 'Browser control is unavailable without JWT_SECRET');
+    const expiresAt = new Date(Date.now() + CONTROL_CAPABILITY_TTL_SECONDS * 1000);
+    const capability = jwt.sign({
+        id: String(req.user!.id),
+        purpose: 'maxun-browser-control',
+        browserId: browserSessionId,
+        ownerSessionId: lease.ownerSessionId,
+        controlEpoch: lease.controlEpoch,
+        actor: lease.actor,
+    }, secret, { expiresIn: CONTROL_CAPABILITY_TTL_SECONDS });
+    return { capability, expiresAt: expiresAt.toISOString() };
+};
+
+/** Acquire or transition the server-side browser control lease. */
+router.post('/sdk/browser-sessions/:id/control/acquire', requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    const browserSessionId = req.params.id;
+    const ownerSessionId = typeof req.body?.ownerSessionId === 'string' ? req.body.ownerSessionId.trim() : '';
+    const actor = req.body?.actor;
+    if (!ownerSessionId || !CONTROL_ACTORS.includes(actor)) {
+        return res.status(400).json({ error: 'ownerSessionId and actor are required', code: 'invalid_control' });
+    }
+    try {
+        if (getRemoteBrowserOwner(browserSessionId) !== String(req.user!.id)) {
+            return res.status(404).json({ error: 'Browser session not found', code: 'resource_not_found' });
+        }
+        const lease = await acquireControl(Number(req.user!.id), { browserSessionId, ownerSessionId, actor });
+        if (!lease.existing) cancelBrowserControlCommands(Number(req.user!.id), browserSessionId);
+        const token = controlCapability(req, browserSessionId, lease);
+        return res.status(200).json({
+            success: true,
+            data: {
+                ...lease,
+                ...token,
+                streamUrl: (process.env.MAXUN_BROWSER_STREAM_URL || `${req.protocol}://${req.get('host')}`).replace(/\/api\/?$/, ''),
+                serviceInstanceId: getServiceInstanceId(),
+                currentUrl: getRemoteBrowserCurrentUrl(browserSessionId, String(req.user!.id)) || null,
+                browserStatus: getRemoteBrowserStatus(browserSessionId) === 'failed' ? 'gone' : 'active',
+            },
+        });
+    } catch (error: unknown) {
+        return sendControlError(res, error);
+    }
+});
+
+/** Extend a control lease without advancing its epoch. */
+router.post('/sdk/browser-sessions/:id/control/heartbeat', requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const lease = await heartbeatControl(Number(req.user!.id), {
+            browserSessionId: req.params.id,
+            ownerSessionId: req.body?.ownerSessionId,
+            actor: req.body?.actor,
+            controlEpoch: req.body?.controlEpoch,
+        });
+        return res.status(200).json({ success: true, data: lease });
+    } catch (error: unknown) {
+        return sendControlError(res, error);
+    }
+});
+
+/** Release a lease and cancel any command that was in flight for the old epoch. */
+router.post('/sdk/browser-sessions/:id/control/release', requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const result = await releaseControl(Number(req.user!.id), {
+            browserSessionId: req.params.id,
+            ownerSessionId: req.body?.ownerSessionId,
+            actor: req.body?.actor,
+            controlEpoch: req.body?.controlEpoch,
+        });
+        cancelBrowserControlCommands(Number(req.user!.id), req.params.id);
+        return res.status(200).json({ success: true, data: result });
+    } catch (error: unknown) {
+        return sendControlError(res, error);
+    }
+});
+
+/** Execute one epoch-bound browser/interpreter command. */
+router.post('/sdk/browser-sessions/:id/control/command', requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    const browserSessionId = req.params.id;
+    const ownerSessionId = typeof req.body?.ownerSessionId === 'string' ? req.body.ownerSessionId.trim() : '';
+    const actor = req.body?.actor;
+    const controlEpoch = req.body?.controlEpoch;
+    const commandId = typeof req.body?.commandId === 'string' ? req.body.commandId.trim() : '';
+    if (!ownerSessionId || !CONTROL_ACTORS.includes(actor) || !Number.isSafeInteger(controlEpoch) || controlEpoch < 1 || !commandId) {
+        return res.status(400).json({ error: 'ownerSessionId, actor, positive controlEpoch, and commandId are required', code: 'invalid_control' });
+    }
+    try {
+        const command = normalizeControlCommand(req.body);
+        if (getRemoteBrowserOwner(browserSessionId) !== String(req.user!.id)) {
+            return res.status(404).json({ error: 'Browser session not found', code: 'resource_not_found' });
+        }
+        const browser = getRemoteBrowserStatus(browserSessionId) === 'ready'
+            ? getRemoteBrowser(browserSessionId, String(req.user!.id))
+            : undefined;
+        if (!browser) return res.status(404).json({ error: 'Browser session not found', code: 'resource_not_found' });
+        const abort = new AbortController();
+        const cleanup = abortWhenRequestCloses(req, abort, () => res.writableEnded);
+        try {
+            const result = await executeBrowserControlCommand(Number(req.user!.id), browser, {
+                browserSessionId,
+                ownerSessionId,
+                actor,
+                controlEpoch,
+                commandId,
+                commandType: command.kind,
+                mode: command.mode,
+            }, command, abort.signal);
+            return res.status(200).json({ success: true, data: result });
+        } finally {
+            cleanup();
+        }
+    } catch (error: unknown) {
+        if (error instanceof Error && /cancelled|disconnected/i.test(error.message)) {
+            return res.status(499).json({ error: 'Control command cancelled', code: 'control_cancelled' });
+        }
+        if (error instanceof ControlLeaseError) return sendControlError(res, error);
+        logger.error(`[SDK] Browser control command failed: ${error instanceof Error ? error.message : 'unknown error'}`);
+        return res.status(502).json({ error: 'Browser control command failed', code: 'control_command_failed' });
+    }
+});
+
+/** Read compact command outcome without exposing command arguments or text. */
+router.get('/sdk/browser-sessions/:id/control/command/:commandId', requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const result = await getControlCommandStatus(Number(req.user!.id), {
+            browserSessionId: req.params.id,
+            ownerSessionId: String(req.query.ownerSessionId ?? ''),
+            actor: req.query.actor === 'human' ? 'human' : 'agent',
+            controlEpoch: Number(req.query.controlEpoch),
+            commandId: req.params.commandId,
+        });
+        if (!result) return res.status(404).json({ error: 'Control command not found', code: 'control_command_not_found' });
+        return res.status(200).json({ success: true, data: result });
+    } catch (error: unknown) {
+        return sendControlError(res, error);
+    }
+});
+
+/** Cooperatively cancel one running command without accepting command arguments. */
+router.post('/sdk/browser-sessions/:id/control/command/:commandId/cancel', requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        await requireControlLease(Number(req.user!.id), {
+            browserSessionId: req.params.id,
+            ownerSessionId: req.body?.ownerSessionId,
+            actor: req.body?.actor,
+            controlEpoch: req.body?.controlEpoch,
+        });
+        const cancelled = cancelBrowserControlCommand(Number(req.user!.id), req.params.id, req.params.commandId);
+        return res.status(200).json({ success: true, data: { commandId: req.params.commandId, cancelled } });
+    } catch (error: unknown) {
+        return sendControlError(res, error);
+    }
+});
+
+const BROWSER_STREAM_CAPABILITY_TTL_SECONDS = 60;
+
+/** Issue a short-lived claim-bound token for the read-only browser stream. */
+router.post('/sdk/browser-sessions/:id/stream-capability', requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    const browserSessionId = req.params.id;
+    const ownerSessionId = typeof req.body?.ownerSessionId === 'string' ? req.body.ownerSessionId.trim() : '';
+    const epoch = req.body?.epoch;
+    if (!ownerSessionId || !Number.isSafeInteger(epoch) || epoch < 1) {
+        return res.status(400).json({ error: 'ownerSessionId and positive integer epoch are required', code: 'invalid_claim' });
+    }
+    try {
+        if (getRemoteBrowserOwner(browserSessionId) !== String(req.user!.id)) {
+            return res.status(404).json({ error: 'Browser session not found', code: 'resource_not_found' });
+        }
+        await requireResourceClaim(Number(req.user!.id), {
+            resourceType: 'browser', resourceId: browserSessionId, ownerSessionId,
+        });
+        const secret = process.env.JWT_SECRET;
+        if (!secret) {
+            logger.error('[SDK] Cannot issue browser stream capability without JWT_SECRET');
+            return res.status(503).json({ error: 'Browser stream is unavailable', code: 'service_unavailable' });
+        }
+        const expiresAt = new Date(Date.now() + BROWSER_STREAM_CAPABILITY_TTL_SECONDS * 1000);
+        const capability = jwt.sign({
+            id: String(req.user!.id),
+            purpose: 'maxun-browser-stream',
+            browserId: browserSessionId,
+            ownerSessionId,
+            epoch,
+        }, secret, { expiresIn: BROWSER_STREAM_CAPABILITY_TTL_SECONDS });
+        return res.status(200).json({
+            success: true,
+            data: {
+                capability,
+                expiresAt: expiresAt.toISOString(),
+                streamUrl: (process.env.MAXUN_BROWSER_STREAM_URL || `${req.protocol}://${req.get('host')}`).replace(/\/api\/?$/, ''),
+                serviceInstanceId: getServiceInstanceId(),
+                browserSessionId,
+                ownerSessionId,
+                epoch,
+            },
+        });
+    } catch (error: unknown) {
+        return sendResourceClaimError(res, error);
+    }
+});
+
+/** Capture a current-browser screenshot for the authenticated owner. */
+router.post('/sdk/browser-sessions/:id/screenshot', requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    const browserSessionId = req.params.id;
+    const ownerSessionId = typeof req.body?.ownerSessionId === 'string' ? req.body.ownerSessionId.trim() : '';
+    const epoch = req.body?.epoch;
+    if (!ownerSessionId || !Number.isSafeInteger(epoch) || epoch < 1) {
+        return res.status(400).json({ error: 'ownerSessionId and positive integer epoch are required', code: 'invalid_claim' });
+    }
+    try {
+        if (getRemoteBrowserOwner(browserSessionId) !== String(req.user!.id)) {
+            return res.status(404).json({ error: 'Browser session not found', code: 'resource_not_found' });
+        }
+        await requireResourceClaim(Number(req.user!.id), {
+            resourceType: 'browser', resourceId: browserSessionId, ownerSessionId,
+        });
+        const browser = getRemoteBrowserStatus(browserSessionId) === 'ready'
+            ? getRemoteBrowser(browserSessionId, String(req.user!.id))
+            : undefined;
+        if (!browser) return res.status(404).json({ error: 'Browser session not found', code: 'resource_not_found' });
+        const image = await browser.captureCurrentScreenshot({
+            fullPage: req.body?.fullPage === true,
+            type: req.body?.type === 'jpeg' ? 'jpeg' : 'png',
+            timeout: 30000,
+            animations: 'disabled',
+            caret: 'hide',
+            scale: 'css',
+        });
+        res.setHeader('content-type', req.body?.type === 'jpeg' ? 'image/jpeg' : 'image/png');
+        res.setHeader('cache-control', 'no-store');
+        return res.status(200).send(image);
+    } catch (error: unknown) {
+        if (error instanceof ResourceClaimError) return sendResourceClaimError(res, error);
+        logger.error(`[SDK] Browser screenshot failed: ${error instanceof Error ? error.message : 'unknown error'}`);
+        return res.status(502).json({ error: 'Browser screenshot unavailable', code: 'screenshot_unavailable' });
+    }
+});
+
+/** Read process-local browser health for its authenticated owner. */
+router.get('/sdk/browser-sessions/:id', requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    const browserSessionId = req.params.id;
+    if (getRemoteBrowserOwner(browserSessionId) !== String(req.user!.id)) {
+        return res.status(404).json({ error: 'Browser session not found', code: 'resource_not_found' });
+    }
+    const status = getRemoteBrowserStatus(browserSessionId);
+    if (!status) return res.status(404).json({ error: 'Browser session not found', code: 'resource_not_found' });
+    try {
+        await requireResourceClaim(Number(req.user!.id), {
+            resourceType: 'browser', resourceId: browserSessionId,
+            ownerSessionId: req.query.ownerSessionId,
+        });
+    } catch (error: unknown) {
+        return sendResourceClaimError(res, error);
+    }
+    return res.status(200).json({
+        success: true,
+        data: {
+            browserSessionId,
+            serviceInstanceId: getServiceInstanceId(),
+            browserStatus: status === 'failed' ? 'gone' : 'active',
+            status,
+            currentUrl: getRemoteBrowserCurrentUrl(browserSessionId, String(req.user!.id)) || null,
+        },
+    });
+});
+
+/** Explicitly release ownership and destroy one browser session. */
+router.delete('/sdk/browser-sessions/:id', requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    const browserSessionId = req.params.id;
+    try {
+        await requireResourceClaim(Number(req.user!.id), {
+            resourceType: 'browser', resourceId: browserSessionId,
+            ownerSessionId: req.body?.ownerSessionId,
+        });
+        await releaseResource(Number(req.user!.id), {
+            resourceType: 'browser', resourceId: browserSessionId,
+            ownerSessionId: req.body?.ownerSessionId, epoch: req.body?.epoch,
+        });
+        await destroyRemoteBrowser(browserSessionId, String(req.user!.id));
+        return res.status(204).send();
+    } catch (error: unknown) {
+        return sendResourceClaimError(res, error);
     }
 });
 
@@ -1520,6 +1964,207 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
             error: "Failed to perform LLM extraction",
             message: error.message
         });
+    }
+});
+
+/**
+ * Create and persist a native list robot from a URL and natural-language request.
+ * The generator LLM configuration is read from trusted Maxun server environment.
+ */
+router.post("/sdk/robots/list", requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    const url = typeof req.body?.url === 'string' ? req.body.url.trim() : '';
+    const prompt = typeof req.body?.prompt === 'string' ? req.body.prompt.trim() : '';
+    const robotName = typeof req.body?.name === 'string' ? req.body.name.trim() : undefined;
+    const llmConfig = getTrustedAgentLlmConfig();
+
+    if (!url) return res.status(400).json({ error: 'url is required', code: 'invalid_request' });
+    if (!prompt) return res.status(400).json({ error: 'prompt is required', code: 'invalid_request' });
+    if (!llmConfig.provider || !llmConfig.apiKey) {
+        return res.status(503).json({
+            error: 'Maxun agent LLM is not configured',
+            code: 'agent_llm_not_configured',
+        });
+    }
+
+    try {
+        const result = await createLlmRobot({
+            url,
+            prompt,
+            userId: req.user!.id,
+            robotName,
+            llmConfig,
+        });
+        const summary = summarizeListWorkflow(result.workflow);
+        const meta = result.robot.recording_meta;
+
+        return res.status(result.existing ? 200 : 201).json({
+            success: true,
+            existing: result.existing,
+            data: {
+                robotId: meta.id,
+                name: meta.name,
+                url: meta.url,
+                type: meta.type,
+                ...summary,
+            },
+        });
+    } catch (error: unknown) {
+        if (error instanceof LlmRobotError) {
+            const status = error.code === 'robot_name_conflict' ? 409 : error.code === 'invalid_url' ? 400 : 422;
+            return res.status(status).json({
+                error: error.message,
+                code: error.code,
+                ...(error.details ? { details: error.details } : {}),
+            });
+        }
+
+        const message = error instanceof Error ? error.message.replaceAll(llmConfig.apiKey, '[redacted]') : 'unknown error';
+        logger.error(`[SDK] Error creating list robot: ${message}`);
+        return res.status(500).json({ error: 'Failed to create list robot', code: 'internal_error' });
+    }
+});
+
+const recorderDraftErrorStatus = (code: RecorderDraftError['code']): number => {
+    if (code === 'draft_not_found' || code === 'candidate_not_found' || code === 'field_not_found') return 404;
+    if (code === 'validation_failed') return 422;
+    if (code === 'robot_name_conflict') return 409;
+    return 400;
+};
+
+const sendRecorderDraftError = (res: Response, error: unknown) => {
+    if (error instanceof RecorderDraftError) {
+        return res.status(recorderDraftErrorStatus(error.code)).json({
+            error: error.message,
+            code: error.code,
+            ...(error.details ? { details: error.details } : {}),
+        });
+    }
+    if (error instanceof LlmRobotError) {
+        const status = error.code === 'robot_name_conflict' ? 409 : error.code === 'invalid_url' ? 400 : 422;
+        return res.status(status).json({
+            error: error.message,
+            code: error.code,
+            ...(error.details ? { details: error.details } : {}),
+        });
+    }
+    const message = error instanceof Error ? error.message : 'unknown error';
+    logger.error(`[SDK] Recorder Draft error: ${message}`);
+    return res.status(500).json({ error: 'Recorder Draft operation failed', code: 'internal_error' });
+};
+
+/**
+ * Create a semantic Recorder Draft. Maxun discovers repeated lists and owns
+ * all selectors; the API returns only opaque candidate IDs and metadata.
+ */
+router.post('/sdk/recorder/drafts', requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    const url = typeof req.body?.url === 'string' ? req.body.url.trim() : '';
+    if (!url) return res.status(400).json({ error: 'url is required', code: 'invalid_request' });
+    try {
+        const draft = await createRecorderDraft({
+            url,
+            userId: req.user!.id,
+            name: typeof req.body?.name === 'string' ? req.body.name : undefined,
+            description: typeof req.body?.description === 'string' ? req.body.description : undefined,
+        });
+        return res.status(201).json({ success: true, data: serializeRecorderDraft(draft) });
+    } catch (error: unknown) {
+        return sendRecorderDraftError(res, error);
+    }
+});
+
+router.get('/sdk/recorder/drafts/:id', requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const draft = await RecorderDraft.findOne({
+            where: { id: req.params.id, userId: Number(req.user!.id) },
+        });
+        if (!draft) return res.status(404).json({ error: 'Recorder draft not found', code: 'draft_not_found' });
+        return res.status(200).json({ success: true, data: serializeRecorderDraft(draft) });
+    } catch (error: unknown) {
+        return sendRecorderDraftError(res, error);
+    }
+});
+
+router.post('/sdk/recorder/drafts/:id/select-list', requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const listCandidateId = typeof req.body?.listCandidateId === 'string' ? req.body.listCandidateId : '';
+        if (!listCandidateId) throw new RecorderDraftError('invalid_request', 'listCandidateId is required');
+        const draft = await selectRecorderDraftList(req.params.id, req.user!.id, listCandidateId, req.body?.limit);
+        return res.status(200).json({ success: true, data: serializeRecorderDraft(draft) });
+    } catch (error: unknown) {
+        return sendRecorderDraftError(res, error);
+    }
+});
+
+router.post('/sdk/recorder/drafts/:id/fields', requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const fieldId = typeof req.body?.fieldId === 'string' ? req.body.fieldId : '';
+        const action = req.body?.action;
+        if (!fieldId || !['include', 'exclude', 'rename'].includes(action)) {
+            throw new RecorderDraftError('invalid_request', 'fieldId and action (include, exclude, or rename) are required');
+        }
+        const draft = await updateRecorderDraftField(req.params.id, req.user!.id, { fieldId, action, name: req.body?.name });
+        return res.status(200).json({ success: true, data: serializeRecorderDraft(draft) });
+    } catch (error: unknown) {
+        return sendRecorderDraftError(res, error);
+    }
+});
+
+router.post('/sdk/recorder/drafts/:id/options', requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const draft = await updateRecorderDraftOptions(req.params.id, req.user!.id, { limit: req.body?.limit });
+        return res.status(200).json({ success: true, data: serializeRecorderDraft(draft) });
+    } catch (error: unknown) {
+        return sendRecorderDraftError(res, error);
+    }
+});
+
+router.post('/sdk/recorder/drafts/:id/preview', requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const preview = await previewRecorderDraft(req.params.id, req.user!.id, {
+            followPagination: req.body?.followPagination !== false,
+            limit: req.body?.limit,
+        });
+        return res.status(200).json({ success: true, data: preview });
+    } catch (error: unknown) {
+        return sendRecorderDraftError(res, error);
+    }
+});
+
+router.post('/sdk/recorder/drafts/:id/validate', requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const scope = req.body?.scope === 'multi-page' ? 'multi-page' : 'current-page';
+        const validation = await validateRecorderDraft(req.params.id, req.user!.id, scope);
+        return res.status(validation.valid ? 200 : 422).json({ success: validation.valid, data: validation });
+    } catch (error: unknown) {
+        return sendRecorderDraftError(res, error);
+    }
+});
+
+router.post('/sdk/recorder/drafts/:id/compile', requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const result = await compileRecorderDraft(req.params.id, req.user!.id, {
+            robotName: typeof req.body?.robotName === 'string' ? req.body.robotName : undefined,
+        });
+        const meta = result.robot.recording_meta;
+        const summary = summarizeListWorkflow(result.workflow);
+        return res.status(result.existing ? 200 : 201).json({
+            success: true,
+            existing: result.existing,
+            data: {
+                draftId: result.draft.id,
+                robotId: meta.id,
+                name: meta.name,
+                url: meta.url,
+                type: meta.type,
+                fields: summary.fields,
+                pagination: summary.pagination
+                    ? { type: summary.pagination.type, tested: true }
+                    : null,
+                limit: summary.limit,
+            },
+        });
+    } catch (error: unknown) {
+        return sendRecorderDraftError(res, error);
     }
 });
 
