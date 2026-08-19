@@ -1530,7 +1530,17 @@ const documentUpload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: MAX_FILE_SIZE_BYTES },
     fileFilter: (_req, file, cb) => {
-        if (normalizeDocumentMimeType(file.mimetype, file.originalname)) {
+        const allowedMimeTypes = [
+            'application/pdf',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'text/csv',
+            'application/csv',
+            'image/jpeg',
+            'image/jpg',
+            'image/png',
+        ];
+        if (allowedMimeTypes.includes(file.mimetype)) {
             cb(null, true);
         } else {
             cb(new Error('Only PDF, DOCX, XLSX, CSV, JPG, and PNG files are allowed'));
