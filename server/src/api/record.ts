@@ -1390,6 +1390,30 @@ async function executeRun(id: string, userId: string) {
     }
 }
 
+async function executeSdkRunWhenReady(runId: string, browserId: string, userId: string): Promise<void> {
+    const timeoutMs = 60_000;
+    const startedAt = Date.now();
+
+    while (true) {
+        const browser = browserPool.getRemoteBrowser(browserId);
+        if (browser) break;
+
+        const status = browserPool.getBrowserStatus(browserId);
+        if (status === null) throw new Error(`Browser slot ${browserId} does not exist in pool`);
+        if (status === 'failed') throw new Error(`Browser ${browserId} initialization failed`);
+        if (Date.now() - startedAt >= timeoutMs) {
+            throw new Error(`Browser ${browserId} was not ready within ${timeoutMs / 1000}s`);
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    const result = await executeRun(runId, userId);
+    if (!result?.success) {
+        throw new Error(result?.error || `Failed to execute run ${runId}`);
+    }
+}
+
 export async function handleRunRecording(id: string, userId: string, runSource: 'api' | 'sdk' | 'mcp' | 'cli' = 'api', requestedFormats?: OutputFormats[], promptInstructions?: string) {
     let socket: Socket | null = null;
 
@@ -1408,6 +1432,15 @@ export async function handleRunRecording(id: string, userId: string, runSource: 
 
         if (!browserId) {
             throw new Error('browserId is undefined for non-document robot');
+        }
+
+        // SDK execution is server-to-server. Execute directly after the local
+        // browser pool reports readiness instead of racing a Socket.IO
+        // namespace that may not exist yet. UI/API runs retain the interactive
+        // socket path below.
+        if (runSource === 'sdk') {
+            await executeSdkRunWhenReady(newRunId, browserId, userId);
+            return newRunId;
         }
 
         const CONNECTION_TIMEOUT = 30000;

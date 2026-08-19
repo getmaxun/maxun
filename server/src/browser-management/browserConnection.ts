@@ -28,8 +28,7 @@ async function getBrowserServiceEndpoint(): Promise<string> {
         if (data.status === 'healthy' && data.wsEndpoint) {
             const wsEndpoint = new URL(data.wsEndpoint);
             const configuredHost = process.env.BROWSER_WS_HOST || healthHost;
-            const loopbackHosts = new Set(['localhost', '127.0.0.1', '::1']);
-            if (loopbackHosts.has(wsEndpoint.hostname) && !loopbackHosts.has(configuredHost)) {
+            if (wsEndpoint.hostname !== configuredHost) {
                 wsEndpoint.hostname = configuredHost;
             }
             const resolvedEndpoint = wsEndpoint.toString();
