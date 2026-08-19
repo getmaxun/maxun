@@ -8,7 +8,8 @@ import type { PaddleOcrResult } from 'ppu-paddle-ocr';
 import logger from '../../logger';
 import { OutputFormats } from '../../constants/output-formats';
 import { parseMarkdown } from '../../markdownify/markdown';
-import { DOCX_MIME_TYPE, PDF_MIME_TYPE, XLSX_MIME_TYPE, CSV_MIME_TYPE } from '../../utils/document/documentFile';
+import { DOCX_MIME_TYPE, PDF_MIME_TYPE, XLSX_MIME_TYPE, CSV_MIME_TYPE, 
+  JPEG_MIME_TYPE, PNG_MIME_TYPE, isImageMimeType } from '../../utils/document/documentFile';
 import { assertLlmBaseUrlAllowed, resolveOpenAiApiKey } from '../../utils/llm-endpoint';
 
 import * as XLSX from 'xlsx';
@@ -1415,6 +1416,73 @@ export class DocumentInterpreter {
     };
   }
 
+  private static async parseImage(buffer: Buffer, documentMimeType: string): Promise<ParsedDocument> {
+    const extension = documentMimeType === PNG_MIME_TYPE ? 'png' : 'jpg';
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'maxun-img-'));
+    const tempFile = path.join(tmpDir, `image.${extension}`);
+
+    try {
+      await fs.promises.writeFile(tempFile, buffer);
+
+      const script = await this.detectScript(tempFile);
+      logger.info(`[DocumentInterpreter] OCR on uploaded image (mimeType: ${documentMimeType}) script: ${script}`);
+
+      let text = '';
+      let tables: string[][][] = [];
+      let paddleSucceeded = false;
+
+      try {
+        const { lines } = await PaddleOCRProvider.recognizePage(tempFile, script);
+        text = cleanText(reconstructTextFromPaddleLines(lines));
+        // Treat an empty PaddleOCR result as a failure, not a success.
+        if (text) {
+          tables = extractTablesFromPaddleLines([lines]);
+          paddleSucceeded = true;
+        }
+      } catch (paddleErr: any) {
+        logger.warn(`[DocumentInterpreter] PaddleOCR failed (${paddleErr.message}), falling back to Tesseract`);
+      }
+
+      if (!paddleSucceeded) {
+        text = cleanText(await this.ocrImageWithTesseract(tempFile, script));
+      }
+
+      const pages: ParsedPage[] = [{ pageNumber: 1, text }];
+      logger.info(`[DocumentInterpreter] OCR complete — ${text.length} chars from image (mimeType: ${documentMimeType})`);
+      return { text, pageCount: 1, pages, tables };
+    } finally {
+      fs.rmSync(tmpDir, { force: true, recursive: true });
+    }
+  }
+
+  private static async ocrImageWithTesseract(imagePath: string, script: string): Promise<string> {
+    const langs = (this.SCRIPT_TO_LANGS[script] || ['eng']).join('+');
+    const { createWorker } = await import('tesseract.js');
+    let worker: any;
+    try {
+      worker = await createWorker(langs, 1, {
+        cachePath: process.env.TESSERACT_CACHE_PATH || '/tmp/tesseract-cache',
+        logger: () => {},
+      } as any);
+    } catch {
+      worker = await createWorker('eng', 1, {
+        cachePath: process.env.TESSERACT_CACHE_PATH || '/tmp/tesseract-cache',
+        logger: () => {},
+      } as any);
+    }
+    try {
+      await worker.setParameters({
+        tessedit_pageseg_mode: '3',
+        preserve_interword_spaces: '1',
+      });
+      await preprocessPageImage(imagePath);
+      const { data } = await worker.recognize(imagePath);
+      return buildCleanTextFromOCRData(data);
+    } finally {
+      await worker.terminate();
+    }
+  }
+
   private static buildSchemaPrompt(
     prompt: string,
     sampleText: string
@@ -1552,6 +1620,9 @@ export class DocumentInterpreter {
     }
     if (documentMimeType === CSV_MIME_TYPE) {
       return this.parseCSV(buffer);
+    }
+    if (isImageMimeType(documentMimeType)) {
+      return this.parseImage(buffer, documentMimeType);
     }
     return this.parsePDF(buffer);
   }
