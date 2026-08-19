@@ -50,7 +50,7 @@ const documentUpload = multer({
     if (normalizeDocumentMimeType(file.mimetype, file.originalname)) {
       cb(null, true);
     } else {
-      cb(new Error('Only PDF, DOCX, XLSX, and CSV files are allowed'));
+      cb(new Error('Only PDF, DOCX, XLSX, CSV, JPG, and PNG files are allowed'));
     }
   },
 });
@@ -2100,8 +2100,8 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
 
 /**
  * POST endpoint for creating a document extraction robot (doc-extract).
- * Accepts a PDF or DOCX upload and an extraction prompt. Uses the configured LLM to generate
- * an extraction schema and stores the document in MinIO.
+ * Accepts a PDF, DOCX, XLSX, CSV, JPG, or PNG upload and an extraction prompt. 
+ * Uses the configured LLM to generate an extraction schema and stores the document in MinIO.
  */
 router.post(
   '/recordings/document',
@@ -2112,9 +2112,9 @@ router.post(
       if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
 
       const file = (req as any).file as Express.Multer.File | undefined;
-      if (!file) return res.status(400).json({ error: 'A PDF or DOCX file is required.' });
+      if (!file) return res.status(400).json({ error: 'A PDF, DOCX, XLSX, CSV, JPG, or PNG file is required.' });
       const documentMimeType = normalizeDocumentMimeType(file.mimetype, file.originalname);
-      if (!documentMimeType) return res.status(400).json({ error: 'Only PDF and DOCX files are allowed.' });
+      if (!documentMimeType) return res.status(400).json({ error: 'Only PDF, DOCX, XLSX, CSV, JPG, or PNG files are allowed.' });
 
       const { prompt, name, llmProvider, llmModel, llmApiKey, llmBaseUrl } = req.body;
       if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
@@ -2174,8 +2174,8 @@ router.post(
 
 /**
  * POST endpoint for creating a document parse robot (doc-parse).
- * Accepts a PDF or DOCX upload and output format list. Parses the document immediately and
- * stores both the document and parsed output in MinIO / database.
+ * Accepts a PDF, DOCX, XLSX, CSV, JPG, or PNG upload and output format list. 
+ * Parses the document immediately and stores both the document and parsed output in MinIO / database.
  */
 router.post(
   '/recordings/document-parse',
@@ -2186,9 +2186,9 @@ router.post(
       if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
 
       const file = (req as any).file as Express.Multer.File | undefined;
-      if (!file) return res.status(400).json({ error: 'A PDF or DOCX file is required.' });
+      if (!file) return res.status(400).json({ error: 'A PDF, DOCX, XLSX, CSV, JPG, or PNG file is required.' });
       const documentMimeType = normalizeDocumentMimeType(file.mimetype, file.originalname);
-      if (!documentMimeType) return res.status(400).json({ error: 'Only PDF and DOCX files are allowed.' });
+      if (!documentMimeType) return res.status(400).json({ error: 'Only PDF, DOCX, XLSX, CSV, JPG, or PNG files are allowed.' });
 
       const { name, formats, llmProvider, llmModel, llmApiKey, llmBaseUrl } = req.body;
 
