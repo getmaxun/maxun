@@ -455,8 +455,11 @@ export class WorkflowEnricher {
           throw new Error('Invalid response: reason must be a string');
         }
 
-        if (decision.limit !== null && decision.limit !== undefined && typeof decision.limit !== 'number') {
-          throw new Error('Invalid response: limit must be a number or null');
+        if (
+          decision.limit !== null && decision.limit !== undefined &&
+          (typeof decision.limit !== 'number' || !Number.isSafeInteger(decision.limit) || decision.limit <= 0)
+        ) {
+          throw new Error('Invalid response: limit must be a positive integer or null');
         }
 
         const limit = decision.limit || this.extractLimitFromPrompt(prompt) || null;
@@ -1033,11 +1036,18 @@ Return a JSON object with this exact structure:
           tool: assignFieldLabelsTool,
         });
 
-        let labelMapping: Record<string, string>;
-        if (decision.fieldLabels) {
-          labelMapping = decision.fieldLabels;
-        } else {
-          labelMapping = decision;
+        const rawMapping = (decision && typeof decision === 'object' && decision.fieldLabels)
+          ? decision.fieldLabels
+          : decision;
+        if (!rawMapping || typeof rawMapping !== 'object') {
+          throw new Error('Invalid response: fieldLabels must be an object');
+        }
+
+        const labelMapping: Record<string, string> = Object.create(null);
+        for (const [generic, semantic] of Object.entries(rawMapping)) {
+          if (typeof semantic !== 'string' || semantic.trim() === '') continue;
+          if (semantic === '__proto__' || semantic === 'constructor' || semantic === 'prototype') continue;
+          labelMapping[generic] = semantic;
         }
 
         const missingLabels: string[] = [];
