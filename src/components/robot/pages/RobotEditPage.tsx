@@ -1296,7 +1296,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
           <input
             id="doc-replace-input"
             type="file"
-            accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx"
+            accept=".pdf,.docx,.csv,.xlsx,.jpg,.jpeg,.png,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/jpeg,image/png"
             style={{ display: 'none' }}
             onChange={(e) => setReplacementFile(e.target.files?.[0] || null)}
           />
@@ -1306,7 +1306,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
             </Typography>
           ) : (
             <>
-              <Typography variant="body2" fontWeight={500}>Click to upload a new PDF or DOCX</Typography>
+              <Typography variant="body2" fontWeight={500}>Click to upload a new PDF, DOCX, XLSX, CSV, JPG, or PNG</Typography>
               <Typography variant="caption" color="text.secondary">Max file size: 10 MB</Typography>
             </>
           )}

@@ -1550,7 +1550,7 @@ router.post("/sdk/robots/document", requireAPIKey, documentUpload.single('file')
         if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
         const file = (req as any).file as Express.Multer.File | undefined;
-        if (!file) return res.status(400).json({ error: 'A PDF file is required' });
+        if (!file) return res.status(400).json({ error: 'A PDF, DOCX, XLSX, CSV, JPG, or PNG file is required' });
 
         const prompt: string = (req.body.prompt || '').trim();
         if (!prompt) return res.status(400).json({ error: 'prompt is required' });
@@ -1624,7 +1624,7 @@ router.post("/sdk/robots/document-parse", requireAPIKey, documentUpload.single('
         if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
         const file = (req as any).file as Express.Multer.File | undefined;
-        if (!file) return res.status(400).json({ error: 'A PDF file is required' });
+        if (!file) return res.status(400).json({ error: 'A PDF, DOCX, XLSX, CSV, JPG, or PNG file is required' });
 
         const rawFormats = req.body['outputFormats[]'] ?? req.body.outputFormats ?? req.body.formats;
         const requestedFormats: string[] = Array.isArray(rawFormats)

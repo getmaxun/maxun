@@ -2201,7 +2201,7 @@ router.post(
         : DOC_PARSE_OUTPUT_FORMAT_OPTIONS.filter((f) => f !== 'summary');
 
       // Summaries need a working LLM. Ollama runs locally and needs no key, but the
-      // hosted providers do — fail early rather than parsing the PDF and then dying.
+      // hosted providers do — fail early rather than parsing the document and then dying.
       const summaryProvider = (llmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama';
       if (outputFormats.includes('summary') && summaryProvider !== 'ollama') {
         const envKey = summaryProvider === 'anthropic'
@@ -2375,9 +2375,9 @@ router.put(
       if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
 
       const file = (req as any).file as Express.Multer.File | undefined;
-      if (!file) return res.status(400).json({ error: 'A PDF or DOCX file is required.' });
+      if (!file) return res.status(400).json({ error: 'A PDF, DOCX, XLSX, CSV, JPG, or PNG file is required.' });
       const documentMimeType = normalizeDocumentMimeType(file.mimetype, file.originalname);
-      if (!documentMimeType) return res.status(400).json({ error: 'Only PDF and DOCX files are allowed.' });
+      if (!documentMimeType) return res.status(400).json({ error: 'Only PDF, DOCX, XLSX, CSV, JPG, or PNG files are allowed.' });
 
       const robot = await Robot.findOne({ where: { 'recording_meta.id': req.params.id } });
       if (!robot) return res.status(404).json({ error: 'Robot not found.' });

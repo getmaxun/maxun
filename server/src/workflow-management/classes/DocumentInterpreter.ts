@@ -9,7 +9,7 @@ import logger from '../../logger';
 import { OutputFormats } from '../../constants/output-formats';
 import { parseMarkdown } from '../../markdownify/markdown';
 import { DOCX_MIME_TYPE, PDF_MIME_TYPE, XLSX_MIME_TYPE, CSV_MIME_TYPE, 
-  JPEG_MIME_TYPE, PNG_MIME_TYPE, isImageMimeType } from '../../utils/document/documentFile';
+  PNG_MIME_TYPE, isImageMimeType } from '../../utils/document/documentFile';
 import { assertLlmBaseUrlAllowed, resolveOpenAiApiKey } from '../../utils/llm-endpoint';
 
 import * as XLSX from 'xlsx';
