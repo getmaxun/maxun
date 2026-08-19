@@ -26,8 +26,15 @@ async function getBrowserServiceEndpoint(): Promise<string> {
         const data = await response.json();
 
         if (data.status === 'healthy' && data.wsEndpoint) {
-            logger.debug(`Got WebSocket endpoint: ${data.wsEndpoint}`);
-            return data.wsEndpoint;
+            const wsEndpoint = new URL(data.wsEndpoint);
+            const configuredHost = process.env.BROWSER_WS_HOST || healthHost;
+            const loopbackHosts = new Set(['localhost', '127.0.0.1', '::1']);
+            if (loopbackHosts.has(wsEndpoint.hostname) && !loopbackHosts.has(configuredHost)) {
+                wsEndpoint.hostname = configuredHost;
+            }
+            const resolvedEndpoint = wsEndpoint.toString();
+            logger.debug(`Got WebSocket endpoint: ${resolvedEndpoint}`);
+            return resolvedEndpoint;
         }
 
         throw new Error('Health check did not return a valid wsEndpoint');
