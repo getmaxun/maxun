@@ -162,7 +162,7 @@ export const clearRecordingTimeout = (id: string): void => {
 
 export const destroyRemoteBrowser = async (id: string, userId: string): Promise<boolean> => {
   const owner = browserPool.getUserForBrowser(id);
-  if (owner && owner !== String(userId)) {
+  if (owner && String(owner) !== String(userId)) {
     logger.log('warn', `Refusing to destroy browser ${id} for non-owner user ${userId}`);
     return false;
   }

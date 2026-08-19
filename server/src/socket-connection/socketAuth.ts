@@ -83,14 +83,18 @@ export const authenticateSocket = async (socket: Socket, next: (err?: Error) => 
 
     if (decoded.purpose !== undefined) {
       const browserId = typeof decoded.browserId === 'string' ? decoded.browserId : '';
-      const ownerSessionId = typeof decoded.ownerSessionId === 'string' ? decoded.ownerSessionId : '';
       const namespaceBrowserId = socket.nsp.name.replace(/^\//, '');
-      if (!browserId || !ownerSessionId || namespaceBrowserId !== browserId) {
+      if (!browserId || namespaceBrowserId !== browserId) {
         next(new Error('Unauthorized'));
         return;
       }
 
       if (decoded.purpose === 'maxun-browser-stream') {
+        const ownerSessionId = typeof decoded.ownerSessionId === 'string' ? decoded.ownerSessionId : '';
+        if (!ownerSessionId) {
+          next(new Error('Unauthorized'));
+          return;
+        }
         const epoch = typeof decoded.epoch === 'number' ? decoded.epoch : NaN;
         if (!Number.isSafeInteger(epoch) || epoch < 1) {
           next(new Error('Unauthorized'));
@@ -116,6 +120,11 @@ export const authenticateSocket = async (socket: Socket, next: (err?: Error) => 
         }
         socket.data.maxunInternalRunCapability = { browserId: decoded.browserId } satisfies MaxunInternalRunCapability;
       } else if (decoded.purpose === 'maxun-browser-control') {
+        const ownerSessionId = typeof decoded.ownerSessionId === 'string' ? decoded.ownerSessionId : '';
+        if (!ownerSessionId) {
+          next(new Error('Unauthorized'));
+          return;
+        }
         const controlEpoch = typeof decoded.controlEpoch === 'number' ? decoded.controlEpoch : NaN;
         const actor = decoded.actor === 'agent' || decoded.actor === 'human' ? decoded.actor : null;
         if (!actor || !Number.isSafeInteger(controlEpoch) || controlEpoch < 1) {

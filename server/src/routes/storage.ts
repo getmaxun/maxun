@@ -1748,7 +1748,9 @@ export async function recoverStuckRunningRuns() {
             CASE
               WHEN "startedAt" ~ '^[0-9]{4}-'
               THEN "startedAt"::timestamptz
-              ELSE to_timestamp("startedAt", 'FMMM/FMDD/YYYY, FMHH12:MI:SS AM')
+              WHEN "startedAt" ~ 'AM|PM'
+              THEN to_timestamp("startedAt", 'FMMM/FMDD/YYYY, FMHH12:MI:SS AM')
+              ELSE to_timestamp("startedAt", 'DD.MM.YYYY, HH24:MI:SS')
             END < now() - interval '${STUCK_RUNNING_THRESHOLD_MINUTES} minutes'
           `),
         ],
