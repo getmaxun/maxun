@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid';
-import { Op } from 'sequelize';
+import { Op, type Transaction } from 'sequelize';
 import Robot from '../models/Robot';
 import sequelizeInstance from '../storage/db';
 import logger from '../logger';
@@ -119,7 +119,7 @@ export const normalizeWorkflowUrls = (workflow: any[] = []): any[] =>
       : pair?.what,
   }));
 
-export const findExistingRobotByName = async (name: string, userId: number | string): Promise<Robot | null> => Robot.findOne({
+export const findExistingRobotByName = async (name: string, userId: number | string, transaction?: Transaction): Promise<Robot | null> => Robot.findOne({
   where: {
     userId,
     [Op.and]: sequelizeInstance.where(
@@ -127,6 +127,7 @@ export const findExistingRobotByName = async (name: string, userId: number | str
       name.trim(),
     ),
   } as any,
+  ...(transaction ? { transaction } : {}),
 });
 
 const getListAction = (workflow: any[]): any | null => workflow
@@ -154,6 +155,7 @@ export interface PersistNativeRobotOptions {
   workflow: any[];
   isLLM?: boolean;
   prompt?: string;
+  transaction?: Transaction;
 }
 
 /**
@@ -166,7 +168,7 @@ export async function persistNativeRobot(options: PersistNativeRobotOptions): Pr
   const workflow = normalizeWorkflowUrls(options.workflow);
   const description = options.description?.trim() || undefined;
   const name = options.robotName?.trim() || 'Recorder Draft';
-  const existingRobot = await findExistingRobotByName(name, options.userId);
+  const existingRobot = await findExistingRobotByName(name, options.userId, options.transaction);
 
   if (existingRobot) {
     const meta = existingRobot.recording_meta;
@@ -182,7 +184,7 @@ export async function persistNativeRobot(options: PersistNativeRobotOptions): Pr
           pairs: workflow.length,
           updatedAt: now,
         },
-      });
+      }, options.transaction ? { transaction: options.transaction } : undefined);
       return {
         robot: existingRobot,
         workflow,
@@ -210,7 +212,7 @@ export async function persistNativeRobot(options: PersistNativeRobotOptions): Pr
       status: 'ready',
     },
     recording: { workflow },
-  });
+  }, options.transaction ? { transaction: options.transaction } : undefined);
 
   logger.info(`[SDK] Persistent native robot created: ${metaId}`);
   capture(options.isLLM ? 'maxun-oss-llm-robot-created' : 'maxun-oss-recorder-draft-compiled', {

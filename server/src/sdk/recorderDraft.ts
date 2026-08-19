@@ -1,5 +1,6 @@
 import { Page } from 'playwright-core';
 import { v4 as uuid } from 'uuid';
+import sequelize from '../storage/db';
 import RecorderDraft, {
   DraftFieldState,
   DraftListState,
@@ -506,39 +507,60 @@ export async function compileRecorderDraft(
   if (!validation.valid) throw new RecorderDraftError('validation_failed', 'Draft validation failed', validation.diagnostics);
   const workflow = compileWorkflow(draft);
   const robotName = options.robotName?.trim() || draft.name;
-  let robot: Robot;
-  let existing = false;
+  return sequelize.transaction(async transaction => {
+    await draft.reload({ transaction, lock: transaction.LOCK.UPDATE });
+    let robot: Robot;
+    let existing = false;
 
-  if (draft.compiledRobotId) {
-    const existingRobot = await Robot.findOne({ where: { userId: Number(userId), 'recording_meta.id': draft.compiledRobotId } });
-    if (existingRobot) {
-      await existingRobot.update({
-        recording: { workflow },
-        recording_meta: {
-          ...existingRobot.recording_meta,
-          name: robotName,
-          pairs: workflow.length,
-          updatedAt: new Date().toISOString(),
-        },
+    if (draft.compiledRobotId) {
+      const existingRobot = await Robot.findOne({
+        where: { userId: Number(userId), 'recording_meta.id': draft.compiledRobotId },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
       });
-      robot = existingRobot;
-      existing = true;
+      if (existingRobot) {
+        await existingRobot.update({
+          recording: { workflow },
+          recording_meta: {
+            ...existingRobot.recording_meta,
+            name: robotName,
+            pairs: workflow.length,
+            updatedAt: new Date().toISOString(),
+          },
+        }, { transaction });
+        robot = existingRobot;
+        existing = true;
+      } else {
+        draft.compiledRobotId = null;
+        await draft.save({ transaction });
+        const persisted = await persistNativeRobot({
+          url: draft.url,
+          userId,
+          robotName,
+          description: `Recorder Draft ${draft.id}`,
+          workflow,
+          transaction,
+        });
+        robot = persisted.robot;
+        existing = persisted.existing;
+      }
     } else {
-      draft.compiledRobotId = null;
-      await draft.save();
-      const persisted = await persistNativeRobot({ url: draft.url, userId, robotName, description: `Recorder Draft ${draft.id}`, workflow });
+      const persisted = await persistNativeRobot({
+        url: draft.url,
+        userId,
+        robotName,
+        description: `Recorder Draft ${draft.id}`,
+        workflow,
+        transaction,
+      });
       robot = persisted.robot;
       existing = persisted.existing;
     }
-  } else {
-    const persisted = await persistNativeRobot({ url: draft.url, userId, robotName, description: `Recorder Draft ${draft.id}`, workflow });
-    robot = persisted.robot;
-    existing = persisted.existing;
-  }
 
-  draft.compiledRobotId = robot.recording_meta.id;
-  draft.status = 'compiled';
-  draft.lastError = null;
-  await draft.save();
-  return { draft, robot, workflow, existing };
+    draft.compiledRobotId = robot.recording_meta.id;
+    draft.status = 'compiled';
+    draft.lastError = null;
+    await draft.save({ transaction });
+    return { draft, robot, workflow, existing };
+  });
 }
