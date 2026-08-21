@@ -1738,7 +1738,12 @@ export class DocumentInterpreter {
   }
 
   private static extractLinks(text: string, sourceHtml?: string): string[] {
-    const urlPattern = /https?:\/\/[^\s<>"')\]]+/g;
+    // An image carries no link annotations, so the only links available are URLs that
+    // appear as visible text — and those are usually written without a scheme. Match
+    // three shapes: full http(s) URLs, "www."-prefixed hosts, and bare domains with a
+    // recognizable TLD. The last two get "https://" prepended so the output is usable.
+    const urlPattern =
+      /(?:https?:\/\/|www\.)[^\s<>"')\]]+|(?:[a-z0-9-]+\.)+(?:com|org|net|io|dev|ai|app|co|edu|gov|us|info)\b(?:\/[^\s<>"')\]]*)?/gi;
     const raw = text.match(urlPattern) || [];
     const htmlLinks = sourceHtml
       ? Array.from(sourceHtml.matchAll(/href\s*=\s*["']([^"']+)["']/gi))
@@ -1747,7 +1752,10 @@ export class DocumentInterpreter {
       : [];
 
     return [...new Set([
-      ...raw.map((url) => url.replace(/[.,;:!?]+$/, '')),
+      ...raw.map((match) => {
+        const url = match.replace(/[.,;:!?]+$/, '');
+        return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+      }),
       ...htmlLinks,
     ])];
   }
