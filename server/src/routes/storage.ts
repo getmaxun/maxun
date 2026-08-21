@@ -55,6 +55,19 @@ const documentUpload = multer({
   },
 });
 
+const uploadDocument = (req: any, res: any, next: any) => {
+  documentUpload.single('file')(req, res, (err: any) => {
+    if (err) {
+      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+        const maxMb = Math.round(MAX_FILE_SIZE_BYTES / (1024 * 1024));
+        return res.status(400).json({ error: `File is too large. The maximum size is ${maxMb} MB.` });
+      }
+      return res.status(400).json({ error: err.message || 'Invalid file upload.' });
+    }
+    next();
+  });
+};
+
 const normalizeRobotUrl = (rawUrl: string): string => {
   let normalizedUrl: URL;
   try {
@@ -2106,7 +2119,7 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
 router.post(
   '/recordings/document',
   requireSignIn,
-  documentUpload.single('file'),
+  uploadDocument,
   async (req: AuthenticatedRequest, res) => {
     try {
       if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
@@ -2180,7 +2193,7 @@ router.post(
 router.post(
   '/recordings/document-parse',
   requireSignIn,
-  documentUpload.single('file'),
+  uploadDocument,
   async (req: AuthenticatedRequest, res) => {
     try {
       if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
@@ -2369,7 +2382,7 @@ router.post('/runs/document-parse-run/:id', requireSignIn, async (req: Authentic
 router.put(
   '/recordings/:id/document',
   requireSignIn,
-  documentUpload.single('file'),
+  uploadDocument,
   async (req: AuthenticatedRequest, res) => {
     try {
       if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
