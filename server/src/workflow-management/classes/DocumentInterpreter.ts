@@ -53,6 +53,8 @@ interface ParsedDocument {
   pages: ParsedPage[];
   tables: string[][][];
   sourceHtml?: string;
+  /** True when the document came from a flat image, which has no page structure. */
+  isImage?: boolean;
 }
 
 interface ExtractionResult {
@@ -1449,7 +1451,7 @@ export class DocumentInterpreter {
 
       const pages: ParsedPage[] = [{ pageNumber: 1, text }];
       logger.info(`[DocumentInterpreter] OCR complete — ${text.length} chars from image (mimeType: ${documentMimeType})`);
-      return { text, pageCount: 1, pages, tables };
+      return { text, pageCount: 1, pages, tables, isImage: true };
     } finally {
       fs.rmSync(tmpDir, { force: true, recursive: true });
     }
@@ -1684,7 +1686,7 @@ export class DocumentInterpreter {
     for (const page of doc.pages) {
       const text = cleanText(page.text);
       if (!text) continue;
-      parts.push(`## Page ${page.pageNumber}\n\n${text}`);
+      parts.push(doc.isImage ? text : `## Page ${page.pageNumber}\n\n${text}`);
     }
 
     for (let i = 0; i < doc.tables.length; i++) {
@@ -1713,9 +1715,11 @@ export class DocumentInterpreter {
         .split(/\n{2,}/)
         .map((p) => `<p>${p.replace(/\n/g, '<br>')}</p>`)
         .join('\n');
-      parts.push(
-        `<section data-page="${page.pageNumber}">\n<h2>Page ${page.pageNumber}</h2>\n${paragraphs}\n</section>`
-      );
+        parts.push(
+          doc.isImage
+            ? paragraphs
+            : `<section data-page="${page.pageNumber}">\n<h2>Page ${page.pageNumber}</h2>\n${paragraphs}\n</section>`
+        );
     }
 
     for (let i = 0; i < doc.tables.length; i++) {
