@@ -1426,7 +1426,12 @@ export class DocumentInterpreter {
     try {
       await fs.promises.writeFile(tempFile, buffer);
 
-      const script = await this.detectScript(tempFile);
+      let script = 'Latin';
+      try {
+        script = await this.detectScript(tempFile);
+      } catch (detectErr: any) {
+        logger.warn(`[DocumentInterpreter] Script detection failed (${detectErr.message}), defaulting to Latin`);
+      }
       logger.info(`[DocumentInterpreter] OCR on uploaded image (mimeType: ${documentMimeType}) script: ${script}`);
 
       let text = '';
@@ -1446,7 +1451,12 @@ export class DocumentInterpreter {
       }
 
       if (!paddleSucceeded) {
-        text = cleanText(await this.ocrImageWithTesseract(tempFile, script));
+        try {
+          text = cleanText(await this.ocrImageWithTesseract(tempFile, script));
+        } catch (tesseractErr: any) {
+          logger.error(`[DocumentInterpreter] Tesseract also failed on image (${tesseractErr.message})`);
+          throw new Error('Could not read the image. The file may be corrupt, truncated, or an unsupported image variant.');
+        }
       }
 
       const pages: ParsedPage[] = [{ pageNumber: 1, text }];
