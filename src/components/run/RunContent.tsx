@@ -1948,56 +1948,58 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        overflowX: 'auto',
-                        borderBottom: '1px solid',
-                        borderColor: darkMode ? '#2a3441' : '#dee2e6',
-                        mb: 2,
-                        '&::-webkit-scrollbar': {
-                          height: '8px',
-                        },
-                        '&::-webkit-scrollbar-track': {
-                          backgroundColor: darkMode ? '#1e1e1e' : '#f1f1f1',
-                        },
-                        '&::-webkit-scrollbar-thumb': {
-                          backgroundColor: darkMode ? '#555' : '#888',
-                          borderRadius: '4px',
-                        },
-                        '&::-webkit-scrollbar-thumb:hover': {
-                          backgroundColor: '#FF00C3',
-                        },
-                      }}
-                    >
-                      {crawlData[0].map((item: any, idx: number) => {
-                        const url = item?.metadata?.url || item?.url || `URL ${idx + 1}`;
+                    <Box sx={{ width: 0, minWidth: '100%' }}>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          overflowX: 'auto',
+                          borderBottom: '1px solid',
+                          borderColor: darkMode ? '#2a3441' : '#dee2e6',
+                          mb: 2,
+                          '&::-webkit-scrollbar': {
+                            height: '8px',
+                          },
+                          '&::-webkit-scrollbar-track': {
+                            backgroundColor: darkMode ? '#1e1e1e' : '#f1f1f1',
+                          },
+                          '&::-webkit-scrollbar-thumb': {
+                            backgroundColor: darkMode ? '#555' : '#888',
+                            borderRadius: '4px',
+                          },
+                          '&::-webkit-scrollbar-thumb:hover': {
+                            backgroundColor: '#FF00C3',
+                          },
+                        }}
+                      >
+                        {crawlData[0].map((item: any, idx: number) => {
+                          const url = item?.metadata?.url || item?.url || `URL ${idx + 1}`;
 
-                        return (
-                          <Box
-                            key={idx}
-                            onClick={() => {
-                              setCurrentCrawlIndex(idx);
-                            }}
-                            sx={{
-                              px: 2,
-                              py: 1,
-                              cursor: 'pointer',
-                              backgroundColor: currentCrawlIndex === idx
-                                ? darkMode ? '#121111ff' : '#e9ecef'
-                                : 'transparent',
-                              borderBottom: currentCrawlIndex === idx ? '3px solid #FF00C3' : 'none',
-                              color: darkMode ? '#fff' : '#000',
-                              whiteSpace: 'nowrap',
-                              fontSize: '0.875rem',
-                              flexShrink: 0,
-                            }}
-                            title={url}
-                          >
-                            Link {idx + 1}
-                          </Box>
-                        );
-                      })}
+                          return (
+                            <Box
+                              key={idx}
+                              onClick={() => {
+                                setCurrentCrawlIndex(idx);
+                              }}
+                              sx={{
+                                px: 2,
+                                py: 1,
+                                cursor: 'pointer',
+                                backgroundColor: currentCrawlIndex === idx
+                                  ? darkMode ? '#121111ff' : '#e9ecef'
+                                  : 'transparent',
+                                borderBottom: currentCrawlIndex === idx ? '3px solid #FF00C3' : 'none',
+                                color: darkMode ? '#fff' : '#000',
+                                whiteSpace: 'nowrap',
+                                fontSize: '0.875rem',
+                                flexShrink: 0,
+                              }}
+                              title={url}
+                            >
+                              Link {idx + 1}
+                            </Box>
+                          );
+                        })}
+                      </Box>
                     </Box>
 
                     {crawlData[0][currentCrawlIndex] && (
