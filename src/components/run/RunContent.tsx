@@ -1140,27 +1140,28 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     if (!title || title.trim() === '') {
       return (
         <>
-          <Box sx={{ mb: 2 }}>
-            <TableContainer component={Paper} sx={{ maxHeight: 320 }}>
-              <Table stickyHeader aria-label="sticky table">
+          <Box sx={{ width: 0, minWidth: '100%' }}>
+            <TableContainer component={Paper} sx={{ maxHeight: 320, overflowX: 'auto' }}>
+              <Table
+                stickyHeader
+                aria-label="sticky table"
+                sx={{
+                  tableLayout: 'fixed',
+                  width: 'max-content',
+                  minWidth: `${Math.max(
+                    (shouldShowAsKeyValue ? 2 : columns.length) * 160,
+                    100
+                  )}px`,
+                }}
+              >
                 <TableHead>
                   <TableRow>
                     {shouldShowAsKeyValue ? (
                       <>
-                        <TableCell
-                          sx={{
-                            backgroundColor: darkMode ? '#11111' : '#f8f9fa',
-                            minWidth: '100px',
-                            whiteSpace: 'nowrap'
-                          }}
-                        >
+                        <TableCell sx={{ backgroundColor: darkMode ? '#11111' : '#f8f9fa', width: 160, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           Label
                         </TableCell>
-                        <TableCell
-                          sx={{
-                            backgroundColor: darkMode ? '#11111' : '#f8f9fa'
-                          }}
-                        >
+                        <TableCell sx={{ backgroundColor: darkMode ? '#11111' : '#f8f9fa', width: 160, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           Value
                         </TableCell>
                       </>
@@ -1169,8 +1170,13 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                         <TableCell
                           key={column}
                           sx={{
-                            backgroundColor: darkMode ? '#11111' : '#f8f9fa'
+                            backgroundColor: darkMode ? '#11111' : '#f8f9fa',
+                            width: 160,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
                           }}
+                          title={column}
                         >
                           {column}
                         </TableCell>
@@ -1180,32 +1186,40 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 </TableHead>
                 <TableBody>
                   {shouldShowAsKeyValue ? (
-                    columns.map((column) => (
-                      <TableRow key={column}>
-                        <TableCell sx={{ fontWeight: 500, whiteSpace: 'nowrap' }}>
-                          {column}
-                        </TableCell>
-                        <TableCell>
-                          {data[0][column] === undefined || data[0][column] === ""
-                            ? "-"
-                            : (typeof data[0][column] === 'object'
-                              ? JSON.stringify(data[0][column])
-                              : String(data[0][column]))}
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    columns.map((column) => {
+                      const val =
+                        data[0][column] === undefined || data[0][column] === ''
+                          ? '-'
+                          : typeof data[0][column] === 'object'
+                            ? JSON.stringify(data[0][column])
+                            : String(data[0][column]);
+                      return (
+                        <TableRow key={column}>
+                          <TableCell sx={{ fontWeight: 500, width: 160, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={column}>
+                            {column}
+                          </TableCell>
+                          <TableCell sx={{ width: 160, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={val}>
+                            {val}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   ) : (
                     data.map((row, index) => (
                       <TableRow key={index}>
-                        {columns.map((column) => (
-                          <TableCell key={column}>
-                            {row[column] === undefined || row[column] === ""
-                              ? "-"
-                              : (typeof row[column] === 'object'
+                        {columns.map((column) => {
+                          const val =
+                            row[column] === undefined || row[column] === ''
+                              ? '-'
+                              : typeof row[column] === 'object'
                                 ? JSON.stringify(row[column])
-                                : String(row[column]))}
-                          </TableCell>
-                        ))}
+                                : String(row[column]);
+                          return (
+                            <TableCell key={column} sx={{ width: 160, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={val}>
+                              {val}
+                            </TableCell>
+                          );
+                        })}
                       </TableRow>
                     ))
                   )}
