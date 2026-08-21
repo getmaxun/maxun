@@ -1785,44 +1785,74 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               ))}
                             </Box>
 
-                            <TableContainer component={Paper} sx={{ maxHeight: 320, width: '100%', overflowX: 'auto' }}>
-                              <Table
-                                stickyHeader
-                                aria-label="captured-list-table"
-                                sx={{ width: '100%', minWidth: '100%' }}
-                              >
-                                <TableHead>
-                                  <TableRow>
-                                    {(listColumns[currentListIndex] || []).map((column) => (
-                                      <TableCell
-                                        key={column}
-                                        sx={{
-                                          backgroundColor: darkMode ? '#11111' : '#f8f9fa'
-                                        }}
-                                      >
-                                        {column}
-                                      </TableCell>
-                                    ))}
-                                  </TableRow>
-                                </TableHead>
+                            <Box sx={{ width: 0, minWidth: '100%' }}>
+  <TableContainer
+    component={Paper}
+    sx={{
+      maxHeight: 320,
+      overflowX: 'auto',
+    }}
+  >
+    <Table
+      stickyHeader
+      aria-label="captured-list-table"
+      sx={{
+        tableLayout: 'fixed',
+        width: 'max-content',
+        minWidth: `${Math.max((listColumns[currentListIndex] || []).length * 160, 100)}px`,
+      }}
+    >
+      <TableHead>
+        <TableRow>
+          {(listColumns[currentListIndex] || []).map((column) => (
+            <TableCell
+              key={column}
+              sx={{
+                backgroundColor: darkMode ? '#11111' : '#f8f9fa',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                width: 160,
+              }}
+              title={column}
+            >
+              {column}
+            </TableCell>
+          ))}
+        </TableRow>
+      </TableHead>
 
-                                <TableBody>
-                                  {(listData[currentListIndex] || []).map((rowItem, idx) => (
-                                    <TableRow key={idx}>
-                                      {(listColumns[currentListIndex] || []).map((column) => (
-                                        <TableCell key={column}>
-                                          {rowItem[column] === undefined || rowItem[column] === ''
-                                            ? '-'
-                                            : typeof rowItem[column] === 'object'
-                                              ? JSON.stringify(rowItem[column])
-                                              : String(rowItem[column])}
-                                        </TableCell>
-                                      ))}
-                                    </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
-                            </TableContainer>
+      <TableBody>
+        {(listData[currentListIndex] || []).map((rowItem, idx) => (
+          <TableRow key={idx}>
+            {(listColumns[currentListIndex] || []).map((column) => {
+              const display =
+                rowItem[column] === undefined || rowItem[column] === ''
+                  ? '-'
+                  : typeof rowItem[column] === 'object'
+                    ? JSON.stringify(rowItem[column])
+                    : String(rowItem[column]);
+              return (
+                <TableCell
+                  key={column}
+                  sx={{
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    width: 160,
+                  }}
+                  title={display}
+                >
+                  {display}
+                </TableCell>
+              );
+            })}
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  </TableContainer>
+</Box>
 
                             <Box
                               sx={{
