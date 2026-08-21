@@ -1265,7 +1265,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     }
 
     return (
-      <Accordion defaultExpanded sx={{ mb: 2, marginLeft: "-38px" }}>
+      <Accordion defaultExpanded sx={{ width: '100%', m: 0, mb: 2, boxSizing: 'border-box'}}>
         <AccordionSummary
           expandIcon={<ExpandMoreIcon />}
           aria-controls={`${title.toLowerCase()}-content`}
