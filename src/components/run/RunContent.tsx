@@ -1751,15 +1751,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                       )}
 
                       {listData.length > 0 && (
-                        <Accordion
-                          defaultExpanded
-                          sx={{
-                            width: '100%',
-                            m: 0,
-                            mb: 2,
-                            boxSizing: 'border-box',
-                          }}
-                        >
+                        <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box'}}>
                           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
                               <ViewListIcon sx={{ mr: 1 }} />
