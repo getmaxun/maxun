@@ -1807,7 +1807,10 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                             </Box>
 
                             <TableContainer component={Paper} sx={{ maxHeight: 320 }}>
-                              <Table stickyHeader aria-label="captured-list-table">
+                              <Table stickyHeader aria-label="captured-list-table" sx={{
+                                width: 'max-content',
+                                minWidth: '100%',
+                              }}>
                                 <TableHead>
                                   <TableRow>
                                     {(listColumns[currentListIndex] || []).map((column) => (
