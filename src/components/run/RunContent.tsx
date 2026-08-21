@@ -1758,15 +1758,15 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                       )}
 
                       {listData.length > 0 && (
-                         <Accordion
-  defaultExpanded
-  sx={{
-    width: '100%',
-    m: 0,
-    mb: 2,
-    boxSizing: 'border-box',
-  }}
->
+                        <Accordion
+                          defaultExpanded
+                          sx={{
+                            width: '100%',
+                            m: 0,
+                            mb: 2,
+                            boxSizing: 'border-box',
+                          }}
+                        >
                           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
                               <ViewListIcon sx={{ mr: 1 }} />
@@ -1808,11 +1808,11 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                             </Box>
 
                             <TableContainer component={Paper} sx={{ maxHeight: 320, width: '100%', overflowX: 'auto' }}>
-  <Table
-    stickyHeader
-    aria-label="captured-list-table"
-    sx={{ width: '100%', minWidth: '100%' }}
-  >
+                              <Table
+                                stickyHeader
+                                aria-label="captured-list-table"
+                                sx={{ width: '100%', minWidth: '100%' }}
+                              >
                                 <TableHead>
                                   <TableRow>
                                     {(listColumns[currentListIndex] || []).map((column) => (
