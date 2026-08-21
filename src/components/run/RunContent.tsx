@@ -1048,7 +1048,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     };
 
     return (
-     <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box'}}>
+      <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <ImageIcon sx={{ mr: 1 }} />
@@ -1258,7 +1258,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     }
 
     return (
-      <Accordion defaultExpanded sx={{ width: '100%', m: 0, mb: 2, boxSizing: 'border-box'}}>
+      <Accordion defaultExpanded sx={{ width: '100%', m: 0, mb: 2, boxSizing: 'border-box' }}>
         <AccordionSummary
           expandIcon={<ExpandMoreIcon />}
           aria-controls={`${title.toLowerCase()}-content`}
@@ -1456,7 +1456,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
           ) : (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {hasTextFormat && (
-                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box'}}>
+                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <SubjectIcon sx={{ mr: 1 }} />
@@ -1495,7 +1495,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {hasHTML && (
-                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box'}}>
+                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <CodeIcon sx={{ mr: 1 }} />
@@ -1534,7 +1534,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {hasMarkdown && (
-                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box'}}>
+                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <DescriptionIcon sx={{ mr: 1 }} />
@@ -1563,7 +1563,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {hasLinks && (
-                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box'}}>
+                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <LinkIcon sx={{ mr: 1 }} />
@@ -1607,7 +1607,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {hasSummary && crawlData.length === 0 && searchData.length === 0 && (
-                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box'}}>
+                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <PsychologyIcon sx={{ mr: 1 }} />
@@ -1636,7 +1636,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {hasPromptResult && promptResultData && (
-               <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box'}}>
+                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <PsychologyIcon sx={{ mr: 1 }} />
@@ -1688,7 +1688,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   {!isLegacyData && (
                     <>
                       {schemaData.length > 0 && (
-                        <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box'}}>
+                        <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
                           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
                               <TextFieldsIcon sx={{ mr: 1 }} />
@@ -1744,7 +1744,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                       )}
 
                       {listData.length > 0 && (
-                        <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box'}}>
+                        <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
                           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
                               <ViewListIcon sx={{ mr: 1 }} />
@@ -1786,73 +1786,73 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                             </Box>
 
                             <Box sx={{ width: 0, minWidth: '100%' }}>
-  <TableContainer
-    component={Paper}
-    sx={{
-      maxHeight: 320,
-      overflowX: 'auto',
-    }}
-  >
-    <Table
-      stickyHeader
-      aria-label="captured-list-table"
-      sx={{
-        tableLayout: 'fixed',
-        width: 'max-content',
-        minWidth: `${Math.max((listColumns[currentListIndex] || []).length * 160, 100)}px`,
-      }}
-    >
-      <TableHead>
-        <TableRow>
-          {(listColumns[currentListIndex] || []).map((column) => (
-            <TableCell
-              key={column}
-              sx={{
-                backgroundColor: darkMode ? '#11111' : '#f8f9fa',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                width: 160,
-              }}
-              title={column}
-            >
-              {column}
-            </TableCell>
-          ))}
-        </TableRow>
-      </TableHead>
+                              <TableContainer
+                                component={Paper}
+                                sx={{
+                                  maxHeight: 320,
+                                  overflowX: 'auto',
+                                }}
+                              >
+                                <Table
+                                  stickyHeader
+                                  aria-label="captured-list-table"
+                                  sx={{
+                                    tableLayout: 'fixed',
+                                    width: 'max-content',
+                                    minWidth: `${Math.max((listColumns[currentListIndex] || []).length * 160, 100)}px`,
+                                  }}
+                                >
+                                  <TableHead>
+                                    <TableRow>
+                                      {(listColumns[currentListIndex] || []).map((column) => (
+                                        <TableCell
+                                          key={column}
+                                          sx={{
+                                            backgroundColor: darkMode ? '#11111' : '#f8f9fa',
+                                            whiteSpace: 'nowrap',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            width: 160,
+                                          }}
+                                          title={column}
+                                        >
+                                          {column}
+                                        </TableCell>
+                                      ))}
+                                    </TableRow>
+                                  </TableHead>
 
-      <TableBody>
-        {(listData[currentListIndex] || []).map((rowItem, idx) => (
-          <TableRow key={idx}>
-            {(listColumns[currentListIndex] || []).map((column) => {
-              const display =
-                rowItem[column] === undefined || rowItem[column] === ''
-                  ? '-'
-                  : typeof rowItem[column] === 'object'
-                    ? JSON.stringify(rowItem[column])
-                    : String(rowItem[column]);
-              return (
-                <TableCell
-                  key={column}
-                  sx={{
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    width: 160,
-                  }}
-                  title={display}
-                >
-                  {display}
-                </TableCell>
-              );
-            })}
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  </TableContainer>
-</Box>
+                                  <TableBody>
+                                    {(listData[currentListIndex] || []).map((rowItem, idx) => (
+                                      <TableRow key={idx}>
+                                        {(listColumns[currentListIndex] || []).map((column) => {
+                                          const display =
+                                            rowItem[column] === undefined || rowItem[column] === ''
+                                              ? '-'
+                                              : typeof rowItem[column] === 'object'
+                                                ? JSON.stringify(rowItem[column])
+                                                : String(rowItem[column]);
+                                          return (
+                                            <TableCell
+                                              key={column}
+                                              sx={{
+                                                whiteSpace: 'nowrap',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                width: 160,
+                                              }}
+                                              title={display}
+                                            >
+                                              {display}
+                                            </TableCell>
+                                          );
+                                        })}
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </TableContainer>
+                            </Box>
 
                             <Box
                               sx={{
@@ -1924,7 +1924,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {crawlData.length > 0 && crawlData[0] && crawlData[0].length > 0 && (
-                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box'}}>
+                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <TravelExploreIcon sx={{ mr: 1 }} />
@@ -2341,7 +2341,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {searchData.length > 0 && (
-                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box'}}>
+                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <SearchIcon sx={{ mr: 1 }} />
