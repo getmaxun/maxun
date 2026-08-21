@@ -1463,7 +1463,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
           ) : (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {hasTextFormat && (
-                <Accordion defaultExpanded style={{ marginLeft: "-38px" }}>
+                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box'}}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <SubjectIcon sx={{ mr: 1 }} />
@@ -1502,7 +1502,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {hasHTML && (
-                <Accordion defaultExpanded style={{ marginLeft: "-38px" }}>
+                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box'}}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <CodeIcon sx={{ mr: 1 }} />
@@ -1541,7 +1541,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {hasMarkdown && (
-                <Accordion defaultExpanded style={{ marginLeft: "-38px" }}>
+                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box'}}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <DescriptionIcon sx={{ mr: 1 }} />
@@ -1570,7 +1570,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {hasLinks && (
-                <Accordion defaultExpanded style={{ marginLeft: "-38px" }}>
+                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box'}}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <LinkIcon sx={{ mr: 1 }} />
@@ -1614,7 +1614,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {hasSummary && crawlData.length === 0 && searchData.length === 0 && (
-                <Accordion defaultExpanded style={{ marginLeft: "-38px" }}>
+                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box'}}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <PsychologyIcon sx={{ mr: 1 }} />
@@ -1643,7 +1643,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {hasPromptResult && promptResultData && (
-                <Accordion defaultExpanded style={{ marginLeft: "-38px" }}>
+               <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box'}}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <PsychologyIcon sx={{ mr: 1 }} />
@@ -1695,14 +1695,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   {!isLegacyData && (
                     <>
                       {schemaData.length > 0 && (
-                        <Accordion defaultExpanded sx={{
-                          mb: 2,
-                          ml: '-38px',
-                          '&.Mui-expanded': {
-                            margin: 0,
-                            marginLeft: '-38px',
-                          }
-                        }}>
+                        <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box'}}>
                           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
                               <TextFieldsIcon sx={{ mr: 1 }} />
