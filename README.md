@@ -125,13 +125,14 @@ It supports extraction, crawling, scraping, and search — designed to scale fro
 4. **[Search](https://docs.maxun.dev/robot/search/search-introduction)** – Run automated web searches to discover or scrape results, with support for time-based filters.
 5. **[SDK](https://docs.maxun.dev/category/sdk)** – A complete developer toolkit for scraping, extraction, scheduling, and end-to-end data automation.
 6. **[CLI](https://docs.maxun.dev/category/cli)** – Create robots, trigger runs, and retrieve extracted data from your terminal.
+7. **[Document Extraction & Parsing](https://docs.maxun.dev/)** – Extract structured data from documents and images (PDF, DOCX, XLSX, CSV, JPG, PNG) with OCR, or convert them into clean Markdown, HTML, links, or a summary.
 
 
 ## How Does It Work?
 
 Maxun robots are automated tools that help you collect data from websites without writing any code. Think of them as your personal web assistants that can navigate websites, extract information, and organize data just like you would manually - but faster and more efficiently.
 
-There are four types of robots, each designed for a different job.
+There are five types of robots, each designed for a different job.
 
 ### 1. Extract
 Extract emulates real user behavior and captures structured data.
@@ -161,6 +162,13 @@ Run automated web searches to discover or scrape results, with support for time-
 
 Learn more <a href="https://docs.maxun.dev/robot/search/search-introduction">here</a>.
 
+### 5. Document Extraction & Parsing
+Upload a document or image — PDF, DOCX, XLSX, CSV, JPG, or PNG — and Maxun reads the text out of it, using OCR for scanned pages and photos. Convert it into clean Markdown, HTML, a list of links, or a summary, or use AI-powered extraction to pull specific structured fields.
+
+**Use cases:** digitize scanned receipts and invoices, pull fields from a photo of a paper form, turn a screenshot of a table into structured data, or convert a scanned document into clean Markdown for an AI workflow.
+
+Learn more <a href="https://docs.maxun.dev/">here</a>.
+
 ## Quick Start
 
 ### Getting Started
@@ -189,6 +197,7 @@ Maxun can run locally with or without Docker
 - ✨ **Turn Websites to Spreadsheets** – Direct data export to Google Sheets & Airtable
 - ✨ **Adapt To Website Layout Changes** – Auto-recovery from site updates
 - ✨ **Extract Behind Login** – Handle authentication seamlessly
+- ✨ **Extract From Documents & Images** – OCR PDFs, DOCX, XLSX, CSV, JPG, and PNG into structured data, Markdown, HTML, or links
 - ✨ **Integrations** – Connect with your favorite tools
 - ✨ **MCP Support** – Model Context Protocol integration
 - ✨ **LLM-Ready Data** – Clean Markdown for AI applications
