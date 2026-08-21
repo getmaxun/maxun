@@ -1956,6 +1956,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                           borderBottom: '1px solid',
                           borderColor: darkMode ? '#2a3441' : '#dee2e6',
                           mb: 2,
+                          scrollbarWidth: 'thin',
                           '&::-webkit-scrollbar': {
                             height: '8px',
                           },
@@ -2377,6 +2378,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               borderBottom: '1px solid',
                               borderColor: darkMode ? '#2a3441' : '#dee2e6',
                               mb: 2,
+                              scrollbarWidth: 'thin',
                               '&::-webkit-scrollbar': {
                                 height: '8px',
                               },
