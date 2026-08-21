@@ -1901,7 +1901,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {crawlData.length > 0 && crawlData[0] && crawlData[0].length > 0 && (
-                <Accordion defaultExpanded style={{ marginLeft: "-38px" }}>
+                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box'}}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <TravelExploreIcon sx={{ mr: 1 }} />
@@ -2318,14 +2318,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {searchData.length > 0 && (
-                <Accordion defaultExpanded sx={{
-                  mb: 2,
-                  ml: '-38px',
-                  '&.Mui-expanded': {
-                    margin: 0,
-                    marginLeft: '-38px',
-                  }
-                }}>
+                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box'}}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <SearchIcon sx={{ mr: 1 }} />
