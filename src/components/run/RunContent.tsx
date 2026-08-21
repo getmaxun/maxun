@@ -1411,7 +1411,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   return (
     <Box sx={{ width: '100%' }}>
       <TabContext value={tab}>
-        <TabPanel value='output' sx={{ width: '100%', maxWidth: '1000px' }}>
+        <TabPanel value='output' sx={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', p: 2 }}>
           {row.status === 'running' || row.status === 'queued' ? (
             <>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -1758,14 +1758,15 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                       )}
 
                       {listData.length > 0 && (
-                        <Accordion defaultExpanded sx={{
-                          mb: 2,
-                          ml: '-38px',
-                          '&.Mui-expanded': {
-                            margin: 0,
-                            marginLeft: '-38px',
-                          }
-                        }}>
+                         <Accordion
+  defaultExpanded
+  sx={{
+    width: '100%',
+    m: 0,
+    mb: 2,
+    boxSizing: 'border-box',
+  }}
+>
                           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
                               <ViewListIcon sx={{ mr: 1 }} />
@@ -1806,11 +1807,12 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               ))}
                             </Box>
 
-                            <TableContainer component={Paper} sx={{ maxHeight: 320 }}>
-                              <Table stickyHeader aria-label="captured-list-table" sx={{
-                                width: 'max-content',
-                                minWidth: '100%',
-                              }}>
+                            <TableContainer component={Paper} sx={{ maxHeight: 320, width: '100%', overflowX: 'auto' }}>
+  <Table
+    stickyHeader
+    aria-label="captured-list-table"
+    sx={{ width: '100%', minWidth: '100%' }}
+  >
                                 <TableHead>
                                   <TableRow>
                                     {(listColumns[currentListIndex] || []).map((column) => (
