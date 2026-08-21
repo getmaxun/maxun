@@ -1048,14 +1048,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     };
 
     return (
-      <Accordion defaultExpanded={defaultExpanded} sx={{
-        mb: 2,
-        ml: '-38px',
-        '&.Mui-expanded': {
-          margin: 0,
-          marginLeft: '-38px',
-        },
-      }}>
+     <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box'}}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <ImageIcon sx={{ mr: 1 }} />
