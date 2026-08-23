@@ -1990,51 +1990,41 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
-                    <Box sx={{ width: 0, minWidth: '100%' }}>
+                    <Box sx={{ width: 0, minWidth: '100%', display: 'flex', alignItems: 'center', gap: 0.5, mb: 2 }}>
+                      {(crawlCanLeft || crawlCanRight) && (
+                        <IconButton
+                          size="small"
+                          onClick={() => scrollTabs(crawlTabsRef, 'left')}
+                          disabled={!crawlCanLeft}
+                          sx={{ flexShrink: 0, opacity: crawlCanLeft ? 1 : 0.3, alignSelf: 'center' }}
+                        >
+                          <ChevronLeft fontSize="small" />
+                        </IconButton>
+                      )}
                       <Box
+                        ref={crawlTabsRef}
                         sx={{
                           display: 'flex',
+                          alignItems: 'center',
                           overflowX: 'auto',
                           borderBottom: '1px solid',
                           borderColor: darkMode ? '#2a3441' : '#dee2e6',
-                          mb: 2,
-                          scrollbarWidth: 'thin',
-                          '&::-webkit-scrollbar': {
-                            height: '8px',
-                          },
-                          '&::-webkit-scrollbar-track': {
-                            backgroundColor: darkMode ? '#1e1e1e' : '#f1f1f1',
-                          },
-                          '&::-webkit-scrollbar-thumb': {
-                            backgroundColor: darkMode ? '#555' : '#888',
-                            borderRadius: '4px',
-                          },
-                          '&::-webkit-scrollbar-thumb:hover': {
-                            backgroundColor: '#FF00C3',
-                          },
+                          scrollbarWidth: 'none',
+                          '&::-webkit-scrollbar': { display: 'none' },
                         }}
                       >
                         {crawlData[0].map((item: any, idx: number) => {
                           const url = item?.metadata?.url || item?.url || `URL ${idx + 1}`;
-
                           return (
                             <Box
                               key={idx}
-                              onClick={() => {
-                                setCurrentCrawlIndex(idx);
-                              }}
+                              onClick={() => setCurrentCrawlIndex(idx)}
                               sx={{
-                                px: 2,
-                                py: 1,
-                                cursor: 'pointer',
-                                backgroundColor: currentCrawlIndex === idx
-                                  ? darkMode ? '#121111ff' : '#e9ecef'
-                                  : 'transparent',
+                                px: 2, py: 1, cursor: 'pointer',
+                                backgroundColor: currentCrawlIndex === idx ? (darkMode ? '#121111ff' : '#e9ecef') : 'transparent',
                                 borderBottom: currentCrawlIndex === idx ? '3px solid #FF00C3' : 'none',
-                                color: darkMode ? '#fff' : '#000',
-                                whiteSpace: 'nowrap',
-                                fontSize: '0.875rem',
-                                flexShrink: 0,
+                                color: darkMode ? '#fff' : '#000', whiteSpace: 'nowrap',
+                                fontSize: '0.875rem', flexShrink: 0,
                               }}
                               title={url}
                             >
@@ -2043,6 +2033,17 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                           );
                         })}
                       </Box>
+                      {(crawlCanLeft || crawlCanRight) && (
+                        <IconButton
+                          size="small"
+                          onClick={() => scrollTabs(crawlTabsRef, 'right')}
+                          disabled={!crawlCanRight}
+                          sx={{ flexShrink: 0, opacity: crawlCanRight ? 1 : 0.3, alignSelf: 'center' }}
+                        >
+                          <ChevronRight fontSize="small" />
+                        </IconButton>
+                      )}
+
                     </Box>
 
                     {crawlData[0][currentCrawlIndex] && (
