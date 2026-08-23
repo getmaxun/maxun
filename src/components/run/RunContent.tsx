@@ -2412,7 +2412,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   <AccordionDetails>
                     {searchMode === 'scrape' && searchData.length > 0 ? (
                       <>
-                         <Box sx={{ width: 0, minWidth: '100%', display: 'flex', alignItems: 'center', gap: 0.5, mb: 2 }}>
+                        <Box sx={{ width: 0, minWidth: '100%', display: 'flex', alignItems: 'center', gap: 0.5, mb: 2 }}>
                           {(searchCanLeft || searchCanRight) && (
                             <IconButton
                               size="small"
