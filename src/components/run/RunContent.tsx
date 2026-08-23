@@ -29,8 +29,8 @@ import TravelExploreIcon from '@mui/icons-material/TravelExplore';
 import SearchIcon from '@mui/icons-material/Search';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import StorageIcon from '@mui/icons-material/Storage';
-import { ContentCopy, Check } from "@mui/icons-material";
-import { useEffect, useState } from "react";
+import { ContentCopy, Check, ChevronLeft, ChevronRight } from "@mui/icons-material";
+import { useEffect, useState, useRef, useCallback } from "react";
 import JSZip from "jszip";
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -284,6 +284,48 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   const [legacyData, setLegacyData] = useState<any[]>([]);
   const [legacyColumns, setLegacyColumns] = useState<string[]>([]);
   const [isLegacyData, setIsLegacyData] = useState<boolean>(false);
+
+  const searchTabsRef = useRef<HTMLDivElement>(null);
+  const crawlTabsRef = useRef<HTMLDivElement>(null);
+
+  // Reusable hook: tracks whether a scroll container overflows and where it's scrolled to
+  const useTabScroll = (ref: React.RefObject<HTMLDivElement>, deps: any[]) => {
+    const [canScrollLeft, setCanScrollLeft] = useState(false);
+    const [canScrollRight, setCanScrollRight] = useState(false);
+
+    const updateScrollState = useCallback(() => {
+      const el = ref.current;
+      if (!el) return;
+      const hasOverflow = el.scrollWidth > el.clientWidth + 1; // +1 to avoid subpixel false positives
+      setCanScrollLeft(hasOverflow && el.scrollLeft > 0);
+      setCanScrollRight(hasOverflow && el.scrollLeft < el.scrollWidth - el.clientWidth - 1);
+    }, [ref]);
+
+    useEffect(() => {
+      updateScrollState();
+      const el = ref.current;
+      if (!el) return;
+
+      el.addEventListener('scroll', updateScrollState);
+      window.addEventListener('resize', updateScrollState);
+      return () => {
+        el.removeEventListener('scroll', updateScrollState);
+        window.removeEventListener('resize', updateScrollState);
+      };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [updateScrollState, ...deps]);
+
+    return { canScrollLeft, canScrollRight, hasOverflow: canScrollLeft || canScrollRight };
+  };
+
+  const scrollTabs = (ref: React.RefObject<HTMLDivElement>, direction: 'left' | 'right') => {
+    if (ref.current) {
+      ref.current.scrollBy({ left: direction === 'left' ? -200 : 200, behavior: 'smooth' });
+    }
+  };
+
+  const { canScrollLeft: searchCanLeft, canScrollRight: searchCanRight } = useTabScroll(searchTabsRef, [searchData.length]);
+  const { canScrollLeft: crawlCanLeft, canScrollRight: crawlCanRight } = useTabScroll(crawlTabsRef, [crawlData[0]?.length]);
 
   useEffect(() => {
     setTab(tab);
