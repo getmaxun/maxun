@@ -29,8 +29,8 @@ import TravelExploreIcon from '@mui/icons-material/TravelExplore';
 import SearchIcon from '@mui/icons-material/Search';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import StorageIcon from '@mui/icons-material/Storage';
-import { ContentCopy, Check } from "@mui/icons-material";
-import { useEffect, useState } from "react";
+import { ContentCopy, Check, ChevronLeft, ChevronRight } from "@mui/icons-material";
+import { useEffect, useState, useRef, useCallback } from "react";
 import JSZip from "jszip";
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -284,6 +284,48 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   const [legacyData, setLegacyData] = useState<any[]>([]);
   const [legacyColumns, setLegacyColumns] = useState<string[]>([]);
   const [isLegacyData, setIsLegacyData] = useState<boolean>(false);
+
+  const searchTabsRef = useRef<HTMLDivElement>(null);
+  const crawlTabsRef = useRef<HTMLDivElement>(null);
+
+  // Reusable hook: tracks whether a scroll container overflows and where it's scrolled to
+  const useTabScroll = (ref: React.RefObject<HTMLDivElement>, deps: any[]) => {
+    const [canScrollLeft, setCanScrollLeft] = useState(false);
+    const [canScrollRight, setCanScrollRight] = useState(false);
+
+    const updateScrollState = useCallback(() => {
+      const el = ref.current;
+      if (!el) return;
+      const hasOverflow = el.scrollWidth > el.clientWidth + 1; // +1 to avoid subpixel false positives
+      setCanScrollLeft(hasOverflow && el.scrollLeft > 0);
+      setCanScrollRight(hasOverflow && el.scrollLeft < el.scrollWidth - el.clientWidth - 1);
+    }, [ref]);
+
+    useEffect(() => {
+      updateScrollState();
+      const el = ref.current;
+      if (!el) return;
+
+      el.addEventListener('scroll', updateScrollState);
+      window.addEventListener('resize', updateScrollState);
+      return () => {
+        el.removeEventListener('scroll', updateScrollState);
+        window.removeEventListener('resize', updateScrollState);
+      };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [updateScrollState, ...deps]);
+
+    return { canScrollLeft, canScrollRight, hasOverflow: canScrollLeft || canScrollRight };
+  };
+
+  const scrollTabs = (ref: React.RefObject<HTMLDivElement>, direction: 'left' | 'right') => {
+    if (ref.current) {
+      ref.current.scrollBy({ left: direction === 'left' ? -200 : 200, behavior: 'smooth' });
+    }
+  };
+
+  const { canScrollLeft: searchCanLeft, canScrollRight: searchCanRight } = useTabScroll(searchTabsRef, [searchData.length]);
+  const { canScrollLeft: crawlCanLeft, canScrollRight: crawlCanRight } = useTabScroll(crawlTabsRef, [crawlData[0]?.length]);
 
   useEffect(() => {
     setTab(tab);
@@ -1948,51 +1990,41 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
-                    <Box sx={{ width: 0, minWidth: '100%' }}>
+                    <Box sx={{ width: 0, minWidth: '100%', display: 'flex', alignItems: 'center', gap: 0.5, mb: 2 }}>
+                      {(crawlCanLeft || crawlCanRight) && (
+                        <IconButton
+                          size="small"
+                          onClick={() => scrollTabs(crawlTabsRef, 'left')}
+                          disabled={!crawlCanLeft}
+                          sx={{ flexShrink: 0, opacity: crawlCanLeft ? 1 : 0.3, alignSelf: 'center' }}
+                        >
+                          <ChevronLeft fontSize="small" />
+                        </IconButton>
+                      )}
                       <Box
+                        ref={crawlTabsRef}
                         sx={{
                           display: 'flex',
+                          alignItems: 'center',
                           overflowX: 'auto',
                           borderBottom: '1px solid',
                           borderColor: darkMode ? '#2a3441' : '#dee2e6',
-                          mb: 2,
-                          scrollbarWidth: 'thin',
-                          '&::-webkit-scrollbar': {
-                            height: '8px',
-                          },
-                          '&::-webkit-scrollbar-track': {
-                            backgroundColor: darkMode ? '#1e1e1e' : '#f1f1f1',
-                          },
-                          '&::-webkit-scrollbar-thumb': {
-                            backgroundColor: darkMode ? '#555' : '#888',
-                            borderRadius: '4px',
-                          },
-                          '&::-webkit-scrollbar-thumb:hover': {
-                            backgroundColor: '#FF00C3',
-                          },
+                          scrollbarWidth: 'none',
+                          '&::-webkit-scrollbar': { display: 'none' },
                         }}
                       >
                         {crawlData[0].map((item: any, idx: number) => {
                           const url = item?.metadata?.url || item?.url || `URL ${idx + 1}`;
-
                           return (
                             <Box
                               key={idx}
-                              onClick={() => {
-                                setCurrentCrawlIndex(idx);
-                              }}
+                              onClick={() => setCurrentCrawlIndex(idx)}
                               sx={{
-                                px: 2,
-                                py: 1,
-                                cursor: 'pointer',
-                                backgroundColor: currentCrawlIndex === idx
-                                  ? darkMode ? '#121111ff' : '#e9ecef'
-                                  : 'transparent',
+                                px: 2, py: 1, cursor: 'pointer',
+                                backgroundColor: currentCrawlIndex === idx ? (darkMode ? '#121111ff' : '#e9ecef') : 'transparent',
                                 borderBottom: currentCrawlIndex === idx ? '3px solid #FF00C3' : 'none',
-                                color: darkMode ? '#fff' : '#000',
-                                whiteSpace: 'nowrap',
-                                fontSize: '0.875rem',
-                                flexShrink: 0,
+                                color: darkMode ? '#fff' : '#000', whiteSpace: 'nowrap',
+                                fontSize: '0.875rem', flexShrink: 0,
                               }}
                               title={url}
                             >
@@ -2001,6 +2033,16 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                           );
                         })}
                       </Box>
+                      {(crawlCanLeft || crawlCanRight) && (
+                        <IconButton
+                          size="small"
+                          onClick={() => scrollTabs(crawlTabsRef, 'right')}
+                          disabled={!crawlCanRight}
+                          sx={{ flexShrink: 0, opacity: crawlCanRight ? 1 : 0.3, alignSelf: 'center' }}
+                        >
+                          <ChevronRight fontSize="small" />
+                        </IconButton>
+                      )}
                     </Box>
 
                     {crawlData[0][currentCrawlIndex] && (
@@ -2370,57 +2412,52 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   <AccordionDetails>
                     {searchMode === 'scrape' && searchData.length > 0 ? (
                       <>
-                        <Box sx={{ width: 0, minWidth: '100%' }}>
+                        <Box sx={{ width: 0, minWidth: '100%', display: 'flex', alignItems: 'center', gap: 0.5, mb: 2 }}>
+                          {(searchCanLeft || searchCanRight) && (
+                            <IconButton
+                              size="small"
+                              onClick={() => scrollTabs(searchTabsRef, 'left')}
+                              disabled={!searchCanLeft}
+                              sx={{ flexShrink: 0, opacity: searchCanLeft ? 1 : 0.3, alignSelf: 'center' }}
+                            >
+                              <ChevronLeft fontSize="small" />
+                            </IconButton>
+                          )}
                           <Box
+                            ref={searchTabsRef}
                             sx={{
                               display: 'flex',
+                              alignItems: 'center',
                               overflowX: 'auto',
                               borderBottom: '1px solid',
                               borderColor: darkMode ? '#2a3441' : '#dee2e6',
-                              mb: 2,
-                              scrollbarWidth: 'thin',
+                              scrollbarWidth: 'none',
                               '&::-webkit-scrollbar': {
-                                height: '8px',
-                              },
-                              '&::-webkit-scrollbar-track': {
-                                backgroundColor: darkMode ? '#1e1e1e' : '#f1f1f1',
-                              },
-                              '&::-webkit-scrollbar-thumb': {
-                                backgroundColor: darkMode ? '#555' : '#888',
-                                borderRadius: '4px',
-                              },
-                              '&::-webkit-scrollbar-thumb:hover': {
-                                backgroundColor: '#FF00C3',
+                                display: 'none',
                               },
                             }}
                           >
-                            {searchData.map((item: any, idx: number) => {
-                              const url = item?.metadata?.url || item?.url || `Result ${idx + 1}`;
-
-                              return (
-                                <Box
-                                  key={idx}
-                                  onClick={() => setCurrentSearchIndex(idx)}
-                                  sx={{
-                                    px: 2,
-                                    py: 1,
-                                    cursor: 'pointer',
-                                    backgroundColor: currentSearchIndex === idx
-                                      ? darkMode ? '#121111ff' : '#e9ecef'
-                                      : 'transparent',
-                                    borderBottom: currentSearchIndex === idx ? '3px solid #FF00C3' : 'none',
-                                    color: darkMode ? '#fff' : '#000',
-                                    whiteSpace: 'nowrap',
-                                    fontSize: '0.875rem',
-                                    flexShrink: 0,
-                                  }}
-                                  title={url}
-                                >
-                                  Link {idx + 1}
-                                </Box>
-                              );
-                            })}
+                            {searchData.map((item: any, idx: number) => (
+                              <Box key={idx} onClick={() => setCurrentSearchIndex(idx)}
+                                sx={{
+                                  px: 2, py: 1, cursor: 'pointer',
+                                  backgroundColor: currentSearchIndex === idx ? (darkMode ? '#121111ff' : '#e9ecef') : 'transparent',
+                                  borderBottom: currentSearchIndex === idx ? '3px solid #FF00C3' : 'none',
+                                  color: darkMode ? '#fff' : '#000', whiteSpace: 'nowrap',
+                                  flexShrink: 0,
+                                }}>Result {idx + 1}</Box>
+                            ))}
                           </Box>
+                          {(searchCanLeft || searchCanRight) && (
+                            <IconButton
+                              size="small"
+                              onClick={() => scrollTabs(searchTabsRef, 'right')}
+                              disabled={!searchCanRight}
+                              sx={{ flexShrink: 0, opacity: searchCanRight ? 1 : 0.3, alignSelf: 'center' }}
+                            >
+                              <ChevronRight fontSize="small" />
+                            </IconButton>
+                          )}
                         </Box>
 
                         {searchData[currentSearchIndex] && (
