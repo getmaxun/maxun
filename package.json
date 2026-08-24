@@ -57,7 +57,7 @@
     "loglevel": "^1.8.0",
     "loglevel-plugin-remote": "^0.6.8",
     "mammoth": "^1.11.0",
-    "maxun-core": "^0.0.37",
+    "maxun-core": "^0.0.38",
     "minio": "^8.0.1",
     "moment-timezone": "^0.5.45",
     "multer": "^2.1.1",
