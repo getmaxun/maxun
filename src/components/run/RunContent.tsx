@@ -1997,6 +1997,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                           onClick={() => scrollTabs(crawlTabsRef, 'left')}
                           disabled={!crawlCanLeft}
                           sx={{ flexShrink: 0, opacity: crawlCanLeft ? 1 : 0.3, alignSelf: 'center' }}
+                          aria-label="Scroll crawl results left"
                         >
                           <ChevronLeft fontSize="small" />
                         </IconButton>
@@ -2039,6 +2040,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                           onClick={() => scrollTabs(crawlTabsRef, 'right')}
                           disabled={!crawlCanRight}
                           sx={{ flexShrink: 0, opacity: crawlCanRight ? 1 : 0.3, alignSelf: 'center' }}
+                          aria-label="Scroll crawl results right"
                         >
                           <ChevronRight fontSize="small" />
                         </IconButton>
@@ -2419,6 +2421,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               onClick={() => scrollTabs(searchTabsRef, 'left')}
                               disabled={!searchCanLeft}
                               sx={{ flexShrink: 0, opacity: searchCanLeft ? 1 : 0.3, alignSelf: 'center' }}
+                              aria-label="Scroll search results left"
                             >
                               <ChevronLeft fontSize="small" />
                             </IconButton>
@@ -2454,6 +2457,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               onClick={() => scrollTabs(searchTabsRef, 'right')}
                               disabled={!searchCanRight}
                               sx={{ flexShrink: 0, opacity: searchCanRight ? 1 : 0.3, alignSelf: 'center' }}
+                              aria-label="Scroll search results right"
                             >
                               <ChevronRight fontSize="small" />
                             </IconButton>
