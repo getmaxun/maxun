@@ -30,6 +30,7 @@ import {
 import { MAX_FILE_SIZE_BYTES } from '../workflow-management/classes/DocumentInterpreter';
 import { createDocumentRobotRecord } from '../utils/document/createDocumentRobotRecord';
 import { createDocumentParseRobotRecord } from '../utils/document/createDocumentParseRobotRecord';
+import { normalizeRobotUrl, normalizeWorkflowUrls, applyWorkflowLimits } from '../utils/robot-updates';
 import { normalizeDocumentMimeType } from '../utils/document/documentFile';
 import { validateRequiredLlmConfig, formatsRequireLlm, readLlmConfig } from '../utils/llm-config-validation';
 
@@ -55,79 +56,84 @@ const documentUpload = multer({
   },
 });
 
-const normalizeRobotUrl = (rawUrl: string): string => {
-  let normalizedUrl: URL;
-  try {
-    normalizedUrl = new URL(rawUrl.trim());
-  } catch {
-    throw new Error(`"${rawUrl.trim()}" is not a valid URL. Provide a full web address like https://example.com`);
-  }
-  if (!['http:', 'https:'].includes(normalizedUrl.protocol)) {
-    throw new Error(`Unsupported URL protocol "${normalizedUrl.protocol}//" — only http and https are supported. Local file paths cannot be scraped.`);
-  }
+//HELPER FUNCTION
 
-  const hostname = normalizedUrl.hostname;
-  const isPlausibleHost = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(hostname)
-    || hostname === 'localhost'
-    || /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname)
-    || /^\[[0-9a-f:]+\]$/i.test(hostname);
-  if (!isPlausibleHost) {
-    throw new Error(`"${hostname}" is not a reachable hostname. Provide a full web address like https://example.com`);
-  }
+// const normalizeRobotUrl = (rawUrl: string): string => {
+//   let normalizedUrl: URL;
+//   try {
+//     normalizedUrl = new URL(rawUrl.trim());
+//   } catch {
+//     throw new Error(`"${rawUrl.trim()}" is not a valid URL. Provide a full web address like https://example.com`);
+//   }
+//   if (!['http:', 'https:'].includes(normalizedUrl.protocol)) {
+//     throw new Error(`Unsupported URL protocol "${normalizedUrl.protocol}//" — only http and https are supported. Local file paths cannot be scraped.`);
+//   }
 
-  normalizedUrl.search = normalizedUrl.searchParams.toString();
-  return normalizedUrl.toString();
-};
+//   const hostname = normalizedUrl.hostname;
+//   const isPlausibleHost = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(hostname)
+//     || hostname === 'localhost'
+//     || /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname)
+//     || /^\[[0-9a-f:]+\]$/i.test(hostname);
+//   if (!isPlausibleHost) {
+//     throw new Error(`"${hostname}" is not a reachable hostname. Provide a full web address like https://example.com`);
+//   }
 
-const normalizeWorkflowUrls = (workflow: any[] = []): any[] =>
-  workflow.map((pair: any) => ({
-    ...pair,
-    where: pair?.where
-      ? {
-          ...pair.where,
-          ...(typeof pair.where.url === 'string' && pair.where.url !== 'about:blank'
-            ? { url: normalizeRobotUrl(pair.where.url) }
-            : {}),
-        }
-      : pair?.where,
-    what: Array.isArray(pair?.what)
-      ? pair.what.map((action: any) => {
-          if (
-            action.action === 'goto' &&
-            Array.isArray(action.args) &&
-            typeof action.args[0] === 'string' &&
-            action.args[0] !== 'about:blank'
-          ) {
-            return {
-              ...action,
-              args: [normalizeRobotUrl(action.args[0]), ...action.args.slice(1)],
-            };
-          }
+//   normalizedUrl.search = normalizedUrl.searchParams.toString();
+//   return normalizedUrl.toString();
+// };
 
-          if (
-            (action.action === 'scrape' || action.action === 'crawl') &&
-            Array.isArray(action.args) &&
-            action.args[0] &&
-            typeof action.args[0] === 'object' &&
-            typeof action.args[0].url === 'string' &&
-            action.args[0].url !== 'about:blank'
-          ) {
-            return {
-              ...action,
-              args: [
-                {
-                  ...action.args[0],
-                  url: normalizeRobotUrl(action.args[0].url),
-                },
-                ...action.args.slice(1),
-              ],
-            };
-          }
 
-          return action;
-        })
-      : pair?.what,
-  }));
+//HELPER FUNCTION
+
+// const normalizeWorkflowUrls = (workflow: any[] = []): any[] =>
+//   workflow.map((pair: any) => ({
+//     ...pair,
+//     where: pair?.where
+//       ? {
+//           ...pair.where,
+//           ...(typeof pair.where.url === 'string' && pair.where.url !== 'about:blank'
+//             ? { url: normalizeRobotUrl(pair.where.url) }
+//             : {}),
+//         }
+//       : pair?.where,
+//     what: Array.isArray(pair?.what)
+//       ? pair.what.map((action: any) => {
+//           if (
+//             action.action === 'goto' &&
+//             Array.isArray(action.args) &&
+//             typeof action.args[0] === 'string' &&
+//             action.args[0] !== 'about:blank'
+//           ) {
+//             return {
+//               ...action,
+//               args: [normalizeRobotUrl(action.args[0]), ...action.args.slice(1)],
+//             };
+//           }
+
+//           if (
+//             (action.action === 'scrape' || action.action === 'crawl') &&
+//             Array.isArray(action.args) &&
+//             action.args[0] &&
+//             typeof action.args[0] === 'object' &&
+//             typeof action.args[0].url === 'string' &&
+//             action.args[0].url !== 'about:blank'
+//           ) {
+//             return {
+//               ...action,
+//               args: [
+//                 {
+//                   ...action.args[0],
+//                   url: normalizeRobotUrl(action.args[0].url),
+//                 },
+//                 ...action.args.slice(1),
+//               ],
+//             };
+//           }
+
+//           return action;
+//         })
+//       : pair?.what,
+//   }));
 
 async function isRobotNameTaken(name: string, userId: number, excludeId?: string): Promise<boolean> {
   const trimmed = name.trim();
@@ -396,7 +402,8 @@ function handleWorkflowActions(workflow: any[], credentials: Credentials) {
 router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
-    const { name, limits, credentials, targetUrl, workflow: incomingWorkflow, formats, promptLlmProvider, promptLlmModel, promptLlmApiKey, promptLlmBaseUrl } = req.body;
+    const { name, limits, credentials, targetUrl, workflow: incomingWorkflow, formats, 
+      promptLlmProvider, promptLlmModel, promptLlmApiKey, promptLlmBaseUrl } = req.body;
 
     const hasLlmUpdate = 'promptLlmProvider' in req.body || 'promptLlmModel' in req.body || 'promptLlmApiKey' in req.body || 'promptLlmBaseUrl' in req.body;
     if (!name && !limits && !credentials && !targetUrl && !incomingWorkflow && formats === undefined && !hasLlmUpdate) {
@@ -472,20 +479,30 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       workflow = handleWorkflowActions(workflow, credentials);
     }
 
+    // if (limits && Array.isArray(limits) && limits.length > 0) {
+    //   for (const limitInfo of limits) {
+    //     const { pairIndex, actionIndex, argIndex, limit } = limitInfo;
+
+    //     const pair = workflow[pairIndex];
+    //     if (!pair || !pair.what) continue;
+
+    //     const action = pair.what[actionIndex];
+    //     if (!action || !action.args) continue;
+
+    //     const arg = action.args[argIndex];
+    //     if (!arg || typeof arg !== 'object') continue;
+
+    //     (arg as { limit: number }).limit = limit;
+    //   }
+    // }
+
     if (limits && Array.isArray(limits) && limits.length > 0) {
-      for (const limitInfo of limits) {
-        const { pairIndex, actionIndex, argIndex, limit } = limitInfo;
-
-        const pair = workflow[pairIndex];
-        if (!pair || !pair.what) continue;
-
-        const action = pair.what[actionIndex];
-        if (!action || !action.args) continue;
-
-        const arg = action.args[argIndex];
-        if (!arg || typeof arg !== 'object') continue;
-
-        (arg as { limit: number }).limit = limit;
+      try {
+        applyWorkflowLimits(workflow, limits);
+      } catch (error) {
+        return res.status(400).json({
+          error: error instanceof Error ? error.message : 'Invalid limit update',
+        });
       }
     }
 
@@ -2367,7 +2384,7 @@ router.post('/runs/document-parse-run/:id', requireSignIn, async (req: Authentic
  * PUT endpoint to replace the document for an existing doc-extract or doc-parse robot.
  */
 router.put(
-  '/recordings/:id/document',
+'/recordings/:id/document',
   requireSignIn,
   documentUpload.single('file'),
   async (req: AuthenticatedRequest, res) => {
