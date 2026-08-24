@@ -434,15 +434,22 @@ router.put("/sdk/robots/:id", requireAPIKey, async (req: AuthenticatedRequest, r
 
         const updateData: any = {};
 
-        if (updates.workflow) {
-            try {
-                updateData.recording = {
-                    workflow: normalizeWorkflowUrls(updates.workflow)
-                };
-            } catch {
-                return res.status(400).json({ error: "Invalid URL in workflow" });
-            }
+        /**
+         * A single working copy of the workflow. A request may replace the
+         * workflow wholesale, patch individual values such as `limits`, or do
+         * both, so every block below edits this one array, and it is written
+         * back to `updateData` once at the end.
+         */
+        let workflow: any[];
+        try {
+            workflow = updates.workflow
+                ? normalizeWorkflowUrls(updates.workflow)
+                : JSON.parse(JSON.stringify(robot.recording?.workflow || []));
+        } catch {
+            return res.status(400).json({ error: "Invalid URL in workflow" });
         }
+
+        let workflowTouched = Boolean(updates.workflow);
 
         if (updates.meta) {
             let normalizedMetaUrl: string | undefined;
@@ -456,12 +463,6 @@ router.put("/sdk/robots/:id", requireAPIKey, async (req: AuthenticatedRequest, r
                 }
             }
 
-            let workflow: any[];
-            try {
-                workflow = updates.workflow ? normalizeWorkflowUrls(updates.workflow) : JSON.parse(JSON.stringify(robot.recording?.workflow || []));
-            } catch {
-                return res.status(400).json({ error: "Invalid URL in workflow" });
-            }
             if (normalizedMetaUrl) {
                 workflow.forEach((pair: any) => {
                     let stepUpdate = false;
@@ -479,7 +480,7 @@ router.put("/sdk/robots/:id", requireAPIKey, async (req: AuthenticatedRequest, r
                         pair.where.url = normalizedMetaUrl;
                     }
                 });
-                updateData.recording = { workflow };
+                workflowTouched = true;
             }
 
             updateData.recording_meta = {
@@ -488,6 +489,60 @@ router.put("/sdk/robots/:id", requireAPIKey, async (req: AuthenticatedRequest, r
                 ...(normalizedMetaUrl ? { url: normalizedMetaUrl } : {}),
                 updatedAt: new Date().toISOString()
             };
+        }
+
+        /**
+         * Targeted limit updates, addressed by position in the workflow. Runs
+         * after the workflow and meta blocks so the value the caller asked for
+         * survives whatever those wrote. Anything not named here keeps the
+         * value it already had.
+         */
+        if (updates.limits !== undefined) {
+            if (!Array.isArray(updates.limits)) {
+                return res.status(400).json({ error: '"limits" must be an array.' });
+            }
+
+            // Validate the whole payload before applying any of it, so a
+            // malformed entry cannot throw mid-loop or leave the workflow
+            // half-patched.
+            for (let i = 0; i < updates.limits.length; i++) {
+                const entry = updates.limits[i];
+
+                if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+                    return res.status(400).json({ error: `limits[${i}] must be an object.` });
+                }
+
+                for (const field of ['pairIndex', 'actionIndex', 'argIndex']) {
+                    const value = entry[field];
+                    if (!Number.isInteger(value) || value < 0) {
+                        return res.status(400).json({
+                            error: `limits[${i}].${field} must be a non-negative integer.`
+                        });
+                    }
+                }
+
+                if (!Number.isInteger(entry.limit) || entry.limit < 1) {
+                    return res.status(400).json({
+                        error: `limits[${i}].limit must be a positive integer.`
+                    });
+                }
+            }
+
+            for (const { pairIndex, actionIndex, argIndex, limit } of updates.limits) {
+                const arg = workflow[pairIndex]?.what?.[actionIndex]?.args?.[argIndex];
+                if (!arg || typeof arg !== 'object') {
+                    return res.status(400).json({
+                        error: `No action argument at pair ${pairIndex}, action ${actionIndex}, arg ${argIndex}.`
+                    });
+                }
+
+                (arg as { limit: number }).limit = limit;
+                workflowTouched = true;
+            }
+        }
+
+        if (workflowTouched) {
+            updateData.recording = { ...robot.recording, workflow };
         }
 
         if (updates.google_sheet_email !== undefined) {
