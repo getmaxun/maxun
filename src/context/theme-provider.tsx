@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
+import i18n, { isRtlLanguage } from '../i18n';
 
 
 const lightTheme = createTheme({
@@ -350,14 +351,37 @@ const ThemeModeProvider = ({ children }: { children: React.ReactNode }) => {
     });
   };
 
+  const [direction, setDirection] = useState<'ltr' | 'rtl'>(() =>
+    isRtlLanguage() ? 'rtl' : 'ltr'
+  );
+
   useEffect(() => {
     localStorage.setItem('darkMode', JSON.stringify(darkMode)); // Save initial mode
   }, [darkMode]);
 
+  // Language is resolved asynchronously (http backend), so follow it instead of
+  // reading it once on mount.
+  useEffect(() => {
+    const handleLanguageChanged = (lng: string) =>
+      setDirection(isRtlLanguage(lng) ? 'rtl' : 'ltr');
+
+    i18n.on('languageChanged', handleLanguageChanged);
+    return () => {
+      i18n.off('languageChanged', handleLanguageChanged);
+    };
+  }, []);
+
+  // Merge the direction into the base theme so MUI components (Drawer, Menu,
+  // Tabs, Slider...) lay themselves out RTL-aware.
+  const theme = useMemo(
+    () => createTheme(darkMode ? darkTheme : lightTheme, { direction }),
+    [darkMode, direction]
+  );
+
   return (
     <ThemeModeContext.Provider value={{ toggleTheme, darkMode }}>
-      <ThemeProvider theme={darkMode ? darkTheme : lightTheme}>
-        <CssBaseline />
+      <ThemeProvider theme={theme}>
+        <CssBaseline enableColorScheme />
         {children}
       </ThemeProvider>
     </ThemeModeContext.Provider>

@@ -3222,6 +3222,10 @@ export default class Interpreter extends EventEmitter {
    *  for the `{$param: nameofparam}` fields.
    */
   public async run(page: Page, params?: ParamType): Promise<void> {
+    if (this.stopper) {
+      throw new Error('This Interpreter is already running a workflow. To run another workflow, please, spawn another Interpreter.');
+    }
+    this.isAborted = false;
     this.log('Starting the workflow.', Level.LOG);
     const context = page.context();
 
@@ -3237,9 +3241,6 @@ export default class Interpreter extends EventEmitter {
         if (contextOptions.proxy.username) {
             this.log(`Proxy authenticated...`);
         }
-    }
-    if (this.stopper) {
-      throw new Error('This Interpreter is already running a workflow. To run another workflow, please, spawn another Interpreter.');
     }
     /**
      * `this.workflow` with the parameters initialized.
@@ -3294,8 +3295,9 @@ export default class Interpreter extends EventEmitter {
       this.namedResults = {};
       this.serializableDataByType = { scrapeList: {}, scrapeSchema: {}, crawl: {}, search: {} };
 
-      // Reset state
-      this.isAborted = false;
+      // Reset state (isAborted is intentionally NOT reset here — it must
+      // remain true so that in-flight crawl loops see the abort flag and exit.
+      // It is reset at the start of run() instead.)
       this.initializedWorkflow = null;
 
       this.log('Interpreter cleanup completed', Level.DEBUG);

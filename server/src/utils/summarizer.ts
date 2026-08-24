@@ -1,7 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { resolveLlmModel } from './llm-models';
 import axios from 'axios';
 import logger from '../logger';
 import { LLMConfig } from '../sdk/browserAgent';
+import { resolveOpenAiApiKey } from './llm-endpoint';
+import { LLM_AGENTS, guardLlmBaseUrl } from './llm-endpoint';
 
 const SYSTEM_PROMPT = `You are a web page summarizer. Your output is plain text only.
 
@@ -18,6 +21,8 @@ const MAX_TOKENS = 1500;
 
 function cleanOutput(text: string): string {
   let out = text.trim();
+
+  out = out.replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/<\/?think>/gi, '').trim();
 
   // Strip code fences
   const fenceMatch = out.match(/^```(?:markdown)?\r?\n([\s\S]*?)```\s*$/);
@@ -62,7 +67,7 @@ export async function summarizeMarkdown(markdown: string, llmConfig?: LLMConfig)
 
   if (provider === 'anthropic') {
     const anthropic = new Anthropic({ apiKey: config.apiKey || process.env.ANTHROPIC_API_KEY });
-    const model = config.model || 'claude-haiku-4-5-20251001';
+    const model = resolveLlmModel(config.model, config.provider);
     logger.info(`[Summarizer] Using Anthropic (${model})`);
 
     const response = await anthropic.messages.create({
@@ -80,8 +85,8 @@ export async function summarizeMarkdown(markdown: string, llmConfig?: LLMConfig)
   }
 
   if (provider === 'openai') {
-    const baseUrl = config.baseUrl || 'https://api.openai.com/v1';
-    const model = config.model || 'gpt-4o-mini';
+    const baseUrl = guardLlmBaseUrl(config.baseUrl || 'https://api.openai.com/v1');
+    const model = resolveLlmModel(config.model, config.provider);
     logger.info(`[Summarizer] Using OpenAI-compatible at ${baseUrl} (${model})`);
 
     const response = await axios.post(
@@ -97,10 +102,11 @@ export async function summarizeMarkdown(markdown: string, llmConfig?: LLMConfig)
       },
       {
         headers: {
-          'Authorization': `Bearer ${config.apiKey || process.env.OPENAI_API_KEY}`,
+          'Authorization': `Bearer ${resolveOpenAiApiKey(config.apiKey, config.baseUrl)}`,
           'Content-Type': 'application/json',
         },
         timeout: 60000,
+        ...LLM_AGENTS,
       }
     );
     const content = response.data.choices?.[0]?.message?.content || '';
@@ -111,8 +117,8 @@ export async function summarizeMarkdown(markdown: string, llmConfig?: LLMConfig)
   }
 
   if (provider === 'ollama') {
-    const baseUrl = config.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-    const model = config.model || 'llama3.2';
+    const baseUrl = guardLlmBaseUrl(config.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434');
+    const model = resolveLlmModel(config.model, config.provider);
     logger.info(`[Summarizer] Using Ollama at ${baseUrl} (${model})`);
 
     const controller = new AbortController();
@@ -127,9 +133,10 @@ export async function summarizeMarkdown(markdown: string, llmConfig?: LLMConfig)
             { role: 'user', content: userPrompt },
           ],
           stream: false,
+          think: false,
           options: { temperature: 0.1, num_predict: MAX_TOKENS },
         },
-        { signal: controller.signal as any }
+        { signal: controller.signal as any, ...LLM_AGENTS }
       );
       const content = response.data.message?.content || '';
       if (!content || content.trim().length === 0) {

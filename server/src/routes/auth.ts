@@ -19,7 +19,7 @@ declare module "express-session" {
 export const router = Router();
 
 interface AuthenticatedRequest extends Request {
-  user?: { id: number | string };
+  user?: { id: string };
 }
 
 router.post("/register", async (req, res) => {
@@ -423,7 +423,7 @@ router.get(
       }
 
       let robot = await Robot.findOne({
-        where: { "recording_meta.id": robotId, userId: user.id },
+        where: { "recording_meta.id": robotId },
       });
 
       if (!robot) {
@@ -506,7 +506,7 @@ router.post(
     }
 
     const robot = await Robot.findOne({
-      where: { "recording_meta.id": robotId, userId: req.user.id },
+      where: { "recording_meta.id": robotId },
       raw: true,
     });
 
@@ -540,13 +540,9 @@ router.post(
 // Step 4: Get user's Google Sheets files (new route)
 router.get("/gsheets/files", requireSignIn, async (req, res) => {
   try {
-    const authenticatedReq = req as AuthenticatedRequest;
-    if (!authenticatedReq.user) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
     const robotId = req.query.robotId;
     const robot = await Robot.findOne({
-      where: { "recording_meta.id": robotId, userId: authenticatedReq.user.id },
+      where: { "recording_meta.id": robotId },
       raw: true,
     });
 
@@ -584,7 +580,6 @@ router.get("/gsheets/files", requireSignIn, async (req, res) => {
 
 // Step 5: Update robot's google_sheet_id when a Google Sheet is selected
 router.post("/gsheets/update", requireSignIn, async (req, res) => {
-  const authenticatedReq = req as AuthenticatedRequest;
   const { spreadsheetId, spreadsheetName, robotId } = req.body;
 
   if (!spreadsheetId || !robotId) {
@@ -593,13 +588,9 @@ router.post("/gsheets/update", requireSignIn, async (req, res) => {
       .json({ message: "Spreadsheet ID and Robot ID are required" });
   }
 
-  if (!authenticatedReq.user) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-
   try {
     let robot = await Robot.findOne({
-      where: { "recording_meta.id": robotId, userId: authenticatedReq.user.id },
+      where: { "recording_meta.id": robotId },
     });
 
     if (!robot) {
@@ -632,7 +623,7 @@ router.post(
 
     try {
       let robot = await Robot.findOne({
-        where: { "recording_meta.id": robotId, userId: req.user!.id },
+        where: { "recording_meta.id": robotId },
       });
 
       if (!robot) {
@@ -747,7 +738,7 @@ router.get("/airtable/callback", requireSignIn, async (req: Request, res) => {
 
     // Update robot with credentials
     const robot = await Robot.findOne({
-      where: { "recording_meta.id": req.session.robotId, userId: authenticatedReq.user!.id }
+      where: { "recording_meta.id": req.session.robotId }
     });
 
     if (!robot) {
@@ -798,12 +789,8 @@ router.get("/airtable/bases", requireSignIn, async (req: Request, res) => {
       return res.status(400).json({ message: "Robot ID is required" });
     }
 
-    if (!authenticatedReq.user) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
     const robot = await Robot.findOne({
-      where: { "recording_meta.id": robotId.toString(), userId: authenticatedReq.user.id },
+      where: { "recording_meta.id": robotId.toString() },
       raw: true,
     });
 
@@ -842,13 +829,9 @@ router.post("/airtable/update", requireSignIn, async (req: Request, res) => {
     return res.status(400).json({ message: "Base ID and Robot ID are required" });
   }
 
-  if (!authenticatedReq.user) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-
   try {
     const robot = await Robot.findOne({
-      where: { "recording_meta.id": robotId, userId: authenticatedReq.user.id }
+      where: { "recording_meta.id": robotId }
     });
 
     if (!robot) {
@@ -883,13 +866,9 @@ router.post("/airtable/remove", requireSignIn, async (req: Request, res) => {
     return res.status(400).json({ message: "Robot ID is required" });
   }
 
-  if (!authenticatedReq.user) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-
   try {
     const robot = await Robot.findOne({
-      where: { "recording_meta.id": robotId, userId: authenticatedReq.user.id }
+      where: { "recording_meta.id": robotId }
     });
 
     if (!robot) {
@@ -930,12 +909,8 @@ router.get("/airtable/tables", requireSignIn, async (req: Request, res) => {
       return res.status(400).json({ message: "Base ID and Robot ID are required" });
     }
 
-    if (!authenticatedReq.user) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
     const robot = await Robot.findOne({
-      where: { "recording_meta.id": robotId.toString(), userId: authenticatedReq.user.id },
+      where: { "recording_meta.id": robotId.toString() },
       raw: true,
     });
 

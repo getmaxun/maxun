@@ -311,6 +311,12 @@ const RobotCreate: React.FC = () => {
   const [documentLlmApiKey, setDocumentLlmApiKey] = useState('');
   const [documentLlmBaseUrl, setDocumentLlmBaseUrl] = useState('');
 
+  const [docParseSummaryLlmProvider, setDocParseSummaryLlmProvider] = useState<LlmProvider>('ollama');
+  const [docParseSummaryOpenAIPreset, setDocParseSummaryOpenAIPreset] = useState<OpenAICompatiblePresetId>(DEFAULT_OPENAI_COMPATIBLE_PRESET_ID);
+  const [docParseSummaryLlmModel, setDocParseSummaryLlmModel] = useState('');
+  const [docParseSummaryLlmApiKey, setDocParseSummaryLlmApiKey] = useState('');
+  const [docParseSummaryLlmBaseUrl, setDocParseSummaryLlmBaseUrl] = useState('');
+
   const { state } = React.useContext(AuthContext);
   const { user } = state;
   const { addOptimisticRobot, removeOptimisticRobot, invalidateRecordings, invalidateRuns, updateOptimisticRun } = useCacheInvalidation();
@@ -576,7 +582,7 @@ const RobotCreate: React.FC = () => {
   };
 
   const handleCreateDocumentRobot = async () => {
-    if (!documentFile) { notify('error', 'Please upload a PDF file'); return; }
+    if (!documentFile) { notify('error', 'Please upload a PDF, DOCX, XLSX, or CSV file'); return; }
     if (!documentPrompt.trim()) { notify('error', 'Please enter an extraction prompt'); return; }
     if (!documentRobotName.trim()) { notify('error', 'Please enter a robot name'); return; }
 
@@ -606,16 +612,26 @@ const RobotCreate: React.FC = () => {
   };
 
   const handleCreateDocumentParseRobot = async () => {
-    if (!documentFile) { notify('error', 'Please upload a PDF file'); return; }
+    if (!documentFile) { notify('error', 'Please upload a PDF, DOCX, XLSX, or CSV file'); return; }
     if (!documentRobotName.trim()) { notify('error', 'Please enter a robot name'); return; }
     if (documentParseFormats.length === 0) { notify('error', 'Please select at least one output format'); return; }
+
+    const wantsSummary = documentParseFormats.includes('summary' as OutputFormats);
+    if (wantsSummary && docParseSummaryLlmProvider !== 'ollama' && !docParseSummaryLlmApiKey.trim()) {
+      notify('error', `An API key is required when using ${docParseSummaryLlmProvider === 'anthropic' ? 'Anthropic' : 'an OpenAI-compatible'} provider for summaries`);
+      return;
+    }
 
     setIsLoading(true);
     try {
       const result = await createDocumentParseRobot(
         documentFile,
         documentRobotName.trim(),
-        documentParseFormats
+        documentParseFormats,
+        wantsSummary ? docParseSummaryLlmProvider : undefined,
+        wantsSummary ? docParseSummaryLlmModel.trim() || undefined : undefined,
+        wantsSummary && docParseSummaryLlmProvider !== 'ollama' ? docParseSummaryLlmApiKey || undefined : undefined,
+        wantsSummary ? docParseSummaryLlmBaseUrl.trim() || undefined : undefined
       );
       setIsLoading(false);
       if (result) {
@@ -1812,7 +1828,7 @@ const RobotCreate: React.FC = () => {
                 alt="Maxun Logo"
               />
               <Typography variant="body2" color="text.secondary" mb={3}>
-                Process PDFs with AI — extract structured fields or convert to Markdown, HTML, and links.
+                Process PDFs with AI — extract structured fields or convert to Markdown, HTML, links, and summary.
               </Typography>
 
               <Box sx={{ width: '100%', maxWidth: 700 }}>
@@ -1856,7 +1872,7 @@ const RobotCreate: React.FC = () => {
                       <Article sx={{ fontSize: 26, mb: 0.5 }} />
                       <Typography variant="h6" gutterBottom>Parse</Typography>
                       <Typography variant="body2">
-                        Convert a document to Markdown, HTML, and links.
+                        Convert a document to Markdown, HTML, links, and an AI summary.
                       </Typography>
                     </CardContent>
                   </Card>
@@ -1886,7 +1902,7 @@ const RobotCreate: React.FC = () => {
                   <input
                     id="doc-upload-input"
                     type="file"
-                    accept="application/pdf"
+                    accept=".pdf,.docx,.csv,.xlsx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     style={{ display: 'none' }}
                     onChange={(e) => setDocumentFile(e.target.files?.[0] || null)}
                   />
@@ -1896,8 +1912,8 @@ const RobotCreate: React.FC = () => {
                     </Typography>
                   ) : (
                     <>
-                      <Typography variant="body1" fontWeight={500}>Click to upload a PDF</Typography>
-                      <Typography variant="body2" color="text.secondary">Max file size: 10 MB</Typography>
+                      <Typography variant="body1" fontWeight={500}>Click to upload a PDF, DOCX, CSV, or XLSX</Typography>
+                      <Typography variant="body2" color="text.secondary">Supported files: PDF, DOCX, CSV, XLSX • Max file size: 10 MB</Typography>
                     </>
                   )}
                 </Box>
@@ -1993,6 +2009,7 @@ const RobotCreate: React.FC = () => {
                 )}
 
                 {documentMode === 'parse' && (
+                  <>
                   <FormControl fullWidth sx={{ mb: 3 }}>
                     <InputLabel id="doc-parse-formats-label">Output Formats</InputLabel>
                     <Select
@@ -2021,6 +2038,86 @@ const RobotCreate: React.FC = () => {
                       ))}
                     </Select>
                   </FormControl>
+
+                  {documentParseFormats.includes('summary' as OutputFormats) && (
+                    <Box sx={{ width: '100%', mb: 2 }}>
+                      <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                        <FormControl sx={{ flex: 1 }}>
+                          <InputLabel>Summary LLM Provider</InputLabel>
+                          <Select
+                            value={docParseSummaryLlmProvider}
+                            label="Summary LLM Provider"
+                            onChange={(e) => {
+                              applyLlmProvider(
+                                e.target.value as LlmProvider,
+                                docParseSummaryOpenAIPreset,
+                                setDocParseSummaryLlmProvider,
+                                setDocParseSummaryLlmModel,
+                                setDocParseSummaryLlmBaseUrl,
+                                setDocParseSummaryLlmApiKey
+                              );
+                            }}
+                          >
+                            <MenuItem value="ollama">Ollama (Local)</MenuItem>
+                            <MenuItem value="anthropic">Anthropic (Claude)</MenuItem>
+                            <MenuItem value="openai">OpenAI-compatible</MenuItem>
+                          </Select>
+                        </FormControl>
+                        <TextField
+                          sx={{ flex: 1 }}
+                          value={docParseSummaryLlmModel}
+                          label="Model"
+                          placeholder={getModelPlaceholder(docParseSummaryLlmProvider, docParseSummaryOpenAIPreset)}
+                          helperText={getModelHelperText(docParseSummaryLlmProvider, docParseSummaryOpenAIPreset)}
+                          onChange={(e) => setDocParseSummaryLlmModel(e.target.value)}
+                          FormHelperTextProps={{ sx: { ml: 0.5 } }}
+                        />
+                      </Box>
+                      {docParseSummaryLlmProvider === 'openai' && (
+                        <OpenAICompatiblePresetFields
+                          presetId={docParseSummaryOpenAIPreset}
+                          onPresetChange={(id) => applyOpenAICompatiblePreset(
+                            id,
+                            setDocParseSummaryOpenAIPreset,
+                            setDocParseSummaryLlmModel,
+                            setDocParseSummaryLlmBaseUrl,
+                            setDocParseSummaryLlmApiKey
+                          )}
+                          baseUrl={docParseSummaryLlmBaseUrl}
+                          onBaseUrlChange={setDocParseSummaryLlmBaseUrl}
+                          apiKey={docParseSummaryLlmApiKey}
+                          onApiKeyChange={setDocParseSummaryLlmApiKey}
+                          bottomMargin={2}
+                        />
+                      )}
+                      {docParseSummaryLlmProvider === 'anthropic' && (
+                        <TextField
+                          placeholder="Anthropic API key"
+                          fullWidth
+                          type="password"
+                          value={docParseSummaryLlmApiKey}
+                          onChange={(e) => setDocParseSummaryLlmApiKey(e.target.value)}
+                          label="API Key"
+                          helperText="Required for summary output. Alternatively, set ANTHROPIC_API_KEY in your server .env."
+                          FormHelperTextProps={{ sx: { ml: 0.5 } }}
+                          sx={{ mb: 2 }}
+                        />
+                      )}
+                      {docParseSummaryLlmProvider === 'ollama' && (
+                        <TextField
+                          fullWidth
+                          value={docParseSummaryLlmBaseUrl}
+                          onChange={(e) => setDocParseSummaryLlmBaseUrl(e.target.value)}
+                          label="Ollama Base URL (Optional)"
+                          placeholder={OLLAMA_DEFAULT_BASE_URL}
+                          helperText="Defaults to http://localhost:11434. Use http://host.docker.internal:11434 if running via Docker"
+                          sx={{ mb: 2 }}
+                          FormHelperTextProps={{ sx: { ml: 0.5 } }}
+                        />
+                      )}
+                    </Box>
+                  )}
+                  </>
                 )}
 
                 <Button

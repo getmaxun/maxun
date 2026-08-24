@@ -23,6 +23,7 @@ import { OutputFormats } from '../constants/output-formats';
 import { processRobotOutputFormats } from '../utils/output-post-processor';
 import { addJob } from '../storage/graphileWorker';
 import { QUEUE_NAMES } from '../task-runner';
+import { computeNextRun, buildCronExpression, ScheduleValidationError } from '../utils/schedule';
 
 const router = Router();
 
@@ -150,11 +151,7 @@ const formatRecording = (recordingData: any) => {
  */
 router.get("/robots", requireAPIKey, async (req: Request, res: Response) => {
     try {
-        const authenticatedReq = req as AuthenticatedRequest;
-        if (!authenticatedReq.user) {
-            return res.status(401).json({ statusCode: 401, messageCode: 'error', message: 'Unauthorized' });
-        }
-        const robots = await Robot.findAll({ where: { userId: authenticatedReq.user.id }, raw: true });
+        const robots = await Robot.findAll({ raw: true });
         const formattedRecordings = robots.map(formatRecording);
 
         const response = {
@@ -258,14 +255,9 @@ const formatRecordingById = (recordingData: any) => {
  */
 router.get("/robots/:id", requireAPIKey, async (req: Request, res: Response) => {
     try {
-        const authenticatedReq = req as AuthenticatedRequest;
-        if (!authenticatedReq.user) {
-            return res.status(401).json({ statusCode: 401, messageCode: 'error', message: 'Unauthorized' });
-        }
         const robot = await Robot.findOne({
             where: {
-                'recording_meta.id': req.params.id,
-                userId: authenticatedReq.user.id,
+                'recording_meta.id': req.params.id
             },
             raw: true
         });
@@ -354,14 +346,6 @@ router.get("/robots/:id", requireAPIKey, async (req: Request, res: Response) => 
  */
 router.get("/robots/:id/runs",requireAPIKey, async (req: Request, res: Response) => {
     try {
-        const authenticatedReq = req as AuthenticatedRequest;
-        if (!authenticatedReq.user) {
-            return res.status(401).json({ statusCode: 401, messageCode: 'error', message: 'Unauthorized' });
-        }
-        const robot = await Robot.findOne({ where: { 'recording_meta.id': req.params.id, userId: authenticatedReq.user.id } });
-        if (!robot) {
-            return res.status(404).json({ statusCode: 404, messageCode: 'not_found', message: 'Robot not found' });
-        }
         const runs = await Run.findAll({
             where: {
                 robotMetaId: req.params.id
@@ -531,14 +515,6 @@ function formatRunResponse(run: any) {
  */
 router.get("/robots/:id/runs/:runId", requireAPIKey, async (req: Request, res: Response) => {
     try {
-        const authenticatedReq = req as AuthenticatedRequest;
-        if (!authenticatedReq.user) {
-            return res.status(401).json({ statusCode: 401, messageCode: 'error', message: 'Unauthorized' });
-        }
-        const robot = await Robot.findOne({ where: { 'recording_meta.id': req.params.id, userId: authenticatedReq.user.id } });
-        if (!robot) {
-            return res.status(404).json({ statusCode: 404, messageCode: 'not_found', message: `Robot with ID "${req.params.id}" not found.` });
-        }
         const run = await Run.findOne({
             where: {
                 runId: req.params.runId,
@@ -568,8 +544,7 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string, runSou
     try {
         const recording = await Robot.findOne({
             where: {
-                'recording_meta.id': id,
-                userId: userId,
+                'recording_meta.id': id
             },
             raw: true
         });
@@ -1673,10 +1648,6 @@ router.post("/robots/:id/runs", requireAPIKey, async (req: AuthenticatedRequest,
  */
 router.post("/robots/:id/duplicate", requireAPIKey, async (req: Request, res: Response) => {
     try {
-        const authenticatedReq = req as AuthenticatedRequest;
-        if (!authenticatedReq.user) {
-            return res.status(401).json({ statusCode: 401, messageCode: 'error', message: 'Unauthorized' });
-        }
         const { id } = req.params;
         const { targetUrl } = req.body;
 
@@ -1700,7 +1671,7 @@ router.post("/robots/:id/duplicate", requireAPIKey, async (req: Request, res: Re
         }
 
         const originalRobot = await Robot.findOne({
-            where: { 'recording_meta.id': id, userId: authenticatedReq.user!.id },
+            where: { 'recording_meta.id': id },
         });
 
         if (!originalRobot) {
@@ -1791,6 +1762,284 @@ router.post("/robots/:id/duplicate", requireAPIKey, async (req: Request, res: Re
             statusCode: 500,
             messageCode: "error",
             message: error instanceof Error ? error.message : 'An unknown error occurred.',
+        });
+    }
+});
+
+/**
+ * @swagger
+ * /api/robots/{id}/schedule:
+ *   post:
+ *     summary: Schedule recurring runs for a robot
+ *     description: Create or replace a recurring schedule for a robot. The robot will run automatically based on the provided frequency. Re-posting replaces any existing schedule.
+ *     security:
+ *       - api_key: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the robot to schedule.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - runEvery
+ *               - runEveryUnit
+ *               - startFrom
+ *               - atTimeStart
+ *               - atTimeEnd
+ *               - timezone
+ *             properties:
+ *               runEvery:
+ *                 type: integer
+ *                 example: 6
+ *                 description: How often the robot runs, in units of runEveryUnit.
+ *               runEveryUnit:
+ *                 type: string
+ *                 enum: [MINUTES, HOURS, DAYS, WEEKS, MONTHS]
+ *                 example: HOURS
+ *               startFrom:
+ *                 type: string
+ *                 enum: [SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY]
+ *                 example: MONDAY
+ *               atTimeStart:
+ *                 type: string
+ *                 example: "09:00"
+ *                 description: Start time in HH:MM (24h).
+ *               atTimeEnd:
+ *                 type: string
+ *                 example: "17:00"
+ *                 description: End time in HH:MM (24h).
+ *               timezone:
+ *                 type: string
+ *                 example: "UTC"
+ *                 description: IANA timezone name.
+ *               dayOfMonth:
+ *                 type: string
+ *                 example: "1"
+ *                 description: Day of month (only used when runEveryUnit is MONTHS).
+ *     responses:
+ *       200:
+ *         description: Schedule created successfully.
+ *       400:
+ *         description: Invalid schedule parameters.
+ *       401:
+ *         description: Unauthorized access.
+ *       404:
+ *         description: Robot not found.
+ *       500:
+ *         description: Error scheduling robot.
+ */
+router.post("/robots/:id/schedule", requireAPIKey, async (req: Request, res: Response) => {
+    try {
+        const authenticatedReq = req as AuthenticatedRequest;
+        if (!authenticatedReq.user) {
+            return res.status(401).json({ statusCode: 401, messageCode: 'error', message: 'Unauthorized' });
+        }
+
+        const { id } = req.params;
+
+        const robot = await Robot.findOne({ where: { 'recording_meta.id': id } });
+        if (!robot) {
+            return res.status(404).json({
+                statusCode: 404,
+                messageCode: "not_found",
+                message: `Robot with ID "${id}" not found.`,
+            });
+        }
+
+        const { runEvery, runEveryUnit, startFrom, dayOfMonth, atTimeStart, atTimeEnd, timezone } = req.body;
+
+        // Validate inputs and build the cron expression (shared with the dashboard route).
+        let cronExpression: string;
+        try {
+            ({ cronExpression } = buildCronExpression({
+                runEvery, runEveryUnit, startFrom, atTimeStart, atTimeEnd, timezone, dayOfMonth,
+            }));
+        } catch (validationError) {
+            if (validationError instanceof ScheduleValidationError) {
+                return res.status(400).json({
+                    statusCode: 400,
+                    messageCode: "bad_request",
+                    message: validationError.message,
+                    field: validationError.field,
+                });
+            }
+            throw validationError;
+        }
+
+        const nextRunAt = computeNextRun(cronExpression, timezone);
+
+        // Single scoped update. No schedulerClaimedAt key => any stale claim is cleared.
+        await robot.update({
+            schedule: {
+                runEvery,
+                runEveryUnit,
+                startFrom,
+                dayOfMonth,
+                atTimeStart,
+                atTimeEnd,
+                timezone,
+                cronExpression,
+                lastRunAt: undefined,
+                nextRunAt: nextRunAt || undefined,
+            },
+        });
+
+        capture('maxun-oss-robot-scheduled', {
+            robotId: id,
+            user_id: authenticatedReq.user.id,
+            source: 'api',
+            scheduled_at: new Date().toISOString(),
+        });
+
+        logger.log('info', `Scheduled robot ${id} via API (cron: ${cronExpression}, tz: ${timezone}, next: ${nextRunAt})`);
+
+        const updatedRobot = await Robot.findOne({ where: { 'recording_meta.id': id }, raw: true });
+
+        return res.status(200).json({
+            statusCode: 200,
+            messageCode: "success",
+            schedule: updatedRobot?.schedule ?? null,
+        });
+    } catch (error) {
+        logger.log('error', `Error scheduling robot with ID ${req.params.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        return res.status(500).json({
+            statusCode: 500,
+            messageCode: "error",
+            message: "Failed to schedule robot",
+        });
+    }
+});
+
+/**
+ * @swagger
+ * /api/robots/{id}/schedule:
+ *   get:
+ *     summary: Get a robot's schedule
+ *     description: Retrieve the current recurring schedule for a robot, or null if none is set.
+ *     security:
+ *       - api_key: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the robot.
+ *     responses:
+ *       200:
+ *         description: The robot's schedule (or null).
+ *       401:
+ *         description: Unauthorized access.
+ *       404:
+ *         description: Robot not found.
+ *       500:
+ *         description: Error retrieving schedule.
+ */
+router.get("/robots/:id/schedule", requireAPIKey, async (req: Request, res: Response) => {
+    try {
+        const authenticatedReq = req as AuthenticatedRequest;
+        if (!authenticatedReq.user) {
+            return res.status(401).json({ statusCode: 401, messageCode: 'error', message: 'Unauthorized' });
+        }
+
+        const { id } = req.params;
+
+        const robot = await Robot.findOne({ where: { 'recording_meta.id': id }, raw: true });
+        if (!robot) {
+            return res.status(404).json({
+                statusCode: 404,
+                messageCode: "not_found",
+                message: `Robot with ID "${id}" not found.`,
+            });
+        }
+
+        return res.status(200).json({
+            statusCode: 200,
+            messageCode: "success",
+            schedule: robot.schedule ?? null,
+        });
+    } catch (error) {
+        logger.log('error', `Error fetching schedule for robot with ID ${req.params.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        return res.status(500).json({
+            statusCode: 500,
+            messageCode: "error",
+            message: "Failed to retrieve schedule",
+        });
+    }
+});
+
+/**
+ * @swagger
+ * /api/robots/{id}/schedule:
+ *   delete:
+ *     summary: Delete a robot's schedule
+ *     description: Cancel a robot's recurring schedule. Idempotent — succeeds even if the robot has no schedule.
+ *     security:
+ *       - api_key: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the robot.
+ *     responses:
+ *       200:
+ *         description: Schedule deleted successfully.
+ *       401:
+ *         description: Unauthorized access.
+ *       404:
+ *         description: Robot not found.
+ *       500:
+ *         description: Error deleting schedule.
+ */
+router.delete("/robots/:id/schedule", requireAPIKey, async (req: Request, res: Response) => {
+    try {
+        const authenticatedReq = req as AuthenticatedRequest;
+        if (!authenticatedReq.user) {
+            return res.status(401).json({ statusCode: 401, messageCode: 'error', message: 'Unauthorized' });
+        }
+
+        const { id } = req.params;
+
+        const robot = await Robot.findOne({ where: { 'recording_meta.id': id } });
+        if (!robot) {
+            return res.status(404).json({
+                statusCode: 404,
+                messageCode: "not_found",
+                message: `Robot with ID "${id}" not found.`,
+            });
+        }
+
+        await robot.update({ schedule: null });
+
+        capture('maxun-oss-robot-schedule-deleted', {
+            robotId: id,
+            user_id: authenticatedReq.user.id,
+            source: 'api',
+            unscheduled_at: new Date().toISOString(),
+        });
+
+        logger.log('info', `Deleted schedule for robot ${id} via API`);
+
+        return res.status(200).json({
+            statusCode: 200,
+            messageCode: "success",
+            message: "Schedule deleted successfully",
+        });
+    } catch (error) {
+        logger.log('error', `Error deleting schedule for robot with ID ${req.params.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        return res.status(500).json({
+            statusCode: 500,
+            messageCode: "error",
+            message: "Failed to delete schedule",
         });
     }
 });

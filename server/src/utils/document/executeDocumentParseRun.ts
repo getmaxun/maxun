@@ -1,9 +1,11 @@
 import Run from '../../models/Run';
-import { DocumentInterpreter } from '../../workflow-management/classes/DocumentInterpreter';
+import { DocumentInterpreter, LLMConfig } from '../../workflow-management/classes/DocumentInterpreter';
 import { getDocumentFromMinio } from '../../storage/mino';
 import { sendWebhook } from '../../routes/webhook';
+import { safeDecrypt } from '../auth';
 import logger from '../../logger';
 import { OutputFormats } from '../../constants/output-formats';
+import { PDF_MIME_TYPE } from './documentFile';
 
 export async function executeDocumentParseRun(
   recording: any,
@@ -19,14 +21,23 @@ export async function executeDocumentParseRun(
     ? robotRecording.outputFormats
     : [];
 
+  const llmConfig: LLMConfig = {
+    provider: robotRecording.llmProvider || 'ollama',
+    model: robotRecording.llmModel || undefined,
+    apiKey: robotRecording.llmApiKey ? safeDecrypt(robotRecording.llmApiKey) : undefined,
+    baseUrl: robotRecording.llmBaseUrl || undefined,
+  };
+
   try {
-    const pdfBuffer = await getDocumentFromMinio(robotRecording.documentKey);
-    const result = await DocumentInterpreter.parse(pdfBuffer, outputFormats);
+    const documentBuffer = await getDocumentFromMinio(robotRecording.documentKey);
+    const documentMimeType = robotRecording.documentMimeType || PDF_MIME_TYPE;
+    const result = await DocumentInterpreter.parse(documentBuffer, outputFormats, documentMimeType, llmConfig);
 
     const serializableOutput: Record<string, any> = {};
     if (result.markdown !== undefined) serializableOutput.markdown = [{ content: result.markdown }];
     if (result.html !== undefined) serializableOutput.html = [{ content: result.html }];
     if (result.links !== undefined) serializableOutput.links = result.links;
+    if (result.summary !== undefined) serializableOutput.summary = [{ content: result.summary }];
 
     await run.update({
       status: 'success',

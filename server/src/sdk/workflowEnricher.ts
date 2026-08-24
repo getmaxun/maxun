@@ -4,11 +4,15 @@
  */
 
 import { SelectorValidator } from './selectorValidator';
+import { resolveLlmModel } from '../utils/llm-models';
 import { createRemoteBrowserForValidation, destroyRemoteBrowser } from '../browser-management/controller';
 import logger from '../logger';
 import { v4 as uuid } from 'uuid';
 import { encrypt } from '../utils/auth';
-import Anthropic from '@anthropic-ai/sdk';
+import { resolveOpenAiApiKey } from '../utils/llm-endpoint';
+import { LLM_AGENTS, guardLlmBaseUrl } from '../utils/llm-endpoint';
+import { callAnthropicWithTool } from './anthropicToolHelper';
+import { selectGroupCandidatesTool, assignFieldLabelsTool, filterFieldsByIntentTool, setListNameTool, verifyExtractionMatchTool, parseSearchIntentTool, selectBestUrlTool, classifyMultiSitePromptTool, selectMultipleUrlsTool } from './anthropicTools';
 
 interface SimplifiedAction {
   action: string | typeof Symbol.asyncDispose;
@@ -407,8 +411,8 @@ export class WorkflowEnricher {
       let llmResponse: string;
 
       if (provider === 'ollama') {
-        const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-        const ollamaModel = llmConfig?.model || 'llama3.2-vision';
+        const ollamaBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434');
+        const ollamaModel = resolveLlmModel(llmConfig?.model, 'ollama');
 
         const response = await axios.post(`${ollamaBaseUrl}/api/chat`, {
           model: ollamaModel,
@@ -419,35 +423,52 @@ export class WorkflowEnricher {
           stream: false,
           format: 'json',
           options: { temperature: 0.1 }
-        });
+        }, LLM_AGENTS);
 
         llmResponse = response.data.message.content;
 
       } else if (provider === 'anthropic') {
-        const anthropic = new Anthropic({
-          apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
-        });
-        const anthropicModel = llmConfig?.model || 'claude-3-5-sonnet-20241022';
+        const anthropicModel = resolveLlmModel(llmConfig?.model, 'anthropic');
 
-        const response = await anthropic.messages.create({
+        const decision = await callAnthropicWithTool<{
+          first: number;
+          second: number;
+          reason: string;
+          limit: number | null;
+        }>({
+          apiKey: llmConfig?.apiKey,
           model: anthropicModel,
-          max_tokens: 1024,
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'image', source: { type: 'base64', media_type: 'image/png', data: screenshotBase64 } },
-              { type: 'text', text: userPrompt }
-            ]
-          }],
-          system: systemPrompt
+          maxTokens: 1024,
+          system: systemPrompt,
+          userMessage: [
+            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: screenshotBase64 } },
+            { type: 'text', text: userPrompt }
+          ],
+          tool: selectGroupCandidatesTool,
         });
 
-        const textContent = response.content.find((c: any) => c.type === 'text');
-        llmResponse = textContent?.type === 'text' ? textContent.text : '';
+        if (typeof decision.first !== 'number' || typeof decision.second !== 'number') {
+          throw new Error('Invalid response: first and second must be numbers');
+        }
+
+        if (typeof decision.reason !== 'string') {
+          throw new Error('Invalid response: reason must be a string');
+        }
+
+        if (
+          decision.limit !== null && decision.limit !== undefined &&
+          (typeof decision.limit !== 'number' || !Number.isSafeInteger(decision.limit) || decision.limit <= 0)
+        ) {
+          throw new Error('Invalid response: limit must be a positive integer or null');
+        }
+
+        const limit = decision.limit || this.extractLimitFromPrompt(prompt) || null;
+        const parsed = WorkflowEnricher.parseGroupCandidates(decision, elementGroups, limit);
+        return WorkflowEnricher.buildDecisionFromCandidates(parsed.candidates, parsed.reasoning, limit);
 
       } else if (provider === 'openai') {
-        const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
-        const openaiModel = llmConfig?.model || 'gpt-4-vision-preview';
+        const openaiBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || 'https://api.openai.com/v1');
+        const openaiModel = resolveLlmModel(llmConfig?.model, 'openai');
 
         const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
           model: openaiModel,
@@ -462,9 +483,10 @@ export class WorkflowEnricher {
           temperature: 0.1
         }, {
           headers: {
-            'Authorization': `Bearer ${llmConfig?.apiKey || process.env.OPENAI_API_KEY}`,
+            'Authorization': `Bearer ${resolveOpenAiApiKey(llmConfig?.apiKey, llmConfig?.baseUrl)}`,
             'Content-Type': 'application/json'
-          }
+          },
+          ...LLM_AGENTS,
         });
 
         llmResponse = response.data.choices[0].message.content;
@@ -948,8 +970,8 @@ Return a JSON object with this exact structure:
       let llmResponse: string;
 
       if (provider === 'ollama') {
-        const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-        const ollamaModel = llmConfig?.model || 'llama3.2-vision';
+        const ollamaBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434');
+        const ollamaModel = resolveLlmModel(llmConfig?.model, 'ollama');
 
         logger.info(`Using Ollama at ${ollamaBaseUrl} with model ${ollamaModel}`);
 
@@ -989,7 +1011,7 @@ Return a JSON object with this exact structure:
               temperature: 0.1,
               top_p: 0.9
             }
-          });
+          }, LLM_AGENTS);
 
           llmResponse = response.data.message.content;
         } catch (ollamaError: any) {
@@ -1002,28 +1024,51 @@ Return a JSON object with this exact structure:
         }
 
       } else if (provider === 'anthropic') {
-        const anthropic = new Anthropic({
-          apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
-        });
-        const anthropicModel = llmConfig?.model || 'claude-3-5-sonnet-20241022';
+        const anthropicModel = resolveLlmModel(llmConfig?.model, 'anthropic');
 
-        const response = await anthropic.messages.create({
+        const decision = await callAnthropicWithTool<any>({
+          apiKey: llmConfig?.apiKey,
           model: anthropicModel,
-          max_tokens: 2048,
+          maxTokens: 2048,
           temperature: 0.1,
-          messages: [{
-            role: 'user',
-            content: userPrompt
-          }],
-          system: systemPrompt
+          system: systemPrompt,
+          userMessage: userPrompt,
+          tool: assignFieldLabelsTool,
         });
 
-        const textContent = response.content.find((c: any) => c.type === 'text');
-        llmResponse = textContent?.type === 'text' ? textContent.text : '';
+        const rawMapping = (decision && typeof decision === 'object' && decision.fieldLabels)
+          ? decision.fieldLabels
+          : decision;
+        if (!rawMapping || typeof rawMapping !== 'object') {
+          throw new Error('Invalid response: fieldLabels must be an object');
+        }
+
+        const labelMapping: Record<string, string> = Object.create(null);
+        for (const [generic, semantic] of Object.entries(rawMapping)) {
+          if (typeof semantic !== 'string' || semantic.trim() === '') continue;
+          if (semantic === '__proto__' || semantic === 'constructor' || semantic === 'prototype') continue;
+          labelMapping[generic] = semantic;
+        }
+
+        const missingLabels: string[] = [];
+        Object.keys(fieldSamplesBatch).forEach(genericLabel => {
+          if (!labelMapping[genericLabel]) {
+            missingLabels.push(genericLabel);
+          }
+        });
+
+        if (missingLabels.length > 0) {
+          logger.warn(`LLM did not provide labels for: ${missingLabels.join(', ')}`);
+          missingLabels.forEach(label => {
+            labelMapping[label] = label;
+          });
+        }
+
+        return labelMapping;
 
       } else if (provider === 'openai') {
-        const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
-        const openaiModel = llmConfig?.model || 'gpt-4o-mini';
+        const openaiBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || 'https://api.openai.com/v1');
+        const openaiModel = resolveLlmModel(llmConfig?.model, 'openai');
 
         const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
           model: openaiModel,
@@ -1042,9 +1087,10 @@ Return a JSON object with this exact structure:
           response_format: { type: 'json_object' }
         }, {
           headers: {
-            'Authorization': `Bearer ${llmConfig?.apiKey || process.env.OPENAI_API_KEY}`,
+            'Authorization': `Bearer ${resolveOpenAiApiKey(llmConfig?.apiKey, llmConfig?.baseUrl)}`,
             'Content-Type': 'application/json'
-          }
+          },
+          ...LLM_AGENTS,
         });
 
         llmResponse = response.data.choices[0].message.content;
@@ -1166,8 +1212,8 @@ Rules:
       let llmResponse: string;
 
       if (provider === 'ollama') {
-        const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-        const ollamaModel = llmConfig?.model || 'llama3.2-vision';
+        const ollamaBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434');
+        const ollamaModel = resolveLlmModel(llmConfig?.model, 'ollama');
 
         const jsonSchema = {
           type: 'object',
@@ -1209,33 +1255,57 @@ Rules:
             temperature: 0.1,
             top_p: 0.9
           }
-        });
+        }, LLM_AGENTS);
 
         llmResponse = response.data.message.content;
 
       } else if (provider === 'anthropic') {
-        const anthropic = new Anthropic({
-          apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
-        });
-        const anthropicModel = llmConfig?.model || 'claude-3-5-sonnet-20241022';
+        const anthropicModel = resolveLlmModel(llmConfig?.model, 'anthropic');
 
-        const response = await anthropic.messages.create({
+        const decision = await callAnthropicWithTool<any>({
+          apiKey: llmConfig?.apiKey,
           model: anthropicModel,
-          max_tokens: 1024,
+          maxTokens: 1024,
           temperature: 0.1,
-          messages: [{
-            role: 'user',
-            content: userPrompt
-          }],
-          system: systemPrompt
+          system: systemPrompt,
+          userMessage: userPrompt,
+          tool: filterFieldsByIntentTool,
         });
 
-        const textContent = response.content.find((c: any) => c.type === 'text');
-        llmResponse = textContent?.type === 'text' ? textContent.text : '';
+        if (!Array.isArray(decision.selectedFields)) {
+          throw new Error('Invalid response: selectedFields must be an array');
+        }
+
+        if (typeof decision.confidence !== 'number' || decision.confidence < 0 || decision.confidence > 1) {
+          throw new Error('Invalid response: confidence must be a number between 0 and 1');
+        }
+
+        const filteredFields: Record<string, any> = Object.create(null);
+        for (const fieldName of decision.selectedFields) {
+          if (
+            fieldName !== '__proto__' &&
+            fieldName !== 'constructor' &&
+            fieldName !== 'prototype' &&
+            Object.hasOwn(labeledFields, fieldName)
+          ) {
+            filteredFields[fieldName] = labeledFields[fieldName];
+          } else {
+            logger.warn(`LLM selected field "${fieldName}" but it doesn't exist in labeled fields`);
+          }
+        }
+
+        const needsUserConfirmation = decision.confidence < 0.8 || Object.keys(filteredFields).length === 0;
+
+        return {
+          selectedFields: filteredFields,
+          confidence: decision.confidence,
+          reasoning: decision.reasoning || 'No reasoning provided',
+          needsUserConfirmation
+        };
 
       } else if (provider === 'openai') {
-        const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
-        const openaiModel = llmConfig?.model || 'gpt-4o-mini';
+        const openaiBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || 'https://api.openai.com/v1');
+        const openaiModel = resolveLlmModel(llmConfig?.model, 'openai');
 
         const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
           model: openaiModel,
@@ -1254,9 +1324,10 @@ Rules:
           response_format: { type: 'json_object' }
         }, {
           headers: {
-            'Authorization': `Bearer ${llmConfig?.apiKey || process.env.OPENAI_API_KEY}`,
+            'Authorization': `Bearer ${resolveOpenAiApiKey(llmConfig?.apiKey, llmConfig?.baseUrl)}`,
             'Content-Type': 'application/json'
-          }
+          },
+          ...LLM_AGENTS,
         });
 
         llmResponse = response.data.choices[0].message.content;
@@ -1457,8 +1528,8 @@ Return ONLY the list name, nothing else:`;
       let llmResponse: string;
 
       if (provider === 'ollama') {
-        const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-        const ollamaModel = llmConfig?.model || 'llama3.2-vision';
+        const ollamaBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434');
+        const ollamaModel = resolveLlmModel(llmConfig?.model, 'ollama');
 
         try {
           const response = await axios.post(`${ollamaBaseUrl}/api/chat`, {
@@ -1479,7 +1550,7 @@ Return ONLY the list name, nothing else:`;
               top_p: 0.9,
               num_predict: 20
             }
-          });
+          }, LLM_AGENTS);
 
           llmResponse = response.data.message.content;
         } catch (ollamaError: any) {
@@ -1488,28 +1559,25 @@ Return ONLY the list name, nothing else:`;
           return 'List 1';
         }
       } else if (provider === 'anthropic') {
-        const anthropic = new Anthropic({
-          apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
-        });
-        const anthropicModel = llmConfig?.model || 'claude-3-5-sonnet-20241022';
+        const anthropicModel = resolveLlmModel(llmConfig?.model, 'anthropic');
 
-        const response = await anthropic.messages.create({
+        const decision = await callAnthropicWithTool<{ listName: string }>({
+          apiKey: llmConfig?.apiKey,
           model: anthropicModel,
-          max_tokens: 20,
+          maxTokens: 80, // was 20 - a JSON-wrapped {"listName": "..."} tool call needs
+                         // headroom beyond the prior bare-text budget, especially for
+                         // names near the 50-char validation ceiling below.
           temperature: 0.1,
-          messages: [{
-            role: 'user',
-            content: userPrompt
-          }],
-          system: systemPrompt
+          system: systemPrompt,
+          userMessage: userPrompt,
+          tool: setListNameTool,
         });
 
-        const textContent = response.content.find((c: any) => c.type === 'text');
-        llmResponse = textContent?.type === 'text' ? textContent.text : '';
+        llmResponse = decision.listName;
 
       } else if (provider === 'openai') {
-        const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
-        const openaiModel = llmConfig?.model || 'gpt-4o-mini';
+        const openaiBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || 'https://api.openai.com/v1');
+        const openaiModel = resolveLlmModel(llmConfig?.model, 'openai');
 
         const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
           model: openaiModel,
@@ -1527,9 +1595,10 @@ Return ONLY the list name, nothing else:`;
           temperature: 0.1
         }, {
           headers: {
-            'Authorization': `Bearer ${llmConfig?.apiKey || process.env.OPENAI_API_KEY}`,
+            'Authorization': `Bearer ${resolveOpenAiApiKey(llmConfig?.apiKey, llmConfig?.baseUrl)}`,
             'Content-Type': 'application/json'
-          }
+          },
+          ...LLM_AGENTS,
         });
 
         llmResponse = response.data.choices[0].message.content;
@@ -1644,8 +1713,8 @@ Does this extraction match what the user asked for?`;
       let llmResponse: string;
 
       if (provider === 'ollama') {
-        const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-        const ollamaModel = llmConfig?.model || 'llama3.2-vision';
+        const ollamaBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434');
+        const ollamaModel = resolveLlmModel(llmConfig?.model, 'ollama');
 
         const jsonSchema = {
           type: 'object',
@@ -1666,30 +1735,32 @@ Does this extraction match what the user asked for?`;
           stream: false,
           format: jsonSchema,
           options: { temperature: 0.1 }
-        });
+        }, LLM_AGENTS);
 
         llmResponse = response.data.message.content;
 
       } else if (provider === 'anthropic') {
-        const anthropic = new Anthropic({
-          apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
-        });
-        const anthropicModel = llmConfig?.model || 'claude-3-5-sonnet-20241022';
+        const anthropicModel = resolveLlmModel(llmConfig?.model, 'anthropic');
 
-        const response = await anthropic.messages.create({
+        const decision = await callAnthropicWithTool<any>({
+          apiKey: llmConfig?.apiKey,
           model: anthropicModel,
-          max_tokens: 256,
+          maxTokens: 256,
           temperature: 0.1,
-          messages: [{ role: 'user', content: userMessage }],
-          system: systemPrompt
+          system: systemPrompt,
+          userMessage: userMessage,
+          tool: verifyExtractionMatchTool,
         });
 
-        const textContent = response.content.find((c: any) => c.type === 'text');
-        llmResponse = textContent?.type === 'text' ? textContent.text : '';
+        const matches = typeof decision.matches === 'boolean' ? decision.matches : true;
+        const confidence = typeof decision.confidence === 'number' ? decision.confidence : 0.5;
+        const reasoning = decision.reasoning || '';
+        logger.info(`[WorkflowEnricher] Verification result: matches=${matches} confidence=${confidence} - ${reasoning}`);
+        return { matches, confidence, reasoning };
 
       } else if (provider === 'openai') {
-        const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
-        const openaiModel = llmConfig?.model || 'gpt-4o-mini';
+        const openaiBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || 'https://api.openai.com/v1');
+        const openaiModel = resolveLlmModel(llmConfig?.model, 'openai');
 
         const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
           model: openaiModel,
@@ -1702,9 +1773,10 @@ Does this extraction match what the user asked for?`;
           response_format: { type: 'json_object' }
         }, {
           headers: {
-            'Authorization': `Bearer ${llmConfig?.apiKey || process.env.OPENAI_API_KEY}`,
+            'Authorization': `Bearer ${resolveOpenAiApiKey(llmConfig?.apiKey, llmConfig?.baseUrl)}`,
             'Content-Type': 'application/json'
-          }
+          },
+          ...LLM_AGENTS,
         });
 
         llmResponse = response.data.choices[0].message.content;
@@ -2041,8 +2113,8 @@ Extract the search query, extraction goal, and limit. Return JSON only.`;
       let llmResponse: string;
 
       if (provider === 'ollama') {
-        const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-        const ollamaModel = llmConfig?.model || 'llama3.2-vision';
+        const ollamaBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434');
+        const ollamaModel = resolveLlmModel(llmConfig?.model, 'ollama');
 
         const jsonSchema = {
           type: 'object',
@@ -2063,30 +2135,44 @@ Extract the search query, extraction goal, and limit. Return JSON only.`;
           stream: false,
           format: jsonSchema,
           options: { temperature: 0.1 }
-        });
+        }, LLM_AGENTS);
 
         llmResponse = response.data.message.content;
 
       } else if (provider === 'anthropic') {
-        const anthropic = new Anthropic({
-          apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
-        });
-        const anthropicModel = llmConfig?.model || 'claude-3-5-sonnet-20241022';
+        const anthropicModel = resolveLlmModel(llmConfig?.model, 'anthropic');
 
-        const response = await anthropic.messages.create({
+        const intent = await callAnthropicWithTool<{
+          searchQuery: string;
+          extractionGoal: string;
+          limit: number | null;
+        }>({
+          apiKey: llmConfig?.apiKey,
           model: anthropicModel,
-          max_tokens: 256,
+          maxTokens: 256,
           temperature: 0.1,
-          messages: [{ role: 'user', content: userMessage }],
-          system: systemPrompt
+          system: systemPrompt,
+          userMessage: userMessage,
+          tool: parseSearchIntentTool,
         });
 
-        const textContent = response.content.find((c: any) => c.type === 'text');
-        llmResponse = textContent?.type === 'text' ? textContent.text : '';
+        if (
+          typeof intent.searchQuery !== 'string' || intent.searchQuery.trim() === '' ||
+          typeof intent.extractionGoal !== 'string' || intent.extractionGoal.trim() === '' ||
+          (intent.limit !== undefined && intent.limit !== null && (typeof intent.limit !== 'number' || !Number.isSafeInteger(intent.limit) || intent.limit <= 0))
+        ) {
+          throw new Error('Invalid intent parsing response - missing required fields');
+        }
+
+        return {
+          searchQuery: intent.searchQuery,
+          extractionGoal: intent.extractionGoal,
+          limit: intent.limit || null
+        };
 
       } else if (provider === 'openai') {
-        const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
-        const openaiModel = llmConfig?.model || 'gpt-4o-mini';
+        const openaiBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || 'https://api.openai.com/v1');
+        const openaiModel = resolveLlmModel(llmConfig?.model, 'openai');
 
         const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
           model: openaiModel,
@@ -2099,9 +2185,10 @@ Extract the search query, extraction goal, and limit. Return JSON only.`;
           response_format: { type: 'json_object' }
         }, {
           headers: {
-            'Authorization': `Bearer ${llmConfig?.apiKey || process.env.OPENAI_API_KEY}`,
+            'Authorization': `Bearer ${resolveOpenAiApiKey(llmConfig?.apiKey, llmConfig?.baseUrl)}`,
             'Content-Type': 'application/json'
-          }
+          },
+          ...LLM_AGENTS,
         });
 
         llmResponse = response.data.choices[0].message.content;
@@ -2125,7 +2212,11 @@ Extract the search query, extraction goal, and limit. Return JSON only.`;
 
       const intent = JSON.parse(jsonStr);
 
-      if (!intent.searchQuery || !intent.extractionGoal) {
+      if (
+        typeof intent.searchQuery !== 'string' || intent.searchQuery.trim() === '' ||
+        typeof intent.extractionGoal !== 'string' || intent.extractionGoal.trim() === '' ||
+        (intent.limit !== undefined && intent.limit !== null && (typeof intent.limit !== 'number' || !Number.isSafeInteger(intent.limit) || intent.limit <= 0))
+      ) {
         throw new Error('Invalid intent parsing response - missing required fields');
       }
 
@@ -2312,8 +2403,8 @@ Select the BEST result index (0-${searchResults.length - 1}). Return JSON only.`
       let llmResponse: string;
 
       if (provider === 'ollama') {
-        const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-        const ollamaModel = llmConfig?.model || 'llama3.2-vision';
+        const ollamaBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434');
+        const ollamaModel = resolveLlmModel(llmConfig?.model, 'ollama');
 
         const jsonSchema = {
           type: 'object',
@@ -2334,30 +2425,36 @@ Select the BEST result index (0-${searchResults.length - 1}). Return JSON only.`
           stream: false,
           format: jsonSchema,
           options: { temperature: 0.1 }
-        });
+        }, LLM_AGENTS);
 
         llmResponse = response.data.message.content;
 
       } else if (provider === 'anthropic') {
-        const anthropic = new Anthropic({
-          apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
-        });
-        const anthropicModel = llmConfig?.model || 'claude-3-5-sonnet-20241022';
+        const anthropicModel = resolveLlmModel(llmConfig?.model, 'anthropic');
 
-        const response = await anthropic.messages.create({
+        const decision = await callAnthropicWithTool<any>({
+          apiKey: llmConfig?.apiKey,
           model: anthropicModel,
-          max_tokens: 256,
+          maxTokens: 256,
           temperature: 0.1,
-          messages: [{ role: 'user', content: userMessage }],
-          system: systemPrompt
+          system: systemPrompt,
+          userMessage: userMessage,
+          tool: selectBestUrlTool,
         });
 
-        const textContent = response.content.find((c: any) => c.type === 'text');
-        llmResponse = textContent?.type === 'text' ? textContent.text : '';
+        if (decision.selectedIndex === undefined || decision.selectedIndex < 0 || decision.selectedIndex >= searchResults.length) {
+          throw new Error(`Invalid selectedIndex: ${decision.selectedIndex}`);
+        }
+
+        return {
+          url: searchResults[decision.selectedIndex].url,
+          confidence: decision.confidence || 0.5,
+          reasoning: decision.reasoning || 'No reasoning provided'
+        };
 
       } else if (provider === 'openai') {
-        const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
-        const openaiModel = llmConfig?.model || 'gpt-4o-mini';
+        const openaiBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || 'https://api.openai.com/v1');
+        const openaiModel = resolveLlmModel(llmConfig?.model, 'openai');
 
         const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
           model: openaiModel,
@@ -2370,9 +2467,10 @@ Select the BEST result index (0-${searchResults.length - 1}). Return JSON only.`
           response_format: { type: 'json_object' }
         }, {
           headers: {
-            'Authorization': `Bearer ${llmConfig?.apiKey || process.env.OPENAI_API_KEY}`,
+            'Authorization': `Bearer ${resolveOpenAiApiKey(llmConfig?.apiKey, llmConfig?.baseUrl)}`,
             'Content-Type': 'application/json'
-          }
+          },
+          ...LLM_AGENTS,
         });
 
         llmResponse = response.data.choices[0].message.content;
@@ -2546,8 +2644,8 @@ multiSite = false when:
       let llmResponse: string;
 
       if (provider === 'ollama') {
-        const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-        const ollamaModel = llmConfig?.model || 'llama3.2-vision';
+        const ollamaBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434');
+        const ollamaModel = resolveLlmModel(llmConfig?.model, 'ollama');
 
         const jsonSchema = {
           type: 'object',
@@ -2564,30 +2662,37 @@ multiSite = false when:
           stream: false,
           format: jsonSchema,
           options: { temperature: 0 }
-        });
+        }, LLM_AGENTS);
 
         llmResponse = response.data.message.content;
 
       } else if (provider === 'anthropic') {
-        const anthropic = new Anthropic({
-          apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
-        });
-        const anthropicModel = llmConfig?.model || 'claude-3-5-sonnet-20241022';
+        const anthropicModel = resolveLlmModel(llmConfig?.model, 'anthropic');
 
-        const response = await anthropic.messages.create({
+        const decision = await callAnthropicWithTool<any>({
+          apiKey: llmConfig?.apiKey,
           model: anthropicModel,
-          max_tokens: 20,
+          maxTokens: 80,
           temperature: 0,
-          messages: [{ role: 'user', content: userMessage }],
-          system: systemPrompt
+          system: systemPrompt,
+          userMessage: userMessage,
+          tool: classifyMultiSitePromptTool,
         });
 
-        const textContent = response.content.find((c: any) => c.type === 'text');
-        llmResponse = textContent?.type === 'text' ? textContent.text : '';
+        if (typeof decision?.multiSite === 'boolean') {
+          logger.info(`[WorkflowEnricher] isMultiSitePrompt: ${decision.multiSite}`);
+          return decision.multiSite;
+        }
+
+        // Response received but not a valid boolean shape - fall through to
+        // the same silent `return false` the ollama/openai paths use below.
+        // Deliberately no log here, matching the original's silence for
+        // this specific case (only actual exceptions log, via the catch).
+        return false;
 
       } else if (provider === 'openai') {
-        const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
-        const openaiModel = llmConfig?.model || 'gpt-4o-mini';
+        const openaiBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || 'https://api.openai.com/v1');
+        const openaiModel = resolveLlmModel(llmConfig?.model, 'openai');
 
         const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
           model: openaiModel,
@@ -2600,9 +2705,10 @@ multiSite = false when:
           response_format: { type: 'json_object' }
         }, {
           headers: {
-            'Authorization': `Bearer ${llmConfig?.apiKey || process.env.OPENAI_API_KEY}`,
+            'Authorization': `Bearer ${resolveOpenAiApiKey(llmConfig?.apiKey, llmConfig?.baseUrl)}`,
             'Content-Type': 'application/json'
-          }
+          },
+          ...LLM_AGENTS,
         });
 
         llmResponse = response.data.choices[0].message.content;
@@ -2685,8 +2791,8 @@ Return ONLY valid JSON: {"selectedIndices": [0, 2, 5], "reasoning": "one-line ex
       let llmResponse: string;
 
       if (provider === 'ollama') {
-        const ollamaBaseUrl = llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-        const ollamaModel = llmConfig?.model || 'llama3.2-vision';
+        const ollamaBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434');
+        const ollamaModel = resolveLlmModel(llmConfig?.model, 'ollama');
 
         const jsonSchema = {
           type: 'object',
@@ -2706,30 +2812,44 @@ Return ONLY valid JSON: {"selectedIndices": [0, 2, 5], "reasoning": "one-line ex
           stream: false,
           format: jsonSchema,
           options: { temperature: 0.1 }
-        });
+        }, LLM_AGENTS);
 
         llmResponse = response.data.message.content;
 
       } else if (provider === 'anthropic') {
-        const anthropic = new Anthropic({
-          apiKey: llmConfig?.apiKey || process.env.ANTHROPIC_API_KEY
-        });
-        const anthropicModel = llmConfig?.model || 'claude-3-5-sonnet-20241022';
+        const anthropicModel = resolveLlmModel(llmConfig?.model, 'anthropic');
 
-        const response = await anthropic.messages.create({
+        const decision = await callAnthropicWithTool<any>({
+          apiKey: llmConfig?.apiKey,
           model: anthropicModel,
-          max_tokens: 256,
+          maxTokens: 256,
           temperature: 0.1,
-          messages: [{ role: 'user', content: userMessage }],
-          system: systemPrompt
+          system: systemPrompt,
+          userMessage: userMessage,
+          tool: selectMultipleUrlsTool,
         });
 
-        const textContent = response.content.find((c: any) => c.type === 'text');
-        llmResponse = textContent?.type === 'text' ? textContent.text : '';
+        if (!Array.isArray(decision.selectedIndices) || decision.selectedIndices.length === 0) return fallback();
+
+        const seen = new Set<string>();
+        const result: Array<{ url: string; reasoning: string }> = [];
+        for (const idx of decision.selectedIndices) {
+          if (result.length >= cap) break;
+          if (typeof idx !== 'number' || idx < 0 || idx >= searchResults.length) continue;
+          try {
+            const domain = new URL(searchResults[idx].url).hostname;
+            if (!seen.has(domain)) {
+              seen.add(domain);
+              result.push({ url: searchResults[idx].url, reasoning: decision.reasoning || '' });
+            }
+          } catch { }
+        }
+
+        return result.length >= 2 ? result : fallback();
 
       } else if (provider === 'openai') {
-        const openaiBaseUrl = llmConfig?.baseUrl || 'https://api.openai.com/v1';
-        const openaiModel = llmConfig?.model || 'gpt-4o-mini';
+        const openaiBaseUrl = guardLlmBaseUrl(llmConfig?.baseUrl || 'https://api.openai.com/v1');
+        const openaiModel = resolveLlmModel(llmConfig?.model, 'openai');
 
         const response = await axios.post(`${openaiBaseUrl}/chat/completions`, {
           model: openaiModel,
@@ -2742,9 +2862,10 @@ Return ONLY valid JSON: {"selectedIndices": [0, 2, 5], "reasoning": "one-line ex
           response_format: { type: 'json_object' }
         }, {
           headers: {
-            'Authorization': `Bearer ${llmConfig?.apiKey || process.env.OPENAI_API_KEY}`,
+            'Authorization': `Bearer ${resolveOpenAiApiKey(llmConfig?.apiKey, llmConfig?.baseUrl)}`,
             'Content-Type': 'application/json'
-          }
+          },
+          ...LLM_AGENTS,
         });
 
         llmResponse = response.data.choices[0].message.content;
