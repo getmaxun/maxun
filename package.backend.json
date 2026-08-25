@@ -35,6 +35,7 @@
     "joplin-turndown-plugin-gfm": "1.0.12",
     "jsonwebtoken": "9.0.2",
     "lodash": "4.17.21",
+    "mammoth": "^1.11.0",
     "maxun-core": "0.0.38",
     "minio": "8.0.5",
     "moment-timezone": "0.5.48",
