@@ -191,8 +191,24 @@ const buildCleanTextFromOCRData = (data: any): string => {
   return resultLines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 };
 
+const MAX_OCR_PIXELS = 25_000_000; // ~25 MP, 5000x5000 pixels
+
 const preprocessPageImage = async (imagePath: string): Promise<void> => {
   try {
+    const sharp = (await import('sharp')).default;
+    const meta = await sharp(imagePath).metadata();
+    const pixelCount = (meta.width || 0) * (meta.height || 0);
+
+    if (pixelCount > MAX_OCR_PIXELS) {
+      const scale = Math.sqrt(MAX_OCR_PIXELS / pixelCount);
+      const tmp = `${imagePath}.resized`;
+      await sharp(imagePath)
+        .resize(Math.round(meta.width! * scale), Math.round(meta.height! * scale))
+        .toFile(tmp);
+      await fs.promises.rename(tmp, imagePath);
+      logger.info(`[DocumentInterpreter] Downscaled ${meta.width}×${meta.height} image to fit OCR pixel budget`);
+    }
+
     const { createCanvas, loadImage } = await import('canvas');
     const img = await loadImage(imagePath);
     const { width, height } = img;
