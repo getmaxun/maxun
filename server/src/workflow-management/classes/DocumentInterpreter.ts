@@ -1752,8 +1752,7 @@ export class DocumentInterpreter {
     // appear as visible text — and those are usually written without a scheme. Match
     // three shapes: full http(s) URLs, "www."-prefixed hosts, and bare domains with a
     // recognizable TLD. The last two get "https://" prepended so the output is usable.
-    const urlPattern =
-      /(?:https?:\/\/|www\.)[^\s<>"')\]]+|(?:[a-z0-9-]+\.)+(?:com|org|net|io|dev|ai|app|co|edu|gov|us|info)\b(?:\/[^\s<>"')\]]*)?/gi;
+    const urlPattern = /(?:https?:\/\/|www\.)[^\s<>"')\]]+|(?<![@\w.-])(?:[a-z0-9-]+\.)+(?:com|org|net|io|dev|ai|app|co|edu|gov|us|info)\b(?:\/[^\s<>"')\]]*)?/gi;
     const raw = text.match(urlPattern) || [];
     const htmlLinks = sourceHtml
       ? Array.from(sourceHtml.matchAll(/href\s*=\s*["']([^"']+)["']/gi))
