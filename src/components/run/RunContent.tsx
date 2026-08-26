@@ -29,8 +29,8 @@ import TravelExploreIcon from '@mui/icons-material/TravelExplore';
 import SearchIcon from '@mui/icons-material/Search';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import StorageIcon from '@mui/icons-material/Storage';
-import { ContentCopy, Check } from "@mui/icons-material";
-import { useEffect, useState } from "react";
+import { ContentCopy, Check, ChevronLeft, ChevronRight } from "@mui/icons-material";
+import { useEffect, useState, useRef, useCallback } from "react";
 import JSZip from "jszip";
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -284,6 +284,48 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   const [legacyData, setLegacyData] = useState<any[]>([]);
   const [legacyColumns, setLegacyColumns] = useState<string[]>([]);
   const [isLegacyData, setIsLegacyData] = useState<boolean>(false);
+
+  const searchTabsRef = useRef<HTMLDivElement>(null);
+  const crawlTabsRef = useRef<HTMLDivElement>(null);
+
+  // Reusable hook: tracks whether a scroll container overflows and where it's scrolled to
+  const useTabScroll = (ref: React.RefObject<HTMLDivElement>, deps: any[]) => {
+    const [canScrollLeft, setCanScrollLeft] = useState(false);
+    const [canScrollRight, setCanScrollRight] = useState(false);
+
+    const updateScrollState = useCallback(() => {
+      const el = ref.current;
+      if (!el) return;
+      const hasOverflow = el.scrollWidth > el.clientWidth + 1; // +1 to avoid subpixel false positives
+      setCanScrollLeft(hasOverflow && el.scrollLeft > 0);
+      setCanScrollRight(hasOverflow && el.scrollLeft < el.scrollWidth - el.clientWidth - 1);
+    }, [ref]);
+
+    useEffect(() => {
+      updateScrollState();
+      const el = ref.current;
+      if (!el) return;
+
+      el.addEventListener('scroll', updateScrollState);
+      window.addEventListener('resize', updateScrollState);
+      return () => {
+        el.removeEventListener('scroll', updateScrollState);
+        window.removeEventListener('resize', updateScrollState);
+      };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [updateScrollState, ...deps]);
+
+    return { canScrollLeft, canScrollRight, hasOverflow: canScrollLeft || canScrollRight };
+  };
+
+  const scrollTabs = (ref: React.RefObject<HTMLDivElement>, direction: 'left' | 'right') => {
+    if (ref.current) {
+      ref.current.scrollBy({ left: direction === 'left' ? -200 : 200, behavior: 'smooth' });
+    }
+  };
+
+  const { canScrollLeft: searchCanLeft, canScrollRight: searchCanRight } = useTabScroll(searchTabsRef, [searchData.length]);
+  const { canScrollLeft: crawlCanLeft, canScrollRight: crawlCanRight } = useTabScroll(crawlTabsRef, [crawlData[0]?.length]);
 
   useEffect(() => {
     setTab(tab);
@@ -1048,14 +1090,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     };
 
     return (
-      <Accordion defaultExpanded={defaultExpanded} sx={{
-        mb: 2,
-        ml: '-38px',
-        '&.Mui-expanded': {
-          margin: 0,
-          marginLeft: '-38px',
-        },
-      }}>
+      <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <ImageIcon sx={{ mr: 1 }} />
@@ -1147,27 +1182,28 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     if (!title || title.trim() === '') {
       return (
         <>
-          <Box sx={{ mb: 2 }}>
-            <TableContainer component={Paper} sx={{ maxHeight: 320 }}>
-              <Table stickyHeader aria-label="sticky table">
+          <Box sx={{ width: 0, minWidth: '100%' }}>
+            <TableContainer component={Paper} sx={{ maxHeight: 320, overflowX: 'auto' }}>
+              <Table
+                stickyHeader
+                aria-label="sticky table"
+                sx={{
+                  tableLayout: 'fixed',
+                  width: 'max-content',
+                  minWidth: `${Math.max(
+                    (shouldShowAsKeyValue ? 2 : columns.length) * 160,
+                    100
+                  )}px`,
+                }}
+              >
                 <TableHead>
                   <TableRow>
                     {shouldShowAsKeyValue ? (
                       <>
-                        <TableCell
-                          sx={{
-                            backgroundColor: darkMode ? '#11111' : '#f8f9fa',
-                            minWidth: '100px',
-                            whiteSpace: 'nowrap'
-                          }}
-                        >
+                        <TableCell sx={{ backgroundColor: darkMode ? '#11111' : '#f8f9fa', width: 160, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           Label
                         </TableCell>
-                        <TableCell
-                          sx={{
-                            backgroundColor: darkMode ? '#11111' : '#f8f9fa'
-                          }}
-                        >
+                        <TableCell sx={{ backgroundColor: darkMode ? '#11111' : '#f8f9fa', width: 160, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           Value
                         </TableCell>
                       </>
@@ -1176,8 +1212,13 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                         <TableCell
                           key={column}
                           sx={{
-                            backgroundColor: darkMode ? '#11111' : '#f8f9fa'
+                            backgroundColor: darkMode ? '#11111' : '#f8f9fa',
+                            width: 160,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
                           }}
+                          title={column}
                         >
                           {column}
                         </TableCell>
@@ -1187,32 +1228,40 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                 </TableHead>
                 <TableBody>
                   {shouldShowAsKeyValue ? (
-                    columns.map((column) => (
-                      <TableRow key={column}>
-                        <TableCell sx={{ fontWeight: 500, whiteSpace: 'nowrap' }}>
-                          {column}
-                        </TableCell>
-                        <TableCell>
-                          {data[0][column] === undefined || data[0][column] === ""
-                            ? "-"
-                            : (typeof data[0][column] === 'object'
-                              ? JSON.stringify(data[0][column])
-                              : String(data[0][column]))}
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    columns.map((column) => {
+                      const val =
+                        data[0][column] === undefined || data[0][column] === ''
+                          ? '-'
+                          : typeof data[0][column] === 'object'
+                            ? JSON.stringify(data[0][column])
+                            : String(data[0][column]);
+                      return (
+                        <TableRow key={column}>
+                          <TableCell sx={{ fontWeight: 500, width: 160, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={column}>
+                            {column}
+                          </TableCell>
+                          <TableCell sx={{ width: 160, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={val}>
+                            {val}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   ) : (
                     data.map((row, index) => (
                       <TableRow key={index}>
-                        {columns.map((column) => (
-                          <TableCell key={column}>
-                            {row[column] === undefined || row[column] === ""
-                              ? "-"
-                              : (typeof row[column] === 'object'
+                        {columns.map((column) => {
+                          const val =
+                            row[column] === undefined || row[column] === ''
+                              ? '-'
+                              : typeof row[column] === 'object'
                                 ? JSON.stringify(row[column])
-                                : String(row[column]))}
-                          </TableCell>
-                        ))}
+                                : String(row[column]);
+                          return (
+                            <TableCell key={column} sx={{ width: 160, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={val}>
+                              {val}
+                            </TableCell>
+                          );
+                        })}
                       </TableRow>
                     ))
                   )}
@@ -1265,7 +1314,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     }
 
     return (
-      <Accordion defaultExpanded sx={{ mb: 2, marginLeft: "-38px" }}>
+      <Accordion defaultExpanded sx={{ width: '100%', m: 0, mb: 2, boxSizing: 'border-box' }}>
         <AccordionSummary
           expandIcon={<ExpandMoreIcon />}
           aria-controls={`${title.toLowerCase()}-content`}
@@ -1411,7 +1460,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
   return (
     <Box sx={{ width: '100%' }}>
       <TabContext value={tab}>
-        <TabPanel value='output' sx={{ width: '100%', maxWidth: '1000px' }}>
+        <TabPanel value='output' sx={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', p: 2 }}>
           {row.status === 'running' || row.status === 'queued' ? (
             <>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -1463,7 +1512,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
           ) : (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {hasTextFormat && (
-                <Accordion defaultExpanded style={{ marginLeft: "-38px" }}>
+                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <SubjectIcon sx={{ mr: 1 }} />
@@ -1502,7 +1551,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {hasHTML && (
-                <Accordion defaultExpanded style={{ marginLeft: "-38px" }}>
+                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <CodeIcon sx={{ mr: 1 }} />
@@ -1541,7 +1590,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {hasMarkdown && (
-                <Accordion defaultExpanded style={{ marginLeft: "-38px" }}>
+                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <DescriptionIcon sx={{ mr: 1 }} />
@@ -1570,7 +1619,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {hasLinks && (
-                <Accordion defaultExpanded style={{ marginLeft: "-38px" }}>
+                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <LinkIcon sx={{ mr: 1 }} />
@@ -1614,7 +1663,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {hasSummary && crawlData.length === 0 && searchData.length === 0 && (
-                <Accordion defaultExpanded style={{ marginLeft: "-38px" }}>
+                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <PsychologyIcon sx={{ mr: 1 }} />
@@ -1643,7 +1692,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {hasPromptResult && promptResultData && (
-                <Accordion defaultExpanded style={{ marginLeft: "-38px" }}>
+                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <PsychologyIcon sx={{ mr: 1 }} />
@@ -1695,14 +1744,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   {!isLegacyData && (
                     <>
                       {schemaData.length > 0 && (
-                        <Accordion defaultExpanded sx={{
-                          mb: 2,
-                          ml: '-38px',
-                          '&.Mui-expanded': {
-                            margin: 0,
-                            marginLeft: '-38px',
-                          }
-                        }}>
+                        <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
                           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
                               <TextFieldsIcon sx={{ mr: 1 }} />
@@ -1758,14 +1800,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                       )}
 
                       {listData.length > 0 && (
-                        <Accordion defaultExpanded sx={{
-                          mb: 2,
-                          ml: '-38px',
-                          '&.Mui-expanded': {
-                            margin: 0,
-                            marginLeft: '-38px',
-                          }
-                        }}>
+                        <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
                           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
                               <ViewListIcon sx={{ mr: 1 }} />
@@ -1806,40 +1841,74 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               ))}
                             </Box>
 
-                            <TableContainer component={Paper} sx={{ maxHeight: 320 }}>
-                              <Table stickyHeader aria-label="captured-list-table">
-                                <TableHead>
-                                  <TableRow>
-                                    {(listColumns[currentListIndex] || []).map((column) => (
-                                      <TableCell
-                                        key={column}
-                                        sx={{
-                                          backgroundColor: darkMode ? '#11111' : '#f8f9fa'
-                                        }}
-                                      >
-                                        {column}
-                                      </TableCell>
-                                    ))}
-                                  </TableRow>
-                                </TableHead>
-
-                                <TableBody>
-                                  {(listData[currentListIndex] || []).map((rowItem, idx) => (
-                                    <TableRow key={idx}>
+                            <Box sx={{ width: 0, minWidth: '100%' }}>
+                              <TableContainer
+                                component={Paper}
+                                sx={{
+                                  maxHeight: 320,
+                                  overflowX: 'auto',
+                                }}
+                              >
+                                <Table
+                                  stickyHeader
+                                  aria-label="captured-list-table"
+                                  sx={{
+                                    tableLayout: 'fixed',
+                                    width: 'max-content',
+                                    minWidth: `${Math.max((listColumns[currentListIndex] || []).length * 160, 100)}px`,
+                                  }}
+                                >
+                                  <TableHead>
+                                    <TableRow>
                                       {(listColumns[currentListIndex] || []).map((column) => (
-                                        <TableCell key={column}>
-                                          {rowItem[column] === undefined || rowItem[column] === ''
-                                            ? '-'
-                                            : typeof rowItem[column] === 'object'
-                                              ? JSON.stringify(rowItem[column])
-                                              : String(rowItem[column])}
+                                        <TableCell
+                                          key={column}
+                                          sx={{
+                                            backgroundColor: darkMode ? '#11111' : '#f8f9fa',
+                                            whiteSpace: 'nowrap',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            width: 160,
+                                          }}
+                                          title={column}
+                                        >
+                                          {column}
                                         </TableCell>
                                       ))}
                                     </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
-                            </TableContainer>
+                                  </TableHead>
+
+                                  <TableBody>
+                                    {(listData[currentListIndex] || []).map((rowItem, idx) => (
+                                      <TableRow key={idx}>
+                                        {(listColumns[currentListIndex] || []).map((column) => {
+                                          const display =
+                                            rowItem[column] === undefined || rowItem[column] === ''
+                                              ? '-'
+                                              : typeof rowItem[column] === 'object'
+                                                ? JSON.stringify(rowItem[column])
+                                                : String(rowItem[column]);
+                                          return (
+                                            <TableCell
+                                              key={column}
+                                              sx={{
+                                                whiteSpace: 'nowrap',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                width: 160,
+                                              }}
+                                              title={display}
+                                            >
+                                              {display}
+                                            </TableCell>
+                                          );
+                                        })}
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </TableContainer>
+                            </Box>
 
                             <Box
                               sx={{
@@ -1911,7 +1980,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {crawlData.length > 0 && crawlData[0] && crawlData[0].length > 0 && (
-                <Accordion defaultExpanded style={{ marginLeft: "-38px" }}>
+                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <TravelExploreIcon sx={{ mr: 1 }} />
@@ -1921,56 +1990,61 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        overflowX: 'auto',
-                        borderBottom: '1px solid',
-                        borderColor: darkMode ? '#2a3441' : '#dee2e6',
-                        mb: 2,
-                        '&::-webkit-scrollbar': {
-                          height: '8px',
-                        },
-                        '&::-webkit-scrollbar-track': {
-                          backgroundColor: darkMode ? '#1e1e1e' : '#f1f1f1',
-                        },
-                        '&::-webkit-scrollbar-thumb': {
-                          backgroundColor: darkMode ? '#555' : '#888',
-                          borderRadius: '4px',
-                        },
-                        '&::-webkit-scrollbar-thumb:hover': {
-                          backgroundColor: '#FF00C3',
-                        },
-                      }}
-                    >
-                      {crawlData[0].map((item: any, idx: number) => {
-                        const url = item?.metadata?.url || item?.url || `URL ${idx + 1}`;
-
-                        return (
-                          <Box
-                            key={idx}
-                            onClick={() => {
-                              setCurrentCrawlIndex(idx);
-                            }}
-                            sx={{
-                              px: 2,
-                              py: 1,
-                              cursor: 'pointer',
-                              backgroundColor: currentCrawlIndex === idx
-                                ? darkMode ? '#121111ff' : '#e9ecef'
-                                : 'transparent',
-                              borderBottom: currentCrawlIndex === idx ? '3px solid #FF00C3' : 'none',
-                              color: darkMode ? '#fff' : '#000',
-                              whiteSpace: 'nowrap',
-                              fontSize: '0.875rem',
-                              flexShrink: 0,
-                            }}
-                            title={url}
-                          >
-                            Link {idx + 1}
-                          </Box>
-                        );
-                      })}
+                    <Box sx={{ width: 0, minWidth: '100%', display: 'flex', alignItems: 'center', gap: 0.5, mb: 2 }}>
+                      {(crawlCanLeft || crawlCanRight) && (
+                        <IconButton
+                          size="small"
+                          onClick={() => scrollTabs(crawlTabsRef, 'left')}
+                          disabled={!crawlCanLeft}
+                          sx={{ flexShrink: 0, opacity: crawlCanLeft ? 1 : 0.3, alignSelf: 'center' }}
+                          aria-label="Scroll crawl results left"
+                        >
+                          <ChevronLeft fontSize="small" />
+                        </IconButton>
+                      )}
+                      <Box
+                        ref={crawlTabsRef}
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          overflowX: 'auto',
+                          borderBottom: '1px solid',
+                          borderColor: darkMode ? '#2a3441' : '#dee2e6',
+                          scrollbarWidth: 'none',
+                          '&::-webkit-scrollbar': { display: 'none' },
+                        }}
+                      >
+                        {crawlData[0].map((item: any, idx: number) => {
+                          const url = item?.metadata?.url || item?.url || `URL ${idx + 1}`;
+                          return (
+                            <Box
+                              key={idx}
+                              onClick={() => setCurrentCrawlIndex(idx)}
+                              sx={{
+                                px: 2, py: 1, cursor: 'pointer',
+                                backgroundColor: currentCrawlIndex === idx ? (darkMode ? '#121111ff' : '#e9ecef') : 'transparent',
+                                borderBottom: currentCrawlIndex === idx ? '3px solid #FF00C3' : 'none',
+                                color: darkMode ? '#fff' : '#000', whiteSpace: 'nowrap',
+                                fontSize: '0.875rem', flexShrink: 0,
+                              }}
+                              title={url}
+                            >
+                              Link {idx + 1}
+                            </Box>
+                          );
+                        })}
+                      </Box>
+                      {(crawlCanLeft || crawlCanRight) && (
+                        <IconButton
+                          size="small"
+                          onClick={() => scrollTabs(crawlTabsRef, 'right')}
+                          disabled={!crawlCanRight}
+                          sx={{ flexShrink: 0, opacity: crawlCanRight ? 1 : 0.3, alignSelf: 'center' }}
+                          aria-label="Scroll crawl results right"
+                        >
+                          <ChevronRight fontSize="small" />
+                        </IconButton>
+                      )}
                     </Box>
 
                     {crawlData[0][currentCrawlIndex] && (
@@ -2328,14 +2402,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               )}
 
               {searchData.length > 0 && (
-                <Accordion defaultExpanded sx={{
-                  mb: 2,
-                  ml: '-38px',
-                  '&.Mui-expanded': {
-                    margin: 0,
-                    marginLeft: '-38px',
-                  }
-                }}>
+                <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <SearchIcon sx={{ mr: 1 }} />
@@ -2347,54 +2414,54 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                   <AccordionDetails>
                     {searchMode === 'scrape' && searchData.length > 0 ? (
                       <>
-                        <Box
-                          sx={{
-                            display: 'flex',
-                            overflowX: 'auto',
-                            borderBottom: '1px solid',
-                            borderColor: darkMode ? '#2a3441' : '#dee2e6',
-                            mb: 2,
-                            '&::-webkit-scrollbar': {
-                              height: '8px',
-                            },
-                            '&::-webkit-scrollbar-track': {
-                              backgroundColor: darkMode ? '#1e1e1e' : '#f1f1f1',
-                            },
-                            '&::-webkit-scrollbar-thumb': {
-                              backgroundColor: darkMode ? '#555' : '#888',
-                              borderRadius: '4px',
-                            },
-                            '&::-webkit-scrollbar-thumb:hover': {
-                              backgroundColor: '#FF00C3',
-                            },
-                          }}
-                        >
-                          {searchData.map((item: any, idx: number) => {
-                            const url = item?.metadata?.url || item?.url || `Result ${idx + 1}`;
-
-                            return (
-                              <Box
-                                key={idx}
-                                onClick={() => setCurrentSearchIndex(idx)}
+                        <Box sx={{ width: 0, minWidth: '100%', display: 'flex', alignItems: 'center', gap: 0.5, mb: 2 }}>
+                          {(searchCanLeft || searchCanRight) && (
+                            <IconButton
+                              size="small"
+                              onClick={() => scrollTabs(searchTabsRef, 'left')}
+                              disabled={!searchCanLeft}
+                              sx={{ flexShrink: 0, opacity: searchCanLeft ? 1 : 0.3, alignSelf: 'center' }}
+                              aria-label="Scroll search results left"
+                            >
+                              <ChevronLeft fontSize="small" />
+                            </IconButton>
+                          )}
+                          <Box
+                            ref={searchTabsRef}
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              overflowX: 'auto',
+                              borderBottom: '1px solid',
+                              borderColor: darkMode ? '#2a3441' : '#dee2e6',
+                              scrollbarWidth: 'none',
+                              '&::-webkit-scrollbar': {
+                                display: 'none',
+                              },
+                            }}
+                          >
+                            {searchData.map((item: any, idx: number) => (
+                              <Box key={idx} onClick={() => setCurrentSearchIndex(idx)}
                                 sx={{
-                                  px: 2,
-                                  py: 1,
-                                  cursor: 'pointer',
-                                  backgroundColor: currentSearchIndex === idx
-                                    ? darkMode ? '#121111ff' : '#e9ecef'
-                                    : 'transparent',
+                                  px: 2, py: 1, cursor: 'pointer',
+                                  backgroundColor: currentSearchIndex === idx ? (darkMode ? '#121111ff' : '#e9ecef') : 'transparent',
                                   borderBottom: currentSearchIndex === idx ? '3px solid #FF00C3' : 'none',
-                                  color: darkMode ? '#fff' : '#000',
-                                  whiteSpace: 'nowrap',
-                                  fontSize: '0.875rem',
+                                  color: darkMode ? '#fff' : '#000', whiteSpace: 'nowrap',
                                   flexShrink: 0,
-                                }}
-                                title={url}
-                              >
-                                Link {idx + 1}
-                              </Box>
-                            );
-                          })}
+                                }}>Result {idx + 1}</Box>
+                            ))}
+                          </Box>
+                          {(searchCanLeft || searchCanRight) && (
+                            <IconButton
+                              size="small"
+                              onClick={() => scrollTabs(searchTabsRef, 'right')}
+                              disabled={!searchCanRight}
+                              sx={{ flexShrink: 0, opacity: searchCanRight ? 1 : 0.3, alignSelf: 'center' }}
+                              aria-label="Scroll search results right"
+                            >
+                              <ChevronRight fontSize="small" />
+                            </IconButton>
+                          )}
                         </Box>
 
                         {searchData[currentSearchIndex] && (

@@ -26,6 +26,7 @@ import {
 } from '../constants/output-formats';
 import sequelizeInstance from '../storage/db';
 import { Op } from 'sequelize';
+import { normalizeRobotUrl, normalizeWorkflowUrls, applyWorkflowLimits } from '../utils/robot-updates';
 import { validateRequiredLlmConfig, formatsRequireLlm, readLlmConfig, toPromptLlmMeta } from '../utils/llm-config-validation';
 import multer from 'multer';
 import { MAX_FILE_SIZE_BYTES } from '../workflow-management/classes/DocumentInterpreter';
@@ -71,79 +72,9 @@ const normalizeUrl = (raw: string): string => {
     }
 };
 
-const normalizeRobotUrl = (rawUrl: string): string => {
-    let normalizedUrl: URL;
-    try {
-        normalizedUrl = new URL(rawUrl.trim());
-    } catch {
-        throw new Error(`"${rawUrl.trim()}" is not a valid URL. Provide a full web address like https://example.com`);
-    }
-    if (!['http:', 'https:'].includes(normalizedUrl.protocol)) {
-        throw new Error(`Unsupported URL protocol "${normalizedUrl.protocol}//" — only http and https are supported. Local file paths cannot be scraped.`);
-    }
 
-    const hostname = normalizedUrl.hostname;
-    const isPlausibleHost = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(hostname)
-        || hostname === 'localhost'
-        || /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname)
-        || /^\[[0-9a-f:]+\]$/i.test(hostname);
-    if (!isPlausibleHost) {
-        throw new Error(`"${hostname}" is not a reachable hostname. Provide a full web address like https://example.com`);
-    }
 
-    normalizedUrl.search = normalizedUrl.searchParams.toString();
-    return normalizedUrl.toString();
-};
 
-const normalizeWorkflowUrls = (workflow: any[] = []): any[] =>
-    workflow.map((pair: any) => ({
-        ...pair,
-        where: pair?.where
-            ? {
-                ...pair.where,
-                ...(typeof pair.where.url === 'string' && pair.where.url !== 'about:blank'
-                    ? { url: normalizeRobotUrl(pair.where.url) }
-                    : {}),
-            }
-            : pair?.where,
-        what: Array.isArray(pair?.what)
-            ? pair.what.map((action: any) => {
-                if (
-                    action.action === 'goto' &&
-                    Array.isArray(action.args) &&
-                    typeof action.args[0] === 'string' &&
-                    action.args[0] !== 'about:blank'
-                ) {
-                    return {
-                        ...action,
-                        args: [normalizeRobotUrl(action.args[0]), ...action.args.slice(1)],
-                    };
-                }
-
-                if (
-                    (action.action === 'scrape' || action.action === 'crawl') &&
-                    Array.isArray(action.args) &&
-                    action.args[0] &&
-                    typeof action.args[0] === 'object' &&
-                    typeof action.args[0].url === 'string' &&
-                    action.args[0].url !== 'about:blank'
-                ) {
-                    return {
-                        ...action,
-                        args: [
-                            {
-                                ...action.args[0],
-                                url: normalizeRobotUrl(action.args[0].url),
-                            },
-                            ...action.args.slice(1),
-                        ],
-                    };
-                }
-
-                return action;
-            })
-            : pair?.what,
-    }));
 
 /**
  * Get the status of the authenticated user
@@ -434,15 +365,22 @@ router.put("/sdk/robots/:id", requireAPIKey, async (req: AuthenticatedRequest, r
 
         const updateData: any = {};
 
-        if (updates.workflow) {
-            try {
-                updateData.recording = {
-                    workflow: normalizeWorkflowUrls(updates.workflow)
-                };
-            } catch {
-                return res.status(400).json({ error: "Invalid URL in workflow" });
-            }
+        /**
+         * A single working copy of the workflow. A request may replace the
+         * workflow wholesale, patch individual values such as `limits`, or do
+         * both, so every block below edits this one array, and it is written
+         * back to `updateData` once at the end.
+         */
+        let workflow: any[];
+        try {
+            workflow = updates.workflow
+                ? normalizeWorkflowUrls(updates.workflow)
+                : JSON.parse(JSON.stringify(robot.recording?.workflow || []));
+        } catch {
+            return res.status(400).json({ error: "Invalid URL in workflow" });
         }
+
+        let workflowTouched = Boolean(updates.workflow);
 
         if (updates.meta) {
             let normalizedMetaUrl: string | undefined;
@@ -456,12 +394,6 @@ router.put("/sdk/robots/:id", requireAPIKey, async (req: AuthenticatedRequest, r
                 }
             }
 
-            let workflow: any[];
-            try {
-                workflow = updates.workflow ? normalizeWorkflowUrls(updates.workflow) : JSON.parse(JSON.stringify(robot.recording?.workflow || []));
-            } catch {
-                return res.status(400).json({ error: "Invalid URL in workflow" });
-            }
             if (normalizedMetaUrl) {
                 workflow.forEach((pair: any) => {
                     let stepUpdate = false;
@@ -479,7 +411,7 @@ router.put("/sdk/robots/:id", requireAPIKey, async (req: AuthenticatedRequest, r
                         pair.where.url = normalizedMetaUrl;
                     }
                 });
-                updateData.recording = { workflow };
+                workflowTouched = true;
             }
 
             updateData.recording_meta = {
@@ -488,6 +420,27 @@ router.put("/sdk/robots/:id", requireAPIKey, async (req: AuthenticatedRequest, r
                 ...(normalizedMetaUrl ? { url: normalizedMetaUrl } : {}),
                 updatedAt: new Date().toISOString()
             };
+        }
+
+        /**
+         * Targeted limit updates, addressed by position in the workflow. Runs
+         * after the workflow and meta blocks so the value the caller asked for
+         * survives whatever those wrote. Anything not named here keeps the
+         * value it already had.
+         */
+        if (Array.isArray(updates.limits) && updates.limits.length > 0) {
+            try {
+                applyWorkflowLimits(workflow, updates.limits);
+                workflowTouched = true;
+            } catch (error) {
+                return res.status(400).json({
+                    error: error instanceof Error ? error.message : 'Invalid limit update',
+                });
+            }
+        }
+
+        if (workflowTouched) {
+            updateData.recording = { ...robot.recording, workflow };
         }
 
         if (updates.google_sheet_email !== undefined) {
