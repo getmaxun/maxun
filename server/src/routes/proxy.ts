@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import type { Browser, BrowserContext } from 'playwright-core';
 import { connectToRemoteBrowser } from '../browser-management/browserConnection';
 import User from '../models/User';
 import { encrypt, decrypt } from '../utils/auth';
@@ -76,22 +77,40 @@ router.get('/test', requireSignIn, async (req: Request, res: Response) => {
         const decryptedProxyUsername = user.proxy_username ? decrypt(user.proxy_username) : null;
         const decryptedProxyPassword = user.proxy_password ? decrypt(user.proxy_password) : null;
 
-        const proxyOptions: any = {
-            server: decryptedProxyUrl,
-            ...(decryptedProxyUsername && decryptedProxyPassword && {
-                username: decryptedProxyUsername,
-                password: decryptedProxyPassword,
-            }),
-        };
+        if (!decryptedProxyUrl) {
+            return res.status(400).send({ success: false, error: 'Proxy is not configured' });
+        }
 
-        const browser = await connectToRemoteBrowser();
-        const page = await browser.newPage();
-        await page.goto('https://example.com');
-        await browser.close();
+        let browser: Browser | null = null;
+        let context: BrowserContext | null = null;
 
-        res.status(200).send({ success: true });
-    } catch (error) {
-        res.status(500).send({ success: false, error: 'Proxy connection failed' });
+        try {
+            browser = await connectToRemoteBrowser();
+            context = await browser.newContext({
+                proxy: {
+                    server: decryptedProxyUrl,
+                    username: decryptedProxyUsername || undefined,
+                    password: decryptedProxyPassword || undefined,
+                },
+            });
+
+            const page = await context.newPage();
+            const response = await page.goto('https://example.com', {
+                waitUntil: 'domcontentloaded',
+                timeout: 30000,
+            });
+
+            if (!response || !response.ok()) {
+                throw new Error(`Proxy test failed with status ${response?.status() || 'unknown'}`);
+            }
+
+            res.status(200).send({ success: true });
+        } finally {
+            await context?.close().catch(() => {});
+            await browser?.close().catch(() => {});
+        }
+    } catch (error: any) {
+        res.status(500).send({ success: false, error: error.message || 'Proxy connection failed' });
     }
 });
 

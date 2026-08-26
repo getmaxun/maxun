@@ -1,0 +1,655 @@
+{
+    "login": {
+      "title": "ברוכים הבאים ל-Maxun",
+      "email": "הזן דוא\"ל עבודה",
+      "password": "סיסמה",
+      "button": "התחברות",
+      "loading": "טוען",
+      "register_prompt": "אין לך חשבון?",
+      "register_link": "הרשמה",
+      "welcome_notification": "ברוכים הבאים ל-Maxun!",
+      "validation": {
+        "required_fields": "דוא\"ל וסיסמה הם שדות חובה",
+        "password_length": "הסיסמה חייבת להכיל לפחות 6 תווים"
+      },
+      "error": {
+        "user_not_found": "המשתמש אינו קיים",
+        "invalid_credentials": "דוא\"ל או סיסמה לא חוקיים",
+        "server_error": "ההתחברות נכשלה. אנא נסה שוב מאוחר יותר",
+        "generic": "אירעה שגיאה. אנא נסה שוב"
+      }
+    },
+    "register": {
+      "title": "צור חשבון",
+      "email": "הזן דוא\"ל עבודה",
+      "password": "סיסמה",
+      "button": "הרשמה",
+      "loading": "טוען",
+      "register_prompt": "כבר יש לך חשבון?",
+      "login_link": "התחברות",
+      "welcome_notification": "ברוכים הבאים ל-Maxun!",
+      "validation": {
+        "email_required": "דוא\"ל הוא שדה חובה",
+        "password_requirements": "הסיסמה חייבת להכיל לפחות 6 תווים"
+      },
+      "error": {
+        "user_exists": "משתמש עם דוא\"ל זה כבר קיים",
+        "creation_failed": "לא ניתן ליצור חשבון",
+        "server_error": "אירעה שגיאת שרת",
+        "generic": "ההרשמה נכשלה. אנא נסה שוב"
+      }
+    },
+    "recordingtable":{
+      "run": "הפעל",
+      "name": "שם",
+      "schedule": "לוח זמנים",
+      "integrate": "שילוב",
+      "settings": "הגדרות",
+      "options": "אפשרויות",
+      "heading": "הרובוטים שלי",
+      "new": "צור רובוט",
+      "search_criteria": "נסה להתאים את קריטריוני החיפוש שלך",
+      "placeholder": {
+        "title": "אתה מוכן להתחיל",
+        "body": "רובוטים שתיצור יופיעו כאן. לחץ על \"צור רובוט\" כדי להתחיל!",
+        "search": "אין רובוטים התואמים לחיפוש שלך"
+      },
+      "modal":{
+        "title": "הזן את כתובת ה-URL",
+        "login_title": "האם אתר זה דורש התחברות?",
+        "label": "URL",
+        "button": "התחל הקלטה"
+      },
+      "warning_modal":{
+        "title": "זוהה דפדפן פעיל",
+        "message": "כבר פועלת הפעלת הקלטה בדפדפן. האם ברצונך לבטל אותה וליצור הקלטה חדשה?",
+        "discard_and_create": "בטל וצור חדש",
+        "cancel": "ביטול"
+      },
+      "retrain": "אימון מחדש",
+      "edit": "ערוך",
+      "delete": "מחק",
+      "duplicate": "שכפל",
+      "search": "חפש רובוטים...",
+      "notifications": {
+        "delete_warning": "לרובוט יש ריצות משויכות. תחילה מחק ריצות כדי למחוק את הרובוט",
+        "delete_success": "הרובוט נמחק בהצלחה",
+        "auth_success": "הרובוט אומת בהצלחה",
+        "browser_limit_warning": "דפדפנים מרוחקים עמוסים כרגע. אנא המתן מספר דקות ונסה שוב"
+      }
+    },
+    "mainmenu":{
+      "recordings": "רובוטים",
+      "runs": "ריצות",
+      "proxy": "פרוקסי (Proxy)",
+      "apikey": "מפתח API",
+      "feedback": "הצטרף ל-Maxun Cloud",
+      "apidocs": "אתר ל-API"
+    },
+    "runstable":{
+      "runs": "כל הריצות",
+      "runStatus": "סטטוס",
+      "runName": "שם",
+      "name": "שם",
+      "startedAt": "התחיל ב-",
+      "finishedAt": "הסתיים ב-",
+      "delete": "מחק",
+      "settings": "הגדרות",
+      "search": "חפש ריצות...",
+      "sort_tooltip": "לחץ למיון",
+      "placeholder": {
+        "title": "לא נמצאו ריצות",
+        "body": "כאן יופיעו כל ריצות הרובוט שלך. ברגע שרובוט פעיל, הריצות שלו יירשמו כאן.",
+        "search": "אין ריצות התואמות לחיפוש שלך"
+      },
+      "notifications": {
+        "no_runs": "לא נמצאו ריצות. אנא נסה שוב.",
+        "delete_success": "הריצה נמחקה בהצלחה"
+      }
+    },
+    "proxy": {
+      "title": "הגדרת פרוקסי",
+      "tab_standard": "פרוקסי רגיל",
+      "tab_rotation": "החלפת פרוקסי אוטומטית",
+      "server_url": "כתובת שרת פרוקסי",
+      "server_url_helper": "פרוקסי שישמש עבור כל הרובוטים. HTTP ו-SOCKS נתמכים. לדוגמה http://myproxy.com:3128 או socks5://myproxy.com:3128. הצורה הקצרה myproxy.com:3128 נחשבת לפרוקסי HTTP.",
+      "requires_auth": "האם נדרש אימות?",
+      "username": "שם משתמש",
+      "password": "סיסמה",
+      "add_proxy": "הוסף פרוקסי",
+      "test_proxy": "בדוק פרוקסי",
+      "remove_proxy": "הסר פרוקסי",
+      "table": {
+        "proxy_url": "כתובת פרוקסי",
+        "requires_auth": "נדרש אימות"
+      },
+      "coming_soon": "בקרוב - בקוד פתוח (החלפה בסיסית) ובענן (החלפה מתקדמת). אם אינך רוצה לנהל את התשתית, הצטרף לרשימת ההמתנה לענן שלנו לקבלת גישה מוקדמת.",
+      "join_waitlist": "הצטרף לרשימת ההמתנה של Maxun Cloud",
+      "alert": {
+        "title": "אם הפרוקסי שלך דורש שם משתמש וסיסמה, ספק אותם תמיד בנפרד מכתובת הפרוקסי.",
+        "right_way": "הדרך הנכונה",
+        "wrong_way": "הדרך השגויה",
+        "proxy_url": "כתובת פרוקסי:",
+        "username": "שם משתמש:",
+        "password": "סיסמה:"
+      },
+      "notifications": {
+        "config_success": "הגדרת הפרוקסי נשלחה בהצלחה",
+        "config_error": "שליחת הגדרת הפרוקסי נכשלה. נסה שוב.",
+        "test_success": "הגדרת הפרוקסי פועלת",
+        "test_error": "בדיקת הגדרת הפרוקסי נכשלה. נסה שוב.",
+        "fetch_success": "הגדרת הפרוקסי התקבלה בהצלחה",
+        "remove_success": "הגדרת הפרוקסי הוסרה בהצלחה",
+        "remove_error": "הסרת הגדרת הפרוקסי נכשלה. נסה שוב."
+      }
+    },
+    "apikey": {
+      "title": "נהל את מפתח ה-API שלך",
+      "default_name": "מפתח API של Maxun",
+      "table": {
+        "name": "שם מפתח ה-API",
+        "key": "מפתח API",
+        "actions": "פעולות"
+      },
+      "actions": {
+        "copy": "העתק",
+        "show": "הצג",
+        "hide": "הסתר",
+        "delete": "מחק"
+      },
+      "no_key_message": "עדיין לא יצרת מפתח API.",
+      "generate_button": "צור מפתח API",
+      "notifications": {
+        "fetch_error": "קבלת מפתח ה-API נכשלה - {{error}}",
+        "generate_success": "מפתח ה-API נוצר בהצלחה",
+        "generate_error": "יצירת מפתח ה-API נכשלה - {{error}}",
+        "delete_success": "מפתח ה-API נמחק בהצלחה",
+        "delete_error": "מחיקת מפתח ה-API נכשלה - {{error}}",
+        "copy_success": "מפתח ה-API הועתק בהצלחה"
+      }
+    },
+    "action_description": {
+      "text": {
+        "title": "לכוד טקסט",
+        "description": "רחף מעל הטקסטים שברצונך לחלץ ולחץ כדי לבחור אותם"
+      },
+      "screenshot": {
+        "title": "לכוד צילום מסך",
+        "description": "צלם מסך חלקי או מלא של הדף הנוכחי."
+      },
+      "list": {
+        "title": "לכוד רשימה",
+        "description": "רחף מעל הרשימה שברצונך לחלץ. לאחר הבחירה, תוכל לרחף מעל כל הטקסטים בתוך הרשימה שבחרת. לחץ כדי לבחור אותם."
+      },
+      "default": {
+        "title": "אילו נתונים ברצונך לחלץ?",
+        "description": "רובוט יכול לבצע פעולה אחת או מספר פעולות. בחר מתוך האפשרויות המפורטות להלן."
+      },
+      "list_stages": {
+        "initial": "בחר את הרשימה שברצונך לחלץ יחד עם הטקסטים שבתוכה",
+        "pagination": "בחר כיצד הרובוט יכול ללכוד את שאר הרשימה",
+        "limit": "בחר את מספר הפריטים לחילוץ",
+        "complete": "הלכידה הושלמה"
+      },
+      "actions": {
+        "text": "לכוד טקסט",
+        "list": "לכוד רשימה",
+        "screenshot": "לכוד צילום מסך"
+      }
+    },
+    "right_panel": {
+      "buttons": {
+        "capture_list": "לכוד רשימה",
+        "capture_text": "לכוד טקסט",
+        "capture_screenshot": "לכוד צילום מסך",
+        "confirm": "אשר",
+        "discard": "בטל",
+        "confirm_capture": "אשר לכידה",
+        "confirm_pagination": "אשר",
+        "confirm_limit": "אשר",
+        "confirm_reset": "אשר",
+        "finish_capture": "סיים לכידה",
+        "back": "חזור",
+        "reset": "הפעל הקלטה מחדש",
+        "finish": "סיום",
+        "cancel": "ביטול",
+        "delete": "מחק"
+      },
+      "screenshot": {
+        "capture_fullpage": "לכוד דף שלם",
+        "capture_visible": "לכוד חלק גלוי",
+        "display_fullpage": "צלם מסך של דף שלם",
+        "display_visible": "צלם מסך של חלק גלוי"
+      },
+      "pagination": {
+        "title": "כיצד נוכל למצוא את פריט הרשימה הבא בדף?",
+        "click_next": "לחץ על הבא כדי לנווט לדף הבא",
+        "click_load_more": "לחץ על טען עוד כדי לטעון פריטים נוספים",
+        "scroll_down": "גלול מטה כדי לטעון פריטים נוספים",
+        "scroll_up": "גלול מעלה כדי לטעון פריטים נוספים",
+        "none": "אין פריטים נוספים לטעינה"
+      },
+      "limit": {
+        "title": "מהו המספר המרבי של שורות שברצונך לחלץ?",
+        "custom": "מותאם אישית",
+        "enter_number": "הזן מספר"
+      },
+      "fields": {
+        "label": "תווית",
+        "data": "נתונים",
+        "field_label": "תווית שדה",
+        "field_data": "נתוני שדה"
+      },
+      "messages": {
+        "list_selected": "רשימה נבחרה בהצלחה",
+        "list_empty": "רשימה נבחרה. אנא בחר שדות בתוך הרשימה."
+      },
+      "errors": {
+        "select_pagination": "אנא בחר סוג עימוד (pagination).",
+        "select_pagination_element": "אנא בחר קודם את רכיב העימוד.",
+        "select_limit": "אנא בחר מגבלה או הזן מגבלה מותאמת אישית.",
+        "invalid_limit": "אנא הזן מגבלה חוקית.",
+        "confirm_text_fields": "אנא אשר את כל שדות הטקסט",
+        "unable_create_settings": "לא ניתן ליצור הגדרות רשימה. ודא שהגדרת שדה עבור הרשימה.",
+        "capture_text_discarded": "לכידת טקסט בוטלה",
+        "capture_list_discarded": "לכידת רשימה בוטלה",
+        "label_required": "תווית אינה יכולה להיות ריקה",
+        "duplicate_label": "תווית זו כבר קיימת. אנא השתמש בתווית ייחודית.",
+        "no_text_captured": "אנא סמן ובחר רכיבי טקסט לפני האישור.",
+        "capture_list_first": "אנא רחף מעל רשימה ובחר שדות טקסט בתוכה תחילה",
+        "confirm_all_list_fields": "אנא אשר את כל שדות הרשימה שנלכדו לפני שתמשיך"
+      },
+      "tooltips": {
+        "capture_list_first": "רחף מעל רשימה ובחר שדות טקסט בתוכה תחילה",
+        "confirm_all_list_fields": "אנא אשר את כל שדות הרשימה שנלכדו לפני שתמשיך"
+      }
+    },
+    "save_recording": {
+      "title": "שמור רובוט",
+      "robot_name": "שם",
+      "buttons": {
+        "save": "שמור",
+        "confirm": "אשר"
+      },
+      "notifications": {
+        "save_success": "הרובוט נשמר בהצלחה",
+        "retrain_success": "הרובוט אומן מחדש בהצלחה",
+        "save_error": "שגיאה בשמירת הרובוט"
+      },
+      "errors": {
+        "user_not_logged": "משתמש לא מחובר. לא ניתן לשמור את ההקלטה.",
+        "exists_warning": "רובוט בשם זה כבר קיים, אנא אשר את דריסת הרובוט.",
+        "name_exists": "רובוט בשם זה כבר קיים. אנא בחר שם אחר.",
+        "no_actions_performed": "לא ניתן לשמור רובוט. אנא בצע לפחות פעולת לכידה אחת לפני השמירה."
+      },
+      "tooltips": {
+        "saving": "מייעל ושומר את תהליך העבודה"
+      }
+    },
+    "browser_recording": {
+      "modal": {
+          "confirm_discard": "האם אתה בטוח שברצונך לבטל את ההקלטה?",
+          "confirm_reset": "האם אתה בטוח שברצונך להפעיל מחדש את ההקלטה?",
+          "reset_warning": "זה ינקה את כל הלכידות הקודמות בהפעלה הנוכחית. הפעלת ההקלטה תופעל מחדש עבור אותו אתר אינטרנט."
+      },
+      "notifications": {
+          "terminated": "ההקלטה הנוכחית הסתיימה",
+          "environment_reset": "סביבת הדפדפן אופסה",
+          "reset_successful": "כל הלכידות אופסו בהצלחה והוחזרו למצב ההתחלתי",
+          "timeout_discarded": "הפעלת ההקלטה הגיעה לזמן קצוב לאחר 10 דקות ובוטלה אוטומטית."
+      }
+    },
+    "interpretation_log": {
+      "titles": {
+        "output_preview": "תצוגה מקדימה של נתוני פלט",
+        "screenshot": "צילום מסך"
+      },
+      "messages": {
+        "additional_rows": "שורות נתונים נוספות יחולצו לאחר שתסיים להקליט.",
+        "successful_training": "אימנת בהצלחה את הרובוט לבצע פעולות! לחץ על הכפתור למטה כדי לקבל תצוגה מקדימה של הנתונים שהרובוט שלך יחלץ.",
+        "no_selection": "נראה שעדיין לא בחרת שום דבר לחילוץ. ברגע שתעשה זאת, הרובוט יציג תצוגה מקדימה של הבחירות שלך כאן."
+      },
+      "data_sections": {
+        "binary_received": "---------- התקבלו נתוני פלט בינאריים ----------",
+        "serializable_received": "---------- התקבלו נתוני פלט ניתנים לסידור ----------",
+        "mimetype": "mimetype: ",
+        "image_below": "התמונה מוצגת למטה:",
+        "separator": "--------------------------------------------------"
+      }, 
+      "notifications": {
+        "reset_success": "תצוגה מקדימה של פלט אופסה בהצלחה"
+      }
+    },
+    "interpretation_buttons": {
+      "buttons": {
+        "preview": "קבל תצוגה מקדימה של נתוני הפלט",
+        "reset": "איפוס",
+        "yes": "כן",
+        "no": "לא"
+      },
+      "messages": {
+        "extracting": "מחלץ נתונים... אנא המתן",
+        "restart_required": "אנא הפעל מחדש את הפרשנות לאחר עדכון ההקלטה",
+        "run_finished": "הריצה הסתיימה",
+        "run_failed": "הריצה נכשלה בהפעלה"
+      },
+      "modal": {
+        "use_previous": "האם ברצונך להשתמש בבחירה הקודמת שלך כתנאי לביצוע פעולה זו?",
+        "previous_action": "הפעולה הקודמת שלך הייתה: ",
+        "element_text": "על אלמנט עם טקסט "
+      },
+      "notifications": {
+        "reset_success": "תצוגה מקדימה של פלט אופסה בהצלחה"
+      }
+    },
+    "recording_page": {
+      "loader": {
+        "browser_startup": "מעלה דפדפן... תחזיק חזק"
+      }
+    },
+    "integration_settings": {
+      "title": "הגדרות שילוב",
+      "descriptions": {
+        "authenticated_as": "מאומת כ: {{email}}"
+      },
+      "buttons": {
+        "submit": "שלח",
+        "remove_integration": "הסר שילוב"
+      },
+      "google": {
+        "title": "שלב עם Google Sheet",
+        "descriptions": {
+          "sync_info": "אם תפעיל אפשרות זו, בכל פעם שרובוט זה מריץ משימה בהצלחה, הנתונים שנלכדו יתווספו ל-Google Sheet שלך.",
+          "authenticated_as": "מאומת כ: {{email}}"
+        },
+        "alerts": {
+          "success": {
+            "title": "Google Sheet שולב בהצלחה.",
+            "content": "בכל פעם שרובוט זה יוצר ריצה מוצלחת, הנתונים שנלכדו מתווספים ל-Google Sheet שלך {{sheetName}}. אתה יכול לבדוק את עדכוני הנתונים",
+            "here": "כאן",
+            "note": "הערה:",
+            "sync_limitation": "הנתונים שחולצו לפני השילוב עם Google Sheets לא יסונכרנו ב-Google Sheet. רק הנתונים שחולצו לאחר השילוב יסונכרנו."
+          }
+        },
+        "buttons": {
+          "authenticate": "אמת עם Google",
+          "fetch_sheets": "הבא Google Spreadsheets",
+          "remove_integration": "הסר שילוב",
+          "submit": "שלח"
+        },
+        "fields": {
+          "select_sheet": "בחר Google Sheet",
+          "selected_sheet": "גיליון נבחר: {{name}} (מזהה: {{id}})"
+        },
+        "errors": {
+          "auth_error": "שגיאה באימות עם Google",
+          "fetch_error": "שגיאה בקבלת קבצי גיליון אלקטרוני: {{message}}",
+          "update_error": "שגיאה בעדכון מזהה Google Sheet: {{message}}",
+          "remove_error": "שגיאה בהסרת השילוב עם Google Sheets: {{message}}"
+        },
+        "notifications": {
+          "sheet_selected": "Google Sheet נבחר בהצלחה",
+          "integration_removed": "שילוב Google Sheets הוסר בהצלחה"
+        }
+      },
+      "airtable": {
+        "title": "שלב עם Airtable",
+        "descriptions": {
+          "sync_info": "אם תפעיל אפשרות זו, בכל פעם שרובוט זה מריץ משימה בהצלחה, הנתונים שנלכדו יתווספו למסד הנתונים של Airtable שלך.",
+          "authenticated_as": "אומת בהצלחה עם Airtable. כעת תוכל לבחור את המסד והטבלה לשילוב."
+        },
+        "alerts": {
+          "success": {
+            "title": "מסד הנתונים של Airtable שולב בהצלחה",
+            "content": "בכל פעם שרובוט זה יוצר ריצה מוצלחת, הנתונים שנלכדו מתווספים למסד הנתונים שלך {{baseName}} ולטבלה {{tableName}}. אתה יכול לבדוק עדכונים",
+            "here": "כאן",
+            "note": "הערה:",
+            "sync_limitation": "רק נתונים שנלכדו לאחר השילוב יסונכרנו ל-Airtable."
+          }
+        },
+        "buttons": {
+          "authenticate": "התחבר עם Airtable",
+          "fetch_bases": "הבא מסדי נתונים של Airtable",
+          "fetch_tables": "הבא טבלאות של Airtable",
+          "remove_integration": "הסר שילוב",
+          "submit": "בחר מסד וטבלה"
+        },
+        "fields": {
+          "select_base": "בחר מסד נתונים של Airtable",
+          "select_table": "בחר טבלת Airtable",
+          "selected_base": "מסד נבחר: {{name}}",
+          "selected_table": "טבלה נבחרת: {{name}}"
+        },
+        "errors": {
+          "auth_error": "שגיאה באימות עם Airtable",
+          "fetch_error": "שגיאה בקבלת מסדי נתונים של Airtable: {{message}}",
+          "fetch_tables_error": "שגיאה בקבלת טבלאות של Airtable: {{message}}",
+          "update_error": "שגיאה בעדכון מסד הנתונים של Airtable: {{message}}",
+          "remove_error": "שגיאה בהסרת השילוב עם Airtable: {{message}}"
+        },
+        "notifications": {
+          "base_selected": "מסד נתונים של Airtable נבחר בהצלחה",
+          "table_selected": "טבלת Airtable נבחרה בהצלחה",
+          "integration_removed": "שילוב Airtable הוסר בהצלחה"
+        }
+      }
+    },
+    "robot_duplication": {
+      "title": "שכפל רובוט",
+      "descriptions": {
+        "purpose": "שכפול רובוט שימושי לחילוץ נתונים מדפים בעלי מבנה זהה.",
+        "example": "דוגמה: אם יצרת רובוט עבור <0>{{url1}}</0>, אתה יכול לשכפל אותו כדי לגרד דפים דומים כמו <1>{{url2}}</1> מבלי לאמן רובוט מאפס.",
+        "warning": "⚠️ ודא שלדף החדש יש את אותו מבנה כמו לדף המקורי."
+      },
+      "fields": {
+        "target_url": "כתובת יעד",
+        "new_name": "שם הרובוט"
+      },
+      "buttons": {
+        "duplicate": "שכפל רובוט",
+        "cancel": "ביטול"
+      },
+      "notifications": {
+        "robot_not_found": "לא ניתן היה למצוא את פרטי הרובוט. אנא נסה שוב.",
+        "url_required": "כתובת יעד היא שדה חובה.",
+        "name_required": "שם הרובוט הוא שדה חובה.",
+        "duplicate_success": "הרובוט שוכפל בהצלחה.",
+        "duplicate_error": "עדכון כתובת היעד נכשל. אנא נסה שוב.",
+        "unknown_error": "אירעה שגיאה בעדכון כתובת היעד."
+      }
+    },
+    "robot_settings": {
+      "title": "הגדרות רובוט",
+      "target_url": "כתובת יעד",
+      "robot_id": "מזהה רובוט",
+      "robot_limit": "מגבלת רובוט",
+      "created_by_user": "נוצר על ידי משתמש",
+      "created_at": "הרובוט נוצר ב-",
+      "errors": {
+        "robot_not_found": "לא ניתן היה למצוא את פרטי הרובוט. אנא נסה שוב."
+      },
+      "buttons": {
+        "close": "סגור"
+      }
+    },
+    "robot_edit": {
+      "title": "ערוך רובוט",
+      "change_name": "שם",
+      "robot_limit": "מגבלת רובוט",
+      "save": "שמור שינויים",
+      "cancel": "ביטול",
+      "notifications": {
+        "update_success": "הרובוט עודכן בהצלחה.",
+        "update_failed": "עדכון הרובוט נכשל. אנא נסה שוב.",
+        "update_error": "אירעה שגיאה במהלך עדכון הרובוט."
+      }
+    },
+    "schedule_settings": {
+      "title": "הגדרות לוח זמנים",
+      "run_every": "הפעל כל",
+      "start_from": "התחל מ-",
+      "on_day": "ביום",
+      "at_around": "בסביבות",
+      "timezone": "אזור זמן",
+      "buttons": {
+        "delete_schedule": "מחק לוח זמנים",
+        "save_schedule": "שמור לוח זמנים",
+        "cancel": "ביטול"
+      },
+      "labels": {
+        "in_between": "בין לבין",
+        "run_once_every": "הפעל פעם בכל",
+        "start_from_label": "התחל מ-",
+        "on_day_of_month": "ביום בחודש",
+        "on_day": {
+          "st": "",
+          "nd": "",
+          "rd": "",
+          "th": ""
+        }
+      }
+    },
+    "main_page": {
+      "notifications": {
+        "interpretation_success": "הפרשנות של רובוט {{name}} הצליחה",
+        "interpretation_failed": "הפרשנות של רובוט {{name}} נכשלה",
+        "run_started": "מפעיל רובוט: {{name}}",
+        "run_start_failed": "הפעלת רובוט: {{name}} נכשלה",
+        "schedule_success": "הרובוט {{name}} תוזמן בהצלחה",
+        "schedule_failed": "תזמון רובוט {{name}} נכשל",
+        "abort_success": "הפרשנות של רובוט {{name}} בוטלה בהצלחה",
+        "abort_failed": "ביטול הפרשנות של רובוט {{name}} נכשל",
+        "abort_initiated": "מבטל את הפרשנות של רובוט {{name}}"
+      },
+      "menu": {
+        "recordings": "רובוטים",
+        "runs": "ריצות",
+        "proxy": "פרוקסי",
+        "apikey": "מפתח API"
+      }
+    },
+    "browser_window": {
+      "attribute_modal": {
+          "title": "בחר תכונה",
+          "notifications": {
+              "list_select_success": "הרשימה נבחרה בהצלחה. אנא בחר את נתוני הטקסט לחילוץ.",
+              "pagination_select_success": "רכיב העימוד נבחר בהצלחה."
+          }
+      },
+      "attribute_options": {
+          "anchor": {
+              "text": "טקסט: {{text}}",
+              "url": "כתובת: {{url}}"
+          },
+          "image": {
+              "alt_text": "טקסט חלופי: {{altText}}",
+              "image_url": "כתובת תמונה: {{imageUrl}}"
+          },
+          "default": {
+              "text": "טקסט: {{text}}"
+          }
+      }
+    },
+    "runs_table": {
+      "run_type_chips": {
+        "manual_run": "ידני",
+        "scheduled_run": "מתוזמן", 
+        "api": "API",
+        "sdk": "SDK",
+        "mcp": "MCP",
+        "cli": "CLI",
+        "unknown_run_type": "סוג ריצה לא ידוע"
+      },
+      "run_status_chips": {
+        "success": "הצלחה",
+        "running": "פועל",
+        "scheduled": "מתוזמן",
+        "queued": "בתור",
+        "failed": "נכשל",
+        "aborted": "בוטל"
+      },
+      "run_settings_modal": {
+        "title": "הגדרות ריצה",
+        "labels": {
+          "run_id": "מזהה ריצה",
+          "run_by_user": "הופעל על ידי משתמש",
+          "run_by_schedule": "הופעל על ידי לוח זמנים",
+          "run_by_api": "הופעל על ידי API",
+          "run_type": "סוג ריצה"
+        }
+      }
+    },
+    "run_content": {
+      "tabs": {
+        "output_data": "נתוני פלט",
+        "log": "יומן"
+      },
+      "buttons": {
+        "stop": "עצור"
+      },
+      "loading": "מחלץ נתונים...",
+      "empty_output": "אין נתוני פלט זמינים",
+      "captured_data": {
+        "title": "נתונים שנלכדו",
+        "download_csv": "הורד CSV",
+        "view_full": "צפה בכל הנתונים",
+        "items": "פריטים",
+        "schema_title": "טקסטים שנלכדו",
+        "list_title": "רשימות שנלכדו"
+      },
+      "captured_screenshot": {
+        "title": "צילומי מסך שנלכדו",
+        "download": "הורד",
+        "render_failed": "רינדור צילום המסך נכשל"
+      }
+    },
+    "navbar": {
+      "project_name": "Maxun",
+      "notifications": {
+        "success": {
+          "logout": "התנתקת בהצלחה"
+        },
+        "errors": {
+          "logout": {
+            "unauthorized": "אינך מורשה לבצע פעולה זו",
+            "server": "אירעה שגיאת שרת במהלך ההתנתקות",
+            "network": "שגיאת רשת במהלך ההתנתקות",
+            "unknown": "אירעה שגיאה בלתי צפויה במהלך ההתנתקות"
+          }
+        }
+      },
+      "upgrade": {
+        "button": "שדרוג",
+        "modal": {
+          "up_to_date": "🎉 אתה מעודכן!",
+          "new_version_available": "גרסה חדשה זמינה: {{version}}. שדרג לגרסה האחרונה לתיקוני באגים, שיפורים ותכונות חדשות!",
+          "view_updates": "צפה בכל העדכונים החדשים",
+          "view_updates_link": "כאן",
+          "tabs": {
+            "manual_setup": "שדרוג התקנה ידנית",
+            "docker_setup": "שדרוג התקנת Docker Compose"
+          }
+        }
+      },
+      "menu_items": {
+        "logout": "התנתק",
+        "discord": "Discord",
+        "youtube": "YouTube",
+        "twitter": "Twitter (X)",
+        "language": "שפה"
+      },
+      "recording": {
+        "discard": "בטל"
+      }
+    },
+    "language_menu": {
+      "en": "אנגלית",
+      "es": "ספרדית",
+      "ja": "יפנית",
+      "zh": "סינית",
+      "de": "גרמנית",
+      "tr": "טורקית",
+      "ko": "קוריאנית",
+      "he": "עברית"
+    }
+}

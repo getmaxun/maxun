@@ -582,7 +582,7 @@ const RobotCreate: React.FC = () => {
   };
 
   const handleCreateDocumentRobot = async () => {
-    if (!documentFile) { notify('error', 'Please upload a supported document file'); return; }
+    if (!documentFile) { notify('error', 'Please upload a PDF, DOCX, XLSX, or CSV file'); return; }
     if (!documentPrompt.trim()) { notify('error', 'Please enter an extraction prompt'); return; }
     if (!documentRobotName.trim()) { notify('error', 'Please enter a robot name'); return; }
 
@@ -612,7 +612,7 @@ const RobotCreate: React.FC = () => {
   };
 
   const handleCreateDocumentParseRobot = async () => {
-    if (!documentFile) { notify('error', 'Please upload a supported document file'); return; }
+    if (!documentFile) { notify('error', 'Please upload a PDF, DOCX, XLSX, or CSV file'); return; }
     if (!documentRobotName.trim()) { notify('error', 'Please enter a robot name'); return; }
     if (documentParseFormats.length === 0) { notify('error', 'Please select at least one output format'); return; }
 
@@ -1902,7 +1902,7 @@ const RobotCreate: React.FC = () => {
                   <input
                     id="doc-upload-input"
                     type="file"
-                    accept=".pdf,.csv,.xlsx,application/pdf,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    accept=".pdf,.docx,.csv,.xlsx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     style={{ display: 'none' }}
                     onChange={(e) => setDocumentFile(e.target.files?.[0] || null)}
                   />
@@ -1912,8 +1912,8 @@ const RobotCreate: React.FC = () => {
                     </Typography>
                   ) : (
                     <>
-                      <Typography variant="body1" fontWeight={500}>Click to upload a PDF, CSV, or XLSX</Typography>
-                      <Typography variant="body2" color="text.secondary">Supported files: PDF, CSV, XLSX • Max file size: 10 MB</Typography>
+                      <Typography variant="body1" fontWeight={500}>Click to upload a PDF, DOCX, CSV, or XLSX</Typography>
+                      <Typography variant="body2" color="text.secondary">Supported files: PDF, DOCX, CSV, XLSX • Max file size: 10 MB</Typography>
                     </>
                   )}
                 </Box>
