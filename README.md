@@ -126,8 +126,7 @@ It supports extraction, crawling, scraping, and search — designed to scale fro
 4. **[Search](https://docs.maxun.dev/robot/search/search-introduction)** – Run automated web searches to discover or scrape results, with support for time-based filters.
 5. **[SDK](https://docs.maxun.dev/category/sdk)** – A complete developer toolkit for scraping, extraction, scheduling, and end-to-end data automation.
 6. **[CLI](https://docs.maxun.dev/category/cli)** – Create robots, trigger runs, and retrieve extracted data from your terminal.
-7. **[Document Extraction & Parsing](https://docs.maxun.dev/)** – Extract structured data from documents and images (PDF, DOCX, XLSX, CSV, JPG, PNG) with OCR, or convert them into clean Markdown, HTML, links, or a summary.
-
+7. **[Document Extraction & Parsing](https://docs.maxun.dev/)** – Extract structured data from documents (PDF, DOCX, XLSX, and CSV) using native parsers and images (Scanned PDF, JPG, and PNG) with OCR, or convert them into clean Markdown, HTML, links, or a summary.
 
 ## How Does It Work?
 
@@ -198,7 +197,7 @@ Maxun can run locally with or without Docker
 - ✨ **Turn Websites to Spreadsheets** – Direct data export to Google Sheets & Airtable
 - ✨ **Adapt To Website Layout Changes** – Auto-recovery from site updates
 - ✨ **Extract Behind Login** – Handle authentication seamlessly
-- ✨ **Extract From Documents & Images** – OCR PDFs, DOCX, XLSX, CSV, JPG, and PNG into structured data, Markdown, HTML, or links
+- ✨ **Extract From Documents & Images** – OCR Scanned PDFs, JPG, and PNG or parse DOCX, XLSX, and CSV into structured data, Markdown, HTML, or links
 - ✨ **Integrations** – Connect with your favorite tools
 - ✨ **MCP Support** – Model Context Protocol integration
 - ✨ **LLM-Ready Data** – Clean Markdown for AI applications
