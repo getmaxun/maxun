@@ -1435,9 +1435,8 @@ export class DocumentInterpreter {
   }
 
   private static async parseImage(buffer: Buffer, documentMimeType: string): Promise<ParsedDocument> {
-    const extension = documentMimeType === PNG_MIME_TYPE ? 'png' : 'jpg';
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'maxun-img-'));
-    const tempFile = path.join(tmpDir, `image.${extension}`);
+    const tempFile = path.join(tmpDir, documentMimeType === PNG_MIME_TYPE ? 'image.png' : 'image.jpg');
 
     try {
       await fs.promises.writeFile(tempFile, buffer);
