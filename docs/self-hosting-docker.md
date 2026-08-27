@@ -15,51 +15,76 @@ For this guide, we assume that before you start, you have a dedicated docker fol
 1. Change directory into your docker folder `cd /home/$USER/Docker/`
 2. Create a new directory for maxun and all the required sub-folders for our docker services `mkdir -p maxun/{db,minio,redis}`
 3. Change directory to enter the newly created folder `cd maxun`
-4. Create an environment file to save your variables `nano .env` 
-5. In a new terminal, run the following commands and paste each output after the corresponding `=`:
+4. Create your `.env` file. Use **either** option below.
 
-```bash
-openssl rand -base64 48
-openssl rand -base64 24
-openssl rand -hex 32
-openssl rand -base64 48
-openssl rand -base64 24
-```
-Then copy the following into your .env file:
-NODE_ENV=production
-JWT_SECRET=<output of first command>
-DB_NAME=maxun
-DB_USER=postgres
-DB_PASSWORD=<output of second command>
-DB_HOST=postgres
-DB_PORT=5432
-ENCRYPTION_KEY=<output of third command>
-SESSION_SECRET=<output of fourth command>
-MINIO_ENDPOINT=minio
-MINIO_PORT=9000
-MINIO_CONSOLE_PORT=9001
-MINIO_ACCESS_KEY=minio
-MINIO_SECRET_KEY=<output of fifth command>
-REDIS_HOST=maxun-redis
-REDIS_PORT=6379
-REDIS_PASSWORD=
-BACKEND_PORT=8080
-FRONTEND_PORT=5173
-BACKEND_URL=https://maxun.my.domain
-PUBLIC_URL=https://maxun.my.domain
-VITE_BACKEND_URL=https://maxun.my.domain
-VITE_PUBLIC_URL=https://maxun.my.domain
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-GOOGLE_REDIRECT_URI=
-AIRTABLE_CLIENT_ID=
-AIRTABLE_REDIRECT_URI=
-MAXUN_TELEMETRY=true
+   **Option A — generate it automatically (recommended)**
 
-If you want an example you can use ENVEXAMPLE file
-6. Ctrl + x, Y, Enter will save your changes
-7. Please be sure to READ this file and change the variables to match your environment!!! i.e. BACKEND_PORT=30000
-8. Create a file for docker compose `nano docker-compose.yml` with the following contents:
+   ```bash
+   ./docs/generate-env.sh
+   ```
+
+   This writes a `.env` in the current directory with every secret generated
+   for you. Requires `openssl` and bash — on Windows, use WSL or Git Bash.
+
+   **Option B — write it yourself**
+
+   Run each command below and paste its output after the matching `=`:
+
+   ```bash
+   openssl rand -base64 48   # JWT_SECRET
+   openssl rand -base64 24   # DB_PASSWORD
+   openssl rand -hex 32      # ENCRYPTION_KEY  (must be 64 hex characters)
+   openssl rand -base64 48   # SESSION_SECRET
+   openssl rand -base64 24   # MINIO_SECRET_KEY
+   ```
+
+   Then create the file with `nano .env` and paste in the following, replacing
+   each placeholder with the matching output above:
+
+   ```
+   NODE_ENV=production
+   JWT_SECRET=<output of first command>
+   DB_NAME=maxun
+   DB_USER=postgres
+   DB_PASSWORD=<output of second command>
+   DB_HOST=postgres
+   DB_PORT=5432
+   ENCRYPTION_KEY=<output of third command>
+   SESSION_SECRET=<output of fourth command>
+   MINIO_ENDPOINT=minio
+   MINIO_PORT=9000
+   MINIO_CONSOLE_PORT=9001
+   MINIO_ACCESS_KEY=minio
+   MINIO_SECRET_KEY=<output of fifth command>
+   REDIS_HOST=maxun-redis
+   REDIS_PORT=6379
+   REDIS_PASSWORD=
+   BACKEND_PORT=8080
+   FRONTEND_PORT=5173
+   BACKEND_URL=https://maxun.my.domain
+   PUBLIC_URL=https://maxun.my.domain
+   VITE_BACKEND_URL=https://maxun.my.domain
+   VITE_PUBLIC_URL=https://maxun.my.domain
+   GOOGLE_CLIENT_ID=
+   GOOGLE_CLIENT_SECRET=
+   GOOGLE_REDIRECT_URI=
+   AIRTABLE_CLIENT_ID=
+   AIRTABLE_REDIRECT_URI=
+   MAXUN_TELEMETRY=true
+   ```
+
+   Save with Ctrl + X, Y, Enter.
+
+   > Do not put a literal dollar sign in any value. Docker Compose reads it as
+   > a variable reference and silently drops it, leaving you with a shorter
+   > secret than you pasted. Double it to escape one.
+
+5. Whichever option you used, READ the file and change the variables to match
+   your environment — in particular `BACKEND_URL`, `PUBLIC_URL`,
+   `VITE_BACKEND_URL`, `VITE_PUBLIC_URL`, and any ports you need to change
+   (i.e. `BACKEND_PORT=30000`).
+
+6. Create a file for docker compose `nano docker-compose.yml` with the following contents:
 ```yml
 services:
   postgres:
@@ -133,11 +158,11 @@ services:
     depends_on:
       - backend
 ```
-9. Ctrl + x, Y, Enter will save your changes
-10. This particular setup is "production ready" meaning that maxun is only accessible from localhost. You must configure a reverse proxy to access it!
-11. Start maxun `sudo docker compose up -d` or `sudo docker-compose up -d`
-12. Wait 30 seconds for everything to come up
-13. Access your maxun instance at http://localhost:5173 if using defaults
+7. Ctrl + x, Y, Enter will save your changes
+8. This particular setup is "production ready" meaning that maxun is only accessible from localhost. You must configure a reverse proxy to access it!
+9. Start maxun `sudo docker compose up -d` or `sudo docker-compose up -d`
+10. Wait 30 seconds for everything to come up
+11. Access your maxun instance at http://localhost:5173 if using defaults
 
 ## Next steps
 You will want to configure a reverse proxy. Click on a link below to check out some examples.
