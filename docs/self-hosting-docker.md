@@ -41,7 +41,7 @@ For this guide, we assume that before you start, you have a dedicated docker fol
    Then create the file with `nano .env` and paste in the following, replacing
    each placeholder with the matching output above:
 
-   ```
+   ```dotenv
    NODE_ENV=production
    JWT_SECRET=<output of first command>
    DB_NAME=maxun
