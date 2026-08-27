@@ -15,22 +15,31 @@ For this guide, we assume that before you start, you have a dedicated docker fol
 1. Change directory into your docker folder `cd /home/$USER/Docker/`
 2. Create a new directory for maxun and all the required sub-folders for our docker services `mkdir -p maxun/{db,minio,redis}`
 3. Change directory to enter the newly created folder `cd maxun`
-4. Create an environment file to save your variables `nano .env` with the following contents:
+4. Create an environment file to save your variables `nano .env` 
+5. In a new terminal, run the following commands and paste each output after the corresponding `=`:
+
+```bash
+openssl rand -base64 48
+openssl rand -base64 24
+openssl rand -hex 32
+openssl rand -base64 48
+openssl rand -base64 24
 ```
+Then copy the following into your .env file:
 NODE_ENV=production
-JWT_SECRET=openssl rand -base64 48
+JWT_SECRET=<output of first command>
 DB_NAME=maxun
 DB_USER=postgres
-DB_PASSWORD=openssl rand -base64 24
+DB_PASSWORD=<output of second command>
 DB_HOST=postgres
 DB_PORT=5432
-ENCRYPTION_KEY=openssl rand -base64 64
-SESSION_SECRET=openssl rand -base64 48
+ENCRYPTION_KEY=<output of third command>
+SESSION_SECRET=<output of fourth command>
 MINIO_ENDPOINT=minio
 MINIO_PORT=9000
 MINIO_CONSOLE_PORT=9001
 MINIO_ACCESS_KEY=minio
-MINIO_SECRET_KEY=openssl rand -base64 24
+MINIO_SECRET_KEY=<output of fifth command>
 REDIS_HOST=maxun-redis
 REDIS_PORT=6379
 REDIS_PASSWORD=
@@ -46,10 +55,11 @@ GOOGLE_REDIRECT_URI=
 AIRTABLE_CLIENT_ID=
 AIRTABLE_REDIRECT_URI=
 MAXUN_TELEMETRY=true
-```
-5. Ctrl + x, Y, Enter will save your changes
-6. Please be sure to READ this file and change the variables to match your environment!!! i.e. BACKEND_PORT=30000
-7. Create a file for docker compose `nano docker-compose.yml` with the following contents:
+
+If you want an example you can use ENVEXAMPLE file
+6. Ctrl + x, Y, Enter will save your changes
+7. Please be sure to READ this file and change the variables to match your environment!!! i.e. BACKEND_PORT=30000
+8. Create a file for docker compose `nano docker-compose.yml` with the following contents:
 ```yml
 services:
   postgres:
@@ -123,11 +133,11 @@ services:
     depends_on:
       - backend
 ```
-8. Ctrl + x, Y, Enter will save your changes
-9. This particular setup is "production ready" meaning that maxun is only accessible from localhost. You must configure a reverse proxy to access it!
-10. Start maxun `sudo docker compose up -d` or `sudo docker-compose up -d`
-11. Wait 30 seconds for everything to come up
-12. Access your maxun instance at http://localhost:5173 if using defaults
+9. Ctrl + x, Y, Enter will save your changes
+10. This particular setup is "production ready" meaning that maxun is only accessible from localhost. You must configure a reverse proxy to access it!
+11. Start maxun `sudo docker compose up -d` or `sudo docker-compose up -d`
+12. Wait 30 seconds for everything to come up
+13. Access your maxun instance at http://localhost:5173 if using defaults
 
 ## Next steps
 You will want to configure a reverse proxy. Click on a link below to check out some examples.
