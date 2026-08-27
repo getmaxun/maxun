@@ -23,7 +23,6 @@ For this guide, we assume that before you start, you have a dedicated docker fol
    generator:
 
    ```bash
-   curl -O https://raw.githubusercontent.com/getmaxun/maxun/master/docs/generate-env.sh
    bash generate-env.sh
    ```
 
