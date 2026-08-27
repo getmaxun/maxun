@@ -1,4 +1,3 @@
-
 #!/usr/bin/env bash
 #
 # Generates a .env file with freshly generated secrets.
@@ -28,7 +27,7 @@ if ! command -v openssl >/dev/null 2>&1; then
   exit 1
 fi
 
-if [ "$PRINT_ONLY" -eq 0 ] && [ -e "$OUT" ]; then
+if [ "$PRINT_ONLY" -eq 0 ] && { [ -e "$OUT" ] || [ -L "$OUT" ]; }; then
   echo "$OUT already exists. Move or delete it first, or use --print." >&2
   exit 1
 fi
@@ -85,7 +84,7 @@ ENV
 if [ "$PRINT_ONLY" -eq 1 ]; then
   render
 else
-  render > "$OUT"
+  (umask 077; render > "$OUT")
   chmod 600 "$OUT"
   echo "Wrote $OUT with generated secrets."
   echo "Edit the BACKEND_URL / PUBLIC_URL lines to match your domain before starting."

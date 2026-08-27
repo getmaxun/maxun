@@ -19,12 +19,17 @@ For this guide, we assume that before you start, you have a dedicated docker fol
 
    **Option A — generate it automatically (recommended)**
 
+   From inside the `maxun` folder you created in step 2, download and run the
+   generator:
+
    ```bash
-   ./docs/generate-env.sh
+   curl -O https://raw.githubusercontent.com/getmaxun/maxun/master/docs/generate-env.sh
+   bash generate-env.sh
    ```
 
-   This writes a `.env` in the current directory with every secret generated
-   for you. Requires `openssl` and bash — on Windows, use WSL or Git Bash.
+   It writes `.env` into the current directory, so run it from the same folder
+   your `docker-compose.yml` will live in. Requires `openssl` and bash — on
+   Windows, use WSL or Git Bash.
 
    **Option B — write it yourself**
 
