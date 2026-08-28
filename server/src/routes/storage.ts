@@ -51,12 +51,26 @@ const documentUpload = multer({
     if (normalizeDocumentMimeType(file.mimetype, file.originalname)) {
       cb(null, true);
     } else {
-      cb(new Error('Only PDF, DOCX, XLSX, and CSV files are allowed'));
+      cb(new Error('Only PDF, DOCX, XLSX, CSV, JPG, and PNG files are allowed'));
     }
   },
 });
 
+const uploadDocument = (req: any, res: any, next: any) => {
+  documentUpload.single('file')(req, res, (err: any) => {
+    if (err) {
+      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+        const maxMb = Math.round(MAX_FILE_SIZE_BYTES / (1024 * 1024));
+        return res.status(400).json({ error: `File is too large. The maximum size is ${maxMb} MB.` });
+      }
+      return res.status(400).json({ error: err.message || 'Invalid file upload.' });
+    }
+    next();
+  });
+};
+
 //HELPER FUNCTION
+
 
 // const normalizeRobotUrl = (rawUrl: string): string => {
 //   let normalizedUrl: URL;
@@ -2117,21 +2131,21 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
 
 /**
  * POST endpoint for creating a document extraction robot (doc-extract).
- * Accepts a PDF or DOCX upload and an extraction prompt. Uses the configured LLM to generate
- * an extraction schema and stores the document in MinIO.
+ * Accepts a PDF, DOCX, XLSX, CSV, JPG, or PNG upload and an extraction prompt. 
+ * Uses the configured LLM to generate an extraction schema and stores the document in MinIO.
  */
 router.post(
   '/recordings/document',
   requireSignIn,
-  documentUpload.single('file'),
+  uploadDocument,
   async (req: AuthenticatedRequest, res) => {
     try {
       if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
 
       const file = (req as any).file as Express.Multer.File | undefined;
-      if (!file) return res.status(400).json({ error: 'A PDF or DOCX file is required.' });
+      if (!file) return res.status(400).json({ error: 'A PDF, DOCX, XLSX, CSV, JPG, or PNG file is required.' });
       const documentMimeType = normalizeDocumentMimeType(file.mimetype, file.originalname);
-      if (!documentMimeType) return res.status(400).json({ error: 'Only PDF and DOCX files are allowed.' });
+      if (!documentMimeType) return res.status(400).json({ error: 'Only PDF, DOCX, XLSX, CSV, JPG, or PNG files are allowed.' });
 
       const { prompt, name, llmProvider, llmModel, llmApiKey, llmBaseUrl } = req.body;
       if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
@@ -2191,21 +2205,21 @@ router.post(
 
 /**
  * POST endpoint for creating a document parse robot (doc-parse).
- * Accepts a PDF or DOCX upload and output format list. Parses the document immediately and
- * stores both the document and parsed output in MinIO / database.
+ * Accepts a PDF, DOCX, XLSX, CSV, JPG, or PNG upload and output format list. 
+ * Parses the document immediately and stores both the document and parsed output in MinIO / database.
  */
 router.post(
   '/recordings/document-parse',
   requireSignIn,
-  documentUpload.single('file'),
+  uploadDocument,
   async (req: AuthenticatedRequest, res) => {
     try {
       if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
 
       const file = (req as any).file as Express.Multer.File | undefined;
-      if (!file) return res.status(400).json({ error: 'A PDF or DOCX file is required.' });
+      if (!file) return res.status(400).json({ error: 'A PDF, DOCX, XLSX, CSV, JPG, or PNG file is required.' });
       const documentMimeType = normalizeDocumentMimeType(file.mimetype, file.originalname);
-      if (!documentMimeType) return res.status(400).json({ error: 'Only PDF and DOCX files are allowed.' });
+      if (!documentMimeType) return res.status(400).json({ error: 'Only PDF, DOCX, XLSX, CSV, JPG, or PNG files are allowed.' });
 
       const { name, formats, llmProvider, llmModel, llmApiKey, llmBaseUrl } = req.body;
 
@@ -2218,7 +2232,7 @@ router.post(
         : DOC_PARSE_OUTPUT_FORMAT_OPTIONS.filter((f) => f !== 'summary');
 
       // Summaries need a working LLM. Ollama runs locally and needs no key, but the
-      // hosted providers do — fail early rather than parsing the PDF and then dying.
+      // hosted providers do — fail early rather than parsing the document and then dying.
       const summaryProvider = (llmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama';
       if (outputFormats.includes('summary') && summaryProvider !== 'ollama') {
         const envKey = summaryProvider === 'anthropic'
@@ -2386,15 +2400,15 @@ router.post('/runs/document-parse-run/:id', requireSignIn, async (req: Authentic
 router.put(
 '/recordings/:id/document',
   requireSignIn,
-  documentUpload.single('file'),
+  uploadDocument,
   async (req: AuthenticatedRequest, res) => {
     try {
       if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
 
       const file = (req as any).file as Express.Multer.File | undefined;
-      if (!file) return res.status(400).json({ error: 'A PDF or DOCX file is required.' });
+      if (!file) return res.status(400).json({ error: 'A PDF, DOCX, XLSX, CSV, JPG, or PNG file is required.' });
       const documentMimeType = normalizeDocumentMimeType(file.mimetype, file.originalname);
-      if (!documentMimeType) return res.status(400).json({ error: 'Only PDF and DOCX files are allowed.' });
+      if (!documentMimeType) return res.status(400).json({ error: 'Only PDF, DOCX, XLSX, CSV, JPG, or PNG files are allowed.' });
 
       const robot = await Robot.findOne({ where: { 'recording_meta.id': req.params.id } });
       if (!robot) return res.status(404).json({ error: 'Robot not found.' });
