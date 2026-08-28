@@ -1684,7 +1684,7 @@ export class DocumentInterpreter {
     let providerLabel = 'heuristic-fallback';
 
     for (const chunk of chunks) {
-      if (!chunk.text.trim()) continue;
+      if (!chunk.text.trim() && parsedDocument.tables.length === 0) continue;
 
       const { systemPrompt, userPrompt } = this.buildExtractionPrompt(
         prompt,
