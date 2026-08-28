@@ -193,22 +193,28 @@ const buildCleanTextFromOCRData = (data: any): string => {
 
 const MAX_OCR_PIXELS = 25_000_000; // ~25 MP, 5000x5000 pixels
 
+const downscaleIfOversized = async (imagePath: string): Promise<void> => {
+  const sharp = (await import('sharp')).default;
+  const meta = await sharp(imagePath).metadata();
+  const pixelCount = (meta.width || 0) * (meta.height || 0);
+  if (pixelCount <= MAX_OCR_PIXELS) return;
+
+  const scale = Math.sqrt(MAX_OCR_PIXELS / pixelCount);
+  const isPng = meta.format === 'png';
+  const tmp = `${imagePath}.resized.${isPng ? 'png' : 'jpg'}`;
+  const resized = sharp(imagePath).resize(
+    Math.round(meta.width! * scale),
+    Math.round(meta.height! * scale)
+  );
+  await (isPng ? resized.png() : resized.jpeg()).toFile(tmp);
+  await fs.promises.rename(tmp, imagePath);
+  logger.info(`[DocumentInterpreter] Downscaled ${meta.width}×${meta.height} image to fit OCR pixel budget`);
+};
+
 const preprocessPageImage = async (imagePath: string): Promise<void> => {
+  await downscaleIfOversized(imagePath);
+
   try {
-    const sharp = (await import('sharp')).default;
-    const meta = await sharp(imagePath).metadata();
-    const pixelCount = (meta.width || 0) * (meta.height || 0);
-
-    if (pixelCount > MAX_OCR_PIXELS) {
-      const scale = Math.sqrt(MAX_OCR_PIXELS / pixelCount);
-      const tmp = `${imagePath}.resized`;
-      await sharp(imagePath)
-        .resize(Math.round(meta.width! * scale), Math.round(meta.height! * scale))
-        .toFile(tmp);
-      await fs.promises.rename(tmp, imagePath);
-      logger.info(`[DocumentInterpreter] Downscaled ${meta.width}×${meta.height} image to fit OCR pixel budget`);
-    }
-
     const { createCanvas, loadImage } = await import('canvas');
     const img = await loadImage(imagePath);
     const { width, height } = img;
