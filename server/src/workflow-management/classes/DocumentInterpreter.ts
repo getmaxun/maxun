@@ -1470,10 +1470,10 @@ export class DocumentInterpreter {
 
       try {
         const { lines } = await PaddleOCRProvider.recognizePage(tempFile, script);
+        tables = extractTablesFromPaddleLines([lines]);
         text = cleanText(reconstructTextFromPaddleLines(lines));
         // Treat an empty PaddleOCR result as a failure, not a success.
-        if (text) {
-          tables = extractTablesFromPaddleLines([lines]);
+        if (text) {          
           paddleSucceeded = true;
         }
       } catch (paddleErr: any) {
