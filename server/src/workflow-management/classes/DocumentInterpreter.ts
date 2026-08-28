@@ -84,6 +84,14 @@ const normalizeWhitespace = (value: string): string =>
 const cleanText = (value: string): string =>
   normalizeWhitespace(value.replace(/\x00/g, ''));
 
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
 const OCR_ASCII_NOISE_THRESHOLD = 0.80;
 
 const asciiRatio = (value: string): number => {
@@ -1744,7 +1752,7 @@ export class DocumentInterpreter {
       if (!text) continue;
       const paragraphs = text
         .split(/\n{2,}/)
-        .map((p) => `<p>${p.replace(/\n/g, '<br>')}</p>`)
+        .map((p) => `<p>${escapeHtml(p).replace(/\n/g, '<br>')}</p>`)
         .join('\n');
         parts.push(
           doc.isImage
@@ -1756,10 +1764,10 @@ export class DocumentInterpreter {
     for (let i = 0; i < doc.tables.length; i++) {
       const table = doc.tables[i];
       if (table.length === 0) continue;
-      const header = `<thead><tr>${table[0].map((cell) => `<th>${cell.trim()}</th>`).join('')}</tr></thead>`;
+      const header = `<thead><tr>${table[0].map((cell) => `<th>${escapeHtml(cell.trim())}</th>`).join('')}</tr></thead>`;
       const body = `<tbody>${table
         .slice(1)
-        .map((row) => `<tr>${row.map((cell) => `<td>${cell.trim()}</td>`).join('')}</tr>`)
+        .map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell.trim())}</td>`).join('')}</tr>`)
         .join('\n')}</tbody>`;
       parts.push(`<table>\n${header}\n${body}\n</table>`);
     }
