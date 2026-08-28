@@ -19,12 +19,13 @@ For this guide, we assume that before you start, you have a dedicated docker fol
 
    **Option A — generate it automatically (recommended)**
 
-   From inside the `maxun` folder you created in step 2, download and run the
-   generator:
+   From inside the `maxun` folder you created in step 2 open a terminal that can run bash/.sh file and run the generate-env.sh file:
 
    ```bash
    bash generate-env.sh
    ```
+   -or-
+   ./generate-env (whatever you use to run scripts) 
 
    It writes `.env` into the current directory, so run it from the same folder
    your `docker-compose.yml` will live in. Requires `openssl` and bash — on
@@ -83,12 +84,12 @@ For this guide, we assume that before you start, you have a dedicated docker fol
    > a variable reference and silently drops it, leaving you with a shorter
    > secret than you pasted. Double it to escape one.
 
-5. Whichever option you used, READ the file and change the variables to match
+6. Whichever option you used, READ the file and change the variables to match
    your environment — in particular `BACKEND_URL`, `PUBLIC_URL`,
    `VITE_BACKEND_URL`, `VITE_PUBLIC_URL`, and any ports you need to change
    (i.e. `BACKEND_PORT=30000`).
 
-6. Create a file for docker compose `nano docker-compose.yml` with the following contents:
+7. Create a file for docker compose `nano docker-compose.yml` with the following contents:
 ```yml
 services:
   postgres:
