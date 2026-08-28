@@ -211,8 +211,8 @@ const downscaleIfOversized = async (imagePath: string): Promise<void> => {
   const isPng = meta.format === 'png';
   const tmp = `${imagePath}.resized.${isPng ? 'png' : 'jpg'}`;
   const resized = sharp(imagePath).resize(
-    Math.round(meta.width! * scale),
-    Math.round(meta.height! * scale)
+    Math.max(1, Math.floor(meta.width! * scale)),
+    Math.max(1, Math.floor(meta.height! * scale))
   );
   await (isPng ? resized.png() : resized.jpeg()).toFile(tmp);
   await fs.promises.rename(tmp, imagePath);
@@ -1454,6 +1454,7 @@ export class DocumentInterpreter {
 
     try {
       await fs.promises.writeFile(tempFile, buffer);
+      await downscaleIfOversized(tempFile);
 
       let script = 'Latin';
       try {
