@@ -167,6 +167,14 @@ Learn more <a href="https://docs.maxun.dev/robot/search/search-introduction">her
 ### Getting Started
 The simplest & fastest way to get started is to use the hosted version: https://app.maxun.dev.
 
+### One-Click Self Host (Railway)
+
+Deploy Maxun on Railway with a prewired multi-service stack (nginx gateway, frontend, backend, remote Chromium, PostgreSQL, and MinIO):
+
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/maxun?utm_medium=integration&utm_source=button&utm_campaign=maxun)
+
+After deploy, open only the **gateway** public URL so the UI and API share one origin (required for Maxun's httpOnly auth cookie). Optional `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` unlock AI mode.
+
 ### Installation
 Maxun can run locally with or without Docker
 1. [Setup with Docker Compose](https://docs.maxun.dev/installation/docker)
@@ -175,9 +183,10 @@ Maxun can run locally with or without Docker
 4. [SDK](https://github.com/getmaxun/node-sdk)
 
 ### Upgrading & Self Hosting
-1. [Self Host Maxun With Docker](https://docs.maxun.dev/self-host)
-2. [Upgrade Maxun With Docker Compose Setup](https://docs.maxun.dev/installation/upgrade#upgrading-with-docker-compose)
-3. [Upgrade Maxun Without Docker Compose Setup](https://docs.maxun.dev/installation/upgrade#upgrading-with-local-setup)
+1. [One-Click Self Host on Railway](https://railway.com/deploy/maxun?utm_medium=integration&utm_source=button&utm_campaign=maxun)
+2. [Self Host Maxun With Docker](https://docs.maxun.dev/self-host)
+3. [Upgrade Maxun With Docker Compose Setup](https://docs.maxun.dev/installation/upgrade#upgrading-with-docker-compose)
+4. [Upgrade Maxun Without Docker Compose Setup](https://docs.maxun.dev/installation/upgrade#upgrading-with-local-setup)
 
 ## Features
 
