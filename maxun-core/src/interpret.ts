@@ -14,6 +14,7 @@ import { arrayToObject } from './utils/utils';
 import Concurrency from './utils/concurrency';
 import Preprocessor from './preprocessor';
 import log, { Level } from './utils/logger';
+import { searchXquikPosts, type SearchTimeRange } from './search/xquik';
 
 /**
  * Extending the Window interface for custom scraping functions.
@@ -73,6 +74,8 @@ export default class Interpreter extends EventEmitter {
   private stopper: Function | null = null;
   
   private isAborted: boolean = false;
+
+  private abortController = new AbortController();
 
   private visualRenderRequired: boolean = false;
 
@@ -150,6 +153,7 @@ export default class Interpreter extends EventEmitter {
    */
   public abort(): void {
     this.isAborted = true;
+    this.abortController.abort();
   }
 
   /**
@@ -1634,9 +1638,9 @@ export default class Interpreter extends EventEmitter {
       search: async (searchConfig: {
         query: string;
         limit: number;
-        provider?: 'duckduckgo';
+        provider?: 'duckduckgo' | 'xquik';
         filters?: {
-          timeRange?: 'day' | 'week' | 'month' | 'year';
+          timeRange?: SearchTimeRange;
         };
         mode: 'discover' | 'scrape';
       }) => {
@@ -1649,11 +1653,51 @@ export default class Interpreter extends EventEmitter {
           this.options.debugChannel.setActionType('search');
         }
 
-        searchConfig.provider = 'duckduckgo';
+        searchConfig.provider = searchConfig.provider || 'duckduckgo';
 
-        this.log(`Performing DuckDuckGo search for: ${searchConfig.query}`, Level.LOG);
+        const persistDiscovery = async (searchResults: any[]) => {
+          const actionType = 'search';
+          const actionName = 'Search Results';
+          if (!this.serializableDataByType[actionType]) {
+            this.serializableDataByType[actionType] = {};
+          }
+          this.serializableDataByType[actionType][actionName] = {
+            query: searchConfig.query,
+            provider: searchConfig.provider,
+            filters: searchConfig.filters || {},
+            resultsCount: searchResults.length,
+            results: searchResults,
+            searchedAt: new Date().toISOString(),
+          };
+          await this.options.serializableCallback({
+            scrapeList: this.serializableDataByType.scrapeList || {},
+            scrapeSchema: this.serializableDataByType.scrapeSchema || {},
+            crawl: this.serializableDataByType.crawl || {},
+            search: this.serializableDataByType.search || {},
+          });
+        };
 
         try {
+          if (searchConfig.provider === 'xquik') {
+            if (searchConfig.mode !== 'discover') {
+              throw new Error('Xquik supports discover mode only.');
+            }
+            this.log(`Searching public X posts with Xquik for: ${searchConfig.query}`, Level.LOG);
+            const searchResults = await searchXquikPosts(
+              searchConfig.query,
+              searchConfig.limit,
+              searchConfig.filters?.timeRange,
+              {
+                apiKey: process.env.X_TWITTER_SCRAPER_API_KEY,
+                signal: this.abortController.signal,
+              },
+            );
+            await persistDiscovery(searchResults);
+            this.log(`Search completed in discover mode with ${searchResults.length} results`, Level.LOG);
+            return;
+          }
+
+          this.log(`Performing DuckDuckGo search for: ${searchConfig.query}`, Level.LOG);
           let searchUrl = `https://duckduckgo.com/?q=${encodeURIComponent(searchConfig.query)}`;
 
           if (searchConfig.filters?.timeRange) {
@@ -1870,34 +1914,7 @@ export default class Interpreter extends EventEmitter {
           this.log(`Search found ${searchResults.length} results`, Level.LOG);
 
           if (searchConfig.mode === 'discover') {
-            const actionType = "search";
-            const actionName = "Search Results";
-
-            if (!this.serializableDataByType[actionType]) {
-              this.serializableDataByType[actionType] = {};
-            }
-            if (!this.serializableDataByType[actionType][actionName]) {
-              this.serializableDataByType[actionType][actionName] = {};
-            }
-
-            const searchData = {
-              query: searchConfig.query,
-              provider: searchConfig.provider,
-              filters: searchConfig.filters || {},
-              resultsCount: searchResults.length,
-              results: searchResults,
-              searchedAt: new Date().toISOString()
-            };
-
-            this.serializableDataByType[actionType][actionName] = searchData;
-
-            await this.options.serializableCallback({
-              scrapeList: this.serializableDataByType['scrapeList'] || {},
-              scrapeSchema: this.serializableDataByType['scrapeSchema'] || {},
-              crawl: this.serializableDataByType['crawl'] || {},
-              search: this.serializableDataByType['search'] || {}
-            });
-
+            await persistDiscovery(searchResults);
             this.log(`Search completed in discover mode with ${searchResults.length} results`, Level.LOG);
             return;
           }
@@ -3226,6 +3243,7 @@ export default class Interpreter extends EventEmitter {
       throw new Error('This Interpreter is already running a workflow. To run another workflow, please, spawn another Interpreter.');
     }
     this.isAborted = false;
+    this.abortController = new AbortController();
     this.log('Starting the workflow.', Level.LOG);
     const context = page.context();
 

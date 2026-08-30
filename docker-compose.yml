@@ -68,8 +68,8 @@ services:
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-5173}:${FRONTEND_PORT:-5173}"
-    env_file: .env
     environment:
+      FRONTEND_PORT: ${FRONTEND_PORT:-5173}
       PUBLIC_URL: ${PUBLIC_URL}
       BACKEND_URL: ${BACKEND_URL}
     depends_on:

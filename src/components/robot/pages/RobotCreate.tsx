@@ -56,6 +56,7 @@ function TabPanel(props: TabPanelProps) {
 
 type LlmProvider = 'anthropic' | 'openai' | 'ollama';
 type OpenAICompatiblePresetId = 'openai' | 'qianfan' | 'openrouter' | 'deepseek' | 'custom';
+type SearchProvider = 'duckduckgo' | 'xquik';
 
 interface OpenAICompatiblePreset {
   label: string;
@@ -281,7 +282,7 @@ const RobotCreate: React.FC = () => {
   const [searchRobotName, setSearchRobotName] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchLimit, setSearchLimit] = useState(10);
-  const [searchProvider] = useState<'duckduckgo'>('duckduckgo');
+  const [searchProvider, setSearchProvider] = useState<SearchProvider>('duckduckgo');
   const [searchMode, setSearchMode] = useState<'discover' | 'scrape'>('discover');
   const [searchTimeRange, setSearchTimeRange] = useState<'day' | 'week' | 'month' | 'year' | ''>('');
 
@@ -535,6 +536,10 @@ const RobotCreate: React.FC = () => {
     }
     if (!searchRobotName.trim()) {
       notify('error', 'Please enter a robot name');
+      return;
+    }
+    if (searchProvider === 'xquik' && (searchLimit < 1 || searchLimit > 10000)) {
+      notify('error', 'Xquik supports 1 to 10000 results');
       return;
     }
     if (searchMode === 'scrape' && searchOutputFormats.length === 0) {
@@ -1630,12 +1635,38 @@ const RobotCreate: React.FC = () => {
                   sx={{ mb: 2 }}
                 />
 
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <InputLabel>Search Provider</InputLabel>
+                  <Select
+                    value={searchProvider}
+                    label="Search Provider"
+                    onChange={(e) => {
+                      const provider = e.target.value as SearchProvider;
+                      setSearchProvider(provider);
+                      if (provider === 'xquik') {
+                        setSearchMode('discover');
+                        setSearchOutputFormats([]);
+                      }
+                    }}
+                  >
+                    <MenuItem value="duckduckgo">DuckDuckGo (Web)</MenuItem>
+                    <MenuItem value="xquik">Xquik (Public X Posts)</MenuItem>
+                  </Select>
+                </FormControl>
+
+                {searchProvider === 'xquik' && (
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    Set X_TWITTER_SCRAPER_API_KEY on the server. Xquik returns public X post URLs in discover mode.
+                  </Typography>
+                )}
+
                 <TextField
                   label="Number of Results"
                   type="number"
                   fullWidth
                   value={searchLimit}
                   onChange={(e) => setSearchLimit(parseInt(e.target.value) || 10)}
+                  inputProps={{ min: 1, max: searchProvider === 'xquik' ? 10000 : undefined }}
                   sx={{ mb: 2 }}
                 />
 
@@ -1656,7 +1687,7 @@ const RobotCreate: React.FC = () => {
                       }}
                     >
                       <MenuItem value="discover">Discover URLs Only</MenuItem>
-                      <MenuItem value="scrape">Extract Data from Results</MenuItem>
+                      <MenuItem value="scrape" disabled={searchProvider === 'xquik'}>Extract Data from Results</MenuItem>
                     </Select>
                   </FormControl>
 
