@@ -102,6 +102,8 @@
     "build": "vite build",
     "build:server": "tsc -p server/tsconfig.json",
     "preview": "vite preview",
+    "test": "npm run test:server",
+    "test:server": "npm run build:server && node --test \"tests/server/**/*.test.js\"",
     "lint": "./node_modules/.bin/eslint .",
     "migrate": "sequelize-cli db:migrate",
     "migrate:undo": "sequelize-cli db:migrate:undo",
