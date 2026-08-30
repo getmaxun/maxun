@@ -575,7 +575,7 @@ export const createSearchRobot = async (
   searchConfig: {
     query: string;
     limit: number;
-    provider: 'google' | 'bing' | 'duckduckgo';
+    provider: 'duckduckgo' | 'xquik';
     filters?: {
       timeRange?: 'day' | 'week' | 'month' | 'year';
       location?: string;

@@ -45,6 +45,7 @@ GOOGLE_CLIENT_SECRET=
 GOOGLE_REDIRECT_URI=
 AIRTABLE_CLIENT_ID=
 AIRTABLE_REDIRECT_URI=
+X_TWITTER_SCRAPER_API_KEY=
 MAXUN_TELEMETRY=true
 ```
 5. Ctrl + x, Y, Enter will save your changes
@@ -116,13 +117,14 @@ services:
     mem_limit: 512M
     ports:
       - "127.0.0.1:${FRONTEND_PORT:-5173}:5173"
-    env_file: .env
     environment:
       PUBLIC_URL: ${PUBLIC_URL}
       BACKEND_URL: ${BACKEND_URL}
     depends_on:
       - backend
 ```
+The frontend receives only the public URLs above. Secrets from `.env`, including the Xquik API key, remain in the backend container.
+
 8. Ctrl + x, Y, Enter will save your changes
 9. This particular setup is "production ready" meaning that maxun is only accessible from localhost. You must configure a reverse proxy to access it!
 10. Start maxun `sudo docker compose up -d` or `sudo docker-compose up -d`

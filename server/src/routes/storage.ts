@@ -33,6 +33,7 @@ import { createDocumentParseRobotRecord } from '../utils/document/createDocument
 import { normalizeRobotUrl, normalizeWorkflowUrls, applyWorkflowLimits } from '../utils/robot-updates';
 import { normalizeDocumentMimeType } from '../utils/document/documentFile';
 import { validateRequiredLlmConfig, formatsRequireLlm, readLlmConfig } from '../utils/llm-config-validation';
+import { normalizeSearchConfig } from '../utils/search-config';
 
 export const router = Router();
 
@@ -510,10 +511,29 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
     
     let searchMode: string | undefined;
     if (robot.recording_meta?.type === 'search') {
-      const searchAction = workflow
-        .flatMap((pair: any) => pair.what || [])
-        .find((action: any) => action?.action === 'search');
-      searchMode = searchAction?.args?.[0]?.mode;
+      let searchActionCount = 0;
+      let searchConfigError: string | undefined;
+      workflow = workflow.map((pair: any) => ({
+        ...pair,
+        what: (pair.what || []).map((action: any) => {
+          if (action?.action !== 'search') return action;
+          searchActionCount += 1;
+          const normalizedSearch = normalizeSearchConfig(action.args?.[0]);
+          if ('error' in normalizedSearch) {
+            searchConfigError = normalizedSearch.error;
+            return action;
+          }
+          searchMode ??= normalizedSearch.config.mode;
+          return {
+            ...action,
+            args: [normalizedSearch.config, ...(Array.isArray(action.args) ? action.args.slice(1) : [])],
+          };
+        }),
+      }));
+      if (searchConfigError) return res.status(400).json({ error: searchConfigError });
+      if (searchActionCount === 0) {
+        return res.status(400).json({ error: 'Search workflow must include a search action.' });
+      }
     }
 
     if (formats !== undefined || (robot.recording_meta?.type === 'search' && searchMode === 'discover')) {
@@ -1988,11 +2008,22 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
  */
 router.post('/recordings/search', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
-    const { searchConfig, name, formats, promptLlmProvider, promptLlmModel, promptLlmApiKey, promptLlmBaseUrl } = req.body;
-
-    if (!searchConfig || !searchConfig.query) {
-      return res.status(400).json({ error: 'Search configuration with query is required.' });
+    const { searchConfig: rawSearchConfig, name, formats, promptLlmProvider, promptLlmModel, promptLlmApiKey, promptLlmBaseUrl } = req.body;
+    const { validFormats: requestedFormats, invalidFormats } = parseOutputFormats(
+      formats,
+      SEARCH_SCRAPE_OUTPUT_FORMAT_OPTIONS
+    );
+    if (invalidFormats.length > 0) {
+      return res.status(400).json({
+        error: `Invalid formats: ${invalidFormats.map(String).join(', ')}`,
+      });
     }
+
+    const normalizedSearch = normalizeSearchConfig(rawSearchConfig, requestedFormats.length > 0);
+    if ('error' in normalizedSearch) {
+      return res.status(400).json({ error: normalizedSearch.error });
+    }
+    const searchConfig = normalizedSearch.config;
 
     if (!req.user) {
       return res.status(401).send({ error: 'Unauthorized' });
@@ -2005,16 +2036,6 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
 
     if (await isRobotNameTaken(robotName, req.user.id)) {
       return res.status(409).json({ error: `A robot with the name "${robotName}" already exists.` });
-    }
-
-    const { validFormats: requestedFormats, invalidFormats } = parseOutputFormats(
-      formats,
-      searchConfig.mode === 'scrape' ? SEARCH_SCRAPE_OUTPUT_FORMAT_OPTIONS : undefined
-    );
-    if (invalidFormats.length > 0) {
-      return res.status(400).json({
-        error: `Invalid formats: ${invalidFormats.map(String).join(', ')}`,
-      });
     }
 
     let searchFormats: OutputFormats[];

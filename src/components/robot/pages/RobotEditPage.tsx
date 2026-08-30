@@ -32,6 +32,7 @@ import {
 
 type LlmProvider = 'anthropic' | 'openai' | 'ollama';
 type OpenAICompatiblePresetId = 'openai' | 'qianfan' | 'openrouter' | 'deepseek' | 'custom';
+type SearchProvider = 'duckduckgo' | 'xquik';
 
 interface OpenAICompatiblePreset {
   label: string;
@@ -219,7 +220,7 @@ interface SearchConfig {
   limit?: number;
   query?: string;
   filters?: Record<string, any>;
-  provider?: string;
+  provider?: SearchProvider;
 }
 
 export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
@@ -327,12 +328,12 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
           (pair.what || []).some(
             (action: any) =>
               action.action === 'search' &&
-              action.args?.[0]?.mode === 'discover'
+              (action.args?.[0]?.mode === 'discover' || action.args?.[0]?.provider === 'xquik')
           )
         );
 
         if (isDiscoverMode) {
-          setSearchOutputFormats(filteredFormats);
+          setSearchOutputFormats([]);
         } else {
           setSearchOutputFormats(
             filteredFormats.length > 0 ? filteredFormats : DEFAULT_OUTPUT_FORMATS
@@ -1119,7 +1120,10 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
   const renderSearchConfigFields = () => {
     if (robot?.recording_meta.type !== 'search') return null;
 
-    const currentSearchMode = searchConfig.mode || 'discover';
+    const currentSearchProvider = searchConfig.provider || 'duckduckgo';
+    const currentSearchMode = currentSearchProvider === 'xquik'
+      ? 'discover'
+      : searchConfig.mode || 'discover';
 
     return (
       <>
@@ -1134,6 +1138,32 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
           sx={{ mb: 2 }}
         />
 
+        <FormControl fullWidth sx={{ mb: 2 }}>
+          <InputLabel>Search Provider</InputLabel>
+          <Select
+            value={currentSearchProvider}
+            label="Search Provider"
+            onChange={(e) => {
+              const provider = e.target.value as SearchProvider;
+              setSearchConfig((prev) => ({
+                ...prev,
+                provider,
+                mode: provider === 'xquik' ? 'discover' : prev.mode,
+              }));
+              if (provider === 'xquik') setSearchOutputFormats([]);
+            }}
+          >
+            <MenuItem value="duckduckgo">DuckDuckGo (Web)</MenuItem>
+            <MenuItem value="xquik">Xquik (Public X Posts)</MenuItem>
+          </Select>
+        </FormControl>
+
+        {currentSearchProvider === 'xquik' && (
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Set X_TWITTER_SCRAPER_API_KEY on the server. Xquik returns public X post URLs in discover mode.
+          </Typography>
+        )}
+
         <TextField
           label="Number of Results"
           type="number"
@@ -1145,14 +1175,14 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
               setSearchConfig((prev) => ({ ...prev, limit: value }));
             }
           }}
-          inputProps={{ min: 1 }}
+          inputProps={{ min: 1, max: currentSearchProvider === 'xquik' ? 10000 : undefined }}
           sx={{ mb: 2 }}
         />
 
         <FormControl fullWidth sx={{ mb: 2 }}>
           <InputLabel>Mode</InputLabel>
           <Select
-            value={searchConfig.mode || 'discover'}
+            value={currentSearchMode}
             label="Mode"
             onChange={(e) => {
               const newMode = e.target.value as 'discover' | 'scrape';
@@ -1165,7 +1195,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
             }}
           >
             <MenuItem value="discover">Discover URLs Only</MenuItem>
-            <MenuItem value="scrape">Extract Data from Results</MenuItem>
+            <MenuItem value="scrape" disabled={currentSearchProvider === 'xquik'}>Extract Data from Results</MenuItem>
           </Select>
         </FormControl>
 
@@ -1490,6 +1520,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
 
     if (
       robot.recording_meta.type === 'search' &&
+      searchConfig.provider !== 'xquik' &&
       (searchConfig.mode || 'discover') === 'scrape' &&
       searchOutputFormats.length === 0
     ) {
@@ -1512,6 +1543,11 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
     const type = robot.recording_meta.type;
     if (type === 'scrape' && scrapeOutputFormats.length === 0) {
       notify("error", "Please select at least one output format");
+      return;
+    }
+    const xquikLimit = searchConfig.limit ?? 10;
+    if (type === 'search' && searchConfig.provider === 'xquik' && (!Number.isInteger(xquikLimit) || xquikLimit < 1 || xquikLimit > 10000)) {
+      notify("error", "Xquik supports 1 to 10000 results");
       return;
     }
 
@@ -1560,11 +1596,13 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
             ...pair,
             what: pair.what.map((action: any) => {
               if (action.action === 'search') {
+                const provider = searchConfig.provider || 'duckduckgo';
                 return {
                   ...action,
                   args: [{
                     ...searchConfig,
-                    provider: 'duckduckgo'
+                    provider,
+                    mode: provider === 'xquik' ? 'discover' : searchConfig.mode,
                   }]
                 };
               }
@@ -1588,7 +1626,9 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         formats: robot.recording_meta.type === 'crawl'
           ? crawlOutputFormats
           : robot.recording_meta.type === 'search'
-            ? ((searchConfig.mode || 'discover') === 'discover' ? [] : searchOutputFormats)
+            ? (searchConfig.provider === 'xquik' || (searchConfig.mode || 'discover') === 'discover'
+              ? []
+              : searchOutputFormats)
             : robot.recording_meta.type === 'scrape'
               ? scrapeOutputFormats
               : undefined,

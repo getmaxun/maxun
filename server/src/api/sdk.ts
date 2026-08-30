@@ -33,6 +33,7 @@ import { MAX_FILE_SIZE_BYTES } from '../workflow-management/classes/DocumentInte
 import { createDocumentRobotRecord } from '../utils/document/createDocumentRobotRecord';
 import { createDocumentParseRobotRecord } from '../utils/document/createDocumentParseRobotRecord';
 import { normalizeDocumentMimeType, PDF_MIME_TYPE } from '../utils/document/documentFile';
+import { normalizeSearchConfig } from '../utils/search-config';
 
 const router = Router();
 
@@ -1219,49 +1220,25 @@ router.post("/sdk/crawl", requireAPIKey, async (req: AuthenticatedRequest, res: 
 router.post("/sdk/search", requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
     try {
         const user = req.user;
-        const { name, searchConfig, formats } = req.body;
+        const { name, searchConfig: rawSearchConfig, formats } = req.body;
         const llmConfigInput = readLlmConfig(req.body);
 
-        if (!searchConfig) {
-            return res.status(400).json({
-                error: "Search configuration is required"
-            });
-        }
-
-        if (!searchConfig.query) {
-            return res.status(400).json({
-                error: "searchConfig must include a query"
-            });
-        }
-
-        if (typeof searchConfig !== 'object') {
-            return res.status(400).json({
-                error: "searchConfig must be an object"
-            });
-        }
-
-        if (searchConfig.mode && !['discover', 'scrape'].includes(searchConfig.mode)) {
-            return res.status(400).json({
-                error: "searchConfig.mode must be either 'discover' or 'scrape'"
-            });
-        }
-
-        const { validFormats: requestedFormats, invalidFormats, wasProvided } = parseOutputFormats(formats);
+        const { validFormats: requestedFormats, invalidFormats } = parseOutputFormats(formats);
         if (invalidFormats.length > 0) {
             return res.status(400).json({
                 error: `Invalid formats: ${invalidFormats.map(String).join(', ')}`
             });
         }
 
-        const searchFormats: OutputFormats[] = searchConfig.mode === 'discover'
-            ? (requestedFormats.length > 0 ? requestedFormats : [])
-            : (requestedFormats.length > 0 ? requestedFormats : [...DEFAULT_OUTPUT_FORMATS]);
-
-        searchConfig.provider = 'duckduckgo';
-
-        if (searchConfig.outputFormats && Array.isArray(searchConfig.outputFormats) && searchConfig.outputFormats.length > 0) {
-            searchConfig.mode = 'scrape';
+        const normalizedSearch = normalizeSearchConfig(rawSearchConfig, requestedFormats.length > 0);
+        if ('error' in normalizedSearch) {
+            return res.status(400).json({ error: normalizedSearch.error });
         }
+        const searchConfig = normalizedSearch.config;
+
+        const searchFormats: OutputFormats[] = searchConfig.mode === 'discover'
+            ? []
+            : (requestedFormats.length > 0 ? requestedFormats : [...DEFAULT_OUTPUT_FORMATS]);
 
         if (formatsRequireLlm(searchFormats) || formatsRequireLlm(searchConfig.outputFormats)) {
             const llmValidationError = validateRequiredLlmConfig(
