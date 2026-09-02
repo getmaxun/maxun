@@ -382,6 +382,23 @@ export class WorkflowInterpreter {
    * Stops the current process of the interpretation of the workflow.
    * @returns {Promise<void>}
    */
+  /** Server-authorized pause used by the Goal 5 control plane. */
+  public pauseInterpretation = (): void => {
+    this.interpretationIsPaused = true;
+  };
+
+  /** Server-authorized resume used by the Goal 5 control plane. */
+  public resumeInterpretation = (): void => {
+    this.interpretationIsPaused = false;
+    this.interpretationResume?.();
+  };
+
+  /** Resume exactly one interpreter step, preserving the paused state contract. */
+  public stepInterpretation = (): void => {
+    this.interpretationResume?.();
+    this.interpretationIsPaused = true;
+  };
+
   public stopInterpretation = async () => {
     if (this.interpreter) {
       logger.log('info', 'Stopping the interpretation.');

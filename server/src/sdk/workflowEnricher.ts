@@ -360,30 +360,7 @@ export class WorkflowEnricher {
    * Analyze page groups using browser-side script
    */
   private static async analyzePageGroups(validator: SelectorValidator): Promise<any[]> {
-    try {
-      const page = (validator as any).page;
-      const fs = require('fs');
-      const path = require('path');
-      const scriptPath = path.join(__dirname, 'browserSide/pageAnalyzer.js');
-      const scriptContent = fs.readFileSync(scriptPath, 'utf8');
-
-      await page.evaluate((script: string) => {
-        eval(script);
-      }, scriptContent);
-
-      const groups = await page.evaluate(() => {
-        const win = window as any;
-        if (typeof win.analyzeElementGroups === 'function') {
-          return win.analyzeElementGroups();
-        }
-        return [];
-      });
-
-      return groups;
-    } catch (error: any) {
-      logger.error('Error analyzing page groups:', error);
-      return [];
-    }
+    return validator.analyzeElementGroups();
   }
 
   /**
@@ -504,7 +481,8 @@ export class WorkflowEnricher {
       if (objectMatch) jsonStr = objectMatch[0];
 
       const decision = JSON.parse(this.sanitizeJsonString(jsonStr));
-      const limit = decision.limit || this.extractLimitFromPrompt(prompt) || null;
+      const promptLimit = this.extractLimitFromPrompt(prompt);
+      const limit = promptLimit || decision.limit || null;
       const parsed = WorkflowEnricher.parseGroupCandidates(decision, elementGroups, limit);
       return WorkflowEnricher.buildDecisionFromCandidates(parsed.candidates, parsed.reasoning, limit);
 
@@ -520,7 +498,7 @@ export class WorkflowEnricher {
    */
   private static extractLimitFromPrompt(prompt: string): number | null {
     const verbBoundNumber = prompt.match(
-      /\b(?:scrape|extract|get|fetch|pull|grab|collect|need|want|find|return|give\s+me|show\s+me)\s+(\d+)\b/i
+      /\b(?:scrape|extract|get|fetch|pull|grab|collect|need|want|find|return|give\s+me|show\s+me)\s+(?:(?:the\s+)?(?:first|top|last)\s+)?(\d+)\b/i
     );
     if (verbBoundNumber && verbBoundNumber[1]) {
       const limit = parseInt(verbBoundNumber[1], 10);
