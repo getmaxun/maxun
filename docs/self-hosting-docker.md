@@ -19,14 +19,18 @@ For this guide, we assume that before you start, you have a dedicated docker fol
 
    **Option A — generate it automatically (recommended)**
 
-   From inside the `maxun` folder you created in step 2 open a terminal that can run bash/.sh file and run the generate-env.sh file:
+     From the root of a cloned Maxun repo (`maxun/`), run the generator (it lives in `docs/`):
+
+   ```bash
+   bash docs/generate-env.sh
+   ```
+
+   If your current directory is `maxun/docs` instead, run:
 
    ```bash
    bash generate-env.sh
    ```
-   -or-
-   ./generate-env (whatever you use to run scripts) 
-
+ 
    It writes `.env` into the current directory, so run it from the same folder
    your `docker-compose.yml` will live in. Requires `openssl` and bash — on
    Windows, use WSL or Git Bash.
