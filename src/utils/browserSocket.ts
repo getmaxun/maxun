@@ -18,6 +18,7 @@ export function getOrCreateBrowserSocket(browserId: string): Socket {
   const socket = io(`${apiUrl}/${browserId}`, {
     transports: ["websocket", "polling"],
     rejectUnauthorized: false,
+    withCredentials: true,
   });
 
   socketCache.set(browserId, socket);

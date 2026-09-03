@@ -133,6 +133,8 @@ export const NavBar: React.FC<NavBarProps> = ({
   const changeLanguage = (lang: string) => {
     i18n.changeLanguage(lang);
     localStorage.setItem("language", lang);
+    // Document direction (RTL for Hebrew) is handled centrally in src/i18n.ts
+    // via the i18n 'languageChanged' listener.
   };
 
   const renderThemeToggle = () => (
@@ -367,6 +369,14 @@ export const NavBar: React.FC<NavBarProps> = ({
                       </MenuItem>
                       <MenuItem
                         onClick={() => {
+                          changeLanguage("he");
+                          handleMenuClose();
+                        }}
+                      >
+                        עברית
+                      </MenuItem>
+                      <MenuItem
+                        onClick={() => {
                           window.open('https://docs.maxun.dev/development/i18n', '_blank');
                           handleMenuClose();
                         }}
@@ -476,6 +486,14 @@ export const NavBar: React.FC<NavBarProps> = ({
                   }}
                 >
                   한국어
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    changeLanguage("he");
+                    handleMenuClose();
+                  }}
+                >
+                  עברית
                 </MenuItem>
                 <MenuItem
                   onClick={() => {

@@ -331,7 +331,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
         })}
       </TableRow>
       <TableRow>
-        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
+        <TableCell sx={{ p: 0 }} colSpan={8}>
           <Collapse in={isOpen} timeout="auto" unmountOnExit>
             {isLoadingRunDetails ? (
               <Box display="flex" justifyContent="center" py={3}>

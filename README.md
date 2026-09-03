@@ -42,22 +42,23 @@ IPcook provides 55M+ real residential IPs across 185+ countries and regions, del
 <b>Discount Code: `WELCOME20` - Get 20% off your first purchase.</b>
 </td>
 </tr>
+
 <tr>
 <td width="35%" height="100">
-<a href="https://go.nodemaven.com/maxunreadme">
-  <img src="https://github.com/user-attachments/assets/264331ac-d7f4-4001-bc64-1662b11577b9" alt="Nodemaven" width="400" height="150">
+<a href="https://go.nodemaven.com/maxunGHaugust">
+  <img src="https://github.com/user-attachments/assets/348c011f-8c73-4845-85b9-8dd85f6e85ec" alt="Nodemaven" width="400" height="150">
 </a>
 </td>
 <td width="70%">
 
-#### <a href="https://go.nodemaven.com/maxunreadme">Nodemaven</a>
+#### <a href="https://go.nodemaven.com/maxunGHaugust">Nodemaven</a>
 
-The most reliable proxy provider for web scrapping with the Highest Quality IP on the market. Why [Nodemaven](https://go.nodemaven.com/maxunreadme)?
+The most efficient proxy provider for Web Scraping and Automation with the Highest Quality IP on the market. Why [Nodemaven](https://go.nodemaven.com/maxunGHaugust)?
+- ZIP targeting
 - 99.9% uptime
-- Sticky sessions up to 7 days
 - IP filtering: all proxies have fraud score <97%
 - No KYC required
-- Cashback on traffic - burn GB and earn up to 10% back
+- Unique free tools: Proxy Bandwidth Checker, Meta Tag Checker, IP Lookup and others!
 
 <b>Discount Code: `MAXUN35` - 35% off to Mobile and Residential Proxies. `MAXUN40` - 40% off to ISP (Static) Proxies.</b>
 </td>
@@ -66,7 +67,7 @@ The most reliable proxy provider for web scrapping with the Highest Quality IP o
 <tr>
 <td width="30%" height="100">
 <a href="https://www.novada.com/?github-maxun">
-  <img src="https://github.com/user-attachments/assets/68262e31-639a-4d36-a281-e50b68fcdc92" alt="Novada" width="300" height="150">
+  <img src="https://github.com/user-attachments/assets/68262e31-639a-4d36-a281-e50b68fcdc92" alt="Novada"  width="350" height="150">
 </a>
 </td>
 <td width="70%">
@@ -78,8 +79,36 @@ Novada provides high-quality residential proxies and a powerful Scraper API for 
 <b>Discount Code: `GitNOVADA` - Get 20% off Rotating Residential Proxies and Scraping solutions.</b>
 </td>
 </tr>
-</table>
 
+<tr>
+<td width="20%" height="100">
+<a href="https://www.coreclaw.com/?utm_source=github&utm_medium=cpc&utm_campaign=max&utm_term=&utm_id=max">
+  <img src="https://github.com/user-attachments/assets/f3421d5c-d789-4f8c-8bfd-b41a81afdc68" alt="CoreClaw" width="400" height="150">
+</a>
+</td>
+<td width="80%">
+
+#### <a href="https://www.coreclaw.com/?utm_source=github&utm_medium=cpc&utm_campaign=max&utm_term=&utm_id=max">CoreClaw</a>
+
+CoreClaw — Production-ready Web Data APIs for AI agents and developers. Extract structured data from the web and build powerful automation workflows.
+<br />
+</td>
+</tr>
+
+<tr>
+<td width="30%" height="100">
+<a href="https://www.testmuai.com/?utm_medium=sponsor&utm_source=maxun">
+  <img src="https://github.com/user-attachments/assets/6c96005b-85df-43e0-9b63-96aaca676c11" alt="TestMu AI"  width="350" height="150">
+</a>
+</td>
+<td width="70%">
+
+#### <a href="https://www.testmuai.com/?utm_medium=sponsor&utm_source=maxun">TestMu AI</a>
+
+TestMu AI is the Native AI-Agentic Cloud Platform to Supercharge Quality Engineering. Test Intelligently and Ship Faster.
+</td>
+</tr>
+</table>
 
 ## What is Maxun?
 
@@ -95,8 +124,9 @@ It supports extraction, crawling, scraping, and search — designed to scale fro
 2. **[Scrape](https://docs.maxun.dev/robot/scrape/scrape-robots)** – Convert full webpages into clean Markdown or HTML and capture screenshots.
 3. **[Crawl](https://docs.maxun.dev/robot/crawl/crawl-introduction)** – Crawl entire websites and extract content from every relevant page, with full control over scope and discovery.
 4. **[Search](https://docs.maxun.dev/robot/search/search-introduction)** – Run automated web searches to discover or scrape results, with support for time-based filters.
-5. **[SDK](https://docs.maxun.dev/category/sdk)** – A complete developer toolkit for scraping, extraction, scheduling, and end-to-end data automation.
-6. **[CLI](https://docs.maxun.dev/category/cli)** – Create robots, trigger runs, and retrieve extracted data from your terminal.
+5. **[Document Extraction & Parsing](https://docs.maxun.dev/robot/document)** – Extract and parse structured data from documents (PDF, CSV, XLSX, and DOCX).
+6. **[SDK](https://docs.maxun.dev/category/sdk)** – A complete developer toolkit for scraping, extraction, scheduling, and end-to-end data automation.
+7. **[CLI](https://docs.maxun.dev/category/cli)** – Create robots, trigger runs, and retrieve extracted data from your terminal.
 
 
 ## How Does It Work?
@@ -170,9 +200,6 @@ Maxun can run locally with or without Docker
 ## Demos
 Maxun can be used for various use-cases, including lead generation, market research, content aggregation and more.
 View demos here: https://www.maxun.dev/usecases
-
-## Note
-This project is in early stages of development. Your feedback is very important for us - we're actively working on improvements. </a>
 
 ## License
 <p>

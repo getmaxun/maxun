@@ -3,6 +3,8 @@ import { resolveLlmModel } from './llm-models';
 import axios from 'axios';
 import logger from '../logger';
 import { LLMConfig } from '../sdk/browserAgent';
+import { resolveOpenAiApiKey } from './llm-endpoint';
+import { LLM_AGENTS, guardLlmBaseUrl } from './llm-endpoint';
 
 const SYSTEM_PROMPT = `You are a web page summarizer. Your output is plain text only.
 
@@ -83,7 +85,7 @@ export async function summarizeMarkdown(markdown: string, llmConfig?: LLMConfig)
   }
 
   if (provider === 'openai') {
-    const baseUrl = config.baseUrl || 'https://api.openai.com/v1';
+    const baseUrl = guardLlmBaseUrl(config.baseUrl || 'https://api.openai.com/v1');
     const model = resolveLlmModel(config.model, config.provider);
     logger.info(`[Summarizer] Using OpenAI-compatible at ${baseUrl} (${model})`);
 
@@ -100,10 +102,11 @@ export async function summarizeMarkdown(markdown: string, llmConfig?: LLMConfig)
       },
       {
         headers: {
-          'Authorization': `Bearer ${config.apiKey || process.env.OPENAI_API_KEY}`,
+          'Authorization': `Bearer ${resolveOpenAiApiKey(config.apiKey, config.baseUrl)}`,
           'Content-Type': 'application/json',
         },
         timeout: 60000,
+        ...LLM_AGENTS,
       }
     );
     const content = response.data.choices?.[0]?.message?.content || '';
@@ -114,7 +117,7 @@ export async function summarizeMarkdown(markdown: string, llmConfig?: LLMConfig)
   }
 
   if (provider === 'ollama') {
-    const baseUrl = config.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+    const baseUrl = guardLlmBaseUrl(config.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434');
     const model = resolveLlmModel(config.model, config.provider);
     logger.info(`[Summarizer] Using Ollama at ${baseUrl} (${model})`);
 
@@ -133,7 +136,7 @@ export async function summarizeMarkdown(markdown: string, llmConfig?: LLMConfig)
           think: false,
           options: { temperature: 0.1, num_predict: MAX_TOKENS },
         },
-        { signal: controller.signal as any }
+        { signal: controller.signal as any, ...LLM_AGENTS }
       );
       const content = response.data.message?.content || '';
       if (!content || content.trim().length === 0) {

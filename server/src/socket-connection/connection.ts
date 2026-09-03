@@ -1,6 +1,7 @@
 import { Namespace, Socket } from 'socket.io';
 import logger from "../logger";
 import { registerInputHandlers, removeInputHandlers } from '../browser-management/inputHandlers';
+import { socketOwns } from './socketAuth';
 
 /**
  * Opens a websocket canal for duplex data transfer and registers all handlers for this data for the recording session.
@@ -16,6 +17,12 @@ export const createSocketConnection = (
 ) => {
     const onConnection = async (socket: Socket) => {
         logger.log('info', "Client connected " + socket.id);
+        if (!socketOwns(socket, userId)) {
+            logger.log('warn', `Rejected socket ${socket.id}: does not own this browser session`);
+            socket.disconnect(true);
+            return;
+        }
+
         registerInputHandlers(socket, userId);
         socket.on('disconnect', () => {
             logger.log('info', "Client disconnected " + socket.id);
