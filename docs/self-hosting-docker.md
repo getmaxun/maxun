@@ -24,13 +24,15 @@ For this guide, we assume that before you start, you have a dedicated docker fol
    ```bash
    bash docs/generate-env.sh
    ```
+   ex: ./docs/generate-env.sh (if your terminal runs scripts using ./)
 
    If your current directory is `maxun/docs` instead, run:
 
    ```bash
    bash generate-env.sh
    ```
- 
+   ex: ./generate-env.sh (if your terminal runs scripts using ./)
+   
    It writes `.env` into the current directory, so run it from the same folder
    your `docker-compose.yml` will live in. Requires `openssl` and bash — on
    Windows, use WSL or Git Bash.
