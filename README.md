@@ -29,7 +29,7 @@
 <tr>
 <td width="30%" height="100">
 <a href="https://www.webshare.io/?referral_code=wwhk524ynls2">
-  <img src="https://github.com/user-attachments/assets/c3a60969-a8f8-4d2c-acef-22bee80c2484" alt="Webshare" width="280" height="150">
+  <img src="https://github.com/user-attachments/assets/c3a60969-a8f8-4d2c-acef-22bee80c2484" alt="Webshare" width="300" height="180">
 </a>
 </td>
 <td width="70%">
