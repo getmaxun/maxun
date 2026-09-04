@@ -6,7 +6,6 @@ import { browserPool, io as serverIo } from "../../server";
 import { addGoogleSheetUpdateTask, processGoogleSheetUpdates } from "../integrations/gsheet";
 import Robot from "../../models/Robot";
 import Run from "../../models/Run";
-import { Op } from 'sequelize';
 import { getDecryptedProxyConfig } from "../../routes/proxy";
 import { BinaryOutputService } from "../../storage/mino";
 import { capture } from "../../utils/analytics";
@@ -21,6 +20,7 @@ import { safeDecrypt } from "../../utils/auth";
 import { getInterpretationFailureReason, hasExpectedRobotOutput } from "../../utils/output-validation";
 import { addJob } from '../../storage/graphileWorker';
 import { QUEUE_NAMES } from '../../task-runner';
+import { compareRunTextWithPrevious } from '../../utils/run-comparison';
 
 const getRobotTargetUrl = (recording: any): string => {
   const metaUrl = recording?.recording_meta?.url?.trim();
@@ -440,25 +440,19 @@ async function executeRun(id: string, userId: string) {
           log: `${formats.join(', ')} conversion completed successfully`,
           serializableOutput,
           binaryOutput,
+          hasChanges: false,
         });
 
+        let hasChanges = false;
         if ((recording.recording_meta as any).compareRuns && serializableOutput.text) {
           try {
-            const normalize = (s: string) => s.replace(/\s+/g, ' ').trim();
-            const previousRun = await Run.findOne({
-              where: { robotMetaId: plainRun.robotMetaId, status: 'success', runId: { [Op.ne]: plainRun.runId } },
-              order: [['finishedAt', 'DESC']],
-            });
+            const currentText = serializableOutput.text[0]?.content || '';
+            const comparison = await compareRunTextWithPrevious(run, currentText);
+            hasChanges = comparison.hasChanges;
 
-            if (previousRun) {
-              const previousText = previousRun.serializableOutput?.text?.[0]?.content;
-              const currentText = serializableOutput.text[0]?.content;
-              const hasChanged = previousText !== undefined && normalize(previousText) !== normalize(currentText || '');
-
-              if (hasChanged) {
-                await run.update({ hasChanges: true });
-                logger.log('info', `Scheduled run ${plainRun.runId} has changes compared to previous run ${previousRun.runId}`);
-              }
+            if (hasChanges && comparison.previousRun) {
+              await run.update({ hasChanges });
+              logger.log('info', `Scheduled run ${plainRun.runId} has changes compared to previous run ${comparison.previousRun.runId}`);
             }
           } catch (compareError: any) {
             logger.log('warn', `Run comparison failed for scheduled run ${plainRun.runId}: ${compareError.message}`);
@@ -482,7 +476,7 @@ async function executeRun(id: string, userId: string) {
             robotName: recording.recording_meta.name,
             status: 'success',
             finishedAt: new Date().toLocaleString(),
-            hasChanges: !!run.hasChanges,
+            hasChanges,
           };
 
           serverIo.of(plainRun.browserId).emit('run-completed', completionData);

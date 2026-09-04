@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { TextField, Box, Checkbox, FormControlLabel } from "@mui/material";
 import { useGlobalInfoStore } from "../../../context/globalInfo";
@@ -70,6 +70,8 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [robot, setRobot] = useState<RobotSettings | null>(null);
   const [compareRuns, setCompareRuns] = useState(false);
+  const [compareRunsSaving, setCompareRunsSaving] = useState(false);
+  const compareRunsRequestId = useRef(0);
   const { recordingId, notify } = useGlobalInfoStore();
 
   useEffect(() => {
@@ -105,11 +107,39 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
   
   const handleCompareRunsToggle = async (checked: boolean) => {
     if (!robot) return;
+    const requestId = compareRunsRequestId.current + 1;
+    compareRunsRequestId.current = requestId;
+    const previousValue = compareRuns;
+
     setCompareRuns(checked);
-    const success = await updateRecording(robot.recording_meta.id, { compareRuns: checked });
-    if (!success) {
-      notify("error", t("robot_settings.errors.update_failed"));
-      setCompareRuns(!checked);
+    setCompareRunsSaving(true);
+
+    try {
+      const success = await updateRecording(robot.recording_meta.id, { compareRuns: checked });
+      if (compareRunsRequestId.current !== requestId) return;
+
+      if (!success) {
+        notify("error", t("robot_settings.errors.update_failed"));
+        setCompareRuns(previousValue);
+        return;
+      }
+
+      setRobot({
+        ...robot,
+        recording_meta: {
+          ...robot.recording_meta,
+          compareRuns: checked,
+        },
+      });
+    } catch (error) {
+      if (compareRunsRequestId.current === requestId) {
+        notify("error", t("robot_settings.errors.update_failed"));
+        setCompareRuns(previousValue);
+      }
+    } finally {
+      if (compareRunsRequestId.current === requestId) {
+        setCompareRunsSaving(false);
+      }
     }
   };
 
@@ -215,10 +245,11 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
                   control={
                     <Checkbox
                       checked={compareRuns}
+                      disabled={compareRunsSaving}
                       onChange={(e) => handleCompareRunsToggle(e.target.checked)}
                     />
                   }
-                  label="Compare most recent run to previous run"
+                  label={t("robot_settings.compare_runs")}
                   style={{ marginBottom: "20px" }}
                 />
               )}

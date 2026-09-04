@@ -465,6 +465,7 @@
         "robot_limit": "Roboter-Limit",
         "created_by_user": "Erstellt von Benutzer",
         "created_at": "Erstellungsdatum des Roboters",
+        "compare_runs": "Compare most recent run to previous run",
         "errors": {
             "robot_not_found": "Roboterdetails konnten nicht gefunden werden. Bitte versuchen Sie es erneut."
         },

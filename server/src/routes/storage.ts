@@ -33,6 +33,7 @@ import { createDocumentParseRobotRecord } from '../utils/document/createDocument
 import { normalizeRobotUrl, normalizeWorkflowUrls, applyWorkflowLimits } from '../utils/robot-updates';
 import { normalizeDocumentMimeType } from '../utils/document/documentFile';
 import { validateRequiredLlmConfig, formatsRequireLlm, readLlmConfig } from '../utils/llm-config-validation';
+import { findPreviousSuccessfulRun } from '../utils/run-comparison';
 
 export const router = Router();
 
@@ -286,6 +287,7 @@ export function formatRunResponse(run: any) {
     id: run.id,
     status: run.status,
     isPartial: !!run.isPartial,
+    hasChanges: !!run.hasChanges,
     name: run.name,
     robotId: run.robotMetaId, // Renaming robotMetaId to robotId
     startedAt: run.startedAt,
@@ -566,6 +568,10 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
     const effectiveFormats = normalizedFormats ?? (robot.recording_meta?.formats || []);
     const robotType = robot.recording_meta?.type;
 
+    if (compareRuns !== undefined && typeof compareRuns !== 'boolean') {
+      return res.status(400).json({ error: 'compareRuns must be a boolean.' });
+    }
+
     if ((robotType === 'crawl' || robotType === 'search' || robotType === 'scrape') && formatsRequireLlm(effectiveFormats)) {
       const storedMeta = robot.recording_meta as any;
       const llmValidationError = validateRequiredLlmConfig(
@@ -586,7 +592,7 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
     if (trimmedName) updatedMeta.name = trimmedName;
     if (targetUrl) updatedMeta.url = normalizeRobotUrl(targetUrl);
     if (normalizedFormats !== undefined) updatedMeta.formats = normalizedFormats;
-    if (compareRuns !== undefined) updatedMeta.compareRuns = !!compareRuns;
+    if (compareRuns !== undefined) updatedMeta.compareRuns = compareRuns;
     if (promptLlmProvider !== undefined) updatedMeta.promptLlmProvider = promptLlmProvider || undefined;
     if (promptLlmModel !== undefined) updatedMeta.promptLlmModel = promptLlmModel || undefined;
     if ('promptLlmApiKey' in req.body) {
@@ -1278,14 +1284,7 @@ router.get('/runs/:id/diff', requireSignIn, async (req: AuthenticatedRequest, re
       return res.status(404).json({ error: 'Run not found' });
     }
 
-    const previousRun = await Run.findOne({
-      where: {
-        robotMetaId: run.robotMetaId,
-        status: 'success',
-        runId: { [Op.ne]: run.runId },
-      },
-      order: [['finishedAt', 'DESC']],
-    });
+    const previousRun = await findPreviousSuccessfulRun(run);
 
     if (!previousRun) {
       return res.status(404).json({ error: 'No previous run to compare against' });

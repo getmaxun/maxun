@@ -9,7 +9,6 @@ import {
 } from './browser-management/controller';
 import { WorkflowFile } from 'maxun-core';
 import Run from './models/Run';
-import { Op } from 'sequelize';
 import Robot from './models/Robot';
 import { browserPool } from './server';
 import { Page } from 'playwright-core';
@@ -25,6 +24,7 @@ import { executeBrowserAgent } from './sdk/browserAgent';
 import { processRobotOutputFormats } from './utils/output-post-processor';
 import { getInterpretationFailureReason, hasExpectedRobotOutput, flushReloadAndCheckPartialOutput } from './utils/output-validation';
 import { handleRunRecording } from './workflow-management/scheduler';
+import { compareRunTextWithPrevious } from './utils/run-comparison';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -334,31 +334,19 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
             }
           }
 
-          await run.update({ status: 'success', finishedAt: new Date().toLocaleString(), log: `${formats.join(', ').toUpperCase()} conversion completed successfully`, serializableOutput, binaryOutput });
+          const finishedAt = new Date().toLocaleString();
+          await run.update({ status: 'success', finishedAt, log: `${formats.join(', ').toUpperCase()} conversion completed successfully`, serializableOutput, binaryOutput, hasChanges: false });
 
-          // Compare text comparison when robot's metadata has compareRuns enabled and when the current run produced a text output
+          let hasChanges = false;
           if ((recording.recording_meta as any).compareRuns && serializableOutput.text) {
             try {
-              // finding previous successful run
-              const previousRun = await Run.findOne({
-                where: { robotMetaId: plainRun.robotMetaId, status: 'success', runId: { [Op.ne]: data.runId } },
-                order: [['finishedAt', 'DESC']],
-              });
+              const currentText = serializableOutput.text[0]?.content || '';
+              const comparison = await compareRunTextWithPrevious(run, currentText);
+              hasChanges = comparison.hasChanges;
 
-              if (previousRun) {
-                const normalize = (s: string) => s.replace(/\s+/g, ' ').trim();
-                // extract previous text
-                const previousText = previousRun.serializableOutput?.text?.[0]?.content;
-                // extract current text
-                const currentText = serializableOutput.text[0]?.content;
-                // compare the 2 strings
-                const hasChanged = previousText !== undefined && normalize(previousText) !== normalize(currentText || '');
-
-                // when the text changed, update the current run's database record
-                if (hasChanged) {
-                  await run.update({ hasChanges: true });
-                  logger.log('info', `Run ${data.runId} has changes compared to previous run ${previousRun.runId}`);
-                }
+              if (hasChanges && comparison.previousRun) {
+                await run.update({ hasChanges });
+                logger.log('info', `Run ${data.runId} has changes compared to previous run ${comparison.previousRun.runId}`);
               }
             } catch (compareError: any) {
               logger.log('warn', `Run comparison failed for run ${data.runId}: ${compareError.message}`);
@@ -373,7 +361,7 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
           }
 
           try {
-            const completionData = { runId: data.runId, robotMetaId: plainRun.robotMetaId, robotName: recording.recording_meta.name, status: 'success', finishedAt: new Date().toLocaleString() };
+            const completionData = { runId: data.runId, robotMetaId: plainRun.robotMetaId, robotName: recording.recording_meta.name, status: 'success', finishedAt, hasChanges };
             serverIo.of(browserId).emit('run-completed', completionData);
             serverIo.of('/queued-run').to(`user-${data.userId}`).emit('run-completed', completionData);
           } catch (socketError: any) {
