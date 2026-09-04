@@ -24,9 +24,26 @@
 <a href="https://trendshift.io/repositories/12113" target="_blank"><img src="https://trendshift.io/api/badge/repositories/12113" alt="getmaxun%2Fmaxun | Trendshift" style="width: 250px; height: 55px; margin-top: 10px;" width="250" height="55"/></a>
 </p>
 
-
 ### Sponsors
 <table>
+<tr>
+<td width="30%" height="100">
+<a href="https://www.webshare.io/?referral_code=wwhk524ynls2">
+  <img src="https://github.com/user-attachments/assets/c3a60969-a8f8-4d2c-acef-22bee80c2484" alt="Webshare" width="280" height="150">
+</a>
+</td>
+<td width="70%">
+
+#### <a href="https://www.webshare.io/?referral_code=wwhk524ynls2">Webshare</a>
+
+Webshare gives you instant access to a proxy pool of 80M+ ethically-sourced IPs across 195+ countries, with rotating residential, static ISP, and datacenter options plus a full API. It includes a 100+ Gbps backbone, country/city/state/ZIP/ASN-level targeting, and requires no credit card to start.
+<br />
+**Free tier: 10 proxies with 1GB/month - enough to test-drive the service before you commit.**
+<br />
+<b>Discount Code: `MAXUN20` - Get 20% off your first purchase.</b>
+</td>
+</tr>
+    
 <tr>
 <td width="30%" height="100">
 <a href="https://www.ipcook.com/?ref=githubmaxun&utm_source=github&utm_medium=referral&utm_campaign=maxun">
