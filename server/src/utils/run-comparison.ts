@@ -19,6 +19,9 @@ export async function findPreviousSuccessfulRun(currentRun: any) {
       robotMetaId: currentRun.robotMetaId,
       status: 'success',
     },
+    // Only pull the fields we actually use to avoid loading full
+    // serializableOutput for every historical run just to filter most of them out
+    attributes: ['runId', 'finishedAt', 'startedAt', 'serializableOutput'],
   });
 
   const currentTimestamp = getRunTimestamp(currentRun);
