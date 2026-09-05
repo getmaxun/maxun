@@ -20,6 +20,7 @@ import { safeDecrypt } from "../../utils/auth";
 import { getInterpretationFailureReason, hasExpectedRobotOutput } from "../../utils/output-validation";
 import { addJob } from '../../storage/graphileWorker';
 import { QUEUE_NAMES } from '../../task-runner';
+import { compareRunTextWithPrevious } from '../../utils/run-comparison';
 
 const getRobotTargetUrl = (recording: any): string => {
   const metaUrl = recording?.recording_meta?.url?.trim();
@@ -439,7 +440,24 @@ async function executeRun(id: string, userId: string) {
           log: `${formats.join(', ')} conversion completed successfully`,
           serializableOutput,
           binaryOutput,
+          hasChanges: false,
         });
+
+        let hasChanges = false;
+        if ((recording.recording_meta as any).compareRuns && serializableOutput.text) {
+          try {
+            const currentText = serializableOutput.text[0]?.content || '';
+            const comparison = await compareRunTextWithPrevious(run, currentText);
+            hasChanges = comparison.hasChanges;
+
+            if (hasChanges && comparison.previousRun) {
+              await run.update({ hasChanges });
+              logger.log('info', `Scheduled run ${plainRun.runId} has changes compared to previous run ${comparison.previousRun.runId}`);
+            }
+          } catch (compareError: any) {
+            logger.log('warn', `Run comparison failed for scheduled run ${plainRun.runId}: ${compareError.message}`);
+          }
+        }
 
         let uploadedBinaryOutput: Record<string, string> = {};
         if (Object.keys(binaryOutput).length > 0) {
@@ -457,7 +475,8 @@ async function executeRun(id: string, userId: string) {
             robotMetaId: plainRun.robotMetaId,
             robotName: recording.recording_meta.name,
             status: 'success',
-            finishedAt: new Date().toLocaleString()
+            finishedAt: new Date().toLocaleString(),
+            hasChanges,
           };
 
           serverIo.of(plainRun.browserId).emit('run-completed', completionData);
