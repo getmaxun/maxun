@@ -55,3 +55,11 @@ AI-assisted contributions are welcome. If you use AI tools to generate code, ple
 4. You understand the code you are submitting and can respond to review feedback.
 
 Low-quality, unverified, or blindly generated patches will not be merged.
+
+## Frontend regression checks
+
+Run `npm test` for the offline Node regression checks and `npm run build` for the
+frontend build. Run-group labels resolve current recording metadata by its stable
+ID; persisted run names remain historical snapshots. Robot edits must invalidate
+the shared recordings cache so every mounted consumer observes the new name.
+When metadata is unavailable, run groups retain their historical label.

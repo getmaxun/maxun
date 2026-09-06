@@ -13,7 +13,8 @@ import { Accordion, AccordionSummary, AccordionDetails, Typography, Box, TextFie
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SearchIcon from '@mui/icons-material/Search';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useGlobalInfoStore, useCachedRuns, useCacheInvalidation } from "../../context/globalInfo";
+import { useGlobalInfoStore, useCachedRuns, useCachedRecordings, useCacheInvalidation } from "../../context/globalInfo";
+import { getCurrentRobotNames } from "./robotNames";
 import { RunSettings } from "./RunSettings";
 import { CollapsibleRow } from "./ColapsibleRow";
 import { ArrowDownward, ArrowUpward, UnfoldMore } from '@mui/icons-material';
@@ -140,6 +141,8 @@ export const RunsTable: React.FC<RunsTableProps> = ({
   const { notify, rerenderRuns, setRerenderRuns } = useGlobalInfoStore();
   const { data: rows = [], isLoading: isFetching, error, refetch } = useCachedRuns();
   const { invalidateRuns } = useCacheInvalidation();
+  const { data: recordings = [] } = useCachedRecordings();
+  const robotNames = useMemo(() => getCurrentRobotNames(recordings), [recordings]);
   
   const activeSocketsRef = useRef<Map<string, Socket>>(new Map());
 
@@ -399,10 +402,11 @@ export const RunsTable: React.FC<RunsTableProps> = ({
   // Filter rows based on search term
   const filteredRows = useMemo(() => {
     let result = rows.filter((row) =>
-      row.name.toLowerCase().includes(searchTerm.toLowerCase())
+      (robotNames.get(row.robotMetaId) ?? row.name).toLowerCase().includes(searchTerm.toLowerCase())
+      || row.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
     return result;
-  }, [rows, searchTerm]);
+  }, [rows, searchTerm, robotNames]);
 
   const parseDateString = (dateStr: string): Date => {
     try {
@@ -576,7 +580,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
                   TransitionProps={{ unmountOnExit: true }} // Optimize accordion rendering
                 >
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography variant="h6">{data[data.length - 1].name}</Typography>
+                    <Typography variant="h6">{robotNames.get(robotMetaId) ?? data[data.length - 1].name}</Typography>
                   </AccordionSummary>
                   <AccordionDetails>
                     <Table stickyHeader aria-label="sticky table">

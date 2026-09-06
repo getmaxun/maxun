@@ -95,6 +95,7 @@
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "scripts": {
+    "test": "node --test tests/*.test.mjs",
     "start": "npm run build:server && concurrently -k \"npm run server\" \"npm run client\"",
     "server": "cross-env NODE_OPTIONS='--max-old-space-size=4096' node server/dist/server/src/server.js",
     "start:dev": "concurrently -k \"npm run server:dev\" \"npm run client\"",
