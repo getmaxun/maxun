@@ -24,6 +24,7 @@ import { executeBrowserAgent } from './sdk/browserAgent';
 import { processRobotOutputFormats } from './utils/output-post-processor';
 import { getInterpretationFailureReason, hasExpectedRobotOutput, flushReloadAndCheckPartialOutput } from './utils/output-validation';
 import { handleRunRecording } from './workflow-management/scheduler';
+import { compareRunTextWithPrevious } from './utils/run-comparison';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -333,7 +334,24 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
             }
           }
 
-          await run.update({ status: 'success', finishedAt: new Date().toLocaleString(), log: `${formats.join(', ').toUpperCase()} conversion completed successfully`, serializableOutput, binaryOutput });
+          const finishedAt = new Date().toLocaleString();
+          await run.update({ status: 'success', finishedAt, log: `${formats.join(', ').toUpperCase()} conversion completed successfully`, serializableOutput, binaryOutput, hasChanges: false });
+
+          let hasChanges = false;
+          if ((recording.recording_meta as any).compareRuns && serializableOutput.text) {
+            try {
+              const currentText = serializableOutput.text[0]?.content || '';
+              const comparison = await compareRunTextWithPrevious(run, currentText);
+              hasChanges = comparison.hasChanges;
+
+              if (hasChanges && comparison.previousRun) {
+                await run.update({ hasChanges });
+                logger.log('info', `Run ${data.runId} has changes compared to previous run ${comparison.previousRun.runId}`);
+              }
+            } catch (compareError: any) {
+              logger.log('warn', `Run comparison failed for run ${data.runId}: ${compareError.message}`);
+            }
+          }
 
           let uploadedBinaryOutput: Record<string, string> = {};
           if (Object.keys(binaryOutput).length > 0) {
@@ -343,7 +361,7 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
           }
 
           try {
-            const completionData = { runId: data.runId, robotMetaId: plainRun.robotMetaId, robotName: recording.recording_meta.name, status: 'success', finishedAt: new Date().toLocaleString() };
+            const completionData = { runId: data.runId, robotMetaId: plainRun.robotMetaId, robotName: recording.recording_meta.name, status: 'success', finishedAt, hasChanges };
             serverIo.of(browserId).emit('run-completed', completionData);
             serverIo.of('/queued-run').to(`user-${data.userId}`).emit('run-completed', completionData);
           } catch (socketError: any) {

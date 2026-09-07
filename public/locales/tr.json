@@ -466,6 +466,7 @@
     "robot_limit": "Robot Limiti",
     "created_by_user": "Oluşturan",
     "created_at": "Oluşturulma",
+    "compare_runs": "Compare most recent run to previous run",
     "errors": {
       "robot_not_found": "Robot bulunamadı. Tekrar deneyin."
     },

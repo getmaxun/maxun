@@ -465,6 +465,7 @@
       "robot_limit": "Robot Limit",
       "created_by_user": "Created By User",
       "created_at": "Robot Created At",
+      "compare_runs": "Compare most recent run to previous run",
       "errors": {
         "robot_not_found": "Could not find robot details. Please try again."
       },

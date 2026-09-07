@@ -466,6 +466,7 @@
     "robot_limit": "机器人限制",
     "created_by_user": "由用户创建",
     "created_at": "机器人创建时间",
+    "compare_runs": "Compare most recent run to previous run",
     "errors": {
       "robot_not_found": "无法找到机器人详细信息。请重试。"
     },

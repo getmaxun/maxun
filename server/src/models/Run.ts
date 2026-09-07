@@ -33,6 +33,7 @@ interface RunAttributes {
   binaryOutput: Record<string, string>;
   retryCount?: number;
   isPartial?: boolean;
+  hasChanges?: boolean;
 }
 
 interface RunCreationAttributes extends Optional<RunAttributes, 'id'> { }
@@ -59,6 +60,7 @@ class Run extends Model<RunAttributes, RunCreationAttributes> implements RunAttr
   public binaryOutput!: Record<string, any>;
   public retryCount!: number;
   public isPartial!: boolean;
+  public hasChanges!: boolean;
 }
 
 Run.init(
@@ -151,6 +153,11 @@ Run.init(
       defaultValue: 0,
     },
     isPartial: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: false,
+    },
+    hasChanges: {
       type: DataTypes.BOOLEAN,
       allowNull: true,
       defaultValue: false,

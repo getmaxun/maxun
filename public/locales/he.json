@@ -465,6 +465,7 @@
       "robot_limit": "מגבלת רובוט",
       "created_by_user": "נוצר על ידי משתמש",
       "created_at": "הרובוט נוצר ב-",
+      "compare_runs": "Compare most recent run to previous run",
       "errors": {
         "robot_not_found": "לא ניתן היה למצוא את פרטי הרובוט. אנא נסה שוב."
       },
