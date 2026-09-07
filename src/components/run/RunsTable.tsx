@@ -430,7 +430,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
       .filter(([robotId, runs]) => runGroupMatchesSearch(
         getRunGroupName(robotNames, robotId, runs),
         searchTerm,
-      ))
+      ) || runs.some(run => runGroupMatchesSearch(run.name, searchTerm)))
       .map(([robotId, runs]) => ({
         robotId,
         runs,
