@@ -14,7 +14,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SearchIcon from '@mui/icons-material/Search';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useGlobalInfoStore, useCachedRuns, useCachedRecordings, useCacheInvalidation } from "../../context/globalInfo";
-import { getCurrentRobotNames } from "./robotNames";
+import { getCurrentRobotNames, getRunGroupName, runGroupMatchesSearch } from "../../helpers/robotNames";
 import { RunSettings } from "./RunSettings";
 import { CollapsibleRow } from "./ColapsibleRow";
 import { ArrowDownward, ArrowUpward, UnfoldMore } from '@mui/icons-material';
@@ -399,15 +399,6 @@ export const RunsTable: React.FC<RunsTableProps> = ({
     refetch();
   }, [notify, t, refetch]);
 
-  // Filter rows based on search term
-  const filteredRows = useMemo(() => {
-    let result = rows.filter((row) =>
-      (robotNames.get(row.robotMetaId) ?? row.name).toLowerCase().includes(searchTerm.toLowerCase())
-      || row.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    return result;
-  }, [rows, searchTerm, robotNames]);
-
   const parseDateString = (dateStr: string): Date => {
     try {
       if (dateStr.includes('PM') || dateStr.includes('AM')) {
@@ -421,7 +412,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
   };
 
   const groupedRows = useMemo(() => {
-    const groupedData = filteredRows.reduce((acc, row) => {
+    const groupedData = rows.reduce((acc, row) => {
       if (!acc[row.robotMetaId]) {
         acc[row.robotMetaId] = [];
       }
@@ -435,11 +426,16 @@ export const RunsTable: React.FC<RunsTableProps> = ({
       );
     });
   
-    const robotEntries = Object.entries(groupedData).map(([robotId, runs]) => ({
-      robotId,
-      runs: runs as Data[],
-      latestRunDate: parseDateString((runs as Data[])[0].startedAt).getTime()
-    }));
+    const robotEntries = (Object.entries(groupedData) as [string, Data[]][])
+      .filter(([robotId, runs]) => runGroupMatchesSearch(
+        getRunGroupName(robotNames, robotId, runs),
+        searchTerm,
+      ))
+      .map(([robotId, runs]) => ({
+        robotId,
+        runs,
+        latestRunDate: parseDateString(runs[0].startedAt).getTime()
+      }));
   
     robotEntries.sort((a, b) => b.latestRunDate - a.latestRunDate);
   
@@ -447,7 +443,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
       acc[robotId] = runs;
       return acc;
     }, {} as Record<string, Data[]>);
-  }, [filteredRows]);
+  }, [rows, searchTerm, robotNames]);
 
   const renderTableRows = useCallback((data: Data[], robotMetaId: string) => {
     const { page, rowsPerPage } = getPaginationState(robotMetaId);
@@ -580,7 +576,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
                   TransitionProps={{ unmountOnExit: true }} // Optimize accordion rendering
                 >
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography variant="h6">{robotNames.get(robotMetaId) ?? data[data.length - 1].name}</Typography>
+                    <Typography variant="h6">{getRunGroupName(robotNames, robotMetaId, data)}</Typography>
                   </AccordionSummary>
                   <AccordionDetails>
                     <Table stickyHeader aria-label="sticky table">

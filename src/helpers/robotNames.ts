@@ -11,3 +11,15 @@ export function getCurrentRobotNames(recordings: readonly unknown[]): Map<string
   }
   return names;
 }
+
+export function getRunGroupName(
+  robotNames: ReadonlyMap<string, string>,
+  robotMetaId: string,
+  runs: readonly { name: string }[],
+): string {
+  return robotNames.get(robotMetaId) ?? runs[runs.length - 1]?.name ?? '';
+}
+
+export function runGroupMatchesSearch(groupName: string, searchTerm: string): boolean {
+  return groupName.toLowerCase().includes(searchTerm.toLowerCase());
+}
