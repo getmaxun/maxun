@@ -227,7 +227,6 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                         label={t('runs_table.run_diff.changed_chip', { defaultValue: 'Changed' })}
                         color="info"
                         variant="outlined"
-                        size="small"
                         onClick={handleOpenDiff}
                         sx={{ ml: 1, cursor: 'pointer' }}
                       />
