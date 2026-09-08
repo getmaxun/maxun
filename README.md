@@ -25,75 +25,59 @@
 </p>
 
 ### Sponsors
+
 <table>
 <tr>
-<td width="30%" height="100">
+<td width="32%" align="center" valign="middle">
 <a href="https://www.webshare.io/?referral_code=wwhk524ynls2">
-  <img src="https://github.com/user-attachments/assets/c3a60969-a8f8-4d2c-acef-22bee80c2484" alt="Webshare" width="300" height="180">
+  <img src="https://github.com/user-attachments/assets/c3a60969-a8f8-4d2c-acef-22bee80c2484" alt="Webshare" width="260" height="150">
 </a>
 </td>
-<td width="70%">
-
-#### <a href="https://www.webshare.io/?referral_code=wwhk524ynls2">Webshare</a>
-
-Webshare gives you instant access to a proxy pool of 80M+ ethically-sourced IPs across 195+ countries, with rotating residential, static ISP, and datacenter options plus a full API. It includes a 100+ Gbps backbone, country/city/state/ZIP/ASN-level targeting, and requires no credit card to start.
-<br />
-**Free tier: 10 proxies with 1GB/month - enough to test-drive the service before you commit.**
-<br />
-<b>Discount Code: `MAXUN20` - Get 20% off your first purchase.</b>
+<td width="68%" valign="middle">
+<a href="https://www.webshare.io/?referral_code=wwhk524ynls2"><strong>Webshare</strong></a><br>
+Webshare gives you instant access to a proxy pool of 80M+ ethically-sourced IPs across 195+ countries, with rotating residential, static ISP, and datacenter options plus a full API. It includes a 100+ Gbps backbone, country/city/state/ZIP/ASN-level targeting, and requires no credit card to start.<br>
+<strong>Free tier:</strong> 10 proxies + 1GB/month · <strong>Discount:</strong> <code>MAXUN20</code> - Get 20% off your first purchase.
 </td>
 </tr>
 
 <tr>
-<td width="30%" height="100">
-
+<td width="32%" align="center" valign="middle">
 <a href="https://mangoproxy.com/?utm_source=github&utm_medium=partner&utm_campaign=getmaxun">
-  <img src="https://github.com/user-attachments/assets/326b5b8f-6a2c-4aa2-94c8-6a29ae23f2ac" alt="Sponsor Name" width="300" height="150">
+  <img src="https://github.com/user-attachments/assets/326b5b8f-6a2c-4aa2-94c8-6a29ae23f2ac" alt="Mango Proxy" width="260" height="150">
 </a>
-
 </td>
-<td width="70%">
-
-#### <a href="https://mangoproxy.com/?utm_source=github&utm_medium=partner&utm_campaign=getmaxun">Mango Proxy</a>
-
-MangoProxy offers Residential, ISP, Datacenter, and Mobile Proxies in 200+ countries with HTTP(S)/SOCKS5 support and flexible IP management.
-<br />
-<b>Discount Code: MAXUN - 8% off Static ISP Proxies</b>
+<td width="68%" valign="middle">
+<a href="https://mangoproxy.com/?utm_source=github&utm_medium=partner&utm_campaign=getmaxun"><strong>Mango Proxy</strong></a><br>
+MangoProxy offers Residential, ISP, Datacenter, and Mobile Proxies in 200+ countries with HTTP(S)/SOCKS5 support and flexible IP management.<br>
+<strong>Discount:</strong> <code>MAXUN</code> - 8% off Static ISP Proxies.
 </td>
 </tr>
 
 <tr>
-<td width="35%" height="100">
+<td width="32%" align="center" valign="middle">
 <a href="https://go.nodemaven.com/maxunGHaugust">
-  <img src="https://github.com/user-attachments/assets/348c011f-8c73-4845-85b9-8dd85f6e85ec" alt="Nodemaven" width="400" height="150">
+  <img src="https://github.com/user-attachments/assets/348c011f-8c73-4845-85b9-8dd85f6e85ec" alt="Nodemaven" width="260" height="120">
 </a>
 </td>
-<td width="70%">
-
-#### <a href="https://go.nodemaven.com/maxunGHaugust">Nodemaven</a>
-
-The most efficient proxy provider for Web Scraping and Automation with the Highest Quality IP on the market. Why [Nodemaven](https://go.nodemaven.com/maxunGHaugust)?
-- ZIP targeting
-- 99.9% uptime
-- IP filtering: all proxies have fraud score <97%
-- No KYC required
-- Unique free tools: Proxy Bandwidth Checker, Meta Tag Checker, IP Lookup and others!
-
-<b>Discount Code: `MAXUN35` - 35% off to Mobile and Residential Proxies. `MAXUN40` - 40% off to ISP (Static) Proxies.</b>
+<td width="68%" valign="middle">
+<a href="https://go.nodemaven.com/maxunGHaugust"><strong>Nodemaven</strong></a><br>
+The most efficient proxy provider for Web Scraping and Automation with the Highest Quality IP on the market. Why <a href="https://go.nodemaven.com/maxunGHaugust">Nodemaven</a>?
+<br/>
+· ZIP targeting · 99.9% uptime · IP filtering: all proxies have fraud score <97% <br/>
+· No KYC required · Unique free tools: Proxy Bandwidth Checker, Meta Tag Checker, IP Lookup and others!<br>
+<strong>Discounts:</strong> <code>MAXUN35</code> — 35% off Mobile & Residential · <code>MAXUN40</code> — 40% off ISP (Static)
 </td>
 </tr>
 
 <tr>
-<td width="30%" height="100">
+<td width="32%" align="center" valign="middle">
 <a href="https://www.testmuai.com/?utm_medium=sponsor&utm_source=maxun">
-  <img src="https://github.com/user-attachments/assets/6c96005b-85df-43e0-9b63-96aaca676c11" alt="TestMu AI"  width="350" height="150">
+  <img src="https://github.com/user-attachments/assets/6c96005b-85df-43e0-9b63-96aaca676c11" alt="TestMu AI" width="260">
 </a>
 </td>
-<td width="70%">
-
-#### <a href="https://www.testmuai.com/?utm_medium=sponsor&utm_source=maxun">TestMu AI</a>
-
-TestMu AI is the Native AI-Agentic Cloud Platform to Supercharge Quality Engineering. Test Intelligently and Ship Faster.
+<td width="68%" valign="middle">
+<a href="https://www.testmuai.com/?utm_medium=sponsor&utm_source=maxun"><strong>TestMu AI</strong></a><br>
+The native AI-agentic cloud platform for quality engineering. Test intelligently and ship faster.
 </td>
 </tr>
 </table>
