@@ -46,6 +46,24 @@ Webshare gives you instant access to a proxy pool of 80M+ ethically-sourced IPs 
 
 <tr>
 <td width="35%" height="100">
+
+<a href="https://mangoproxy.com/?utm_source=github&utm_medium=partner&utm_campaign=getmaxun">
+  <img src="https://github.com/user-attachments/assets/326b5b8f-6a2c-4aa2-94c8-6a29ae23f2ac" alt="Sponsor Name" width="300" height="150">
+</a>
+
+</td>
+<td width="65%">
+
+#### <a href="https://mangoproxy.com/?utm_source=github&utm_medium=partner&utm_campaign=getmaxun">Mango Proxy</a>
+
+MangoProxy offers Residential, ISP, Datacenter, and Mobile Proxies in 200+ countries with HTTP(S)/SOCKS5 support and flexible IP management.
+<br />
+<b>Discount Code: MAXUN - 8% off Static ISP Proxies</b>
+</td>
+</tr>
+
+<tr>
+<td width="35%" height="100">
 <a href="https://go.nodemaven.com/maxunGHaugust">
   <img src="https://github.com/user-attachments/assets/348c011f-8c73-4845-85b9-8dd85f6e85ec" alt="Nodemaven" width="400" height="150">
 </a>
