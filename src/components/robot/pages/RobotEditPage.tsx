@@ -18,7 +18,7 @@ import {
   Divider,
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
-import { useGlobalInfoStore } from "../../../context/globalInfo";
+import { useGlobalInfoStore, useCacheInvalidation } from "../../../context/globalInfo";
 import { getStoredRecording, updateRecording, replaceDocumentFile } from "../../../api/storage";
 import { WhereWhatPair } from "maxun-core";
 import { RobotConfigPage } from "./RobotConfigPage";
@@ -228,6 +228,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
   const location = useLocation();
   const [credentials, setCredentials] = useState<Credentials>({});
   const { recordingId, notify, setRerenderRobots } = useGlobalInfoStore();
+  const { invalidateRecordings } = useCacheInvalidation();
   const [robot, setRobot] = useState<RobotSettings | null>(null);
   const [credentialGroups, setCredentialGroups] = useState<GroupedCredentials>({
     passwords: [],
@@ -1604,6 +1605,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
       const success = await updateRecording(robot.recording_meta.id, payload);
 
       if (success) {
+        invalidateRecordings();
         setRerenderRobots(true);
         notify("success", t("robot_edit.notifications.update_success"));
         handleStart(robot);
