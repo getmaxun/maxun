@@ -1485,14 +1485,18 @@ const documentUpload = multer({
     fileFilter: (_req, file, cb) => {
         const allowedMimeTypes = [
             'application/pdf',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'text/csv',
             'application/csv',
+            'image/jpeg',
+            'image/jpg',
+            'image/png',
         ];
         if (allowedMimeTypes.includes(file.mimetype)) {
             cb(null, true);
         } else {
-            cb(new Error('Only PDF, XLSX, and CSV files are allowed'));
+            cb(new Error('Only PDF, DOCX, XLSX, CSV, JPG, and PNG files are allowed'));
         }
     },
 });
@@ -1509,7 +1513,7 @@ router.post("/sdk/robots/document", requireAPIKey, documentUpload.single('file')
         if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
         const file = (req as any).file as Express.Multer.File | undefined;
-        if (!file) return res.status(400).json({ error: 'A PDF file is required' });
+        if (!file) return res.status(400).json({ error: 'A PDF, DOCX, XLSX, CSV, JPG, or PNG file is required' });
 
         const prompt: string = (req.body.prompt || '').trim();
         if (!prompt) return res.status(400).json({ error: 'prompt is required' });
@@ -1583,7 +1587,7 @@ router.post("/sdk/robots/document-parse", requireAPIKey, documentUpload.single('
         if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
         const file = (req as any).file as Express.Multer.File | undefined;
-        if (!file) return res.status(400).json({ error: 'A PDF file is required' });
+        if (!file) return res.status(400).json({ error: 'A PDF, DOCX, XLSX, CSV, JPG, or PNG file is required' });
 
         const rawFormats = req.body['outputFormats[]'] ?? req.body.outputFormats ?? req.body.formats;
         const requestedFormats: string[] = Array.isArray(rawFormats)
