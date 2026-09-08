@@ -45,14 +45,14 @@ Webshare gives you instant access to a proxy pool of 80M+ ethically-sourced IPs 
 </tr>
 
 <tr>
-<td width="35%" height="100">
+<td width="30%" height="100">
 
 <a href="https://mangoproxy.com/?utm_source=github&utm_medium=partner&utm_campaign=getmaxun">
   <img src="https://github.com/user-attachments/assets/326b5b8f-6a2c-4aa2-94c8-6a29ae23f2ac" alt="Sponsor Name" width="300" height="150">
 </a>
 
 </td>
-<td width="65%">
+<td width="70%">
 
 #### <a href="https://mangoproxy.com/?utm_source=github&utm_medium=partner&utm_campaign=getmaxun">Mango Proxy</a>
 
