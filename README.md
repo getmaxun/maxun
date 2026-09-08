@@ -43,22 +43,6 @@ Webshare gives you instant access to a proxy pool of 80M+ ethically-sourced IPs 
 <b>Discount Code: `MAXUN20` - Get 20% off your first purchase.</b>
 </td>
 </tr>
-    
-<tr>
-<td width="30%" height="100">
-<a href="https://www.ipcook.com/?ref=githubmaxun&utm_source=github&utm_medium=referral&utm_campaign=maxun">
-  <img src="https://github.com/user-attachments/assets/b0fba023-a858-4e99-aa28-07754dce67b5" alt="IPcook" width="400" height="150">
-</a>
-</td>
-<td width="70%">
-
-#### <a href="https://www.ipcook.com/?ref=githubmaxun&utm_source=github&utm_medium=referral&utm_campaign=maxun">IPcook</a>
-
-IPcook provides 55M+ real residential IPs across 185+ countries and regions, delivering fast and reliable proxy solutions for web scraping, automation, and data collection. 99.99% uptime, average response times under 0.5s, and 100,000 concurrency at max. Start with a [FREE 100MB Trial](https://www.ipcook.com/?ref=githubmaxun&utm_source=github&utm_medium=referral&utm_campaign=maxun) to experience IPcook’s proxy service.
-<br />
-<b>Discount Code: `WELCOME20` - Get 20% off your first purchase.</b>
-</td>
-</tr>
 
 <tr>
 <td width="35%" height="100">
@@ -78,37 +62,6 @@ The most efficient proxy provider for Web Scraping and Automation with the Highe
 - Unique free tools: Proxy Bandwidth Checker, Meta Tag Checker, IP Lookup and others!
 
 <b>Discount Code: `MAXUN35` - 35% off to Mobile and Residential Proxies. `MAXUN40` - 40% off to ISP (Static) Proxies.</b>
-</td>
-</tr>
-
-<tr>
-<td width="30%" height="100">
-<a href="https://www.novada.com/?github-maxun">
-  <img src="https://github.com/user-attachments/assets/68262e31-639a-4d36-a281-e50b68fcdc92" alt="Novada"  width="350" height="150">
-</a>
-</td>
-<td width="70%">
-
-#### <a href="https://www.novada.com/?github-maxun">Novada</a>
-
-Novada provides high-quality residential proxies and a powerful Scraper API for reliable web data collection at scale. Access real residential IPs worldwide, reduce blocks, and collect the data your scraping workflows need.
-<br />
-<b>Discount Code: `GitNOVADA` - Get 20% off Rotating Residential Proxies and Scraping solutions.</b>
-</td>
-</tr>
-
-<tr>
-<td width="20%" height="100">
-<a href="https://www.coreclaw.com/?utm_source=github&utm_medium=cpc&utm_campaign=max&utm_term=&utm_id=max">
-  <img src="https://github.com/user-attachments/assets/f3421d5c-d789-4f8c-8bfd-b41a81afdc68" alt="CoreClaw" width="400" height="150">
-</a>
-</td>
-<td width="80%">
-
-#### <a href="https://www.coreclaw.com/?utm_source=github&utm_medium=cpc&utm_campaign=max&utm_term=&utm_id=max">CoreClaw</a>
-
-CoreClaw — Production-ready Web Data APIs for AI agents and developers. Extract structured data from the web and build powerful automation workflows.
-<br />
 </td>
 </tr>
 
