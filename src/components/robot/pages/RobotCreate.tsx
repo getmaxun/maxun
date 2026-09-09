@@ -1820,7 +1820,7 @@ const RobotCreate: React.FC = () => {
               <Box sx={{ width: '100%', maxWidth: 700 }}>
                 <Box sx={{ width: '100%', mb: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <Box sx={{ width: '100%', maxWidth: 700 }}>
-                    <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                    <Box sx={{ display: 'flex', gap: 2, mb: 1 }}>
                       <Card
                         onClick={() => setDocumentMode('extract')}
                         sx={{
@@ -1906,8 +1906,8 @@ const RobotCreate: React.FC = () => {
                     </Typography>
                   ) : (
                     <>
-                      <Typography variant="body1" fontWeight={500}>Click to upload a PDF, DOCX, XLSX, CSV, JPG, or PNG</Typography>
-                      <Typography variant="body2" color="text.secondary">Supported files: PDF, DOCX, XLSX, CSV, JPG, or PNG • Max file size: 10 MB</Typography>
+                      <Typography variant="body1" fontWeight={500}>Upload PDF, DOCX, XLSX, CSV, JPG, or PNG </Typography>
+                      <Typography variant="body2" color="text.secondary">Max file size: 10 MB</Typography>
                     </>
                   )}
                 </Box>
