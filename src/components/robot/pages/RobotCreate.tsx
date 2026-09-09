@@ -1881,12 +1881,6 @@ const RobotCreate: React.FC = () => {
                       </Typography>
                     </Box>
                   </Box>
-
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                    {documentMode === 'extract'
-                      ? 'Pull structured data fields from a document using AI.'
-                      : 'Convert a document to Markdown, HTML, links, and an AI summary.'}
-                  </Typography>
                 </Box>
 
                 <TextField
