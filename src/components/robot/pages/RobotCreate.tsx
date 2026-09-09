@@ -709,372 +709,369 @@ const RobotCreate: React.FC = () => {
         </Box>
 
         <TabPanel value={tabValue} index={0}>
-          <Card sx={{ mb: 4, p: 4 }}>
-            <Box display="flex" flexDirection="column" alignItems="center">
-              <img
-                src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
-                width={73}
-                height={65}
-                style={{
-                  borderRadius: '5px',
-                  marginBottom: '30px'
+  <Card sx={{ mb: 4, p: 4 }}>
+    <Box display="flex" flexDirection="column" alignItems="center">
+      <img
+        src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
+        width={73}
+        height={65}
+        style={{
+          borderRadius: '5px',
+          marginBottom: '30px'
+        }}
+        alt="Maxun Logo"
+      />
+
+      <Typography variant="body2" color="text.secondary" mb={3}>
+        Extract structured data from websites using AI or record your own extraction workflow.
+      </Typography>
+
+      <Box sx={{ width: '100%', maxWidth: 700, mb: 4 }}>
+        <Box
+          sx={{
+            display: 'inline-flex',
+            p: 0.5,
+            borderRadius: '10px',
+            bgcolor: 'action.hover',
+            gap: 0.5,
+          }}
+        >
+          <Box
+            onClick={() => setGenerationMode('recorder')}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              px: 2,
+              py: 1,
+              borderRadius: '8px',
+              cursor: 'pointer',
+              bgcolor: generationMode === 'recorder' ? 'background.paper' : 'transparent',
+              boxShadow: generationMode === 'recorder' ? 1 : 0,
+              transition: 'all 0.15s',
+            }}
+          >
+            <HighlightAlt sx={{ fontSize: 18 }} />
+            <Typography variant="body2" fontWeight={600}>
+              Recorder
+            </Typography>
+          </Box>
+
+          <Box
+            onClick={() => setGenerationMode('agent')}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              px: 2,
+              py: 1,
+              borderRadius: '8px',
+              cursor: 'pointer',
+              bgcolor: generationMode === 'agent' ? 'background.paper' : 'transparent',
+              boxShadow: generationMode === 'agent' ? 1 : 0,
+              transition: 'all 0.15s',
+            }}
+          >
+            <AutoAwesome sx={{ fontSize: 18 }} />
+            <Typography variant="body2" fontWeight={600}>
+              AI Mode
+            </Typography>
+            <Box
+              sx={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                bgcolor: '#ff00c3',
+              }}
+            />
+          </Box>
+        </Box>
+
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+          {generationMode === 'recorder'
+            ? 'Record your actions into a workflow.'
+            : 'Describe the task. Maxun builds it for you.'}
+        </Typography>
+      </Box>
+
+      {generationMode === 'agent' && (
+        <Box sx={{ width: '100%', maxWidth: 700 }}>
+          <Box sx={{ mb: 3 }}>
+            <TextField
+              placeholder="Name"
+              variant="outlined"
+              fullWidth
+              value={extractRobotName}
+              onChange={(e) => setExtractRobotName(e.target.value)}
+              label="Name"
+            />
+          </Box>
+
+          <Box sx={{ mb: 3 }}>
+            <TextField
+              placeholder="Example: Extract first 15 company names, descriptions, and batch information"
+              variant="outlined"
+              fullWidth
+              multiline
+              rows={3}
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              label="Extraction Prompt"
+            />
+          </Box>
+
+          <Box sx={{ mb: 3 }}>
+            <TextField
+              placeholder="Example: https://www.ycombinator.com/companies/"
+              variant="outlined"
+              fullWidth
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              onBlur={() => setUrl(normalizeUrl(url))}
+              label="Website URL (Optional)"
+            />
+          </Box>
+
+          <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+            <FormControl sx={{ flex: 1 }}>
+              <InputLabel>LLM Provider</InputLabel>
+              <Select
+                value={llmProvider}
+                label="LLM Provider"
+                onChange={(e) => {
+                  applyLlmProvider(
+                    e.target.value as LlmProvider,
+                    llmOpenAICompatiblePreset,
+                    setLlmProvider,
+                    setLlmModel,
+                    setLlmBaseUrl,
+                    setLlmApiKey
+                  );
                 }}
-                alt="Maxun Logo"
+              >
+                <MenuItem value="ollama">Ollama (Local)</MenuItem>
+                <MenuItem value="anthropic">Anthropic (Claude)</MenuItem>
+                <MenuItem value="openai">OpenAI-compatible</MenuItem>
+              </Select>
+            </FormControl>
+
+            <TextField
+              sx={{ flex: 1 }}
+              value={llmModel}
+              label="Model"
+              placeholder={getModelPlaceholder(llmProvider, llmOpenAICompatiblePreset)}
+              onChange={(e) => setLlmModel(e.target.value)}
+              helperText={getModelHelperText(llmProvider, llmOpenAICompatiblePreset)}
+              FormHelperTextProps={{ sx: { ml: 0.5 } }}
+            />
+          </Box>
+
+          {llmProvider === 'openai' && (
+            <OpenAICompatiblePresetFields
+              presetId={llmOpenAICompatiblePreset}
+              onPresetChange={(presetId) => applyOpenAICompatiblePreset(
+                presetId,
+                setLlmOpenAICompatiblePreset,
+                setLlmModel,
+                setLlmBaseUrl,
+                setLlmApiKey
+              )}
+              baseUrl={llmBaseUrl}
+              onBaseUrlChange={setLlmBaseUrl}
+              apiKey={llmApiKey}
+              onApiKeyChange={setLlmApiKey}
+            />
+          )}
+
+          {llmProvider === 'anthropic' && (
+            <Box sx={{ mb: 3 }}>
+              <TextField
+                placeholder="Anthropic API key"
+                variant="outlined"
+                fullWidth
+                type="password"
+                value={llmApiKey}
+                onChange={(e) => setLlmApiKey(e.target.value)}
+                label="API Key (Optional if set in .env)"
               />
-
-              <Typography variant="body2" color="text.secondary" mb={3}>
-                Extract structured data from websites using AI or record your own extraction workflow.
-              </Typography>
-              <Box sx={{ width: '100%', maxWidth: 700, mb: 3 }}>
-                <Typography variant="subtitle1" gutterBottom sx={{ mb: 2 }} color="text.secondary">
-                  Choose How to Build
-                </Typography>
-
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                  <Card
-                    onClick={() => setGenerationMode('recorder')}
-                    sx={{
-                      flex: 1,
-                      cursor: 'pointer',
-                      border: '2px solid',
-                      borderColor: generationMode === 'recorder' ? '#ff00c3' : 'divider',
-                      transition: 'all 0.2s',
-                      '&:hover': {
-                        borderColor: '#ff00c3',
-                      }
-                    }}
-                  >
-                    <CardContent sx={{ textAlign: 'center', py: 3, color: "text.secondary" }}>
-                      <HighlightAlt sx={{ fontSize: 26, mb: 0.5 }} />
-                      <Typography variant="h6" gutterBottom>
-                        Recorder Mode
-                      </Typography>
-                      <Typography variant="body2">
-                        Record your actions into a workflow.
-                      </Typography>
-                    </CardContent>
-                  </Card>
-
-                  <Card
-                    onClick={() => setGenerationMode('agent')}
-                    sx={{
-                      flex: 1,
-                      cursor: 'pointer',
-                      border: '2px solid',
-                      borderColor: generationMode === 'agent' ? '#ff00c3' : 'divider',
-                      transition: 'all 0.2s',
-                      '&:hover': {
-                        borderColor: '#ff00c3',
-                      },
-                      position: 'relative'
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        position: 'absolute',
-                        top: 8,
-                        right: 8,
-                        background: '#ff00c3',
-                        color: '#fff',
-                        px: 1,
-                        py: 0.3,
-                        borderRadius: '10px',
-                        fontSize: '0.7rem',
-                      }}
-                    >
-                      Beta
-                    </Box>
-
-                    <CardContent sx={{ textAlign: 'center', py: 3, color: "text.secondary" }}>
-                      <AutoAwesome sx={{ fontSize: 26, mb: 0.5 }} />
-                      <Typography variant="h6" gutterBottom>
-                        AI Mode
-                      </Typography>
-                      <Typography variant="body2">
-                        Describe the task. Maxun builds it for you.
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Box>
-              </Box>
-              {generationMode === 'agent' && (
-                <Box sx={{ width: '100%', maxWidth: 700 }}>
-                  <Box sx={{ mb: 3 }}>
-                    <TextField
-                      placeholder="Name"
-                      variant="outlined"
-                      fullWidth
-                      value={extractRobotName}
-                      onChange={(e) => setExtractRobotName(e.target.value)}
-                      label="Name"
-                    />
-                  </Box>
-
-                  <Box sx={{ mb: 3 }}>
-                    <TextField
-                      placeholder="Example: Extract first 15 company names, descriptions, and batch information"
-                      variant="outlined"
-                      fullWidth
-                      multiline
-                      rows={3}
-                      value={aiPrompt}
-                      onChange={(e) => setAiPrompt(e.target.value)}
-                      label="Extraction Prompt"
-                    />
-                  </Box>
-
-                  <Box sx={{ mb: 3 }}>
-                    <TextField
-                      placeholder="Example: https://www.ycombinator.com/companies/"
-                      variant="outlined"
-                      fullWidth
-                      value={url}
-                      onChange={(e) => setUrl(e.target.value)}
-                      onBlur={() => setUrl(normalizeUrl(url))}
-                      label="Website URL (Optional)"
-                    />
-                  </Box>
-
-                  <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-                    <FormControl sx={{ flex: 1 }}>
-                      <InputLabel>LLM Provider</InputLabel>
-                      <Select
-                        value={llmProvider}
-                        label="LLM Provider"
-                        onChange={(e) => {
-                          applyLlmProvider(
-                            e.target.value as LlmProvider,
-                            llmOpenAICompatiblePreset,
-                            setLlmProvider,
-                            setLlmModel,
-                            setLlmBaseUrl,
-                            setLlmApiKey
-                          );
-                        }}
-                      >
-                        <MenuItem value="ollama">Ollama (Local)</MenuItem>
-                        <MenuItem value="anthropic">Anthropic (Claude)</MenuItem>
-                        <MenuItem value="openai">OpenAI-compatible</MenuItem>
-                      </Select>
-                    </FormControl>
-
-                    <TextField
-                      sx={{ flex: 1 }}
-                      value={llmModel}
-                      label="Model"
-                      placeholder={getModelPlaceholder(llmProvider, llmOpenAICompatiblePreset)}
-                      onChange={(e) => setLlmModel(e.target.value)}
-                      helperText={getModelHelperText(llmProvider, llmOpenAICompatiblePreset)}
-                      FormHelperTextProps={{ sx: { ml: 0.5 } }}
-                    />
-                  </Box>
-
-                  {llmProvider === 'openai' && (
-                    <OpenAICompatiblePresetFields
-                      presetId={llmOpenAICompatiblePreset}
-                      onPresetChange={(presetId) => applyOpenAICompatiblePreset(
-                        presetId,
-                        setLlmOpenAICompatiblePreset,
-                        setLlmModel,
-                        setLlmBaseUrl,
-                        setLlmApiKey
-                      )}
-                      baseUrl={llmBaseUrl}
-                      onBaseUrlChange={setLlmBaseUrl}
-                      apiKey={llmApiKey}
-                      onApiKeyChange={setLlmApiKey}
-                    />
-                  )}
-
-                  {llmProvider === 'anthropic' && (
-                    <Box sx={{ mb: 3 }}>
-                      <TextField
-                        placeholder="Anthropic API key"
-                        variant="outlined"
-                        fullWidth
-                        type="password"
-                        value={llmApiKey}
-                        onChange={(e) => setLlmApiKey(e.target.value)}
-                        label="API Key (Optional if set in .env)"
-                      />
-                    </Box>
-                  )}
-
-                  {llmProvider === 'ollama' && (
-                    <Box sx={{ mb: 3 }}>
-                      <TextField
-                        placeholder={OLLAMA_DEFAULT_BASE_URL}
-                        variant="outlined"
-                        fullWidth
-                        value={llmBaseUrl}
-                        onChange={(e) => setLlmBaseUrl(e.target.value)}
-                        label="Ollama Base URL (Optional)"
-                        helperText="Defaults to http://localhost:11434. Use http://host.docker.internal:11434 if running via Docker"
-                        FormHelperTextProps={{ sx: { ml: 0.5 } }}
-                      />
-                    </Box>
-                  )}
-
-                  <Button
-                    variant="contained"
-                    fullWidth
-                    onClick={async () => {
-                      if (!extractRobotName.trim()) {
-                        notify('error', 'Please enter a robot name');
-                        return;
-                      }
-                      if (!aiPrompt.trim()) {
-                        notify('error', 'Please enter an extraction prompt');
-                        return;
-                      }
-                      if (recordings.some(r => r.trim().toLowerCase() === extractRobotName.trim().toLowerCase())) {
-                        notify('error', `A robot with the name "${extractRobotName.trim()}" already exists.`);
-                        return;
-                      }
-
-                      const normalizedUrl = normalizeUrl(url);
-                      setUrl(normalizedUrl);
-
-                      const tempRobotId = `temp-${Date.now()}`;
-                      const robotDisplayName = extractRobotName;
-
-                      const optimisticRobot = {
-                        id: tempRobotId,
-                        recording_meta: {
-                          id: tempRobotId,
-                          name: robotDisplayName,
-                          createdAt: new Date().toISOString(),
-                          updatedAt: new Date().toISOString(),
-                          pairs: 0,
-                          params: [],
-                          type: 'extract',
-                          url: normalizedUrl || '(auto-detecting...)',
-                        },
-                        recording: { workflow: [] },
-                        isLoading: true,
-                        isOptimistic: true
-                      };
-
-                      addOptimisticRobot(optimisticRobot);
-
-                      notify('info', normalizedUrl
-                        ? `Robot ${robotDisplayName} creation started`
-                        : `Robot ${robotDisplayName} creation started (searching for website...)`);
-                      navigate('/robots');
-
-                      try {
-                        const result = await createLLMRobot(
-                          normalizedUrl || undefined,
-                          aiPrompt,
-                          llmProvider,
-                          llmModel.trim() || undefined,
-                          llmApiKey || undefined,
-                          llmBaseUrl || undefined,
-                          extractRobotName
-                        );
-
-                        removeOptimisticRobot(tempRobotId);
-
-                        if (!result || !result.robot) {
-                          notify('error', 'Failed to create AI robot. Please check your LLM configuration.');
-                          invalidateRecordings();
-                          return;
-                        }
-
-                        const robotMetaId = result.robot.recording_meta.id;
-                        const robotName = result.robot.recording_meta.name;
-
-                        invalidateRecordings();
-                        notify('success', `${robotName} created successfully!`);
-
-                        const optimisticRun = {
-                          id: robotMetaId,
-                          runId: `temp-${Date.now()}`,
-                          status: 'running',
-                          name: robotName,
-                          startedAt: new Date().toISOString(),
-                          finishedAt: '',
-                          robotMetaId: robotMetaId,
-                          log: 'Starting...',
-                          isOptimistic: true
-                        };
-
-                        updateOptimisticRun(optimisticRun);
-
-                        const runResponse = await createAndRunRecording(robotMetaId, {
-                          maxConcurrency: 1,
-                          maxRepeats: 1,
-                          debug: false
-                        });
-
-                        invalidateRuns();
-
-                        if (runResponse && runResponse.runId) {
-                          await new Promise(resolve => setTimeout(resolve, 300));
-                          navigate(`/runs/${robotMetaId}/run/${runResponse.runId}`);
-                          notify('info', `Run started: ${robotName}`);
-                        } else {
-                          notify('warning', 'Robot created but failed to start execution.');
-                          navigate('/robots');
-                        }
-                      } catch (error: any) {
-                        console.error('Error in AI robot creation:', error);
-                        removeOptimisticRobot(tempRobotId);
-                        invalidateRecordings();
-                        notify('error', error?.message || 'Failed to create and run AI robot');
-                      }
-                    }}
-                    disabled={!extractRobotName.trim() || !aiPrompt.trim() || isLoading}
-                    sx={{
-                      bgcolor: '#ff00c3',
-                      py: 1.4,
-                      fontSize: '1rem',
-                      textTransform: 'none',
-                      borderRadius: 2
-                    }}
-                    startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
-                  >
-                    {isLoading ? 'Creating & Running...' : 'Create & Run Robot'}
-                  </Button>
-                </Box>
-              )}
-
-              {generationMode === 'recorder' && (
-                <>
-                  <Box sx={{ width: '100%', maxWidth: 700, mb: 3 }}>
-                    <TextField
-                      placeholder="Example: https://www.ycombinator.com/companies/"
-                      variant="outlined"
-                      fullWidth
-                      value={url}
-                      onChange={(e) => setUrl(e.target.value)}
-                      onBlur={() => setUrl(normalizeUrl(url))}
-                      label="Website URL"
-                    />
-                  </Box>
-                  <Box sx={{ width: '100%', maxWidth: 700 }}>
-                    <Button
-                      variant="contained"
-                      fullWidth
-                      onClick={handleStartRecording}
-                      disabled={!url.trim() || isLoading}
-                      sx={{
-                        bgcolor: '#ff00c3',
-                        py: 1.4,
-                        fontSize: '1rem',
-                        textTransform: 'none',
-                        borderRadius: 2
-                      }}
-                      startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
-                    >
-                      {isLoading ? 'Starting...' : 'Start Recording'}
-                    </Button>
-                  </Box>
-                </>
-              )}
             </Box>
-          </Card>
-        </TabPanel>
+          )}
+
+          {llmProvider === 'ollama' && (
+            <Box sx={{ mb: 3 }}>
+              <TextField
+                placeholder={OLLAMA_DEFAULT_BASE_URL}
+                variant="outlined"
+                fullWidth
+                value={llmBaseUrl}
+                onChange={(e) => setLlmBaseUrl(e.target.value)}
+                label="Ollama Base URL (Optional)"
+                helperText="Defaults to http://localhost:11434. Use http://host.docker.internal:11434 if running via Docker"
+                FormHelperTextProps={{ sx: { ml: 0.5 } }}
+              />
+            </Box>
+          )}
+
+          <Button
+            variant="contained"
+            fullWidth
+            onClick={async () => {
+              if (!extractRobotName.trim()) {
+                notify('error', 'Please enter a robot name');
+                return;
+              }
+              if (!aiPrompt.trim()) {
+                notify('error', 'Please enter an extraction prompt');
+                return;
+              }
+              if (recordings.some(r => r.trim().toLowerCase() === extractRobotName.trim().toLowerCase())) {
+                notify('error', `A robot with the name "${extractRobotName.trim()}" already exists.`);
+                return;
+              }
+
+              const normalizedUrl = normalizeUrl(url);
+              setUrl(normalizedUrl);
+
+              const tempRobotId = `temp-${Date.now()}`;
+              const robotDisplayName = extractRobotName;
+
+              const optimisticRobot = {
+                id: tempRobotId,
+                recording_meta: {
+                  id: tempRobotId,
+                  name: robotDisplayName,
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                  pairs: 0,
+                  params: [],
+                  type: 'extract',
+                  url: normalizedUrl || '(auto-detecting...)',
+                },
+                recording: { workflow: [] },
+                isLoading: true,
+                isOptimistic: true
+              };
+
+              addOptimisticRobot(optimisticRobot);
+
+              notify('info', normalizedUrl
+                ? `Robot ${robotDisplayName} creation started`
+                : `Robot ${robotDisplayName} creation started (searching for website...)`);
+              navigate('/robots');
+
+              try {
+                const result = await createLLMRobot(
+                  normalizedUrl || undefined,
+                  aiPrompt,
+                  llmProvider,
+                  llmModel.trim() || undefined,
+                  llmApiKey || undefined,
+                  llmBaseUrl || undefined,
+                  extractRobotName
+                );
+
+                removeOptimisticRobot(tempRobotId);
+
+                if (!result || !result.robot) {
+                  notify('error', 'Failed to create AI robot. Please check your LLM configuration.');
+                  invalidateRecordings();
+                  return;
+                }
+
+                const robotMetaId = result.robot.recording_meta.id;
+                const robotName = result.robot.recording_meta.name;
+
+                invalidateRecordings();
+                notify('success', `${robotName} created successfully!`);
+
+                const optimisticRun = {
+                  id: robotMetaId,
+                  runId: `temp-${Date.now()}`,
+                  status: 'running',
+                  name: robotName,
+                  startedAt: new Date().toISOString(),
+                  finishedAt: '',
+                  robotMetaId: robotMetaId,
+                  log: 'Starting...',
+                  isOptimistic: true
+                };
+
+                updateOptimisticRun(optimisticRun);
+
+                const runResponse = await createAndRunRecording(robotMetaId, {
+                  maxConcurrency: 1,
+                  maxRepeats: 1,
+                  debug: false
+                });
+
+                invalidateRuns();
+
+                if (runResponse && runResponse.runId) {
+                  await new Promise(resolve => setTimeout(resolve, 300));
+                  navigate(`/runs/${robotMetaId}/run/${runResponse.runId}`);
+                  notify('info', `Run started: ${robotName}`);
+                } else {
+                  notify('warning', 'Robot created but failed to start execution.');
+                  navigate('/robots');
+                }
+              } catch (error: any) {
+                console.error('Error in AI robot creation:', error);
+                removeOptimisticRobot(tempRobotId);
+                invalidateRecordings();
+                notify('error', error?.message || 'Failed to create and run AI robot');
+              }
+            }}
+            disabled={!extractRobotName.trim() || !aiPrompt.trim() || isLoading}
+            sx={{
+              bgcolor: '#ff00c3',
+              py: 1.4,
+              fontSize: '1rem',
+              textTransform: 'none',
+              borderRadius: 2
+            }}
+            startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
+          >
+            {isLoading ? 'Creating & Running...' : 'Create & Run Robot'}
+          </Button>
+        </Box>
+      )}
+
+      {generationMode === 'recorder' && (
+        <>
+          <Box sx={{ width: '100%', maxWidth: 700, mb: 3 }}>
+            <TextField
+              placeholder="Example: https://www.ycombinator.com/companies/"
+              variant="outlined"
+              fullWidth
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              onBlur={() => setUrl(normalizeUrl(url))}
+              label="Website URL"
+            />
+          </Box>
+          <Box sx={{ width: '100%', maxWidth: 700 }}>
+            <Button
+              variant="contained"
+              fullWidth
+              onClick={handleStartRecording}
+              disabled={!url.trim() || isLoading}
+              sx={{
+                bgcolor: '#ff00c3',
+                py: 1.4,
+                fontSize: '1rem',
+                textTransform: 'none',
+                borderRadius: 2
+              }}
+              startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
+            >
+              {isLoading ? 'Starting...' : 'Start Recording'}
+            </Button>
+          </Box>
+        </>
+      )}
+    </Box>
+  </Card>
+</TabPanel>
 
         <TabPanel value={tabValue} index={1}>
           <Card sx={{ mb: 4, p: 4, textAlign: 'center' }}>
