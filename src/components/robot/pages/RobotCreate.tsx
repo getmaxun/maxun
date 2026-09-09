@@ -1825,46 +1825,76 @@ const RobotCreate: React.FC = () => {
                   Choose Mode
                 </Typography>
 
-                <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-                  <Card
-                    onClick={() => setDocumentMode('extract')}
+                <Box sx={{ width: '100%', mb: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <Box
                     sx={{
-                      flex: 1,
-                      cursor: 'pointer',
-                      border: '2px solid',
-                      borderColor: documentMode === 'extract' ? '#ff00c3' : 'divider',
-                      transition: 'all 0.2s',
-                      '&:hover': { borderColor: '#ff00c3' },
+                      display: 'inline-flex',
+                      p: 0.5,
+                      borderRadius: '10px',
+                      bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100'),
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      gap: 0.5,
                     }}
                   >
-                    <CardContent sx={{ textAlign: 'center', py: 3, color: 'text.secondary' }}>
-                      <AutoAwesome sx={{ fontSize: 26, mb: 0.5 }} />
-                      <Typography variant="h6" gutterBottom>Extract</Typography>
-                      <Typography variant="body2">
-                        Pull structured data fields from a document using AI.
+                    <Box
+                      onClick={() => setDocumentMode('extract')}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        px: 2,
+                        py: 1,
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        bgcolor: documentMode === 'extract'
+                          ? (theme) => (theme.palette.mode === 'dark' ? 'grey.800' : 'grey.300')
+                          : 'transparent',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      <AutoAwesome sx={{ fontSize: 18, color: documentMode === 'extract' ? 'text.primary' : 'text.secondary' }} />
+                      <Typography
+                        variant="body2"
+                        fontWeight={400}
+                        color={documentMode === 'extract' ? 'text.primary' : 'text.secondary'}
+                      >
+                        Extract
                       </Typography>
-                    </CardContent>
-                  </Card>
+                    </Box>
 
-                  <Card
-                    onClick={() => setDocumentMode('parse')}
-                    sx={{
-                      flex: 1,
-                      cursor: 'pointer',
-                      border: '2px solid',
-                      borderColor: documentMode === 'parse' ? '#ff00c3' : 'divider',
-                      transition: 'all 0.2s',
-                      '&:hover': { borderColor: '#ff00c3' },
-                    }}
-                  >
-                    <CardContent sx={{ textAlign: 'center', py: 3, color: 'text.secondary' }}>
-                      <Article sx={{ fontSize: 26, mb: 0.5 }} />
-                      <Typography variant="h6" gutterBottom>Parse</Typography>
-                      <Typography variant="body2">
-                        Convert a document to Markdown, HTML, links, and an AI summary.
+                    <Box
+                      onClick={() => setDocumentMode('parse')}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        px: 2,
+                        py: 1,
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        bgcolor: documentMode === 'parse'
+                          ? (theme) => (theme.palette.mode === 'dark' ? 'grey.800' : 'grey.300')
+                          : 'transparent',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      <Article sx={{ fontSize: 18, color: documentMode === 'parse' ? 'text.primary' : 'text.secondary' }} />
+                      <Typography
+                        variant="body2"
+                        fontWeight={400}
+                        color={documentMode === 'parse' ? 'text.primary' : 'text.secondary'}
+                      >
+                        Parse
                       </Typography>
-                    </CardContent>
-                  </Card>
+                    </Box>
+                  </Box>
+
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                    {documentMode === 'extract'
+                      ? 'Pull structured data fields from a document using AI.'
+                      : 'Convert a document to Markdown, HTML, links, and an AI summary.'}
+                  </Typography>
                 </Box>
 
                 <TextField
