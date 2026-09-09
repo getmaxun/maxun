@@ -713,8 +713,8 @@ const RobotCreate: React.FC = () => {
             <Box display="flex" flexDirection="column" alignItems="center">
               <img
                 src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
-                width={73}
-                height={65}
+                width={65}
+                height={57}
                 style={{
                   borderRadius: '5px',
                   marginBottom: '30px'
