@@ -767,22 +767,6 @@ const RobotCreate: React.FC = () => {
                     position: 'relative'
                   }}
                 >
-                  <Box
-                    sx={{
-                      position: 'absolute',
-                      top: 8,
-                      right: 8,
-                      background: '#ff00c3',
-                      color: '#fff',
-                      px: 1,
-                      py: 0.3,
-                      borderRadius: '10px',
-                      fontSize: '0.7rem',
-                    }}
-                  >
-                    Beta
-                  </Box>
-
                   <CardContent sx={{ py: 2, px: 2.5, color: 'text.secondary' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <AutoAwesome sx={{ fontSize: 20 }} />
