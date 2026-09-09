@@ -730,10 +730,11 @@ const RobotCreate: React.FC = () => {
                 <Box
                   sx={{
                     display: 'inline-flex',
-                    p: 0.5,
-                    borderRadius: '10px',
-                    bgcolor: 'action.hover',
-                    gap: 0.5,
+                      p: 0.5,
+                      borderRadius: '10px',
+                      bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100'),
+                      borderColor: 'divider',
+                      gap: 0.5,
                   }}
                 >
                   <Box
@@ -1828,7 +1829,6 @@ const RobotCreate: React.FC = () => {
                       p: 0.5,
                       borderRadius: '10px',
                       bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100'),
-                      border: '1px solid',
                       borderColor: 'divider',
                       gap: 0.5,
                     }}
@@ -1837,23 +1837,21 @@ const RobotCreate: React.FC = () => {
                       onClick={() => setDocumentMode('extract')}
                       sx={{
                         display: 'flex',
-                        alignItems: 'center',
-                        gap: 1,
-                        px: 2,
-                        py: 1,
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        bgcolor: documentMode === 'extract'
-                          ? (theme) => (theme.palette.mode === 'dark' ? 'grey.800' : 'grey.300')
-                          : 'transparent',
-                        transition: 'all 0.15s',
+                      alignItems: 'center',
+                      gap: 1,
+                      px: 2,
+                      py: 1,
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      bgcolor: documentMode === 'extract' ? 'background.paper' : 'transparent',
+                      boxShadow: documentMode === 'extract' ? 1 : 0,
+                      transition: 'all 0.15s',
                       }}
                     >
-                      <AutoAwesome sx={{ fontSize: 18, color: documentMode === 'extract' ? 'text.primary' : 'text.secondary' }} />
+                      <AutoAwesome sx={{ fontSize: 18 }} />
                       <Typography
                         variant="body2"
                         fontWeight={400}
-                        color={documentMode === 'extract' ? 'text.primary' : 'text.secondary'}
                       >
                         Extract
                       </Typography>
@@ -1862,24 +1860,22 @@ const RobotCreate: React.FC = () => {
                     <Box
                       onClick={() => setDocumentMode('parse')}
                       sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1,
-                        px: 2,
-                        py: 1,
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        bgcolor: documentMode === 'parse'
-                          ? (theme) => (theme.palette.mode === 'dark' ? 'grey.800' : 'grey.300')
-                          : 'transparent',
-                        transition: 'all 0.15s',
+                       display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      px: 2,
+                      py: 1,
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      bgcolor: documentMode === 'parse' ? 'background.paper' : 'transparent',
+                      boxShadow: documentMode === 'parse' ? 1 : 0,
+                      transition: 'all 0.15s',
                       }}
                     >
-                      <Article sx={{ fontSize: 18, color: documentMode === 'parse' ? 'text.primary' : 'text.secondary' }} />
+                      <Article sx={{ fontSize: 18 }} />
                       <Typography
                         variant="body2"
                         fontWeight={400}
-                        color={documentMode === 'parse' ? 'text.primary' : 'text.secondary'}
                       >
                         Parse
                       </Typography>
