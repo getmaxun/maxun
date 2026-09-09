@@ -753,7 +753,7 @@ const RobotCreate: React.FC = () => {
                   >
                     <HighlightAlt sx={{ fontSize: 18 }} />
                     <Typography variant="body2" fontWeight={600}>
-                      Recorder
+                      Recorder Mode
                     </Typography>
                   </Box>
 
