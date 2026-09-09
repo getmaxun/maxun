@@ -776,14 +776,6 @@ const RobotCreate: React.FC = () => {
                     <Typography variant="body2" fontWeight={600}>
                       AI Mode
                     </Typography>
-                    <Box
-                      sx={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: '50%',
-                        bgcolor: '#ff00c3',
-                      }}
-                    />
                   </Box>
                 </Box>
 
