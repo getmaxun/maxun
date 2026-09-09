@@ -1821,10 +1821,6 @@ const RobotCreate: React.FC = () => {
               </Typography>
 
               <Box sx={{ width: '100%', maxWidth: 700 }}>
-                <Typography variant="subtitle1" gutterBottom sx={{ mb: 2 }} color="text.secondary">
-                  Choose Mode
-                </Typography>
-
                 <Box sx={{ width: '100%', mb: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <Box
                     sx={{
