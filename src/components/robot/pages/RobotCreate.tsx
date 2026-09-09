@@ -726,7 +726,7 @@ const RobotCreate: React.FC = () => {
                 Extract structured data from websites using AI or record your own extraction workflow.
               </Typography>
 
-              <Box sx={{ width: '100%', maxWidth: 700, mb: 4 }}>
+              <Box sx={{ width: '100%', maxWidth: 700, mb: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <Box
                   sx={{
                     display: 'inline-flex',
@@ -752,7 +752,7 @@ const RobotCreate: React.FC = () => {
                     }}
                   >
                     <HighlightAlt sx={{ fontSize: 18 }} />
-                    <Typography variant="body2" fontWeight={600}>
+                    <Typography variant="body2" fontWeight={500}>
                       Recorder Mode
                     </Typography>
                   </Box>
@@ -773,7 +773,7 @@ const RobotCreate: React.FC = () => {
                     }}
                   >
                     <AutoAwesome sx={{ fontSize: 18 }} />
-                    <Typography variant="body2" fontWeight={600}>
+                    <Typography variant="body2" fontWeight={500}>
                       AI Mode
                     </Typography>
                   </Box>
