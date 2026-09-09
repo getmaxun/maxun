@@ -717,7 +717,7 @@ const RobotCreate: React.FC = () => {
                 height={47}
                 style={{
                   borderRadius: '5px',
-                  marginBottom: '30px'
+                  marginBottom: '20px'
                 }}
                 alt="Maxun Logo"
               />
