@@ -725,8 +725,9 @@ const RobotCreate: React.FC = () => {
               <Typography variant="body2" color="text.secondary" mb={3}>
                 Extract structured data from websites using AI or record your own extraction workflow.
               </Typography>
-
-              <Box sx={{ display: 'flex', gap: 2 }}>
+                              <Box sx={{ width: '100%', mb: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <Box sx={{ width: '100%', maxWidth: 700 }}>
+              <Box sx={{ display: 'flex', gap: 2, mb: 1 }}>
                 <Card
                   onClick={() => setGenerationMode('recorder')}
                   sx={{
@@ -779,6 +780,8 @@ const RobotCreate: React.FC = () => {
                     </Typography>
                   </CardContent>
                 </Card>
+              </Box>
+              </Box>
               </Box>
 
               {generationMode === 'agent' && (
