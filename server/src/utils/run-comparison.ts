@@ -1,4 +1,9 @@
 import Run from '../models/Run';
+import {
+  COMPARABLE_SCREENSHOT_FORMATS,
+  compareScreenshots,
+  ScreenshotComparisonResult,
+} from './screenshot-comparison';
 
 export const COMPARABLE_RUN_FORMATS = ['text', 'markdown', 'html'] as const;
 export type ComparableRunFormat = (typeof COMPARABLE_RUN_FORMATS)[number];
@@ -22,9 +27,7 @@ export async function findPreviousSuccessfulRun(currentRun: any) {
       robotMetaId: currentRun.robotMetaId,
       status: 'success',
     },
-    // Only pull the fields we actually use to avoid loading full
-    // serializableOutput for every historical run just to filter most of them out
-    attributes: ['runId', 'finishedAt', 'startedAt', 'serializableOutput'],
+    attributes: ['runId', 'finishedAt', 'startedAt', 'serializableOutput', 'binaryOutput'],
   });
 
   const currentTimestamp = getRunTimestamp(currentRun);
@@ -59,13 +62,19 @@ export async function compareRunTextWithPrevious(currentRun: any, currentText: s
  * Compares every text-based output produced by the current run against the
  * matching output from the previous successful run.
  */
-export async function compareRunOutputsWithPrevious(currentRun: any, currentOutput: any) {
+export async function compareRunOutputsWithPrevious(currentRun: any, currentOutput: any, currentBinaryOutput?: any) {
   const previousRun = await findPreviousSuccessfulRun(currentRun);
   if (!previousRun) {
-    return { previousRun: null, hasChanges: false, changedFormats: [] as ComparableRunFormat[] };
+    return {
+      previousRun: null,
+      hasChanges: false,
+      changedFormats: [] as string[],
+      screenshotComparisons: {} as Partial<Record<string, ScreenshotComparisonResult>>,
+      screenshotDiffs: {} as Record<string, Buffer>,
+    };
   }
 
-  const changedFormats = COMPARABLE_RUN_FORMATS.filter((format) => {
+  const changedFormats: string[] = COMPARABLE_RUN_FORMATS.filter((format) => {
     const currentContent = currentOutput?.[format]?.[0]?.content;
     if (typeof currentContent !== 'string') return false;
 
@@ -74,9 +83,24 @@ export async function compareRunOutputsWithPrevious(currentRun: any, currentOutp
     return normalizeComparableText(previousContent) !== normalizeComparableText(currentContent);
   });
 
+  const screenshotComparisons: Partial<Record<string, ScreenshotComparisonResult>> = {};
+  const screenshotDiffs: Record<string, Buffer> = {};
+  for (const format of COMPARABLE_SCREENSHOT_FORMATS) {
+    if (!currentBinaryOutput?.[format]) continue;
+    const comparison = await compareScreenshots(currentBinaryOutput[format], previousRun.binaryOutput?.[format]);
+    if (!comparison) continue;
+    screenshotComparisons[format] = comparison;
+    if (comparison.changed) {
+      changedFormats.push(format);
+      if (comparison.diff) screenshotDiffs[`${format}-diff`] = comparison.diff;
+    }
+  }
+
   return {
     previousRun,
     hasChanges: changedFormats.length > 0,
     changedFormats,
+    screenshotComparisons,
+    screenshotDiffs,
   };
 }

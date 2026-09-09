@@ -22,6 +22,24 @@ import { useTheme, alpha } from "@mui/material/styles";
 import { getOrCreateBrowserSocket, releaseBrowserSocket } from "../../utils/browserSocket";
 import { diffLines, Change } from "diff";
 
+type DiffFormat = 'text' | 'markdown' | 'html' | 'screenshot-visible' | 'screenshot-fullpage';
+
+const DIFF_FORMATS: DiffFormat[] = [
+  'text',
+  'markdown',
+  'html',
+  'screenshot-visible',
+  'screenshot-fullpage',
+];
+
+const DIFF_FORMAT_LABELS: Record<DiffFormat, string> = {
+  text: 'Text Content',
+  markdown: 'Markdown',
+  html: 'HTML',
+  'screenshot-visible': 'Visible Screenshot',
+  'screenshot-fullpage': 'Full-page Screenshot',
+};
+
 interface RunTypeChipProps {
   runByUserId?: string;
   runByScheduledId?: string;
@@ -64,18 +82,22 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
   const [diffOpen, setDiffOpen] = useState(false);
   const [diffData, setDiffData] = useState<RunDiffResponse | null>(null);
   const [isDiffLoading, setIsDiffLoading] = useState(false);
-  const [selectedDiffFormat, setSelectedDiffFormat] = useState<'text' | 'markdown' | 'html'>('text');
+  const [selectedDiffFormat, setSelectedDiffFormat] = useState<DiffFormat>('text');
 
   const handleOpenDiff = async () => {
     setDiffOpen(true);
     setIsDiffLoading(true);
     const data = await getRunDiff(row.runId);
     setDiffData(data);
-    const availableFormats = (['text', 'markdown', 'html'] as const).filter(
-      (format) => data?.formats?.[format]
+    const availableFormats = DIFF_FORMATS.filter(
+      (format) => format.startsWith('screenshot-')
+        ? data?.screenshots?.[format as 'screenshot-visible' | 'screenshot-fullpage']
+        : data?.formats?.[format as 'text' | 'markdown' | 'html']
     );
-    const firstChangedFormat = availableFormats.find((format) => {
-      const output = data?.formats?.[format];
+    const firstChangedFormat = availableFormats.find((format) => data?.changedFormats?.includes(format))
+      || availableFormats.find((format) => {
+      if (format.startsWith('screenshot-')) return false;
+      const output = data?.formats?.[format as 'text' | 'markdown' | 'html'];
       if (!output) return false;
       return diffLines(output.previous, output.current, { ignoreWhitespace: true })
         .some((part) => part.added || part.removed);
@@ -91,14 +113,23 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
   };
 
   const diffParts = useMemo<Change[]>(() => {
-    if (!diffData) return [];
-    const selectedOutput = diffData.formats?.[selectedDiffFormat];
+    if (!diffData || selectedDiffFormat.startsWith('screenshot-')) return [];
+    const selectedOutput = diffData.formats?.[selectedDiffFormat as 'text' | 'markdown' | 'html'];
     const previous = selectedOutput?.previous ?? (selectedDiffFormat === 'text' ? diffData.previousText : '');
     const current = selectedOutput?.current ?? (selectedDiffFormat === 'text' ? diffData.currentText : '');
     return diffLines(previous, current, { ignoreWhitespace: true });
   }, [diffData, selectedDiffFormat]);
 
   const hasDiff = diffParts.some((part) => part.added || part.removed);
+  const selectedScreenshot = selectedDiffFormat.startsWith('screenshot-')
+    ? diffData?.screenshots?.[selectedDiffFormat as 'screenshot-visible' | 'screenshot-fullpage']
+    : undefined;
+  const getDiffImageSrc = (entry: string | { data?: string } | null | undefined) => {
+    const value = typeof entry === 'object' && entry !== null ? entry.data : entry;
+    if (!value) return '';
+    if (value.startsWith('http') || value.startsWith('data:')) return value;
+    return `data:image/png;base64,${value}`;
+  };
   const runByLabel = row.runByScheduleId
     ? `${row.runByScheduleId}`
     : row.runByUserId
@@ -435,15 +466,70 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                 centered
                 sx={{ mb: 2 }}
               >
-                {(['text', 'markdown', 'html'] as const).map((format) => diffData.formats?.[format] && (
-                  <Tab
-                    key={format}
-                    value={format}
-                    label={{ text: 'Text Content', markdown: 'Markdown', html: 'HTML' }[format]}
-                  />
-                ))}
+                {DIFF_FORMATS.map((format) => {
+                  const available = format.startsWith('screenshot-')
+                    ? diffData.screenshots?.[format as 'screenshot-visible' | 'screenshot-fullpage']
+                    : diffData.formats?.[format as 'text' | 'markdown' | 'html'];
+                  return available && (
+                    <Tab
+                      key={format}
+                      value={format}
+                      label={DIFF_FORMAT_LABELS[format]}
+                    />
+                  );
+                })}
               </Tabs>
-              {!hasDiff ? (
+              {selectedScreenshot ? (
+                <Box>
+                  {selectedScreenshot.metadata && (
+                    <Typography variant="body2" align="center" sx={{ mb: 2 }}>
+                      {selectedScreenshot.metadata.changedPercentage.toFixed(2)}% of compared pixels changed
+                      {' · '}
+                      Previous {selectedScreenshot.metadata.previousWidth}×{selectedScreenshot.metadata.previousHeight}
+                      {' · '}
+                      Current {selectedScreenshot.metadata.currentWidth}×{selectedScreenshot.metadata.currentHeight}
+                    </Typography>
+                  )}
+                  <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2, maxHeight: '60vh', overflow: 'auto' }}>
+                    {[
+                      { label: 'Previous Run', source: selectedScreenshot.previous },
+                      { label: 'Current Run', source: selectedScreenshot.current },
+                    ].map((image) => (
+                      <Box key={image.label}>
+                        <Typography variant="subtitle2" align="center" gutterBottom>{image.label}</Typography>
+                        {getDiffImageSrc(image.source) ? (
+                          <Box component="img" src={getDiffImageSrc(image.source)} alt={image.label} sx={{ display: 'block', width: '100%', height: 'auto', border: `1px solid ${theme.palette.divider}` }} />
+                        ) : (
+                          <DialogContentText align="center">Screenshot unavailable</DialogContentText>
+                        )}
+                      </Box>
+                    ))}
+                    <Box>
+                      <Typography variant="subtitle2" align="center" gutterBottom>
+                        Changes Highlighted
+                      </Typography>
+                      {selectedScreenshot.diff ? (
+                        <>
+                          <Box
+                            component="img"
+                            src={getDiffImageSrc(selectedScreenshot.diff)}
+                            alt="Current screenshot with changes highlighted"
+                            sx={{ display: 'block', width: '100%', height: 'auto', border: `1px solid ${theme.palette.divider}` }}
+                          />
+                          <Typography variant="caption" display="flex" alignItems="center" justifyContent="center" gap={0.75} sx={{ mt: 1, color: 'text.secondary' }}>
+                            <Box component="span" sx={{ width: 12, height: 12, bgcolor: '#ff00c3', borderRadius: '2px' }} />
+                            Magenta highlights show changed areas on the current screenshot.
+                          </Typography>
+                        </>
+                      ) : (
+                        <DialogContentText align="center" sx={{ mt: 4 }}>
+                          A highlighted visual diff was not generated for this run. Run the robot again to create one with the updated comparison.
+                        </DialogContentText>
+                      )}
+                    </Box>
+                  </Box>
+                </Box>
+              ) : !hasDiff ? (
                 <DialogContentText>
                   {t('runs_table.run_diff.no_changes', { defaultValue: 'No differences found between these runs.' })}
                 </DialogContentText>

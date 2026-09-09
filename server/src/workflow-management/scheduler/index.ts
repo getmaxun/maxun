@@ -446,11 +446,25 @@ async function executeRun(id: string, userId: string) {
         let hasChanges = false;
         if ((recording.recording_meta as any).compareRuns) {
           try {
-            const comparison = await compareRunOutputsWithPrevious(run, serializableOutput);
+            const comparison = await compareRunOutputsWithPrevious(run, serializableOutput, binaryOutput);
             hasChanges = comparison.hasChanges;
 
+            Object.entries(comparison.screenshotDiffs).forEach(([key, diff]) => {
+              binaryOutput[key] = { data: diff.toString('base64'), mimeType: 'image/png' };
+            });
+            serializableOutput._comparison = {
+              changedFormats: comparison.changedFormats,
+              screenshots: Object.fromEntries(
+                Object.entries(comparison.screenshotComparisons).map(([key, value]) => {
+                  if (!value) return [key, null];
+                  const { diff: _diff, ...metadata } = value;
+                  return [key, metadata];
+                }),
+              ),
+            };
+
             if (hasChanges && comparison.previousRun) {
-              await run.update({ hasChanges });
+              await run.update({ hasChanges, serializableOutput, binaryOutput });
               logger.log('info', `Scheduled run ${plainRun.runId} has changes compared to previous run ${comparison.previousRun.runId}`);
             }
           } catch (compareError: any) {

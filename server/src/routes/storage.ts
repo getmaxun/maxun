@@ -1306,6 +1306,18 @@ router.get('/runs/:id/diff', requireSignIn, async (req: AuthenticatedRequest, re
 
     const currentText = formats.text?.current || '';
     const previousText = formats.text?.previous || '';
+    const screenshotMetadata = currentOutput?._comparison?.screenshots || {};
+    const screenshotFormats = ['screenshot-visible', 'screenshot-fullpage'].reduce((result, format) => {
+      const current = run.binaryOutput?.[format];
+      if (!current) return result;
+      result[format] = {
+        current,
+        previous: previousRun.binaryOutput?.[format] || null,
+        diff: run.binaryOutput?.[`${format}-diff`] || null,
+        metadata: screenshotMetadata[format] || null,
+      };
+      return result;
+    }, {} as Record<string, any>);
 
     return res.json({
       currentRunId: run.runId,
@@ -1313,6 +1325,8 @@ router.get('/runs/:id/diff', requireSignIn, async (req: AuthenticatedRequest, re
       currentText,
       previousText,
       formats,
+      screenshots: screenshotFormats,
+      changedFormats: currentOutput?._comparison?.changedFormats || [],
     });
   } catch (e) {
     const { message } = e as Error;
