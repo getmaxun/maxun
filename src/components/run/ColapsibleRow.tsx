@@ -8,6 +8,8 @@ import {
   DialogContentText,
   DialogActions,
   CircularProgress,
+  Tab,
+  Tabs,
 } from "@mui/material";
 import { Button } from "@mui/material";
 import { DeleteForever, KeyboardArrowDown, KeyboardArrowUp, Settings } from "@mui/icons-material";
@@ -62,12 +64,24 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
   const [diffOpen, setDiffOpen] = useState(false);
   const [diffData, setDiffData] = useState<RunDiffResponse | null>(null);
   const [isDiffLoading, setIsDiffLoading] = useState(false);
+  const [selectedDiffFormat, setSelectedDiffFormat] = useState<'text' | 'markdown' | 'html'>('text');
 
   const handleOpenDiff = async () => {
     setDiffOpen(true);
     setIsDiffLoading(true);
     const data = await getRunDiff(row.runId);
     setDiffData(data);
+    const availableFormats = (['text', 'markdown', 'html'] as const).filter(
+      (format) => data?.formats?.[format]
+    );
+    const firstChangedFormat = availableFormats.find((format) => {
+      const output = data?.formats?.[format];
+      if (!output) return false;
+      return diffLines(output.previous, output.current, { ignoreWhitespace: true })
+        .some((part) => part.added || part.removed);
+    });
+    const initialFormat = firstChangedFormat || availableFormats[0];
+    if (initialFormat) setSelectedDiffFormat(initialFormat);
     setIsDiffLoading(false);
   };
 
@@ -78,8 +92,11 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
 
   const diffParts = useMemo<Change[]>(() => {
     if (!diffData) return [];
-    return diffLines(diffData.previousText, diffData.currentText, { ignoreWhitespace: true });
-  }, [diffData]);
+    const selectedOutput = diffData.formats?.[selectedDiffFormat];
+    const previous = selectedOutput?.previous ?? (selectedDiffFormat === 'text' ? diffData.previousText : '');
+    const current = selectedOutput?.current ?? (selectedDiffFormat === 'text' ? diffData.currentText : '');
+    return diffLines(previous, current, { ignoreWhitespace: true });
+  }, [diffData, selectedDiffFormat]);
 
   const hasDiff = diffParts.some((part) => part.added || part.removed);
   const runByLabel = row.runByScheduleId
@@ -410,37 +427,55 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
             <DialogContentText>
               {t('runs_table.run_diff.no_previous_run', { defaultValue: 'No previous run found to compare against.' })}
             </DialogContentText>
-          ) : !hasDiff ? (
-            <DialogContentText>
-              {t('runs_table.run_diff.no_changes', { defaultValue: 'No differences found between these runs.' })}
-            </DialogContentText>
           ) : (
-            <Box sx={{ display: 'flex', gap: 2, maxHeight: '60vh' }}>
-              <Box sx={{ flex: 1, overflow: 'auto' }}>
-                <Typography variant="subtitle2" align="center" gutterBottom>
-                  {t('runs_table.run_diff.previous_run', { defaultValue: 'Previous Run' })}
-                </Typography>
-                <Box component="pre" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: 13, m: 0 }}>
-                  {diffParts.map((part, i) => part.added ? null : (
-                    <Box key={i} component="span" sx={{ display: 'block', backgroundColor: part.removed ? alpha(theme.palette.error.main, 0.12) : 'transparent' }}>
-                      {part.value}
+            <>
+              <Tabs
+                value={selectedDiffFormat}
+                onChange={(_, value) => setSelectedDiffFormat(value)}
+                centered
+                sx={{ mb: 2 }}
+              >
+                {(['text', 'markdown', 'html'] as const).map((format) => diffData.formats?.[format] && (
+                  <Tab
+                    key={format}
+                    value={format}
+                    label={{ text: 'Text Content', markdown: 'Markdown', html: 'HTML' }[format]}
+                  />
+                ))}
+              </Tabs>
+              {!hasDiff ? (
+                <DialogContentText>
+                  {t('runs_table.run_diff.no_changes', { defaultValue: 'No differences found between these runs.' })}
+                </DialogContentText>
+              ) : (
+                <Box sx={{ display: 'flex', gap: 2, maxHeight: '60vh' }}>
+                  <Box sx={{ flex: 1, overflow: 'auto' }}>
+                    <Typography variant="subtitle2" align="center" gutterBottom>
+                      {t('runs_table.run_diff.previous_run', { defaultValue: 'Previous Run' })}
+                    </Typography>
+                    <Box component="pre" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: 13, m: 0 }}>
+                      {diffParts.map((part, i) => part.added ? null : (
+                        <Box key={i} component="span" sx={{ display: 'block', backgroundColor: part.removed ? alpha(theme.palette.error.main, 0.12) : 'transparent' }}>
+                          {part.value}
+                        </Box>
+                      ))}
                     </Box>
-                  ))}
-                </Box>
-              </Box>
-              <Box sx={{ flex: 1, overflow: 'auto' }}>
-                <Typography variant="subtitle2" align="center" gutterBottom>
-                  {t('runs_table.run_diff.current_run', { defaultValue: 'Current Run' })}
-                </Typography>
-                <Box component="pre" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: 13, m: 0 }}>
-                  {diffParts.map((part, i) => part.removed ? null : (
-                    <Box key={i} component="span" sx={{ display: 'block', backgroundColor: part.added ? alpha(theme.palette.success.main, 0.12) : 'transparent' }}>
-                      {part.value}
+                  </Box>
+                  <Box sx={{ flex: 1, overflow: 'auto' }}>
+                    <Typography variant="subtitle2" align="center" gutterBottom>
+                      {t('runs_table.run_diff.current_run', { defaultValue: 'Current Run' })}
+                    </Typography>
+                    <Box component="pre" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: 13, m: 0 }}>
+                      {diffParts.map((part, i) => part.removed ? null : (
+                        <Box key={i} component="span" sx={{ display: 'block', backgroundColor: part.added ? alpha(theme.palette.success.main, 0.12) : 'transparent' }}>
+                          {part.value}
+                        </Box>
+                      ))}
                     </Box>
-                  ))}
+                  </Box>
                 </Box>
-              </Box>
-            </Box>
+              )}
+            </>
           )}
         </DialogContent>
         <DialogActions>

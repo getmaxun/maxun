@@ -1267,7 +1267,7 @@ router.get('/runs/run/:id', requireSignIn, async (req, res) => {
   }
 });
 
-// Get endpoint to fetch the text diff between a run and the previous successful run.
+// Get endpoint to fetch text-based output diffs between a run and the previous successful run.
 router.get('/runs/:id/diff', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     if (!req.user) {
@@ -1290,14 +1290,29 @@ router.get('/runs/:id/diff', requireSignIn, async (req: AuthenticatedRequest, re
       return res.status(404).json({ error: 'No previous run to compare against' });
     }
 
-    const currentText = (run.serializableOutput as any)?.text?.[0]?.content || '';
-    const previousText = (previousRun.serializableOutput as any)?.text?.[0]?.content || '';
+    const currentOutput = run.serializableOutput as any;
+    const previousOutput = previousRun.serializableOutput as any;
+    const formats = ['text', 'markdown', 'html'].reduce((result, format) => {
+      const current = currentOutput?.[format]?.[0]?.content;
+      const previous = previousOutput?.[format]?.[0]?.content;
+      if (typeof current === 'string') {
+        result[format] = {
+          current: typeof current === 'string' ? current : '',
+          previous: typeof previous === 'string' ? previous : '',
+        };
+      }
+      return result;
+    }, {} as Record<string, { current: string; previous: string }>);
+
+    const currentText = formats.text?.current || '';
+    const previousText = formats.text?.previous || '';
 
     return res.json({
       currentRunId: run.runId,
       previousRunId: previousRun.runId,
       currentText,
       previousText,
+      formats,
     });
   } catch (e) {
     const { message } = e as Error;

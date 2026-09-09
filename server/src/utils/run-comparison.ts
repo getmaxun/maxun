@@ -1,5 +1,8 @@
 import Run from '../models/Run';
 
+export const COMPARABLE_RUN_FORMATS = ['text', 'markdown', 'html'] as const;
+export type ComparableRunFormat = (typeof COMPARABLE_RUN_FORMATS)[number];
+
 const getRunTimestamp = (run: any): number => {
   const timestamp = Date.parse(run.finishedAt || run.startedAt || '');
   return Number.isNaN(timestamp) ? 0 : timestamp;
@@ -50,4 +53,30 @@ export async function compareRunTextWithPrevious(currentRun: any, currentText: s
   const hasChanges = normalizeComparableText(previousText ?? '') !== normalizeComparableText(currentText ?? '');
 
   return { previousRun, hasChanges };
+}
+
+/**
+ * Compares every text-based output produced by the current run against the
+ * matching output from the previous successful run.
+ */
+export async function compareRunOutputsWithPrevious(currentRun: any, currentOutput: any) {
+  const previousRun = await findPreviousSuccessfulRun(currentRun);
+  if (!previousRun) {
+    return { previousRun: null, hasChanges: false, changedFormats: [] as ComparableRunFormat[] };
+  }
+
+  const changedFormats = COMPARABLE_RUN_FORMATS.filter((format) => {
+    const currentContent = currentOutput?.[format]?.[0]?.content;
+    if (typeof currentContent !== 'string') return false;
+
+    const previousValue = previousRun.serializableOutput?.[format]?.[0]?.content;
+    const previousContent = typeof previousValue === 'string' ? previousValue : '';
+    return normalizeComparableText(previousContent) !== normalizeComparableText(currentContent);
+  });
+
+  return {
+    previousRun,
+    hasChanges: changedFormats.length > 0,
+    changedFormats,
+  };
 }

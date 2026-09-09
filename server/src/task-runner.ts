@@ -24,7 +24,7 @@ import { executeBrowserAgent } from './sdk/browserAgent';
 import { processRobotOutputFormats } from './utils/output-post-processor';
 import { getInterpretationFailureReason, hasExpectedRobotOutput, flushReloadAndCheckPartialOutput } from './utils/output-validation';
 import { handleRunRecording } from './workflow-management/scheduler';
-import { compareRunTextWithPrevious } from './utils/run-comparison';
+import { compareRunOutputsWithPrevious } from './utils/run-comparison';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -338,10 +338,9 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
           await run.update({ status: 'success', finishedAt, log: `${formats.join(', ').toUpperCase()} conversion completed successfully`, serializableOutput, binaryOutput, hasChanges: false });
 
           let hasChanges = false;
-          if ((recording.recording_meta as any).compareRuns && serializableOutput.text) {
+          if ((recording.recording_meta as any).compareRuns) {
             try {
-              const currentText = serializableOutput.text[0]?.content || '';
-              const comparison = await compareRunTextWithPrevious(run, currentText);
+              const comparison = await compareRunOutputsWithPrevious(run, serializableOutput);
               hasChanges = comparison.hasChanges;
 
               if (hasChanges && comparison.previousRun) {

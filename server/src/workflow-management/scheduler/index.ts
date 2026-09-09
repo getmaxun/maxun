@@ -20,7 +20,7 @@ import { safeDecrypt } from "../../utils/auth";
 import { getInterpretationFailureReason, hasExpectedRobotOutput } from "../../utils/output-validation";
 import { addJob } from '../../storage/graphileWorker';
 import { QUEUE_NAMES } from '../../task-runner';
-import { compareRunTextWithPrevious } from '../../utils/run-comparison';
+import { compareRunOutputsWithPrevious } from '../../utils/run-comparison';
 
 const getRobotTargetUrl = (recording: any): string => {
   const metaUrl = recording?.recording_meta?.url?.trim();
@@ -444,10 +444,9 @@ async function executeRun(id: string, userId: string) {
         });
 
         let hasChanges = false;
-        if ((recording.recording_meta as any).compareRuns && serializableOutput.text) {
+        if ((recording.recording_meta as any).compareRuns) {
           try {
-            const currentText = serializableOutput.text[0]?.content || '';
-            const comparison = await compareRunTextWithPrevious(run, currentText);
+            const comparison = await compareRunOutputsWithPrevious(run, serializableOutput);
             hasChanges = comparison.hasChanges;
 
             if (hasChanges && comparison.previousRun) {

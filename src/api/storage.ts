@@ -178,6 +178,10 @@ export interface RunDiffResponse {
   previousRunId: string;
   currentText: string;
   previousText: string;
+  formats: Partial<Record<'text' | 'markdown' | 'html', {
+    current: string;
+    previous: string;
+  }>>;
 }
 
 export const getRunDiff = async (id: string): Promise<RunDiffResponse | null> => {
