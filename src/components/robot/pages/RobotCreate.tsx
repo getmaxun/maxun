@@ -730,11 +730,11 @@ const RobotCreate: React.FC = () => {
                 <Box
                   sx={{
                     display: 'inline-flex',
-                      p: 0.5,
-                      borderRadius: '10px',
-                      bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100'),
-                      borderColor: 'divider',
-                      gap: 0.5,
+                    p: 0.5,
+                    borderRadius: '10px',
+                    bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100'),
+                    borderColor: 'divider',
+                    gap: 0.5,
                   }}
                 >
                   <Box
@@ -1818,67 +1818,68 @@ const RobotCreate: React.FC = () => {
                 alt="Maxun Logo"
               />
               <Typography variant="body2" color="text.secondary" mb={3}>
-                Extract and parse structured data from documents. 
+                Extract and parse structured data from documents.
               </Typography>
 
               <Box sx={{ width: '100%', maxWidth: 700 }}>
                 <Box sx={{ width: '100%', mb: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <Box
-                    sx={{
-                      display: 'inline-flex',
-                      p: 0.5,
-                      borderRadius: '10px',
-                      bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100'),
-                      borderColor: 'divider',
-                      gap: 0.5,
-                    }}
-                  >
-                    <Box
-                      onClick={() => setDocumentMode('extract')}
-                      sx={{
-                        display: 'flex',
-                      alignItems: 'center',
-                      gap: 1,
-                      px: 2,
-                      py: 1,
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      bgcolor: documentMode === 'extract' ? 'background.paper' : 'transparent',
-                      boxShadow: documentMode === 'extract' ? 1 : 0,
-                      transition: 'all 0.15s',
-                      }}
-                    >
-                      <AutoAwesome sx={{ fontSize: 18 }} />
-                      <Typography
-                        variant="body2"
-                        fontWeight={400}
-                      >
-                        Extract
-                      </Typography>
-                    </Box>
+                  <Typography variant="body2" color="text.secondary" mb={3}>
+                    Process documents with AI — extract structured fields or convert to Markdown, HTML, links, and summary.
+                  </Typography>
 
-                    <Box
-                      onClick={() => setDocumentMode('parse')}
-                      sx={{
-                       display: 'flex',
-                      alignItems: 'center',
-                      gap: 1,
-                      px: 2,
-                      py: 1,
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      bgcolor: documentMode === 'parse' ? 'background.paper' : 'transparent',
-                      boxShadow: documentMode === 'parse' ? 1 : 0,
-                      transition: 'all 0.15s',
-                      }}
-                    >
-                      <Article sx={{ fontSize: 18 }} />
-                      <Typography
-                        variant="body2"
-                        fontWeight={400}
+                  <Box sx={{ width: '100%', maxWidth: 700 }}>
+                    <Typography variant="subtitle1" gutterBottom sx={{ mb: 2 }} color="text.secondary">
+                      Choose Mode
+                    </Typography>
+
+                    <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                      <Card
+                        onClick={() => setDocumentMode('extract')}
+                        sx={{
+                          flex: 1,
+                          cursor: 'pointer',
+                          border: '2px solid',
+                          borderColor: documentMode === 'extract' ? '#ff00c3' : 'divider',
+                          transition: 'all 0.2s',
+                          '&:hover': { borderColor: '#ff00c3' },
+                        }}
                       >
-                        Parse
-                      </Typography>
+                        <CardContent sx={{ py: 2, px: 2.5, color: 'text.secondary' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <AutoAwesome sx={{ fontSize: 20 }} />
+                            <Typography variant="subtitle1" fontWeight={500} color="text.primary">
+                              Extract
+                            </Typography>
+                          </Box>
+                          <Typography variant="body2" sx={{ mt: 0.25 }}>
+                            Pull structured data fields from a document using AI.
+                          </Typography>
+                        </CardContent>
+                      </Card>
+
+                      <Card
+                        onClick={() => setDocumentMode('parse')}
+                        sx={{
+                          flex: 1,
+                          cursor: 'pointer',
+                          border: '2px solid',
+                          borderColor: documentMode === 'parse' ? '#ff00c3' : 'divider',
+                          transition: 'all 0.2s',
+                          '&:hover': { borderColor: '#ff00c3' },
+                        }}
+                      >
+                        <CardContent sx={{ py: 2, px: 2.5, color: 'text.secondary' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Article sx={{ fontSize: 20 }} />
+                            <Typography variant="subtitle1" fontWeight={500} color="text.primary">
+                              Parse
+                            </Typography>
+                          </Box>
+                          <Typography variant="body2" sx={{ mt: 0.25 }}>
+                            Convert a document to Markdown, HTML, links, and an AI summary.
+                          </Typography>
+                        </CardContent>
+                      </Card>
                     </Box>
                   </Box>
                 </Box>
