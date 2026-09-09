@@ -726,65 +726,75 @@ const RobotCreate: React.FC = () => {
                 Extract structured data from websites using AI or record your own extraction workflow.
               </Typography>
 
-              <Box sx={{ width: '100%', maxWidth: 700, mb: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <Box
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <Card
+                  onClick={() => setGenerationMode('recorder')}
                   sx={{
-                    display: 'inline-flex',
-                    p: 0.5,
-                    borderRadius: '10px',
-                    bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100'),
-                    borderColor: 'divider',
-                    gap: 0.5,
+                    flex: 1,
+                    cursor: 'pointer',
+                    border: '2px solid',
+                    borderColor: generationMode === 'recorder' ? '#ff00c3' : 'divider',
+                    transition: 'all 0.2s',
+                    '&:hover': {
+                      borderColor: '#ff00c3',
+                    }
+                  }}
+                >
+                  <CardContent sx={{ py: 2, px: 2.5, color: 'text.secondary' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <HighlightAlt sx={{ fontSize: 20 }} />
+                      <Typography variant="subtitle1" fontWeight={500} color="text.primary">
+                        Recorder Mode
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ mt: 0.25 }}>
+                      Record your actions into a workflow.
+                    </Typography>
+                  </CardContent>
+                </Card>
+
+                <Card
+                  onClick={() => setGenerationMode('agent')}
+                  sx={{
+                    flex: 1,
+                    cursor: 'pointer',
+                    border: '2px solid',
+                    borderColor: generationMode === 'agent' ? '#ff00c3' : 'divider',
+                    transition: 'all 0.2s',
+                    '&:hover': {
+                      borderColor: '#ff00c3',
+                    },
+                    position: 'relative'
                   }}
                 >
                   <Box
-                    onClick={() => setGenerationMode('recorder')}
                     sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1,
-                      px: 2,
-                      py: 1,
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      bgcolor: generationMode === 'recorder' ? 'background.paper' : 'transparent',
-                      boxShadow: generationMode === 'recorder' ? 1 : 0,
-                      transition: 'all 0.15s',
+                      position: 'absolute',
+                      top: 8,
+                      right: 8,
+                      background: '#ff00c3',
+                      color: '#fff',
+                      px: 1,
+                      py: 0.3,
+                      borderRadius: '10px',
+                      fontSize: '0.7rem',
                     }}
                   >
-                    <HighlightAlt sx={{ fontSize: 18 }} />
-                    <Typography variant="body2" fontWeight={500}>
-                      Recorder Mode
-                    </Typography>
+                    Beta
                   </Box>
 
-                  <Box
-                    onClick={() => setGenerationMode('agent')}
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1,
-                      px: 2,
-                      py: 1,
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      bgcolor: generationMode === 'agent' ? 'background.paper' : 'transparent',
-                      boxShadow: generationMode === 'agent' ? 1 : 0,
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    <AutoAwesome sx={{ fontSize: 18 }} />
-                    <Typography variant="body2" fontWeight={500}>
-                      AI Mode
+                  <CardContent sx={{ py: 2, px: 2.5, color: 'text.secondary' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <AutoAwesome sx={{ fontSize: 20 }} />
+                      <Typography variant="subtitle1" fontWeight={500} color="text.primary">
+                        AI Mode
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ mt: 0.25 }}>
+                      Describe the task. Maxun builds it for you.
                     </Typography>
-                  </Box>
-                </Box>
-
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                  {generationMode === 'recorder'
-                    ? 'Record your actions into a workflow.'
-                    : 'Describe the task. Maxun builds it for you.'}
-                </Typography>
+                  </CardContent>
+                </Card>
               </Box>
 
               {generationMode === 'agent' && (
@@ -1820,7 +1830,7 @@ const RobotCreate: React.FC = () => {
               <Box sx={{ width: '100%', maxWidth: 700 }}>
                 <Box sx={{ width: '100%', mb: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <Box sx={{ width: '100%', maxWidth: 700 }}>
-                    <Box sx={{ display: 'flex', gap: 2, mb: 1 }}>
+                    <Box sx={{ display: 'flex', gap: 2, mb: 0.5 }}>
                       <Card
                         onClick={() => setDocumentMode('extract')}
                         sx={{
