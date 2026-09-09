@@ -1834,13 +1834,13 @@ const RobotCreate: React.FC = () => {
                       >
                         <CardContent sx={{ py: 2, px: 2.5, color: 'text.secondary' }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <AutoAwesome sx={{ fontSize: 20 }} />
-                            <Typography variant="subtitle1" fontWeight={500} color="text.primary">
+                            <AutoAwesome sx={{ fontSize: 17 }} />
+                            <Typography variant="caption" fontWeight={500} color="text.primary">
                               Extract
                             </Typography>
                           </Box>
-                          <Typography variant="body2" sx={{ mt: 0.25 }}>
-                            Pull structured data fields from a document using AI.
+                          <Typography variant="caption" sx={{ mt: 0.25 }}>
+                            Extract structured data from documents with AI.
                           </Typography>
                         </CardContent>
                       </Card>
@@ -1858,13 +1858,13 @@ const RobotCreate: React.FC = () => {
                       >
                         <CardContent sx={{ py: 2, px: 2.5, color: 'text.secondary' }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Article sx={{ fontSize: 20 }} />
-                            <Typography variant="subtitle1" fontWeight={500} color="text.primary">
+                            <Article sx={{ fontSize: 17 }} />
+                            <Typography variant="caption" fontWeight={500} color="text.primary">
                               Parse
                             </Typography>
                           </Box>
-                          <Typography variant="body2" sx={{ mt: 0.25 }}>
-                            Convert a document to Markdown, HTML, links, and an AI summary.
+                          <Typography variant="caption" sx={{ mt: 0.25 }}>
+                            Parse docs to Markdown, HTML & summaries.
                           </Typography>
                         </CardContent>
                       </Card>
