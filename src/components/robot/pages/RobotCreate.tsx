@@ -1817,21 +1817,9 @@ const RobotCreate: React.FC = () => {
                 }}
                 alt="Maxun Logo"
               />
-              <Typography variant="body2" color="text.secondary" mb={3}>
-                Extract and parse structured data from documents.
-              </Typography>
-
               <Box sx={{ width: '100%', maxWidth: 700 }}>
                 <Box sx={{ width: '100%', mb: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <Typography variant="body2" color="text.secondary" mb={3}>
-                    Process documents with AI — extract structured fields or convert to Markdown, HTML, links, and summary.
-                  </Typography>
-
                   <Box sx={{ width: '100%', maxWidth: 700 }}>
-                    <Typography variant="subtitle1" gutterBottom sx={{ mb: 2 }} color="text.secondary">
-                      Choose Mode
-                    </Typography>
-
                     <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
                       <Card
                         onClick={() => setDocumentMode('extract')}
