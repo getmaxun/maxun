@@ -1900,7 +1900,7 @@ const RobotCreate: React.FC = () => {
                     onChange={(e) => setDocumentFile(e.target.files?.[0] || null)}
                   />
                   {documentFile ? (
-                    <Typography variant="body1" color="#ff00c3" fontWeight={500}>
+                    <Typography variant="body2">
                       📄 {documentFile.name}
                     </Typography>
                   ) : (
