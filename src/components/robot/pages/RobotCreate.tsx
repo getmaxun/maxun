@@ -1884,7 +1884,7 @@ const RobotCreate: React.FC = () => {
 
                 <Box
                   sx={{
-                    border: '2px dashed',
+                    border: '1.5px dashed',
                     borderColor: theme => theme.palette.mode === 'dark' ? 'divider' : '#0000004a',
                     borderRadius: 2,
                     p: 3,
