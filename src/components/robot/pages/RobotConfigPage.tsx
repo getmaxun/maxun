@@ -105,7 +105,7 @@ export const RobotConfigPage: React.FC<RobotConfigPageProps> = ({
           </Box>
         )}
         <Typography
-          variant="h5"
+          variant="h6"
           sx={{
             color: theme.palette.text.primary,
             lineHeight: 1.2
