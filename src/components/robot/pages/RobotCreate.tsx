@@ -1075,7 +1075,7 @@ const RobotCreate: React.FC = () => {
               />
 
               <Typography variant="body2" color="text.secondary" mb={3}>
-                Turn websites into LLM-ready Markdown, clean HTML, or screenshots for AI apps.
+                Turn websites into markdown, html, screenshots, summaries and more.
               </Typography>
 
               <Box sx={{ width: '100%', maxWidth: 700, mb: 2 }}>
