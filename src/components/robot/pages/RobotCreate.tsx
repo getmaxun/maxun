@@ -25,10 +25,13 @@ import {
   Collapse,
   FormControlLabel
 } from '@mui/material';
-import { ArrowBack, AutoAwesome, HighlightAlt, Article } from '@mui/icons-material';
+import { ArrowBack, AutoAwesome, HighlightAlt, Article, InsertDriveFile } from '@mui/icons-material';
 import { useGlobalInfoStore, useCacheInvalidation } from '../../../context/globalInfo';
 import { canCreateBrowserInState, getActiveBrowserId, stopRecording } from '../../../api/recording';
-import { createScrapeRobot, createLLMRobot, createAndRunRecording, createCrawlRobot, createSearchRobot, createDocumentExtractRobot, createDocumentParseRobot } from "../../../api/storage";
+import {
+  createScrapeRobot, createLLMRobot, createAndRunRecording,
+  createCrawlRobot, createSearchRobot, createDocumentExtractRobot, createDocumentParseRobot
+} from "../../../api/storage";
 import { AuthContext } from '../../../context/auth';
 import { DEFAULT_OUTPUT_FORMATS, DOC_PARSE_FORMAT_OPTIONS, OUTPUT_FORMAT_LABELS, OUTPUT_FORMAT_OPTIONS, OutputFormats } from '../../../constants/outputFormats';
 
@@ -1801,7 +1804,7 @@ const RobotCreate: React.FC = () => {
             </Box>
           </Card>
         </TabPanel>
-        
+
         <TabPanel value={tabValue} index={4}>
           <Card sx={{ mb: 4, p: 4 }}>
             <Box display="flex" flexDirection="column" alignItems="center">
@@ -1900,8 +1903,9 @@ const RobotCreate: React.FC = () => {
                     onChange={(e) => setDocumentFile(e.target.files?.[0] || null)}
                   />
                   {documentFile ? (
-                    <Typography variant="body2">
-                      📄 {documentFile.name}
+                    <Typography variant="body1">
+                      <InsertDriveFile sx={{ fontSize: 18, verticalAlign: "middle", mr: 0.5, mt: -0.5 }} />
+                      {documentFile.name}
                     </Typography>
                   ) : (
                     <>
