@@ -4,7 +4,6 @@ import {
   Typography,
   Button,
   IconButton,
-  Divider,
   useTheme
 } from '@mui/material';
 import { ArrowBack } from '@mui/icons-material';
@@ -72,13 +71,13 @@ export const RobotConfigPage: React.FC<RobotConfigPageProps> = ({
         display: 'flex',
         alignItems: 'center',
         maxHeight: '64px',
-        mb: 2,
+        mb: 1,
         flexShrink: 0
       }}>
         <IconButton
           onClick={onArrowBack ? onArrowBack : handleBack}
           sx={{
-            ml: -1,
+            ml: -1.5,
             mr: 1,
             color: theme.palette.text.primary,
             backgroundColor: 'transparent !important',
@@ -114,7 +113,6 @@ export const RobotConfigPage: React.FC<RobotConfigPageProps> = ({
           {title}
         </Typography>
       </Box>
-      <Divider sx={{ mb: 4, flexShrink: 0 }} />
 
       <Box sx={{
         flex: 1,
