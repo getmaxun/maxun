@@ -722,9 +722,6 @@ const RobotCreate: React.FC = () => {
                 alt="Maxun Logo"
               />
 
-              <Typography variant="body2" color="text.secondary" mb={3}>
-                Extract structured data from websites using AI or record your own extraction workflow.
-              </Typography>
               <Box sx={{ width: '100%', mb: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <Box sx={{ width: '100%', maxWidth: 700 }}>
                   <Box sx={{ display: 'flex', gap: 2, mb: 1 }}>
@@ -743,13 +740,13 @@ const RobotCreate: React.FC = () => {
                     >
                       <CardContent sx={{ py: 2, px: 2.5, color: 'text.secondary' }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <HighlightAlt sx={{ fontSize: 20 }} />
+                          <HighlightAlt sx={{ fontSize: 17 }} />
                           <Typography variant="subtitle1" fontWeight={500} color="text.primary">
                             Recorder Mode
                           </Typography>
                         </Box>
-                        <Typography variant="body2" sx={{ mt: 0.25 }}>
-                          Record your actions into a workflow.
+                        <Typography variant="caption" sx={{ mt: 0.25 }}>
+                          Record your actions on websites into workflows.
                         </Typography>
                       </CardContent>
                     </Card>
@@ -770,13 +767,13 @@ const RobotCreate: React.FC = () => {
                     >
                       <CardContent sx={{ py: 2, px: 2.5, color: 'text.secondary' }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <AutoAwesome sx={{ fontSize: 20 }} />
+                          <AutoAwesome sx={{ fontSize: 17 }} />
                           <Typography variant="subtitle1" fontWeight={500} color="text.primary">
                             AI Mode
                           </Typography>
                         </Box>
-                        <Typography variant="body2" sx={{ mt: 0.25 }}>
-                          Describe the task. Maxun builds it for you.
+                        <Typography variant="caption" sx={{ mt: 0.25 }}>
+                          Describe the task to extract data from websites.
                         </Typography>
                       </CardContent>
                     </Card>
@@ -1832,12 +1829,12 @@ const RobotCreate: React.FC = () => {
                         <CardContent sx={{ py: 2, px: 2.5, color: 'text.secondary' }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <AutoAwesome sx={{ fontSize: 17 }} />
-                            <Typography variant="caption" fontWeight={500} color="text.primary">
+                            <Typography variant="subtitle1" fontWeight={500} color="text.primary">
                               Extract
                             </Typography>
                           </Box>
                           <Typography variant="caption" sx={{ mt: 0.25 }}>
-                            Extract structured data from documents with AI.
+                            Extract structured data from docs with AI prompts.
                           </Typography>
                         </CardContent>
                       </Card>
@@ -1856,12 +1853,12 @@ const RobotCreate: React.FC = () => {
                         <CardContent sx={{ py: 2, px: 2.5, color: 'text.secondary' }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <Article sx={{ fontSize: 17 }} />
-                            <Typography variant="caption" fontWeight={500} color="text.primary">
+                            <Typography variant="subtitle1" fontWeight={500} color="text.primary">
                               Parse
                             </Typography>
                           </Box>
                           <Typography variant="caption" sx={{ mt: 0.25 }}>
-                            Parse docs to Markdown, HTML & summaries.
+                            Parse docs to Markdown, HTML, links & summaries.
                           </Typography>
                         </CardContent>
                       </Card>
