@@ -459,7 +459,7 @@
       }
     },
     "robot_settings": {
-      "title": "Robot Settings",
+      "title": "Settings",
       "target_url": "Target URL",
       "robot_id": "Robot ID",
       "robot_limit": "Robot Limit",
