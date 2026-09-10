@@ -679,12 +679,12 @@ const RobotCreate: React.FC = () => {
           >
             <ArrowBack />
           </IconButton>
-          <Typography variant="h5" component="h1">
+          <Typography variant="h6" component="h1">
             Create New Robot
           </Typography>
         </Box>
 
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2, mt: "-10px" }}>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2, mt: "-20px" }}>
           <Tabs
             value={tabValue}
             centered
