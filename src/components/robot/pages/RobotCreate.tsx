@@ -717,7 +717,8 @@ const RobotCreate: React.FC = () => {
                 height={47}
                 style={{
                   borderRadius: '5px',
-                  marginBottom: '20px'
+                  marginBottom: '20px',
+                  marginTop: '-10px',
                 }}
                 alt="Maxun Logo"
               />
@@ -1069,7 +1070,8 @@ const RobotCreate: React.FC = () => {
                 height={47}
                 style={{
                   borderRadius: '5px',
-                  marginBottom: '20px'
+                  marginBottom: '20px',
+                  marginTop: '-10px',
                 }}
                 alt="Maxun Logo"
               />
@@ -1320,7 +1322,8 @@ const RobotCreate: React.FC = () => {
                 height={47}
                 style={{
                   borderRadius: '5px',
-                  marginBottom: '20px'
+                  marginBottom: '20px',
+                  marginTop: '-10px',
                 }}
                 alt="Maxun Logo"
               />
@@ -1586,7 +1589,8 @@ const RobotCreate: React.FC = () => {
                 height={47}
                 style={{
                   borderRadius: '5px',
-                  marginBottom: '20px'
+                  marginBottom: '20px',
+                  marginTop: '-10px',
                 }}
                 alt="Maxun Logo"
               />
@@ -1797,7 +1801,7 @@ const RobotCreate: React.FC = () => {
             </Box>
           </Card>
         </TabPanel>
-        {/* Document Robot Tab */}
+        
         <TabPanel value={tabValue} index={4}>
           <Card sx={{ mb: 4, p: 4 }}>
             <Box display="flex" flexDirection="column" alignItems="center">
@@ -1807,7 +1811,8 @@ const RobotCreate: React.FC = () => {
                 height={47}
                 style={{
                   borderRadius: '5px',
-                  marginBottom: '20px'
+                  marginBottom: '20px',
+                  marginTop: '-10px',
                 }}
                 alt="Maxun Logo"
               />
