@@ -113,6 +113,23 @@ const stableValue = (value: any): any => Array.isArray(value)
 
 export const serializeCapturedText = (value: any) => JSON.stringify(stableValue(value || {}), null, 2);
 
+const canonicalizeCapturedLists = (value: any): any => {
+  if (Array.isArray(value)) {
+    return value
+      .map((row) => stableValue(row))
+      .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+  }
+  if (value && typeof value === 'object') {
+    return Object.keys(value).sort().reduce((result, key) => ({
+      ...result,
+      [key]: canonicalizeCapturedLists(value[key]),
+    }), {});
+  }
+  return value;
+};
+
+export const serializeCapturedLists = (value: any) => JSON.stringify(canonicalizeCapturedLists(value || {}));
+
 /** Compares named text and screenshot captures produced by an extract robot. */
 export async function compareExtractRunWithPrevious(currentRun: any, currentOutput: any, binaryOutput: any) {
   const previousRun = await findPreviousSuccessfulRun(currentRun);
@@ -129,6 +146,9 @@ export async function compareExtractRunWithPrevious(currentRun: any, currentOutp
   const changedFormats: string[] = [];
   if (serializeCapturedText(currentOutput?.scrapeSchema) !== serializeCapturedText(previousRun.serializableOutput?.scrapeSchema)) {
     changedFormats.push('captured-text');
+  }
+  if (serializeCapturedLists(currentOutput?.scrapeList) !== serializeCapturedLists(previousRun.serializableOutput?.scrapeList)) {
+    changedFormats.push('captured-list');
   }
 
   const screenshotComparisons: Record<string, ScreenshotComparisonResult> = {};

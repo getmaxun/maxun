@@ -183,6 +183,7 @@ export interface RunDiffResponse {
     previous: string;
   }>>;
   capturedText: { current: string; previous: string } | null;
+  capturedLists: { current: Record<string, any>; previous: Record<string, any> } | null;
   screenshots: Record<string, {
     current: string | { data?: string };
     previous: string | { data?: string } | null;

@@ -43,6 +43,82 @@ const DIFF_FORMAT_LABELS: Record<string, string> = {
   'screenshot-fullpage': 'Full-page Screenshot',
 };
 
+type CapturedListRow = Record<string, any>;
+type CapturedListDiffRow = {
+  key: string;
+  previous?: CapturedListRow;
+  current?: CapturedListRow;
+  status: 'added' | 'removed' | 'modified' | 'unchanged';
+};
+
+const stableRowValue = (value: any): any => Array.isArray(value)
+  ? value.map(stableRowValue)
+  : value && typeof value === 'object'
+    ? Object.keys(value).sort().reduce((result, key) => ({ ...result, [key]: stableRowValue(value[key]) }), {})
+    : value;
+const rowSignature = (row: CapturedListRow) => JSON.stringify(stableRowValue(row));
+const valuesEqual = (left: any, right: any) => JSON.stringify(stableRowValue(left)) === JSON.stringify(stableRowValue(right));
+
+const matchCapturedListRows = (previous: CapturedListRow[], current: CapturedListRow[]): CapturedListDiffRow[] => {
+  const unmatchedPrevious = new Set(previous.map((_, index) => index));
+  const unmatchedCurrent = new Set(current.map((_, index) => index));
+  const matches: Array<{ previousIndex?: number; currentIndex?: number }> = [];
+
+  current.forEach((row, currentIndex) => {
+    const signature = rowSignature(row);
+    const previousIndex = Array.from(unmatchedPrevious).find((index) => rowSignature(previous[index]) === signature);
+    if (previousIndex === undefined) return;
+    matches.push({ previousIndex, currentIndex });
+    unmatchedPrevious.delete(previousIndex);
+    unmatchedCurrent.delete(currentIndex);
+  });
+
+  const columns = Array.from(new Set([...previous, ...current].flatMap((row) => Object.keys(row || {}))));
+  const identityColumn = columns.find((column) => {
+    if (!/(^id$|url|href|sku|email|name|title)/i.test(column)) return false;
+    const previousValues = previous.map((row) => row?.[column]).filter((value) => value != null && value !== '').map(String);
+    const currentValues = current.map((row) => row?.[column]).filter((value) => value != null && value !== '').map(String);
+    return new Set(previousValues).size === previousValues.length
+      && new Set(currentValues).size === currentValues.length
+      && previousValues.some((value) => currentValues.includes(value));
+  });
+
+  if (identityColumn) {
+    Array.from(unmatchedCurrent).forEach((currentIndex) => {
+      const identity = current[currentIndex]?.[identityColumn];
+      if (identity == null || identity === '') return;
+      const previousIndex = Array.from(unmatchedPrevious).find(
+        (index) => String(previous[index]?.[identityColumn]) === String(identity),
+      );
+      if (previousIndex === undefined) return;
+      matches.push({ previousIndex, currentIndex });
+      unmatchedPrevious.delete(previousIndex);
+      unmatchedCurrent.delete(currentIndex);
+    });
+  }
+
+  // Pair remaining rows by position. Exact and identity matches above prevent one
+  // insertion from making every subsequent row look modified.
+  while (unmatchedPrevious.size && unmatchedCurrent.size) {
+    const previousIndex = unmatchedPrevious.values().next().value as number;
+    const currentIndex = unmatchedCurrent.values().next().value as number;
+    matches.push({ previousIndex, currentIndex });
+    unmatchedPrevious.delete(previousIndex);
+    unmatchedCurrent.delete(currentIndex);
+  }
+  unmatchedPrevious.forEach((previousIndex) => matches.push({ previousIndex }));
+  unmatchedCurrent.forEach((currentIndex) => matches.push({ currentIndex }));
+
+  return matches
+    .sort((left, right) => (left.currentIndex ?? Number.MAX_SAFE_INTEGER) - (right.currentIndex ?? Number.MAX_SAFE_INTEGER))
+    .map(({ previousIndex, currentIndex }, index) => {
+      const previousRow = previousIndex === undefined ? undefined : previous[previousIndex];
+      const currentRow = currentIndex === undefined ? undefined : current[currentIndex];
+      const status = !previousRow ? 'added' : !currentRow ? 'removed' : valuesEqual(previousRow, currentRow) ? 'unchanged' : 'modified';
+      return { key: `${previousIndex ?? 'new'}-${currentIndex ?? 'removed'}-${index}`, previous: previousRow, current: currentRow, status };
+    });
+};
+
 interface RunTypeChipProps {
   runByUserId?: string;
   runByScheduledId?: string;
@@ -87,6 +163,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
   const [isDiffLoading, setIsDiffLoading] = useState(false);
   const [selectedDiffFormat, setSelectedDiffFormat] = useState('text');
   const [selectedCapturedGroup, setSelectedCapturedGroup] = useState('');
+  const [selectedCapturedList, setSelectedCapturedList] = useState('');
 
   const handleOpenDiff = async () => {
     setDiffOpen(true);
@@ -96,6 +173,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
     const availableFormats = data ? [
       ...TEXT_DIFF_FORMATS.filter((format) => data.formats?.[format]),
       ...(data.capturedText ? ['captured-text'] : []),
+      ...(data.capturedLists ? ['captured-list'] : []),
       ...Object.keys(data.screenshots || {}).map((name) => `screenshot:${name}`),
     ] : [];
     const firstChangedFormat = availableFormats.find((format) => {
@@ -112,6 +190,13 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
       } catch {
         setSelectedCapturedGroup('');
       }
+    }
+    if (data?.capturedLists) {
+      setSelectedCapturedList(
+        Object.keys(data.capturedLists.current || {})[0]
+        || Object.keys(data.capturedLists.previous || {})[0]
+        || '',
+      );
     }
     setIsDiffLoading(false);
   };
@@ -147,6 +232,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
     return [
       ...TEXT_DIFF_FORMATS.filter((format) => diffData.formats?.[format]).map((format) => ({ key: format, label: DIFF_FORMAT_LABELS[format] })),
       ...(diffData.capturedText ? [{ key: 'captured-text', label: 'Captured Text' }] : []),
+      ...(diffData.capturedLists ? [{ key: 'captured-list', label: 'Captured Lists' }] : []),
       ...Object.keys(diffData.screenshots || {}).map((name) => ({
         key: `screenshot:${name}`,
         label: DIFF_FORMAT_LABELS[name] || name,
@@ -191,6 +277,26 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
     }
     return rows;
   }, [capturedGroups, selectedCapturedGroup]);
+  const capturedListGroups = useMemo(() => {
+    const previous = diffData?.capturedLists?.previous || {};
+    const current = diffData?.capturedLists?.current || {};
+    return Array.from(new Set([...Object.keys(previous), ...Object.keys(current)])).reduce((groups, name) => {
+      groups[name] = {
+        previous: Array.isArray(previous[name]) ? previous[name] : [],
+        current: Array.isArray(current[name]) ? current[name] : [],
+      };
+      return groups;
+    }, {} as Record<string, { previous: CapturedListRow[]; current: CapturedListRow[] }>);
+  }, [diffData]);
+  const capturedListRows = useMemo(() => {
+    const group = capturedListGroups[selectedCapturedList];
+    return group ? matchCapturedListRows(group.previous, group.current) : [];
+  }, [capturedListGroups, selectedCapturedList]);
+  const capturedListColumns = useMemo(() => {
+    const group = capturedListGroups[selectedCapturedList];
+    if (!group) return [];
+    return Array.from(new Set([...group.previous, ...group.current].flatMap((row) => Object.keys(row || {}))));
+  }, [capturedListGroups, selectedCapturedList]);
   const displayCapturedValue = (value: any) => value == null
     ? '—'
     : typeof value === 'object' ? JSON.stringify(value) : String(value);
@@ -574,6 +680,85 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                       </TableBody>
                     </Table>
                   </TableContainer>
+                </Box>
+              ) : selectedDiffFormat === 'captured-list' ? (
+                <Box>
+                  {Object.keys(capturedListGroups).length > 1 && (
+                    <Tabs
+                      value={selectedCapturedList}
+                      onChange={(_, value) => setSelectedCapturedList(value)}
+                      variant="scrollable"
+                      scrollButtons="auto"
+                      sx={{ mb: 2, minHeight: 36 }}
+                    >
+                      {Object.keys(capturedListGroups).map((name) => (
+                        <Tab key={name} value={name} label={name} sx={{ minHeight: 36 }} />
+                      ))}
+                    </Tabs>
+                  )}
+                  {capturedListColumns.length === 0 ? (
+                    <DialogContentText align="center" sx={{ py: 4 }}>
+                      No captured list data is available for these runs.
+                    </DialogContentText>
+                  ) : (
+                  <TableContainer component={Paper} sx={{ maxHeight: '60vh' }}>
+                    <Table
+                      stickyHeader
+                      sx={{
+                        width: 'max-content',
+                        minWidth: '100%',
+                        '& .MuiTableCell-root': { px: 3, py: 2, fontSize: '1rem', lineHeight: 1.5 },
+                        '& .MuiTableCell-head': { py: 2.5, whiteSpace: 'nowrap' },
+                      }}
+                    >
+                      <TableHead>
+                        <TableRow>
+                          {capturedListColumns.map((column) => (
+                            <TableCell key={column} sx={{ fontWeight: 600, minWidth: 190 }}>{column}</TableCell>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {capturedListRows.map((item) => (
+                          <TableRow key={item.key} hover>
+                            {capturedListColumns.map((column) => {
+                              const previous = item.previous?.[column];
+                              const current = item.current?.[column];
+                              const changed = !valuesEqual(previous, current);
+                              return (
+                                <TableCell
+                                  key={column}
+                                  sx={{
+                                    minWidth: 190,
+                                    maxWidth: 360,
+                                    verticalAlign: 'middle',
+                                    bgcolor: changed ? alpha(theme.palette.warning.main, theme.palette.mode === 'dark' ? 0.16 : 0.2) : 'transparent',
+                                    wordBreak: 'break-word',
+                                  }}
+                                >
+                                  {!changed ? displayCapturedValue(current) : (
+                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 0.75 }}>
+                                      {item.previous && (
+                                        <Typography component="span" sx={{ color: 'error.main', textDecoration: 'line-through', fontSize: 'inherit' }}>
+                                          {displayCapturedValue(previous)}
+                                        </Typography>
+                                      )}
+                                      {item.current && (
+                                        <Typography component="span" sx={{ color: 'success.main', fontWeight: 600, fontSize: 'inherit' }}>
+                                          {displayCapturedValue(current)}
+                                        </Typography>
+                                      )}
+                                    </Box>
+                                  )}
+                                </TableCell>
+                              );
+                            })}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                  )}
                 </Box>
               ) : selectedScreenshot ? (
                 <Box>

@@ -1308,10 +1308,21 @@ router.get('/runs/:id/diff', requireSignIn, async (req: AuthenticatedRequest, re
     const previousText = formats.text?.previous || '';
     const screenshotMetadata = currentOutput?._comparison?.screenshots || {};
     const isExtract = robot.recording_meta.type === 'extract';
-    const capturedText = isExtract ? {
-      current: serializeCapturedText(currentOutput?.scrapeSchema),
-      previous: serializeCapturedText(previousOutput?.scrapeSchema),
-    } : null;
+    const currentCapturedText = currentOutput?.scrapeSchema || {};
+    const previousCapturedText = previousOutput?.scrapeSchema || {};
+    const capturedText = isExtract
+      && (Object.keys(currentCapturedText).length > 0 || Object.keys(previousCapturedText).length > 0)
+      ? {
+        current: serializeCapturedText(currentCapturedText),
+        previous: serializeCapturedText(previousCapturedText),
+      }
+      : null;
+    const currentCapturedLists = currentOutput?.scrapeList || {};
+    const previousCapturedLists = previousOutput?.scrapeList || {};
+    const capturedLists = isExtract
+      && (Object.keys(currentCapturedLists).length > 0 || Object.keys(previousCapturedLists).length > 0)
+      ? { current: currentCapturedLists, previous: previousCapturedLists }
+      : null;
     const screenshotNames = isExtract
       ? Object.keys(run.binaryOutput || {}).filter((name) => !name.endsWith('-diff'))
       : ['screenshot-visible', 'screenshot-fullpage'];
@@ -1334,6 +1345,7 @@ router.get('/runs/:id/diff', requireSignIn, async (req: AuthenticatedRequest, re
       previousText,
       formats,
       capturedText,
+      capturedLists,
       screenshots: screenshotFormats,
       changedFormats: currentOutput?._comparison?.changedFormats || [],
     });

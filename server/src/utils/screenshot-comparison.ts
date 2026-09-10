@@ -6,8 +6,6 @@ export type ComparableScreenshotFormat = (typeof COMPARABLE_SCREENSHOT_FORMATS)[
 
 const PIXEL_CHANNEL_THRESHOLD = 32;
 const HORIZONTAL_POSITION_TOLERANCE = 2;
-// Row alignment works at block level. Allow a small local vertical search as well
-// so sub-pixel rendering and content-height shifts do not paint unchanged glyphs.
 const VERTICAL_POSITION_TOLERANCE = 3;
 const CHANGED_PERCENTAGE_THRESHOLD = 0.01;
 const MAX_COMPARISON_PIXELS = 4_000_000;
