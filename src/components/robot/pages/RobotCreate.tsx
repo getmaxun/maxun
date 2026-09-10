@@ -1891,7 +1891,7 @@ const RobotCreate: React.FC = () => {
                     mb: 3,
                     textAlign: 'center',
                     cursor: 'pointer',
-                    '&:hover': { borderColor: '#ff00c3' },
+                    '&:hover': { borderColor: theme => theme.palette.mode === 'dark' ? 'divider' : '#0000004a' },
                   }}
                   onClick={() => document.getElementById('doc-upload-input')?.click()}
                 >
