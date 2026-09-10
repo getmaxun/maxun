@@ -104,3 +104,50 @@ export async function compareRunOutputsWithPrevious(currentRun: any, currentOutp
     screenshotDiffs,
   };
 }
+
+const stableValue = (value: any): any => Array.isArray(value)
+  ? value.map(stableValue)
+  : value && typeof value === 'object'
+    ? Object.keys(value).sort().reduce((result, key) => ({ ...result, [key]: stableValue(value[key]) }), {})
+    : value;
+
+export const serializeCapturedText = (value: any) => JSON.stringify(stableValue(value || {}), null, 2);
+
+/** Compares named text and screenshot captures produced by an extract robot. */
+export async function compareExtractRunWithPrevious(currentRun: any, currentOutput: any, binaryOutput: any) {
+  const previousRun = await findPreviousSuccessfulRun(currentRun);
+  if (!previousRun) {
+    return {
+      previousRun: null,
+      hasChanges: false,
+      changedFormats: [] as string[],
+      screenshotComparisons: {} as Record<string, ScreenshotComparisonResult>,
+      screenshotDiffs: {} as Record<string, Buffer>,
+    };
+  }
+
+  const changedFormats: string[] = [];
+  if (serializeCapturedText(currentOutput?.scrapeSchema) !== serializeCapturedText(previousRun.serializableOutput?.scrapeSchema)) {
+    changedFormats.push('captured-text');
+  }
+
+  const screenshotComparisons: Record<string, ScreenshotComparisonResult> = {};
+  const screenshotDiffs: Record<string, Buffer> = {};
+  for (const name of Object.keys(binaryOutput || {}).filter((key) => !key.endsWith('-diff'))) {
+    const comparison = await compareScreenshots(binaryOutput[name], previousRun.binaryOutput?.[name]);
+    if (!comparison) continue;
+    screenshotComparisons[name] = comparison;
+    if (comparison.changed) {
+      changedFormats.push(`screenshot:${name}`);
+      if (comparison.diff) screenshotDiffs[`${name}-diff`] = comparison.diff;
+    }
+  }
+
+  return {
+    previousRun,
+    hasChanges: changedFormats.length > 0,
+    changedFormats,
+    screenshotComparisons,
+    screenshotDiffs,
+  };
+}

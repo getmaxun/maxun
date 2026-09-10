@@ -33,7 +33,7 @@ import { createDocumentParseRobotRecord } from '../utils/document/createDocument
 import { normalizeRobotUrl, normalizeWorkflowUrls, applyWorkflowLimits } from '../utils/robot-updates';
 import { normalizeDocumentMimeType } from '../utils/document/documentFile';
 import { validateRequiredLlmConfig, formatsRequireLlm, readLlmConfig } from '../utils/llm-config-validation';
-import { findPreviousSuccessfulRun } from '../utils/run-comparison';
+import { findPreviousSuccessfulRun, serializeCapturedText } from '../utils/run-comparison';
 
 export const router = Router();
 
@@ -1307,13 +1307,21 @@ router.get('/runs/:id/diff', requireSignIn, async (req: AuthenticatedRequest, re
     const currentText = formats.text?.current || '';
     const previousText = formats.text?.previous || '';
     const screenshotMetadata = currentOutput?._comparison?.screenshots || {};
-    const screenshotFormats = ['screenshot-visible', 'screenshot-fullpage'].reduce((result, format) => {
+    const isExtract = robot.recording_meta.type === 'extract';
+    const capturedText = isExtract ? {
+      current: serializeCapturedText(currentOutput?.scrapeSchema),
+      previous: serializeCapturedText(previousOutput?.scrapeSchema),
+    } : null;
+    const screenshotNames = isExtract
+      ? Object.keys(run.binaryOutput || {}).filter((name) => !name.endsWith('-diff'))
+      : ['screenshot-visible', 'screenshot-fullpage'];
+    const screenshotFormats = screenshotNames.reduce((result, format) => {
       const current = run.binaryOutput?.[format];
       if (!current) return result;
       result[format] = {
         current,
         previous: previousRun.binaryOutput?.[format] || null,
-        diff: run.binaryOutput?.[`${format}-diff`] || null,
+        diff: screenshotMetadata[format]?.diff || run.binaryOutput?.[`${format}-diff`] || null,
         metadata: screenshotMetadata[format] || null,
       };
       return result;
@@ -1325,6 +1333,7 @@ router.get('/runs/:id/diff', requireSignIn, async (req: AuthenticatedRequest, re
       currentText,
       previousText,
       formats,
+      capturedText,
       screenshots: screenshotFormats,
       changedFormats: currentOutput?._comparison?.changedFormats || [],
     });

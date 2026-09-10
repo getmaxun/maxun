@@ -240,7 +240,7 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
                 }}
                 style={{ marginBottom: "20px" }}
               />
-              {robot.recording_meta.type === 'scrape' && (
+              {(robot.recording_meta.type === 'scrape' || robot.recording_meta.type === 'extract') && (
                 <FormControlLabel
                   control={
                     <Checkbox

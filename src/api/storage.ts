@@ -182,7 +182,8 @@ export interface RunDiffResponse {
     current: string;
     previous: string;
   }>>;
-  screenshots: Partial<Record<'screenshot-visible' | 'screenshot-fullpage', {
+  capturedText: { current: string; previous: string } | null;
+  screenshots: Record<string, {
     current: string | { data?: string };
     previous: string | { data?: string } | null;
     diff: string | { data?: string } | null;
@@ -197,7 +198,7 @@ export interface RunDiffResponse {
       comparedWidth: number;
       comparedHeight: number;
     } | null;
-  }>>;
+  }>;
   changedFormats: string[];
 }
 

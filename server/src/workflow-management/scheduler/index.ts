@@ -20,7 +20,7 @@ import { safeDecrypt } from "../../utils/auth";
 import { getInterpretationFailureReason, hasExpectedRobotOutput } from "../../utils/output-validation";
 import { addJob } from '../../storage/graphileWorker';
 import { QUEUE_NAMES } from '../../task-runner';
-import { compareRunOutputsWithPrevious } from '../../utils/run-comparison';
+import { compareExtractRunWithPrevious, compareRunOutputsWithPrevious } from '../../utils/run-comparison';
 
 const getRobotTargetUrl = (recording: any): string => {
   const metaUrl = recording?.recording_meta?.url?.trim();
@@ -680,7 +680,27 @@ async function executeRun(id: string, userId: string) {
       }
     }
 
+    const finalSerializableOutput: any = {
+      ...(finalRun?.serializableOutput || {}),
+      crawl: categorizedOutput.crawl,
+      search: categorizedOutput.search,
+    };
+    let hasChanges = false;
     const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
+    if (robotType === 'extract' && (recording.recording_meta as any).compareRuns) {
+      const comparison = await compareExtractRunWithPrevious(run, finalSerializableOutput, binaryOutput);
+      hasChanges = comparison.hasChanges;
+      finalSerializableOutput._comparison = {
+        changedFormats: comparison.changedFormats,
+        screenshots: Object.fromEntries(await Promise.all(Object.entries(comparison.screenshotComparisons).map(async ([key, value]) => {
+          const { diff: _diff, ...metadata } = value;
+          const diff = comparison.screenshotDiffs[`${key}-diff`];
+          const diffUrl = diff ? await binaryOutputService.uploadBinaryOutputItem(plainRun.runId, `${key}-diff`, diff, 'image/png') : null;
+          return [key, { ...metadata, diff: diffUrl || (diff ? `data:image/png;base64,${diff.toString('base64')}` : null) }];
+        }))),
+      };
+    }
+
     const uploadedBinaryOutput = Object.keys(binaryOutput).length > 0
       ? await binaryOutputService.uploadAndStoreBinaryOutput(run, binaryOutput)
       : {};
@@ -691,7 +711,9 @@ async function executeRun(id: string, userId: string) {
       status: 'success',
       finishedAt: new Date().toLocaleString(),
       log: interpretationInfo.log.join('\n'),
-      binaryOutput: uploadedBinaryOutput
+      binaryOutput: uploadedBinaryOutput,
+      serializableOutput: finalSerializableOutput,
+      hasChanges,
     });
 
     // Get metrics from persisted data for analytics and webhooks
@@ -742,7 +764,8 @@ async function executeRun(id: string, userId: string) {
         robotMetaId: plainRun.robotMetaId,
         robotName: recording.recording_meta.name,
         status: 'success',
-        finishedAt: new Date().toLocaleString()
+        finishedAt: new Date().toLocaleString(),
+        hasChanges,
       };
 
       serverIo.of(plainRun.browserId).emit('run-completed', completionData);

@@ -10,6 +10,11 @@ import {
   CircularProgress,
   Tab,
   Tabs,
+  Paper,
+  Table,
+  TableBody,
+  TableContainer,
+  TableHead,
 } from "@mui/material";
 import { Button } from "@mui/material";
 import { DeleteForever, KeyboardArrowDown, KeyboardArrowUp, Settings } from "@mui/icons-material";
@@ -22,17 +27,15 @@ import { useTheme, alpha } from "@mui/material/styles";
 import { getOrCreateBrowserSocket, releaseBrowserSocket } from "../../utils/browserSocket";
 import { diffLines, Change } from "diff";
 
-type DiffFormat = 'text' | 'markdown' | 'html' | 'screenshot-visible' | 'screenshot-fullpage';
+type TextDiffFormat = 'text' | 'markdown' | 'html';
 
-const DIFF_FORMATS: DiffFormat[] = [
+const TEXT_DIFF_FORMATS: TextDiffFormat[] = [
   'text',
   'markdown',
   'html',
-  'screenshot-visible',
-  'screenshot-fullpage',
 ];
 
-const DIFF_FORMAT_LABELS: Record<DiffFormat, string> = {
+const DIFF_FORMAT_LABELS: Record<string, string> = {
   text: 'Text Content',
   markdown: 'Markdown',
   html: 'HTML',
@@ -82,28 +85,34 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
   const [diffOpen, setDiffOpen] = useState(false);
   const [diffData, setDiffData] = useState<RunDiffResponse | null>(null);
   const [isDiffLoading, setIsDiffLoading] = useState(false);
-  const [selectedDiffFormat, setSelectedDiffFormat] = useState<DiffFormat>('text');
+  const [selectedDiffFormat, setSelectedDiffFormat] = useState('text');
+  const [selectedCapturedGroup, setSelectedCapturedGroup] = useState('');
 
   const handleOpenDiff = async () => {
     setDiffOpen(true);
     setIsDiffLoading(true);
     const data = await getRunDiff(row.runId);
     setDiffData(data);
-    const availableFormats = DIFF_FORMATS.filter(
-      (format) => format.startsWith('screenshot-')
-        ? data?.screenshots?.[format as 'screenshot-visible' | 'screenshot-fullpage']
-        : data?.formats?.[format as 'text' | 'markdown' | 'html']
-    );
-    const firstChangedFormat = availableFormats.find((format) => data?.changedFormats?.includes(format))
-      || availableFormats.find((format) => {
-      if (format.startsWith('screenshot-')) return false;
-      const output = data?.formats?.[format as 'text' | 'markdown' | 'html'];
-      if (!output) return false;
-      return diffLines(output.previous, output.current, { ignoreWhitespace: true })
-        .some((part) => part.added || part.removed);
+    const availableFormats = data ? [
+      ...TEXT_DIFF_FORMATS.filter((format) => data.formats?.[format]),
+      ...(data.capturedText ? ['captured-text'] : []),
+      ...Object.keys(data.screenshots || {}).map((name) => `screenshot:${name}`),
+    ] : [];
+    const firstChangedFormat = availableFormats.find((format) => {
+      const changedKey = format.startsWith('screenshot:') ? format.slice('screenshot:'.length) : format;
+      return data?.changedFormats?.includes(format) || data?.changedFormats?.includes(changedKey);
     });
     const initialFormat = firstChangedFormat || availableFormats[0];
     if (initialFormat) setSelectedDiffFormat(initialFormat);
+    if (data?.capturedText) {
+      try {
+        const currentGroups = JSON.parse(data.capturedText.current || '{}');
+        const previousGroups = JSON.parse(data.capturedText.previous || '{}');
+        setSelectedCapturedGroup(Object.keys(currentGroups)[0] || Object.keys(previousGroups)[0] || '');
+      } catch {
+        setSelectedCapturedGroup('');
+      }
+    }
     setIsDiffLoading(false);
   };
 
@@ -113,23 +122,78 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
   };
 
   const diffParts = useMemo<Change[]>(() => {
-    if (!diffData || selectedDiffFormat.startsWith('screenshot-')) return [];
-    const selectedOutput = diffData.formats?.[selectedDiffFormat as 'text' | 'markdown' | 'html'];
+    if (!diffData || selectedDiffFormat.startsWith('screenshot:')) return [];
+    const selectedOutput = selectedDiffFormat === 'captured-text'
+      ? diffData.capturedText
+      : diffData.formats?.[selectedDiffFormat as TextDiffFormat];
     const previous = selectedOutput?.previous ?? (selectedDiffFormat === 'text' ? diffData.previousText : '');
     const current = selectedOutput?.current ?? (selectedDiffFormat === 'text' ? diffData.currentText : '');
     return diffLines(previous, current, { ignoreWhitespace: true });
   }, [diffData, selectedDiffFormat]);
 
   const hasDiff = diffParts.some((part) => part.added || part.removed);
-  const selectedScreenshot = selectedDiffFormat.startsWith('screenshot-')
-    ? diffData?.screenshots?.[selectedDiffFormat as 'screenshot-visible' | 'screenshot-fullpage']
+  const selectedScreenshotName = selectedDiffFormat.startsWith('screenshot:')
+    ? selectedDiffFormat.slice('screenshot:'.length)
     : undefined;
+  const selectedScreenshot = selectedScreenshotName ? diffData?.screenshots?.[selectedScreenshotName] : undefined;
   const getDiffImageSrc = (entry: string | { data?: string } | null | undefined) => {
     const value = typeof entry === 'object' && entry !== null ? entry.data : entry;
     if (!value) return '';
     if (value.startsWith('http') || value.startsWith('data:')) return value;
     return `data:image/png;base64,${value}`;
   };
+  const diffOptions = useMemo(() => {
+    if (!diffData) return [];
+    return [
+      ...TEXT_DIFF_FORMATS.filter((format) => diffData.formats?.[format]).map((format) => ({ key: format, label: DIFF_FORMAT_LABELS[format] })),
+      ...(diffData.capturedText ? [{ key: 'captured-text', label: 'Captured Text' }] : []),
+      ...Object.keys(diffData.screenshots || {}).map((name) => ({
+        key: `screenshot:${name}`,
+        label: DIFF_FORMAT_LABELS[name] || name,
+      })),
+    ];
+  }, [diffData]);
+  const capturedGroups = useMemo(() => {
+    if (!diffData?.capturedText) return {} as Record<string, { previous: any[]; current: any[] }>;
+    try {
+      const previous = JSON.parse(diffData.capturedText.previous || '{}');
+      const current = JSON.parse(diffData.capturedText.current || '{}');
+      return Array.from(new Set([...Object.keys(previous), ...Object.keys(current)])).reduce((groups, name) => {
+        groups[name] = {
+          previous: Array.isArray(previous[name]) ? previous[name] : previous[name] == null ? [] : [previous[name]],
+          current: Array.isArray(current[name]) ? current[name] : current[name] == null ? [] : [current[name]],
+        };
+        return groups;
+      }, {} as Record<string, { previous: any[]; current: any[] }>);
+    } catch {
+      return {} as Record<string, { previous: any[]; current: any[] }>;
+    }
+  }, [diffData]);
+  const capturedTableRows = useMemo(() => {
+    const group = capturedGroups[selectedCapturedGroup];
+    if (!group) return [];
+    const rowCount = Math.max(group.previous.length, group.current.length);
+    const rows: Array<{ key: string; label: string; previous: any; current: any; changed: boolean }> = [];
+    for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
+      const previousRow = group.previous[rowIndex] || {};
+      const currentRow = group.current[rowIndex] || {};
+      Array.from(new Set([...Object.keys(previousRow), ...Object.keys(currentRow)])).forEach((label) => {
+        const previous = previousRow[label];
+        const current = currentRow[label];
+        rows.push({
+          key: `${rowIndex}-${label}`,
+          label: rowCount > 1 ? `${label} (row ${rowIndex + 1})` : label,
+          previous,
+          current,
+          changed: JSON.stringify(previous) !== JSON.stringify(current),
+        });
+      });
+    }
+    return rows;
+  }, [capturedGroups, selectedCapturedGroup]);
+  const displayCapturedValue = (value: any) => value == null
+    ? '—'
+    : typeof value === 'object' ? JSON.stringify(value) : String(value);
   const runByLabel = row.runByScheduleId
     ? `${row.runByScheduleId}`
     : row.runByUserId
@@ -466,20 +530,52 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                 centered
                 sx={{ mb: 2 }}
               >
-                {DIFF_FORMATS.map((format) => {
-                  const available = format.startsWith('screenshot-')
-                    ? diffData.screenshots?.[format as 'screenshot-visible' | 'screenshot-fullpage']
-                    : diffData.formats?.[format as 'text' | 'markdown' | 'html'];
-                  return available && (
-                    <Tab
-                      key={format}
-                      value={format}
-                      label={DIFF_FORMAT_LABELS[format]}
-                    />
-                  );
-                })}
+                {diffOptions.map((option) => (
+                  <Tab key={option.key} value={option.key} label={option.label} />
+                ))}
               </Tabs>
-              {selectedScreenshot ? (
+              {selectedDiffFormat === 'captured-text' ? (
+                <Box>
+                  {Object.keys(capturedGroups).length > 1 && (
+                    <Tabs value={selectedCapturedGroup} onChange={(_, value) => setSelectedCapturedGroup(value)} variant="scrollable" scrollButtons="auto" sx={{ mb: 2, minHeight: 36 }}>
+                      {Object.keys(capturedGroups).map((name) => <Tab key={name} value={name} label={name} sx={{ minHeight: 36 }} />)}
+                    </Tabs>
+                  )}
+                  <TableContainer component={Paper} sx={{ maxHeight: '60vh' }}>
+                    <Table
+                      stickyHeader
+                      sx={{
+                        '& .MuiTableCell-root': {
+                          px: 3,
+                          py: 2.25,
+                          fontSize: '1rem',
+                          lineHeight: 1.5,
+                        },
+                        '& .MuiTableCell-head': {
+                          py: 2.5,
+                        },
+                      }}
+                    >
+                      <TableHead>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 600, width: '22%' }}>Label</TableCell>
+                          <TableCell sx={{ fontWeight: 600, width: '39%' }}>Previous Run</TableCell>
+                          <TableCell sx={{ fontWeight: 600, width: '39%' }}>Current Run</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {capturedTableRows.map((item) => (
+                          <TableRow key={item.key} hover>
+                            <TableCell sx={{ fontWeight: 500 }}>{item.label}</TableCell>
+                            <TableCell sx={{ wordBreak: 'break-word', backgroundColor: item.changed ? alpha(theme.palette.error.main, 0.12) : 'transparent' }}>{displayCapturedValue(item.previous)}</TableCell>
+                            <TableCell sx={{ wordBreak: 'break-word', backgroundColor: item.changed ? alpha(theme.palette.success.main, 0.12) : 'transparent' }}>{displayCapturedValue(item.current)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Box>
+              ) : selectedScreenshot ? (
                 <Box>
                   {selectedScreenshot.metadata && (
                     <Typography variant="body2" align="center" sx={{ mb: 2 }}>
