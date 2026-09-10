@@ -131,8 +131,7 @@ export const RobotConfigPage: React.FC<RobotConfigPageProps> = ({
             display: 'flex',
             justifyContent: onBackToSelection ? 'space-between' : 'flex-start',
             gap: 2,
-            pt: 3,
-            borderTop: `1px solid ${theme.palette.divider}`,
+            pt: 2,
             flexShrink: 0,
             width: '100%',
           }}
