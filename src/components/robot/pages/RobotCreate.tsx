@@ -709,7 +709,7 @@ const RobotCreate: React.FC = () => {
         </Box>
 
         <TabPanel value={tabValue} index={0}>
-          <Card sx={{ mb: 4, p: 4 }}>
+          <Card sx={{ mb: 4, p: 3 }}>
             <Box display="flex" flexDirection="column" alignItems="center">
               <img
                 src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
