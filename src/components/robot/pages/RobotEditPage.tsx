@@ -1015,9 +1015,8 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         <Button
           onClick={() => setShowCrawlAdvanced(!showCrawlAdvanced)}
           sx={{
-            mb: 4,
+            mb: showCrawlAdvanced ? 4 : 0,
             textTransform: 'none',
-            color: '#ff00c3',
             alignSelf: 'flex-start',
           }}
         >
