@@ -1015,7 +1015,6 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         <Button
           onClick={() => setShowCrawlAdvanced(!showCrawlAdvanced)}
           sx={{
-            mb: showCrawlAdvanced ? 4 : 0,
             textTransform: 'none',
             alignSelf: 'flex-start',
           }}
@@ -1024,13 +1023,18 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         </Button>
 
         <Collapse in={showCrawlAdvanced}>
-          <Box sx={{ mb: 2 }}>
+          <Box sx={{ mt: 4, mb: 2 }}>
             <FormControl fullWidth sx={{ mb: 2 }}>
               <InputLabel>Crawl Scope</InputLabel>
               <Select
                 value={crawlConfig.mode || 'domain'}
                 label="Crawl Scope"
-                onChange={(e) => setCrawlConfig((prev) => ({ ...prev, mode: e.target.value }))}
+                onChange={(e) =>
+                  setCrawlConfig((prev) => ({
+                    ...prev,
+                    mode: e.target.value,
+                  }))
+                }
               >
                 <MenuItem value="domain">Same Domain Only</MenuItem>
                 <MenuItem value="subdomain">Include Subdomains</MenuItem>
@@ -1664,7 +1668,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
                   style={{ marginBottom: "20px" }}
                 />
               )}
-              
+
               {renderCrawlConfigFields()}
               {renderSearchConfigFields()}
               {renderScrapeOutputFormatsField()}
