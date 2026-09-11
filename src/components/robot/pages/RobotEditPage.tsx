@@ -1012,12 +1012,10 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
           style={{ marginBottom: "20px" }}
         />
 
-        {renderLlmConfigFields()}
-
         <Button
           onClick={() => setShowCrawlAdvanced(!showCrawlAdvanced)}
           sx={{
-            mb: 2,
+            mb: 4,
             textTransform: 'none',
             color: '#ff00c3',
             alignSelf: 'flex-start',
@@ -1114,6 +1112,8 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
             </Box>
           </Box>
         </Collapse>
+
+        {renderLlmConfigFields()}
       </>
     );
   };
