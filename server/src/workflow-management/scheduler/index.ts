@@ -1,6 +1,4 @@
 import { v4 as uuid } from "uuid";
-import { io, Socket } from "socket.io-client";
-import { mintInternalSocketToken } from '../../socket-connection/socketAuth';
 import { createRemoteBrowserForRun, destroyRemoteBrowser } from '../../browser-management/controller';
 import logger from '../../logger';
 import { browserPool, io as serverIo } from "../../server";
@@ -115,18 +113,58 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string) {
       logger.log('warn', `Failed to send run-scheduled notification for run ${plainRun.runId}: ${socketError.message}`);
     }
 
-    if (isDocRobot) {
+    try {
       await addJob(QUEUE_NAMES.EXECUTE_RUN, {
         userId,
         runId: plainRun.runId,
         browserId,
-      }, { maxAttempts: 1 });
-      return { browserId, runId: plainRun.runId, isDocRobot: true };
+      }, {
+        maxAttempts: 1,
+        jobKey: `${QUEUE_NAMES.EXECUTE_RUN}:${plainRun.runId}`,
+      });
+    } catch (queueError: any) {
+      const finishedAt = new Date().toLocaleString();
+      await run.update({
+        status: 'failed',
+        finishedAt,
+        log: `Failed to queue scheduled execution job: ${queueError.message}`,
+      });
+
+      const failureSocketData = {
+        runId: plainRun.runId,
+        robotMetaId: plainRun.robotMetaId,
+        robotName: plainRun.name,
+        status: 'failed',
+        finishedAt,
+        runByUserId: plainRun.runByUserId,
+        runByScheduleId: plainRun.runByScheduleId,
+        runByAPI: plainRun.runByAPI || false,
+        browserId: plainRun.browserId,
+        error: `Failed to queue scheduled execution job: ${queueError.message}`,
+      };
+
+      try {
+        serverIo.of(browserId).emit('run-completed', failureSocketData);
+        serverIo.of('/queued-run').to(`user-${userId}`).emit('run-completed', failureSocketData);
+      } catch (socketError: any) {
+        logger.log('warn', `Failed to emit queue failure for scheduled run ${plainRun.runId}: ${socketError.message}`);
+      }
+
+      if (!isDocRobot) {
+        try {
+          await destroyRemoteBrowser(browserId, userId);
+        } catch (cleanupError: any) {
+          logger.log('warn', `Failed to clean up browser ${browserId} after scheduled queue error: ${cleanupError.message}`);
+        }
+      }
+
+      throw queueError;
     }
 
     return {
       browserId,
       runId: plainRun.runId,
+      isDocRobot,
     }
 
   } catch (e) {
@@ -852,38 +890,10 @@ async function executeRun(id: string, userId: string) {
   }
 }
 
-async function readyForRunHandler(browserId: string, id: string, userId: string, socket: Socket) {
-  try {
-    const interpretation = await executeRun(id, userId);
-
-    if (interpretation) {
-      logger.log('info', `Interpretation of ${id} succeeded`);
-    } else {
-      logger.log('error', `Interpretation of ${id} failed`);
-      await destroyRemoteBrowser(browserId, userId);
-    }
-
-    resetRecordingState(browserId, id);
-
-  } catch (error: any) {
-    logger.error(`Error during readyForRunHandler: ${error.message}`);
-    await destroyRemoteBrowser(browserId, userId);
-  } finally {
-    cleanupSocketConnection(socket, browserId, id);
-  }
-}
-
-function resetRecordingState(browserId: string, id: string) {
-  browserId = '';
-  id = '';
-}
-
 export async function handleRunRecording(id: string, userId: string) {
-  let socket: Socket | null = null;
-  
   try {
     const result = await createWorkflowAndStoreMetadata(id, userId);
-    const { browserId, runId: newRunId, isDocRobot } = result as any;
+    const { runId: newRunId, isDocRobot } = result as any;
 
     if (!newRunId || !userId) {
       throw new Error('runId or userId is undefined');
@@ -891,66 +901,14 @@ export async function handleRunRecording(id: string, userId: string) {
 
     if (isDocRobot) {
       logger.log('info', `Doc robot scheduled run ${newRunId} queued without browser`);
-      return newRunId;
     }
-
-    if (!browserId) {
-      throw new Error('browserId is undefined for non-document robot');
-    }
-
-    const CONNECTION_TIMEOUT = 30000;
-
-    socket = io(`${process.env.BACKEND_URL ? process.env.BACKEND_URL : 'http://localhost:5000'}/${browserId}`, {
-      transports: ['websocket'],
-      rejectUnauthorized: false,
-      timeout: CONNECTION_TIMEOUT,
-      // Same reason as the API path: no cookie on a server-opened socket, so
-      // the namespace middleware needs an explicit token.
-      auth: { token: mintInternalSocketToken(userId) },
-    });
-
-    const readyHandler = () => readyForRunHandler(browserId, newRunId, userId, socket!);
-
-    socket.on('ready-for-run', readyHandler);
-
-    socket.on('connect_error', (error: Error) => {
-      logger.error(`Socket connection error for scheduled run ${newRunId}: ${error.message}`);
-      cleanupSocketConnection(socket!, browserId, newRunId);
-    });
-
-    socket.on('disconnect', () => {
-      cleanupSocketConnection(socket!, browserId, newRunId);
-    });
 
     logger.log('info', `Running robot: ${id}`);
 
+    return newRunId;
+
   } catch (error: any) {
     logger.error('Error running recording:', error);
-    if (socket) {
-      cleanupSocketConnection(socket, '', '');
-    }
-  }
-}
-
-function cleanupSocketConnection(socket: Socket, browserId: string, id: string) {
-  try {
-    socket.removeAllListeners();
-    socket.disconnect();
-
-    if (browserId) {
-      const namespace = serverIo.of(browserId);
-      namespace.removeAllListeners();
-      namespace.disconnectSockets(true);
-      const nsps = (serverIo as any)._nsps;
-      if (nsps && nsps.has(`/${browserId}`)) {
-        nsps.delete(`/${browserId}`);
-        logger.log('debug', `Deleted namespace /${browserId} from io._nsps Map`);
-      }
-    }
-
-    logger.log('info', `Cleaned up socket connection for browserId: ${browserId}, runId: ${id}`);
-  } catch (error: any) {
-    logger.error(`Error cleaning up socket connection: ${error.message}`);
   }
 }
 
