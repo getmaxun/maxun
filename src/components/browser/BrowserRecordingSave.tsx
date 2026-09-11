@@ -185,24 +185,11 @@ const BrowserRecordingSave = () => {
 
           <SaveRecording fileName={recordingName} />
 
-          <Dialog
-            open={openDiscardModal}
-            onClose={() => setOpenDiscardModal(false)}
-            maxWidth="xs"
-            fullWidth
-            PaperProps={{
-              sx: {
-                p: 0,
-                borderRadius: 2,
-                border: "none"
-              }
-            }}
-          >
+          <Dialog open={openDiscardModal} onClose={() => setOpenDiscardModal(false)}>
             <DialogTitle>
               {t('browser_recording.modal.confirm_discard')}
             </DialogTitle>
-
-            <DialogActions sx={{ px: 3, pb: 2 }}>
+            <DialogActions>
               <Button
                 onClick={() => setOpenDiscardModal(false)}
                 color="inherit"
@@ -219,47 +206,28 @@ const BrowserRecordingSave = () => {
             </DialogActions>
           </Dialog>
 
-          <Dialog
-            open={openResetModal}
-            onClose={() => setOpenResetModal(false)}
-            maxWidth="xs"
-            fullWidth
-            PaperProps={{
-              sx: {
-                borderRadius: 2,
-                p: 1,
-              },
-            }}
-          >
+          <Dialog open={openResetModal} onClose={() => setOpenResetModal(false)}>
             <DialogTitle>
               {t('browser_recording.modal.confirm_reset')}
             </DialogTitle>
 
             <DialogContent>
-              <Typography variant="body2" sx={{ mt: 1 }}>
-                {t('browser_recording.modal.reset_warning')}
-              </Typography>
+              {t('browser_recording.modal.reset_warning')}
             </DialogContent>
 
-            <DialogActions sx={{ px: 3, pb: 2, justifyContent: 'space-between' }}>
+            <DialogActions>
+              <Button
+                onClick={() => setOpenResetModal(false)}
+                color='inherit'
+              >
+                {t('right_panel.buttons.cancel')}
+              </Button>
               <Button
                 onClick={performReset}
                 variant="contained"
                 color="primary"
               >
                 {t('right_panel.buttons.confirm_reset')}
-              </Button>
-
-              <Button
-                onClick={() => setOpenResetModal(false)}
-                variant="outlined"
-                sx={{
-                  color: '#ff00c3 !important',
-                  borderColor: '#ff00c3 !important',
-                  backgroundColor: 'whitesmoke !important',
-                }}
-              >
-                {t('right_panel.buttons.cancel')}
               </Button>
             </DialogActions>
           </Dialog>
