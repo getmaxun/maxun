@@ -571,9 +571,6 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
         PaperProps={{
           sx: {
             p: 0,
-            backgroundColor: theme.palette.mode === 'dark'
-              ? theme.palette.grey[900]
-              : theme.palette.background.paper,
             borderRadius: 2,
             width: { xs: '90vw', sm: '460px', md: '420px' },
             maxWidth: '90vw',
