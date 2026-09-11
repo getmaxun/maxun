@@ -697,7 +697,7 @@ const RobotCreate: React.FC = () => {
                 paddingX: 2,
                 paddingY: 1.5,
                 minWidth: 0,
-                color: theme => theme.palette.mode === 'dark' ? '#fff' : '#000',
+                color: theme => `${theme.palette.mode === 'dark' ? '#fff' : '#000'} !important`,
               },
               '& .MuiTabs-indicator': {
                 height: 2,
