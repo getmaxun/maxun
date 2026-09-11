@@ -634,7 +634,19 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                 value={selectedDiffFormat}
                 onChange={(_, value) => setSelectedDiffFormat(value)}
                 centered
-                sx={{ mb: 2 }}
+                sx={{
+                  minHeight: 36,
+                  '& .MuiTab-root': {
+                    minHeight: 36,
+                    paddingX: 2,
+                    paddingY: 1.5,
+                    minWidth: 0,
+                    color: theme => `${theme.palette.mode === 'dark' ? '#fff' : '#000'} !important`,
+                  },
+                  '& .MuiTabs-indicator': {
+                    height: 2,
+                  },
+                }}
               >
                 {diffOptions.map((option) => (
                   <Tab key={option.key} value={option.key} label={option.label} />
@@ -701,63 +713,63 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                       No captured list data is available for these runs.
                     </DialogContentText>
                   ) : (
-                  <TableContainer component={Paper} sx={{ maxHeight: '60vh' }}>
-                    <Table
-                      stickyHeader
-                      sx={{
-                        width: 'max-content',
-                        minWidth: '100%',
-                        '& .MuiTableCell-root': { px: 3, py: 2, fontSize: '1rem', lineHeight: 1.5 },
-                        '& .MuiTableCell-head': { py: 2.5, whiteSpace: 'nowrap' },
-                      }}
-                    >
-                      <TableHead>
-                        <TableRow>
-                          {capturedListColumns.map((column) => (
-                            <TableCell key={column} sx={{ fontWeight: 600, minWidth: 190 }}>{column}</TableCell>
-                          ))}
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {capturedListRows.map((item) => (
-                          <TableRow key={item.key} hover>
-                            {capturedListColumns.map((column) => {
-                              const previous = item.previous?.[column];
-                              const current = item.current?.[column];
-                              const changed = !valuesEqual(previous, current);
-                              return (
-                                <TableCell
-                                  key={column}
-                                  sx={{
-                                    minWidth: 190,
-                                    maxWidth: 360,
-                                    verticalAlign: 'middle',
-                                    bgcolor: changed ? alpha(theme.palette.warning.main, theme.palette.mode === 'dark' ? 0.16 : 0.2) : 'transparent',
-                                    wordBreak: 'break-word',
-                                  }}
-                                >
-                                  {!changed ? displayCapturedValue(current) : (
-                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 0.75 }}>
-                                      {item.previous && (
-                                        <Typography component="span" sx={{ color: 'error.main', textDecoration: 'line-through', fontSize: 'inherit' }}>
-                                          {displayCapturedValue(previous)}
-                                        </Typography>
-                                      )}
-                                      {item.current && (
-                                        <Typography component="span" sx={{ color: 'success.main', fontWeight: 600, fontSize: 'inherit' }}>
-                                          {displayCapturedValue(current)}
-                                        </Typography>
-                                      )}
-                                    </Box>
-                                  )}
-                                </TableCell>
-                              );
-                            })}
+                    <TableContainer component={Paper} sx={{ maxHeight: '60vh' }}>
+                      <Table
+                        stickyHeader
+                        sx={{
+                          width: 'max-content',
+                          minWidth: '100%',
+                          '& .MuiTableCell-root': { px: 3, py: 2, fontSize: '1rem', lineHeight: 1.5 },
+                          '& .MuiTableCell-head': { py: 2.5, whiteSpace: 'nowrap' },
+                        }}
+                      >
+                        <TableHead>
+                          <TableRow>
+                            {capturedListColumns.map((column) => (
+                              <TableCell key={column} sx={{ fontWeight: 600, minWidth: 190 }}>{column}</TableCell>
+                            ))}
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                        </TableHead>
+                        <TableBody>
+                          {capturedListRows.map((item) => (
+                            <TableRow key={item.key} hover>
+                              {capturedListColumns.map((column) => {
+                                const previous = item.previous?.[column];
+                                const current = item.current?.[column];
+                                const changed = !valuesEqual(previous, current);
+                                return (
+                                  <TableCell
+                                    key={column}
+                                    sx={{
+                                      minWidth: 190,
+                                      maxWidth: 360,
+                                      verticalAlign: 'middle',
+                                      bgcolor: changed ? alpha(theme.palette.warning.main, theme.palette.mode === 'dark' ? 0.16 : 0.2) : 'transparent',
+                                      wordBreak: 'break-word',
+                                    }}
+                                  >
+                                    {!changed ? displayCapturedValue(current) : (
+                                      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 0.75 }}>
+                                        {item.previous && (
+                                          <Typography component="span" sx={{ color: 'error.main', textDecoration: 'line-through', fontSize: 'inherit' }}>
+                                            {displayCapturedValue(previous)}
+                                          </Typography>
+                                        )}
+                                        {item.current && (
+                                          <Typography component="span" sx={{ color: 'success.main', fontWeight: 600, fontSize: 'inherit' }}>
+                                            {displayCapturedValue(current)}
+                                          </Typography>
+                                        )}
+                                      </Box>
+                                    )}
+                                  </TableCell>
+                                );
+                              })}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
                   )}
                 </Box>
               ) : selectedScreenshot ? (
