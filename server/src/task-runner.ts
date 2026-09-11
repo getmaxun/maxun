@@ -338,28 +338,30 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
           await run.update({ status: 'success', finishedAt, log: `${formats.join(', ').toUpperCase()} conversion completed successfully`, serializableOutput, binaryOutput, hasChanges: false });
 
           let hasChanges = false;
+          const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
           if ((recording.recording_meta as any).compareRuns) {
             try {
               const comparison = await compareRunOutputsWithPrevious(run, serializableOutput, binaryOutput);
               hasChanges = comparison.hasChanges;
 
-              Object.entries(comparison.screenshotDiffs).forEach(([key, diff]) => {
-                binaryOutput[key] = { data: diff.toString('base64'), mimeType: 'image/png' };
-              });
               serializableOutput._comparison = {
                 changedFormats: comparison.changedFormats,
-                screenshots: Object.fromEntries(
-                  Object.entries(comparison.screenshotComparisons).map(([key, value]) => {
+                screenshots: Object.fromEntries(await Promise.all(
+                  Object.entries(comparison.screenshotComparisons).map(async ([key, value]) => {
                     if (!value) return [key, null];
                     const { diff: _diff, ...metadata } = value;
-                    return [key, metadata];
+                    const diff = comparison.screenshotDiffs[`${key}-diff`];
+                    const diffUrl = diff
+                      ? await binaryOutputService.uploadBinaryOutputItem(plainRun.runId, `${key}-diff`, diff, 'image/png')
+                      : null;
+                    return [key, { ...metadata, diff: diffUrl || (diff ? `data:image/png;base64,${diff.toString('base64')}` : null) }];
                   }),
-                ),
+                )),
               };
 
-              if (hasChanges && comparison.previousRun) {
-                await run.update({ hasChanges, serializableOutput, binaryOutput });
-                logger.log('info', `Run ${data.runId} has changes compared to previous run ${comparison.previousRun.runId}`);
+              if (comparison.previousRun) {
+                await run.update({ hasChanges, serializableOutput });
+                if (hasChanges) logger.log('info', `Run ${data.runId} has changes compared to previous run ${comparison.previousRun.runId}`);
               }
             } catch (compareError: any) {
               logger.log('warn', `Run comparison failed for run ${data.runId}: ${compareError.message}`);
@@ -368,8 +370,7 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
 
           let uploadedBinaryOutput: Record<string, string> = {};
           if (Object.keys(binaryOutput).length > 0) {
-            const svc = new BinaryOutputService('maxun-run-screenshots');
-            uploadedBinaryOutput = await svc.uploadAndStoreBinaryOutput(run, binaryOutput);
+            uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, binaryOutput);
             await run.update({ binaryOutput: uploadedBinaryOutput });
           }
 
