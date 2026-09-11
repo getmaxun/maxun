@@ -628,11 +628,29 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string, runSou
                 jobKey: `${QUEUE_NAMES.EXECUTE_RUN}:${plainRun.runId}`,
             });
         } catch (queueError: any) {
+            const finishedAt = new Date().toLocaleString();
             await run.update({
                 status: 'failed',
-                finishedAt: new Date().toLocaleString(),
+                finishedAt,
                 log: `Failed to queue execution job: ${queueError.message}`,
             });
+
+            try {
+                serverIo.of('/queued-run').to(`user-${userId}`).emit('run-completed', {
+                    runId: plainRun.runId,
+                    robotMetaId: plainRun.robotMetaId,
+                    robotName: plainRun.name,
+                    status: 'failed',
+                    finishedAt,
+                    runByUserId: plainRun.runByUserId,
+                    runByScheduleId: plainRun.runByScheduleId,
+                    runByAPI: plainRun.runByAPI || false,
+                    browserId: plainRun.browserId,
+                    error: `Failed to queue execution job: ${queueError.message}`,
+                });
+            } catch (socketError: any) {
+                logger.log('warn', `Failed to emit queue failure for API run ${plainRun.runId}: ${socketError.message}`);
+            }
 
             if (!isDocRobot) {
                 try {
