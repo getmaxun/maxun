@@ -155,26 +155,25 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               icon={<AutoAwesome />}
               iconPosition="start"
               disableRipple={true}
-              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '15px' }}
               onClick={handleRobotsClick} />
             <Tab value="runs"
               label={t('mainmenu.runs')}
               icon={<PlayArrow />}
               iconPosition="start"
               disableRipple={true}
-              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '15px' }} />
+            />
             <Tab value="proxy"
               label={t('mainmenu.proxy')}
               icon={<Usb />}
               iconPosition="start"
               disableRipple={true}
-              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '15px' }} />
+            />
             <Tab value="apikey"
               label={t('mainmenu.apikey')}
               icon={<VpnKey />}
               iconPosition="start"
               disableRipple={true}
-              sx={{ justifyContent: 'flex-start', textAlign: 'left', fontSize: '15px' }} />
+            />
           </Tabs>
           <Divider sx={{ borderColor: theme.palette.mode === 'dark' ? "#080808ff" : "" }} />
           <Box sx={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
