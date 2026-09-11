@@ -1470,20 +1470,25 @@ const RobotCreate: React.FC = () => {
                   </Box>
                 )}
 
-                <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start', mb: 2 }}>
+                <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start', mt: -2, ml: -1 }}>
                   <Button
                     onClick={() => setShowCrawlAdvanced(!showCrawlAdvanced)}
                     sx={{
+                      color: theme => theme.palette.mode === 'dark' ? 'inherit' : theme.palette.common.black,
                       textTransform: 'none',
-                      color: '#ff00c3',
+                      '&:hover': {
+                        background: 'inherit',
+                        color: 'inherit',
+                      },
                     }}
+                    disableRipple
                   >
-                    {showCrawlAdvanced ? 'Hide Advanced Options' : 'Advanced Options'}
+                    {showCrawlAdvanced ? 'Hide Crawl Settings' : 'Crawl Settings'}
                   </Button>
                 </Box>
 
                 <Collapse in={showCrawlAdvanced}>
-                  <Box sx={{ mb: 2 }}>
+                  <Box sx={{ mt: 4, mb: 2 }}>
                     <FormControl fullWidth sx={{ mb: 2 }}>
                       <InputLabel>Crawl Scope</InputLabel>
                       <Select
