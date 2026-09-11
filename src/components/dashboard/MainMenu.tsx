@@ -4,7 +4,8 @@ import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Paper, Button, useTheme, Modal, Typography, Stack, Divider, Dialog, DialogContent, DialogTitle } from "@mui/material";
-import { AutoAwesome, VpnKey, Usb, CloudQueue, Description, Favorite, SlowMotionVideo, PlayArrow, ArrowForwardIos, Star, Terminal } from "@mui/icons-material";
+import { AutoAwesome, VpnKey, Usb, CloudQueue, Description, Favorite, SlowMotionVideo, 
+  PlayArrow, ArrowForwardIos, Star, Terminal, CloseFullscreen } from "@mui/icons-material";
 import { useTranslation } from 'react-i18next';
 
 interface MainMenuProps {
@@ -249,7 +250,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               href='https://docs.maxun.dev/category/mcp'
               target="_blank"
               rel="noopener noreferrer"
-              sx={buttonStyles} startIcon={<Terminal />}>
+              sx={buttonStyles} startIcon={<CloseFullscreen />}>
               MCP
             </Button>
             <Button disableRipple onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite />}>
