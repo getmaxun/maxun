@@ -1019,10 +1019,11 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
           sx={{
             mb: 2,
             textTransform: 'none',
-            color: '#ff00c3'
+            color: '#ff00c3',
+            alignSelf: 'flex-start',
           }}
         >
-          {showCrawlAdvanced ? 'Hide Advanced Options' : 'Advanced Options'}
+          {showCrawlAdvanced ? 'Hide Crawl Settings' : 'Crawl Settings'}
         </Button>
 
         <Collapse in={showCrawlAdvanced}>
