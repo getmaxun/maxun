@@ -242,11 +242,11 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
             </Button>
             <Button
               disableRipple
-              href='https://docs.maxun.dev/category/cli'
+              href='https://docs.maxun.dev/category/mcp'
               target="_blank"
               rel="noopener noreferrer"
               sx={buttonStyles} startIcon={<Terminal />}>
-              CLI
+              MCP
             </Button>
             <Button disableRipple onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite />}>
               Sponsor Us
