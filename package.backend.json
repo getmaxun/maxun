@@ -38,6 +38,7 @@
     "mammoth": "^1.11.0",
     "maxun-core": "0.0.38",
     "minio": "8.0.5",
+    "mammoth": "1.12.1",
     "moment-timezone": "0.5.48",
     "multer": "2.1.1",
     "node-cron": "3.0.3",
@@ -93,6 +94,7 @@
   "scripts": {
     "build": "tsc -p server/tsconfig.json",
     "build:server": "tsc -p server/tsconfig.json",
+    "prepare-schema": "node server/dist/server/src/db/prepareSchema.js",
     "server": "cross-env NODE_OPTIONS='--max-old-space-size=4096' node server/dist/server/src/server.js",
     "migrate": "sequelize-cli db:migrate",
     "migrate:undo": "sequelize-cli db:migrate:undo",

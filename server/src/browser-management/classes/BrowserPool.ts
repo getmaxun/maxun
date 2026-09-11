@@ -604,8 +604,12 @@ export class BrowserPool {
             this.reservationLocks.set(lockKey, Date.now());
             
             if (!this.hasAvailableBrowserSlots(userId, state)) {
-                logger.log('debug', `Cannot reserve slot for user ${userId}: no available slots`);
-                return false;
+                // Try to reclaim leaked ready run slots before failing
+                this.cleanupStaleBrowserSlots();
+                if (!this.hasAvailableBrowserSlots(userId, state)) {
+                    logger.log('debug', `Cannot reserve slot for user ${userId}: no available slots`);
+                    return false;
+                }
             }
 
             if (this.pool[id]) {
@@ -665,6 +669,7 @@ export class BrowserPool {
 
         this.pool[id].browser = browser;
         this.pool[id].status = "ready";
+        this.pool[id].lastAccessed = Date.now();
         logger.log('info', `Upgraded browser slot ${id} to ready state`);
         return true;
     };
@@ -702,15 +707,20 @@ export class BrowserPool {
     public cleanupStaleBrowserSlots = (): void => {
         const now = Date.now();
         const staleThreshold = 5 * 60 * 1000; // 5 minutes
+        const readyRunThreshold = 3 * 60 * 1000; // 3 minutes for leaked ready run slots
         
         const staleSlots: string[] = [];
         
         for (const [id, info] of Object.entries(this.pool)) {
-            const isStale = info.status === "reserved" || info.status === "initializing";
             const createdAt = info.createdAt || 0;
             const age = now - createdAt;
+            const lastAccessed = info.lastAccessed || createdAt;
+            const idle = now - lastAccessed;
             
-            if (isStale && info.browser === null && age > staleThreshold) {
+            const isStaleReserved = (info.status === "reserved" || info.status === "initializing") && info.browser === null && age > staleThreshold;
+            const isLeakedReadyRun = info.status === "ready" && info.state === "run" && idle > readyRunThreshold;
+            
+            if (isStaleReserved || isLeakedReadyRun) {
                 staleSlots.push(id);
             }
         }

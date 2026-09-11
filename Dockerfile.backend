@@ -34,5 +34,4 @@ COPY --from=builder /app/public ./public
 
 EXPOSE ${BACKEND_PORT:-8080}
 
-CMD ["npm", "run", "server"]
-# CMD ["sh", "-c", "npm run migrate && npm run server"]
+CMD ["sh", "-c", "npm run prepare-schema && npm run migrate && npm run server"]

@@ -224,6 +224,46 @@ export class SelectorValidator {
   }
 
   /**
+   * Load Maxun's browser-side semantic analyzer into the active page once.
+   * The analyzer owns selector discovery; callers receive metadata and keep
+   * selectors server-side rather than asking an agent to author them.
+   */
+  private async loadPageAnalyzer(): Promise<void> {
+    if (!this.page) throw new Error('Browser not initialized');
+    const fs = require('fs');
+    const path = require('path');
+    const scriptPath = path.join(__dirname, 'browserSide/pageAnalyzer.js');
+    const scriptContent = fs.readFileSync(scriptPath, 'utf8');
+
+    await this.page.evaluate((script) => {
+      const win = window as any;
+      if (typeof win.analyzeElementGroups === 'function' && typeof win.autoDetectListFields === 'function') return;
+      eval(script);
+    }, scriptContent);
+  }
+
+  /**
+   * Discover repeated semantic element groups on the current page.
+   * Selectors are intentionally retained only inside Maxun's server-side
+   * draft state; the returned group metadata is safe for an agent to inspect.
+   */
+  async analyzeElementGroups(): Promise<any[]> {
+    if (!this.page) return [];
+    try {
+      await this.loadPageAnalyzer();
+      return await this.page.evaluate(() => {
+        const win = window as any;
+        return typeof win.analyzeElementGroups === 'function'
+          ? win.analyzeElementGroups()
+          : [];
+      });
+    } catch (error: any) {
+      logger.error('Element-group analysis failed:', error.message);
+      return [];
+    }
+  }
+
+  /**
    * Auto-detect fields from list selector
    */
   async autoDetectListFields(listSelector: string): Promise<{
@@ -237,14 +277,7 @@ export class SelectorValidator {
     }
 
     try {
-      const fs = require('fs');
-      const path = require('path');
-      const scriptPath = path.join(__dirname, 'browserSide/pageAnalyzer.js');
-      const scriptContent = fs.readFileSync(scriptPath, 'utf8');
-
-      await this.page.evaluate((script) => {
-        eval(script);
-      }, scriptContent);
+      await this.loadPageAnalyzer();
 
       const result = await this.page.evaluate((selector) => {
         const win = window as any;
@@ -302,14 +335,7 @@ export class SelectorValidator {
     }
 
     try {
-      const fs = require('fs');
-      const path = require('path');
-      const scriptPath = path.join(__dirname, 'browserSide/pageAnalyzer.js');
-      const scriptContent = fs.readFileSync(scriptPath, 'utf8');
-
-      await this.page.evaluate((script) => {
-        eval(script);
-      }, scriptContent);
+      await this.loadPageAnalyzer();
 
       const buttonResult = await this.page.evaluate((selector) => {
         const win = window as any;

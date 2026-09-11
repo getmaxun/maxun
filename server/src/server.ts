@@ -25,6 +25,8 @@ import { startScheduleWorker, stopScheduleWorker } from './schedule-worker';
 import Run from './models/Run';
 import { authenticateSocket } from './socket-connection/socketAuth';
 
+const WORKERS_ENABLED = process.env.MAXUN_DISABLE_WORKERS !== 'true';
+
 const normalizeOrigin = (urlString?: string): string => {
   if (!urlString) return 'http://localhost:5173';
   try {
@@ -152,30 +154,35 @@ app.get('/', function (req, res) {
 });
 
 if (require.main === module) {
+  if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is required for authenticated Maxun socket capabilities');
   const serverIntervals: NodeJS.Timeout[] = [];
 
-  const processQueuedRunsInterval = setInterval(async () => {
-    try {
-      await processQueuedRuns();
-    } catch (error: any) {
-      logger.log('error', `Error in processQueuedRuns interval: ${error.message}`);
-    }
-  }, 5000);
-  serverIntervals.push(processQueuedRunsInterval);
+  if (WORKERS_ENABLED) {
+    const processQueuedRunsInterval = setInterval(async () => {
+      try {
+        await processQueuedRuns();
+      } catch (error: any) {
+        logger.log('error', `Error in processQueuedRuns interval: ${error.message}`);
+      }
+    }, 5000);
+    serverIntervals.push(processQueuedRunsInterval);
+
+    const stuckRunningRunsInterval = setInterval(async () => {
+      try {
+        await recoverStuckRunningRuns();
+      } catch (error: any) {
+        logger.log('error', `Error in recoverStuckRunningRuns interval: ${error.message}`);
+      }
+    }, 5 * 60 * 1000);
+    serverIntervals.push(stuckRunningRunsInterval);
+  } else {
+    logger.log('info', 'Graphile and scheduled run workers are disabled for this Maxun instance');
+  }
 
   const browserPoolCleanupInterval = setInterval(() => {
     browserPool.cleanupStaleBrowserSlots();
   }, 60000);
   serverIntervals.push(browserPoolCleanupInterval);
-
-  const stuckRunningRunsInterval = setInterval(async () => {
-    try {
-      await recoverStuckRunningRuns();
-    } catch (error: any) {
-      logger.log('error', `Error in recoverStuckRunningRuns interval: ${error.message}`);
-    }
-  }, 5 * 60 * 1000);
-  serverIntervals.push(stuckRunningRunsInterval);
 
   server.listen(SERVER_PORT, '0.0.0.0', async () => {
     try {
@@ -185,11 +192,14 @@ if (require.main === module) {
       logger.log('info', 'Cleaning up stale browser slots...');
       browserPool.cleanupStaleBrowserSlots();
 
-      await recoverOrphanedRuns();
-
-      await startGraphileWorkerUtils();
-      await startWorkers();
-      await startScheduleWorker();
+      if (WORKERS_ENABLED) {
+        await recoverOrphanedRuns();
+        await startGraphileWorkerUtils();
+        await startWorkers();
+        await startScheduleWorker();
+      } else {
+        logger.log('info', 'Skipping orphaned-run recovery and worker startup because workers are disabled');
+      }
 
       io.of('/queued-run').on('connection', (socket) => {
         const userId = socket.data.userId as string;
@@ -216,7 +226,9 @@ if (require.main === module) {
         }
       });
 
-      logger.log('info', 'All workers started in main process');
+      logger.log('info', WORKERS_ENABLED
+        ? 'All workers started in main process'
+        : 'Maxun started in API/browser-only mode');
 
       logger.log('info', `Server listening on port ${SERVER_PORT}`);
     } catch (error: any) {

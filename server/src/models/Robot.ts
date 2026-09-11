@@ -9,6 +9,7 @@ interface RobotMeta {
   createdAt: string;
   pairs: number;
   updatedAt: string;
+  description?: string;
   params: any[];
   type?: 'extract' | 'scrape' | 'crawl' | 'search' | 'doc-extract' | 'doc-parse';
   url?: string;

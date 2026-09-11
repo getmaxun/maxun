@@ -41,15 +41,16 @@ export const connectDB = async () => {
 
 export const syncDB = async () => {
     try {
-        //setupAssociations();
+        // Production schema is owned by Sequelize migrations. Running sync there
+        // would let a fresh deployment silently create a weaker schema when a
+        // migration job was omitted, especially for unique lease/replay indexes.
         const isDevelopment = process.env.NODE_ENV === 'development';
-        // force: true will drop and recreate tables on every run
-        // Use `alter: true` only in development mode
-        await sequelize.sync({ 
-            force: false, 
-            alter: isDevelopment 
-        }); 
-        console.log('Database synced successfully!');
+        if (!isDevelopment) {
+            console.log('Production schema is migration-managed; skipping sequelize.sync().');
+            return;
+        }
+        await sequelize.sync({ force: false, alter: true });
+        console.log('Development database synced successfully!');
     } catch (error) {
         console.error('Failed to sync database:', error);
     }
