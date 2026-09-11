@@ -1,5 +1,6 @@
 import { v4 as uuid } from "uuid";
 import { io, Socket } from "socket.io-client";
+import { mintInternalSocketToken } from '../../socket-connection/socketAuth';
 import { createRemoteBrowserForRun, destroyRemoteBrowser } from '../../browser-management/controller';
 import logger from '../../logger';
 import { browserPool, io as serverIo } from "../../server";
@@ -903,6 +904,9 @@ export async function handleRunRecording(id: string, userId: string) {
       transports: ['websocket'],
       rejectUnauthorized: false,
       timeout: CONNECTION_TIMEOUT,
+      // Same reason as the API path: no cookie on a server-opened socket, so
+      // the namespace middleware needs an explicit token.
+      auth: { token: mintInternalSocketToken(userId) },
     });
 
     const readyHandler = () => readyForRunHandler(browserId, newRunId, userId, socket!);
