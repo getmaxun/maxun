@@ -18,6 +18,7 @@ import { addAirtableUpdateTask, processAirtableUpdates } from "../workflow-manag
 import { sendWebhook } from "../routes/webhook";
 import { convertPageToHTML, convertPageToLinks, convertPageToMarkdown, convertPageToScreenshot, convertPageToText } from '../markdownify/scrape';
 import { safeDecrypt } from '../utils/auth';
+import { mintInternalSocketToken } from '../socket-connection/socketAuth';
 import { executeBrowserAgent } from '../sdk/browserAgent';
 import { OutputFormats } from '../constants/output-formats';
 import { processRobotOutputFormats } from '../utils/output-post-processor';
@@ -1415,6 +1416,10 @@ export async function handleRunRecording(id: string, userId: string, runSource: 
             transports: ['websocket'],
             rejectUnauthorized: false,
             timeout: CONNECTION_TIMEOUT,
+            // This connection carries no cookie, so it must present a token or
+            // the namespace middleware refuses it and the run waits forever for
+            // a `ready-for-run` that never comes.
+            auth: { token: mintInternalSocketToken(userId) },
         });
 
         const readyHandler = () => readyForRunHandler(browserId, newRunId, userId, socket!);
