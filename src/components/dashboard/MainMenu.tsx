@@ -179,6 +179,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
           <Divider sx={{ borderColor: theme.palette.mode === 'dark' ? "#080808ff" : "" }} />
           <Box sx={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
             <Button
+              disableRipple
               onClick={() => setDocModalOpen(true)}
               sx={buttonStyles}
               startIcon={<Description />}
@@ -224,6 +225,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               </DialogContent>
             </Dialog>
             <Button
+              disableRipple
               href='https://app.maxun.dev/'
               target="_blank"
               rel="noopener noreferrer"
@@ -231,6 +233,7 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               Join Maxun Cloud
             </Button>
             <Button
+              disableRipple
               href='https://docs.maxun.dev/category/sdk'
               target="_blank"
               rel="noopener noreferrer"
@@ -238,13 +241,14 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               SDK
             </Button>
             <Button
+              disableRipple
               href='https://docs.maxun.dev/category/cli'
               target="_blank"
               rel="noopener noreferrer"
               sx={buttonStyles} startIcon={<Terminal />}>
               CLI
             </Button>
-            <Button onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite />}>
+            <Button disableRipple onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite />}>
               Sponsor Us
             </Button>
           </Box>
