@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Grid, Button, Box, Typography, IconButton, Menu, MenuItem, ListItemText, Dialog, DialogTitle, DialogActions, } from '@mui/material';
+import { Grid, Button, Box, Typography, IconButton, Menu, MenuItem, ListItemText, Dialog, DialogTitle, DialogActions, DialogContent } from '@mui/material';
 import { SaveRecording } from "../recorder/SaveRecording";
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { useActionContext } from '../../context/browserActions';
@@ -217,33 +217,50 @@ const BrowserRecordingSave = () => {
             </DialogActions>
           </Dialog>
 
-          <GenericModal isOpen={openResetModal} onClose={() => setOpenResetModal(false)} modalStyle={modalStyle}>
-            <Box p={2}>
-              <Typography variant="h6">{t('browser_recording.modal.confirm_reset')}</Typography>
-              <Typography variant="body2" sx={{ mt: 1, mb: 2 }}>
+          <Dialog
+            open={openResetModal}
+            onClose={() => setOpenResetModal(false)}
+            maxWidth="xs"
+            fullWidth
+            PaperProps={{
+              sx: {
+                borderRadius: 2,
+                p: 1,
+              },
+            }}
+          >
+            <DialogTitle>
+              {t('browser_recording.modal.confirm_reset')}
+            </DialogTitle>
+
+            <DialogContent>
+              <Typography variant="body2" sx={{ mt: 1 }}>
                 {t('browser_recording.modal.reset_warning')}
               </Typography>
-              <Box display="flex" justifyContent="space-between" mt={2}>
-                <Button
-                  onClick={performReset}
-                  variant="contained"
-                  color="primary"
-                >
-                  {t('right_panel.buttons.confirm_reset')}
-                </Button>
-                <Button
-                  onClick={() => setOpenResetModal(false)}
-                  variant="outlined"
-                  sx={{
-                    color: '#ff00c3 !important',
-                    borderColor: '#ff00c3 !important',
-                    backgroundColor: 'whitesmoke !important',
-                  }} >
-                  {t('right_panel.buttons.cancel')}
-                </Button>
-              </Box>
-            </Box>
-          </GenericModal>
+            </DialogContent>
+
+            <DialogActions sx={{ px: 3, pb: 2, justifyContent: 'space-between' }}>
+              <Button
+                onClick={performReset}
+                variant="contained"
+                color="primary"
+              >
+                {t('right_panel.buttons.confirm_reset')}
+              </Button>
+
+              <Button
+                onClick={() => setOpenResetModal(false)}
+                variant="outlined"
+                sx={{
+                  color: '#ff00c3 !important',
+                  borderColor: '#ff00c3 !important',
+                  backgroundColor: 'whitesmoke !important',
+                }}
+              >
+                {t('right_panel.buttons.cancel')}
+              </Button>
+            </DialogActions>
+          </Dialog>
         </div>
       </Grid>
     </Grid>
