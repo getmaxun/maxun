@@ -20,7 +20,7 @@ import { useTheme, alpha } from "@mui/material/styles";
 import { getOrCreateBrowserSocket, releaseBrowserSocket } from "../../utils/browserSocket";
 import { diffLines, Change } from "diff";
 
-interface RunTypeChipProps {
+interface RunTypeProps {
   runByUserId?: string;
   runByScheduledId?: string;
   runByAPI: boolean;
@@ -29,16 +29,24 @@ interface RunTypeChipProps {
   runByCLI?: boolean;
 }
 
-const RunTypeChip: React.FC<RunTypeChipProps> = ({ runByUserId, runByScheduledId, runByAPI, runBySDK, runByMCP, runByCLI }) => {
+const RunType = ({
+  runByUserId,
+  runByScheduledId,
+  runByAPI,
+  runBySDK,
+  runByMCP,
+  runByCLI,
+}: RunTypeProps) => {
   const { t } = useTranslation();
 
-  if (runByScheduledId) return <Chip label={t('runs_table.run_type_chips.scheduled_run')} color="primary" variant="outlined" />;
-  if (runByCLI) return <Chip label={t('runs_table.run_type_chips.cli')} color="primary" variant="outlined" />;
-  if (runByMCP) return <Chip label={t('runs_table.run_type_chips.mcp')} color="primary" variant="outlined" />;
-  if (runBySDK) return <Chip label={t('runs_table.run_type_chips.sdk')} color="primary" variant="outlined" />;
-  if (runByAPI) return <Chip label={t('runs_table.run_type_chips.api')} color="primary" variant="outlined" />;
-  if (runByUserId) return <Chip label={t('runs_table.run_type_chips.manual_run')} color="primary" variant="outlined" />;
-  return <Chip label={t('runs_table.run_type_chips.unknown_run_type')} color="primary" variant="outlined" />;
+  if (runByScheduledId) return t('runs_table.run_type_chips.scheduled_run');
+  if (runByCLI) return t('runs_table.run_type_chips.cli');
+  if (runByMCP) return t('runs_table.run_type_chips.mcp');
+  if (runBySDK) return t('runs_table.run_type_chips.sdk');
+  if (runByAPI) return t('runs_table.run_type_chips.api');
+  if (runByUserId) return t('runs_table.run_type_chips.manual_run');
+
+  return t('runs_table.run_type_chips.unknown_run_type');
 };
 
 interface CollapsibleRowProps {
@@ -304,12 +312,12 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                             fullWidth
                           />
 
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <Typography variant="body1">
                               {t('runs_table.run_settings_modal.labels.run_type')}:
                             </Typography>
 
-                            <RunTypeChip
+                            <RunType
                               runByUserId={row.runByUserId}
                               runByScheduledId={row.runByScheduleId}
                               runByAPI={row.runByAPI ?? false}
