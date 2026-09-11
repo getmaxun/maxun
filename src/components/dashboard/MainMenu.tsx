@@ -73,18 +73,20 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
     textAlign: 'left',
     fontSize: '15px',
     letterSpacing: '0.02857em',
-    padding: '20px 20px 0px 22px',
-    minHeight: '60px',
+    padding: '0px 20px 0px 22px',
+    minHeight: '53px',
     minWidth: '100%',
     display: 'flex',
     alignItems: 'center',
     textTransform: 'none',
     color: theme.palette.mode === 'light' ? '#6C6C6C' : 'inherit',
+
     '&:hover': {
       color: theme.palette.mode === 'light' ? '#6C6C6C' : 'inherit',
       backgroundColor: theme.palette.mode === 'light' ? '#f5f5f5' : 'inherit',
     },
-    "& .MuiButton-startIcon .MuiSvgIcon-root": {
+
+    '& .MuiButton-startIcon .MuiSvgIcon-root': {
       fontSize: 17.5,
     },
   };
