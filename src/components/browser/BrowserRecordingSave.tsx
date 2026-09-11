@@ -194,14 +194,14 @@ const BrowserRecordingSave = () => {
                 onClick={() => setOpenDiscardModal(false)}
                 color="inherit"
               >
-                {t('right_panel.buttons.cancel')}
+                No
               </Button>
               <Button
                 onClick={goToMainMenu}
                 variant="contained"
                 color="error"
               >
-                {t('right_panel.buttons.discard')}
+                Yes, Discard
               </Button>
             </DialogActions>
           </Dialog>
@@ -227,7 +227,7 @@ const BrowserRecordingSave = () => {
                 variant="contained"
                 color="primary"
               >
-                {t('right_panel.buttons.confirm_reset')}
+                Yes, Restart
               </Button>
             </DialogActions>
           </Dialog>
