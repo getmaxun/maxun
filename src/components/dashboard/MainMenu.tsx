@@ -143,6 +143,9 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
                 justifyContent: "flex-start",
                 textAlign: "left",
                 fontSize: 15,
+                minHeight: 50,
+                paddingTop: -3,
+                paddingBottom: -3,
               },
               "& .MuiTab-iconWrapper, & .MuiTab-icon": {
                 fontSize: 20,
