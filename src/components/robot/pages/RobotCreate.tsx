@@ -25,7 +25,7 @@ import {
   Collapse,
   FormControlLabel
 } from '@mui/material';
-import { ArrowBack, AutoAwesome, HighlightAlt, Article, InsertDriveFile } from '@mui/icons-material';
+import { ArrowBack, AutoAwesome, HighlightAlt, Article, InsertDriveFile, Upload } from '@mui/icons-material';
 import { useGlobalInfoStore, useCacheInvalidation } from '../../../context/globalInfo';
 import { canCreateBrowserInState, getActiveBrowserId, stopRecording } from '../../../api/recording';
 import {
@@ -1910,6 +1910,7 @@ const RobotCreate: React.FC = () => {
                     </Typography>
                   ) : (
                     <>
+                      <Upload sx={{ fontSize: 25, color: 'text.secondary', justifyContent: 'center', }} />
                       <Typography variant="body2" fontWeight={500}>Upload PDF, DOCX, XLSX, CSV, JPG, or PNG </Typography>
                       <Typography variant="caption" color="text.secondary">Max file size: 10 MB</Typography>
                     </>
