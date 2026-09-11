@@ -1,11 +1,13 @@
 import React, { useState } from 'react'
-import { Grid, Button, Box, Typography, IconButton, Menu, MenuItem, ListItemText, Dialog, DialogTitle, DialogActions, DialogContent } from '@mui/material';
+import {
+  Grid, Button, Typography, IconButton, Menu, MenuItem,
+  ListItemText, Dialog, DialogTitle, DialogActions, DialogContent
+} from '@mui/material';
 import { SaveRecording } from "../recorder/SaveRecording";
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { useActionContext } from '../../context/browserActions';
 import { useBrowserSteps } from '../../context/browserSteps';
 import { stopRecording } from "../../api/recording";
-import { GenericModal } from "../ui/GenericModal";
 import { useTranslation } from 'react-i18next';
 import { emptyWorkflow } from '../../shared/constants';
 import { useSocketStore } from '../../context/socket';
