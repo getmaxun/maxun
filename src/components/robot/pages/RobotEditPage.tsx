@@ -1015,9 +1015,15 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
         <Button
           onClick={() => setShowCrawlAdvanced(!showCrawlAdvanced)}
           sx={{
+            color: theme => theme.palette.mode === 'dark' ? 'inherit' : theme.palette.common.black,
             textTransform: 'none',
             alignSelf: 'flex-start',
+            '&:hover': {
+              background: 'inherit',
+              color: 'inherit',
+            },
           }}
+          disableRipple
         >
           {showCrawlAdvanced ? 'Hide Crawl Settings' : 'Crawl Settings'}
         </Button>
