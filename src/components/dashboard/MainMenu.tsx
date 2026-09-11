@@ -3,9 +3,14 @@ import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Paper, Button, useTheme, Modal, Typography, Stack, Divider, Dialog, DialogContent, DialogTitle } from "@mui/material";
-import { AutoAwesome, VpnKey, Usb, CloudQueue, Description, Favorite, SlowMotionVideo, 
-  PlayArrow, ArrowForwardIos, Star, Terminal, CloseFullscreen } from "@mui/icons-material";
+import {
+  Paper, Button, useTheme, Typography, Stack, Divider,
+  Dialog, DialogContent, DialogTitle
+} from "@mui/material";
+import {
+  AutoAwesome, VpnKey, Usb, CloudQueue, Description, Favorite, SlowMotionVideo,
+  PlayArrow, ArrowForwardIos, Star, Terminal, CloseFullscreen
+} from "@mui/icons-material";
 import { useTranslation } from 'react-i18next';
 
 interface MainMenuProps {
