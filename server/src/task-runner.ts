@@ -24,7 +24,7 @@ import { executeBrowserAgent } from './sdk/browserAgent';
 import { processRobotOutputFormats } from './utils/output-post-processor';
 import { getInterpretationFailureReason, hasExpectedRobotOutput, flushReloadAndCheckPartialOutput } from './utils/output-validation';
 import { handleRunRecording } from './workflow-management/scheduler';
-import { compareRunTextWithPrevious } from './utils/run-comparison';
+import { compareExtractRunWithPrevious, compareRunOutputsWithPrevious } from './utils/run-comparison';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -338,15 +338,30 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
           await run.update({ status: 'success', finishedAt, log: `${formats.join(', ').toUpperCase()} conversion completed successfully`, serializableOutput, binaryOutput, hasChanges: false });
 
           let hasChanges = false;
-          if ((recording.recording_meta as any).compareRuns && serializableOutput.text) {
+          const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
+          if ((recording.recording_meta as any).compareRuns) {
             try {
-              const currentText = serializableOutput.text[0]?.content || '';
-              const comparison = await compareRunTextWithPrevious(run, currentText);
+              const comparison = await compareRunOutputsWithPrevious(run, serializableOutput, binaryOutput);
               hasChanges = comparison.hasChanges;
 
-              if (hasChanges && comparison.previousRun) {
-                await run.update({ hasChanges });
-                logger.log('info', `Run ${data.runId} has changes compared to previous run ${comparison.previousRun.runId}`);
+              serializableOutput._comparison = {
+                changedFormats: comparison.changedFormats,
+                screenshots: Object.fromEntries(await Promise.all(
+                  Object.entries(comparison.screenshotComparisons).map(async ([key, value]) => {
+                    if (!value) return [key, null];
+                    const { diff: _diff, ...metadata } = value;
+                    const diff = comparison.screenshotDiffs[`${key}-diff`];
+                    const diffUrl = diff
+                      ? await binaryOutputService.uploadBinaryOutputItem(plainRun.runId, `${key}-diff`, diff, 'image/png')
+                      : null;
+                    return [key, { ...metadata, diff: diffUrl || (diff ? `data:image/png;base64,${diff.toString('base64')}` : null) }];
+                  }),
+                )),
+              };
+
+              if (comparison.previousRun) {
+                await run.update({ hasChanges, serializableOutput });
+                if (hasChanges) logger.log('info', `Run ${data.runId} has changes compared to previous run ${comparison.previousRun.runId}`);
               }
             } catch (compareError: any) {
               logger.log('warn', `Run comparison failed for run ${data.runId}: ${compareError.message}`);
@@ -355,8 +370,7 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
 
           let uploadedBinaryOutput: Record<string, string> = {};
           if (Object.keys(binaryOutput).length > 0) {
-            const svc = new BinaryOutputService('maxun-run-screenshots');
-            uploadedBinaryOutput = await svc.uploadAndStoreBinaryOutput(run, binaryOutput);
+            uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, binaryOutput);
             await run.update({ binaryOutput: uploadedBinaryOutput });
           }
 
@@ -476,7 +490,27 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
         }
       }
 
+      const finalSerializableOutput: any = {
+        ...(finalRun?.serializableOutput || {}),
+        crawl: categorizedOutput.crawl,
+        search: categorizedOutput.search,
+      };
+      let hasChanges = false;
       const binarySvc = new BinaryOutputService('maxun-run-screenshots');
+      if (robotType === 'extract' && (recording.recording_meta as any).compareRuns) {
+        const comparison = await compareExtractRunWithPrevious(run, finalSerializableOutput, binaryOutput);
+        hasChanges = comparison.hasChanges;
+        finalSerializableOutput._comparison = {
+          changedFormats: comparison.changedFormats,
+          screenshots: Object.fromEntries(await Promise.all(Object.entries(comparison.screenshotComparisons).map(async ([key, value]) => {
+            const { diff: _diff, ...metadata } = value;
+            const diff = comparison.screenshotDiffs[`${key}-diff`];
+            const diffUrl = diff ? await binarySvc.uploadBinaryOutputItem(plainRun.runId, `${key}-diff`, diff, 'image/png') : null;
+            return [key, { ...metadata, diff: diffUrl || (diff ? `data:image/png;base64,${diff.toString('base64')}` : null) }];
+          }))),
+        };
+      }
+
       const uploadedBinaryOutput = Object.keys(binaryOutput).length > 0 ? await binarySvc.uploadAndStoreBinaryOutput(run, binaryOutput) : {};
 
       if (await isRunAborted()) {
@@ -489,7 +523,8 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
         finishedAt: new Date().toLocaleString(),
         log: interpretationInfo.log.join('\n'),
         binaryOutput: uploadedBinaryOutput,
-        serializableOutput: { ...(finalRun?.serializableOutput || {}), crawl: categorizedOutput.crawl, search: categorizedOutput.search }
+        serializableOutput: finalSerializableOutput,
+        hasChanges,
       });
 
       let totalSchemaItemsExtracted = 0;
@@ -500,7 +535,7 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
       capture('maxun-oss-run-created', { runId: data.runId, user_id: data.userId, created_at: new Date().toISOString(), status: 'success', totalRowsExtracted: totalSchemaItemsExtracted + totalListItemsExtracted, schemaItemsExtracted: totalSchemaItemsExtracted, listItemsExtracted: totalListItemsExtracted, extractedScreenshotsCount: Object.keys(uploadedBinaryOutput).length, is_llm: (recording.recording_meta as any).isLLM, source: 'manual' });
 
       try {
-        const completionData = { runId: data.runId, robotMetaId: plainRun.robotMetaId, robotName: recording.recording_meta.name, status: 'success', finishedAt: new Date().toLocaleString() };
+        const completionData = { runId: data.runId, robotMetaId: plainRun.robotMetaId, robotName: recording.recording_meta.name, status: 'success', finishedAt: new Date().toLocaleString(), hasChanges };
         serverIo.of(browserId).emit('run-completed', completionData);
         serverIo.of('/queued-run').to(`user-${data.userId}`).emit('run-completed', completionData);
       } catch (socketError: any) {

@@ -33,7 +33,7 @@ import { createDocumentParseRobotRecord } from '../utils/document/createDocument
 import { normalizeRobotUrl, normalizeWorkflowUrls, applyWorkflowLimits } from '../utils/robot-updates';
 import { normalizeDocumentMimeType } from '../utils/document/documentFile';
 import { validateRequiredLlmConfig, formatsRequireLlm, readLlmConfig } from '../utils/llm-config-validation';
-import { findPreviousSuccessfulRun } from '../utils/run-comparison';
+import { findPreviousSuccessfulRun, serializeCapturedText } from '../utils/run-comparison';
 
 export const router = Router();
 
@@ -1281,7 +1281,7 @@ router.get('/runs/run/:id', requireSignIn, async (req, res) => {
   }
 });
 
-// Get endpoint to fetch the text diff between a run and the previous successful run.
+// Get endpoint to fetch text-based output diffs between a run and the previous successful run.
 router.get('/runs/:id/diff', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     if (!req.user) {
@@ -1304,14 +1304,64 @@ router.get('/runs/:id/diff', requireSignIn, async (req: AuthenticatedRequest, re
       return res.status(404).json({ error: 'No previous run to compare against' });
     }
 
-    const currentText = (run.serializableOutput as any)?.text?.[0]?.content || '';
-    const previousText = (previousRun.serializableOutput as any)?.text?.[0]?.content || '';
+    const currentOutput = run.serializableOutput as any;
+    const previousOutput = previousRun.serializableOutput as any;
+    const formats = ['text', 'markdown', 'html'].reduce((result, format) => {
+      const current = currentOutput?.[format]?.[0]?.content;
+      const previous = previousOutput?.[format]?.[0]?.content;
+      if (typeof current === 'string') {
+        result[format] = {
+          current: typeof current === 'string' ? current : '',
+          previous: typeof previous === 'string' ? previous : '',
+        };
+      }
+      return result;
+    }, {} as Record<string, { current: string; previous: string }>);
+
+    const currentText = formats.text?.current || '';
+    const previousText = formats.text?.previous || '';
+    const screenshotMetadata = currentOutput?._comparison?.screenshots || {};
+    const isExtract = robot.recording_meta.type === 'extract';
+    const currentCapturedText = currentOutput?.scrapeSchema || {};
+    const previousCapturedText = previousOutput?.scrapeSchema || {};
+    const capturedText = isExtract
+      && (Object.keys(currentCapturedText).length > 0 || Object.keys(previousCapturedText).length > 0)
+      ? {
+        current: serializeCapturedText(currentCapturedText),
+        previous: serializeCapturedText(previousCapturedText),
+      }
+      : null;
+    const currentCapturedLists = currentOutput?.scrapeList || {};
+    const previousCapturedLists = previousOutput?.scrapeList || {};
+    const capturedLists = isExtract
+      && (Object.keys(currentCapturedLists).length > 0 || Object.keys(previousCapturedLists).length > 0)
+      ? { current: currentCapturedLists, previous: previousCapturedLists }
+      : null;
+    const screenshotNames = isExtract
+      ? Object.keys(run.binaryOutput || {}).filter((name) => !name.endsWith('-diff'))
+      : ['screenshot-visible', 'screenshot-fullpage'];
+    const screenshotFormats = screenshotNames.reduce((result, format) => {
+      const current = run.binaryOutput?.[format];
+      if (!current) return result;
+      result[format] = {
+        current,
+        previous: previousRun.binaryOutput?.[format] || null,
+        diff: screenshotMetadata[format]?.diff || run.binaryOutput?.[`${format}-diff`] || null,
+        metadata: screenshotMetadata[format] || null,
+      };
+      return result;
+    }, {} as Record<string, any>);
 
     return res.json({
       currentRunId: run.runId,
       previousRunId: previousRun.runId,
       currentText,
       previousText,
+      formats,
+      capturedText,
+      capturedLists,
+      screenshots: screenshotFormats,
+      changedFormats: currentOutput?._comparison?.changedFormats || [],
     });
   } catch (e) {
     const { message } = e as Error;
