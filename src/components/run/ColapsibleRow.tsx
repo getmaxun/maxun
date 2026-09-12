@@ -633,6 +633,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                 centered
                 sx={{
                   minHeight: 36,
+                  mb: 2,
                   '& .MuiTab-root': {
                     minHeight: 36,
                     paddingX: 2,
