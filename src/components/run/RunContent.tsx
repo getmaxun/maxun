@@ -1085,10 +1085,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     const activeTab = tabs[activeIdx >= 0 ? activeIdx : 0];
     const activeSrc = resolveScreenshotSrc(activeTab?.value);
 
-    const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-      setIndex(newValue);
-    };
-
     return (
       <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -1099,41 +1095,44 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
         </AccordionSummary>
         <AccordionDetails>
           {tabs.length > 1 && (
-            <Tabs
-              value={activeIdx}
-              onChange={handleTabChange}
-              variant="scrollable"
-              scrollButtons="auto"
+            <Box
               sx={{
+                display: 'flex',
+                borderBottom: '1px solid',
+                borderColor: 'divider',
                 mb: 2,
-                '& .MuiTabs-indicator': {
-                  backgroundColor: '#FF00C3',
-                  height: '3px',
-                },
-                '& .MuiTab-root': {
-                  textTransform: 'none',
-                  minWidth: 'auto',
-                  px: 3,
-                  color: darkMode ? '#fff' : '#000',
-                  '&.Mui-selected': {
-                    backgroundColor: darkMode ? '#121111ff' : '#e9ecef',
-                  },
-                  '&:hover': {
-                    backgroundColor: darkMode ? 'rgba(255, 0, 195, 0.1)' : 'rgba(255, 0, 195, 0.05)',
-                  },
-                },
+                overflowX: 'auto', // keeps scrollable behavior you had via Tabs' variant="scrollable"
               }}
+              role="tablist"
               aria-label={`${title} tabs`}
             >
-              {tabs.map((tab) => (
-                <Tab
+              {tabs.map((tab, idx) => (
+                <Box
                   key={tab.key}
-                  label={tab.label}
+                  role="tab"
                   id={`screenshot-tab-${idPrefix}-${tab.key}`}
                   aria-controls={`screenshot-tabpanel-${idPrefix}-${tab.key}`}
-                />
+                  aria-selected={activeIdx === idx}
+                  onClick={() => setIndex(idx)}
+                  sx={{
+                    px: 3,
+                    py: 1,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap', // prevents tab labels wrapping when scrollable
+                    backgroundColor:
+                      activeIdx === idx
+                        ? darkMode
+                          ? '#121111ff'
+                          : '#e9ecef'
+                        : 'transparent',
+                    borderBottom: activeIdx === idx ? '3px solid #FF00C3' : 'none',
+                    color: darkMode ? '#fff' : '#000',
+                  }}
+                >
+                  {tab.label}
+                </Box>
               ))}
-            </Tabs>
+            </Box>
           )}
           <Box
             role="tabpanel"
