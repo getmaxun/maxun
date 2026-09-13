@@ -1,7 +1,7 @@
 {
     "login": {
       "title": "Welcome to Maxun",
-      "email": "Enter Work Email",
+      "email": "Email",
       "password": "Password",
       "button": "Login",
       "loading": "Loading",
@@ -21,7 +21,7 @@
     },
     "register": {
       "title": "Create An Account",
-      "email": "Enter Work Email",
+      "email": "Email",
       "password": "Password",
       "button": "Register",
       "loading": "Loading",
@@ -459,7 +459,7 @@
       }
     },
     "robot_settings": {
-      "title": "Robot Settings",
+      "title": "Settings",
       "target_url": "Target URL",
       "robot_id": "Robot ID",
       "robot_limit": "Robot Limit",

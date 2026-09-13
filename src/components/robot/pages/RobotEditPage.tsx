@@ -1012,27 +1012,35 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
           style={{ marginBottom: "20px" }}
         />
 
-        {renderLlmConfigFields()}
-
         <Button
           onClick={() => setShowCrawlAdvanced(!showCrawlAdvanced)}
           sx={{
-            mb: 2,
+            color: theme => theme.palette.mode === 'dark' ? 'inherit' : theme.palette.common.black,
             textTransform: 'none',
-            color: '#ff00c3'
+            alignSelf: 'flex-start',
+            '&:hover': {
+              background: 'inherit',
+              color: 'inherit',
+            },
           }}
+          disableRipple
         >
-          {showCrawlAdvanced ? 'Hide Advanced Options' : 'Advanced Options'}
+          {showCrawlAdvanced ? 'Hide Crawl Settings' : 'Crawl Settings'}
         </Button>
 
         <Collapse in={showCrawlAdvanced}>
-          <Box sx={{ mb: 2 }}>
+          <Box sx={{ mt: 4, mb: 2 }}>
             <FormControl fullWidth sx={{ mb: 2 }}>
               <InputLabel>Crawl Scope</InputLabel>
               <Select
                 value={crawlConfig.mode || 'domain'}
                 label="Crawl Scope"
-                onChange={(e) => setCrawlConfig((prev) => ({ ...prev, mode: e.target.value }))}
+                onChange={(e) =>
+                  setCrawlConfig((prev) => ({
+                    ...prev,
+                    mode: e.target.value,
+                  }))
+                }
               >
                 <MenuItem value="domain">Same Domain Only</MenuItem>
                 <MenuItem value="subdomain">Include Subdomains</MenuItem>
@@ -1113,6 +1121,8 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
             </Box>
           </Box>
         </Collapse>
+
+        {renderLlmConfigFields()}
       </>
     );
   };
@@ -1664,7 +1674,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
                   style={{ marginBottom: "20px" }}
                 />
               )}
-              
+
               {renderCrawlConfigFields()}
               {renderSearchConfigFields()}
               {renderScrapeOutputFormatsField()}

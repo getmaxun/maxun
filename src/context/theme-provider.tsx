@@ -3,6 +3,38 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import i18n, { isRtlLanguage } from '../i18n';
 
+const sharedInputOverrides = {
+  MuiInputLabel: {
+    defaultProps: {
+      shrink: true,
+    },
+    styleOverrides: {
+      root: {
+        position: 'relative',
+        transform: 'none',
+        marginBottom: 6,
+        fontSize: '0.875rem',
+        textAlign: 'left',
+        '& .MuiFormLabel-asterisk': {
+          display: 'none',
+        },
+      },
+    },
+  },
+  MuiOutlinedInput: {
+    styleOverrides: {
+      notchedOutline: {
+        '& legend': {
+          width: 0,
+        },
+      },
+      input: {
+        paddingTop: 10,
+        paddingBottom: 10,
+      },
+    },
+  },
+} as const;
 
 const lightTheme = createTheme({
   palette: {
@@ -12,6 +44,7 @@ const lightTheme = createTheme({
     },
   },
   components: {
+    ...sharedInputOverrides,
     MuiTableContainer: {
       styleOverrides: {
         root: {
@@ -81,6 +114,9 @@ const lightTheme = createTheme({
           textTransform: "none",
         },
       },
+      defaultProps: {
+        disableRipple: true,
+      },
     },
     MuiAlert: {
       styleOverrides: {
@@ -145,6 +181,7 @@ const darkTheme = createTheme({
     },
   },
   components: {
+    ...sharedInputOverrides,
     MuiTableContainer: {
       styleOverrides: {
         root: {
@@ -241,6 +278,9 @@ const darkTheme = createTheme({
             color: '#ff00c3',
           },
         },
+      },
+      defaultProps: {
+        disableRipple: true,
       },
     },
     MuiAlert: {

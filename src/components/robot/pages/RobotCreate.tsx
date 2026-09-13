@@ -25,10 +25,13 @@ import {
   Collapse,
   FormControlLabel
 } from '@mui/material';
-import { ArrowBack, AutoAwesome, HighlightAlt, Article } from '@mui/icons-material';
+import { ArrowBack, AutoAwesome, HighlightAlt, Article, InsertDriveFile, Upload } from '@mui/icons-material';
 import { useGlobalInfoStore, useCacheInvalidation } from '../../../context/globalInfo';
 import { canCreateBrowserInState, getActiveBrowserId, stopRecording } from '../../../api/recording';
-import { createScrapeRobot, createLLMRobot, createAndRunRecording, createCrawlRobot, createSearchRobot, createDocumentExtractRobot, createDocumentParseRobot } from "../../../api/storage";
+import {
+  createScrapeRobot, createLLMRobot, createAndRunRecording,
+  createCrawlRobot, createSearchRobot, createDocumentExtractRobot, createDocumentParseRobot
+} from "../../../api/storage";
 import { AuthContext } from '../../../context/auth';
 import { DEFAULT_OUTPUT_FORMATS, DOC_PARSE_FORMAT_OPTIONS, OUTPUT_FORMAT_LABELS, OUTPUT_FORMAT_OPTIONS, OutputFormats } from '../../../constants/outputFormats';
 
@@ -676,12 +679,12 @@ const RobotCreate: React.FC = () => {
           >
             <ArrowBack />
           </IconButton>
-          <Typography variant="h5" component="h1">
+          <Typography variant="h6" component="h1">
             Create New Robot
           </Typography>
         </Box>
 
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2, mt: "-10px" }}>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2, mt: "-20px" }}>
           <Tabs
             value={tabValue}
             centered
@@ -694,6 +697,7 @@ const RobotCreate: React.FC = () => {
                 paddingX: 2,
                 paddingY: 1.5,
                 minWidth: 0,
+                color: theme => `${theme.palette.mode === 'dark' ? '#fff' : '#000'} !important`,
               },
               '& .MuiTabs-indicator': {
                 height: 2,
@@ -709,94 +713,79 @@ const RobotCreate: React.FC = () => {
         </Box>
 
         <TabPanel value={tabValue} index={0}>
-          <Card sx={{ mb: 4, p: 4 }}>
+          <Card sx={{ mb: 4, p: 3 }}>
             <Box display="flex" flexDirection="column" alignItems="center">
               <img
                 src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
-                width={73}
-                height={65}
+                width={55}
+                height={47}
                 style={{
                   borderRadius: '5px',
-                  marginBottom: '30px'
+                  marginBottom: '20px',
+                  marginTop: '-10px',
                 }}
                 alt="Maxun Logo"
               />
 
-              <Typography variant="body2" color="text.secondary" mb={3}>
-                Extract structured data from websites using AI or record your own extraction workflow.
-              </Typography>
-              <Box sx={{ width: '100%', maxWidth: 700, mb: 3 }}>
-                <Typography variant="subtitle1" gutterBottom sx={{ mb: 2 }} color="text.secondary">
-                  Choose How to Build
-                </Typography>
-
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                  <Card
-                    onClick={() => setGenerationMode('recorder')}
-                    sx={{
-                      flex: 1,
-                      cursor: 'pointer',
-                      border: '2px solid',
-                      borderColor: generationMode === 'recorder' ? '#ff00c3' : 'divider',
-                      transition: 'all 0.2s',
-                      '&:hover': {
-                        borderColor: '#ff00c3',
-                      }
-                    }}
-                  >
-                    <CardContent sx={{ textAlign: 'center', py: 3, color: "text.secondary" }}>
-                      <HighlightAlt sx={{ fontSize: 26, mb: 0.5 }} />
-                      <Typography variant="h6" gutterBottom>
-                        Recorder Mode
-                      </Typography>
-                      <Typography variant="body2">
-                        Record your actions into a workflow.
-                      </Typography>
-                    </CardContent>
-                  </Card>
-
-                  <Card
-                    onClick={() => setGenerationMode('agent')}
-                    sx={{
-                      flex: 1,
-                      cursor: 'pointer',
-                      border: '2px solid',
-                      borderColor: generationMode === 'agent' ? '#ff00c3' : 'divider',
-                      transition: 'all 0.2s',
-                      '&:hover': {
-                        borderColor: '#ff00c3',
-                      },
-                      position: 'relative'
-                    }}
-                  >
-                    <Box
+              <Box sx={{ width: '100%', mb: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <Box sx={{ width: '100%', maxWidth: 700 }}>
+                  <Box sx={{ display: 'flex', gap: 2, mb: 1 }}>
+                    <Card
+                      onClick={() => setGenerationMode('recorder')}
                       sx={{
-                        position: 'absolute',
-                        top: 8,
-                        right: 8,
-                        background: '#ff00c3',
-                        color: '#fff',
-                        px: 1,
-                        py: 0.3,
-                        borderRadius: '10px',
-                        fontSize: '0.7rem',
+                        flex: 1,
+                        cursor: 'pointer',
+                        border: '2px solid',
+                        borderColor: generationMode === 'recorder' ? '#ff00c3' : 'divider',
+                        transition: 'all 0.2s',
+                        '&:hover': {
+                          borderColor: '#ff00c3',
+                        }
                       }}
                     >
-                      Beta
-                    </Box>
+                      <CardContent sx={{ py: 2, px: 2.5, color: 'text.secondary' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <HighlightAlt sx={{ fontSize: 17 }} />
+                          <Typography variant="subtitle1" fontWeight={500} color="text.primary">
+                            Recorder Mode
+                          </Typography>
+                        </Box>
+                        <Typography variant="caption" sx={{ mt: 0.25 }}>
+                          Record your actions on websites into workflows.
+                        </Typography>
+                      </CardContent>
+                    </Card>
 
-                    <CardContent sx={{ textAlign: 'center', py: 3, color: "text.secondary" }}>
-                      <AutoAwesome sx={{ fontSize: 26, mb: 0.5 }} />
-                      <Typography variant="h6" gutterBottom>
-                        AI Mode
-                      </Typography>
-                      <Typography variant="body2">
-                        Describe the task. Maxun builds it for you.
-                      </Typography>
-                    </CardContent>
-                  </Card>
+                    <Card
+                      onClick={() => setGenerationMode('agent')}
+                      sx={{
+                        flex: 1,
+                        cursor: 'pointer',
+                        border: '2px solid',
+                        borderColor: generationMode === 'agent' ? '#ff00c3' : 'divider',
+                        transition: 'all 0.2s',
+                        '&:hover': {
+                          borderColor: '#ff00c3',
+                        },
+                        position: 'relative'
+                      }}
+                    >
+                      <CardContent sx={{ py: 2, px: 2.5, color: 'text.secondary' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <AutoAwesome sx={{ fontSize: 17 }} />
+                          <Typography variant="subtitle1" fontWeight={500} color="text.primary">
+                            AI Mode
+                          </Typography>
+                        </Box>
+                        <Typography variant="caption" sx={{ mt: 0.25 }}>
+                          Describe the task to extract data from websites.
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Box>
                 </Box>
               </Box>
+
               {generationMode === 'agent' && (
                 <Box sx={{ width: '100%', maxWidth: 700 }}>
                   <Box sx={{ mb: 3 }}>
@@ -1081,17 +1070,18 @@ const RobotCreate: React.FC = () => {
             <Box display="flex" flexDirection="column" alignItems="center">
               <img
                 src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
-                width={73}
-                height={65}
+                width={55}
+                height={47}
                 style={{
                   borderRadius: '5px',
-                  marginBottom: '30px'
+                  marginBottom: '20px',
+                  marginTop: '-10px',
                 }}
                 alt="Maxun Logo"
               />
 
               <Typography variant="body2" color="text.secondary" mb={3}>
-                Turn websites into LLM-ready Markdown, clean HTML, or screenshots for AI apps.
+                Turn websites into markdown, html, screenshots, summaries and more.
               </Typography>
 
               <Box sx={{ width: '100%', maxWidth: 700, mb: 2 }}>
@@ -1332,11 +1322,12 @@ const RobotCreate: React.FC = () => {
             <Box display="flex" flexDirection="column" alignItems="center">
               <img
                 src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
-                width={73}
-                height={65}
+                width={55}
+                height={47}
                 style={{
                   borderRadius: '5px',
-                  marginBottom: '30px'
+                  marginBottom: '20px',
+                  marginTop: '-10px',
                 }}
                 alt="Maxun Logo"
               />
@@ -1401,7 +1392,7 @@ const RobotCreate: React.FC = () => {
                 </Box>
 
                 {crawlOutputFormats.includes('summary' as OutputFormats) && (
-                <Box sx={{ width: '100%', mb: 2 }}>
+                  <Box sx={{ width: '100%', mb: 2 }}>
                     <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
                       <FormControl sx={{ flex: 1 }}>
                         <InputLabel>Summary LLM Provider</InputLabel>
@@ -1479,20 +1470,25 @@ const RobotCreate: React.FC = () => {
                   </Box>
                 )}
 
-                <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start', mb: 2 }}>
+                <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start', mt: -2, ml: -1 }}>
                   <Button
                     onClick={() => setShowCrawlAdvanced(!showCrawlAdvanced)}
                     sx={{
+                      color: theme => theme.palette.mode === 'dark' ? 'inherit' : theme.palette.common.black,
                       textTransform: 'none',
-                      color: '#ff00c3',
+                      '&:hover': {
+                        background: 'inherit',
+                        color: 'inherit',
+                      },
                     }}
+                    disableRipple
                   >
-                    {showCrawlAdvanced ? 'Hide Advanced Options' : 'Advanced Options'}
+                    {showCrawlAdvanced ? 'Hide Crawl Settings' : 'Crawl Settings'}
                   </Button>
                 </Box>
 
                 <Collapse in={showCrawlAdvanced}>
-                  <Box sx={{ mb: 2 }}>
+                  <Box sx={{ mt: 4, mb: 2 }}>
                     <FormControl fullWidth sx={{ mb: 2 }}>
                       <InputLabel>Crawl Scope</InputLabel>
                       <Select
@@ -1598,11 +1594,12 @@ const RobotCreate: React.FC = () => {
             <Box display="flex" flexDirection="column" alignItems="center">
               <img
                 src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
-                width={73}
-                height={65}
+                width={55}
+                height={47}
                 style={{
                   borderRadius: '5px',
-                  marginBottom: '30px'
+                  marginBottom: '20px',
+                  marginTop: '-10px',
                 }}
                 alt="Maxun Logo"
               />
@@ -1813,69 +1810,74 @@ const RobotCreate: React.FC = () => {
             </Box>
           </Card>
         </TabPanel>
-        {/* Document Robot Tab */}
+
         <TabPanel value={tabValue} index={4}>
           <Card sx={{ mb: 4, p: 4 }}>
             <Box display="flex" flexDirection="column" alignItems="center">
               <img
                 src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
-                width={73}
-                height={65}
+                width={55}
+                height={47}
                 style={{
                   borderRadius: '5px',
-                  marginBottom: '30px'
+                  marginBottom: '20px',
+                  marginTop: '-10px',
                 }}
                 alt="Maxun Logo"
               />
-              <Typography variant="body2" color="text.secondary" mb={3}>
-                Process documents with AI — extract structured fields or convert to Markdown, HTML, links, and summary.
-              </Typography>
-
               <Box sx={{ width: '100%', maxWidth: 700 }}>
-                <Typography variant="subtitle1" gutterBottom sx={{ mb: 2 }} color="text.secondary">
-                  Choose Mode
-                </Typography>
+                <Box sx={{ width: '100%', mb: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <Box sx={{ width: '100%', maxWidth: 700 }}>
+                    <Box sx={{ display: 'flex', gap: 2, mb: 0.5 }}>
+                      <Card
+                        onClick={() => setDocumentMode('extract')}
+                        sx={{
+                          flex: 1,
+                          cursor: 'pointer',
+                          border: '2px solid',
+                          borderColor: documentMode === 'extract' ? '#ff00c3' : 'divider',
+                          transition: 'all 0.2s',
+                          '&:hover': { borderColor: '#ff00c3' },
+                        }}
+                      >
+                        <CardContent sx={{ py: 2, px: 2.5, color: 'text.secondary' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <AutoAwesome sx={{ fontSize: 17 }} />
+                            <Typography variant="subtitle1" fontWeight={500} color="text.primary">
+                              Extract
+                            </Typography>
+                          </Box>
+                          <Typography variant="caption" sx={{ mt: 0.25 }}>
+                            Extract structured data from docs with AI prompts.
+                          </Typography>
+                        </CardContent>
+                      </Card>
 
-                <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-                  <Card
-                    onClick={() => setDocumentMode('extract')}
-                    sx={{
-                      flex: 1,
-                      cursor: 'pointer',
-                      border: '2px solid',
-                      borderColor: documentMode === 'extract' ? '#ff00c3' : 'divider',
-                      transition: 'all 0.2s',
-                      '&:hover': { borderColor: '#ff00c3' },
-                    }}
-                  >
-                    <CardContent sx={{ textAlign: 'center', py: 3, color: 'text.secondary' }}>
-                      <AutoAwesome sx={{ fontSize: 26, mb: 0.5 }} />
-                      <Typography variant="h6" gutterBottom>Extract</Typography>
-                      <Typography variant="body2">
-                        Pull structured data fields from a document using AI.
-                      </Typography>
-                    </CardContent>
-                  </Card>
-
-                  <Card
-                    onClick={() => setDocumentMode('parse')}
-                    sx={{
-                      flex: 1,
-                      cursor: 'pointer',
-                      border: '2px solid',
-                      borderColor: documentMode === 'parse' ? '#ff00c3' : 'divider',
-                      transition: 'all 0.2s',
-                      '&:hover': { borderColor: '#ff00c3' },
-                    }}
-                  >
-                    <CardContent sx={{ textAlign: 'center', py: 3, color: 'text.secondary' }}>
-                      <Article sx={{ fontSize: 26, mb: 0.5 }} />
-                      <Typography variant="h6" gutterBottom>Parse</Typography>
-                      <Typography variant="body2">
-                        Convert a document to Markdown, HTML, links, and an AI summary.
-                      </Typography>
-                    </CardContent>
-                  </Card>
+                      <Card
+                        onClick={() => setDocumentMode('parse')}
+                        sx={{
+                          flex: 1,
+                          cursor: 'pointer',
+                          border: '2px solid',
+                          borderColor: documentMode === 'parse' ? '#ff00c3' : 'divider',
+                          transition: 'all 0.2s',
+                          '&:hover': { borderColor: '#ff00c3' },
+                        }}
+                      >
+                        <CardContent sx={{ py: 2, px: 2.5, color: 'text.secondary' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Article sx={{ fontSize: 17 }} />
+                            <Typography variant="subtitle1" fontWeight={500} color="text.primary">
+                              Parse
+                            </Typography>
+                          </Box>
+                          <Typography variant="caption" sx={{ mt: 0.25 }}>
+                            Parse docs to Markdown, HTML, links & summaries.
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Box>
+                  </Box>
                 </Box>
 
                 <TextField
@@ -1888,14 +1890,14 @@ const RobotCreate: React.FC = () => {
 
                 <Box
                   sx={{
-                    border: '2px dashed',
-                    borderColor: documentFile ? '#ff00c3' : 'divider',
+                    border: '1.5px dashed',
+                    borderColor: theme => theme.palette.mode === 'dark' ? 'divider' : '#0000004a',
                     borderRadius: 2,
                     p: 3,
                     mb: 3,
                     textAlign: 'center',
                     cursor: 'pointer',
-                    '&:hover': { borderColor: '#ff00c3' },
+                    '&:hover': { borderColor: theme => theme.palette.mode === 'dark' ? 'divider' : '#0000004a' },
                   }}
                   onClick={() => document.getElementById('doc-upload-input')?.click()}
                 >
@@ -1907,13 +1909,15 @@ const RobotCreate: React.FC = () => {
                     onChange={(e) => setDocumentFile(e.target.files?.[0] || null)}
                   />
                   {documentFile ? (
-                    <Typography variant="body1" color="#ff00c3" fontWeight={500}>
-                      📄 {documentFile.name}
+                    <Typography variant="body1">
+                      <InsertDriveFile sx={{ fontSize: 18, verticalAlign: "middle", mr: 0.5, mt: -0.5 }} />
+                      {documentFile.name}
                     </Typography>
                   ) : (
                     <>
-                      <Typography variant="body1" fontWeight={500}>Click to upload a PDF, DOCX, XLSX, CSV, JPG, or PNG</Typography>
-                      <Typography variant="body2" color="text.secondary">Supported files: PDF, DOCX, XLSX, CSV, JPG, or PNG • Max file size: 10 MB</Typography>
+                      <Upload sx={{ fontSize: 25, color: 'text.secondary', justifyContent: 'center', }} />
+                      <Typography variant="body2" fontWeight={500}>Upload PDF, DOCX, XLSX, CSV, JPG, or PNG </Typography>
+                      <Typography variant="caption" color="text.secondary">Max file size: 10 MB</Typography>
                     </>
                   )}
                 </Box>
@@ -1967,13 +1971,13 @@ const RobotCreate: React.FC = () => {
                     {documentLlmProvider === 'openai' && (
                       <OpenAICompatiblePresetFields
                         presetId={documentOpenAICompatiblePreset}
-                      onPresetChange={(presetId) => applyOpenAICompatiblePreset(
-                        presetId,
-                        setDocumentOpenAICompatiblePreset,
-                        setDocumentLlmModel,
-                        setDocumentLlmBaseUrl,
-                        setDocumentLlmApiKey
-                      )}
+                        onPresetChange={(presetId) => applyOpenAICompatiblePreset(
+                          presetId,
+                          setDocumentOpenAICompatiblePreset,
+                          setDocumentLlmModel,
+                          setDocumentLlmBaseUrl,
+                          setDocumentLlmApiKey
+                        )}
                         baseUrl={documentLlmBaseUrl}
                         onBaseUrlChange={setDocumentLlmBaseUrl}
                         apiKey={documentLlmApiKey}
@@ -2010,113 +2014,113 @@ const RobotCreate: React.FC = () => {
 
                 {documentMode === 'parse' && (
                   <>
-                  <FormControl fullWidth sx={{ mb: 3 }}>
-                    <InputLabel id="doc-parse-formats-label">Output Formats</InputLabel>
-                    <Select
-                      labelId="doc-parse-formats-label"
-                      multiple
-                      value={documentParseFormats}
-                      label="Output Formats"
-                      onChange={(e) => {
-                        const value = (typeof e.target.value === 'string'
-                          ? e.target.value.split(',')
-                          : e.target.value) as OutputFormats[];
-                        setDocumentParseFormats(value);
-                      }}
-                      renderValue={(selected) =>
-                        (selected as OutputFormats[]).length === 0
-                          ? <span style={{ color: '#999' }}>Select formats</span>
-                          : (selected as OutputFormats[]).map((v) => OUTPUT_FORMAT_LABELS[v] ?? v).join(', ')
-                      }
-                      MenuProps={{ PaperProps: { style: { maxHeight: 300 } } }}
-                    >
-                      {DOC_PARSE_FORMAT_OPTIONS.map((format) => (
-                        <MenuItem key={format} value={format}>
-                          <Checkbox checked={documentParseFormats.includes(format)} />
-                          {OUTPUT_FORMAT_LABELS[format]}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                    <FormControl fullWidth sx={{ mb: 3 }}>
+                      <InputLabel id="doc-parse-formats-label">Output Formats</InputLabel>
+                      <Select
+                        labelId="doc-parse-formats-label"
+                        multiple
+                        value={documentParseFormats}
+                        label="Output Formats"
+                        onChange={(e) => {
+                          const value = (typeof e.target.value === 'string'
+                            ? e.target.value.split(',')
+                            : e.target.value) as OutputFormats[];
+                          setDocumentParseFormats(value);
+                        }}
+                        renderValue={(selected) =>
+                          (selected as OutputFormats[]).length === 0
+                            ? <span style={{ color: '#999' }}>Select formats</span>
+                            : (selected as OutputFormats[]).map((v) => OUTPUT_FORMAT_LABELS[v] ?? v).join(', ')
+                        }
+                        MenuProps={{ PaperProps: { style: { maxHeight: 300 } } }}
+                      >
+                        {DOC_PARSE_FORMAT_OPTIONS.map((format) => (
+                          <MenuItem key={format} value={format}>
+                            <Checkbox checked={documentParseFormats.includes(format)} />
+                            {OUTPUT_FORMAT_LABELS[format]}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
 
-                  {documentParseFormats.includes('summary' as OutputFormats) && (
-                    <Box sx={{ width: '100%', mb: 2 }}>
-                      <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-                        <FormControl sx={{ flex: 1 }}>
-                          <InputLabel>Summary LLM Provider</InputLabel>
-                          <Select
-                            value={docParseSummaryLlmProvider}
-                            label="Summary LLM Provider"
-                            onChange={(e) => {
-                              applyLlmProvider(
-                                e.target.value as LlmProvider,
-                                docParseSummaryOpenAIPreset,
-                                setDocParseSummaryLlmProvider,
-                                setDocParseSummaryLlmModel,
-                                setDocParseSummaryLlmBaseUrl,
-                                setDocParseSummaryLlmApiKey
-                              );
-                            }}
-                          >
-                            <MenuItem value="ollama">Ollama (Local)</MenuItem>
-                            <MenuItem value="anthropic">Anthropic (Claude)</MenuItem>
-                            <MenuItem value="openai">OpenAI-compatible</MenuItem>
-                          </Select>
-                        </FormControl>
-                        <TextField
-                          sx={{ flex: 1 }}
-                          value={docParseSummaryLlmModel}
-                          label="Model"
-                          placeholder={getModelPlaceholder(docParseSummaryLlmProvider, docParseSummaryOpenAIPreset)}
-                          helperText={getModelHelperText(docParseSummaryLlmProvider, docParseSummaryOpenAIPreset)}
-                          onChange={(e) => setDocParseSummaryLlmModel(e.target.value)}
-                          FormHelperTextProps={{ sx: { ml: 0.5 } }}
-                        />
+                    {documentParseFormats.includes('summary' as OutputFormats) && (
+                      <Box sx={{ width: '100%', mb: 2 }}>
+                        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                          <FormControl sx={{ flex: 1 }}>
+                            <InputLabel>Summary LLM Provider</InputLabel>
+                            <Select
+                              value={docParseSummaryLlmProvider}
+                              label="Summary LLM Provider"
+                              onChange={(e) => {
+                                applyLlmProvider(
+                                  e.target.value as LlmProvider,
+                                  docParseSummaryOpenAIPreset,
+                                  setDocParseSummaryLlmProvider,
+                                  setDocParseSummaryLlmModel,
+                                  setDocParseSummaryLlmBaseUrl,
+                                  setDocParseSummaryLlmApiKey
+                                );
+                              }}
+                            >
+                              <MenuItem value="ollama">Ollama (Local)</MenuItem>
+                              <MenuItem value="anthropic">Anthropic (Claude)</MenuItem>
+                              <MenuItem value="openai">OpenAI-compatible</MenuItem>
+                            </Select>
+                          </FormControl>
+                          <TextField
+                            sx={{ flex: 1 }}
+                            value={docParseSummaryLlmModel}
+                            label="Model"
+                            placeholder={getModelPlaceholder(docParseSummaryLlmProvider, docParseSummaryOpenAIPreset)}
+                            helperText={getModelHelperText(docParseSummaryLlmProvider, docParseSummaryOpenAIPreset)}
+                            onChange={(e) => setDocParseSummaryLlmModel(e.target.value)}
+                            FormHelperTextProps={{ sx: { ml: 0.5 } }}
+                          />
+                        </Box>
+                        {docParseSummaryLlmProvider === 'openai' && (
+                          <OpenAICompatiblePresetFields
+                            presetId={docParseSummaryOpenAIPreset}
+                            onPresetChange={(id) => applyOpenAICompatiblePreset(
+                              id,
+                              setDocParseSummaryOpenAIPreset,
+                              setDocParseSummaryLlmModel,
+                              setDocParseSummaryLlmBaseUrl,
+                              setDocParseSummaryLlmApiKey
+                            )}
+                            baseUrl={docParseSummaryLlmBaseUrl}
+                            onBaseUrlChange={setDocParseSummaryLlmBaseUrl}
+                            apiKey={docParseSummaryLlmApiKey}
+                            onApiKeyChange={setDocParseSummaryLlmApiKey}
+                            bottomMargin={2}
+                          />
+                        )}
+                        {docParseSummaryLlmProvider === 'anthropic' && (
+                          <TextField
+                            placeholder="Anthropic API key"
+                            fullWidth
+                            type="password"
+                            value={docParseSummaryLlmApiKey}
+                            onChange={(e) => setDocParseSummaryLlmApiKey(e.target.value)}
+                            label="API Key"
+                            helperText="Required for summary output. Alternatively, set ANTHROPIC_API_KEY in your server .env."
+                            FormHelperTextProps={{ sx: { ml: 0.5 } }}
+                            sx={{ mb: 2 }}
+                          />
+                        )}
+                        {docParseSummaryLlmProvider === 'ollama' && (
+                          <TextField
+                            fullWidth
+                            value={docParseSummaryLlmBaseUrl}
+                            onChange={(e) => setDocParseSummaryLlmBaseUrl(e.target.value)}
+                            label="Ollama Base URL (Optional)"
+                            placeholder={OLLAMA_DEFAULT_BASE_URL}
+                            helperText="Defaults to http://localhost:11434. Use http://host.docker.internal:11434 if running via Docker"
+                            sx={{ mb: 2 }}
+                            FormHelperTextProps={{ sx: { ml: 0.5 } }}
+                          />
+                        )}
                       </Box>
-                      {docParseSummaryLlmProvider === 'openai' && (
-                        <OpenAICompatiblePresetFields
-                          presetId={docParseSummaryOpenAIPreset}
-                          onPresetChange={(id) => applyOpenAICompatiblePreset(
-                            id,
-                            setDocParseSummaryOpenAIPreset,
-                            setDocParseSummaryLlmModel,
-                            setDocParseSummaryLlmBaseUrl,
-                            setDocParseSummaryLlmApiKey
-                          )}
-                          baseUrl={docParseSummaryLlmBaseUrl}
-                          onBaseUrlChange={setDocParseSummaryLlmBaseUrl}
-                          apiKey={docParseSummaryLlmApiKey}
-                          onApiKeyChange={setDocParseSummaryLlmApiKey}
-                          bottomMargin={2}
-                        />
-                      )}
-                      {docParseSummaryLlmProvider === 'anthropic' && (
-                        <TextField
-                          placeholder="Anthropic API key"
-                          fullWidth
-                          type="password"
-                          value={docParseSummaryLlmApiKey}
-                          onChange={(e) => setDocParseSummaryLlmApiKey(e.target.value)}
-                          label="API Key"
-                          helperText="Required for summary output. Alternatively, set ANTHROPIC_API_KEY in your server .env."
-                          FormHelperTextProps={{ sx: { ml: 0.5 } }}
-                          sx={{ mb: 2 }}
-                        />
-                      )}
-                      {docParseSummaryLlmProvider === 'ollama' && (
-                        <TextField
-                          fullWidth
-                          value={docParseSummaryLlmBaseUrl}
-                          onChange={(e) => setDocParseSummaryLlmBaseUrl(e.target.value)}
-                          label="Ollama Base URL (Optional)"
-                          placeholder={OLLAMA_DEFAULT_BASE_URL}
-                          helperText="Defaults to http://localhost:11434. Use http://host.docker.internal:11434 if running via Docker"
-                          sx={{ mb: 2 }}
-                          FormHelperTextProps={{ sx: { ml: 0.5 } }}
-                        />
-                      )}
-                    </Box>
-                  )}
+                    )}
                   </>
                 )}
 
