@@ -15,6 +15,9 @@ const sharedInputOverrides = {
         marginBottom: 6,
         fontSize: '0.875rem',
         textAlign: 'left',
+        '& .MuiFormLabel-asterisk': {
+          display: 'none',
+        },
       },
     },
   },
