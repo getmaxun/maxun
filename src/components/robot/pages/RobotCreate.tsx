@@ -55,7 +55,7 @@ function TabPanel(props: TabPanelProps) {
 }
 
 type LlmProvider = 'anthropic' | 'openai' | 'ollama';
-type OpenAICompatiblePresetId = 'openai' | 'qianfan' | 'openrouter' | 'deepseek' | 'custom';
+type OpenAICompatiblePresetId = 'openai' | 'qianfan' | 'openrouter' | 'orcarouter' | 'deepseek' | 'custom';
 
 interface OpenAICompatiblePreset {
   label: string;
@@ -102,6 +102,16 @@ const OPENAI_COMPATIBLE_PRESETS: Record<OpenAICompatiblePresetId, OpenAICompatib
     apiKeyPlaceholder: 'OpenRouter API key',
     apiKeyHelperText: 'Use an OpenRouter API key. If blank, Maxun falls back to OPENAI_API_KEY on the server.',
   },
+  orcarouter: {
+    label: 'OrcaRouter',
+    baseUrl: 'https://api.orcarouter.ai/v1',
+    baseUrlPlaceholder: 'https://api.orcarouter.ai/v1',
+    baseUrlHelperText: 'Use the OrcaRouter OpenAI-compatible endpoint, or override it for your account.',
+    modelPlaceholder: 'e.g. orcarouter/auto',
+    modelHelperText: 'Enter an OrcaRouter model id from your enabled models.',
+    apiKeyPlaceholder: 'OrcaRouter API key',
+    apiKeyHelperText: 'Use an OrcaRouter API key. If blank, Maxun falls back to OPENAI_API_KEY on the server.',
+  },
   deepseek: {
     label: 'DeepSeek',
     baseUrl: 'https://api.deepseek.com',
@@ -128,6 +138,7 @@ const OPENAI_COMPATIBLE_PRESET_IDS: OpenAICompatiblePresetId[] = [
   'openai',
   'qianfan',
   'openrouter',
+  'orcarouter',
   'deepseek',
   'custom',
 ];
