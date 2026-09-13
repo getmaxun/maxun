@@ -439,7 +439,7 @@ export class WorkflowGenerator {
 
   public onDOMClickAction = async (page: Page, data: { 
     selector: string, 
-    url: string, 
+    url: string,
     userId: string,
     elementInfo?: any,
     coordinates?: { x: number, y: number }
@@ -448,7 +448,7 @@ export class WorkflowGenerator {
 
     const pair: WhereWhatPair = {
       where: { 
-        url: this.getBestUrl(url),
+        url: this.getBestUrl(url || page.url()),
         selectors: [selector]
       },
       what: [{
