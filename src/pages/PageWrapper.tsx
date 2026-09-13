@@ -14,6 +14,7 @@ import UserRoute from '../routes/userRoute';
 import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { NotFoundPage } from '../components/dashboard/NotFound';
 import RobotCreate from '../components/robot/pages/RobotCreate';
+import RunDiffPage from './RunDiffPage';
 import { Box } from '@mui/material';
 
 export const PageWrapper = () => {
@@ -132,6 +133,7 @@ export const PageWrapper = () => {
                   <Route path="/robots/create" element={<RobotCreate />} />
                   <Route path="/robots/*" element={<MainPage handleEditRecording={handleEditRecording} initialContent="robots" />} />
                   <Route path="/runs/*" element={<MainPage handleEditRecording={handleEditRecording} initialContent="runs" />} />
+                  <Route path="/runs/:runId/diff" element={<RunDiffPage />} />
                   <Route path="/proxy" element={<MainPage handleEditRecording={handleEditRecording} initialContent="proxy" />} />
                   <Route path="/apikey" element={<MainPage handleEditRecording={handleEditRecording} initialContent="apikey" />} />
                 </Route>
