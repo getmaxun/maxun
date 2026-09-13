@@ -3,6 +3,41 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import i18n, { isRtlLanguage } from '../i18n';
 
+const sharedInputOverrides = {
+  MuiInputLabel: {
+    defaultProps: {
+      shrink: true,
+    },
+    styleOverrides: {
+      root: {
+        position: 'relative',
+        transform: 'none',
+        marginBottom: 4,
+        fontSize: '0.875rem',
+      },
+    },
+  },
+  MuiOutlinedInput: {
+    styleOverrides: {
+      root: {
+        marginTop: 4,
+      },
+      notchedOutline: {
+        '& legend': {
+          display: 'none',
+        },
+      },
+    },
+  },
+  MuiFormControl: {
+    styleOverrides: {
+      root: {
+        display: 'flex',
+        flexDirection: 'column',
+      },
+    },
+  },
+} as const;
 
 const lightTheme = createTheme({
   palette: {
@@ -12,6 +47,7 @@ const lightTheme = createTheme({
     },
   },
   components: {
+    ...sharedInputOverrides,
     MuiTableContainer: {
       styleOverrides: {
         root: {
@@ -148,6 +184,7 @@ const darkTheme = createTheme({
     },
   },
   components: {
+    ...sharedInputOverrides,
     MuiTableContainer: {
       styleOverrides: {
         root: {
