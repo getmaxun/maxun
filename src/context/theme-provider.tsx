@@ -12,28 +12,18 @@ const sharedInputOverrides = {
       root: {
         position: 'relative',
         transform: 'none',
-        marginBottom: 4,
+        marginBottom: 6,
         fontSize: '0.875rem',
+        textAlign: 'left',
       },
     },
   },
   MuiOutlinedInput: {
     styleOverrides: {
-      root: {
-        marginTop: 4,
-      },
       notchedOutline: {
         '& legend': {
-          display: 'none',
+          width: 0,
         },
-      },
-    },
-  },
-  MuiFormControl: {
-    styleOverrides: {
-      root: {
-        display: 'flex',
-        flexDirection: 'column',
       },
     },
   },
