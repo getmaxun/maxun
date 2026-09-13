@@ -57,11 +57,6 @@ export const RunDiffPage: React.FC = () => {
         <Typography variant="h6">
           {t('runs_table.run_diff.title', { defaultValue: 'Run Comparison' })}
         </Typography>
-        {runId && (
-          <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-            · {runId}
-          </Typography>
-        )}
       </Box>
 
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', px: 3, py: 3, minHeight: 0 }}>
