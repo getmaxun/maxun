@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { TextField, Box, Checkbox, FormControlLabel } from "@mui/material";
+import { TextField, Box, Checkbox, FormControlLabel, Typography } from "@mui/material";
 import { useGlobalInfoStore } from "../../../context/globalInfo";
 import { getStoredRecording, updateRecording } from "../../../api/storage";
 import { WhereWhatPair } from "maxun-core";
@@ -241,6 +241,9 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
                 style={{ marginBottom: "20px" }}
               />
               {(robot.recording_meta.type === 'scrape' || robot.recording_meta.type === 'extract') && (
+                <>
+                <Typography variant="h6">Monitoring</Typography>
+                <p>When enabled, each run is compared against the previous one to detect changes. The changed values can be viewed in the run comparison results. </p>
                 <FormControlLabel
                   control={
                     <Checkbox
@@ -252,6 +255,7 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
                   label={t("robot_settings.compare_runs")}
                   style={{ marginBottom: "20px" }}
                 />
+                </>
               )}
             </>
           )}
