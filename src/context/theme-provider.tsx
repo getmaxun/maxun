@@ -25,6 +25,10 @@ const sharedInputOverrides = {
           width: 0,
         },
       },
+      input: {
+        paddingTop: 10,
+        paddingBottom: 10,
+      },
     },
   },
 } as const;
