@@ -71,7 +71,6 @@ const DownloadMenuButton: React.FC<{ actions: { label: string; onClick: () => vo
           e.stopPropagation();
           actions[0].onClick();
         }}
-        sx={{ color: '#FF00C3' }}
         aria-label={actions[0].label}
       >
         <Download fontSize="small" />
@@ -87,7 +86,6 @@ const DownloadMenuButton: React.FC<{ actions: { label: string; onClick: () => vo
           e.stopPropagation();
           setAnchorEl(e.currentTarget);
         }}
-        sx={{ color: '#FF00C3' }}
         aria-label="Download options"
       >
         <Download fontSize="small" />
@@ -184,7 +182,7 @@ const ScreenshotTabs: React.FC<ScreenshotTabsProps> = ({ screenshotVisible, scre
             </Box>
           ))}
         </Box>
-        <IconButton size="small" onClick={handleDownload} sx={{ color: '#FF00C3', ml: 1 }} aria-label="Download screenshot">
+        <IconButton size="small" onClick={handleDownload} sx={{ ml: 1 }} aria-label="Download screenshot">
           <Download fontSize="small" />
         </IconButton>
       </Box>
