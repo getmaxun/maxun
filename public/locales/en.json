@@ -1,7 +1,7 @@
 {
     "login": {
       "title": "Welcome to Maxun",
-      "email": "Enter Work Email",
+      "email": "Email",
       "password": "Password",
       "button": "Login",
       "loading": "Loading",
@@ -21,7 +21,7 @@
     },
     "register": {
       "title": "Create An Account",
-      "email": "Enter Work Email",
+      "email": "Email",
       "password": "Password",
       "button": "Register",
       "loading": "Loading",
