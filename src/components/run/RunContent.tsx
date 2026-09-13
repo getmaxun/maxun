@@ -12,6 +12,12 @@ import {
   IconButton,
   Menu,
   MenuItem,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from "@mui/material";
 import * as React from "react";
 import { Data } from "./RunsTable";
@@ -32,12 +38,6 @@ import StorageIcon from '@mui/icons-material/Storage';
 import { ContentCopy, Check, ChevronLeft, ChevronRight } from "@mui/icons-material";
 import { useEffect, useState, useRef, useCallback } from "react";
 import JSZip from "jszip";
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableContainer from '@mui/material/TableContainer';
-import TableHead from '@mui/material/TableHead';
-import TableRow from '@mui/material/TableRow';
 import { useTranslation } from "react-i18next";
 import { useThemeMode } from "../../context/theme-provider";
 import DownloadIcon from '@mui/icons-material/Download';
