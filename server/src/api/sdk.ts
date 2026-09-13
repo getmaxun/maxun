@@ -168,6 +168,10 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
         }
 
         const rawFormats = (workflowFile.meta as any).formats;
+        const compareRuns = (workflowFile.meta as any).compareRuns;
+        if (compareRuns !== undefined && typeof compareRuns !== 'boolean') {
+            return res.status(400).json({ error: 'meta.compareRuns must be a boolean' });
+        }
         const { validFormats, invalidFormats } = parseOutputFormats(
             rawFormats,
             type === 'scrape' ? SCRAPE_OUTPUT_FORMAT_OPTIONS : undefined
@@ -207,8 +211,9 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
             const sameFormats = type === 'scrape'
                 ? JSON.stringify([...(meta.formats || [])].sort()) === JSON.stringify([...((workflowFile.meta as any).formats || ['markdown'])].sort())
                 : true;
+            const sameMonitoring = Boolean(meta.compareRuns) === Boolean(compareRuns);
 
-            if (sameType && sameUrl && sameFormats) {
+            if (sameType && sameUrl && sameFormats && sameMonitoring) {
                 return res.status(200).json({
                     data: existingRobot,
                     message: "Existing robot returned",
@@ -250,6 +255,7 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
             type,
             url: extractedUrl,
             formats: normalizedFormats,
+            ...(compareRuns !== undefined ? { compareRuns } : {}),
             isLLM: (workflowFile.meta as any).isLLM,
             ...(promptInstructionsForMeta ? { promptInstructions: promptInstructionsForMeta } : {}),
             ...toPromptLlmMeta(robotLlmConfig, encrypt),
@@ -383,6 +389,9 @@ router.put("/sdk/robots/:id", requireAPIKey, async (req: AuthenticatedRequest, r
         let workflowTouched = Boolean(updates.workflow);
 
         if (updates.meta) {
+            if (updates.meta.compareRuns !== undefined && typeof updates.meta.compareRuns !== 'boolean') {
+                return res.status(400).json({ error: 'meta.compareRuns must be a boolean' });
+            }
             let normalizedMetaUrl: string | undefined;
             if (updates.meta.url) {
                 try {
@@ -749,6 +758,8 @@ router.post("/sdk/robots/:id/execute", requireAPIKey, async (req: AuthenticatedR
             data: {
                 runId: run.runId,
                 status: run.status,
+                hasChanges: !!run.hasChanges,
+                changedFormats: (run.serializableOutput as any)?._comparison?.changedFormats || [],
                 data: {
                     textData: run.serializableOutput?.scrapeSchema || {},
                     listData: listData,
@@ -1344,7 +1355,10 @@ router.post("/sdk/search", requireAPIKey, async (req: AuthenticatedRequest, res:
 router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
     try {
         const user = req.user
-        const { url, prompt, llmProvider, llmModel, llmApiKey, llmBaseUrl, robotName } = req.body;
+        const { url, prompt, llmProvider, llmModel, llmApiKey, llmBaseUrl, robotName, compareRuns } = req.body;
+        if (compareRuns !== undefined && typeof compareRuns !== 'boolean') {
+            return res.status(400).json({ error: 'compareRuns must be a boolean' });
+        }
 
         if (!prompt) {
             return res.status(400).json({
@@ -1410,7 +1424,7 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
             const samePrompt = (meta.description || '') === prompt;
             const sameUrl = normalizeUrl(meta.url || '') === normalizeUrl(finalUrl);
 
-            if (samePrompt && sameUrl) {
+            if (samePrompt && sameUrl && Boolean(meta.compareRuns) === Boolean(compareRuns)) {
                 return res.status(200).json({
                     success: true,
                     data: {
@@ -1437,6 +1451,7 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
             params: [],
             type: 'extract',
             url: finalUrl,
+            ...(compareRuns !== undefined ? { compareRuns } : {}),
             isLLM: true
         };
 
