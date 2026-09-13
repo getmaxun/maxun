@@ -614,7 +614,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
 
       <Dialog open={diffOpen} onClose={handleCloseDiff} maxWidth="lg" fullWidth>
         <DialogTitle sx={{ textAlign: 'center' }}>
-          {t('runs_table.run_diff.title', { defaultValue: 'Changes vs Previous Run' })}
+          {t('runs_table.run_diff.title', { defaultValue: 'Run Comparison' })}
         </DialogTitle>
         <DialogContent
           sx={{
@@ -685,7 +685,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                         </DialogContentText>
                       </Box>
                     ) : (
-                      <TableContainer component={Paper} sx={{ flex: 1, overflow: 'auto' }}>
+                      <TableContainer component={Paper} sx={{ maxHeight: '100%', overflow: 'auto' }}>
                         <Table
                           stickyHeader
                           sx={{
@@ -765,7 +765,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                         </DialogContentText>
                       </Box>
                     ) : (
-                      <TableContainer component={Paper} sx={{ flex: 1, overflow: 'auto' }}>
+                      <TableContainer component={Paper} sx={{ maxHeight: '100%', overflow: 'auto' }}>
                         <Table
                           stickyHeader
                           sx={{
