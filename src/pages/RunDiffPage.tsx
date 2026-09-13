@@ -24,6 +24,30 @@ export const RunDiffPage: React.FC = () => {
     getDiffImageSrc,
   } = useRunDiff(runId);
 
+  // Group all individual "screenshot:<name>" entries the hook produces into one
+  // top-level "Screenshots" tab, with the individual names becoming a sub-tab row —
+  // same pattern as the captured-list groups below.
+  const screenshotOptions = diffOptions.filter((option) => option.key.startsWith('screenshot:'));
+  const nonScreenshotOptions = diffOptions.filter((option) => !option.key.startsWith('screenshot:'));
+  const topLevelOptions = [
+    ...nonScreenshotOptions,
+    ...(screenshotOptions.length > 0 ? [{ key: 'screenshots', label: 'Screenshots' }] : []),
+  ];
+  const isScreenshotsActive = selectedDiffFormat.startsWith('screenshot:');
+  const topLevelValue = isScreenshotsActive ? 'screenshots' : selectedDiffFormat;
+
+  const handleTopLevelChange = (_: React.SyntheticEvent, value: string) => {
+    if (value === 'screenshots') {
+      // Only switch format if we weren't already showing a screenshot; otherwise
+      // keep whichever one was selected.
+      if (!isScreenshotsActive && screenshotOptions.length > 0) {
+        setSelectedDiffFormat(screenshotOptions[0].key);
+      }
+      return;
+    }
+    setSelectedDiffFormat(value);
+  };
+
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.paper', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 3, py: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
@@ -54,8 +78,8 @@ export const RunDiffPage: React.FC = () => {
         ) : (
           <>
             <Tabs
-              value={selectedDiffFormat}
-              onChange={(_, value) => setSelectedDiffFormat(value)}
+              value={topLevelValue}
+              onChange={handleTopLevelChange}
               centered
               sx={{
                 minHeight: 36,
@@ -68,10 +92,24 @@ export const RunDiffPage: React.FC = () => {
                 '& .MuiTabs-indicator': { height: 2 },
               }}
             >
-              {diffOptions.map((option) => (
+              {topLevelOptions.map((option) => (
                 <Tab key={option.key} value={option.key} label={option.label} />
               ))}
             </Tabs>
+
+            {isScreenshotsActive && screenshotOptions.length > 1 && (
+              <Tabs
+                value={selectedDiffFormat}
+                onChange={(_, value) => setSelectedDiffFormat(value)}
+                variant="scrollable"
+                scrollButtons="auto"
+                sx={{ mb: 2, minHeight: 36, flexShrink: 0 }}
+              >
+                {screenshotOptions.map((option) => (
+                  <Tab key={option.key} value={option.key} label={option.label} sx={{ minHeight: 36 }} />
+                ))}
+              </Tabs>
+            )}
 
             <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
               {selectedDiffFormat === 'captured-text' ? (
