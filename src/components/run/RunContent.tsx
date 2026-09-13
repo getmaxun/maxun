@@ -65,6 +65,7 @@ const DownloadMenuButton: React.FC<{ actions: { label: string; onClick: () => vo
 
   if (actions.length === 1) {
     return (
+      <Tooltip title="Download" placement="left">
       <IconButton
         size="small"
         onClick={(e) => {
@@ -75,11 +76,13 @@ const DownloadMenuButton: React.FC<{ actions: { label: string; onClick: () => vo
       >
         <Download fontSize="small" />
       </IconButton>
+      </Tooltip>
     );
   }
 
   return (
     <>
+    <Tooltip title="Download" placement="left">
       <IconButton
         size="small"
         onClick={(e) => {
@@ -90,6 +93,7 @@ const DownloadMenuButton: React.FC<{ actions: { label: string; onClick: () => vo
       >
         <Download fontSize="small" />
       </IconButton>
+      </Tooltip>
       <Menu
         anchorEl={anchorEl}
         open={!!anchorEl}
@@ -182,9 +186,11 @@ const ScreenshotTabs: React.FC<ScreenshotTabsProps> = ({ screenshotVisible, scre
             </Box>
           ))}
         </Box>
+          <Tooltip title="Download" placement="left">
         <IconButton size="small" onClick={handleDownload} sx={{ ml: 1 }} aria-label="Download screenshot">
           <Download fontSize="small" />
         </IconButton>
+        </Tooltip>
       </Box>
       <Box>
         <img
