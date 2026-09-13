@@ -81,6 +81,9 @@ const lightTheme = createTheme({
           textTransform: "none",
         },
       },
+      defaultProps: {
+        disableRipple: true,
+      },
     },
     MuiAlert: {
       styleOverrides: {
@@ -241,6 +244,9 @@ const darkTheme = createTheme({
             color: '#ff00c3',
           },
         },
+      },
+      defaultProps: {
+        disableRipple: true,
       },
     },
     MuiAlert: {
