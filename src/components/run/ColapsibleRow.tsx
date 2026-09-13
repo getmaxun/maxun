@@ -612,7 +612,18 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
         </DialogActions>
       </Dialog>
 
-      <Dialog open={diffOpen} onClose={handleCloseDiff} maxWidth="lg" fullWidth>
+      <Dialog
+        open={diffOpen}
+        onClose={handleCloseDiff}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: 'background.paper',
+            backgroundImage: 'none', // prevents MUI's dark-mode elevation overlay from tinting the Dialog paper a different shade than the table
+          },
+        }}
+      >
         <DialogTitle sx={{ textAlign: 'center' }}>
           {t('runs_table.run_diff.title', { defaultValue: 'Run Comparison' })}
         </DialogTitle>
@@ -623,6 +634,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
             maxHeight: '70vh',
             display: 'flex',
             flexDirection: 'column',
+            bgcolor: 'background.paper',
           }}
         >
           {isDiffLoading ? (
@@ -685,7 +697,11 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                         </DialogContentText>
                       </Box>
                     ) : (
-                      <TableContainer component={Paper} sx={{ maxHeight: '100%', overflow: 'auto' }}>
+                      <TableContainer
+                        component={Paper}
+                        elevation={0}
+                        sx={{ maxHeight: '100%', overflow: 'auto', bgcolor: 'background.paper', backgroundImage: 'none' }}
+                      >
                         <Table
                           stickyHeader
                           sx={{
@@ -697,6 +713,10 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                             },
                             '& .MuiTableCell-head': {
                               py: 2.5,
+                              bgcolor: 'background.paper',
+                            },
+                            '& .MuiTableCell-body': {
+                              bgcolor: 'background.paper',
                             },
                           }}
                         >
@@ -716,7 +736,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                                     verticalAlign: 'middle',
                                     bgcolor: item.changed
                                       ? alpha(theme.palette.warning.main, theme.palette.mode === 'dark' ? 0.16 : 0.2)
-                                      : 'transparent',
+                                      : 'background.paper',
                                   }}
                                 >
                                   {!item.changed ? (
@@ -765,14 +785,19 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                         </DialogContentText>
                       </Box>
                     ) : (
-                      <TableContainer component={Paper} sx={{ maxHeight: '100%', overflow: 'auto' }}>
+                      <TableContainer
+                        component={Paper}
+                        elevation={0}
+                        sx={{ maxHeight: '100%', overflow: 'auto', bgcolor: 'background.paper', backgroundImage: 'none' }}
+                      >
                         <Table
                           stickyHeader
                           sx={{
                             width: 'max-content',
                             minWidth: '100%',
                             '& .MuiTableCell-root': { px: 3, py: 2, fontSize: '1rem', lineHeight: 1.5 },
-                            '& .MuiTableCell-head': { py: 2.5, whiteSpace: 'nowrap' },
+                            '& .MuiTableCell-head': { py: 2.5, whiteSpace: 'nowrap', bgcolor: 'background.paper' },
+                            '& .MuiTableCell-body': { bgcolor: 'background.paper' },
                           }}
                         >
                           <TableHead>
@@ -796,7 +821,9 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                                         minWidth: 190,
                                         maxWidth: 360,
                                         verticalAlign: 'middle',
-                                        bgcolor: changed ? alpha(theme.palette.warning.main, theme.palette.mode === 'dark' ? 0.16 : 0.2) : 'transparent',
+                                        bgcolor: changed
+                                          ? alpha(theme.palette.warning.main, theme.palette.mode === 'dark' ? 0.16 : 0.2)
+                                          : 'background.paper',
                                         wordBreak: 'break-word',
                                       }}
                                     >
@@ -912,7 +939,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
             </>
           )}
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ bgcolor: 'background.paper' }}>
           <Button onClick={handleCloseDiff}>
             {t('runs_table.run_diff.close', { defaultValue: 'Close' })}
           </Button>
